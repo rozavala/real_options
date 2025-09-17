@@ -45,12 +45,19 @@ def is_market_open(contract_details, exchange_timezone_str: str):
     return False
 
 
-async def find_front_month_contract(ib: IB, symbol: str, secType: str, exchange: str):
+async def find_front_month_contract(ib: IB, symbol: str, secType: str, exchange: str, currency: str = None, tradingClass: str = None):
     """Finds the most liquid, nearest-expiring (front-month) contract."""
     log(f"--- Finding front-month contract for {symbol} ---")
     
     contract_class = Future if secType == 'FUT' else Index
-    contracts = await ib.reqContractDetailsAsync(contract_class(symbol=symbol, exchange=exchange))
+    # Be more specific for underlying contract by including tradingClass if available
+    underlying = contract_class(
+        symbol=symbol, 
+        exchange=exchange, 
+        currency=currency, 
+        tradingClass=tradingClass or ''
+    )
+    contracts = await ib.reqContractDetailsAsync(underlying)
     
     if not contracts:
         return None
@@ -60,6 +67,7 @@ async def find_front_month_contract(ib: IB, symbol: str, secType: str, exchange:
     valid_contracts = []
     for c in contracts:
         try:
+            # Ensure the contract has a valid expiration date in the future
             if c.contract.lastTradeDateOrContractMonth and datetime.strptime(c.contract.lastTradeDateOrContractMonth, '%Y%m%d').date() >= today:
                 valid_contracts.append(c)
         except (ValueError, TypeError):
@@ -68,6 +76,7 @@ async def find_front_month_contract(ib: IB, symbol: str, secType: str, exchange:
     if not valid_contracts:
         return None
         
+    # Sort by expiration to find the nearest contract
     valid_contracts.sort(key=lambda c: c.contract.lastTradeDateOrContractMonth)
     
     front_month_contract_details = valid_contracts[0]
@@ -75,29 +84,33 @@ async def find_front_month_contract(ib: IB, symbol: str, secType: str, exchange:
     return front_month_contract_details
 
 
-async def build_option_chain(ib: IB, symbol: str, exchange: str, currency: str = None, tradingClass: str = None):
+async def get_option_chain_params(ib: IB, underlying_contract):
     """
-    Builds a precise option chain by mapping strikes to their valid expirations.
+    Gets all option chain parameters (expirations and strikes) for a given underlying.
     """
-    log(f"Fetching option chain details for {symbol} on {exchange}...")
+    log(f"Fetching option chain parameters for {underlying_contract.symbol}...")
     try:
-        # Use more specific contract details if provided from the config
-        option_contract = FuturesOption(symbol, exchange=exchange, currency=currency, tradingClass=tradingClass)
-        contracts = await ib.reqContractDetailsAsync(option_contract)
-        
-        if not contracts: return None
-        strikes_by_expiration = {}
-        for c in contracts:
-            exp, strike = c.contract.lastTradeDateOrContractMonth, c.contract.strike
-            if exp not in strikes_by_expiration: strikes_by_expiration[exp] = set()
-            strikes_by_expiration[exp].add(strike)
-        for exp in strikes_by_expiration:
-            strikes_by_expiration[exp] = sorted(list(strikes_by_expiration[exp]))
-        expirations = sorted(strikes_by_expiration.keys())
-        log(f"Successfully built option chain from {len(contracts)} contracts.")
-        return {'exchange': exchange, 'expirations': expirations, 'strikes_by_expiration': strikes_by_expiration}
+        chains = await ib.reqSecDefOptParamsAsync(
+            underlyingSymbol=underlying_contract.symbol,
+            futFopExchange=underlying_contract.exchange,
+            underlyingSecType=underlying_contract.secType,
+            underlyingConId=underlying_contract.conId
+        )
+        if not chains:
+            return None
+
+        # Consolidate all strikes and expirations from all returned chains
+        all_expirations = set()
+        all_strikes = set()
+        for chain in chains:
+            all_expirations.update(chain.expirations)
+            all_strikes.update(chain.strikes)
+
+        log(f"Successfully found {len(all_expirations)} expirations and {len(all_strikes)} unique strikes.")
+        return {'expirations': sorted(list(all_expirations)), 'strikes': sorted(list(all_strikes))}
+
     except Exception as e:
-        log(f"Failed to build option chain on {exchange}: {e}")
+        log(f"Failed to fetch option chain parameters: {e}")
         return None
 
 
@@ -105,7 +118,11 @@ async def process_target(ib: IB, target: dict):
     """Processes a single target from the config file."""
     log(f"\n================ PROCESSING TARGET: {target['name']} ================")
     
-    underlying_details = await find_front_month_contract(ib, target['symbol'], target['secType'], target['exchange'])
+    # Pass tradingClass to be more specific in the contract search
+    underlying_details = await find_front_month_contract(
+        ib, target['symbol'], target['secType'], target['exchange'], 
+        target.get('currency'), target.get('tradingClass')
+    )
     if not underlying_details:
         log(f"Could not find underlying contract for {target['name']}. Skipping.")
         return
@@ -115,15 +132,25 @@ async def process_target(ib: IB, target: dict):
         return
 
     underlying_contract = underlying_details.contract
-    ib.reqMarketDataType(1)
+    ib.reqMarketDataType(3) # Use delayed data as a fallback for non-subscribed products
+    
+    # Request market data
     ticker_list = await ib.reqTickersAsync(underlying_contract)
-    underlying_price = ticker_list[0].marketPrice() if ticker_list and not util.isNan(ticker_list[0].marketPrice()) else ticker_list[0].close
-    log(f"Current underlying price for {underlying_contract.localSymbol} is: {underlying_price}")
+    
+    underlying_price = float('nan')
+    if ticker_list:
+        ticker = ticker_list[0]
+        # Allow some time for the ticker to populate
+        await asyncio.sleep(1) 
+        # Prefer live market price, fall back to close price if not available
+        underlying_price = ticker.marketPrice() if not util.isNan(ticker.marketPrice()) else ticker.close
 
-    chain = await build_option_chain(
-        ib, underlying_contract.symbol, target['option_exchange'],
-        target.get('currency'), target.get('tradingClass')
-    )
+    log(f"Current underlying price for {underlying_contract.localSymbol} is: {underlying_price}")
+    if util.isNan(underlying_price):
+        log(f"Could not determine underlying price for {target['name']}. Skipping.")
+        return
+
+    chain = await get_option_chain_params(ib, underlying_contract)
     if not chain:
          log(f"Could not build option chain for {target['name']}. Skipping.")
          return
@@ -141,27 +168,35 @@ async def process_target(ib: IB, target: dict):
     exp_date = datetime.strptime(next_expiration, '%Y%m%d').date()
     days_to_expiration = (exp_date - datetime.now().date()).days
 
-    all_strikes = chain['strikes_by_expiration'].get(next_expiration, [])
+    all_strikes = chain['strikes']
     if not all_strikes:
         log(f"No strikes found for expiration {next_expiration}. Skipping.")
         return
     log(f"Found {len(all_strikes)} strikes. Fetching data...")
+    
+    # Use the more specific tradingClass for ambiguous contracts like ES
+    option_trading_class = target.get('tradingClass', underlying_contract.tradingClass)
 
     contracts_to_fetch = [
         FuturesOption(
-            target['symbol'], next_expiration, strike, right, chain['exchange'],
-            currency=target.get('currency'), tradingClass=target.get('tradingClass')
+            symbol=target['symbol'], 
+            lastTradeDateOrContractMonth=next_expiration, 
+            strike=strike, 
+            right=right, 
+            exchange=target['option_exchange'],
+            currency=target.get('currency'), 
+            tradingClass=option_trading_class
         ) for strike in all_strikes for right in ['C', 'P']
     ]
     
-    batch_size = 50
+    batch_size = 100
     all_tickers = []
     for i in range(0, len(contracts_to_fetch), batch_size):
         batch = contracts_to_fetch[i:i + batch_size]
         await ib.qualifyContractsAsync(*batch)
         tickers = await ib.reqTickersAsync(*batch)
         all_tickers.extend(tickers)
-        await asyncio.sleep(1) 
+        await asyncio.sleep(0.5) 
 
     data_rows = []
     call_data = {t.contract.strike: t for t in all_tickers if t.contract.right == 'C'}
@@ -170,7 +205,7 @@ async def process_target(ib: IB, target: dict):
 
     for strike in all_strikes:
         call, put = call_data.get(strike), put_data.get(strike)
-        def clean(val): return '' if val is None or val < 0 or not isinstance(val, (int, float)) else val
+        def clean(val): return '' if val is None or util.isNan(val) or val < 0 else val
         def get_greek(ticker, greek_name):
             greeks = ticker.modelGreeks if ticker and ticker.modelGreeks else None
             return clean(getattr(greeks, greek_name, None)) if greeks else ''
@@ -227,4 +262,3 @@ if __name__ == "__main__":
         util.run(main())
     except (KeyboardInterrupt, SystemExit):
         log("Script stopped manually.")
-
