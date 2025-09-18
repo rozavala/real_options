@@ -23,7 +23,12 @@ def is_market_open(contract_details, exchange_timezone_str: str):
         return False
 
     tz = pytz.timezone(exchange_timezone_str)
-    now_tz = datetime.now(tz)
+    
+    # FIX: This is the robust way to handle timezones.
+    # First, get the current time in a neutral format (UTC).
+    now_utc = datetime.now(pytz.utc)
+    # Then, convert that UTC time to the target timezone.
+    now_tz = now_utc.astimezone(tz)
     
     sessions_str = contract_details.liquidHours.split(';')
 
@@ -84,36 +89,6 @@ async def find_front_month_contract(ib: IB, symbol: str, secType: str, exchange:
     return front_month_contract_details
 
 
-async def get_option_chain_params(ib: IB, underlying_contract):
-    """
-    Gets all option chain parameters (expirations and strikes) for a given underlying.
-    """
-    log(f"Fetching option chain parameters for {underlying_contract.symbol}...")
-    try:
-        chains = await ib.reqSecDefOptParamsAsync(
-            underlyingSymbol=underlying_contract.symbol,
-            futFopExchange=underlying_contract.exchange,
-            underlyingSecType=underlying_contract.secType,
-            underlyingConId=underlying_contract.conId
-        )
-        if not chains:
-            return None
-
-        # Consolidate all strikes and expirations from all returned chains
-        all_expirations = set()
-        all_strikes = set()
-        for chain in chains:
-            all_expirations.update(chain.expirations)
-            all_strikes.update(chain.strikes)
-
-        log(f"Successfully found {len(all_expirations)} expirations and {len(all_strikes)} unique strikes.")
-        return {'expirations': sorted(list(all_expirations)), 'strikes': sorted(list(all_strikes))}
-
-    except Exception as e:
-        log(f"Failed to fetch option chain parameters: {e}")
-        return None
-
-
 async def process_target(ib: IB, target: dict):
     """Processes a single target from the config file."""
     log(f"\n================ PROCESSING TARGET: {target['name']} ================")
@@ -134,60 +109,90 @@ async def process_target(ib: IB, target: dict):
     underlying_contract = underlying_details.contract
     ib.reqMarketDataType(3) # Use delayed data as a fallback for non-subscribed products
     
-    # Request market data
-    ticker_list = await ib.reqTickersAsync(underlying_contract)
-    
-    underlying_price = float('nan')
-    if ticker_list:
-        ticker = ticker_list[0]
-        # Allow some time for the ticker to populate
-        await asyncio.sleep(1) 
-        # Prefer live market price, fall back to close price if not available
-        underlying_price = ticker.marketPrice() if not util.isNan(ticker.marketPrice()) else ticker.close
+    # Use the more robust reqTickersAsync for a clean snapshot
+    tickers = await ib.reqTickersAsync(underlying_contract)
+    if not tickers:
+        log(f"Could not get market data for {underlying_contract.localSymbol}. Skipping.")
+        return
+    ticker = tickers[0]
+
+    underlying_price = ticker.marketPrice() if not util.isNan(ticker.marketPrice()) else ticker.close
 
     log(f"Current underlying price for {underlying_contract.localSymbol} is: {underlying_price}")
     if util.isNan(underlying_price):
         log(f"Could not determine underlying price for {target['name']}. Skipping.")
         return
 
-    chain = await get_option_chain_params(ib, underlying_contract)
-    if not chain:
-         log(f"Could not build option chain for {target['name']}. Skipping.")
-         return
+    # Fetch all available option chain definitions for the underlying
+    chains = await ib.reqSecDefOptParamsAsync(
+        underlyingSymbol=underlying_contract.symbol,
+        futFopExchange=underlying_contract.exchange,
+        underlyingSecType=underlying_contract.secType,
+        underlyingConId=underlying_contract.conId
+    )
+    if not chains:
+        log(f"Could not get option chain definitions for {target['name']}. Skipping.")
+        return
+
+    # Consolidate all unique expirations from all chains
+    all_expirations = sorted(list(set(
+        exp for chain in chains for exp in chain.expirations)))
     
     today_str = datetime.now().strftime('%Y%m%d')
-    upcoming_expirations = [exp for exp in sorted(chain['expirations']) if exp > today_str]
+    upcoming_expirations = [exp for exp in all_expirations if exp >= today_str]
     
-    if len(upcoming_expirations) < 2:
-        log(f"Fewer than two upcoming expirations found for {target['name']}. Skipping.")
+    if not upcoming_expirations:
+        log(f"No upcoming expirations found for {target['name']}. Skipping.")
         return
         
-    next_expiration = upcoming_expirations[1]
+    # Select the nearest upcoming expiration
+    next_expiration = upcoming_expirations[0]
     log(f"Selected 'next' expiration date: {next_expiration}")
 
     exp_date = datetime.strptime(next_expiration, '%Y%m%d').date()
     days_to_expiration = (exp_date - datetime.now().date()).days
-
-    all_strikes = chain['strikes']
-    if not all_strikes:
-        log(f"No strikes found for expiration {next_expiration}. Skipping.")
-        return
-    log(f"Found {len(all_strikes)} strikes. Fetching data...")
     
-    # Use the more specific tradingClass for ambiguous contracts like ES
-    option_trading_class = target.get('tradingClass', underlying_contract.tradingClass)
+    contracts_to_fetch = []
+    all_strikes = set()
+    
+    target_option_tc = target.get('option_tradingClass')
+    
+    # Get all chains that match the selected expiration
+    chains_for_expiration = [c for c in chains if next_expiration in c.expirations]
+    
+    # Try to find a chain that matches the trading class from the config
+    matching_chain = None
+    if target_option_tc:
+        for c in chains_for_expiration:
+            if c.tradingClass == target_option_tc:
+                matching_chain = c
+                break
+    
+    # If no specific match is found, but chains for the expiration exist, use the first one as a fallback
+    if not matching_chain and chains_for_expiration:
+        matching_chain = chains_for_expiration[0]
+        log(f"Warning: Could not find chain with tradingClass '{target_option_tc}'. Using fallback: '{matching_chain.tradingClass}'")
 
-    contracts_to_fetch = [
-        FuturesOption(
-            symbol=target['symbol'], 
-            lastTradeDateOrContractMonth=next_expiration, 
-            strike=strike, 
-            right=right, 
-            exchange=target['option_exchange'],
-            currency=target.get('currency'), 
-            tradingClass=option_trading_class
-        ) for strike in all_strikes for right in ['C', 'P']
-    ]
+    if matching_chain:
+        log(f"Found matching chain for expiration {next_expiration} on exchange {matching_chain.exchange} with tradingClass {matching_chain.tradingClass}")
+        all_strikes.update(matching_chain.strikes)
+        contracts_to_fetch.extend([
+            FuturesOption(
+                symbol=target['symbol'],
+                lastTradeDateOrContractMonth=next_expiration,
+                strike=strike,
+                right=right,
+                exchange=matching_chain.exchange,
+                tradingClass=matching_chain.tradingClass,
+                currency=target.get('currency')
+            ) for strike in matching_chain.strikes for right in ['C', 'P']
+        ])
+
+    if not contracts_to_fetch:
+        log(f"Could not build any contracts for expiration {next_expiration}. Skipping.")
+        return
+    
+    log(f"Found {len(all_strikes)} unique strikes. Fetching data for {len(contracts_to_fetch)} contracts...")
     
     batch_size = 100
     all_tickers = []
@@ -203,7 +208,7 @@ async def process_target(ib: IB, target: dict):
     put_data = {t.contract.strike: t for t in all_tickers if t.contract.right == 'P'}
     pull_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    for strike in all_strikes:
+    for strike in sorted(list(all_strikes)):
         call, put = call_data.get(strike), put_data.get(strike)
         def clean(val): return '' if val is None or util.isNan(val) or val < 0 else val
         def get_greek(ticker, greek_name):
@@ -262,3 +267,4 @@ if __name__ == "__main__":
         util.run(main())
     except (KeyboardInterrupt, SystemExit):
         log("Script stopped manually.")
+
