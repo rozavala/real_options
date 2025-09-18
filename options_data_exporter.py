@@ -19,17 +19,21 @@ def is_market_open(contract_details, exchange_timezone_str: str):
     Checks if the market for a given contract is currently open.
     """
     if not contract_details or not contract_details.liquidHours:
-        log("Warning: Could not get liquid hours for contract.")
-        return False
+        # If liquid hours are not provided, log a warning and assume the market is open to avoid a crash.
+        log(f"Warning: Liquid hours data not available for {contract_details.contract.symbol}. Assuming market is open and proceeding.")
+        return True
+
+    # Log the exact liquid hours string from IBKR for debugging.
+    log(f"Liquid hours for {contract_details.contract.symbol}: {contract_details.liquidHours}")
 
     tz = pytz.timezone(exchange_timezone_str)
     
-    # FIX: This is the robust way to handle timezones.
-    # First, get the current time in a neutral format (UTC).
-    now_utc = datetime.now(pytz.utc)
-    # Then, convert that UTC time to the target timezone.
-    now_tz = now_utc.astimezone(tz)
-    
+    # Get the current time and convert it to the exchange's local timezone.
+    now_local = datetime.now(pytz.utc).astimezone(tz)
+    # Create a timezone-naive version of the current local time for direct comparison.
+    now_local_naive = now_local.replace(tzinfo=None)
+    log(f"DEBUG: Current exchange time (naive): {now_local_naive}")
+
     sessions_str = contract_details.liquidHours.split(';')
 
     for session_str in sessions_str:
@@ -38,9 +42,17 @@ def is_market_open(contract_details, exchange_timezone_str: str):
             start_str, end_str = session_str.split('-')
             start_dt_str, start_hm_str = start_str.split(':')
             end_dt_str, end_hm_str = end_str.split(':')
-            start_datetime = tz.localize(datetime.strptime(f"{start_dt_str}{start_hm_str}", '%Y%m%d%H%M'))
-            end_datetime = tz.localize(datetime.strptime(f"{end_dt_str}{end_hm_str}", '%Y%m%d%H%M'))
-            if start_datetime <= now_tz < end_datetime:
+            
+            # Create timezone-naive datetime objects directly from the session strings.
+            start_naive = datetime.strptime(f"{start_dt_str}{start_hm_str}", '%Y%m%d%H%M')
+            end_naive = datetime.strptime(f"{end_dt_str}{end_hm_str}", '%Y%m%d%H%M')
+
+            is_open = start_naive <= now_local_naive < end_naive
+            log(f"DEBUG: Checking session start={start_naive}, end={end_naive}. Is open? {is_open}")
+
+            # Compare the naive times directly. This is robust because we've already
+            # converted the current time to the correct local timezone.
+            if is_open:
                 log(f"Market is open for {contract_details.contract.symbol}.")
                 return True
         except ValueError as e:
@@ -55,13 +67,17 @@ async def find_front_month_contract(ib: IB, symbol: str, secType: str, exchange:
     log(f"--- Finding front-month contract for {symbol} ---")
     
     contract_class = Future if secType == 'FUT' else Index
-    # Be more specific for underlying contract by including tradingClass if available
-    underlying = contract_class(
-        symbol=symbol, 
-        exchange=exchange, 
-        currency=currency, 
-        tradingClass=tradingClass or ''
-    )
+    
+    params = {
+        'symbol': symbol,
+        'exchange': exchange,
+        'currency': currency
+    }
+    # Only add tradingClass to the search parameters if it's actually provided.
+    if tradingClass:
+        params['tradingClass'] = tradingClass
+
+    underlying = contract_class(**params)
     contracts = await ib.reqContractDetailsAsync(underlying)
     
     if not contracts:
@@ -123,13 +139,22 @@ async def process_target(ib: IB, target: dict):
         log(f"Could not determine underlying price for {target['name']}. Skipping.")
         return
 
-    # Fetch all available option chain definitions for the underlying
-    chains = await ib.reqSecDefOptParamsAsync(
-        underlyingSymbol=underlying_contract.symbol,
-        futFopExchange=underlying_contract.exchange,
-        underlyingSecType=underlying_contract.secType,
-        underlyingConId=underlying_contract.conId
-    )
+    chains = None
+    log(f"Fetching option chain definitions for {target['name']}... (timeout set to 20s)")
+    try:
+        # Add a timeout to the option chain request to prevent the script from hanging.
+        chains_request = ib.reqSecDefOptParamsAsync(
+            underlyingSymbol=underlying_contract.symbol,
+            futFopExchange=target['option_exchange'],
+            underlyingSecType=underlying_contract.secType,
+            underlyingConId=underlying_contract.conId
+        )
+        chains = await asyncio.wait_for(chains_request, timeout=20.0)
+
+    except asyncio.TimeoutError:
+        log(f"Error: Timed out after 20 seconds waiting for option chain definitions for {target['name']}. Skipping.")
+        return
+    
     if not chains:
         log(f"Could not get option chain definitions for {target['name']}. Skipping.")
         return
