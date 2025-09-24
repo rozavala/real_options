@@ -247,11 +247,13 @@ if 'coffee_prices' in all_data and not all_data['coffee_prices'].empty:
     final_df.ffill(inplace=True)
     print("Forward-filled missing values.")
 
-    # Drop any remaining rows with NaN values (these are usually at the start of the dataset
-    # if some time series begin later than others).
+    # --- UPDATED CLEANING LOGIC ---
+    # Only drop rows where the *front-month* coffee contract price is missing.
+    # This preserves historical data for other variables, even if later contracts didn't exist yet.
     original_rows = len(final_df)
-    final_df.dropna(inplace=True)
-    print(f"Dropped {original_rows - len(final_df)} rows with initial NaN values.")
+    front_month_contract_column = f'coffee_price_{coffee_tickers[0]}'
+    final_df.dropna(subset=[front_month_contract_column], inplace=True)
+    print(f"Dropped {original_rows - len(final_df)} rows with missing front-month contract data.")
     
     # --- Save to CSV ---
     # Create a dynamic filename with the current date
