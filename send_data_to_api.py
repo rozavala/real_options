@@ -9,8 +9,8 @@ def send_data_to_prediction_api():
     and sends it to the prediction API.
     """
     # --- 1. Define API and File Details ---
-    # CORRECTED: Added "http://" to the beginning of the URL
-    api_url = "http://100.125.76.78:8000/predictions"
+    # UPDATED: Using the Tailscale domain name instead of the IP address
+    api_url = "http://franciscos-mac-studio.tailccaee.ts.net:8000/predictions"
     
     # Dynamically generate the filename for today's date
     today_str = datetime.now().strftime('%Y-%m-%d')
@@ -67,3 +67,4 @@ def send_data_to_prediction_api():
 
 if __name__ == "__main__":
     send_data_to_prediction_api()
+
