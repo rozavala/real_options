@@ -9,6 +9,7 @@ def send_data_to_prediction_api():
     and sends it to the prediction API.
     """
     # --- 1. Define API and File Details ---
+    # CORRECTED: Added "http://" to the beginning of the URL
     api_url = "http://100.125.76.78:8000/predictions"
     
     # Dynamically generate the filename for today's date
