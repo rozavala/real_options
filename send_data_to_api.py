@@ -47,7 +47,7 @@ def send_data_and_get_prediction():
         df = pd.read_csv(latest_file)
         # Convert the last N rows to JSON. The model might only need recent data.
         # This is more efficient than sending the whole file.
-        data_payload = df.tail(30).to_json(orient='split')
+        data_payload = df.tail(600).to_json(orient='split')
         request_body = {"data": data_payload}
     except Exception as e:
         print(f"Error reading or processing data file: {e}")
