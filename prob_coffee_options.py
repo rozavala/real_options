@@ -273,10 +273,10 @@ def get_expiration_details(chain: dict, config: dict, future_exp: str) -> dict |
     days_to_exp = (datetime.strptime(chosen_expiration, '%Y%m%d').date() - datetime.now().date()).days
     return {'exp_date': chosen_expiration, 'days_to_exp': days_to_exp, 'strikes': chain['strikes_by_expiration'][chosen_expiration]}
 
-# --- 4. Intraday Risk Management & Pre-Trade Checks ---
+# --- 4. Risk, Sanity Checks & Connection Heartbeat ---
 
 def is_trade_sane(signal: dict, config: dict) -> bool:
-    """NEW: Performs pre-trade sanity checks."""
+    """Performs pre-trade sanity checks."""
     risk_params = config.get('risk_management', {})
     min_confidence = risk_params.get('min_confidence_threshold', 0.0)
     
@@ -318,12 +318,25 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
         except Exception as e:
             log_with_timestamp(f"Error in risk monitor loop: {e}")
 
+async def send_heartbeat(ib: IB):
+    """
+    NEW: Sends a lightweight request every 5 minutes to keep the connection alive.
+    """
+    while True:
+        try:
+            await asyncio.sleep(300) # Sleep for 5 minutes
+            if ib.isConnected():
+                current_time = await ib.reqCurrentTimeAsync()
+                log_with_timestamp(f"Heartbeat sent. Server time: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        except Exception as e:
+            log_with_timestamp(f"Error in heartbeat loop: {e}")
+
 # --- 5. Main Execution Loop ---
 
 async def main_runner():
     ib = IB()
     config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
-    monitor_task = None
+    monitor_task, heartbeat_task = None, None
 
     while True:
         try:
@@ -337,8 +350,11 @@ async def main_runner():
                 await ib.connectAsync(host, port, clientId=client_id)
                 send_notification(config, "Script Started", "Trading script has successfully connected to IBKR.")
 
+            # Start concurrent tasks if they aren't running
             if monitor_task is None or monitor_task.done():
                 monitor_task = asyncio.create_task(monitor_positions_for_risk(ib, config))
+            if heartbeat_task is None or heartbeat_task.done():
+                heartbeat_task = asyncio.create_task(send_heartbeat(ib))
 
             active_futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=5)
             if not active_futures: raise ConnectionError("Could not find any active futures contracts.")
@@ -383,7 +399,8 @@ async def main_runner():
             log_with_timestamp(msg)
             send_notification(config, "Connection Error", msg)
             if monitor_task and not monitor_task.done(): monitor_task.cancel()
-            monitor_task = None
+            if heartbeat_task and not heartbeat_task.done(): heartbeat_task.cancel()
+            monitor_task, heartbeat_task = None, None
             if ib.isConnected(): ib.disconnect()
             await asyncio.sleep(60)
         except Exception as e:
@@ -391,7 +408,8 @@ async def main_runner():
             log_with_timestamp(msg)
             send_notification(config, "Critical Error", msg)
             if monitor_task and not monitor_task.done(): monitor_task.cancel()
-            monitor_task = None
+            if heartbeat_task and not heartbeat_task.done(): heartbeat_task.cancel()
+            monitor_task, heartbeat_task = None, None
             if ib.isConnected(): ib.disconnect()
             await asyncio.sleep(60)
 
