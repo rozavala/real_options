@@ -26,6 +26,7 @@ def send_notification(config: dict, title: str, message: str):
         return
 
     try:
+        # This is a blocking call, so it will be run in a separate thread
         response = requests.post("https://api.pushover.net/1/messages.json", data={
             "token": api_token,
             "user": user_key,
@@ -218,7 +219,8 @@ async def wait_for_fill(trade: Trade, config: dict, timeout: int = 60, reason: s
         await asyncio.sleep(1)
         if timeout > 0 and (time.time() - start_time) > timeout:
             log_with_timestamp(f"Order {trade.order.orderId} not filled. Canceling.")
-            send_notification(config, "Order Canceled", f"Order {trade.order.orderId} for {trade.contract.localSymbol} was canceled due to timeout.")
+            # MODIFIED: Run notification in a non-blocking task
+            asyncio.create_task(asyncio.to_thread(send_notification, config, "Order Canceled", f"Order {trade.order.orderId} for {trade.contract.localSymbol} was canceled due to timeout."))
             trade.ib.cancelOrder(trade.order)
             break
     if trade.orderStatus.status == OrderStatus.Filled:
@@ -310,7 +312,8 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
                 elif take_profit_usd and unrealized_pnl_per_contract > abs(take_profit_usd): reason = "Take-Profit"
                 if reason:
                     log_with_timestamp(f"{reason.upper()} TRIGGERED for {p.contract.localSymbol}. PnL/contract: ${unrealized_pnl_per_contract:.2f}")
-                    send_notification(config, reason, f"{p.contract.localSymbol} closed. PnL/contract: ${unrealized_pnl_per_contract:.2f}")
+                    # MODIFIED: Run notification in a non-blocking task
+                    asyncio.create_task(asyncio.to_thread(send_notification, config, reason, f"{p.contract.localSymbol} closed. PnL/contract: ${unrealized_pnl_per_contract:.2f}"))
                     order = MarketOrder('BUY' if p.position < 0 else 'SELL', abs(p.position))
                     trade = ib.placeOrder(p.contract, order)
                     await wait_for_fill(trade, config, reason=reason)
@@ -348,7 +351,8 @@ async def main_runner():
                 log_with_timestamp(f"Connecting to {host}:{port}...")
                 client_id = conn_settings.get('clientId') or random.randint(1, 1000)
                 await ib.connectAsync(host, port, clientId=client_id)
-                send_notification(config, "Script Started", "Trading script has successfully connected to IBKR.")
+                # MODIFIED: Run notification in a non-blocking task
+                asyncio.create_task(asyncio.to_thread(send_notification, config, "Script Started", "Trading script has successfully connected to IBKR."))
 
             # Start concurrent tasks if they aren't running
             if monitor_task is None or monitor_task.done():
@@ -397,7 +401,8 @@ async def main_runner():
         except (ConnectionError, OSError, asyncio.TimeoutError) as e:
             msg = f"Connection error: {e}. Reconnecting..."
             log_with_timestamp(msg)
-            send_notification(config, "Connection Error", msg)
+            # MODIFIED: Run notification in a non-blocking task
+            asyncio.create_task(asyncio.to_thread(send_notification, config, "Connection Error", msg))
             if monitor_task and not monitor_task.done(): monitor_task.cancel()
             if heartbeat_task and not heartbeat_task.done(): heartbeat_task.cancel()
             monitor_task, heartbeat_task = None, None
@@ -406,7 +411,8 @@ async def main_runner():
         except Exception as e:
             msg = f"An unexpected critical error occurred: {e}. Restarting logic in 1 min..."
             log_with_timestamp(msg)
-            send_notification(config, "Critical Error", msg)
+            # MODIFIED: Run notification in a non-blocking task
+            asyncio.create_task(asyncio.to_thread(send_notification, config, "Critical Error", msg))
             if monitor_task and not monitor_task.done(): monitor_task.cancel()
             if heartbeat_task and not heartbeat_task.done(): heartbeat_task.cancel()
             monitor_task, heartbeat_task = None, None
