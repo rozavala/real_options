@@ -8,6 +8,7 @@ def send_notification(title: str, message: str, sound: str = "falling"):
     'sound' can be changed for different alert types, e.g., 'cashregister' for success.
     """
     try:
+        # Assumes config.json is in the same directory as the script calling this function
         config_path = os.path.join(os.path.dirname(__file__), 'config.json')
         with open(config_path, 'r') as f:
             config = json.load(f)
