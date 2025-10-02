@@ -21,10 +21,15 @@ class ValidationManager:
     """A class to manage and report data validation checks."""
     def __init__(self):
         self.results = []
+        self.final_shape = None
 
     def add_check(self, check_name, success, message):
         """Adds a validation check result."""
         self.results.append({'check': check_name, 'success': success, 'message': message})
+
+    def set_final_shape(self, shape):
+        """Stores the shape of the final DataFrame."""
+        self.final_shape = shape
 
     def was_successful(self):
         """Returns True if all checks passed, False otherwise."""
@@ -46,6 +51,11 @@ class ValidationManager:
             icon = "✅" if res['success'] else "❌"
             report += f"{icon} <b>{res['check']}:</b> {res['message']}\n"
         
+        if self.final_shape:
+            report += f"\n<b>Final Output File Stats:</b>\n"
+            report += f"- Rows: {self.final_shape[0]}\n"
+            report += f"- Columns: {self.final_shape[1]}\n"
+
         return report.strip()
 
 # --- Main Script ---
@@ -121,7 +131,7 @@ def main():
         print("\nFetching Coffee Prices...")
         try:
             df_coffee = yf.download(chronological_tickers, start=start_date, end=end_date, progress=False)
-            if not df_coffee.empty and not df_coffee['Close'].dropna(how='all').empty:
+            if not df_coffee.empty and 'Close' in df_coffee and not df_coffee['Close'].dropna(how='all').empty:
                 df_price = df_coffee['Close'].copy()
                 df_price.dropna(axis=1, how='all', inplace=True)
                 df_price.columns = [f"coffee_price_{t.replace('.NYB', '')}" for t in df_price.columns]
@@ -136,8 +146,8 @@ def main():
     print("\nFetching weather data...")
     weather_stations = config['weather_stations']
     try:
-        lats = ",".join([lat for lat, lon in weather_stations.values()])
-        lons = ",".join([lon for lat, lon in weather_stations.values()])
+        lats = ",".join(map(str, [v[0] for v in weather_stations.values()]))
+        lons = ",".join(map(str, [v[1] for v in weather_stations.values()]))
         api_url = f"https://archive-api.open-meteo.com/v1/archive?latitude={lats}&longitude={lons}&start_date={start_date.strftime('%Y-%m-%d')}&end_date={end_date.strftime('%Y-%m-%d')}&daily=temperature_2m_mean,precipitation_sum&timezone=GMT"
         response = requests.get(api_url, timeout=30)
         response.raise_for_status()
@@ -159,10 +169,7 @@ def main():
     for name, code in config['fred_series'].items():
         try:
             data = fred.get_series(code, start_date, end_date).to_frame(name=name)
-            if not data.empty:
-                all_data[name] = data
-            else:
-                 all_data[name] = pd.DataFrame() # Add empty frame to avoid key errors
+            all_data[name] = data if not data.empty else pd.DataFrame()
         except Exception as e:
             validator.add_check(f"FRED Fetch ({name})", False, f"Could not fetch series '{code}'. Error: {e}")
             all_data[name] = pd.DataFrame()
@@ -187,24 +194,19 @@ def main():
             if name != 'coffee_prices':
                 final_df = final_df.join(df, how='left')
         
-        # --- Pre-Fill Validation ---
         total_cells = final_df.size
         missing_before = final_df.isnull().sum().sum()
         missing_pct = (missing_before / total_cells) * 100 if total_cells > 0 else 0
         validator.add_check("Pre-Fill Missing Data", missing_pct < 50, f"Total missing data before fill is {missing_pct:.2f}%.")
-
         final_df.ffill(inplace=True)
 
-        # --- Post-Fill Validation ---
-        front_month_col = f"coffee_price_{chronological_tickers[0].replace('.NYB', '')}"
+        front_month_col = f"coffee_price_{chronological_tickers[0].replace('.NYB', '')}" if chronological_tickers else None
         
-        # Recency Check
         last_date = final_df.index.max()
         is_recent = (datetime.now() - last_date) < timedelta(days=5)
         validator.add_check("Data Recency", is_recent, f"Most recent data point is from {last_date.strftime('%Y-%m-%d')}.")
         
-        # Spike Check
-        if front_month_col in final_df.columns:
+        if front_month_col and front_month_col in final_df.columns:
             final_df['price_pct_change'] = final_df[front_month_col].pct_change().abs()
             max_spike = final_df['price_pct_change'].max()
             spike_threshold = config['validation_thresholds']['price_spike_pct']
@@ -214,21 +216,27 @@ def main():
         else:
             validator.add_check("Price Spike Detection", False, "Front-month column not found for spike check.")
 
-        # --- Reformat and Save ---
         if validator.was_successful():
-            final_df.dropna(subset=[front_month_col], inplace=True)
+            if front_month_col and front_month_col in final_df.columns:
+                final_df.dropna(subset=[front_month_col], inplace=True)
 
+            # CORRECTED: Robustly parse contract details and reformat columns
             for col in list(final_df.columns):
-                if 'coffee_price_KC' in col:
-                    ticker, month_code, year_str = col.replace('coffee_price_', ''), col[16], col[17:]
-                    try:
-                        exp = get_kc_expiration_date(int(f"20{year_str}"), month_code)
-                        final_df[f'{month_code}_dte'] = (exp - final_df.index).days
-                        final_df.loc[final_df[f'{month_code}_dte'] < 0, f'{month_code}_dte'] = None
-                        final_df[f'{month_code}_symbol'] = ticker
-                        final_df.rename(columns={col: f'{month_code}_price'}, inplace=True)
-                    except ValueError:
-                        continue
+                if col.startswith('coffee_price_KC'):
+                    ticker = col.replace('coffee_price_', '') # e.g., 'KCH25'
+                    if len(ticker) >= 4:
+                        month_code = ticker[2]
+                        year_str = ticker[3:]
+                        try:
+                            year = int(f"20{year_str}")
+                            exp = get_kc_expiration_date(year, month_code)
+                            final_df[f'{month_code}_dte'] = (exp.tz_localize(None) - final_df.index).days
+                            final_df.loc[final_df[f'{month_code}_dte'] < 0, f'{month_code}_dte'] = None
+                            final_df[f'{month_code}_symbol'] = ticker
+                            final_df.rename(columns={col: f'{month_code}_price'}, inplace=True)
+                        except (ValueError, TypeError):
+                            print(f"Warning: Could not parse ticker details from column '{col}'. Skipping.")
+                            continue
             
             final_df['date'] = final_df.index.strftime('%-m/%-d/%y')
             final_cols = [c for c in config['final_column_order'] if c in final_df.columns]
@@ -240,19 +248,21 @@ def main():
             final_df.dropna(inplace=True)
             output_filename = f"coffee_futures_data_reformatted_{datetime.now().strftime('%Y-%m-%d')}.csv"
             final_df.to_csv(output_filename, index=False)
+            
             print(f"\nSuccessfully saved data to {output_filename}. Shape: {final_df.shape}")
+            validator.set_final_shape(final_df.shape)
         else:
             print("\nValidation failures occurred. Skipping final processing and file save.")
 
     else:
         validator.add_check("Consolidation", False, "No coffee price data was fetched. Cannot create final data file.")
     
-    # --- Send Final Report ---
     report = validator.generate_report()
     print("\n" + "="*30 + "\n" + report + "\n" + "="*30)
     
     notification_title = f"Coffee Data Pull: {'SUCCESS' if validator.was_successful() else 'FAILURE'}"
-    send_pushover_notification(config, notification_title, report)
+    send_pushover_notification(config.get('notifications', {}), notification_title, report)
 
 if __name__ == "__main__":
     main()
+
