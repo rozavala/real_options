@@ -377,6 +377,38 @@ def is_market_open(contract_details, exchange_timezone_str: str):
         except (ValueError, IndexError): continue
     return log_with_timestamp("Market is closed."), False
 
+def calculate_wait_until_market_open(contract_details, exchange_timezone_str: str) -> float:
+    """Calculates the seconds to wait until the next market open session."""
+    if not contract_details or not contract_details.liquidHours:
+        return 3600  # Fallback to 1 hour if no details
+
+    tz = pytz.timezone(exchange_timezone_str)
+    now_tz = datetime.now(tz)
+    next_open_dt = None
+
+    # Find the earliest upcoming session start time
+    for session_str in contract_details.liquidHours.split(';'):
+        if not session_str or 'CLOSED' in session_str:
+            continue
+        try:
+            start_str = session_str.split('-')[0]
+            session_start_dt = tz.localize(datetime.strptime(start_str, '%Y%m%d:%H%M'))
+            if session_start_dt > now_tz:
+                if next_open_dt is None or session_start_dt < next_open_dt:
+                    next_open_dt = session_start_dt
+        except (ValueError, IndexError):
+            continue
+
+    if next_open_dt:
+        wait_seconds = (next_open_dt - now_tz).total_seconds() + 60 # Add a 1-min buffer
+        log_with_timestamp(f"Next market open is at {next_open_dt.strftime('%Y-%m-%d %H:%M:%S')}. Waiting for {wait_seconds / 3600:.2f} hours.")
+        return wait_seconds
+    else:
+        # If no future session is found for today/tomorrow (e.g., weekend), default to a longer wait
+        log_with_timestamp("No upcoming market session found in contract details. Defaulting to 1-hour wait.")
+        return 3600
+
+
 async def get_active_futures(ib: IB, symbol: str, exchange: str, count: int = 5) -> list[Contract]:
     log_with_timestamp(f"Fetching {count} active futures contracts for {symbol} on {exchange}...")
     try:
@@ -502,10 +534,8 @@ async def main_runner():
                 log_with_timestamp(f"Connecting to {host}:{port}...")
                 client_id = conn_settings.get('clientId') or random.randint(1, 1000)
                 await ib.connectAsync(host, port, clientId=client_id)
-                # MODIFIED: Run notification in a non-blocking task
                 asyncio.create_task(asyncio.to_thread(send_notification, config, "Script Started", "Trading script has successfully connected to IBKR."))
 
-            # Start concurrent tasks if they aren't running
             if monitor_task is None or monitor_task.done():
                 monitor_task = asyncio.create_task(monitor_positions_for_risk(ib, config))
             if heartbeat_task is None or heartbeat_task.done():
@@ -514,13 +544,13 @@ async def main_runner():
             active_futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=5)
             if not active_futures: raise ConnectionError("Could not find any active futures contracts.")
 
-            front_month_details = await ib.reqContractDetailsAsync(active_futures[0])
-            _, market_is_open = is_market_open(front_month_details[0] if front_month_details else None, config['exchange_timezone'])
+            front_month_details_list = await ib.reqContractDetailsAsync(active_futures[0])
+            front_month_details = front_month_details_list[0] if front_month_details_list else None
+            _, market_is_open = is_market_open(front_month_details, config['exchange_timezone'])
 
             if not market_is_open:
-                log_with_timestamp("Market is closed. Waiting for next session.")
-                # Calculate wait time until next open or a set time
-                await asyncio.sleep(3600) # Wait an hour before checking again
+                wait_time = calculate_wait_until_market_open(front_month_details, config['exchange_timezone'])
+                await asyncio.sleep(wait_time)
                 continue
 
             signals = get_prediction_from_api(api_url="http://127.0.0.1:8000")
@@ -531,7 +561,6 @@ async def main_runner():
                 if not signal_month:
                     continue
 
-                # Find the future contract where the expiration date (YYYYMMDD) starts with the signal month (YYYYMM)
                 future_to_trade = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal_month)), None)
 
                 if not future_to_trade:
@@ -568,8 +597,7 @@ async def main_runner():
         except (ConnectionError, OSError, asyncio.TimeoutError, asyncio.CancelledError) as e:
             msg = f"Connection error: {e}. Reconnecting..."
             log_with_timestamp(msg)
-            # MODIFIED: Run notification in a non-blocking task
-            asyncio.create_task(asyncio.to_thread(send_notification, config, "Connection Error", msg))
+            send_notification(config, "Connection Error", msg)
             if monitor_task and not monitor_task.done(): monitor_task.cancel()
             if heartbeat_task and not heartbeat_task.done(): heartbeat_task.cancel()
             monitor_task, heartbeat_task = None, None
@@ -578,8 +606,7 @@ async def main_runner():
         except Exception as e:
             msg = f"An unexpected critical error occurred: {e}. Restarting logic in 1 min..."
             log_with_timestamp(msg)
-            # MODIFIED: Run notification in a non-blocking task
-            asyncio.create_task(asyncio.to_thread(send_notification, config, "Critical Error", msg))
+            send_notification(config, "Critical Error", msg)
             if monitor_task and not monitor_task.done(): monitor_task.cancel()
             if heartbeat_task and not heartbeat_task.done(): heartbeat_task.cancel()
             monitor_task, heartbeat_task = None, None
