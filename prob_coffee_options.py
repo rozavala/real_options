@@ -48,11 +48,11 @@ def get_prediction_from_api(api_url: str) -> list | None:
     log_with_timestamp("Requesting new trading signals from prediction API...")
     try:
         mock_signals = [
-            {"contract_month": "202512", "prediction_type": "DIRECTIONAL", "direction": "BULLISH", "confidence": 0.88},
-            {"contract_month": "202603", "prediction_type": "VOLATILITY", "level": "LOW", "confidence": 0.92},
+            {"contract_month": "202512", "prediction_type": "DIRECTIONAL", "direction": "BULLISH", "confidence": 0.65}, # Example below threshold
+            {"contract_month": "202603", "prediction_type": "DIRECTIONAL", "direction": "BEARISH", "confidence": 0.88},
             {"contract_month": "202605", "prediction_type": "DIRECTIONAL", "direction": "BEARISH", "confidence": 0.75},
-            {"contract_month": "202607", "prediction_type": "VOLATILITY", "level": "HIGH", "confidence": 0.65}, # Example below threshold
-            {"contract_month": "202609", "prediction_type": "DIRECTIONAL", "direction": "BULLISH", "confidence": 0.79}
+            {"contract_month": "202607", "prediction_type": "DIRECTIONAL", "direction": "BEARISH", "confidence": 0.75},
+            {"contract_month": "202609", "prediction_type": "DIRECTIONAL", "direction": "BEARISH", "confidence": 0.79}
         ]
         log_with_timestamp(f"Multi-contract signals received: {json.dumps(mock_signals, indent=2)}")
         return mock_signals
