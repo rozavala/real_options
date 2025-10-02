@@ -356,7 +356,7 @@ async def wait_for_fill(trade: Trade, config: dict, timeout: int = 60, reason: s
         if timeout > 0 and (time.time() - start_time) > timeout:
             log_with_timestamp(f"Order {trade.order.orderId} not filled. Canceling.")
             # MODIFIED: Run notification in a non-blocking task
-            asyncio.create_task(asyncio.to_thread(send_notification, config, "Order Canceled", f"Order {trade.order.id} for {trade.contract.localSymbol} was canceled due to timeout."))
+            asyncio.create_task(asyncio.to_thread(send_notification, config, "Order Canceled", f"Order {trade.order.orderId} for {trade.contract.localSymbol} was canceled due to timeout."))
             trade.ib.cancelOrder(trade.order)
             break
     if trade.orderStatus.status == OrderStatus.Filled:
@@ -565,7 +565,7 @@ async def main_runner():
             log_with_timestamp(f"\nTrading cycle complete. Waiting {seconds_to_wait / 3600:.2f} hours until {next_trade_dt_ny.strftime('%Y-%m-%d %H:%M:%S')} NY time.")
             await asyncio.sleep(seconds_to_wait)
 
-        except (ConnectionError, OSError, asyncio.TimeoutError) as e:
+        except (ConnectionError, OSError, asyncio.TimeoutError, asyncio.CancelledError) as e:
             msg = f"Connection error: {e}. Reconnecting..."
             log_with_timestamp(msg)
             # MODIFIED: Run notification in a non-blocking task
