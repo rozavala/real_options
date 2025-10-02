@@ -5,6 +5,8 @@ import os
 import random
 import time
 from datetime import datetime, time as dt_time, timedelta
+import numpy as np
+from scipy.stats import norm
 
 import requests
 import pytz
@@ -61,6 +63,66 @@ def get_prediction_from_api(api_url: str) -> list | None:
         return None
 
 # --- 2. Core Trading Logic & Strategy Execution ---
+
+def price_option_black_scholes(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> dict | None:
+    """
+    Calculates the theoretical price and Greeks of an option using the Black-Scholes model.
+    """
+    if T <= 0 or sigma <= 0:
+        log_with_timestamp(f"Invalid input for B-S model: T={T}, sigma={sigma}. Cannot price option.")
+        return None
+
+    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T)
+
+    if option_type.upper() == 'C':
+        price = S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
+        delta = norm.cdf(d1)
+    elif option_type.upper() == 'P':
+        price = K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
+        delta = -norm.cdf(-d1)
+    else:
+        return None
+
+    gamma = norm.pdf(d1) / (S * sigma * np.sqrt(T))
+    vega = S * norm.pdf(d1) * np.sqrt(T)
+    theta = (- (S * norm.pdf(d1) * sigma) / (2 * np.sqrt(T)) - r * K * np.exp(-r * T) * norm.cdf(d2 if option_type.upper() == 'C' else -d2)) / 365
+
+    results = {
+        "price": round(price, 4),
+        "delta": round(delta, 4),
+        "gamma": round(gamma, 4),
+        "vega": round(vega, 4),
+        "theta": round(theta, 4)
+    }
+    log_with_timestamp(f"Theoretical price calculated for {option_type} @ {K}: {results}")
+    return results
+
+async def get_option_market_data(ib: IB, contract: Option) -> dict | None:
+    """
+    Fetches live market data for a single option contract, including implied volatility.
+    """
+    log_with_timestamp(f"Fetching market data for option: {contract.localSymbol}")
+    ticker = ib.reqMktData(contract, '106', False, False)
+    
+    # Wait for the ticker to populate with the necessary data
+    await asyncio.sleep(2) # Allow time for data to stream
+    
+    iv = ticker.modelGreeks.impliedVol if ticker.modelGreeks else None
+    
+    if not iv or util.isNan(iv):
+        log_with_timestamp(f"Could not get implied volatility for {contract.localSymbol}. Using fallback.")
+        iv = 0.25 # Fallback volatility
+    
+    # The risk-free rate can also be derived from the ticker if available
+    risk_free_rate = ticker.modelGreeks.optPrice if ticker.modelGreeks and ticker.modelGreeks.optPrice else 0.04 # Fallback
+    
+    ib.cancelMktData(contract) # Clean up the data subscription
+
+    return {
+        'implied_volatility': iv,
+        'risk_free_rate': risk_free_rate
+    }
 
 def get_position_details(position: Position) -> dict:
     contract = position.contract
@@ -147,6 +209,26 @@ async def execute_directional_strategy(ib: IB, config: dict, signal: dict, chain
         if atm_strike_index - spread_width_strikes < 0: return log_with_timestamp("Not enough strikes for Bear Put Spread.")
         long_leg, short_leg = strikes[atm_strike_index], strikes[atm_strike_index - spread_width_strikes]
         legs_def = [('P', 'BUY', long_leg), ('P', 'SELL', short_leg)]
+    
+    # --- Black-Scholes Pricing Section ---
+    log_with_timestamp("--- Pricing individual legs before execution ---")
+    for right, _, strike in legs_def:
+        leg_contract = Option(
+            future_contract.localSymbol, exp_details['exp_date'], strike, right,
+            chain['exchange'], tradingClass=chain['tradingClass'])
+        await ib.qualifyContractsAsync(leg_contract)
+        
+        market_data = await get_option_market_data(ib, leg_contract)
+        if market_data:
+            price_option_black_scholes(
+                S=underlying_price,
+                K=strike,
+                T=exp_details['days_to_exp'] / 365,
+                r=market_data['risk_free_rate'],
+                sigma=market_data['implied_volatility'],
+                option_type=right
+            )
+    log_with_timestamp("--- End of pricing section ---")
 
     combo_contract = Bag(
         symbol=config['symbol'],
@@ -198,6 +280,26 @@ async def execute_volatility_strategy(ib: IB, config: dict, signal: dict, chain:
         strikes_map = {'lp': strikes[long_put_idx], 'sp': strikes[short_put_idx], 'sc': strikes[short_call_idx], 'lc': strikes[long_call_idx]}
         combo_legs_def = [('P', 'BUY', strikes_map['lp']), ('P', 'SELL', strikes_map['sp']), ('C', 'SELL', strikes_map['sc']), ('C', 'BUY', strikes_map['lc'])]
     if not combo_legs_def: return log_with_timestamp("No legs defined for combo. Aborting.")
+    
+    # --- Black-Scholes Pricing Section ---
+    log_with_timestamp("--- Pricing individual legs before execution ---")
+    for right, _, strike in combo_legs_def:
+        leg_contract = Option(
+            future_contract.localSymbol, exp_details['exp_date'], strike, right,
+            chain['exchange'], tradingClass=chain['tradingClass'])
+        await ib.qualifyContractsAsync(leg_contract)
+        
+        market_data = await get_option_market_data(ib, leg_contract)
+        if market_data:
+            price_option_black_scholes(
+                S=underlying_price,
+                K=strike,
+                T=exp_details['days_to_exp'] / 365,
+                r=market_data['risk_free_rate'],
+                sigma=market_data['implied_volatility'],
+                option_type=right
+            )
+    log_with_timestamp("--- End of pricing section ---")
 
     combo_contract = Bag(
         symbol=config['symbol'],
@@ -415,39 +517,44 @@ async def main_runner():
             front_month_details = await ib.reqContractDetailsAsync(active_futures[0])
             _, market_is_open = is_market_open(front_month_details[0] if front_month_details else None, config['exchange_timezone'])
 
-            if market_is_open:
-                signals = get_prediction_from_api(api_url="http://127.0.0.1:8000")
-                if not signals: raise ValueError("Could not get a valid signal list from the API.")
+            if not market_is_open:
+                log_with_timestamp("Market is closed. Waiting for next session.")
+                # Calculate wait time until next open or a set time
+                await asyncio.sleep(3600) # Wait an hour before checking again
+                continue
 
-                for signal in signals:
-                    signal_month = signal.get("contract_month")
-                    if not signal_month:
-                        continue
+            signals = get_prediction_from_api(api_url="http://127.0.0.1:8000")
+            if not signals: raise ValueError("Could not get a valid signal list from the API.")
 
-                    # Find the future contract where the expiration date (YYYYMMDD) starts with the signal month (YYYYMM)
-                    future_to_trade = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal_month)), None)
+            for signal in signals:
+                signal_month = signal.get("contract_month")
+                if not signal_month:
+                    continue
 
-                    if not future_to_trade:
-                        log_with_timestamp(f"No active future contract found for signal month {signal_month}. Skipping.")
-                        continue
+                # Find the future contract where the expiration date (YYYYMMDD) starts with the signal month (YYYYMM)
+                future_to_trade = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal_month)), None)
 
-                    log_with_timestamp(f"\n===== Processing Signal for {future_to_trade.localSymbol} =====")
-                    ticker = ib.reqMktData(future_to_trade, '', False, False)
-                    await asyncio.sleep(1)
-                    price = ticker.marketPrice()
-                    if util.isNan(price):
-                        log_with_timestamp(f"Failed to retrieve valid market price for {future_to_trade.localSymbol}. Skipping signal.")
-                        continue
-                    log_with_timestamp(f"Current price for {future_to_trade.localSymbol}: {price}")
-                    can_open_new = await manage_existing_positions(ib, config, signal, price, signal.get("contract_month"))
-                    if can_open_new:
-                        if not is_trade_sane(signal, config): continue
-                        chain = await build_option_chain(ib, future_to_trade)
-                        if not chain: continue
-                        if signal['prediction_type'] == 'DIRECTIONAL':
-                            await execute_directional_strategy(ib, config, signal, chain, price, future_to_trade)
-                        elif signal['prediction_type'] == 'VOLATILITY':
-                            await execute_volatility_strategy(ib, config, signal, chain, price, future_to_trade)
+                if not future_to_trade:
+                    log_with_timestamp(f"No active future contract found for signal month {signal_month}. Skipping.")
+                    continue
+
+                log_with_timestamp(f"\n===== Processing Signal for {future_to_trade.localSymbol} =====")
+                ticker = ib.reqMktData(future_to_trade, '', False, False)
+                await asyncio.sleep(1)
+                price = ticker.marketPrice()
+                if util.isNan(price):
+                    log_with_timestamp(f"Failed to retrieve valid market price for {future_to_trade.localSymbol}. Skipping signal.")
+                    continue
+                log_with_timestamp(f"Current price for {future_to_trade.localSymbol}: {price}")
+                can_open_new = await manage_existing_positions(ib, config, signal, price, signal.get("contract_month"))
+                if can_open_new:
+                    if not is_trade_sane(signal, config): continue
+                    chain = await build_option_chain(ib, future_to_trade)
+                    if not chain: continue
+                    if signal['prediction_type'] == 'DIRECTIONAL':
+                        await execute_directional_strategy(ib, config, signal, chain, price, future_to_trade)
+                    elif signal['prediction_type'] == 'VOLATILITY':
+                        await execute_volatility_strategy(ib, config, signal, chain, price, future_to_trade)
 
             ny_tz = pytz.timezone(config['exchange_timezone'])
             now_ny = datetime.now(ny_tz)
