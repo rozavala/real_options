@@ -1,41 +1,41 @@
+# Filename: notifications.py
 import requests
 import json
-import os
 
-def send_notification(title: str, message: str, sound: str = "falling"):
+def send_pushover_notification(config, title, message):
     """
-    Sends a push notification via Pushover using credentials from config.json.
-    'sound' can be changed for different alert types, e.g., 'cashregister' for success.
+    Sends a notification via the Pushover API.
+
+    Args:
+        config (dict): A dictionary containing Pushover API credentials.
+                       Expected keys: 'pushover_user_key', 'pushover_api_token'.
+        title (str): The title of the notification.
+        message (str): The body of the notification.
+
+    Returns:
+        bool: True if the notification was sent successfully, False otherwise.
     """
+    user_key = config.get('pushover_user_key')
+    api_token = config.get('pushover_api_token')
+
+    if not user_key or not api_token or user_key == "YOUR_USER_KEY" or api_token == "YOUR_API_TOKEN":
+        print("Pushover credentials are not configured. Skipping notification.")
+        return False
+
+    url = "https://api.pushover.net/1/messages.json"
+    payload = {
+        'token': api_token,
+        'user': user_key,
+        'title': title,
+        'message': message,
+        'html': 1  # Enable HTML formatting
+    }
+    
     try:
-        # Assumes config.json is in the same directory as the script calling this function
-        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-
-        notif_config = config.get('notifications', {})
-        if not notif_config.get('enabled'):
-            return
-
-        user_key = notif_config.get('pushover_user_key')
-        api_token = notif_config.get('pushover_api_token')
-
-        if not user_key or not api_token or 'YOUR_KEY' in user_key or 'YOUR_TOKEN' in api_token:
-            print("Notification sending skipped: Pushover keys not configured.")
-            return
-
-        response = requests.post("https://api.pushover.net/1/messages.json", data={
-            "token": api_token,
-            "user": user_key,
-            "title": f"Coffee Trader Alert: {title}",
-            "message": message,
-            "sound": sound
-        }, timeout=10)
-        response.raise_for_status()
-        print(f"Successfully sent notification: '{title}'")
-
-    except FileNotFoundError:
-        print("Error: Could not find config.json to load notification settings.")
-    except Exception as e:
-        print(f"An error occurred while sending notification: {e}")
-
+        response = requests.post(url, data=payload, timeout=10)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        print("Pushover notification sent successfully.")
+        return True
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to send Pushover notification: {e}")
+        return False
