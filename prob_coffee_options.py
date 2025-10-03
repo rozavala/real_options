@@ -7,10 +7,26 @@ import time
 from datetime import datetime, time as dt_time, timedelta
 import numpy as np
 from scipy.stats import norm
-
 import requests
 import pytz
 from ib_insync import *
+import logging
+import traceback
+
+# --- Logging Setup ---
+# This ensures all messages, including from ib_insync, are captured.
+log_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trading_bot.log')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file_path, mode='a'),
+        logging.StreamHandler()
+    ])
+# Capture ib_insync's internal logs
+ib_logger = logging.getLogger('ib_insync')
+ib_logger.setLevel(logging.INFO)
+
 
 # --- 1. API Integration & Notifications ---
 
@@ -24,7 +40,7 @@ def send_notification(config: dict, title: str, message: str):
     api_token = notif_config.get('pushover_api_token')
 
     if not user_key or not api_token or 'YOUR_KEY' in user_key or 'YOUR_TOKEN' in api_token:
-        log_with_timestamp("Notification sending skipped: Pushover keys not configured.")
+        logging.warning("Notification sending skipped: Pushover keys not configured.")
         return
 
     try:
@@ -33,48 +49,45 @@ def send_notification(config: dict, title: str, message: str):
             "user": user_key,
             "title": f"Coffee Trader Alert: {title}",
             "message": message,
-            "sound": "persistent", # Critical alert sound
-            "html": 1 # Enable HTML formatting
+            "sound": "persistent",
+            "html": 1
         }, timeout=10)
         response.raise_for_status()
-        log_with_timestamp(f"Sent notification: '{title}'")
+        logging.info(f"Sent notification: '{title}'")
     except requests.exceptions.RequestException as e:
-        log_with_timestamp(f"Failed to send notification: {e}")
+        logging.error(f"Failed to send notification: {e}")
 
 
 def get_prediction_from_api(api_url: str) -> list | None:
-    """
-    Calls the external prediction API to get the latest trading signals
-    for multiple contracts.
-    """
-    log_with_timestamp("Requesting new trading signals from prediction API...")
+    """Calls the external prediction API to get trading signals."""
+    logging.info("Requesting new trading signals from prediction API...")
     try:
+        # MOCK DATA - Replace with actual API call
         mock_signals = [
-            {"contract_month": "202512", "prediction_type": "DIRECTIONAL", "direction": "BULLISH", "confidence": 0.65}, # Example below threshold
+            {"contract_month": "202512", "prediction_type": "DIRECTIONAL", "direction": "BULLISH", "confidence": 0.65},
             {"contract_month": "202603", "prediction_type": "DIRECTIONAL", "direction": "BEARISH", "confidence": 0.88},
-            {"contract_month": "202605", "prediction_type": "DIRECTIONAL", "direction": "BEARISH", "confidence": 0.75},
-            {"contract_month": "202607", "prediction_type": "DIRECTIONAL", "direction": "BEARISH", "confidence": 0.75},
+            {"contract_month": "202605", "prediction_type": "VOLATILITY", "level": "LOW", "confidence": 0.92},
+            {"contract_month": "202607", "prediction_type": "VOLATILITY", "level": "HIGH", "confidence": 0.85},
             {"contract_month": "202609", "prediction_type": "DIRECTIONAL", "direction": "BEARISH", "confidence": 0.79}
         ]
-        log_with_timestamp(f"Multi-contract signals received: {json.dumps(mock_signals, indent=2)}")
+        logging.info(f"Multi-contract signals received: {json.dumps(mock_signals, indent=2)}")
         return mock_signals
     except requests.exceptions.RequestException as e:
-        log_with_timestamp(f"Error fetching prediction from API: {e}")
+        logging.error(f"Error fetching prediction from API: {e}")
         return None
 
 # --- 2. Core Trading Logic & Strategy Execution ---
 
 def price_option_black_scholes(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> dict | None:
-    """
-    Calculates the theoretical price and Greeks of an option using the Black-Scholes model.
-    """
+    """Calculates the theoretical price and Greeks of an option using the Black-Scholes model."""
     if T <= 0 or sigma <= 0:
-        log_with_timestamp(f"Invalid input for B-S model: T={T}, sigma={sigma}. Cannot price option.")
+        logging.warning(f"Invalid input for B-S model: T={T}, sigma={sigma}. Cannot price option.")
         return None
 
     d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
     d2 = d1 - sigma * np.sqrt(T)
 
+    price = 0.0
     if option_type.upper() == 'C':
         price = S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
         delta = norm.cdf(d1)
@@ -88,43 +101,21 @@ def price_option_black_scholes(S: float, K: float, T: float, r: float, sigma: fl
     vega = S * norm.pdf(d1) * np.sqrt(T)
     theta = (- (S * norm.pdf(d1) * sigma) / (2 * np.sqrt(T)) - r * K * np.exp(-r * T) * norm.cdf(d2 if option_type.upper() == 'C' else -d2)) / 365
 
-    results = {
-        "price": round(price, 4),
-        "delta": round(delta, 4),
-        "gamma": round(gamma, 4),
-        "vega": round(vega, 4),
-        "theta": round(theta, 4)
-    }
-    log_with_timestamp(f"Theoretical price calculated for {option_type} @ {K}: {results}")
+    results = {"price": round(price, 4), "delta": round(delta, 4), "gamma": round(gamma, 4), "vega": round(vega, 4), "theta": round(theta, 4)}
+    logging.info(f"Theoretical price calculated for {option_type} @ {K}: {results}")
     return results
 
 async def get_option_market_data(ib: IB, contract: Contract) -> dict | None:
-    """
-    Fetches live market data for a single option contract, including implied volatility.
-    """
-    log_with_timestamp(f"Fetching market data for option: {contract.localSymbol}")
+    """Fetches live market data for a single option contract, including implied volatility."""
+    logging.info(f"Fetching market data for option: {contract.localSymbol}")
     ticker = ib.reqMktData(contract, '106', False, False)
-    
-    # Wait for the ticker to populate with the necessary data
-    await asyncio.sleep(2) # Allow time for data to stream
-    
-    iv = ticker.modelGreeks.impliedVol if ticker.modelGreeks else None
-    
-    if not iv or util.isNan(iv):
-        log_with_timestamp(f"Could not get implied volatility for {contract.localSymbol}. Using fallback.")
-        iv = 0.25 # Fallback volatility
-    
-    # The risk-free rate can also be derived from the ticker if available
-    risk_free_rate = ticker.modelGreeks.optPrice if ticker.modelGreeks and ticker.modelGreeks.optPrice else 0.04 # Fallback
-    
-    ib.cancelMktData(contract) # Clean up the data subscription
-
-    return {
-        'implied_volatility': iv,
-        'risk_free_rate': risk_free_rate
-    }
+    await asyncio.sleep(2)
+    iv = ticker.modelGreeks.impliedVol if ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol) else 0.25
+    ib.cancelMktData(contract)
+    return {'implied_volatility': iv, 'risk_free_rate': 0.04}
 
 def get_position_details(position: Position) -> dict:
+    """Determines the strategy type from a position object."""
     contract = position.contract
     details = {'type': 'UNKNOWN', 'key_strikes': []}
     if isinstance(contract, FuturesOption):
@@ -145,337 +136,299 @@ def get_position_details(position: Position) -> dict:
             details['key_strikes'] = [strikes[1], strikes[2]]
     return details
 
-async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlying_price: float, contract_month: str):
-    log_with_timestamp(f"--- Managing Positions for Contract Month: {contract_month} ---")
+async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlying_price: float, future_contract: Contract):
+    """Checks for existing positions for a given future and closes them if misaligned."""
+    target_future_conId = future_contract.conId
+    logging.info(f"--- Managing Positions for Future Contract: {future_contract.localSymbol} (conId: {target_future_conId}) ---")
+    
     all_positions = await ib.reqPositionsAsync()
-    positions = []
-    for p in all_positions:
-        if p.contract.symbol == config['symbol'] and p.position != 0:
-            if p.contract.secType == 'FOP' and p.contract.lastTradeDateOrContractMonth.startswith(contract_month):
-                positions.append(p)
-            elif p.contract.secType == 'BAG' and p.contract.comboLegs and p.contract.comboLegs[0].lastTradeDateOrContractMonth.startswith(contract_month):
-                positions.append(p)
+    positions_for_this_future = []
 
-    if not positions:
-        log_with_timestamp(f"No existing combo or single leg positions for {contract_month}.")
+    for p in all_positions:
+        if p.contract.symbol != config['symbol'] or p.position == 0: continue
+        try:
+            details_list = await ib.reqContractDetailsAsync(Contract(conId=p.contract.conId))
+            if details_list and hasattr(details_list[0], 'underConId') and details_list[0].underConId == target_future_conId:
+                positions_for_this_future.append(p)
+        except Exception as e:
+            logging.warning(f"Could not resolve underlying for position {p.contract.localSymbol}: {e}")
+
+    if not positions_for_this_future:
+        logging.info(f"No existing positions found for future {future_contract.localSymbol}.")
         return True
+
     target_strategy = ''
     if signal['prediction_type'] == 'DIRECTIONAL':
         target_strategy = 'BULL_CALL_SPREAD' if signal['direction'] == 'BULLISH' else 'BEAR_PUT_SPREAD'
     elif signal['prediction_type'] == 'VOLATILITY':
         target_strategy = 'LONG_STRADDLE' if signal['level'] == 'HIGH' else 'IRON_CONDOR'
+    
     trades_to_close, position_is_aligned = [], False
-    for pos in positions:
+    for pos in positions_for_this_future:
         pos_details = get_position_details(pos)
         current_strategy = pos_details['type']
-        log_with_timestamp(f"Found open position for {contract_month}: {pos.position} of {current_strategy}")
+        logging.info(f"Found open position for {future_contract.localSymbol}: {pos.position} of {current_strategy}")
+        
         if current_strategy != target_strategy:
-            log_with_timestamp(f"Position MISALIGNED. Current: {current_strategy}, Target: {target_strategy}. Closing.")
+            logging.info(f"Position MISALIGNED. Current: {current_strategy}, Target: {target_strategy}. Closing.")
             trades_to_close.append(pos)
-            continue
-        log_with_timestamp("Position type is aligned. Checking viability...")
-        viable = not (current_strategy == 'IRON_CONDOR' and not (pos_details['key_strikes'][0] < underlying_price < pos_details['key_strikes'][1]))
-        if viable:
-            log_with_timestamp("Position is ALIGNED and VIABLE. Holding.")
-            position_is_aligned = True
         else:
-            log_with_timestamp("Position no longer viable. Closing.")
-            trades_to_close.append(pos)
+            logging.info("Position is ALIGNED. Holding.")
+            position_is_aligned = True
+
     if trades_to_close:
         for pos_to_close in trades_to_close:
-            order = MarketOrder('BUY' if pos_to_close.position < 0 else 'SELL', abs(pos_to_close.position))
-            trade = ib.placeOrder(pos_to_close.contract, order)
-            await wait_for_fill(ib, trade, config, reason="Position Misaligned")
+            try:
+                contract_to_close = Contract(conId=pos_to_close.contract.conId)
+                await ib.qualifyContractsAsync(contract_to_close)
+                if contract_to_close.strike > 100: contract_to_close.strike /= 100.0
+                order = MarketOrder('BUY' if pos_to_close.position < 0 else 'SELL', abs(pos_to_close.position))
+                trade = ib.placeOrder(contract_to_close, order)
+                await wait_for_fill(ib, trade, config, reason="Position Misaligned")
+            except Exception as e:
+                logging.error(f"Failed to close position for conId {pos_to_close.contract.conId}: {e}\n{traceback.format_exc()}")
         return True
+    
     if position_is_aligned:
-        log_with_timestamp(f"An aligned position for {contract_month} already exists.")
+        logging.info(f"An aligned position for {future_contract.localSymbol} already exists.")
         return False
     return True
 
 async def execute_directional_strategy(ib: IB, config: dict, signal: dict, chain: dict, underlying_price: float, future_contract: Contract) -> Trade | None:
-    log_with_timestamp(f"--- Executing {signal['direction']} Spread for {future_contract.localSymbol} ---")
-    strategy_params = config['strategy']
-    tuning = config.get('strategy_tuning', {})
-    spread_width_strikes = tuning.get('vertical_spread_strikes_apart', 1)
-    exp_details = get_expiration_details(chain, config, future_contract.lastTradeDateOrContractMonth)
+    logging.info(f"--- Executing {signal['direction']} Spread for {future_contract.localSymbol} ---")
+    strategy_params, tuning = config['strategy'], config.get('strategy_tuning', {})
+    spread_width = tuning.get('vertical_spread_strikes_apart', 2)
+    exp_details = get_expiration_details(chain, future_contract.lastTradeDateOrContractMonth)
     if not exp_details: return None
     strikes = exp_details['strikes']
     try:
-        atm_strike_index = strikes.index(min(strikes, key=lambda s: abs(s - underlying_price)))
+        atm_idx = min(range(len(strikes)), key=lambda i: abs(strikes[i] - underlying_price))
     except (ValueError, IndexError):
-        return log_with_timestamp("Could not find ATM strike in the chain. Aborting."), None
+        logging.error("Could not find ATM strike in the chain."); return None
+
     if signal['direction'] == 'BULLISH':
-        if atm_strike_index + spread_width_strikes >= len(strikes): return log_with_timestamp("Not enough strikes for Bull Call Spread."), None
-        long_leg, short_leg = strikes[atm_strike_index], strikes[atm_strike_index + spread_width_strikes]
-        legs_def = [('C', 'BUY', long_leg), ('C', 'SELL', short_leg)]
+        if atm_idx + spread_width >= len(strikes): logging.warning("Not enough strikes for Bull Call Spread."); return None
+        legs_def = [('C', 'BUY', strikes[atm_idx]), ('C', 'SELL', strikes[atm_idx + spread_width])]
     else: # BEARISH
-        if atm_strike_index - spread_width_strikes < 0: return log_with_timestamp("Not enough strikes for Bear Put Spread."), None
-        long_leg, short_leg = strikes[atm_strike_index], strikes[atm_strike_index - spread_width_strikes]
-        legs_def = [('P', 'BUY', long_leg), ('P', 'SELL', short_leg)]
-    
-    log_with_timestamp("--- Pricing individual legs before execution ---")
-    for right, _, strike in legs_def:
-        leg_contract = FuturesOption(
-            config['symbol'], exp_details['exp_date'], strike, right,
-            chain['exchange'], tradingClass=chain['tradingClass'])
-        await ib.qualifyContractsAsync(leg_contract)
-        market_data = await get_option_market_data(ib, leg_contract)
-        if market_data:
-            price_option_black_scholes(S=underlying_price, K=strike, T=exp_details['days_to_exp'] / 365, r=market_data['risk_free_rate'], sigma=market_data['implied_volatility'], option_type=right)
-    log_with_timestamp("--- End of pricing section ---")
+        if atm_idx - spread_width < 0: logging.warning("Not enough strikes for Bear Put Spread."); return None
+        legs_def = [('P', 'BUY', strikes[atm_idx]), ('P', 'SELL', strikes[atm_idx - spread_width])]
 
-    combo_contract = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')
-    combo_legs = []
-    for right, action, strike in legs_def:
-        contract = FuturesOption(config['symbol'], exp_details['exp_date'], strike, right, chain['exchange'], tradingClass=chain['tradingClass'])
-        await ib.qualifyContractsAsync(contract)
-        leg = ComboLeg(conId=contract.conId, ratio=1, action=action, exchange=chain['exchange'])
-        combo_legs.append(leg)
-    combo_contract.comboLegs = combo_legs
-
-    order = MarketOrder('BUY', strategy_params['quantity'])
-    trade = ib.placeOrder(combo_contract, order)
-    await wait_for_fill(ib, trade, config)
-    return trade
+    return await place_combo_order(ib, config, 'BUY', legs_def, exp_details, chain, underlying_price)
 
 async def execute_volatility_strategy(ib: IB, config: dict, signal: dict, chain: dict, underlying_price: float, future_contract: Contract) -> Trade | None:
-    log_with_timestamp(f"--- Executing {signal['level']} Volatility Strategy for {future_contract.localSymbol} ---")
-    strategy_params = config['strategy']
+    logging.info(f"--- Executing {signal['level']} Volatility Strategy for {future_contract.localSymbol} ---")
     tuning = config.get('strategy_tuning', {})
-    exp_details = get_expiration_details(chain, config, future_contract.lastTradeDateOrContractMonth)
+    exp_details = get_expiration_details(chain, future_contract.lastTradeDateOrContractMonth)
     if not exp_details: return None
     strikes = exp_details['strikes']
     try:
-        atm_strike_index = strikes.index(min(strikes, key=lambda s: abs(s - underlying_price)))
+        atm_idx = min(range(len(strikes)), key=lambda i: abs(strikes[i] - underlying_price))
     except (ValueError, IndexError):
-        return log_with_timestamp("Could not find ATM strike in the chain. Aborting."), None
-    combo_legs_def, order_action = [], ''
-    if signal['level'] == 'HIGH':
-        atm_strike = strikes[atm_strike_index]
-        order_action = 'BUY'
-        combo_legs_def = [('C', 'BUY', atm_strike), ('P', 'BUY', atm_strike)]
-    elif signal['level'] == 'LOW':
-        order_action = 'SELL'
-        short_dist = tuning.get('iron_condor_short_strikes_from_atm', 1)
-        wing_width = tuning.get('iron_condor_wing_strikes_apart', 1)
-        short_put_idx, long_put_idx = atm_strike_index - short_dist, atm_strike_index - short_dist - wing_width
-        short_call_idx, long_call_idx = atm_strike_index + short_dist, atm_strike_index + short_dist + wing_width
-        if not (long_put_idx >= 0 and long_call_idx < len(strikes)):
-            return log_with_timestamp("Not enough strikes for Iron Condor. Aborting."), None
-        strikes_map = {'lp': strikes[long_put_idx], 'sp': strikes[short_put_idx], 'sc': strikes[short_call_idx], 'lc': strikes[long_call_idx]}
-        combo_legs_def = [('P', 'BUY', strikes_map['lp']), ('P', 'SELL', strikes_map['sp']), ('C', 'SELL', strikes_map['sc']), ('C', 'BUY', strikes_map['lc'])]
-    if not combo_legs_def: return log_with_timestamp("No legs defined for combo. Aborting."), None
+        logging.error("Could not find ATM strike in the chain."); return None
     
-    log_with_timestamp("--- Pricing individual legs before execution ---")
-    for right, _, strike in combo_legs_def:
+    legs_def, order_action = [], ''
+    if signal['level'] == 'HIGH': # Long Straddle
+        legs_def, order_action = [('C', 'BUY', strikes[atm_idx]), ('P', 'BUY', strikes[atm_idx])], 'BUY'
+    elif signal['level'] == 'LOW': # Iron Condor
+        short_dist, wing_width = tuning.get('iron_condor_short_strikes_from_atm', 2), tuning.get('iron_condor_wing_strikes_apart', 2)
+        if not (atm_idx - short_dist - wing_width >= 0 and atm_idx + short_dist + wing_width < len(strikes)):
+            logging.warning("Not enough strikes for Iron Condor."); return None
+        s = { 'lp': strikes[atm_idx - short_dist - wing_width], 'sp': strikes[atm_idx - short_dist], 
+              'sc': strikes[atm_idx + short_dist], 'lc': strikes[atm_idx + short_dist + wing_width] }
+        legs_def, order_action = [('P', 'BUY', s['lp']), ('P', 'SELL', s['sp']), ('C', 'SELL', s['sc']), ('C', 'BUY', s['lc'])], 'SELL'
+    
+    return await place_combo_order(ib, config, order_action, legs_def, exp_details, chain, underlying_price)
+
+async def place_combo_order(ib: IB, config: dict, action: str, legs_def: list, exp_details: dict, chain: dict, underlying_price: float) -> Trade | None:
+    logging.info("--- Pricing individual legs before execution ---")
+    
+    net_theoretical_price = 0.0
+    leg_prices = []
+
+    for right, leg_action, strike in legs_def:
         leg_contract = FuturesOption(config['symbol'], exp_details['exp_date'], strike, right, chain['exchange'], tradingClass=chain['tradingClass'])
         await ib.qualifyContractsAsync(leg_contract)
         market_data = await get_option_market_data(ib, leg_contract)
         if market_data:
-            price_option_black_scholes(S=underlying_price, K=strike, T=exp_details['days_to_exp'] / 365, r=market_data['risk_free_rate'], sigma=market_data['implied_volatility'], option_type=right)
-    log_with_timestamp("--- End of pricing section ---")
+            pricing_result = price_option_black_scholes(S=underlying_price, K=strike, T=exp_details['days_to_exp'] / 365, r=market_data['risk_free_rate'], sigma=market_data['implied_volatility'], option_type=right)
+            if pricing_result:
+                price = pricing_result['price']
+                leg_prices.append(price)
+                if leg_action == 'BUY':
+                    net_theoretical_price += price
+                else: # SELL
+                    net_theoretical_price -= price
+    
+    if len(leg_prices) != len(legs_def):
+        logging.error("Failed to price all legs. Aborting combo order.")
+        return None
 
-    combo_contract = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')
-    combo_legs = []
-    for right, action, strike in combo_legs_def:
+    logging.info("--- End of pricing section ---")
+
+    # Add a slippage buffer to the theoretical price to create a workable limit price
+    slippage_allowance = config.get('strategy_tuning', {}).get('slippage_usd_per_contract', 5.0)
+    
+    # For a debit (BUY), we are willing to pay a bit more. For a credit (SELL), we are willing to accept a bit less.
+    if action == 'BUY': # Debit
+        limit_price = round(net_theoretical_price + slippage_allowance, 2)
+    else: # Credit
+        limit_price = round(net_theoretical_price - slippage_allowance, 2)
+
+    logging.info(f"Net theoretical price: {net_theoretical_price:.2f}, Slippage allowance: {slippage_allowance:.2f}, Final Limit Price: {limit_price:.2f}")
+
+    combo = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')
+    for right, leg_action, strike in legs_def:
         contract = FuturesOption(config['symbol'], exp_details['exp_date'], strike, right, chain['exchange'], tradingClass=chain['tradingClass'])
         await ib.qualifyContractsAsync(contract)
-        leg = ComboLeg(conId=contract.conId, ratio=1, action=action, exchange=chain['exchange'])
-        combo_legs.append(leg)
-    combo_contract.comboLegs = combo_legs
-
-    order = MarketOrder(order_action, strategy_params['quantity'])
-    trade = ib.placeOrder(combo_contract, order)
-    await wait_for_fill(ib, trade, config)
+        combo.comboLegs.append(ComboLeg(conId=contract.conId, ratio=1, action=leg_action, exchange=chain['exchange']))
+    
+    order = LimitOrder(action, config['strategy']['quantity'], limit_price)
+    trade = ib.placeOrder(combo, order)
+    await wait_for_fill(ib, trade, config, timeout=180)
     return trade
 
 # --- 3. Helper & Utility Functions ---
-
-def log_with_timestamp(message: str):
-    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {message}")
 
 def log_trade_to_ledger(trade: Trade, reason: str = "Strategy Execution"):
     if trade.orderStatus.status != OrderStatus.Filled: return
     row = {
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'local_symbol': trade.contract.localSymbol,
         'action': trade.order.action, 'quantity': trade.orderStatus.filled, 'avg_fill_price': trade.orderStatus.avgFillPrice,
-        'total_value_usd': trade.orderStatus.avgFillPrice * trade.orderStatus.filled * 100, # Combos are priced per share
+        'total_value_usd': trade.orderStatus.avgFillPrice * trade.orderStatus.filled * (100 if isinstance(trade.contract, Bag) else 37500),
         'order_id': trade.order.orderId, 'reason': reason
     }
     try:
-        ledger_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trade_ledger.csv')
-        file_exists = os.path.isfile(ledger_path)
-        with open(ledger_path, 'a', newline='') as f:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trade_ledger.csv'), 'a', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=row.keys())
-            if not file_exists: writer.writeheader()
+            if not os.path.isfile(f.name): writer.writeheader()
             writer.writerow(row)
-        log_with_timestamp(f"Logged trade to ledger ({reason}): {row['action']} {row['quantity']} @ {row['avg_fill_price']}")
+        logging.info(f"Logged trade to ledger ({reason}): {row['action']} {row['quantity']} @ {row['avg_fill_price']}")
     except Exception as e:
-        log_with_timestamp(f"Error writing to trade ledger: {e}")
+        logging.error(f"Error writing to trade ledger: {e}")
 
-async def wait_for_fill(ib: IB, trade: Trade, config: dict, timeout: int = 60, reason: str = "Strategy Execution"):
-    log_with_timestamp(f"Waiting for order {trade.order.orderId} to fill...")
+async def wait_for_fill(ib: IB, trade: Trade, config: dict, timeout: int = 180, reason: str = "Strategy Execution"):
+    logging.info(f"Waiting for order {trade.order.orderId} to fill...")
     start_time = time.time()
     while not trade.isDone():
         await asyncio.sleep(1)
-        if timeout > 0 and (time.time() - start_time) > timeout:
-            log_with_timestamp(f"Order {trade.order.orderId} not filled. Canceling.")
-            asyncio.create_task(asyncio.to_thread(send_notification, config, "Order Canceled", f"Order {trade.order.orderId} for {trade.contract.localSymbol} was canceled due to timeout."))
+        if (time.time() - start_time) > timeout:
+            logging.warning(f"Order {trade.order.orderId} not filled within {timeout}s. Canceling.")
+            send_notification(config, "Order Canceled", f"Order {trade.order.orderId} for {trade.contract.localSymbol} was canceled due to timeout.")
             ib.cancelOrder(trade.order)
             break
     if trade.orderStatus.status == OrderStatus.Filled:
         log_trade_to_ledger(trade, reason)
 
+
 def is_market_open(contract_details, exchange_timezone_str: str):
-    if not contract_details or not contract_details.liquidHours: return None, False
+    if not contract_details or not contract_details.liquidHours: return False
     tz = pytz.timezone(exchange_timezone_str)
     now_tz = datetime.now(tz)
     for session_str in contract_details.liquidHours.split(';'):
-        if not session_str or 'CLOSED' in session_str: continue
+        if 'CLOSED' in session_str: continue
         try:
             start_str, end_str = session_str.split('-')
-            start_dt = datetime.strptime(start_str.split(':')[0], '%Y%m%d').date()
-            start_hm, end_hm = datetime.strptime(start_str.split(':')[1], '%H%M').time(), datetime.strptime(end_str.split(':')[1], '%H%M').time()
+            start_dt, start_hm, end_hm = datetime.strptime(start_str.split(':')[0], '%Y%m%d').date(), datetime.strptime(start_str.split(':')[1], '%H%M').time(), datetime.strptime(end_str.split(':')[1], '%H%M').time()
             if now_tz.date() == start_dt and start_hm <= now_tz.time() < end_hm:
-                return log_with_timestamp("Market is open."), True
+                logging.info("Market is open."); return True
         except (ValueError, IndexError): continue
-    return log_with_timestamp("Market is closed."), False
+    logging.info("Market is closed."); return False
 
 def calculate_wait_until_market_open(contract_details, exchange_timezone_str: str) -> float:
-    """Calculates the seconds to wait until the next market open session."""
-    if not contract_details or not contract_details.liquidHours:
-        return 3600  # Fallback to 1 hour if no details
-
-    tz = pytz.timezone(exchange_timezone_str)
-    now_tz = datetime.now(tz)
-    next_open_dt = None
-
+    if not contract_details or not contract_details.liquidHours: return 3600
+    tz, now_tz, next_open_dt = pytz.timezone(exchange_timezone_str), datetime.now(tz), None
     for session_str in contract_details.liquidHours.split(';'):
-        if not session_str or 'CLOSED' in session_str:
-            continue
+        if 'CLOSED' in session_str: continue
         try:
-            start_str = session_str.split('-')[0]
-            session_start_dt = tz.localize(datetime.strptime(start_str, '%Y%m%d:%H%M'))
-            if session_start_dt > now_tz:
-                if next_open_dt is None or session_start_dt < next_open_dt:
-                    next_open_dt = session_start_dt
-        except (ValueError, IndexError):
-            continue
-
+            session_start_dt = tz.localize(datetime.strptime(session_str.split('-')[0], '%Y%m%d:%H%M'))
+            if session_start_dt > now_tz and (next_open_dt is None or session_start_dt < next_open_dt):
+                next_open_dt = session_start_dt
+        except (ValueError, IndexError): continue
     if next_open_dt:
-        wait_seconds = (next_open_dt - now_tz).total_seconds() + 60 # Add a 1-min buffer
-        log_with_timestamp(f"Next market open is at {next_open_dt.strftime('%Y-%m-%d %H:%M:%S')}. Waiting for {wait_seconds / 3600:.2f} hours.")
+        wait_seconds = (next_open_dt - now_tz).total_seconds() + 60
+        logging.info(f"Next market open: {next_open_dt:%Y-%m-%d %H:%M:%S}. Waiting {wait_seconds / 3600:.2f} hours.")
         return wait_seconds
-    else:
-        log_with_timestamp("No upcoming market session found in contract details. Defaulting to 1-hour wait.")
-        return 3600
+    return 3600
 
 
 async def get_active_futures(ib: IB, symbol: str, exchange: str, count: int = 5) -> list[Contract]:
-    log_with_timestamp(f"Fetching {count} active futures contracts for {symbol} on {exchange}...")
+    logging.info(f"Fetching {count} active futures contracts for {symbol} on {exchange}...")
     try:
         cds = await ib.reqContractDetailsAsync(Future(symbol, exchange=exchange))
-        today_str = datetime.now().strftime('%Y%m')
-        active_contracts = sorted(
-            [cd.contract for cd in cds if cd.contract.lastTradeDateOrContractMonth > today_str],
-            key=lambda c: c.lastTradeDateOrContractMonth
-        )
-        log_with_timestamp(f"Found {len(active_contracts)} active contracts. Returning the first {count}.")
-        return active_contracts[:count]
+        active = sorted([cd.contract for cd in cds if cd.contract.lastTradeDateOrContractMonth > datetime.now().strftime('%Y%m')], key=lambda c: c.lastTradeDateOrContractMonth)
+        logging.info(f"Found {len(active)} active contracts. Returning the first {count}.")
+        return active[:count]
     except Exception as e:
-        log_with_timestamp(f"Error fetching active futures: {e}")
-        return []
+        logging.error(f"Error fetching active futures: {e}"); return []
 
 async def build_option_chain(ib: IB, future_contract: Contract):
-    log_with_timestamp(f"Fetching option chain for future {future_contract.localSymbol}...")
+    logging.info(f"Fetching option chain for future {future_contract.localSymbol}...")
     try:
         chains = await ib.reqSecDefOptParamsAsync(future_contract.symbol, future_contract.exchange, 'FUT', future_contract.conId)
         if not chains: return None
         chain = next((c for c in chains if c.exchange == future_contract.exchange), chains[0])
-        return {
-            'exchange': chain.exchange,
-            'tradingClass': chain.tradingClass,
-            'expirations': sorted(chain.expirations),
-            'strikes_by_expiration': {exp: sorted(chain.strikes) for exp in chain.expirations}
-        }
+        return {'exchange': chain.exchange, 'tradingClass': chain.tradingClass, 'expirations': sorted(chain.expirations), 'strikes_by_expiration': {exp: sorted(chain.strikes) for exp in chain.expirations}}
     except Exception as e:
-        log_with_timestamp(f"Failed to build option chain for {future_contract.localSymbol}: {e}")
-        return None
+        logging.error(f"Failed to build option chain for {future_contract.localSymbol}: {e}"); return None
 
-def get_expiration_details(chain: dict, config: dict, future_exp: str) -> dict | None:
-    valid_expirations = [exp for exp in sorted(chain['expirations']) if exp <= future_exp]
-    if not valid_expirations:
-        today_str = datetime.now().strftime('%Y%m%d')
-        valid_expirations = [exp for exp in sorted(chain['expirations']) if exp > today_str]
-        if not valid_expirations:
-            return log_with_timestamp(f"No suitable option expirations found for future expiring {future_exp}."), None
-        chosen_expiration = valid_expirations[0]
-        log_with_timestamp(f"Warning: No option expiration found before future {future_exp}. Using nearest available: {chosen_expiration}")
-    else:
-        chosen_expiration = valid_expirations[-1]
+def get_expiration_details(chain: dict, future_exp: str) -> dict | None:
+    valid_exp = [exp for exp in sorted(chain['expirations']) if exp <= future_exp]
+    if not valid_exp:
+        logging.warning(f"No option expiration before future {future_exp}. Using nearest available.")
+        valid_exp = [exp for exp in sorted(chain['expirations']) if exp > datetime.now().strftime('%Y%m%d')]
+        if not valid_exp: logging.error(f"No suitable option expirations for future {future_exp}."); return None
+    chosen_exp = valid_exp[-1] if future_exp in [exp[:6] for exp in valid_exp] else valid_exp[0]
+    days = (datetime.strptime(chosen_exp, '%Y%m%d').date() - datetime.now().date()).days
+    return {'exp_date': chosen_exp, 'days_to_exp': days, 'strikes': chain['strikes_by_expiration'][chosen_exp]}
 
-    days_to_exp = (datetime.strptime(chosen_expiration, '%Y%m%d').date() - datetime.now().date()).days
-    return {'exp_date': chosen_expiration, 'days_to_exp': days_to_exp, 'strikes': chain['strikes_by_expiration'][chosen_expiration]}
 
 # --- 4. Risk, Sanity Checks & Connection Heartbeat ---
 
 def is_trade_sane(signal: dict, config: dict) -> bool:
-    """Performs pre-trade sanity checks."""
-    risk_params = config.get('risk_management', {})
-    min_confidence = risk_params.get('min_confidence_threshold', 0.0)
-
+    min_confidence = config.get('risk_management', {}).get('min_confidence_threshold', 0.0)
     if signal['confidence'] < min_confidence:
-        log_with_timestamp(f"Sanity Check FAILED: Signal confidence {signal['confidence']} is below threshold {min_confidence}.")
+        logging.warning(f"Sanity Check FAILED: Signal confidence {signal['confidence']} is below threshold {min_confidence}.")
         return False
-
-    log_with_timestamp("Sanity Check PASSED.")
-    return True
+    logging.info("Sanity Check PASSED."); return True
 
 async def monitor_positions_for_risk(ib: IB, config: dict):
     risk_params = config.get('risk_management', {})
-    stop_loss_usd = risk_params.get('stop_loss_per_contract_usd')
-    take_profit_usd = risk_params.get('take_profit_per_contract_usd')
-    check_interval_sec = risk_params.get('check_interval_seconds', 300)
-    if not stop_loss_usd and not take_profit_usd: return
-    log_with_timestamp(f"Starting intraday risk monitor. Stop: ${stop_loss_usd}, Profit: ${take_profit_usd}")
-    closed_by_monitor = set()
+    stop_loss, take_profit, interval = risk_params.get('stop_loss_per_contract_usd'), risk_params.get('take_profit_per_contract_usd'), risk_params.get('check_interval_seconds', 300)
+    if not stop_loss and not take_profit: return
+    logging.info(f"Starting intraday risk monitor. Stop: ${stop_loss}, Profit: ${take_profit}")
+    closed_ids = set()
     while True:
         try:
-            await asyncio.sleep(check_interval_sec)
+            await asyncio.sleep(interval)
             if not ib.isConnected(): continue
-            positions = [p for p in await ib.reqPositionsAsync() if p.position != 0 and (p.contract.secType == 'BAG' or p.contract.secType == 'FOP') and p.contract.conId not in closed_by_monitor]
+            positions = [p for p in await ib.reqPositionsAsync() if p.position != 0 and p.contract.conId not in closed_ids]
             if not positions: continue
             account = (await ib.managedAccounts())[0]
-            log_with_timestamp("--- Risk Monitor: Checking open positions ---")
+            logging.info("--- Risk Monitor: Checking open positions ---")
             for p in positions:
                 pnl = await ib.reqPnLSingleAsync(account, '', p.contract.conId)
-                unrealized_pnl_per_contract = pnl.unrealizedPnL / abs(p.position)
-                log_with_timestamp(f"Position {p.contract.localSymbol}: Unrealized PnL/Contract = ${unrealized_pnl_per_contract:.2f}")
-                reason = None
-                if stop_loss_usd and unrealized_pnl_per_contract < -abs(stop_loss_usd): reason = "Stop-Loss"
-                elif take_profit_usd and unrealized_pnl_per_contract > abs(take_profit_usd): reason = "Take-Profit"
+                pnl_per_contract = pnl.unrealizedPnL / abs(p.position)
+                logging.info(f"Position {p.contract.localSymbol}: Unrealized PnL/Contract = ${pnl_per_contract:.2f}")
+                reason = "Stop-Loss" if stop_loss and pnl_per_contract < -abs(stop_loss) else "Take-Profit" if take_profit and pnl_per_contract > abs(take_profit) else None
                 if reason:
-                    log_with_timestamp(f"{reason.upper()} TRIGGERED for {p.contract.localSymbol}. PnL/contract: ${unrealized_pnl_per_contract:.2f}")
-                    asyncio.create_task(asyncio.to_thread(send_notification, config, reason, f"{p.contract.localSymbol} closed. PnL/contract: ${unrealized_pnl_per_contract:.2f}"))
+                    logging.info(f"{reason.upper()} TRIGGERED for {p.contract.localSymbol}. PnL/contract: ${pnl_per_contract:.2f}")
+                    send_notification(config, reason, f"{p.contract.localSymbol} closed. PnL/contract: ${pnl_per_contract:.2f}")
                     order = MarketOrder('BUY' if p.position < 0 else 'SELL', abs(p.position))
                     trade = ib.placeOrder(p.contract, order)
                     await wait_for_fill(ib, trade, config, reason=reason)
-                    closed_by_monitor.add(p.contract.conId)
+                    closed_ids.add(p.contract.conId)
         except Exception as e:
-            log_with_timestamp(f"Error in risk monitor loop: {e}")
+            logging.error(f"Error in risk monitor loop: {e}")
 
 async def send_heartbeat(ib: IB):
-    """
-    NEW: Sends a lightweight request every 5 minutes to keep the connection alive.
-    """
     while True:
         try:
-            await asyncio.sleep(300) # Sleep for 5 minutes
+            await asyncio.sleep(300)
             if ib.isConnected():
-                current_time = await ib.reqCurrentTimeAsync()
-                log_with_timestamp(f"Heartbeat sent. Server time: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                server_time = await ib.reqCurrentTimeAsync()
+                logging.info(f"Heartbeat sent. Server time: {server_time.strftime('%Y-%m-%d %H:%M:%S')}")
         except Exception as e:
-            log_with_timestamp(f"Error in heartbeat loop: {e}")
+            logging.error(f"Error in heartbeat loop: {e}")
 
 # --- 5. Main Execution Loop ---
 
@@ -483,104 +436,69 @@ async def main_runner():
     ib = IB()
     config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
     monitor_task, heartbeat_task = None, None
-
+    
     while True:
-        trades_filled = []
-        trades_cancelled = []
         try:
             with open(config_path, 'r') as f: config = json.load(f)
             conn_settings = config.get('connection', {})
             host, port = conn_settings.get('host', '127.0.0.1'), conn_settings.get('port', 7497)
 
             if not ib.isConnected():
-                log_with_timestamp(f"Connecting to {host}:{port}...")
-                client_id = conn_settings.get('clientId') or random.randint(1, 1000)
-                await ib.connectAsync(host, port, clientId=client_id)
-                asyncio.create_task(asyncio.to_thread(send_notification, config, "Script Started", "Trading script has successfully connected to IBKR."))
+                logging.info(f"Connecting to {host}:{port}...")
+                await ib.connectAsync(host, port, clientId=conn_settings.get('clientId', random.randint(1, 1000)))
+                send_notification(config, "Script Started", "Trading script has successfully connected to IBKR.")
+                if monitor_task is None or monitor_task.done(): monitor_task = asyncio.create_task(monitor_positions_for_risk(ib, config))
+                if heartbeat_task is None or heartbeat_task.done(): heartbeat_task = asyncio.create_task(send_heartbeat(ib))
 
-            if monitor_task is None or monitor_task.done():
-                monitor_task = asyncio.create_task(monitor_positions_for_risk(ib, config))
-            if heartbeat_task is None or heartbeat_task.done():
-                heartbeat_task = asyncio.create_task(send_heartbeat(ib))
-
-            active_futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=5)
+            active_futures = await get_active_futures(ib, config['symbol'], config['exchange'])
             if not active_futures: raise ConnectionError("Could not find any active futures contracts.")
 
-            front_month_details_list = await ib.reqContractDetailsAsync(active_futures[0])
-            front_month_details = front_month_details_list[0] if front_month_details_list else None
-            _, market_is_open = is_market_open(front_month_details, config['exchange_timezone'])
-
-            if not market_is_open:
-                wait_time = calculate_wait_until_market_open(front_month_details, config['exchange_timezone'])
-                await asyncio.sleep(wait_time)
+            front_month_details = (await ib.reqContractDetailsAsync(active_futures[0]))[0]
+            if not is_market_open(front_month_details, config['exchange_timezone']):
+                await asyncio.sleep(calculate_wait_until_market_open(front_month_details, config['exchange_timezone']))
                 continue
 
-            signals = get_prediction_from_api(api_url="http://127.0.0.1:8000")
+            signals = get_prediction_from_api(config.get('api_base_url'))
             if not signals: raise ValueError("Could not get a valid signal list from the API.")
-
+            
+            trades_summary = {'filled': [], 'cancelled': []}
             for signal in signals:
-                signal_month = signal.get("contract_month")
-                if not signal_month:
-                    continue
+                future = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal.get("contract_month", ""))), None)
+                if not future: logging.warning(f"No active future for signal month {signal.get('contract_month')}."); continue
 
-                future_to_trade = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal_month)), None)
-
-                if not future_to_trade:
-                    log_with_timestamp(f"No active future contract found for signal month {signal_month}. Skipping.")
-                    continue
-
-                log_with_timestamp(f"\n===== Processing Signal for {future_to_trade.localSymbol} =====")
-                ticker = ib.reqMktData(future_to_trade, '', False, False)
-                await asyncio.sleep(1)
+                logging.info(f"\n===== Processing Signal for {future.localSymbol} =====")
+                ticker = ib.reqMktData(future, '', False, False); await asyncio.sleep(1)
                 price = ticker.marketPrice()
-                if util.isNan(price):
-                    log_with_timestamp(f"Failed to retrieve valid market price for {future_to_trade.localSymbol}. Skipping signal.")
-                    continue
-                log_with_timestamp(f"Current price for {future_to_trade.localSymbol}: {price}")
-                can_open_new = await manage_existing_positions(ib, config, signal, price, signal.get("contract_month"))
-                if can_open_new:
-                    if not is_trade_sane(signal, config): continue
-                    chain = await build_option_chain(ib, future_to_trade)
+                if util.isNan(price): logging.error(f"Failed to get market price for {future.localSymbol}."); continue
+                
+                logging.info(f"Current price for {future.localSymbol}: {price}")
+                
+                if await manage_existing_positions(ib, config, signal, price, future) and is_trade_sane(signal, config):
+                    chain = await build_option_chain(ib, future)
                     if not chain: continue
                     
-                    trade_result = None
-                    if signal['prediction_type'] == 'DIRECTIONAL':
-                        trade_result = await execute_directional_strategy(ib, config, signal, chain, price, future_to_trade)
-                    elif signal['prediction_type'] == 'VOLATILITY':
-                        trade_result = await execute_volatility_strategy(ib, config, signal, chain, price, future_to_trade)
-                    
-                    if trade_result:
-                        if trade_result.orderStatus.status == OrderStatus.Filled:
-                            trades_filled.append(trade_result)
-                        else:
-                            trades_cancelled.append(trade_result)
-            
-            summary_message = "<b>-- Trading Cycle Summary --</b>\n"
-            if trades_filled:
-                summary_message += "\n<b>Positions Opened:</b>\n"
-                for trade in trades_filled:
-                    summary_message += f"- {trade.contract.localSymbol}: {trade.order.action} {trade.orderStatus.filled} @ ${trade.orderStatus.avgFillPrice:.2f}\n"
-            if trades_cancelled:
-                summary_message += "\n<b>Orders Cancelled:</b>\n"
-                for trade in trades_cancelled:
-                    summary_message += f"- {trade.contract.localSymbol}: {trade.order.action} {trade.order.totalQuantity}\n"
-            if not trades_filled and not trades_cancelled:
-                summary_message += "\nNo new positions were opened or attempted."
-            
-            send_notification(config, "Trading Cycle Complete", summary_message)
+                    trade = await (execute_directional_strategy if signal['prediction_type'] == 'DIRECTIONAL' else execute_volatility_strategy)(ib, config, signal, chain, price, future)
+                    if trade: trades_summary['filled' if trade.orderStatus.status == OrderStatus.Filled else 'cancelled'].append(trade)
+
+            # End of cycle summary notification
+            summary_msg = "<b>-- Trading Cycle Summary --</b>"
+            if trades_summary['filled']: summary_msg += "\n<b>Positions Opened:</b>\n" + "".join([f"- {t.contract.localSymbol}: {t.order.action} {t.orderStatus.filled} @ ${t.orderStatus.avgFillPrice:.2f}\n" for t in trades_summary['filled']])
+            if trades_summary['cancelled']: summary_msg += "\n<b>Orders Cancelled:</b>\n" + "".join([f"- {t.contract.localSymbol}: {t.order.action} {t.order.totalQuantity}\n" for t in trades_summary['cancelled']])
+            if not trades_summary['filled'] and not trades_summary['cancelled']: summary_msg += "\nNo new positions were opened or attempted."
+            send_notification(config, "Trading Cycle Complete", summary_msg)
 
             ny_tz = pytz.timezone(config['exchange_timezone'])
             now_ny = datetime.now(ny_tz)
-            hour, minute = map(int, config.get('trade_execution_time_ny', '04:26').split(':'))
-            next_trade_dt_ny = now_ny.replace(hour=hour, minute=minute, second=0, microsecond=0)
-            if now_ny >= next_trade_dt_ny: next_trade_dt_ny += timedelta(days=1)
-            seconds_to_wait = (next_trade_dt_ny - now_ny).total_seconds()
-            log_with_timestamp(f"\nTrading cycle complete. Waiting {seconds_to_wait / 3600:.2f} hours until {next_trade_dt_ny.strftime('%Y-%m-%d %H:%M:%S')} NY time.")
-            await asyncio.sleep(seconds_to_wait)
+            h, m = map(int, config.get('trade_execution_time_ny', '04:26').split(':'))
+            next_trade = now_ny.replace(hour=h, minute=m, second=0, microsecond=0)
+            if now_ny >= next_trade: next_trade += timedelta(days=1)
+            wait = (next_trade - now_ny).total_seconds()
+            logging.info(f"\nTrading cycle complete. Waiting {wait / 3600:.2f} hours until {next_trade:%Y-%m-%d %H:%M:%S} NY time.")
+            await asyncio.sleep(wait)
 
         except (ConnectionError, OSError, asyncio.TimeoutError, asyncio.CancelledError) as e:
             msg = f"Connection error: {e}. Reconnecting..."
-            log_with_timestamp(msg)
+            logging.error(msg)
             send_notification(config, "Connection Error", msg)
             if monitor_task and not monitor_task.done(): monitor_task.cancel()
             if heartbeat_task and not heartbeat_task.done(): heartbeat_task.cancel()
@@ -589,7 +507,7 @@ async def main_runner():
             await asyncio.sleep(60)
         except Exception as e:
             msg = f"An unexpected critical error occurred: {e}. Restarting logic in 1 min..."
-            log_with_timestamp(msg)
+            logging.critical(f"{msg}\n{traceback.format_exc()}")
             send_notification(config, "Critical Error", msg)
             if monitor_task and not monitor_task.done(): monitor_task.cancel()
             if heartbeat_task and not heartbeat_task.done(): heartbeat_task.cancel()
@@ -597,9 +515,10 @@ async def main_runner():
             if ib.isConnected(): ib.disconnect()
             await asyncio.sleep(60)
 
+
 if __name__ == "__main__":
     try:
         util.run(main_runner())
     except (KeyboardInterrupt, SystemExit):
-        log_with_timestamp("Script stopped manually.")
+        logging.info("Script stopped manually.")
 
