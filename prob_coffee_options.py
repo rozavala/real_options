@@ -421,6 +421,10 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
                 if reason:
                     logging.info(f"{reason.upper()} TRIGGERED for {p.contract.localSymbol}. PnL/contract: ${pnl_per_contract:.2f}")
                     send_notification(config, reason, f"{p.contract.localSymbol} closed. PnL/contract: ${pnl_per_contract:.2f}")
+                    
+                    # Qualify the contract to ensure the exchange is specified before ordering.
+                    await ib.qualifyContractsAsync(p.contract)
+                    
                     order = MarketOrder('BUY' if p.position < 0 else 'SELL', abs(p.position))
                     trade = ib.placeOrder(p.contract, order)
                     await wait_for_fill(ib, trade, config, reason=reason)
@@ -464,7 +468,7 @@ async def main_runner():
 
             front_month_details = (await ib.reqContractDetailsAsync(active_futures[0]))[0]
             if not is_market_open(front_month_details, config['exchange_timezone']):
-                await asyncio.sleep(calculate_wait_until_market_open(front_month_.details, config['exchange_timezone']))
+                await asyncio.sleep(calculate_wait_until_market_open(front_month_details, config['exchange_timezone']))
                 continue
 
             signals = get_prediction_from_api(config.get('api_base_url'))
