@@ -19,7 +19,7 @@ jobs:
 
       - name: Deploy to Droplet and Restart Bot
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} '
+          ssh -v -o StrictHostKeyChecking=no ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} '
             # Navigate to your project directory
             cd ~/real_options &&
 
