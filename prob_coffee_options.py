@@ -422,15 +422,12 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
                     logging.info(f"{reason.upper()} TRIGGERED for {p.contract.localSymbol}. PnL/contract: ${pnl_per_contract:.2f}")
                     send_notification(config, reason, f"{p.contract.localSymbol} closed. PnL/contract: ${pnl_per_contract:.2f}")
                     
-                    # Fix strike price format before closing order
-                    if p.contract.strike > 100:
-                        p.contract.strike /= 100.0
-
-                    # Qualify the contract to ensure the exchange is specified before ordering.
-                    await ib.qualifyContractsAsync(p.contract)
+                    # Create a new, clean contract object just for closing the trade
+                    contract_to_close = Contract(conId=p.contract.conId)
+                    await ib.qualifyContractsAsync(contract_to_close)
                     
                     order = MarketOrder('BUY' if p.position < 0 else 'SELL', abs(p.position))
-                    trade = ib.placeOrder(p.contract, order)
+                    trade = ib.placeOrder(contract_to_close, order)
                     await wait_for_fill(ib, trade, config, reason=reason)
                     closed_ids.add(p.contract.conId)
         except Exception as e:
