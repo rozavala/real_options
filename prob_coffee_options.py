@@ -337,7 +337,8 @@ def is_market_open(contract_details, exchange_timezone_str: str):
 def calculate_wait_until_market_open(contract_details, exchange_timezone_str: str) -> float:
     if not contract_details or not contract_details.liquidHours: return 3600
     tz = pytz.timezone(exchange_timezone_str)
-    now_tz, next_open_dt = datetime.now(tz), None
+    now_tz = datetime.now(tz)
+    next_open_dt = None
     for session_str in contract_details.liquidHours.split(';'):
         if 'CLOSED' in session_str: continue
         try:
@@ -407,7 +408,7 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
             account = ib.managedAccounts()[0]
             logging.info("--- Risk Monitor: Checking open positions ---")
             for p in positions:
-                pnl = await ib.reqPnLSingleAsync(account, '', p.contract.conId)
+                pnl = await ib.reqPnLSingle(account, '', p.contract.conId)
                 pnl_per_contract = pnl.unrealizedPnL / abs(p.position)
                 logging.info(f"Position {p.contract.localSymbol}: Unrealized PnL/Contract = ${pnl_per_contract:.2f}")
                 reason = "Stop-Loss" if stop_loss and pnl_per_contract < -abs(stop_loss) else "Take-Profit" if take_profit and pnl_per_contract > abs(take_profit) else None
