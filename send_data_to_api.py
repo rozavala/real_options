@@ -70,7 +70,7 @@ def send_data_and_get_prediction():
         
         # 4. Poll for the result (retained from the new version)
         result_url = f"{PREDICTION_ENDPOINT}/{job_id}"
-        timeout_seconds = 600  # Max time to wait for a result
+        timeout_seconds = 120  # Max time to wait for a result
         start_time = time.time()
         
         while time.time() - start_time < timeout_seconds:

@@ -136,7 +136,7 @@ def get_position_details(position: Position) -> dict:
             details['key_strikes'] = [strikes[1], strikes[2]]
     return details
 
-async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlying_price: float, future_contract: Contract):
+async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlying_price: float, future_contract: Contract) -> bool:
     """Checks for existing positions for a given future and closes them if misaligned."""
     target_future_conId = future_contract.conId
     logging.info(f"--- Managing Positions for Future Contract: {future_contract.localSymbol} (conId: {target_future_conId}) ---")
@@ -422,6 +422,10 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
                     logging.info(f"{reason.upper()} TRIGGERED for {p.contract.localSymbol}. PnL/contract: ${pnl_per_contract:.2f}")
                     send_notification(config, reason, f"{p.contract.localSymbol} closed. PnL/contract: ${pnl_per_contract:.2f}")
                     
+                    # Fix strike price format before closing order
+                    if p.contract.strike > 100:
+                        p.contract.strike /= 100.0
+
                     # Qualify the contract to ensure the exchange is specified before ordering.
                     await ib.qualifyContractsAsync(p.contract)
                     
