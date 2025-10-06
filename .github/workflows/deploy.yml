@@ -16,22 +16,14 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Deploy to Droplet and Restart Bot
+      - name: Deploy and Restart Bot
         run: |
-          ssh -v -o StrictHostKeyChecking=no ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} "bash -c '
-            # Navigate to your project directory
+          ssh -o StrictHostKeyChecking=no ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} "bash -c '
+            # First, navigate to the repo and pull the latest changes
+            # This ensures we have the newest version of the deploy.sh script
             cd ~/real_options &&
-
-            # Stop the old trading bot process if it is running
-            echo \"Attempting to stop the old bot...\" &&
-            pkill -f prob_coffee_options.py || true &&
-
-            # Pull the latest code from the main branch
-            echo \"Pulling latest code...\" &&
             git pull &&
 
-            # Activate virtual environment and start the new bot in the background
-            echo \"Starting the new bot...\" &&
-            source ~/Desktop/ib_env/bin/activate &&
-            nohup python -u ~/real_options/prob_coffee_options.py >> ~/real_options/logs/trading_bot.log 2>&1 &
+            # Now, execute the deployment script
+            ./deploy.sh
           '"
