@@ -337,7 +337,11 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
             if not ib.isConnected(): continue
             positions = [p for p in await ib.reqPositionsAsync() if p.position != 0 and p.contract.conId not in closed_ids]
             if not positions: continue
-            account = (await ib.managedAccounts())[0]
+            
+            accounts = await ib.managedAccounts()
+            account = accounts[0] if accounts else None
+            if not account: continue
+
             for p in positions:
                 pnl = await ib.reqPnLSingleAsync(account, '', p.contract.conId)
                 pnl_per_contract = pnl.unrealizedPnL / abs(p.position)
