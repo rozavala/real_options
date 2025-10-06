@@ -16,22 +16,17 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Deploy to Droplet and Restart Bot
+      - name: DEBUG - Check Git Pull
         run: |
           ssh -v -o StrictHostKeyChecking=no ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} "bash -c '
-            # Navigate to your project directory
             cd ~/real_options &&
 
-            # Stop the old trading bot process if it is running
-            echo \"Attempting to stop the old bot...\" &&
-            pkill -f prob_coffee_options.py || true &&
-
-            # Pull the latest code from the main branch
-            echo \"Pulling latest code...\" &&
+            echo \"--- 1. Pulling latest code... ---\" &&
             git pull &&
 
-            # Activate virtual environment and start the new bot in the background
-            echo \"Starting the new bot...\" &&
-            source ~/Desktop/ib_env/bin/activate &&
-            nohup python -u ~/real_options/prob_coffee_options.py >> ~/real_options/logs/trading_bot.log 2>&1 &
+            echo \"--- 2. Verifying latest commit... ---\" &&
+            git log -n 1 &&
+
+            echo \"--- 3. Verifying file timestamps... ---\" &&
+            ls -la
           '"
