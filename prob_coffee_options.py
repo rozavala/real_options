@@ -464,7 +464,7 @@ async def main_runner():
 
             front_month_details = (await ib.reqContractDetailsAsync(active_futures[0]))[0]
             if not is_market_open(front_month_details, config['exchange_timezone']):
-                await asyncio.sleep(calculate_wait_until_market_open(front_month_.details, config['exchange_timezone']))
+                await asyncio.sleep(calculate_wait_until_market_open(front_month_details, config['exchange_timezone']))
                 continue
 
             signals = get_prediction_from_api(config.get('api_base_url'))
