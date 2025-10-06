@@ -2,7 +2,7 @@
 
 ## Prediction API
 
-Para empezar necesitas `uv`, [homepage](https://github.com/astral-sh/uv), instálalo con `brew install uv` en mac, o como quieras en otras plataformas. (TODO: meterlo en un container de Docker pa no depender de ambiente local)
+Para empezar necesitas `uv`, [homepage](https://github.com/astral-sh/uv), instálalo con `brew install uv` en mac, o como quieras en otras plataformas. (TODO: meterlo en un container de Docker pa no depender de ambiente local).
 
 Para echarlo a andar, `uv run prediction_api.py` y va a escuchar en el puerto 8000
 También se puede echar a andar con `uv run uvicon --port 12345 prediction_api:app` para el puerto 12345, y se puede agregar el flag `--reload` para hacer hot-reloading cuando cambias el código
