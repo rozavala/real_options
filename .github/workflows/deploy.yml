@@ -19,9 +19,16 @@ jobs:
       - name: Deploy and Restart Bot
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} "bash -c '
-            # First, navigate to the repo and pull the latest changes
-            # This ensures we have the newest version of the deploy.sh script
+            # Navigate to the repo
             cd ~/real_options &&
+
+            # Fetch all branches from the remote repository
+            git fetch &&
+
+            # Switch to the branch that triggered this action
+            git checkout ${{ github.ref_name }} &&
+
+            # Pull the latest changes for that branch
             git pull &&
 
             # Now, execute the deployment script
