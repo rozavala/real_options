@@ -426,6 +426,10 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
                     contract_to_close = Contract(conId=p.contract.conId)
                     await ib.qualifyContractsAsync(contract_to_close)
                     
+                    # As a final safeguard, manually correct the strike price if it's still incorrect after qualifying
+                    if contract_to_close.strike > 100:
+                        contract_to_close.strike /= 100.0
+                    
                     order = MarketOrder('BUY' if p.position < 0 else 'SELL', abs(p.position))
                     trade = ib.placeOrder(contract_to_close, order)
                     await wait_for_fill(ib, trade, config, reason=reason)
