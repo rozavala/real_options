@@ -408,7 +408,13 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
             account = ib.managedAccounts()[0]
             logging.info("--- Risk Monitor: Checking open positions ---")
             for p in positions:
-                pnl = await ib.reqPnLSingle(account, '', p.contract.conId)
+                pnl = ib.reqPnLSingle(account, '', p.contract.conId)
+                await asyncio.sleep(1) # Allow time for PnL data to arrive
+                
+                if util.isNan(pnl.unrealizedPnL):
+                    logging.warning(f"Could not get PnL for {p.contract.localSymbol}. Skipping risk check.")
+                    continue
+
                 pnl_per_contract = pnl.unrealizedPnL / abs(p.position)
                 logging.info(f"Position {p.contract.localSymbol}: Unrealized PnL/Contract = ${pnl_per_contract:.2f}")
                 reason = "Stop-Loss" if stop_loss and pnl_per_contract < -abs(stop_loss) else "Take-Profit" if take_profit and pnl_per_contract > abs(take_profit) else None
@@ -458,7 +464,7 @@ async def main_runner():
 
             front_month_details = (await ib.reqContractDetailsAsync(active_futures[0]))[0]
             if not is_market_open(front_month_details, config['exchange_timezone']):
-                await asyncio.sleep(calculate_wait_until_market_open(front_month_details, config['exchange_timezone']))
+                await asyncio.sleep(calculate_wait_until_market_open(front_month_.details, config['exchange_timezone']))
                 continue
 
             signals = get_prediction_from_api(config.get('api_base_url'))
