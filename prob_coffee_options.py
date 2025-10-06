@@ -336,7 +336,8 @@ def is_market_open(contract_details, exchange_timezone_str: str):
 
 def calculate_wait_until_market_open(contract_details, exchange_timezone_str: str) -> float:
     if not contract_details or not contract_details.liquidHours: return 3600
-    tz, now_tz, next_open_dt = pytz.timezone(exchange_timezone_str), datetime.now(tz), None
+    tz = pytz.timezone(exchange_timezone_str)
+    now_tz, next_open_dt = datetime.now(tz), None
     for session_str in contract_details.liquidHours.split(';'):
         if 'CLOSED' in session_str: continue
         try:
