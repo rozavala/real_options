@@ -13,7 +13,7 @@ from ib_insync import *
 import logging
 import traceback
 
-# --- Logging Setup ---
+# --- Logging Setup ----
 # This ensures all messages, including from ib_insync, are captured.
 log_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trading_bot.log')
 logging.basicConfig(
