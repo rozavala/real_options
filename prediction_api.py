@@ -10,8 +10,11 @@ class PredictionJobCreateRequest(BaseModel):
     data: str
 
 
+import random
+
+
 class PredictionResult(BaseModel):
-    predicted_price: float
+    price_changes: list[float]
 
 
 class PredictionJobStatus(StrEnum):
@@ -54,9 +57,12 @@ _predictions: dict[uuid.UUID, PredictionJob] = {}
 def compute_prediction(prediction_id: uuid.UUID, data: PredictionJobCreateRequest):
     try:
         ### Aqui hacemos la pega... usando data
-        time.sleep(30)  # simulando 30s
+        time.sleep(10)  # Reduced sleep for faster testing
         ### y usamos el resultado
-        prediction_result = PredictionResult(predicted_price=100.0)
+        # The client expects a list of 5 floats, corresponding to the 5 active contracts.
+        prediction_result = PredictionResult(
+            price_changes=[random.uniform(-5, 15) for _ in range(5)]
+        )
         ### y lo guardamos en el dict pa q despues se pueda consultar el resultado
         _predictions[prediction_id] = PredictionJob(
             id=prediction_id,
