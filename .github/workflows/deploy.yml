@@ -21,13 +21,17 @@ jobs:
             # Navigate to the repo
             cd ~/real_options &&
 
-            # Fetch all changes from the remote repository
-            git fetch origin &&
+            # Fetch the latest state from the remote repository
+            git fetch &&
 
-            # Reset the local branch to match the remote, discarding any local changes
-            git reset --hard origin/main &&
+            # Switch to the branch that triggered this action
+            git checkout ${{ github.ref_name }} &&
 
-            # Pull the latest changes (this is redundant after reset, but safe)
+            # Forcefully reset the local branch to match the remote one
+            # This will discard any conflicting local commits on the droplet
+            git reset --hard origin/${{ github.ref_name }} &&
+
+            # Pull the latest changes (this will now be a clean fast-forward)
             git pull &&
 
             # Now, execute the deployment script
