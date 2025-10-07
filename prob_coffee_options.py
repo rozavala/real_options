@@ -171,6 +171,7 @@ def get_prediction_from_api(config: dict, sorted_futures: list[Contract]) -> lis
     try:
         # Reverted to sending data as a CSV string, as this was the original working format.
         # The original working script included the index, so we are removing `index=False`.
+        data_df.reset_index(inplace=True)
         data_payload = data_df.tail(600).to_csv()
         request_body = {"data": data_payload}
 
