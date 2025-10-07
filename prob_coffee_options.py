@@ -12,6 +12,11 @@ import pytz
 from ib_insync import *
 import logging
 import traceback
+import yfinance as yf
+import pandas as pd
+from fredapi import Fred
+import nasdaqdatalink as ndl
+from pandas.tseries.offsets import BDay
 
 # --- Logging Setup ---
 # This ensures all messages, including from ib_insync, are captured.
@@ -58,72 +63,171 @@ def send_notification(config: dict, title: str, message: str):
         logging.error(f"Failed to send notification: {e}")
 
 
-def get_prediction_from_api(api_url: str, sorted_futures: list[Contract]) -> list | None:
+# --- Data Aggregation for API (from coffee_factors_data_pull_new.py) ---
+
+def _get_kc_expiration_date(year, month_code):
+    """Calculates the expiration date for a given Coffee 'C' futures contract."""
+    month_map = {'H': 3, 'K': 5, 'N': 7, 'U': 9, 'Z': 12}
+    month = month_map.get(month_code)
+    if not month:
+        raise ValueError(f"Invalid month code: {month_code}")
+    last_day_of_month = pd.Timestamp(year, month, 1) + pd.offsets.MonthEnd(1)
+    last_business_day = last_day_of_month
+    while last_business_day.weekday() > 4:
+        last_business_day -= pd.Timedelta(days=1)
+    return last_business_day - BDay(1)
+
+def _get_yfinance_coffee_tickers(num_contracts=5):
+    """Determines the yfinance tickers for the next N active coffee futures contracts."""
+    now = datetime.now()
+    potential_tickers = []
+    for year_offset in range(3):
+        year = now.year + year_offset
+        for code in ['H', 'K', 'N', 'U', 'Z']:
+            try:
+                exp_date = _get_kc_expiration_date(year, code)
+                if exp_date.date() >= now.date():
+                    potential_tickers.append((f"KC{code}{str(year)[-2:]}.NYB", exp_date))
+            except ValueError:
+                continue
+    potential_tickers.sort(key=lambda x: x[1])
+    return [ticker for ticker, exp in potential_tickers[:num_contracts]]
+
+def _fetch_and_prepare_data_for_api(config: dict) -> pd.DataFrame | None:
     """
-    Calls the prediction API, gets raw price changes, and translates
-    them into structured trading signals.
+    Fetches, combines, and processes all market, weather, and economic data
+    required by the prediction model. Returns a pandas DataFrame.
     """
-    logging.info("Requesting new trading signals from prediction API...")
-    if not api_url:
-        logging.error("API URL is not configured.")
+    logging.info("--- Starting Data Aggregation for API ---")
+    try:
+        fred = Fred(api_key=config['fred_api_key'])
+        ndl.api_key = config['nasdaq_api_key']
+        start_date, end_date = datetime(1980, 1, 1), datetime.now()
+        all_data = {}
+
+        # 1. Fetch Coffee Futures Data from yfinance
+        coffee_tickers = _get_yfinance_coffee_tickers()
+        if coffee_tickers:
+            df_price = yf.download(coffee_tickers, start=start_date, end=end_date, progress=False)['Close']
+            df_price.columns = [f"coffee_price_{t.replace('.NYB', '')}" for t in df_price.columns]
+            all_data['coffee_prices'] = df_price
+        else:
+            logging.error("Could not determine active coffee tickers for yfinance.")
+            return None
+
+        # (In a real scenario, weather and other economic data would be fetched here)
+
+        # Consolidate and process data
+        if 'coffee_prices' not in all_data or all_data['coffee_prices'].empty:
+            logging.error("Failed to fetch primary coffee price data.")
+            return None
+
+        final_df = all_data['coffee_prices'].copy()
+        # (Join other data sources here)
+        final_df.ffill(inplace=True)
+        final_df.dropna(inplace=True)
+
+        # Reformat columns as the model expects
+        for col in list(final_df.columns):
+            if col.startswith('coffee_price_KC'):
+                ticker_part = col.replace('coffee_price_', '')
+                month_code, year_str = ticker_part[2], ticker_part[3:]
+                year = int(f"20{year_str}")
+                exp = _get_kc_expiration_date(year, month_code)
+                final_df[f'{month_code}_dte'] = (exp.tz_localize(None) - final_df.index).days
+                final_df.rename(columns={col: f'{month_code}_price'}, inplace=True)
+
+        # Ensure all required columns exist, even if null
+        for col in config.get('final_column_order', []):
+            if col not in final_df.columns:
+                final_df[col] = None
+
+        logging.info("Data aggregation for API successful.")
+        return final_df[config['final_column_order']]
+
+    except Exception as e:
+        logging.error(f"An error occurred during data aggregation: {e}", exc_info=True)
         return None
 
+
+def get_prediction_from_api(config: dict, sorted_futures: list[Contract]) -> list | None:
+    """
+    Orchestrates the entire signal generation pipeline: fetches data,
+    calls the prediction API, and translates the response into signals.
+    """
+    logging.info("===== Starting Full Signal Generation Pipeline =====")
+    api_url = config.get('api_base_url')
+    if not api_url:
+        logging.error("API URL is not configured in config.json.")
+        return None
+
+    # 1. Fetch and prepare the data
+    data_df = _fetch_and_prepare_data_for_api(config)
+    if data_df is None:
+        logging.error("Signal generation failed: Data aggregation step was unsuccessful.")
+        return None
+
+    # 2. Send data to API and poll for results
     try:
-        # In a real implementation, this would involve the full data pull and polling logic.
-        # For this step, we are focusing on processing the response correctly.
-        # We will simulate the API call and response.
-        # response = requests.get(f"{api_url}/predictions/latest") # Example endpoint
-        # response.raise_for_status()
-        # raw_predictions = response.json()
+        data_payload = data_df.tail(600).to_csv(index=False)
+        request_body = {"data": data_payload}
 
-        # --- SIMULATED API RESPONSE ---
-        raw_predictions = {
-          "price_changes": [
-            -2.61, # H
-            8.05,  # K
-            -4.34, # N
-            3.2,   # U
-            10.41  # Z
-          ]
-        }
+        prediction_endpoint = f"{api_url}/predictions"
+        logging.info(f"Sending data to {prediction_endpoint} to start prediction job...")
+        response = requests.post(prediction_endpoint, json=request_body, timeout=20)
+        response.raise_for_status()
+
+        job_id = response.json().get('id')
+        if not job_id:
+            logging.error("API did not return a valid job ID.")
+            return None
+
+        result_url = f"{prediction_endpoint}/{job_id}"
+        timeout_seconds = 180
+        start_time = time.time()
+
+        raw_predictions = None
+        while time.time() - start_time < timeout_seconds:
+            logging.info(f"Polling for result (Job ID: {job_id})...")
+            result_response = requests.get(result_url, timeout=10)
+            result_response.raise_for_status()
+            status_info = result_response.json()
+
+            if status_info.get('status') == 'completed':
+                raw_predictions = status_info.get('result')
+                break
+            elif status_info.get('status') == 'failed':
+                logging.error(f"Prediction job failed. Reason: {status_info.get('error')}")
+                return None
+            time.sleep(10)
+
+        if not raw_predictions:
+            logging.error("Polling timed out. The prediction job took too long.")
+            return None
+
+        # 3. Translate raw predictions into structured signals
         logging.info(f"Received raw prediction data: {raw_predictions}")
-        # --- END SIMULATION ---
-
         price_changes = raw_predictions.get('price_changes', [])
+
         if len(price_changes) != len(sorted_futures):
             logging.error(f"Signal mismatch: Received {len(price_changes)} predictions but have {len(sorted_futures)} contracts.")
             return None
 
-        # --- Translate raw price changes into structured signals ---
         signals = []
         for i, price_change in enumerate(price_changes):
-            direction = None
-            if price_change > 7:
-                direction = "BULLISH"
-            elif price_change < 0:
-                direction = "BEARISH"
-
+            direction = "BULLISH" if price_change > 7 else "BEARISH" if price_change < 0 else None
             if direction:
-                future_contract = sorted_futures[i]
-                signal = {
-                    "contract_month": future_contract.lastTradeDateOrContractMonth[:6],
-                    "prediction_type": "DIRECTIONAL",
-                    "direction": direction,
-                    "confidence": 1.0  # Set confidence to 1.0 to pass sanity checks
-                }
-                signals.append(signal)
-                logging.info(f"Generated signal for {future_contract.localSymbol}: {direction} (Price Change: {price_change:.2f})")
-            else:
-                logging.info(f"Price change for contract {i+1} ({price_change:.2f}) is in the no-trade zone (0-7). No signal generated.")
+                future = sorted_futures[i]
+                signals.append({
+                    "contract_month": future.lastTradeDateOrContractMonth[:6],
+                    "prediction_type": "DIRECTIONAL", "direction": direction, "confidence": 1.0
+                })
 
         logging.info(f"Successfully generated {len(signals)} actionable trading signals.")
         return signals
 
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching prediction from API: {e}")
-        return None
-    except (json.JSONDecodeError, KeyError) as e:
-        logging.error(f"Error parsing API response: {e}")
+    except Exception as e:
+        logging.error(f"An error occurred during API communication or signal translation: {e}", exc_info=True)
         return None
 
 # --- 2. Core Trading Logic & Strategy Execution ---
@@ -527,15 +631,15 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
     or take-profit triggers. This function is stateful and manages its own P&L subscriptions.
     """
     risk_params = config.get('risk_management', {})
-    stop_loss_usd = risk_params.get('stop_loss_per_contract_usd')
-    take_profit_usd = risk_params.get('take_profit_per_contract_usd')
+    stop_loss_pct = risk_params.get('stop_loss_percentage')
+    take_profit_pct = risk_params.get('take_profit_percentage')
     check_interval = risk_params.get('check_interval_seconds', 300)
 
-    if not stop_loss_usd and not take_profit_usd:
-        logging.info("Risk monitor disabled: No stop-loss or take-profit USD values configured.")
+    if not stop_loss_pct and not take_profit_pct:
+        logging.info("Risk monitor disabled: No stop-loss or take-profit percentage configured.")
         return
 
-    logging.info(f"Starting intraday risk monitor. Stop: ${stop_loss_usd}, Profit: ${take_profit_usd}. Interval: {check_interval}s.")
+    logging.info(f"Starting intraday risk monitor. Stop: {stop_loss_pct}%, Profit: {take_profit_pct}%. Interval: {check_interval}s.")
 
     # Stateful dictionaries to manage subscriptions and closing orders
     pnl_subscriptions = {}  # {conId: PnLSingle object}
@@ -584,19 +688,26 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
                     logging.warning(f"Could not get PnL for {p.contract.localSymbol} (conId {con_id}). Will retry on next cycle.")
                     continue
 
+                cost_basis_per_contract = p.avgCost
                 pnl_per_contract = pnl_data.unrealizedPnL / abs(p.position)
-                logging.info(f"Position {p.contract.localSymbol}: Unrealized PnL/Contract = ${pnl_per_contract:.2f}")
 
-                # --- Trigger stop-loss or take-profit ---
+                if cost_basis_per_contract <= 0:
+                    logging.warning(f"Cost basis for {p.contract.localSymbol} is zero or negative. Cannot calculate percentage PnL.")
+                    continue
+
+                pnl_percentage = (pnl_per_contract / cost_basis_per_contract) * 100
+                logging.info(f"Position {p.contract.localSymbol}: Cost/Contract=${cost_basis_per_contract:.2f}, PnL/Contract=${pnl_per_contract:.2f} ({pnl_percentage:.2f}%)")
+
+                # --- Trigger stop-loss or take-profit based on percentage ---
                 reason = None
-                if stop_loss_usd and pnl_per_contract < -abs(stop_loss_usd):
+                if stop_loss_pct and pnl_percentage <= -abs(stop_loss_pct):
                     reason = "Stop-Loss"
-                elif take_profit_usd and pnl_per_contract > abs(take_profit_usd):
+                elif take_profit_pct and pnl_percentage >= abs(take_profit_pct):
                     reason = "Take-Profit"
 
                 if reason:
-                    logging.warning(f"{reason.upper()} TRIGGERED for {p.contract.localSymbol}. PnL/contract: ${pnl_per_contract:.2f}")
-                    send_notification(config, reason, f"{p.contract.localSymbol} closed. PnL/contract: ${pnl_per_contract:.2f}")
+                    logging.warning(f"{reason.upper()} TRIGGERED for {p.contract.localSymbol} at {pnl_percentage:.2f}%. Closing position.")
+                    send_notification(config, reason, f"{p.contract.localSymbol} closed. PnL: {pnl_percentage:.2f}%")
 
                     contract_to_close = p.contract
                     order = MarketOrder('BUY' if p.position < 0 else 'SELL', abs(p.position))

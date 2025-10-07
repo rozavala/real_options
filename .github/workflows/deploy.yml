@@ -1,10 +1,9 @@
 name: Deploy Trading Bot
 
-# This action runs on every push to the 'main' branch
 on:
   push:
     branches:
-      - main
+      - feat/enhance-trading-bot
 
 jobs:
   deploy:
@@ -19,9 +18,16 @@ jobs:
       - name: Deploy and Restart Bot
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} "bash -c '
-            # First, navigate to the repo and pull the latest changes
-            # This ensures we have the newest version of the deploy.sh script
+            # Navigate to the repo
             cd ~/real_options &&
+
+            # Fetch all changes from the remote repository
+            git fetch origin &&
+
+            # Reset the local branch to match the remote, discarding any local changes
+            git reset --hard origin/main &&
+
+            # Pull the latest changes (this is redundant after reset, but safe)
             git pull &&
 
             # Now, execute the deployment script
