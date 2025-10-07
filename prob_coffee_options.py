@@ -108,13 +108,7 @@ def _fetch_and_prepare_data_for_api(config: dict) -> pd.DataFrame | None:
         # 1. Fetch Coffee Futures Data from yfinance
         coffee_tickers = _get_yfinance_coffee_tickers()
         if coffee_tickers:
-            df_price = yf.download(
-                coffee_tickers,
-                start=start_date,
-                end=end_date,
-                progress=False,
-                auto_adjust=False  # Explicitly set to silence FutureWarning
-            )['Close']
+            df_price = yf.download(coffee_tickers, start=start_date, end=end_date, progress=False)['Close']
             df_price.columns = [f"coffee_price_{t.replace('.NYB', '')}" for t in df_price.columns]
             all_data['coffee_prices'] = df_price
         else:
@@ -176,7 +170,8 @@ def get_prediction_from_api(config: dict, sorted_futures: list[Contract]) -> lis
     # 2. Send data to API and poll for results
     try:
         # Reverted to sending data as a CSV string, as this was the original working format.
-        data_payload = data_df.tail(600).to_csv(index=False)
+        # The original working script included the index, so we are removing `index=False`.
+        data_payload = data_df.tail(600).to_csv()
         request_body = {"data": data_payload}
 
         prediction_endpoint = f"{api_url}/predictions"
@@ -284,7 +279,6 @@ def get_position_details(position: Position) -> dict:
     contract = position.contract
     details = {'type': 'UNKNOWN', 'key_strikes': []}
 
-    # Helper to normalize strikes that might be magnified by 100
     def _normalize(strike):
         return strike / 100.0 if strike > 100 else strike
 
@@ -293,10 +287,9 @@ def get_position_details(position: Position) -> dict:
         details['key_strikes'].append(_normalize(contract.strike))
     elif isinstance(contract, Bag):
         legs = contract.comboLegs
-        # FIX: Use the first letter of the action (B/S) for the check, not the full word.
+        # Use the first letter of the action (B/S) for the check, not the full word.
         actions = ''.join(sorted([leg.action[0] for leg in legs]))
         rights = ''.join(sorted([leg.right for leg in legs]))
-        # Normalize strikes from combo legs as well
         strikes = sorted([_normalize(leg.strike) for leg in legs])
         if len(legs) == 2:
             details['key_strikes'] = strikes
