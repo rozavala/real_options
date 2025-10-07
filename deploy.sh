@@ -13,6 +13,7 @@ source ~/Desktop/ib_env/bin/activate
 echo "--- 3. Installing/updating Python packages... ---"
 pip install -r requirements.txt
 
+
 echo "--- 4. Starting the new bot in the background... ---"
 nohup python -u ~/real_options/prob_coffee_options.py >> ~/real_options/logs/trading_bot.log 2>&1 &
 
