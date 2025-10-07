@@ -176,14 +176,13 @@ def get_prediction_from_api(config: dict, sorted_futures: list[Contract]) -> lis
 
     # 2. Send data to API and poll for results
     try:
-<<<<<<< HEAD
         # Reverted to sending data as a CSV string, as this was the original working format.
         # The original working script included the index, so we are removing `index=False`.
         data_df.reset_index(inplace=True)
-=======
+        
         # Convert the prepared DataFrame to a CSV string.
         # The index is now a simple integer index, which is what the API expects.
->>>>>>> fix-api-payload-format
+
         data_payload = data_df.tail(600).to_csv()
         request_body = {"data": data_payload}
 
