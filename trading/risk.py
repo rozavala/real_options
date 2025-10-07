@@ -14,8 +14,12 @@ def is_trade_sane(signal: dict, config: dict) -> bool:
     """
     min_confidence = config.get('risk_management', {}).get('min_confidence_threshold', 0.0)
 
-    if signal.get('confidence', 0.0) < min_confidence:
-        logging.warning(f"Sanity Check FAILED: Signal confidence {signal.get('confidence')} is below threshold {min_confidence}.")
+    # Get confidence, defaulting to 0.0 if it's missing or explicitly None
+    confidence = signal.get('confidence') or 0.0
+
+    if confidence < min_confidence:
+        original_confidence = signal.get('confidence', 'Not Provided')
+        logging.warning(f"Sanity Check FAILED: Signal confidence '{original_confidence}' is below threshold {min_confidence}.")
         return False
 
     logging.info("Sanity Check PASSED: Signal confidence is within acceptable limits.")
@@ -60,15 +64,23 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
             logging.info("--- Risk Monitor: Checking open positions ---")
 
             for p in active_positions:
-                # Calculate PnL per contract
-                pnl = await ib.reqPnLSingleAsync(account, '', p.contract.conId)
-                if util.isNan(pnl.unrealizedPnL):
+                # To get PnL for a single position, we must subscribe and wait for the update.
+                pnl_subscription = ib.reqPnLSingle(account, '', p.contract.conId)
+                # Wait a moment for the PnL data to arrive. This is a simple polling approach.
+                await asyncio.sleep(1)
+
+                pnl_data = pnl_subscription.pnl
+
+                # It's crucial to cancel the subscription to avoid receiving continuous updates.
+                ib.cancelPnLSingle(pnl_subscription)
+
+                if util.isNan(pnl_data.unrealizedPnL):
                     logging.warning(f"Could not get PnL for {p.contract.localSymbol}. Skipping risk check for this position.")
                     continue
 
                 # The cost basis is the total cost of the position
                 cost_basis_per_contract = p.avgCost
-                pnl_per_contract = pnl.unrealizedPnL / abs(p.position)
+                pnl_per_contract = pnl_data.unrealizedPnL / abs(p.position)
 
                 # Calculate the percentage change
                 if cost_basis_per_contract == 0:

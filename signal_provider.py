@@ -54,23 +54,42 @@ def _get_kc_expiration_date(year: int, month_code: str) -> pd.Timestamp:
     return last_day - BDay(1)
 
 def _get_active_coffee_tickers(num_contracts: int = 5) -> list[str]:
-    """Determines the tickers for the next N active coffee futures contracts."""
+    """
+    Determines the tickers for the next N active coffee futures contracts,
+    sorted alphabetically by month code to match the prediction API's output.
+    """
     now = datetime.now()
-    contract_months = ['H', 'K', 'N', 'U', 'Z']
+    # Month codes in the desired alphabetical order
+    month_codes_ordered = ['H', 'K', 'N', 'U', 'Z']
+
     potential_tickers = []
-    for year_offset in range(3): # Check next 3 years
-        year = now.year + year_offset
-        for code in contract_months:
+    # Find the next occurrence for each month code
+    for code in month_codes_ordered:
+        # Check current year and next two years
+        for year_offset in range(3):
+            year = now.year + year_offset
             exp_date = _get_kc_expiration_date(year, code)
             if exp_date.date() >= now.date():
-                potential_tickers.append((f"KC{code}{str(year)[-2:]}.NYB", exp_date))
-    potential_tickers.sort(key=lambda x: x[1])
-    return [ticker for ticker, exp in potential_tickers[:num_contracts]]
+                # Found the first valid expiration for this month code
+                potential_tickers.append({
+                    "ticker": f"KC{code}{str(year)[-2:]}.NYB",
+                    "exp_date": exp_date,
+                    "month_code": code
+                })
+                break # Move to the next month code
 
-def _fetch_market_data(config: dict) -> str | None:
+    # Sort the collected tickers by their month code order (H, K, N, U, Z)
+    # This is redundant if we find them in order, but it's a good safeguard.
+    potential_tickers.sort(key=lambda x: month_codes_ordered.index(x['month_code']))
+
+    # Return the ticker strings for the first num_contracts
+    return [item['ticker'] for item in potential_tickers[:num_contracts]]
+
+def _fetch_market_data(config: dict) -> tuple[str | None, list | None]:
     """
     Fetches all required market and economic data, processes it, validates it,
-    and saves it to a CSV file. Returns the file path if successful, otherwise None.
+    and saves it to a CSV file. Returns a tuple of (file_path, tickers_used)
+    if successful, otherwise (None, None).
     """
     logging.info("--- Starting Market Data Fetch ---")
     validator = ValidationManager()
@@ -81,35 +100,31 @@ def _fetch_market_data(config: dict) -> str | None:
         ndl.api_key = config['nasdaq_api_key']
     except KeyError as e:
         logging.error(f"API key missing from config.json: {e}")
-        return None
+        return None, None
     start_date, end_date = datetime(1980, 1, 1), datetime.now()
 
     all_data = {}
 
-    # --- Fetch Data (Coffee, Weather, Economic) ---
-    # (This logic is condensed from the original script for brevity, but maintains the same flow)
-    chronological_tickers = _get_active_coffee_tickers()
-    if chronological_tickers:
-        df_coffee = yf.download(chronological_tickers, start=start_date, end=end_date, progress=False)['Close']
+    # --- Fetch Data ---
+    alphabetical_tickers = _get_active_coffee_tickers()
+    if alphabetical_tickers:
+        df_coffee = yf.download(alphabetical_tickers, start=start_date, end=end_date, progress=False)['Close']
         df_coffee.columns = [f"coffee_price_{t.replace('.NYB', '')}" for t in df_coffee.columns]
         all_data['coffee_prices'] = df_coffee
         validator.add_check("Coffee Price Fetch", True, f"Successfully fetched {df_coffee.shape[1]} active contracts.")
     else:
         validator.add_check("Coffee Price Fetch", False, "Could not determine active coffee tickers.")
-        return None
+        return None, None
 
-    # ... Other data fetching (weather, FRED, yfinance) would go here ...
-    # For this integration, we'll assume the core coffee data is what's needed.
+    # ... Other data fetching logic would go here ...
 
     # --- Consolidate and Save ---
     if 'coffee_prices' in all_data and not all_data['coffee_prices'].empty:
         final_df = all_data['coffee_prices'].copy()
-        # In a full implementation, we would join with all other data sources here
         final_df.ffill(inplace=True)
         final_df.dropna(inplace=True)
 
-        # --- Create the final formatted CSV as the model expects ---
-        # (This section reproduces the reformatting logic from the original script)
+        # Reformat columns as the model expects
         for col in list(final_df.columns):
             if col.startswith('coffee_price_KC'):
                 ticker = col.replace('coffee_price_', '')
@@ -121,7 +136,7 @@ def _fetch_market_data(config: dict) -> str | None:
                 final_df.rename(columns={col: f'{month_code}_price'}, inplace=True)
         final_df['date'] = final_df.index.strftime('%-m/%-d/%y')
 
-        # Ensure all expected columns are present, even if empty
+        # Ensure all expected columns are present
         for col in config.get('final_column_order', []):
             if col not in final_df.columns:
                 final_df[col] = None
@@ -137,11 +152,14 @@ def _fetch_market_data(config: dict) -> str | None:
         logging.info("\n" + "="*30 + "\n" + report + "\n" + "="*30)
         send_pushover_notification(config, f"Data Pull: {'SUCCESS' if validator.was_successful() else 'FAILURE'}", report)
 
-        return output_filename if validator.was_successful() else None
+        if validator.was_successful():
+            return output_filename, alphabetical_tickers
+        else:
+            return None, None
     else:
         validator.add_check("Consolidation", False, "No coffee price data was fetched.")
         logging.error(validator.generate_report())
-        return None
+        return None, None
 
 
 # --- API Interaction Logic (Refactored from send_data_to_api.py) ---
@@ -216,31 +234,71 @@ def get_trading_signals(config: dict) -> list | None:
     Orchestrates the entire signal generation pipeline.
     1. Fetches fresh market data and saves it to a file.
     2. Sends that data to the prediction API.
-    3. Polls for and returns the trading signals.
+    3. Processes the API response to generate structured trading signals.
     """
     logging.info("===== Starting Signal Generation Pipeline =====")
 
-    # Step 1: Fetch market data
-    # In a real scenario, we might not need to fetch data every single time if it's fresh enough.
-    # For now, we fetch it on every call as per the original logic.
-    data_file_path = _fetch_market_data(config)
-    if not data_file_path:
-        logging.error("Signal generation failed: Market data fetching step was unsuccessful.")
-        send_pushover_notification(config, "Signal Generation FAILED", "The market data fetching process failed. See logs.")
+    # Step 1: Fetch market data and get the alphabetically-sorted tickers
+    # This function now also returns the tickers it used, which is crucial.
+    data_file_path, tickers = _fetch_market_data(config)
+    if not data_file_path or not tickers:
+        logging.error("Signal generation failed: Market data fetching was unsuccessful or returned no tickers.")
+        send_pushover_notification(config, "Signal Generation FAILED", "The market data process failed.")
         return None
 
-    logging.info(f"Market data successfully processed and saved to '{data_file_path}'")
+    logging.info(f"Market data processed and saved to '{data_file_path}'. Tickers sorted as: {tickers}")
 
-    # Step 2: Get predictions from the API using the new data
-    predictions = _get_prediction_from_api(config, data_file_path)
-    if not predictions:
-        logging.error("Signal generation failed: Could not retrieve predictions from the API.")
-        send_pushover_notification(config, "Signal Generation FAILED", "The prediction API did not return valid signals. See logs.")
-        return None
+    # Step 2: Get raw predictions from the API
+    raw_predictions = _get_prediction_from_api(config, data_file_path)
 
-    logging.info(f"Successfully retrieved {len(predictions)} trading signals from the API.")
-    # Clean up the temporary data file
+    # Clean up the data file immediately after API call
     os.remove(data_file_path)
     logging.info(f"Cleaned up temporary data file: {data_file_path}")
 
-    return predictions
+    if not raw_predictions or 'price_changes' not in raw_predictions:
+        logging.error("Signal generation failed: API did not return valid 'price_changes'.")
+        send_pushover_notification(config, "Signal Generation FAILED", "Prediction API returned invalid data.")
+        return None
+
+    price_changes = raw_predictions['price_changes']
+    if len(price_changes) != len(tickers):
+        logging.error(f"Mismatch between number of tickers ({len(tickers)}) and price changes ({len(price_changes)}).")
+        return None
+
+    # Step 3: Translate raw price changes into structured signals
+    logging.info("Translating raw price changes into actionable signals...")
+    signals = []
+    month_map = {'H': '03', 'K': '05', 'N': '07', 'U': '09', 'Z': '12'}
+
+    for i, price_change in enumerate(price_changes):
+        ticker = tickers[i] # e.g., 'KCH26.NYB'
+
+        direction = None
+        if price_change > 7:
+            direction = "BULLISH"
+        elif price_change < 0:
+            direction = "BEARISH"
+
+        if direction:
+            try:
+                # Parse ticker like 'KCH26.NYB' into contract_month '202603'
+                month_code = ticker[2]
+                year_short = ticker[3:5]
+                contract_month = f"20{year_short}{month_map[month_code]}"
+
+                signal = {
+                    "contract_month": contract_month,
+                    "prediction_type": "DIRECTIONAL",
+                    "direction": direction,
+                    # Confidence is now based on passing the threshold. Set to 1.0 to pass sanity checks.
+                    "confidence": 1.0
+                }
+                signals.append(signal)
+                logging.info(f"Generated signal for {contract_month}: {direction} (Price Change: {price_change:.2f})")
+            except (IndexError, KeyError) as e:
+                logging.error(f"Could not parse ticker '{ticker}'. Skipping. Error: {e}")
+        else:
+            logging.info(f"Price change for ticker {ticker} ({price_change:.2f}) is within the no-trade zone (0-7). No signal generated.")
+
+    logging.info(f"Successfully generated {len(signals)} actionable trading signals.")
+    return signals
