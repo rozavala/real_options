@@ -597,6 +597,9 @@ async def close_orphaned_single_legs(ib: IB, config: dict):
         for orphan in orphans_found:
             try:
                 contract_to_close = orphan.contract
+                # Qualify the contract to ensure it has all necessary details, like the exchange.
+                await ib.qualifyContractsAsync(contract_to_close)
+
                 action = 'BUY' if orphan.position < 0 else 'SELL'
                 quantity = abs(orphan.position)
 
@@ -780,7 +783,7 @@ async def main_runner():
             await asyncio.sleep(5)
 
             # Get signals based on the alphabetically sorted futures list
-            signals = get_prediction_from_api(config.get('api_base_url'), active_futures_sorted)
+            signals = get_prediction_from_api(config, active_futures_sorted)
             if not signals:
                 logging.warning("Could not get a valid signal list from the API. Waiting for next cycle.")
                 await asyncio.sleep(300)
