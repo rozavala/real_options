@@ -472,6 +472,25 @@ def log_trade_to_ledger(trade: Trade, reason: str = "Strategy Execution"):
         logging.error(f"Error writing to trade ledger: {e}")
 
 async def wait_for_fill(ib: IB, trade: Trade, config: dict, timeout: int = 180, reason: str = "Strategy Execution"):
+    """
+    Waits for a trade to fill. In simulation mode, it places the order,
+    waits briefly, and then cancels it to simulate the execution flow.
+    """
+    if config.get('simulation_mode', False):
+        logging.info(f"SIMULATION MODE: Simulating order placement for {trade.contract.localSymbol} (Order ID: {trade.order.orderId}).")
+        send_notification(
+            config,
+            "Simulated Order",
+            f"Simulated order placed for {trade.contract.localSymbol}. "
+            f"It will be canceled shortly as part of the test."
+        )
+        # Wait a moment to ensure the order is transmitted before canceling.
+        await asyncio.sleep(2)
+        logging.info(f"SIMULATION MODE: Canceling simulated order {trade.order.orderId}.")
+        ib.cancelOrder(trade.order)
+        # The trade object will update its status to 'Cancelled' automatically.
+        return
+
     logging.info(f"Waiting for order {trade.order.orderId} to fill...")
     start_time = time.time()
     while not trade.isDone():
@@ -485,7 +504,15 @@ async def wait_for_fill(ib: IB, trade: Trade, config: dict, timeout: int = 180, 
         log_trade_to_ledger(trade, reason)
 
 
-def is_market_open(contract_details, exchange_timezone_str: str):
+def is_market_open(contract_details, exchange_timezone_str: str, config: dict):
+    """
+    Checks if the market is open. If simulation_mode is true in the config,
+    it will always return True.
+    """
+    if config.get('simulation_mode', False):
+        logging.info("SIMULATION MODE: Forcing market open status to True.")
+        return True
+
     if not contract_details or not contract_details.liquidHours: return False
     tz = pytz.timezone(exchange_timezone_str)
     now_tz = datetime.now(tz)
@@ -792,7 +819,7 @@ async def main_runner():
             if not first_future_details_list:
                 raise ConnectionError("Could not get contract details to check market hours.")
 
-            if not is_market_open(first_future_details_list[0], config['exchange_timezone']):
+            if not is_market_open(first_future_details_list[0], config['exchange_timezone'], config):
                 await asyncio.sleep(calculate_wait_until_market_open(first_future_details_list[0], config['exchange_timezone']))
                 continue
 
