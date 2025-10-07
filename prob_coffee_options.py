@@ -169,6 +169,7 @@ def get_prediction_from_api(config: dict, sorted_futures: list[Contract]) -> lis
 
     # 2. Send data to API and poll for results
     try:
+        # Reverted to sending data as a CSV string, as this was the original working format.
         data_payload = data_df.tail(600).to_csv(index=False)
         request_body = {"data": data_payload}
 
@@ -600,19 +601,23 @@ async def close_orphaned_single_legs(ib: IB, config: dict):
 
         for orphan in orphans_found:
             try:
-                contract_to_close = orphan.contract
-                # Qualify the contract to ensure it has all necessary details, like the exchange.
-                await ib.qualifyContractsAsync(contract_to_close)
+                # Create a new, clean contract object for the order to avoid conflicts.
+                c = orphan.contract
+                normalized_strike = c.strike / 100.0 if c.strike > 100 else c.strike
 
-                # FIX: Manually normalize strike price if it appears to be in cents format
-                if contract_to_close.strike > 100:
-                    logging.warning(f"Normalizing strike for {contract_to_close.localSymbol} from {contract_to_close.strike} to {contract_to_close.strike / 100.0}")
-                    contract_to_close.strike = contract_to_close.strike / 100.0
+                contract_to_close = FuturesOption(
+                    symbol=c.symbol,
+                    lastTradeDateOrContractMonth=c.lastTradeDateOrContractMonth,
+                    strike=normalized_strike,
+                    right=c.right,
+                    exchange=c.exchange,
+                    tradingClass=c.tradingClass
+                )
 
                 action = 'BUY' if orphan.position < 0 else 'SELL'
                 quantity = abs(orphan.position)
 
-                logging.info(f"Placing market order to {action} {quantity} of {contract_to_close.localSymbol}...")
+                logging.info(f"Placing market order to {action} {quantity} of {c.localSymbol} with normalized strike {normalized_strike}...")
                 order = MarketOrder(action, quantity)
                 trade = ib.placeOrder(contract_to_close, order)
 
