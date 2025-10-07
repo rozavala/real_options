@@ -137,13 +137,20 @@ def _fetch_and_prepare_data_for_api(config: dict) -> pd.DataFrame | None:
                 final_df[f'{month_code}_dte'] = (exp.tz_localize(None) - final_df.index).days
                 final_df.rename(columns={col: f'{month_code}_price'}, inplace=True)
 
+        # Create the date column in the specific string format required by the API
+        final_df['date'] = final_df.index.strftime('%-m/%-d/%y')
+
         # Ensure all required columns exist, even if null
         for col in config.get('final_column_order', []):
             if col not in final_df.columns:
                 final_df[col] = None
 
+        # Order columns and reset the index to get the default integer index
+        final_df = final_df[config['final_column_order']]
+        final_df.reset_index(drop=True, inplace=True)
+
         logging.info("Data aggregation for API successful.")
-        return final_df[config['final_column_order']]
+        return final_df
 
     except Exception as e:
         logging.error(f"An error occurred during data aggregation: {e}", exc_info=True)
@@ -169,9 +176,14 @@ def get_prediction_from_api(config: dict, sorted_futures: list[Contract]) -> lis
 
     # 2. Send data to API and poll for results
     try:
+<<<<<<< HEAD
         # Reverted to sending data as a CSV string, as this was the original working format.
         # The original working script included the index, so we are removing `index=False`.
         data_df.reset_index(inplace=True)
+=======
+        # Convert the prepared DataFrame to a CSV string.
+        # The index is now a simple integer index, which is what the API expects.
+>>>>>>> fix-api-payload-format
         data_payload = data_df.tail(600).to_csv()
         request_body = {"data": data_payload}
 
