@@ -188,18 +188,22 @@ def get_prediction_from_api(config: dict, sorted_futures: list[Contract]) -> lis
 
         raw_predictions = None
         while time.time() - start_time < timeout_seconds:
-            logging.info(f"Polling for result (Job ID: {job_id})...")
-            result_response = requests.get(result_url, timeout=10)
-            result_response.raise_for_status()
-            status_info = result_response.json()
+            try:
+                logging.info(f"Polling for result (Job ID: {job_id})...")
+                result_response = requests.get(result_url, timeout=10)
+                result_response.raise_for_status()
+                status_info = result_response.json()
 
-            if status_info.get('status') == 'completed':
-                raw_predictions = status_info.get('result')
-                break
-            elif status_info.get('status') == 'failed':
-                logging.error(f"Prediction job failed. Reason: {status_info.get('error')}")
+                if status_info.get('status') == 'completed':
+                    raw_predictions = status_info.get('result')
+                    break
+                elif status_info.get('status') == 'failed':
+                    logging.error(f"Prediction job failed on server. Reason: {status_info.get('error')}")
+                    return None
+                time.sleep(10)
+            except requests.exceptions.HTTPError as e:
+                logging.error(f"Prediction server returned an HTTP error while polling job {job_id}: {e}")
                 return None
-            time.sleep(10)
 
         if not raw_predictions:
             logging.error("Polling timed out. The prediction job took too long.")
@@ -599,6 +603,11 @@ async def close_orphaned_single_legs(ib: IB, config: dict):
                 contract_to_close = orphan.contract
                 # Qualify the contract to ensure it has all necessary details, like the exchange.
                 await ib.qualifyContractsAsync(contract_to_close)
+
+                # FIX: Manually normalize strike price if it appears to be in cents format
+                if contract_to_close.strike > 100:
+                    logging.warning(f"Normalizing strike for {contract_to_close.localSymbol} from {contract_to_close.strike} to {contract_to_close.strike / 100.0}")
+                    contract_to_close.strike = contract_to_close.strike / 100.0
 
                 action = 'BUY' if orphan.position < 0 else 'SELL'
                 quantity = abs(orphan.position)
