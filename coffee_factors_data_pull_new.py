@@ -263,6 +263,9 @@ def main():
     notification_title = f"Coffee Data Pull: {'SUCCESS' if validator.was_successful() else 'FAILURE'}"
     send_pushover_notification(config.get('notifications', {}), notification_title, report)
 
+    return validator.was_successful()
+
+
 if __name__ == "__main__":
     main()
 
