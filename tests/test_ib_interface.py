@@ -45,12 +45,12 @@ class TestIbInterface(unittest.TestCase):
             ib = MagicMock()
             future_contract = Future(conId=1, symbol='KC', lastTradeDateOrContractMonth='202512', exchange='NYBOT')
 
-            # Mock the option chain response
+            # Mock the option chain response with magnified strikes
             mock_chain = MagicMock()
             mock_chain.exchange = 'NYBOT'
             mock_chain.tradingClass = 'KCO'
             mock_chain.expirations = ['20251120', '20251220']
-            mock_chain.strikes = [3.4, 3.5, 3.6]
+            mock_chain.strikes = [340.0, 350.0, 360.0] # Magnified strikes
 
             ib.reqSecDefOptParamsAsync = AsyncMock(return_value=[mock_chain])
 
@@ -59,7 +59,8 @@ class TestIbInterface(unittest.TestCase):
             self.assertIsNotNone(chain)
             self.assertEqual(chain['exchange'], 'NYBOT')
             self.assertIn('20251120', chain['expirations'])
-            self.assertIn(3.5, chain['strikes_by_expiration']['20251120'])
+            # Assert that the strikes have been normalized
+            self.assertEqual(chain['strikes_by_expiration']['20251120'], [3.4, 3.5, 3.6])
 
         asyncio.run(run_test())
 

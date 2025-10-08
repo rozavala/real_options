@@ -8,6 +8,13 @@ import numpy as np
 from scipy.stats import norm
 
 
+def normalize_strike(strike: float) -> float:
+    """Normalizes the strike price if it's magnified by 100."""
+    if strike > 100:
+        return strike / 100.0
+    return strike
+
+
 def price_option_black_scholes(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> dict | None:
     """Calculates the theoretical price and Greeks of an option using the Black-Scholes model."""
     if T <= 0 or sigma <= 0:
@@ -42,7 +49,7 @@ async def get_position_details(ib: IB, position: Position) -> dict:
 
     if isinstance(contract, FuturesOption):
         details['type'] = 'SINGLE_LEG'
-        details['key_strikes'].append(contract.strike)
+        details['key_strikes'].append(normalize_strike(contract.strike))
         return details
 
     if not isinstance(contract, Bag):
@@ -69,7 +76,7 @@ async def get_position_details(ib: IB, position: Position) -> dict:
     # Now we can determine the strategy type
     actions = ''.join(sorted([leg.action[0] for leg in contract.comboLegs]))
     rights = ''.join(sorted([c.right for c in leg_contracts]))
-    strikes = sorted([c.strike for c in leg_contracts])
+    strikes = sorted([normalize_strike(c.strike) for c in leg_contracts])
 
     if len(leg_contracts) == 2:
         details['key_strikes'] = strikes

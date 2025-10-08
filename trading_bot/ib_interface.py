@@ -5,7 +5,7 @@ from datetime import datetime
 
 from ib_insync import *
 
-from trading_bot.utils import price_option_black_scholes, log_trade_to_ledger
+from trading_bot.utils import price_option_black_scholes, log_trade_to_ledger, normalize_strike
 
 
 async def get_option_market_data(ib: IB, contract: Contract) -> dict | None:
@@ -49,7 +49,7 @@ async def build_option_chain(ib: IB, future_contract: Contract):
         chains = await ib.reqSecDefOptParamsAsync(future_contract.symbol, future_contract.exchange, 'FUT', future_contract.conId)
         if not chains: return None
         chain = next((c for c in chains if c.exchange == future_contract.exchange), chains[0])
-        return {'exchange': chain.exchange, 'tradingClass': chain.tradingClass, 'expirations': sorted(chain.expirations), 'strikes_by_expiration': {exp: sorted(chain.strikes) for exp in chain.expirations}}
+        return {'exchange': chain.exchange, 'tradingClass': chain.tradingClass, 'expirations': sorted(chain.expirations), 'strikes_by_expiration': {exp: sorted([normalize_strike(s) for s in chain.strikes]) for exp in chain.expirations}}
     except Exception as e:
         logging.error(f"Failed to build option chain for {future_contract.localSymbol}: {e}"); return None
 
