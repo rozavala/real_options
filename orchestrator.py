@@ -106,8 +106,8 @@ async def main():
 
     # Schedule mapping run times (GMT) to functions
     schedule = {
-        time(8, 0): lambda: run_trading_cycle(config),  # Pre-market alignment
-        time(22, 0): lambda: analyze_performance(config) # End-of-day report
+        time(8, 0): run_trading_cycle,
+        time(22, 0): analyze_performance
     }
 
     while True:
@@ -126,9 +126,9 @@ async def main():
 
             logger.info(f"--- Running scheduled task: {task_name} ---")
             if asyncio.iscoroutinefunction(next_task_func):
-                await next_task_func()
+                await next_task_func(config)
             else:
-                next_task_func()
+                next_task_func(config)
 
         except Exception as e:
             error_msg = f"A critical error occurred in the main orchestrator loop: {e}\n{traceback.format_exc()}"
