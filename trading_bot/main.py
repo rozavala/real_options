@@ -11,7 +11,7 @@ from notifications import send_pushover_notification
 from trading_bot.ib_interface import get_active_futures, build_option_chain
 from trading_bot.risk_management import manage_existing_positions, monitor_positions_for_risk
 from trading_bot.strategy import execute_directional_strategy, execute_volatility_strategy
-from trading_bot.utils import is_market_open
+from trading_bot.utils import is_market_open, normalize_strike
 
 # --- Logging Setup ---
 # Logging is now handled by the orchestrator, which captures stdout.
@@ -75,7 +75,9 @@ async def main_runner(config: dict, signals: list = None):
             if util.isNan(price):
                 logging.error(f"Failed to get market price for {future.localSymbol}."); continue
 
-            logging.info(f"Current price for {future.localSymbol}: {price}")
+            price = normalize_strike(price)
+
+            logging.info(f"Current normalized price for {future.localSymbol}: {price}")
 
             # Step 1: Align portfolio. This will close any misaligned or orphaned positions.
             should_open_new_trade = await manage_existing_positions(ib, config, signal, price, future)
