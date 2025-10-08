@@ -94,10 +94,9 @@ class TestRiskManagement(unittest.TestCase):
 
         asyncio.run(run_test())
 
-    def test_monitor_positions_stop_loss(self):
+    def test_check_risk_once_stop_loss(self):
         async def run_test():
             ib = AsyncMock()
-            # Configure synchronous methods on the AsyncMock
             ib.isConnected = MagicMock(return_value=True)
             ib.managedAccounts = MagicMock(return_value=['DU12345'])
             ib.placeOrder = MagicMock()
@@ -105,37 +104,100 @@ class TestRiskManagement(unittest.TestCase):
             config = {
                 'notifications': {},
                 'risk_management': {
-                    'stop_loss_per_contract_usd': 50,
-                    'take_profit_per_contract_usd': 5000,
+                    'stop_loss_pct': 0.20,
+                    'take_profit_pct': 3.00,
                 }
             }
 
             # --- Mock position and PnL ---
-            contract = Contract(conId=123, symbol='KC')
-            position = Position(account='TestAccount', contract=contract, position=1, avgCost=0)
+            # Entry cost = 1 * 1.0 * 37500 = 37500
+            # Stop loss trigger = -0.20 * 37500 = -7500
+            contract = Contract(conId=123, symbol='KC', multiplier='37500')
+            position = Position(account='TestAccount', contract=contract, position=1, avgCost=1.0)
 
-            # Use a simple mock for the PnL object to avoid constructor issues
             mock_pnl = MagicMock(spec=PnLSingle)
-            mock_pnl.unrealizedPnL = -60.0
+            mock_pnl.unrealizedPnL = -8000.0  # Breached stop-loss
 
             ib.reqPositionsAsync.return_value = [position]
-            # reqPnLSingle is a synchronous method, so it needs a synchronous mock
             ib.reqPnLSingle = MagicMock(return_value=mock_pnl)
-            ib.qualifyContractsAsync = AsyncMock() # Ensure this is awaitable
 
             closed_ids = set()
-            stop_loss = config['risk_management']['stop_loss_per_contract_usd']
-            take_profit = config['risk_management']['take_profit_per_contract_usd']
+            stop_loss_pct = config['risk_management']['stop_loss_pct']
+            take_profit_pct = config['risk_management']['take_profit_pct']
 
-            with patch('trading_bot.risk_management.wait_for_fill', new_callable=AsyncMock) as mock_wait, \
-                 patch('trading_bot.risk_management.send_pushover_notification') as mock_notification:
+            with patch('trading_bot.risk_management.wait_for_fill', new_callable=AsyncMock):
+                await _check_risk_once(ib, config, closed_ids, stop_loss_pct, take_profit_pct)
 
-                # Call the testable helper function directly
-                await _check_risk_once(ib, config, closed_ids, stop_loss, take_profit)
-
-            # An order should have been placed to close the position
             ib.placeOrder.assert_called_once()
             self.assertEqual(ib.placeOrder.call_args[0][1].action, 'SELL')
+
+        asyncio.run(run_test())
+
+    def test_check_risk_once_take_profit(self):
+        async def run_test():
+            ib = AsyncMock()
+            ib.isConnected = MagicMock(return_value=True)
+            ib.managedAccounts = MagicMock(return_value=['DU12345'])
+            ib.placeOrder = MagicMock()
+
+            config = {
+                'notifications': {},
+                'risk_management': {
+                    'stop_loss_pct': 0.20,
+                    'take_profit_pct': 3.00,
+                }
+            }
+            # Entry cost = 1 * 1.0 * 37500 = 37500
+            # Take profit trigger = 3.00 * 37500 = 112500
+            contract = Contract(conId=123, symbol='KC', multiplier='37500')
+            position = Position(account='TestAccount', contract=contract, position=1, avgCost=1.0)
+
+            mock_pnl = MagicMock(spec=PnLSingle)
+            mock_pnl.unrealizedPnL = 120000.0  # Breached take-profit
+
+            ib.reqPositionsAsync.return_value = [position]
+            ib.reqPnLSingle = MagicMock(return_value=mock_pnl)
+
+            closed_ids = set()
+            stop_loss_pct = config['risk_management']['stop_loss_pct']
+            take_profit_pct = config['risk_management']['take_profit_pct']
+
+            with patch('trading_bot.risk_management.wait_for_fill', new_callable=AsyncMock):
+                await _check_risk_once(ib, config, closed_ids, stop_loss_pct, take_profit_pct)
+
+            ib.placeOrder.assert_called_once()
+
+        asyncio.run(run_test())
+
+    def test_check_risk_once_no_trigger(self):
+        async def run_test():
+            ib = AsyncMock()
+            ib.isConnected = MagicMock(return_value=True)
+            ib.managedAccounts = MagicMock(return_value=['DU12345'])
+            ib.placeOrder = MagicMock()
+
+            config = {
+                'risk_management': {
+                    'stop_loss_pct': 0.20,
+                    'take_profit_pct': 3.00,
+                }
+            }
+            contract = Contract(conId=123, symbol='KC', multiplier='37500')
+            position = Position(account='TestAccount', contract=contract, position=1, avgCost=1.0)
+
+            mock_pnl = MagicMock(spec=PnLSingle)
+            mock_pnl.unrealizedPnL = 1000.0  # No trigger
+
+            ib.reqPositionsAsync.return_value = [position]
+            ib.reqPnLSingle = MagicMock(return_value=mock_pnl)
+
+            closed_ids = set()
+            stop_loss_pct = config['risk_management']['stop_loss_pct']
+            take_profit_pct = config['risk_management']['take_profit_pct']
+
+            await _check_risk_once(ib, config, closed_ids, stop_loss_pct, take_profit_pct)
+
+            ib.placeOrder.assert_not_called()
 
         asyncio.run(run_test())
 

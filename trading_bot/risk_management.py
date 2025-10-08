@@ -69,7 +69,7 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
     return True
 
 
-async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss: float, take_profit: float):
+async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct: float, take_profit_pct: float):
     """Helper function to perform a single iteration of the risk check."""
     if not ib.isConnected():
         return
@@ -86,12 +86,31 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss: flo
             logging.warning(f"Could not get PnL for {p.contract.localSymbol}. Skipping risk check.")
             continue
 
-        pnl_per_contract = pnl.unrealizedPnL / abs(p.position)
-        logging.info(f"Position {p.contract.localSymbol}: Unrealized PnL/Contract = ${pnl_per_contract:.2f}")
-        reason = "Stop-Loss" if stop_loss and pnl_per_contract < -abs(stop_loss) else "Take-Profit" if take_profit and pnl_per_contract > abs(take_profit) else None
+        try:
+            multiplier = float(p.contract.multiplier) if p.contract.multiplier else 37500.0
+        except (ValueError, TypeError):
+            multiplier = 37500.0
+            logging.warning(f"Could not parse multiplier for {p.contract.localSymbol}. Defaulting to {multiplier}.")
+
+        total_entry_cost = abs(p.position * p.avgCost * multiplier)
+
+        if total_entry_cost == 0:
+            logging.info(f"Position {p.contract.localSymbol} has zero entry cost. Skipping P&L percentage check.")
+            continue
+
+        pnl_percentage = pnl.unrealizedPnL / total_entry_cost
+        logging.info(f"Position {p.contract.localSymbol}: Entry Cost=${total_entry_cost:.2f}, "
+                     f"Unrealized PnL=${pnl.unrealizedPnL:.2f} ({pnl_percentage:+.2%})")
+
+        reason = None
+        if stop_loss_pct and pnl_percentage <= -abs(stop_loss_pct):
+            reason = "Stop-Loss"
+        elif take_profit_pct and pnl_percentage >= abs(take_profit_pct):
+            reason = "Take-Profit"
+
         if reason:
-            logging.info(f"{reason.upper()} TRIGGERED for {p.contract.localSymbol}. PnL/contract: ${pnl_per_contract:.2f}")
-            send_pushover_notification(config, reason, f"{p.contract.localSymbol} closed. PnL/contract: ${pnl_per_contract:.2f}")
+            logging.info(f"{reason.upper()} TRIGGERED for {p.contract.localSymbol} at {pnl_percentage:+.2%}")
+            send_pushover_notification(config, reason, f"{p.contract.localSymbol} closed at {pnl_percentage:+.2%}")
 
             # Create a new, clean contract object just for closing the trade
             contract_to_close = Contract(conId=p.contract.conId)
@@ -109,14 +128,17 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss: flo
 
 async def monitor_positions_for_risk(ib: IB, config: dict):
     risk_params = config.get('risk_management', {})
-    stop_loss, take_profit, interval = risk_params.get('stop_loss_per_contract_usd'), risk_params.get('take_profit_per_contract_usd'), risk_params.get('check_interval_seconds', 300)
-    if not stop_loss and not take_profit:
+    stop_loss_pct = risk_params.get('stop_loss_pct')
+    take_profit_pct = risk_params.get('take_profit_pct')
+    interval = risk_params.get('check_interval_seconds', 300)
+
+    if not stop_loss_pct and not take_profit_pct:
         return
-    logging.info(f"Starting intraday risk monitor. Stop: ${stop_loss}, Profit: ${take_profit}")
+    logging.info(f"Starting intraday risk monitor. Stop: {stop_loss_pct:.0%}, Profit: {take_profit_pct:.0%}")
     closed_ids = set()
     while True:
         try:
-            await _check_risk_once(ib, config, closed_ids, stop_loss, take_profit)
+            await _check_risk_once(ib, config, closed_ids, stop_loss_pct, take_profit_pct)
             await asyncio.sleep(interval)
         except Exception as e:
             logging.error(f"Error in risk monitor loop: {e}")
