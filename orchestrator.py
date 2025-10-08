@@ -101,7 +101,7 @@ async def main():
 
     # Schedule mapping run times (GMT) to functions
     schedule = {
-        time(8, 0): run_trading_cycle,
+        time(17, 14): run_trading_cycle,
         time(22, 0): analyze_performance
     }
 
