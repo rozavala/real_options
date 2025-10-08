@@ -101,6 +101,7 @@ class TestRiskManagement(unittest.TestCase):
             ib.managedAccounts = MagicMock(return_value=['DU12345'])
             ib.placeOrder = MagicMock()
             ib.qualifyContractsAsync = AsyncMock()
+            ib.cancelPnLSingle = MagicMock()
 
             config = {
                 'notifications': {},
@@ -143,6 +144,7 @@ class TestRiskManagement(unittest.TestCase):
             ib.managedAccounts = MagicMock(return_value=['DU12345'])
             ib.placeOrder = MagicMock()
             ib.qualifyContractsAsync = AsyncMock()
+            ib.cancelPnLSingle = MagicMock()
 
             config = {
                 'notifications': {},

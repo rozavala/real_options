@@ -1,3 +1,12 @@
+"""Standalone script for monitoring open trading positions for risk.
+
+This script serves as the main entry point for the intraday risk monitoring
+process. It runs as a separate, long-lived process, managed by the main
+orchestrator. Its sole responsibility is to connect to Interactive Brokers
+and run the `monitor_positions_for_risk` function, which continuously checks
+open positions against configured stop-loss and take-profit thresholds.
+"""
+
 import asyncio
 import logging
 import random
@@ -17,9 +26,16 @@ logger = logging.getLogger(__name__)
 
 
 async def main():
-    """
-    Main entry point for the position monitoring script.
-    Connects to IB and starts the risk monitoring loop.
+    """Main entry point for the position monitoring script.
+
+    This function performs the following steps:
+    1. Loads the application configuration.
+    2. Establishes a connection to the Interactive Brokers Gateway/TWS using a
+       dedicated client ID.
+    3. Sets up signal handlers for graceful shutdown (SIGINT, SIGTERM).
+    4. Starts and awaits the `monitor_positions_for_risk` task, which contains
+       the main risk monitoring loop.
+    5. Ensures disconnection and task cancellation on shutdown or error.
     """
     config = load_config()
     if not config:
@@ -28,8 +44,15 @@ async def main():
 
     ib = IB()
 
-    async def shutdown(sig):
-        """Graceful shutdown handler."""
+    async def shutdown(sig: signal.Signals):
+        """Handles graceful shutdown on receiving a signal.
+
+        This function logs the shutdown signal, cancels all running asyncio
+        tasks, and disconnects from the IB Gateway.
+
+        Args:
+            sig (signal.Signals): The signal that triggered the shutdown.
+        """
         logger.info(f"Received shutdown signal: {sig.name}. Disconnecting from IB...")
         if ib.isConnected():
             ib.disconnect()
@@ -49,7 +72,8 @@ async def main():
         conn_settings = config.get('connection', {})
         host = conn_settings.get('host', '127.0.0.1')
         port = conn_settings.get('port', 7497)
-        client_id = conn_settings.get('clientId', 10) + 1  # Use a different client ID
+        # Use a client ID offset from the main one to avoid conflicts
+        client_id = conn_settings.get('clientId', 10) + 1
 
         logger.info(f"Connecting to {host}:{port} with client ID {client_id} for monitoring...")
         await ib.connectAsync(host, port, clientId=client_id)
@@ -59,7 +83,7 @@ async def main():
             "The position monitoring service has started and is now watching open positions."
         )
 
-        # Start the monitoring loop
+        # Start the main risk monitoring loop
         monitor_task = asyncio.create_task(monitor_positions_for_risk(ib, config))
         await monitor_task
 

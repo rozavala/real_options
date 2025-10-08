@@ -1,3 +1,14 @@
+"""Client script for interacting with the prediction API.
+
+This script is responsible for sending data to the prediction service and
+retrieving the results. It performs the following steps:
+1. Finds the most recent coffee futures data file in the project directory.
+2. Reads the data and sends it to the `/predictions` endpoint of the API.
+3. Polls the status URL provided in the initial API response until the
+   prediction job is completed or fails.
+4. Logs the final result or any errors that occur during the process.
+"""
+
 import requests
 import time
 import os
@@ -13,10 +24,24 @@ from logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger("APIAgent")
 
-DATA_FILE_PATH = os.path.dirname(os.path.abspath(__file__)) # Directory of this script
+# The directory where this script is located, used to find the data file.
+DATA_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+
 
 def find_latest_data_file(directory: str) -> str | None:
-    """Finds the most recently created coffee data CSV in the specified directory."""
+    """Finds the most recently created coffee data CSV in a directory.
+
+    It scans the given directory for files matching the pattern
+    'coffee_futures_data_*.csv' and returns the path to the one with the
+    most recent modification time.
+
+    Args:
+        directory (str): The absolute path to the directory to search.
+
+    Returns:
+        The full path to the latest data file, or None if no matching
+        file is found or an error occurs.
+    """
     try:
         files = [
             os.path.join(directory, f)
@@ -25,16 +50,30 @@ def find_latest_data_file(directory: str) -> str | None:
         ]
         if not files:
             return None
-        # This is more robust as it finds the latest file, even if not from today
+        # Return the file with the latest modification time.
         return max(files, key=os.path.getmtime)
     except OSError as e:
         print(f"Error accessing directory {directory}: {e}")
         return None
 
-def send_data_and_get_prediction(config: dict):
-    """
-    Finds the latest data, sends it to the prediction API, and polls for the result.
-    The API endpoint is determined by the 'api_base_url' in the config.
+
+def send_data_and_get_prediction(config: dict) -> dict | None:
+    """Sends data to the prediction API and polls for the result.
+
+    This function orchestrates the entire client-side prediction workflow.
+    It finds the latest data file, sends its content to the API to start a
+    prediction job, and then polls the job status endpoint until a result
+is
+    available or a timeout is reached.
+
+    Args:
+        config (dict): The application configuration dictionary, which must
+            contain the 'api_base_url'.
+
+    Returns:
+        A dictionary containing the prediction result if the job completes
+        successfully. Returns None if any step fails, including API errors,
+        timeouts, or file-not-found issues.
     """
     api_base_url = config.get('api_base_url')
     if not api_base_url:
@@ -53,6 +92,7 @@ def send_data_and_get_prediction(config: dict):
 
     try:
         df = pd.read_csv(latest_file)
+        # Send the last 600 data points as a CSV string.
         data_payload = df.tail(600).to_csv()
         request_body = {"data": data_payload}
     except Exception as e:
@@ -102,6 +142,7 @@ def send_data_and_get_prediction(config: dict):
         logger.error("Could not decode the JSON response from the server.", exc_info=True)
         return None
 
+
 if __name__ == "__main__":
     logger.info("Running API agent as a standalone script.")
     config = load_config()
@@ -109,4 +150,3 @@ if __name__ == "__main__":
         send_data_and_get_prediction(config)
     else:
         logger.error("Failed to load configuration. Cannot run standalone script.")
-

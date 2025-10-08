@@ -1,3 +1,11 @@
+"""Implements the specific option trading strategies for the bot.
+
+This module contains the logic for constructing different types of option
+spreads based on the trading signals generated from the API predictions.
+It includes functions for both directional (bullish/bearish) and
+volatility-based strategies.
+"""
+
 import logging
 import numpy as np
 from ib_insync import *
@@ -11,16 +19,49 @@ setup_logging()
 
 
 def find_closest_strike(target_strike: float, available_strikes: list[float]) -> float | None:
-    """Finds the strike in the list closest to the target strike."""
+    """Finds the strike in a list that is closest to a target value.
+
+    Args:
+        target_strike (float): The target strike price.
+        available_strikes (list[float]): A list of available strike prices.
+
+    Returns:
+        The strike from the list that is numerically closest to the target.
+        Returns None if the list of available strikes is empty.
+    """
     if not available_strikes:
         return None
     return min(available_strikes, key=lambda s: abs(s - target_strike))
 
 
 async def execute_directional_strategy(ib: IB, config: dict, signal: dict, chain: dict, underlying_price: float, future_contract: Contract) -> Trade | None:
+    """Constructs and executes a directional option spread (Bull Call or Bear Put).
+
+    Based on the signal's direction ('BULLISH' or 'BEARISH'), this function
+    builds a two-leg vertical spread.
+    - For a 'BULLISH' signal, it creates a Bull Call Spread by buying an
+      at-the-money (ATM) call and selling an out-of-the-money (OTM) call.
+    - For a 'BEARISH' signal, it creates a Bear Put Spread by buying an
+      ATM put and selling an OTM put.
+
+    The width of the spread is determined by the `spread_width_usd` parameter
+    in the configuration.
+
+    Args:
+        ib (IB): The connected `ib_insync.IB` instance.
+        config (dict): The application configuration dictionary.
+        signal (dict): The trading signal, containing the 'direction'.
+        chain (dict): The option chain for the underlying future.
+        underlying_price (float): The current price of the underlying future.
+        future_contract (Contract): The underlying future contract object.
+
+    Returns:
+        The `Trade` object for the placed combo order, or None if the
+        strategy cannot be constructed (e.g., no suitable strikes found).
+    """
     logging.info(f"--- Executing {signal['direction']} Spread for {future_contract.localSymbol} ---")
     tuning = config.get('strategy_tuning', {})
-    spread_width_usd = tuning.get('spread_width_usd', 0.05)  # Default to a 5-cent spread
+    spread_width_usd = tuning.get('spread_width_usd', 0.05)
 
     exp_details = get_expiration_details(chain, future_contract.lastTradeDateOrContractMonth)
     if not exp_details:
@@ -65,6 +106,25 @@ async def execute_directional_strategy(ib: IB, config: dict, signal: dict, chain
 
 
 async def execute_volatility_strategy(ib: IB, config: dict, signal: dict, chain: dict, underlying_price: float, future_contract: Contract) -> Trade | None:
+    """Constructs and executes a volatility-based option strategy.
+
+    This function is a placeholder for volatility strategies. Based on the
+    signal, it could execute trades like a Long Straddle or an Iron Condor.
+    - 'HIGH' volatility signal: Builds a Long Straddle (Buy ATM Call + Buy ATM Put).
+    - 'LOW' volatility signal: Builds an Iron Condor.
+
+    Args:
+        ib (IB): The connected `ib_insync.IB` instance.
+        config (dict): The application configuration dictionary.
+        signal (dict): The trading signal, containing the 'level' ('HIGH'/'LOW').
+        chain (dict): The option chain for the underlying future.
+        underlying_price (float): The current price of the underlying future.
+        future_contract (Contract): The underlying future contract object.
+
+    Returns:
+        The `Trade` object for the placed combo order, or None if the
+        strategy cannot be constructed.
+    """
     logging.info(f"--- Executing {signal['level']} Volatility Strategy for {future_contract.localSymbol} ---")
     tuning = config.get('strategy_tuning', {})
     exp_details = get_expiration_details(chain, future_contract.lastTradeDateOrContractMonth)

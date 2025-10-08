@@ -1,3 +1,16 @@
+"""The main orchestrator for the automated trading bot.
+
+This script serves as the central nervous system of the application. It runs
+as a long-lived process, responsible for scheduling and executing all the
+different components of the trading pipeline at the correct times.
+
+The orchestrator manages a daily schedule that includes:
+- Starting a separate position monitoring process.
+- Running the main trading cycle (data pull, prediction, execution).
+- Stopping the position monitoring process after trading hours.
+- Running a performance analysis at the end of the day.
+"""
+
 import asyncio
 import logging
 import os
@@ -22,12 +35,20 @@ from trading_bot.signal_generator import generate_signals
 setup_logging()
 logger = logging.getLogger("Orchestrator")
 
-# --- Global Process Handle ---
+# --- Global Process Handle for the monitor ---
 monitor_process = None
 
 
 async def start_monitoring(config: dict):
-    """Starts the position_monitor.py script as a background process."""
+    """Starts the `position_monitor.py` script as a background process.
+
+    This function launches the position monitor in a separate process to run
+    concurrently with the orchestrator, allowing for continuous risk
+    monitoring during trading hours.
+
+    Args:
+        config (dict): The application configuration dictionary.
+    """
     global monitor_process
     if monitor_process and monitor_process.returncode is None:
         logger.warning("Monitoring process is already running.")
@@ -35,7 +56,7 @@ async def start_monitoring(config: dict):
 
     try:
         logger.info("--- Starting position monitoring process ---")
-        # Using sys.executable to ensure the same python interpreter is used
+        # Use sys.executable to ensure the same Python interpreter is used
         monitor_process = await asyncio.create_subprocess_exec(
             sys.executable, 'position_monitor.py',
             stdout=asyncio.subprocess.PIPE,
@@ -49,7 +70,14 @@ async def start_monitoring(config: dict):
 
 
 async def stop_monitoring(config: dict):
-    """Stops the background position monitoring process."""
+    """Stops the background position monitoring process.
+
+    This function gracefully terminates the `position_monitor.py` process
+    that was started by `start_monitoring`.
+
+    Args:
+        config (dict): The application configuration dictionary.
+    """
     global monitor_process
     if not monitor_process or monitor_process.returncode is not None:
         logger.warning("Monitoring process is not running or has already terminated.")
@@ -69,8 +97,16 @@ async def stop_monitoring(config: dict):
 
 
 async def run_trading_cycle(config: dict):
-    """
-    Runs one complete cycle of the trading bot pipeline.
+    """Runs one complete cycle of the trading bot pipeline.
+
+    This function executes the core trading logic in a sequence:
+    1. Pulls the latest market and economic data.
+    2. Sends the data to the API to get price predictions.
+    3. Generates structured trading signals from the predictions.
+    4. Runs the main trading bot logic to execute trades based on the signals.
+
+    Args:
+        config (dict): The application configuration dictionary.
     """
     logger.info("--- Starting new trading cycle ---")
     try:
@@ -111,8 +147,22 @@ async def run_trading_cycle(config: dict):
         send_pushover_notification(config.get('notifications', {}), "Orchestrator CRITICAL ERROR", error_msg)
 
 
-def get_next_task(now_gmt: datetime, schedule: dict) -> (datetime, callable):
-    """Calculates the next scheduled task and its run time."""
+def get_next_task(now_gmt: datetime, schedule: dict) -> tuple[datetime, callable]:
+    """Calculates the next scheduled task and its run time based on a schedule.
+
+    It determines the next task to run by comparing the current time to the
+    run times defined in the schedule. If all of today's tasks are done, it
+    schedules the first task for the next day.
+
+    Args:
+        now_gmt (datetime): The current time in GMT.
+        schedule (dict): A dictionary mapping `time` objects to task functions.
+
+    Returns:
+        A tuple containing:
+        - The `datetime` of the next scheduled run.
+        - The function for the next task to be executed.
+    """
     next_run_time = None
     next_task = None
 
@@ -126,6 +176,7 @@ def get_next_task(now_gmt: datetime, schedule: dict) -> (datetime, callable):
                 next_task = schedule[rt]
 
     if next_run_time is None:
+        # All tasks for today are done, schedule the first task for tomorrow
         first_run_time_tomorrow = now_gmt.replace(
             hour=sorted_times[0].hour, minute=sorted_times[0].minute, second=0, microsecond=0
         ) + timedelta(days=1)
@@ -136,7 +187,12 @@ def get_next_task(now_gmt: datetime, schedule: dict) -> (datetime, callable):
 
 
 async def main():
-    """Main long-running orchestrator process."""
+    """The main long-running orchestrator process.
+
+    This function initializes the application and enters an infinite loop to
+    manage the scheduled tasks. It calculates the next task, sleeps until the
+    scheduled time, and then executes the task.
+    """
     logger.info("=============================================")
     logger.info("=== Starting the Trading Bot Orchestrator ===")
     logger.info("=============================================")
@@ -147,9 +203,8 @@ async def main():
         return
 
     # Schedule mapping run times (GMT) to functions
-    # Market hours are assumed to be roughly 08:00 to 22:00 GMT
     schedule = {
-        time(7, 55): start_monitoring,      # Start monitoring just before trading
+        time(7, 55): start_monitoring,      # Start monitoring before trading
         time(8, 0): run_trading_cycle,       # Run the main trading logic
         time(21, 55): stop_monitoring,      # Stop monitoring after market hours
         time(22, 0): analyze_performance    # Run performance analysis
@@ -176,17 +231,26 @@ async def main():
                 else:
                     next_task_func(config)
 
+            except asyncio.CancelledError:
+                logger.info("Orchestrator main loop cancelled.")
+                break
             except Exception as e:
                 error_msg = f"A critical error occurred in the main orchestrator loop: {e}\n{traceback.format_exc()}"
                 logger.critical(error_msg)
-                await asyncio.sleep(60)
+                await asyncio.sleep(60) # Wait after an error before retrying
     finally:
         logger.info("Orchestrator shutting down. Ensuring monitor is stopped.")
         await stop_monitoring(config)
 
 
 if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
     try:
-        asyncio.run(main())
+        main_task = loop.create_task(main())
+        loop.run_until_complete(main_task)
     except (KeyboardInterrupt, SystemExit):
         logger.info("Orchestrator stopped by user.")
+        main_task.cancel()
+        loop.run_until_complete(main_task)
+    finally:
+        loop.close()

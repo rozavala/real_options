@@ -1,4 +1,11 @@
-# Filename: notifications.py
+"""Handles sending push notifications via the Pushover service.
+
+This module provides a function to send customized messages to a specified
+Pushover user. It is used throughout the application to alert the user of
+important events, such as the start and stop of services, critical errors,
+and trade execution summaries.
+"""
+
 import http.client
 import urllib.parse
 import logging
@@ -8,8 +15,19 @@ logger = logging.getLogger(__name__)
 
 
 def send_pushover_notification(config: dict, title: str, message: str):
-    """
-    Sends a notification via Pushover if the configuration is present and enabled.
+    """Sends a notification via the Pushover API.
+
+    The function checks for a 'notifications' section in the provided
+    configuration dictionary. If the section exists, is enabled, and contains
+    the necessary Pushover user key and API token, it sends the specified
+
+    Args:
+        config (dict): A dictionary containing the notification settings,
+            typically from the 'notifications' section of the main config.
+            It should contain 'enabled', 'pushover_user_key', and
+            'pushover_api_token'.
+        title (str): The title of the notification.
+        message (str): The main body of the notification. HTML is enabled.
     """
     if not config or not config.get('enabled', False):
         logger.info("Notifications are disabled. Skipping.")

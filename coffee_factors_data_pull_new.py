@@ -1,3 +1,16 @@
+"""Fetches, consolidates, and validates data for coffee futures prediction.
+
+This script pulls data from multiple sources to create a comprehensive dataset
+for analysis and model training. The sources include:
+- Yahoo Finance (yfinance): For coffee futures prices and other market data.
+- Federal Reserve Economic Data (FRED): For key economic indicators.
+- Open-Meteo: For historical weather data from relevant locations.
+- Nasdaq Data Link: For other financial data.
+
+The script performs a series of validation checks, consolidates the data into
+a single time-series DataFrame, and saves the result as a CSV file. It also
+generates a report summarizing the validation results and sends a notification.
+"""
 # --- Install all required libraries ---
 # You should run this command in your terminal or command prompt, not inside the script:
 # pip install yfinance fredapi pandas nasdaq-data-link xlrd openpyxl requests
@@ -18,25 +31,56 @@ from notifications import send_pushover_notification
 
 # --- Validation Manager Class ---
 class ValidationManager:
-    """A class to manage and report data validation checks."""
+    """A class to manage and report data validation checks.
+
+    This class provides a structured way to run a series of data quality
+    checks, store their results, and generate a formatted report.
+
+    Attributes:
+        results (list[dict]): A list to store the outcome of each check.
+        final_shape (tuple | None): The shape (rows, columns) of the final
+            processed DataFrame.
+    """
     def __init__(self):
+        """Initializes the ValidationManager."""
         self.results = []
         self.final_shape = None
 
-    def add_check(self, check_name, success, message):
-        """Adds a validation check result."""
+    def add_check(self, check_name: str, success: bool, message: str):
+        """Adds a validation check result to the manager.
+
+        Args:
+            check_name (str): The name of the validation check.
+            success (bool): True if the check passed, False otherwise.
+            message (str): A descriptive message about the check's outcome.
+        """
         self.results.append({'check': check_name, 'success': success, 'message': message})
 
-    def set_final_shape(self, shape):
-        """Stores the shape of the final DataFrame."""
+    def set_final_shape(self, shape: tuple[int, int]):
+        """Stores the shape of the final DataFrame for reporting.
+
+        Args:
+            shape (tuple[int, int]): The (rows, columns) shape of the final df.
+        """
         self.final_shape = shape
 
-    def was_successful(self):
-        """Returns True if all checks passed, False otherwise."""
+    def was_successful(self) -> bool:
+        """Checks if all validation checks passed.
+
+        Returns:
+            True if all checks were successful, False otherwise.
+        """
         return all(r['success'] for r in self.results)
 
-    def generate_report(self):
-        """Generates a summary report of all validation checks."""
+    def generate_report(self) -> str:
+        """Generates a summary report of all validation checks.
+
+        The report includes an overall status, a list of individual check
+        results, and statistics about the final generated data file.
+
+        Returns:
+            A formatted string containing the full validation report.
+        """
         report = "<b>Data Pull Validation Report</b>\n"
         report += f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         
@@ -60,8 +104,22 @@ class ValidationManager:
 
 # --- Main Script ---
 
-def get_kc_expiration_date(year, month_code):
-    """Calculates the expiration date for a given Coffee 'C' futures contract."""
+def get_kc_expiration_date(year: int, month_code: str) -> pd.Timestamp:
+    """Calculates the expiration date for a Coffee 'C' futures contract.
+
+    The expiration for KC futures is the business day prior to the last
+    business day of the contract month.
+
+    Args:
+        year (int): The contract year (e.g., 2025).
+        month_code (str): The month code ('H', 'K', 'N', 'U', 'Z').
+
+    Returns:
+        The calculated expiration date as a pandas Timestamp.
+
+    Raises:
+        ValueError: If the month code is invalid.
+    """
     month_map = {'H': 3, 'K': 5, 'N': 7, 'U': 9, 'Z': 12}
     month = month_map.get(month_code)
     if not month:
@@ -72,8 +130,19 @@ def get_kc_expiration_date(year, month_code):
         last_business_day -= pd.Timedelta(days=1)
     return last_business_day - BDay(1)
 
-def get_active_coffee_tickers(num_contracts=5):
-    """Determines the tickers for the next N active coffee futures contracts."""
+def get_active_coffee_tickers(num_contracts: int = 5) -> list[str]:
+    """Determines the tickers for the next N active coffee futures contracts.
+
+    It identifies upcoming contracts that have not yet expired and returns
+    their tickers in chronological order of expiration.
+
+    Args:
+        num_contracts (int): The number of active contract tickers to return.
+
+    Returns:
+        A list of Yahoo Finance tickers for the active contracts, sorted
+        chronologically (e.g., ['KCK25.NYB', 'KCN25.NYB']).
+    """
     print(f"Dynamically determining the next {num_contracts} coffee tickers...")
     now = datetime.now()
     current_year = now.year
@@ -94,7 +163,21 @@ def get_active_coffee_tickers(num_contracts=5):
     return active_tickers
 
 def main(config: dict) -> bool:
-    """Main execution function."""
+    """Runs the main data pull, validation, and processing pipeline.
+
+    This function orchestrates the entire data gathering process. It uses the
+    provided configuration to fetch data from various APIs, validates each
+    step using the ValidationManager, consolidates the data, and saves the
+    final result if all checks pass.
+
+    Args:
+        config (dict): The application configuration dictionary, which must
+            contain API keys and other settings.
+
+    Returns:
+        True if the entire process, including all validations, completes
+        successfully. False otherwise.
+    """
     if not config:
         return False
 

@@ -1,10 +1,21 @@
+"""Configures the logging settings for the entire application.
+
+This module provides a centralized function to set up a consistent
+logging format and level, ensuring that all parts of the application
+produce uniform and readable log messages.
+"""
+
 import logging
 import sys
 
+
 def setup_logging():
-    """
-    Sets up a centralized logging configuration for the entire application.
-    Logs will be directed to standard output with a consistent format.
+    """Sets up a centralized logging configuration for the application.
+
+    This function configures the root logger to output messages of level
+    INFO and higher to standard output. The log format includes the timestamp,
+    logger name, log level, and the message, providing clear and consistent
+    context for all log entries.
     """
     logging.basicConfig(
         level=logging.INFO,
