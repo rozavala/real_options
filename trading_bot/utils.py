@@ -163,18 +163,56 @@ def get_expiration_details(chain: dict, future_exp: str) -> dict | None:
     return {'exp_date': chosen_exp, 'days_to_exp': days, 'strikes': chain['strikes_by_expiration'][chosen_exp]}
 
 def log_trade_to_ledger(trade: Trade, reason: str = "Strategy Execution"):
-    if trade.orderStatus.status != OrderStatus.Filled: return
-    row = {
-        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'local_symbol': trade.contract.localSymbol,
-        'action': trade.order.action, 'quantity': trade.orderStatus.filled, 'avg_fill_price': trade.orderStatus.avgFillPrice,
-        'total_value_usd': trade.orderStatus.avgFillPrice * trade.orderStatus.filled * (100 if isinstance(trade.contract, Bag) else 37500),
-        'order_id': trade.order.orderId, 'reason': reason
-    }
+    if trade.orderStatus.status != OrderStatus.Filled:
+        return
+
+    ledger_path = 'trade_ledger.csv'
+    file_exists = os.path.isfile(ledger_path)
+
+    fieldnames = [
+        'timestamp', 'combo_id', 'local_symbol', 'action', 'quantity',
+        'avg_fill_price', 'strike', 'right', 'total_value_usd', 'reason'
+    ]
+
+    rows_to_write = []
+    combo_id = trade.order.permId
+
+    if not trade.fills:
+        logging.warning(f"Trade {trade.order.orderId} is Filled but has no fills to log.")
+        return
+
+    for fill in trade.fills:
+        contract = fill.contract
+        execution = fill.execution
+
+        try:
+            multiplier = float(contract.multiplier) if contract.multiplier else 37500.0
+        except (ValueError, TypeError):
+            multiplier = 37500.0
+
+        total_value = execution.price * execution.shares * multiplier
+        action = 'BUY' if execution.side == 'BOT' else 'SELL'
+
+        row = {
+            'timestamp': execution.time.strftime('%Y-%m-%d %H:%M:%S'),
+            'combo_id': combo_id,
+            'local_symbol': contract.localSymbol,
+            'action': action,
+            'quantity': execution.shares,
+            'avg_fill_price': execution.price,
+            'strike': normalize_strike(contract.strike) if hasattr(contract, 'strike') else 'N/A',
+            'right': contract.right if hasattr(contract, 'right') else 'N/A',
+            'total_value_usd': total_value,
+            'reason': reason
+        }
+        rows_to_write.append(row)
+
     try:
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trade_ledger.csv'), 'a', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=row.keys())
-            if not os.path.isfile(f.name): writer.writeheader()
-            writer.writerow(row)
-        logging.info(f"Logged trade to ledger ({reason}): {row['action']} {row['quantity']} @ {row['avg_fill_price']}")
+        with open(ledger_path, 'a', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            if not file_exists:
+                writer.writeheader()
+            writer.writerows(rows_to_write)
+        logging.info(f"Logged {len(rows_to_write)} leg(s) to ledger for combo_id {combo_id} ({reason})")
     except Exception as e:
         logging.error(f"Error writing to trade ledger: {e}")
