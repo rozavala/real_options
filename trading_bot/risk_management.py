@@ -69,45 +69,54 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
     return True
 
 
+async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss: float, take_profit: float):
+    """Helper function to perform a single iteration of the risk check."""
+    if not ib.isConnected():
+        return
+    positions = [p for p in await ib.reqPositionsAsync() if p.position != 0 and p.contract.conId not in closed_ids]
+    if not positions:
+        return
+
+    account = ib.managedAccounts()[0]
+    logging.info("--- Risk Monitor: Checking open positions ---")
+    for p in positions:
+        pnl = ib.reqPnLSingle(account, '', p.contract.conId)
+
+        if util.isNan(pnl.unrealizedPnL):
+            logging.warning(f"Could not get PnL for {p.contract.localSymbol}. Skipping risk check.")
+            continue
+
+        pnl_per_contract = pnl.unrealizedPnL / abs(p.position)
+        logging.info(f"Position {p.contract.localSymbol}: Unrealized PnL/Contract = ${pnl_per_contract:.2f}")
+        reason = "Stop-Loss" if stop_loss and pnl_per_contract < -abs(stop_loss) else "Take-Profit" if take_profit and pnl_per_contract > abs(take_profit) else None
+        if reason:
+            logging.info(f"{reason.upper()} TRIGGERED for {p.contract.localSymbol}. PnL/contract: ${pnl_per_contract:.2f}")
+            send_pushover_notification(config, reason, f"{p.contract.localSymbol} closed. PnL/contract: ${pnl_per_contract:.2f}")
+
+            # Create a new, clean contract object just for closing the trade
+            contract_to_close = Contract(conId=p.contract.conId)
+            await ib.qualifyContractsAsync(contract_to_close)
+
+            # As a final safeguard, manually correct the strike price if it's still incorrect after qualifying
+            if hasattr(contract_to_close, 'strike') and contract_to_close.strike > 100:
+                contract_to_close.strike /= 100.0
+
+            order = MarketOrder('BUY' if p.position < 0 else 'SELL', abs(p.position))
+            trade = ib.placeOrder(contract_to_close, order)
+            await wait_for_fill(ib, trade, config, reason=reason)
+            closed_ids.add(p.contract.conId)
+
+
 async def monitor_positions_for_risk(ib: IB, config: dict):
     risk_params = config.get('risk_management', {})
     stop_loss, take_profit, interval = risk_params.get('stop_loss_per_contract_usd'), risk_params.get('take_profit_per_contract_usd'), risk_params.get('check_interval_seconds', 300)
-    if not stop_loss and not take_profit: return
+    if not stop_loss and not take_profit:
+        return
     logging.info(f"Starting intraday risk monitor. Stop: ${stop_loss}, Profit: ${take_profit}")
     closed_ids = set()
     while True:
         try:
+            await _check_risk_once(ib, config, closed_ids, stop_loss, take_profit)
             await asyncio.sleep(interval)
-            if not ib.isConnected(): continue
-            positions = [p for p in await ib.reqPositionsAsync() if p.position != 0 and p.contract.conId not in closed_ids]
-            if not positions: continue
-            account = ib.managedAccounts()[0]
-            logging.info("--- Risk Monitor: Checking open positions ---")
-            for p in positions:
-                pnl = ib.reqPnLSingle(account, '', p.contract.conId)
-
-                if util.isNan(pnl.unrealizedPnL):
-                    logging.warning(f"Could not get PnL for {p.contract.localSymbol}. Skipping risk check.")
-                    continue
-
-                pnl_per_contract = pnl.unrealizedPnL / abs(p.position)
-                logging.info(f"Position {p.contract.localSymbol}: Unrealized PnL/Contract = ${pnl_per_contract:.2f}")
-                reason = "Stop-Loss" if stop_loss and pnl_per_contract < -abs(stop_loss) else "Take-Profit" if take_profit and pnl_per_contract > abs(take_profit) else None
-                if reason:
-                    logging.info(f"{reason.upper()} TRIGGERED for {p.contract.localSymbol}. PnL/contract: ${pnl_per_contract:.2f}")
-                    send_pushover_notification(config, reason, f"{p.contract.localSymbol} closed. PnL/contract: ${pnl_per_contract:.2f}")
-
-                    # Create a new, clean contract object just for closing the trade
-                    contract_to_close = Contract(conId=p.contract.conId)
-                    await ib.qualifyContractsAsync(contract_to_close)
-
-                    # As a final safeguard, manually correct the strike price if it's still incorrect after qualifying
-                    if hasattr(contract_to_close, 'strike') and contract_to_close.strike > 100:
-                        contract_to_close.strike /= 100.0
-
-                    order = MarketOrder('BUY' if p.position < 0 else 'SELL', abs(p.position))
-                    trade = ib.placeOrder(contract_to_close, order)
-                    await wait_for_fill(ib, trade, config, reason=reason)
-                    closed_ids.add(p.contract.conId)
         except Exception as e:
             logging.error(f"Error in risk monitor loop: {e}")

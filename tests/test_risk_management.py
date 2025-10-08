@@ -10,7 +10,7 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from trading_bot.risk_management import manage_existing_positions, monitor_positions_for_risk
+from trading_bot.risk_management import manage_existing_positions, _check_risk_once
 
 class TestRiskManagement(unittest.TestCase):
 
@@ -94,20 +94,19 @@ class TestRiskManagement(unittest.TestCase):
 
         asyncio.run(run_test())
 
-    @unittest.skip("Skipping until PnL subscription can be tested in a live environment.")
-    @patch('trading_bot.risk_management.asyncio.sleep', new_callable=AsyncMock)
-    def test_monitor_positions_stop_loss(self, mock_sleep):
+    def test_monitor_positions_stop_loss(self):
         async def run_test():
             ib = AsyncMock()
-            ib.isConnected.return_value = True
-            ib.managedAccounts.return_value = ['DU12345']
+            # Configure synchronous methods on the AsyncMock
+            ib.isConnected = MagicMock(return_value=True)
+            ib.managedAccounts = MagicMock(return_value=['DU12345'])
             ib.placeOrder = MagicMock()
 
             config = {
                 'notifications': {},
                 'risk_management': {
                     'stop_loss_per_contract_usd': 50,
-                    'check_interval_seconds': 0  # Run the loop without real sleep
+                    'take_profit_per_contract_usd': 5000,
                 }
             }
 
@@ -115,22 +114,24 @@ class TestRiskManagement(unittest.TestCase):
             contract = Contract(conId=123, symbol='KC')
             position = Position(account='TestAccount', contract=contract, position=1, avgCost=0)
 
-            mock_pnl = PnLSingle(account='TestAccount', modelCode='', conId=123, position=1, value=0.0, dailyPnL=0, unrealizedPnL=-60, realizedPnL=0)
+            # Use a simple mock for the PnL object to avoid constructor issues
+            mock_pnl = MagicMock(spec=PnLSingle)
+            mock_pnl.unrealizedPnL = -60.0
 
-            ib.reqPositionsAsync = AsyncMock(side_effect=[[position], []]) # First check finds position, second finds none
+            ib.reqPositionsAsync.return_value = [position]
+            # reqPnLSingle is a synchronous method, so it needs a synchronous mock
             ib.reqPnLSingle = MagicMock(return_value=mock_pnl)
             ib.qualifyContractsAsync = AsyncMock() # Ensure this is awaitable
 
+            closed_ids = set()
+            stop_loss = config['risk_management']['stop_loss_per_contract_usd']
+            take_profit = config['risk_management']['take_profit_per_contract_usd']
+
             with patch('trading_bot.risk_management.wait_for_fill', new_callable=AsyncMock) as mock_wait, \
                  patch('trading_bot.risk_management.send_pushover_notification') as mock_notification:
-                # We run the monitor as a task and cancel it after one loop
-                monitor_task = asyncio.create_task(monitor_positions_for_risk(ib, config))
-                await asyncio.sleep(0.01) # Give the loop time to run once
-                monitor_task.cancel()
-                try:
-                    await monitor_task
-                except asyncio.CancelledError:
-                    pass
+
+                # Call the testable helper function directly
+                await _check_risk_once(ib, config, closed_ids, stop_loss, take_profit)
 
             # An order should have been placed to close the position
             ib.placeOrder.assert_called_once()
