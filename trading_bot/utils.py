@@ -1,3 +1,11 @@
+"""A collection of utility functions for the trading bot.
+
+This module provides various helper functions used across the trading bot,
+including mathematical calculations for option pricing (Black-Scholes),
+helpers for normalizing and parsing contract data from Interactive Brokers,
+market hour checks, and trade logging utilities.
+"""
+
 import csv
 import logging
 import os
@@ -14,14 +22,42 @@ setup_logging()
 
 
 def normalize_strike(strike: float) -> float:
-    """Normalizes the strike price if it's magnified by 100."""
+    """Normalizes the strike price if it appears to be magnified by 100.
+
+    Some data feeds from Interactive Brokers may return option strike prices
+    as integers (e.g., 350.0 for a 3.5 strike). This function corrects such
+    values by dividing them by 100 if they exceed a certain threshold.
+
+    Args:
+        strike (float): The strike price to normalize.
+
+    Returns:
+        The normalized strike price.
+    """
     if strike > 100:
         return strike / 100.0
     return strike
 
 
 def price_option_black_scholes(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> dict | None:
-    """Calculates the theoretical price and Greeks of an option using the Black-Scholes model."""
+    """Calculates the theoretical price and Greeks of an option.
+
+    This function uses the Black-Scholes model to compute the price, delta,
+    gamma, vega, and theta for a given European option.
+
+    Args:
+        S (float): The current price of the underlying asset.
+        K (float): The strike price of the option.
+        T (float): The time to expiration in years.
+        r (float): The risk-free interest rate.
+        sigma (float): The volatility of the underlying asset.
+        option_type (str): The type of the option, 'C' for Call or 'P' for Put.
+
+    Returns:
+        A dictionary containing the calculated price and Greeks ('delta',
+        'gamma', 'vega', 'theta'). Returns None if inputs are invalid (e.g.,
+        time to expiration or sigma is zero or negative).
+    """
     if T <= 0 or sigma <= 0:
         logging.warning(f"Invalid input for B-S model: T={T}, sigma={sigma}. Cannot price option.")
         return None
@@ -48,7 +84,21 @@ def price_option_black_scholes(S: float, K: float, T: float, r: float, sigma: fl
     return results
 
 async def get_position_details(ib: IB, position: Position) -> dict:
-    """Determines the strategy type from a position object by resolving combo legs."""
+    """Determines the strategy type and key strikes from a position object.
+
+    For a given `Position` object from `ib_insync`, this function identifies
+    whether it is a single-leg option or part of a recognized combo strategy
+    (e.g., Bull Call Spread, Iron Condor) by resolving its combo legs.
+
+    Args:
+        ib (IB): The connected `ib_insync.IB` instance.
+        position (Position): The position object to analyze.
+
+    Returns:
+        A dictionary with 'type' (e.g., 'SINGLE_LEG', 'BULL_CALL_SPREAD')
+        and 'key_strikes' (a list of the primary strike prices). Returns
+        'UNKNOWN' if the strategy cannot be identified.
+    """
     contract = position.contract
     details = {'type': 'UNKNOWN', 'key_strikes': []}
 
@@ -98,7 +148,21 @@ async def get_position_details(ib: IB, position: Position) -> dict:
 
     return details
 
-def is_market_open(contract_details, exchange_timezone_str: str):
+def is_market_open(contract_details, exchange_timezone_str: str) -> bool:
+    """Checks if the market for a given contract is currently open.
+
+    It parses the 'liquidHours' string from the contract details to determine
+    if the current time falls within any of the active trading sessions.
+
+    Args:
+        contract_details: The contract details object from ib_insync, which
+            must contain the `liquidHours` attribute.
+        exchange_timezone_str (str): The IANA timezone string for the
+            contract's exchange (e.g., 'America/New_York').
+
+    Returns:
+        True if the market is open, False otherwise.
+    """
     if not contract_details or not contract_details.liquidHours:
         return False
     tz = pytz.timezone(exchange_timezone_str)
@@ -108,11 +172,7 @@ def is_market_open(contract_details, exchange_timezone_str: str):
             continue
         try:
             start_str, end_str = session_str.split('-')
-
-            # Create timezone-aware start and end times for the session
             session_start_dt = tz.localize(datetime.strptime(start_str, '%Y%m%d:%H%M'))
-
-            # Handle cases where end_str might not have a date (e.g., '1600')
             if ':' in end_str:
                 session_end_dt = tz.localize(datetime.strptime(end_str, '%Y%m%d:%H%M'))
             else:
@@ -130,6 +190,19 @@ def is_market_open(contract_details, exchange_timezone_str: str):
     return False
 
 def calculate_wait_until_market_open(contract_details, exchange_timezone_str: str) -> float:
+    """Calculates the time in seconds until the next market open.
+
+    Parses the 'liquidHours' to find the start time of the next trading
+    session and calculates the number of seconds to wait from now.
+
+    Args:
+        contract_details: The contract details object from ib_insync.
+        exchange_timezone_str (str): The IANA timezone for the exchange.
+
+    Returns:
+        The number of seconds to wait until the next session opens. Returns
+        3600 seconds (1 hour) as a default if the next open cannot be determined.
+    """
     if not contract_details or not contract_details.liquidHours: return 3600
     tz = pytz.timezone(exchange_timezone_str)
     now_tz = datetime.now(tz)
@@ -148,26 +221,46 @@ def calculate_wait_until_market_open(contract_details, exchange_timezone_str: st
     return 3600
 
 def get_expiration_details(chain: dict, future_exp: str) -> dict | None:
-    # Find expirations that are on or before the future's expiration month.
-    valid_exp = [exp for exp in sorted(chain['expirations']) if exp[:6] <= future_exp]
+    """Selects the best option expiration date for a given futures contract.
 
+    The logic prefers the latest possible option expiration that occurs on or
+    before the futures contract's expiration month. If none exist, it falls
+    back to the nearest available expiration after today.
+
+    Args:
+        chain (dict): The option chain data from `build_option_chain`.
+        future_exp (str): The expiration month of the future ('YYYYMM').
+
+    Returns:
+        A dictionary with 'exp_date', 'days_to_exp', and the list of 'strikes'
+        for the chosen expiration. Returns None if no suitable expiration found.
+    """
+    valid_exp = [exp for exp in sorted(chain['expirations']) if exp[:6] <= future_exp]
     if not valid_exp:
         logging.warning(f"No option expiration on or before future {future_exp}. Using nearest available after today.")
-        # If none found, find the first available expiration after today.
         valid_exp = [exp for exp in sorted(chain['expirations']) if exp > datetime.now().strftime('%Y%m%d')]
         if not valid_exp:
             logging.error(f"No suitable option expirations found for future {future_exp}.")
             return None
-        # Take the earliest one available.
         chosen_exp = valid_exp[0]
     else:
-        # Of the valid expirations, take the latest one.
         chosen_exp = valid_exp[-1]
 
     days = (datetime.strptime(chosen_exp, '%Y%m%d').date() - datetime.now().date()).days
     return {'exp_date': chosen_exp, 'days_to_exp': days, 'strikes': chain['strikes_by_expiration'][chosen_exp]}
 
 def log_trade_to_ledger(trade: Trade, reason: str = "Strategy Execution"):
+    """Logs the details of a filled trade to the `trade_ledger.csv` file.
+
+    For combo trades, this function logs each leg as a separate entry in the
+    CSV, linked by a common `combo_id` (the order's permId). This allows for
+    detailed P&L analysis of multi-leg strategies.
+
+    Args:
+        trade (Trade): The filled `ib_insync.Trade` object.
+        reason (str): A string describing why the trade was executed (e.g.,
+            'Strategy Execution', 'Position Misaligned', 'Stop-Loss').
+    """
     if trade.orderStatus.status != OrderStatus.Filled:
         return
 
@@ -189,7 +282,6 @@ def log_trade_to_ledger(trade: Trade, reason: str = "Strategy Execution"):
     for fill in trade.fills:
         contract = fill.contract
         execution = fill.execution
-
         try:
             multiplier = float(contract.multiplier) if contract.multiplier else 37500.0
         except (ValueError, TypeError):

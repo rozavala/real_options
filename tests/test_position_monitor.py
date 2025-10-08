@@ -20,6 +20,8 @@ class TestPositionMonitor(unittest.TestCase):
                 'notifications': {}
             }
             ib_instance = AsyncMock()
+            ib_instance.isConnected = MagicMock(return_value=True)
+            ib_instance.disconnect = MagicMock()
             mock_ib_class.return_value = ib_instance
 
             # Define an async side_effect that waits indefinitely, simulating the real function

@@ -1,3 +1,10 @@
+"""Main entry point for the core trading bot logic.
+
+This module orchestrates the primary trading cycle. It connects to the
+Interactive Brokers (IB) Gateway, processes incoming trading signals,
+and executes trades based on the defined strategies.
+"""
+
 import asyncio
 import json
 import os
@@ -21,6 +28,14 @@ ib_logger.setLevel(logging.INFO)
 
 
 async def send_heartbeat(ib: IB):
+    """Sends a periodic request to the IB Gateway to keep the connection alive.
+
+    This function runs in a loop, sending a `reqCurrentTimeAsync` request
+    every 5 minutes (300 seconds) to prevent the connection from timing out.
+
+    Args:
+        ib (IB): The connected `ib_insync.IB` instance.
+    """
     logging.info("Heartbeat task started.")
     while True:
         try:
@@ -28,11 +43,34 @@ async def send_heartbeat(ib: IB):
             if ib.isConnected():
                 server_time = await ib.reqCurrentTimeAsync()
                 logging.info(f"Heartbeat: Connection is alive. Server time: {server_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        except asyncio.CancelledError:
+            logging.info("Heartbeat task cancelled.")
+            break
         except Exception as e:
             logging.error(f"Error in heartbeat loop: {e}")
 
 
 async def main_runner(config: dict, signals: list = None):
+    """The main execution function for the trading bot.
+
+    This function connects to IB, processes a list of trading signals, and
+    manages the entire lifecycle of a trading cycle. For each signal, it:
+    1. Finds the corresponding active futures contract.
+    2. Fetches the current market price for the future.
+    3. Calls `manage_existing_positions` to align the portfolio.
+    4. If a new trade is warranted, it builds the option chain and executes
+       the appropriate strategy (directional or volatility).
+    5. Sends a summary notification of all actions taken during the cycle.
+
+    Args:
+        config (dict): The application configuration dictionary.
+        signals (list, optional): A list of trading signals to be processed.
+            If None or empty, the function will raise a ValueError.
+
+    Raises:
+        ValueError: If no signals are provided.
+        ConnectionError: If no active futures contracts can be found.
+    """
     ib = IB()
     heartbeat_task = None
 

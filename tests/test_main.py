@@ -30,7 +30,9 @@ class TestMainRunner(unittest.TestCase):
             # Mock IB connection and market data
             with patch('trading_bot.main.IB') as mock_ib_class:
                 ib_instance = AsyncMock()
-                ib_instance.isConnected.return_value = False # Force a connection
+                # isConnected is called twice. First to check, second in the finally block.
+                ib_instance.isConnected = MagicMock(side_effect=[False, True])
+                ib_instance.disconnect = MagicMock()
                 mock_ib_class.return_value = ib_instance
 
                 # Mock market data ticker to return a magnified price

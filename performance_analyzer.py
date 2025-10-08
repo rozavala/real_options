@@ -1,3 +1,12 @@
+"""Analyzes and reports the performance of trading activities.
+
+This script reads the `trade_ledger.csv` file to calculate and summarize
+the performance of trading strategies. It groups trades by their combo ID
+to correctly attribute profit and loss for multi-leg positions. The script
+generates a daily report that includes the net P&L for positions closed
+that day and a list of all currently open positions.
+"""
+
 import pandas as pd
 from datetime import datetime
 import os
@@ -11,9 +20,21 @@ logger = logging.getLogger("PerformanceAnalyzer")
 
 
 def analyze_performance(config: dict):
-    """
-    Analyzes the trade ledger to provide a summary of the day's trading performance.
-    It groups trades by combo_id to correctly calculate P&L for multi-leg strategies.
+    """Analyzes the trade ledger to report on daily trading performance.
+
+    This function reads the trade ledger, calculates the total profit or loss
+    for all combo positions that were closed on the current day, and identifies
+    all currently open positions. It then formats this information into a
+    report and sends it as a Pushover notification.
+
+    The P&L for a combo is calculated by summing the `total_value_usd` for
+    all its legs. A position is considered closed if the sum of its signed
+    quantities (where buys are negative and sells are positive) for each
+    leg is zero.
+
+    Args:
+        config (dict): The application configuration dictionary, used for
+            sending notifications.
     """
     ledger_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trade_ledger.csv')
     if not os.path.exists(ledger_path):
@@ -35,16 +56,18 @@ def analyze_performance(config: dict):
         closed_positions_summary = []
         open_positions_summary = []
 
-        # Adjust quantity based on action for accurate P&L and position state calculation
+        # Use a signed quantity to determine if a position is open or closed
+        # BUY actions decrease position (cost), SELL actions increase it (credit)
+        # So we treat BUY as negative and SELL as positive to sum up to zero.
         df['signed_quantity'] = df.apply(lambda row: -row['quantity'] if row['action'] == 'BUY' else row['quantity'], axis=1)
 
         for combo_id, group in grouped:
-            # Check if a position is closed by seeing if quantities cancel out
+            # A position is closed if the quantities for each leg cancel out.
             leg_quantities = group.groupby('local_symbol')['signed_quantity'].sum()
 
             if (leg_quantities == 0).all():
                 # --- This is a closed position ---
-                # Check if the closing trade was today
+                # Include it in today's P&L report if it was closed today.
                 if group['timestamp'].dt.strftime('%Y-%m-%d').max() == today_str:
                     combo_pnl = group['total_value_usd'].sum()
                     total_pnl += combo_pnl
@@ -93,4 +116,3 @@ def analyze_performance(config: dict):
 
     except Exception as e:
         logger.error(f"An error occurred during performance analysis: {e}", exc_info=True)
-
