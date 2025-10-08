@@ -9,13 +9,12 @@ from trading_bot.main import main_runner
 class TestMainRunner(unittest.TestCase):
 
     @patch('trading_bot.main.send_pushover_notification')
-    @patch('trading_bot.main.monitor_positions_for_risk', new_callable=AsyncMock)
     @patch('trading_bot.main.send_heartbeat', new_callable=AsyncMock)
     @patch('trading_bot.main.get_active_futures', new_callable=AsyncMock)
     @patch('trading_bot.main.manage_existing_positions', new_callable=AsyncMock)
     @patch('trading_bot.main.build_option_chain', new_callable=AsyncMock)
     @patch('trading_bot.main.execute_directional_strategy', new_callable=AsyncMock)
-    def test_main_runner_normalizes_price(self, mock_execute_strategy, mock_build_chain, mock_manage_positions, mock_get_futures, mock_heartbeat, mock_monitor, mock_pushover):
+    def test_main_runner_normalizes_price(self, mock_execute_strategy, mock_build_chain, mock_manage_positions, mock_get_futures, mock_heartbeat, mock_pushover):
         async def run_test():
             # --- Mocks ---
             config = {
