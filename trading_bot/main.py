@@ -4,24 +4,22 @@ import os
 import random
 import logging
 import traceback
-from datetime import datetime, timedelta
 
-import pytz
 from ib_insync import *
 
 from notifications import send_pushover_notification
 from trading_bot.ib_interface import get_active_futures, build_option_chain
 from trading_bot.risk_management import manage_existing_positions, monitor_positions_for_risk
 from trading_bot.strategy import execute_directional_strategy, execute_volatility_strategy
-from trading_bot.utils import is_market_open, calculate_wait_until_market_open
+from trading_bot.utils import is_market_open
 
 # --- Logging Setup ---
-log_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trading_bot.log')
+# Logging is now handled by the orchestrator, which captures stdout.
+# This ensures a single log file for the entire application run.
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(log_file_path, mode='a'),
         logging.StreamHandler()
     ])
 ib_logger = logging.getLogger('ib_insync')
@@ -40,14 +38,11 @@ async def send_heartbeat(ib: IB):
             logging.error(f"Error in heartbeat loop: {e}")
 
 
-async def main_runner(signals: list = None):
+async def main_runner(config: dict, signals: list = None):
     ib = IB()
-    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config.json')
     monitor_task, heartbeat_task = None, None
 
     try:
-        with open(config_path, 'r') as f:
-            config = json.load(f)
         conn_settings = config.get('connection', {})
         host, port = conn_settings.get('host', '127.0.0.1'), conn_settings.get('port', 7497)
 
@@ -56,23 +51,18 @@ async def main_runner(signals: list = None):
             await ib.connectAsync(host, port, clientId=conn_settings.get('clientId', random.randint(1, 1000)))
             send_pushover_notification(config.get('notifications', {}), "Trading Bot Started", "Trading logic has successfully connected to IBKR.")
 
-            # These tasks will run for the duration of the main_runner execution.
             monitor_task = asyncio.create_task(monitor_positions_for_risk(ib, config))
             heartbeat_task = asyncio.create_task(send_heartbeat(ib))
+
+        if not signals:
+            raise ValueError("No signals provided to execute trades.")
 
         active_futures = await get_active_futures(ib, config['symbol'], config['exchange'])
         if not active_futures:
             raise ConnectionError("Could not find any active futures contracts.")
 
-        front_month_details = (await ib.reqContractDetailsAsync(active_futures[0]))[0]
-        if not is_market_open(front_month_details, config['exchange_timezone']):
-            logging.info("Market is closed. No trades will be placed.")
-            return
+        trades_summary = {'filled': [], 'cancelled': [], 'aligned': 0}
 
-        if not signals:
-            raise ValueError("No signals provided to execute trades.")
-
-        trades_summary = {'filled': [], 'cancelled': []}
         for signal in signals:
             future = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal.get("contract_month", ""))), None)
             if not future:
@@ -87,13 +77,21 @@ async def main_runner(signals: list = None):
 
             logging.info(f"Current price for {future.localSymbol}: {price}")
 
-            if await manage_existing_positions(ib, config, signal, price, future):
-                chain = await build_option_chain(ib, future)
-                if not chain: continue
+            # Step 1: Align portfolio. This will close any misaligned or orphaned positions.
+            should_open_new_trade = await manage_existing_positions(ib, config, signal, price, future)
 
-                trade = await (execute_directional_strategy if signal['prediction_type'] == 'DIRECTIONAL' else execute_volatility_strategy)(ib, config, signal, chain, price, future)
-                if trade:
-                    trades_summary['filled' if trade.orderStatus.status == OrderStatus.Filled else 'cancelled'].append(trade)
+            if not should_open_new_trade:
+                trades_summary['aligned'] += 1
+                continue
+
+            # Step 2: Place new trades. The is_market_open check is removed to allow pre-market order placement.
+            logging.info(f"Proceeding to place new trade for {future.localSymbol}.")
+            chain = await build_option_chain(ib, future)
+            if not chain: continue
+
+            trade = await (execute_directional_strategy if signal['prediction_type'] == 'DIRECTIONAL' else execute_volatility_strategy)(ib, config, signal, chain, price, future)
+            if trade:
+                trades_summary['filled' if trade.orderStatus.status == OrderStatus.Filled else 'cancelled'].append(trade)
 
         # End of cycle summary notification
         summary_msg = "<b>-- Trading Cycle Summary --</b>"
@@ -101,8 +99,11 @@ async def main_runner(signals: list = None):
             summary_msg += "\n<b>Positions Opened:</b>\n" + "".join([f"- {t.contract.localSymbol}: {t.order.action} {t.orderStatus.filled} @ ${t.orderStatus.avgFillPrice:.2f}\n" for t in trades_summary['filled']])
         if trades_summary['cancelled']:
             summary_msg += "\n<b>Orders Cancelled:</b>\n" + "".join([f"- {t.contract.localSymbol}: {t.order.action} {t.order.totalQuantity}\n" for t in trades_summary['cancelled']])
-        if not trades_summary['filled'] and not trades_summary['cancelled']:
-            summary_msg += "\nNo new positions were opened or attempted."
+        if trades_summary['aligned']:
+            summary_msg += f"\n- {trades_summary['aligned']} position(s) were already aligned."
+        if not trades_summary['filled'] and not trades_summary['cancelled'] and not trades_summary['aligned']:
+            summary_msg += "\nNo positions were opened, closed, or aligned."
+
         send_pushover_notification(config.get('notifications', {}), "Trading Cycle Complete", summary_msg)
 
     except Exception as e:

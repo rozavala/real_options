@@ -38,9 +38,9 @@ class TestRiskManagement(unittest.TestCase):
             mock_cd_leg2 = MagicMock()
             mock_cd_leg2.contract = FuturesOption(conId=2, right='P', strike=3.4)
 
-            ib.reqPositionsAsync = AsyncMock(return_value=[position])
+            ib.reqPositionsAsync.return_value = [position]
             # The side_effect will serve the call for the main position, then the two legs.
-            ib.reqContractDetailsAsync = AsyncMock(side_effect=[[mock_cd_pos], [mock_cd_leg1], [mock_cd_leg2]])
+            ib.reqContractDetailsAsync.side_effect = [[mock_cd_pos], [mock_cd_leg1], [mock_cd_leg2]]
             ib.placeOrder = MagicMock()
             ib.qualifyContractsAsync = AsyncMock() # Ensure this is awaitable
 
@@ -81,8 +81,8 @@ class TestRiskManagement(unittest.TestCase):
             mock_cd_leg2 = MagicMock()
             mock_cd_leg2.contract = FuturesOption(conId=2, right='C', strike=3.6)
 
-            ib.reqPositionsAsync = AsyncMock(return_value=[position])
-            ib.reqContractDetailsAsync = AsyncMock(side_effect=[[mock_cd_pos], [mock_cd_leg1], [mock_cd_leg2]])
+            ib.reqPositionsAsync.return_value = [position]
+            ib.reqContractDetailsAsync.side_effect = [[mock_cd_pos], [mock_cd_leg1], [mock_cd_leg2]]
             ib.placeOrder = MagicMock()
 
             should_trade = await manage_existing_positions(ib, config, signal, 100.0, future_contract)
@@ -100,26 +100,29 @@ class TestRiskManagement(unittest.TestCase):
             ib.isConnected = MagicMock(return_value=True)
             ib.managedAccounts = MagicMock(return_value=['DU12345'])
             ib.placeOrder = MagicMock()
+            ib.qualifyContractsAsync = AsyncMock()
 
             config = {
                 'notifications': {},
-                'risk_management': {
-                    'stop_loss_pct': 0.20,
-                    'take_profit_pct': 3.00,
-                }
+                'risk_management': { 'stop_loss_pct': 0.20, 'take_profit_pct': 3.00 }
             }
 
-            # --- Mock position and PnL ---
-            # Entry cost = 1 * 1.0 * 37500 = 37500
-            # Stop loss trigger = -0.20 * 37500 = -7500
-            contract = Contract(conId=123, symbol='KC', multiplier='37500')
-            position = Position(account='TestAccount', contract=contract, position=1, avgCost=1.0)
+            # --- Mock Combo Position ---
+            # Total entry cost = abs(1*1.0*37500) + abs(-1*0.5*37500) = 37500 + 18750 = 56250
+            # Stop loss trigger = -0.20 * 56250 = -11250
+            leg1_contract = FuturesOption(conId=123, symbol='KC', multiplier='37500', right='C', strike=3.5)
+            leg1_pos = Position(account='TestAccount', contract=leg1_contract, position=1, avgCost=1.0)
+            leg1_pnl = MagicMock(spec=PnLSingle, unrealizedPnL=-10000.0)
+            leg1_details = MagicMock(underConId=999)
 
-            mock_pnl = MagicMock(spec=PnLSingle)
-            mock_pnl.unrealizedPnL = -8000.0  # Breached stop-loss
+            leg2_contract = FuturesOption(conId=124, symbol='KC', multiplier='37500', right='C', strike=3.6)
+            leg2_pos = Position(account='TestAccount', contract=leg2_contract, position=-1, avgCost=0.5)
+            leg2_pnl = MagicMock(spec=PnLSingle, unrealizedPnL=-2000.0) # Total PnL = -12000, which is > 11250 loss
+            leg2_details = MagicMock(underConId=999)
 
-            ib.reqPositionsAsync.return_value = [position]
-            ib.reqPnLSingle = MagicMock(return_value=mock_pnl)
+            ib.reqPositionsAsync.return_value = [leg1_pos, leg2_pos]
+            ib.reqContractDetailsAsync.side_effect = [[leg1_details], [leg2_details]]
+            ib.reqPnLSingle = MagicMock(side_effect=[leg1_pnl, leg2_pnl])
 
             closed_ids = set()
             stop_loss_pct = config['risk_management']['stop_loss_pct']
@@ -128,8 +131,8 @@ class TestRiskManagement(unittest.TestCase):
             with patch('trading_bot.risk_management.wait_for_fill', new_callable=AsyncMock):
                 await _check_risk_once(ib, config, closed_ids, stop_loss_pct, take_profit_pct)
 
-            ib.placeOrder.assert_called_once()
-            self.assertEqual(ib.placeOrder.call_args[0][1].action, 'SELL')
+            # Should place two orders to close both legs
+            self.assertEqual(ib.placeOrder.call_count, 2)
 
         asyncio.run(run_test())
 
@@ -139,24 +142,26 @@ class TestRiskManagement(unittest.TestCase):
             ib.isConnected = MagicMock(return_value=True)
             ib.managedAccounts = MagicMock(return_value=['DU12345'])
             ib.placeOrder = MagicMock()
+            ib.qualifyContractsAsync = AsyncMock()
 
             config = {
                 'notifications': {},
-                'risk_management': {
-                    'stop_loss_pct': 0.20,
-                    'take_profit_pct': 3.00,
-                }
+                'risk_management': { 'stop_loss_pct': 0.20, 'take_profit_pct': 0.50 } # 50% TP
             }
-            # Entry cost = 1 * 1.0 * 37500 = 37500
-            # Take profit trigger = 3.00 * 37500 = 112500
-            contract = Contract(conId=123, symbol='KC', multiplier='37500')
-            position = Position(account='TestAccount', contract=contract, position=1, avgCost=1.0)
 
-            mock_pnl = MagicMock(spec=PnLSingle)
-            mock_pnl.unrealizedPnL = 120000.0  # Breached take-profit
+            # Total entry cost = 56250
+            # Take profit trigger = 0.50 * 56250 = 28125
+            leg1_contract = FuturesOption(conId=123, symbol='KC', multiplier='37500', right='C', strike=3.5)
+            leg1_pos = Position(account='TestAccount', contract=leg1_contract, position=1, avgCost=1.0)
+            leg1_pnl = MagicMock(spec=PnLSingle, unrealizedPnL=20000.0)
 
-            ib.reqPositionsAsync.return_value = [position]
-            ib.reqPnLSingle = MagicMock(return_value=mock_pnl)
+            leg2_contract = FuturesOption(conId=124, symbol='KC', multiplier='37500', right='C', strike=3.6)
+            leg2_pos = Position(account='TestAccount', contract=leg2_contract, position=-1, avgCost=0.5)
+            leg2_pnl = MagicMock(spec=PnLSingle, unrealizedPnL=10000.0) # Total PnL = 30000, which is > 28125 profit
+
+            ib.reqPositionsAsync.return_value = [leg1_pos, leg2_pos]
+            ib.reqContractDetailsAsync.side_effect = [[MagicMock(underConId=999)], [MagicMock(underConId=999)]]
+            ib.reqPnLSingle = MagicMock(side_effect=[leg1_pnl, leg2_pnl])
 
             closed_ids = set()
             stop_loss_pct = config['risk_management']['stop_loss_pct']
@@ -165,7 +170,7 @@ class TestRiskManagement(unittest.TestCase):
             with patch('trading_bot.risk_management.wait_for_fill', new_callable=AsyncMock):
                 await _check_risk_once(ib, config, closed_ids, stop_loss_pct, take_profit_pct)
 
-            ib.placeOrder.assert_called_once()
+            self.assertEqual(ib.placeOrder.call_count, 2)
 
         asyncio.run(run_test())
 
@@ -177,19 +182,21 @@ class TestRiskManagement(unittest.TestCase):
             ib.placeOrder = MagicMock()
 
             config = {
-                'risk_management': {
-                    'stop_loss_pct': 0.20,
-                    'take_profit_pct': 3.00,
-                }
+                'notifications': {},
+                'risk_management': { 'stop_loss_pct': 0.20, 'take_profit_pct': 3.00 }
             }
-            contract = Contract(conId=123, symbol='KC', multiplier='37500')
-            position = Position(account='TestAccount', contract=contract, position=1, avgCost=1.0)
 
-            mock_pnl = MagicMock(spec=PnLSingle)
-            mock_pnl.unrealizedPnL = 1000.0  # No trigger
+            leg1_contract = FuturesOption(conId=123, symbol='KC', multiplier='37500', right='C', strike=3.5)
+            leg1_pos = Position(account='TestAccount', contract=leg1_contract, position=1, avgCost=1.0)
+            leg1_pnl = MagicMock(spec=PnLSingle, unrealizedPnL=1000.0) # Total PnL = 1500, no trigger
 
-            ib.reqPositionsAsync.return_value = [position]
-            ib.reqPnLSingle = MagicMock(return_value=mock_pnl)
+            leg2_contract = FuturesOption(conId=124, symbol='KC', multiplier='37500', right='C', strike=3.6)
+            leg2_pos = Position(account='TestAccount', contract=leg2_contract, position=-1, avgCost=0.5)
+            leg2_pnl = MagicMock(spec=PnLSingle, unrealizedPnL=500.0)
+
+            ib.reqPositionsAsync.return_value = [leg1_pos, leg2_pos]
+            ib.reqContractDetailsAsync.side_effect = [[MagicMock(underConId=999)], [MagicMock(underConId=999)]]
+            ib.reqPnLSingle = MagicMock(side_effect=[leg1_pnl, leg2_pnl])
 
             closed_ids = set()
             stop_loss_pct = config['risk_management']['stop_loss_pct']
@@ -198,6 +205,35 @@ class TestRiskManagement(unittest.TestCase):
             await _check_risk_once(ib, config, closed_ids, stop_loss_pct, take_profit_pct)
 
             ib.placeOrder.assert_not_called()
+
+        asyncio.run(run_test())
+
+    def test_manage_orphaned_single_leg(self):
+        async def run_test():
+            ib = AsyncMock()
+            config = {'symbol': 'KC'}
+            signal = {'prediction_type': 'DIRECTIONAL', 'direction': 'BULLISH'}
+            future_contract = Future(conId=100, symbol='KC', lastTradeDateOrContractMonth='202512')
+
+            # --- Mock existing orphaned single leg position ---
+            single_leg_contract = FuturesOption(conId=99, symbol='KC', right='P', strike=3.5)
+            position = Position(account='TestAccount', contract=single_leg_contract, position=1, avgCost=0.5)
+
+            mock_cd = MagicMock()
+            mock_cd.underConId = 100
+
+            ib.reqPositionsAsync.return_value = [position]
+            ib.reqContractDetailsAsync.return_value = [mock_cd]
+            ib.placeOrder = MagicMock()
+
+            with patch('trading_bot.risk_management.wait_for_fill', new_callable=AsyncMock):
+                should_trade = await manage_existing_positions(ib, config, signal, 100.0, future_contract)
+
+            # It should decide to trade to close the orphaned leg
+            self.assertTrue(should_trade)
+            # It should place an order to close the position
+            ib.placeOrder.assert_called_once()
+            self.assertEqual(ib.placeOrder.call_args[0][1].action, 'SELL')
 
         asyncio.run(run_test())
 

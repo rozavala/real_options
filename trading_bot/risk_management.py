@@ -43,7 +43,11 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
         current_strategy = pos_details['type']
         logging.info(f"Found open position for {future_contract.localSymbol}: {pos.position} of {current_strategy}")
 
-        if current_strategy != target_strategy:
+        # A single leg is always considered misaligned as we only trade combos.
+        if current_strategy == 'SINGLE_LEG':
+            logging.info(f"Position is an orphaned SINGLE_LEG. Closing.")
+            trades_to_close.append(pos)
+        elif current_strategy != target_strategy:
             logging.info(f"Position MISALIGNED. Current: {current_strategy}, Target: {target_strategy}. Closing.")
             trades_to_close.append(pos)
         else:
@@ -70,37 +74,62 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
 
 
 async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct: float, take_profit_pct: float):
-    """Helper function to perform a single iteration of the risk check."""
+    """
+    Helper function to perform a single iteration of the risk check.
+    This version groups positions by underlying to manage combo risk correctly.
+    """
     if not ib.isConnected():
         return
-    positions = [p for p in await ib.reqPositionsAsync() if p.position != 0 and p.contract.conId not in closed_ids]
-    if not positions:
+
+    all_positions = [p for p in await ib.reqPositionsAsync() if p.position != 0 and p.contract.conId not in closed_ids]
+    if not all_positions:
         return
 
-    account = ib.managedAccounts()[0]
-    logging.info("--- Risk Monitor: Checking open positions ---")
-    for p in positions:
-        pnl = ib.reqPnLSingle(account, '', p.contract.conId)
-
-        if util.isNan(pnl.unrealizedPnL):
-            logging.warning(f"Could not get PnL for {p.contract.localSymbol}. Skipping risk check.")
+    # Group positions by their underlying contract ID
+    positions_by_underlying = {}
+    for p in all_positions:
+        if not isinstance(p.contract, (FuturesOption, Option)):
             continue
-
         try:
-            multiplier = float(p.contract.multiplier) if p.contract.multiplier else 37500.0
-        except (ValueError, TypeError):
-            multiplier = 37500.0
-            logging.warning(f"Could not parse multiplier for {p.contract.localSymbol}. Defaulting to {multiplier}.")
+            details = await ib.reqContractDetailsAsync(p.contract)
+            if details and details[0].underConId:
+                under_con_id = details[0].underConId
+                if under_con_id not in positions_by_underlying:
+                    positions_by_underlying[under_con_id] = []
+                positions_by_underlying[under_con_id].append(p)
+        except Exception as e:
+            logging.warning(f"Could not get details for conId {p.contract.conId}: {e}")
 
-        total_entry_cost = abs(p.position * p.avgCost * multiplier)
+    account = ib.managedAccounts()[0]
+    logging.info(f"--- Risk Monitor: Checking {len(positions_by_underlying)} combo position(s) ---")
 
-        if total_entry_cost == 0:
-            logging.info(f"Position {p.contract.localSymbol} has zero entry cost. Skipping P&L percentage check.")
+    for under_con_id, combo_legs in positions_by_underlying.items():
+        total_unrealized_pnl = 0
+        total_entry_cost = 0
+
+        for leg_pos in combo_legs:
+            pnl = ib.reqPnLSingle(account, '', leg_pos.contract.conId)
+            if util.isNan(pnl.unrealizedPnL):
+                logging.warning(f"Could not get PnL for leg {leg_pos.contract.localSymbol}. Skipping combo risk check.")
+                total_unrealized_pnl = float('nan')
+                break
+
+            total_unrealized_pnl += pnl.unrealizedPnL
+
+            try:
+                multiplier = float(leg_pos.contract.multiplier) if leg_pos.contract.multiplier else 37500.0
+            except (ValueError, TypeError):
+                multiplier = 37500.0
+
+            total_entry_cost += abs(leg_pos.position * leg_pos.avgCost * multiplier)
+
+        if util.isNan(total_unrealized_pnl) or total_entry_cost == 0:
             continue
 
-        pnl_percentage = pnl.unrealizedPnL / total_entry_cost
-        logging.info(f"Position {p.contract.localSymbol}: Entry Cost=${total_entry_cost:.2f}, "
-                     f"Unrealized PnL=${pnl.unrealizedPnL:.2f} ({pnl_percentage:+.2%})")
+        pnl_percentage = total_unrealized_pnl / total_entry_cost
+        combo_symbols = " | ".join([p.contract.localSymbol for p in combo_legs])
+        logging.info(f"Combo {combo_symbols}: Entry Cost=${total_entry_cost:.2f}, "
+                     f"Unrealized PnL=${total_unrealized_pnl:.2f} ({pnl_percentage:+.2%})")
 
         reason = None
         if stop_loss_pct and pnl_percentage <= -abs(stop_loss_pct):
@@ -109,21 +138,17 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
             reason = "Take-Profit"
 
         if reason:
-            logging.info(f"{reason.upper()} TRIGGERED for {p.contract.localSymbol} at {pnl_percentage:+.2%}")
-            send_pushover_notification(config, reason, f"{p.contract.localSymbol} closed at {pnl_percentage:+.2%}")
+            logging.info(f"{reason.upper()} TRIGGERED for combo {combo_symbols} at {pnl_percentage:+.2%}")
+            send_pushover_notification(config, reason, f"Combo {combo_symbols} closed at {pnl_percentage:+.2%}")
 
-            # Create a new, clean contract object just for closing the trade
-            contract_to_close = Contract(conId=p.contract.conId)
-            await ib.qualifyContractsAsync(contract_to_close)
-
-            # As a final safeguard, manually correct the strike price if it's still incorrect after qualifying
-            if hasattr(contract_to_close, 'strike') and contract_to_close.strike > 100:
-                contract_to_close.strike /= 100.0
-
-            order = MarketOrder('BUY' if p.position < 0 else 'SELL', abs(p.position))
-            trade = ib.placeOrder(contract_to_close, order)
-            await wait_for_fill(ib, trade, config, reason=reason)
-            closed_ids.add(p.contract.conId)
+            for leg_pos_to_close in combo_legs:
+                try:
+                    order = MarketOrder('BUY' if leg_pos_to_close.position < 0 else 'SELL', abs(leg_pos_to_close.position))
+                    trade = ib.placeOrder(leg_pos_to_close.contract, order)
+                    await wait_for_fill(ib, trade, config, reason=f"Combo {reason}")
+                    closed_ids.add(leg_pos_to_close.contract.conId)
+                except Exception as e:
+                    logging.error(f"Failed to close leg {leg_pos_to_close.contract.localSymbol} for combo {under_con_id}: {e}")
 
 
 async def monitor_positions_for_risk(ib: IB, config: dict):

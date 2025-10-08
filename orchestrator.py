@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import os
 import traceback
@@ -9,6 +8,7 @@ import pytz
 from ib_insync import IB
 
 from coffee_factors_data_pull_new import main as run_data_pull
+from config_loader import load_config
 from notifications import send_pushover_notification
 from performance_analyzer import analyze_performance
 from send_data_to_api import send_data_and_get_prediction
@@ -23,21 +23,14 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-from config_loader import load_config
-
 logger = logging.getLogger("Orchestrator")
 
 
-async def run_trading_cycle():
+async def run_trading_cycle(config: dict):
     """
     Runs one complete cycle of the trading bot pipeline.
     """
     logger.info("--- Starting new trading cycle ---")
-    config = load_config()
-    if not config:
-        logger.critical("Orchestrator cannot proceed without a valid configuration.")
-        return
-
     try:
         logger.info("--- Step 1: Kicking off data pull process ---")
         if not run_data_pull():
@@ -68,7 +61,7 @@ async def run_trading_cycle():
             return
 
         logger.info("\n--- Step 3: Starting the main trading bot logic with generated signals ---")
-        await run_trading_bot(signals=signals)
+        await run_trading_bot(config, signals=signals)
 
     except Exception as e:
         error_msg = f"A critical error occurred during a trading cycle: {e}\n{traceback.format_exc()}"
@@ -106,11 +99,15 @@ async def main():
     logger.info("=== Starting the Trading Bot Orchestrator ===")
     logger.info("=============================================")
 
+    config = load_config()
+    if not config:
+        logger.critical("Orchestrator cannot start without a valid configuration.")
+        return
+
     # Schedule mapping run times (GMT) to functions
     schedule = {
-        time(0, 30): run_trading_cycle,
-        time(8, 0): run_trading_cycle,
-        time(21, 30): analyze_performance
+        time(8, 0): lambda: run_trading_cycle(config),  # Pre-market alignment
+        time(22, 0): lambda: analyze_performance(config) # End-of-day report
     }
 
     while True:

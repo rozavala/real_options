@@ -1,5 +1,5 @@
 import pandas as pd
-from datetime import datetime, time
+from datetime import datetime
 import os
 import logging
 
@@ -22,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger("PerformanceAnalyzer")
 
 
-def analyze_performance():
+def analyze_performance(config: dict):
     """
     Analyzes the trade ledger to provide a summary of the day's trading performance.
     It groups trades by combo_id to correctly calculate P&L for multi-leg strategies.
@@ -97,7 +97,6 @@ def analyze_performance():
         print(report) # Print report to console/log
         
         # --- Send Notification ---
-        config = load_config()
         if config:
             send_pushover_notification(
                 config.get('notifications', {}),
@@ -110,4 +109,6 @@ def analyze_performance():
 
 
 if __name__ == "__main__":
-    analyze_performance()
+    config = load_config()
+    if config:
+        analyze_performance(config)

@@ -35,7 +35,7 @@ class TestPerformanceAnalyzer(unittest.TestCase):
 
         # Use mock_open to simulate the file
         with patch('builtins.open', mock_open(read_data=csv_data)):
-            analyze_performance()
+            analyze_performance(config=mock_load_config.return_value)
 
         # --- Assertions ---
         mock_send_notification.assert_called_once()
