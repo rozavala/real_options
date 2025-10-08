@@ -10,7 +10,7 @@ from ib_insync import *
 from logging_config import setup_logging
 from notifications import send_pushover_notification
 from trading_bot.ib_interface import get_active_futures, build_option_chain
-from trading_bot.risk_management import manage_existing_positions, monitor_positions_for_risk
+from trading_bot.risk_management import manage_existing_positions
 from trading_bot.strategy import execute_directional_strategy, execute_volatility_strategy
 from trading_bot.utils import is_market_open, normalize_strike
 
@@ -34,7 +34,7 @@ async def send_heartbeat(ib: IB):
 
 async def main_runner(config: dict, signals: list = None):
     ib = IB()
-    monitor_task, heartbeat_task = None, None
+    heartbeat_task = None
 
     try:
         conn_settings = config.get('connection', {})
@@ -42,10 +42,11 @@ async def main_runner(config: dict, signals: list = None):
 
         if not ib.isConnected():
             logging.info(f"Connecting to {host}:{port}...")
-            await ib.connectAsync(host, port, clientId=conn_settings.get('clientId', random.randint(1, 1000)))
+            # Use a random client ID to avoid conflicts with the monitor
+            client_id = conn_settings.get('clientId', 10) + random.randint(1, 1000)
+            await ib.connectAsync(host, port, clientId=client_id)
             send_pushover_notification(config.get('notifications', {}), "Trading Bot Started", "Trading logic has successfully connected to IBKR.")
 
-            monitor_task = asyncio.create_task(monitor_positions_for_risk(ib, config))
             heartbeat_task = asyncio.create_task(send_heartbeat(ib))
 
         if not signals:
@@ -107,8 +108,6 @@ async def main_runner(config: dict, signals: list = None):
         logging.critical(f"{msg}\n{traceback.format_exc()}")
         send_pushover_notification(config.get('notifications', {}), "Trading Bot CRITICAL ERROR", msg)
     finally:
-        if monitor_task and not monitor_task.done():
-            monitor_task.cancel()
         if heartbeat_task and not heartbeat_task.done():
             heartbeat_task.cancel()
         if ib.isConnected():
