@@ -1,41 +1,46 @@
 # Filename: notifications.py
-import requests
-import json
+import http.client
+import urllib.parse
+import logging
 
-def send_pushover_notification(config, title, message):
+# --- Logging Setup ---
+logger = logging.getLogger(__name__)
+
+
+def send_pushover_notification(config: dict, title: str, message: str):
     """
-    Sends a notification via the Pushover API.
-
-    Args:
-        config (dict): A dictionary containing Pushover API credentials.
-                       Expected keys: 'pushover_user_key', 'pushover_api_token'.
-        title (str): The title of the notification.
-        message (str): The body of the notification.
-
-    Returns:
-        bool: True if the notification was sent successfully, False otherwise.
+    Sends a notification via Pushover if the configuration is present and enabled.
     """
+    if not config or not config.get('enabled', False):
+        logger.info("Notifications are disabled. Skipping.")
+        return
+
     user_key = config.get('pushover_user_key')
     api_token = config.get('pushover_api_token')
 
-    if not user_key or not api_token or user_key == "YOUR_USER_KEY" or api_token == "YOUR_API_TOKEN":
-        print("Pushover credentials are not configured. Skipping notification.")
-        return False
+    if not all([user_key, api_token]):
+        logger.warning("Pushover notification not sent. API key or user key is missing.")
+        return
 
-    url = "https://api.pushover.net/1/messages.json"
-    payload = {
-        'token': api_token,
-        'user': user_key,
-        'title': title,
-        'message': message,
-        'html': 1  # Enable HTML formatting
-    }
-    
     try:
-        response = requests.post(url, data=payload, timeout=10)
-        response.raise_for_status()  # Raise an exception for bad status codes
-        print("Pushover notification sent successfully.")
-        return True
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to send Pushover notification: {e}")
-        return False
+        conn = http.client.HTTPSConnection("api.pushover.net:443")
+        conn.request("POST", "/1/messages.json",
+                     urllib.parse.urlencode({
+                         "token": api_token,
+                         "user": user_key,
+                         "title": title,
+                         "message": message,
+                         "html": 1,
+                     }), {"Content-type": "application/x-www-form-urlencoded"})
+
+        response = conn.getresponse()
+        response_data = response.read()
+
+        if response.status == 200:
+            logger.info("Pushover notification sent successfully.")
+        else:
+            logger.error(f"Failed to send Pushover notification. Status: {response.status}, Response: {response_data.decode()}")
+
+        conn.close()
+    except Exception as e:
+        logger.error(f"An error occurred while sending a Pushover notification: {e}", exc_info=True)

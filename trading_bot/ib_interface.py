@@ -5,7 +5,11 @@ from datetime import datetime
 
 from ib_insync import *
 
+from logging_config import setup_logging
 from trading_bot.utils import price_option_black_scholes, log_trade_to_ledger, normalize_strike
+
+# --- Logging Setup ---
+setup_logging()
 
 
 async def get_option_market_data(ib: IB, contract: Contract) -> dict | None:

@@ -60,19 +60,6 @@ class ValidationManager:
 
 # --- Main Script ---
 
-def load_config():
-    """Loads the configuration from config.json."""
-    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
-    try:
-        with open(config_path, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        print("FATAL: config.json not found. Please create it.")
-        return None
-    except json.JSONDecodeError:
-        print("FATAL: config.json is not valid JSON.")
-        return None
-
 def get_kc_expiration_date(year, month_code):
     """Calculates the expiration date for a given Coffee 'C' futures contract."""
     month_map = {'H': 3, 'K': 5, 'N': 7, 'U': 9, 'Z': 12}
@@ -106,11 +93,10 @@ def get_active_coffee_tickers(num_contracts=5):
     print(f"... chronological tickers found: {active_tickers}")
     return active_tickers
 
-def main():
+def main(config: dict) -> bool:
     """Main execution function."""
-    config = load_config()
     if not config:
-        return
+        return False
 
     validator = ValidationManager()
     
@@ -264,8 +250,3 @@ def main():
     send_pushover_notification(config.get('notifications', {}), notification_title, report)
 
     return validator.was_successful()
-
-
-if __name__ == "__main__":
-    main()
-

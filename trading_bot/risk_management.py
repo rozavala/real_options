@@ -5,9 +5,13 @@ import traceback
 from ib_insync import *
 from ib_insync import util
 
+from logging_config import setup_logging
 from trading_bot.ib_interface import wait_for_fill
 from trading_bot.utils import get_position_details
 from notifications import send_pushover_notification
+
+# --- Logging Setup ---
+setup_logging()
 
 
 async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlying_price: float, future_contract: Contract) -> bool:
@@ -158,12 +162,16 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
     interval = risk_params.get('check_interval_seconds', 300)
 
     if not stop_loss_pct and not take_profit_pct:
+        logging.info("Risk management disabled: No stop-loss or take-profit percentages configured.")
         return
-    logging.info(f"Starting intraday risk monitor. Stop: {stop_loss_pct:.0%}, Profit: {take_profit_pct:.0%}")
+
+    logging.info(f"Starting intraday risk monitor. Stop: {stop_loss_pct:.0%}, Profit: {take_profit_pct:.0%}, Check Interval: {interval}s")
     closed_ids = set()
     while True:
         try:
+            logging.info("Risk monitor performing check...")
             await _check_risk_once(ib, config, closed_ids, stop_loss_pct, take_profit_pct)
+            logging.info(f"Risk monitor check complete. Waiting {interval} seconds for next check.")
             await asyncio.sleep(interval)
         except Exception as e:
             logging.error(f"Error in risk monitor loop: {e}")

@@ -5,7 +5,6 @@ from datetime import datetime
 import pandas as pd
 import pytz
 import os
-
 from ib_insync import FuturesOption, Bag, ComboLeg, OrderStatus, Trade, Order, Fill, Execution
 
 from trading_bot.utils import (

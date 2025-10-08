@@ -7,6 +7,11 @@ from ib_insync import *
 import numpy as np
 from scipy.stats import norm
 
+from logging_config import setup_logging
+
+# --- Logging Setup ---
+setup_logging()
+
 
 def normalize_strike(strike: float) -> float:
     """Normalizes the strike price if it's magnified by 100."""

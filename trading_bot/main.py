@@ -7,6 +7,7 @@ import traceback
 
 from ib_insync import *
 
+from logging_config import setup_logging
 from notifications import send_pushover_notification
 from trading_bot.ib_interface import get_active_futures, build_option_chain
 from trading_bot.risk_management import manage_existing_positions, monitor_positions_for_risk
@@ -14,14 +15,7 @@ from trading_bot.strategy import execute_directional_strategy, execute_volatilit
 from trading_bot.utils import is_market_open, normalize_strike
 
 # --- Logging Setup ---
-# Logging is now handled by the orchestrator, which captures stdout.
-# This ensures a single log file for the entire application run.
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ])
+setup_logging()
 ib_logger = logging.getLogger('ib_insync')
 ib_logger.setLevel(logging.INFO)
 

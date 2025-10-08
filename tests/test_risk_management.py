@@ -38,9 +38,9 @@ class TestRiskManagement(unittest.TestCase):
             mock_cd_leg2 = MagicMock()
             mock_cd_leg2.contract = FuturesOption(conId=2, right='P', strike=3.4)
 
-            ib.reqPositionsAsync.return_value = [position]
+            ib.reqPositionsAsync = AsyncMock(return_value=[position])
             # The side_effect will serve the call for the main position, then the two legs.
-            ib.reqContractDetailsAsync.side_effect = [[mock_cd_pos], [mock_cd_leg1], [mock_cd_leg2]]
+            ib.reqContractDetailsAsync = AsyncMock(side_effect=[[mock_cd_pos], [mock_cd_leg1], [mock_cd_leg2]])
             ib.placeOrder = MagicMock()
             ib.qualifyContractsAsync = AsyncMock() # Ensure this is awaitable
 
@@ -81,8 +81,8 @@ class TestRiskManagement(unittest.TestCase):
             mock_cd_leg2 = MagicMock()
             mock_cd_leg2.contract = FuturesOption(conId=2, right='C', strike=3.6)
 
-            ib.reqPositionsAsync.return_value = [position]
-            ib.reqContractDetailsAsync.side_effect = [[mock_cd_pos], [mock_cd_leg1], [mock_cd_leg2]]
+            ib.reqPositionsAsync = AsyncMock(return_value=[position])
+            ib.reqContractDetailsAsync = AsyncMock(side_effect=[[mock_cd_pos], [mock_cd_leg1], [mock_cd_leg2]])
             ib.placeOrder = MagicMock()
 
             should_trade = await manage_existing_positions(ib, config, signal, 100.0, future_contract)

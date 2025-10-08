@@ -2,23 +2,11 @@ import pandas as pd
 from datetime import datetime
 import os
 import logging
-
-# This is a bit of a hack to make sure the custom module can be found
-# when running tests from the root directory.
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+from logging_config import setup_logging
 from notifications import send_pushover_notification
-from config_loader import load_config
 
 # --- Logging Setup ---
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
+setup_logging()
 logger = logging.getLogger("PerformanceAnalyzer")
 
 
@@ -97,18 +85,12 @@ def analyze_performance(config: dict):
         print(report) # Print report to console/log
         
         # --- Send Notification ---
-        if config:
-            send_pushover_notification(
-                config.get('notifications', {}),
-                title=f"Daily Report: P&L ${total_pnl:,.2f}",
-                message=report
-            )
+        send_pushover_notification(
+            config.get('notifications', {}),
+            title=f"Daily Report: P&L ${total_pnl:,.2f}",
+            message=report
+        )
 
     except Exception as e:
         logger.error(f"An error occurred during performance analysis: {e}", exc_info=True)
 
-
-if __name__ == "__main__":
-    config = load_config()
-    if config:
-        analyze_performance(config)

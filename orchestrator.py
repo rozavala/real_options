@@ -9,6 +9,7 @@ from ib_insync import IB
 
 from coffee_factors_data_pull_new import main as run_data_pull
 from config_loader import load_config
+from logging_config import setup_logging
 from notifications import send_pushover_notification
 from performance_analyzer import analyze_performance
 from send_data_to_api import send_data_and_get_prediction
@@ -16,13 +17,7 @@ from trading_bot.main import main_runner as run_trading_bot
 from trading_bot.signal_generator import generate_signals
 
 # --- Logging Setup ---
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
+setup_logging()
 logger = logging.getLogger("Orchestrator")
 
 
@@ -39,7 +34,7 @@ async def run_trading_cycle(config: dict):
         logger.info("--- Data pull process completed successfully. ---")
 
         logger.info("\n--- Step 2: Fetching predictions from the API ---")
-        predictions = send_data_and_get_prediction()
+        predictions = send_data_and_get_prediction(config)
         if not predictions:
             send_pushover_notification(config.get('notifications', {}), "Orchestrator Failure", "Failed to get predictions from the API.")
             return
@@ -106,7 +101,7 @@ async def main():
 
     # Schedule mapping run times (GMT) to functions
     schedule = {
-        time(15, 0): run_trading_cycle,
+        time(8, 0): run_trading_cycle,
         time(22, 0): analyze_performance
     }
 

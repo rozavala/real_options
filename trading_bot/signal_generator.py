@@ -3,7 +3,11 @@ from datetime import datetime
 
 from ib_insync import IB, Contract
 
+from logging_config import setup_logging
 from trading_bot.ib_interface import get_active_futures
+
+# --- Logging Setup ---
+setup_logging()
 
 
 async def generate_signals(ib: IB, api_response: dict, config: dict) -> list:
