@@ -28,7 +28,7 @@ async def run_trading_cycle(config: dict):
     logger.info("--- Starting new trading cycle ---")
     try:
         logger.info("--- Step 1: Kicking off data pull process ---")
-        if not run_data_pull():
+        if not run_data_pull(config):
             logger.error("Data pull process failed. Aborting the trading cycle.")
             return
         logger.info("--- Data pull process completed successfully. ---")
@@ -101,7 +101,7 @@ async def main():
 
     # Schedule mapping run times (GMT) to functions
     schedule = {
-        time(17, 14): run_trading_cycle,
+        time(8, 0): run_trading_cycle,
         time(22, 0): analyze_performance
     }
 
