@@ -85,7 +85,7 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
             strike=strike,
             right=right,
             exchange=chain['exchange'],
-            tradingClass=chain['tradingClass'],
+            tradingClass='OK',  # Corrected Trading Class for Coffee Options
             multiplier="37500"
         )
         leg_contracts.append(contract)
@@ -94,12 +94,26 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
     try:
         qualified_legs = await ib.qualifyContractsAsync(*leg_contracts)
     except Exception as e:
-        logging.error(f"Failed to qualify option legs: {e}")
+        logging.error(f"Exception during contract qualification: {e}")
+        for lc in leg_contracts:
+            logging.error(f"Contract that failed qualification: {lc}")
         return None
 
-    # 3. Price each qualified leg
+    # 3. Validate all legs were qualified successfully before pricing
+    validated_legs = []
+    for leg in qualified_legs:
+        if leg.conId == 0:
+            logging.error(f"Failed to qualify contract, conId is 0. Contract details: {leg}")
+            return None
+        validated_legs.append(leg)
+
+    if len(validated_legs) != len(leg_contracts):
+        logging.error("Mismatch between number of requested and qualified legs. Aborting.")
+        return None
+
+    # 4. Price each qualified leg
     net_theoretical_price = 0.0
-    for i, q_leg in enumerate(qualified_legs):
+    for i, q_leg in enumerate(validated_legs):
         leg_action = legs_def[i][1] # 'BUY' or 'SELL'
 
         market_data = await get_option_market_data(ib, q_leg)
@@ -122,18 +136,15 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         logging.info(f"Theoretical price calculated for {q_leg.right} @ {q_leg.strike}: {pricing_result}")
         net_theoretical_price += price if leg_action == 'BUY' else -price
 
-    # 4. Calculate final limit price
+    # 5. Calculate final limit price
     slippage_allowance = config.get('strategy_tuning', {}).get('slippage_usd_per_contract', 5)
     limit_price = round(net_theoretical_price + slippage_allowance if action == 'BUY' else net_theoretical_price - slippage_allowance, 2)
     logging.info(f"Net theoretical price: {net_theoretical_price:.2f}, Slippage: {slippage_allowance:.2f}, Final Limit Price: {limit_price:.2f}")
 
-    # 5. Build the Bag contract using qualified leg conIds
+    # 6. Build the Bag contract using qualified leg conIds
     combo = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')
-    for i, q_leg in enumerate(qualified_legs):
+    for i, q_leg in enumerate(validated_legs):
         leg_action = legs_def[i][1]
-        if q_leg.conId == 0:
-            logging.error(f"Leg {q_leg.localSymbol} did not qualify correctly (conId is 0). Aborting combo creation.")
-            return None
         combo.comboLegs.append(ComboLeg(conId=q_leg.conId, ratio=1, action=leg_action, exchange=chain['exchange']))
 
     # The Bag contract itself does not need to be qualified if the legs are.

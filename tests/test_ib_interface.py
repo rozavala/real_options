@@ -115,6 +115,42 @@ class TestIbInterface(unittest.TestCase):
 
         asyncio.run(run_test())
 
+    @patch('trading_bot.ib_interface.price_option_black_scholes')
+    @patch('trading_bot.ib_interface.get_option_market_data')
+    def test_create_combo_order_object_handles_qualification_failure(self, mock_get_market_data, mock_price_bs):
+        """
+        Tests that if a leg fails to qualify (conId=0), the function aborts
+        and returns None.
+        """
+        async def run_test():
+            # 1. Setup Mocks
+            ib = AsyncMock()
+
+            # Mock for the qualification result - one leg is invalid
+            q_leg1 = FuturesOption(conId=101, symbol='KC', strike=3.5)
+            q_leg2 = FuturesOption(conId=0, symbol='KC', strike=3.6) # Invalid leg
+            ib.qualifyContractsAsync.return_value = [q_leg1, q_leg2]
+
+            # 2. Setup Inputs
+            config = {'symbol': 'KC', 'strategy': {'quantity': 1}}
+            strategy_def = {
+                "action": "BUY", "legs_def": [('C', 'BUY', 3.5), ('C', 'SELL', 3.6)],
+                "exp_details": {'exp_date': '20251220', 'days_to_exp': 30},
+                "chain": {'exchange': 'NYBOT'}, "underlying_price": 100.0,
+            }
+
+            # 3. Execute the function
+            result = await create_combo_order_object(ib, config, strategy_def)
+
+            # 4. Assertions
+            self.assertIsNone(result)
+
+            # Assert that pricing functions were NOT called because validation failed first
+            mock_get_market_data.assert_not_called()
+            mock_price_bs.assert_not_called()
+
+        asyncio.run(run_test())
+
     def test_place_order(self):
         """Tests that place_order calls ib.placeOrder with the correct arguments."""
         ib = MagicMock()
