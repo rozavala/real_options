@@ -43,8 +43,8 @@ class TestIbInterface(unittest.TestCase):
 
             self.assertIsNotNone(chain)
             self.assertEqual(chain['exchange'], 'NYBOT')
-            # Assert that the strikes have been normalized (divided by 100)
-            self.assertEqual(chain['strikes_by_expiration']['20251120'], [3.4, 3.5])
+            # Assert that the strikes are NOT normalized
+            self.assertEqual(chain['strikes_by_expiration']['20251120'], [340.0, 350.0])
 
         asyncio.run(run_test())
 

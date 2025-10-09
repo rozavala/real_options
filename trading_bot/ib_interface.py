@@ -51,7 +51,7 @@ async def build_option_chain(ib: IB, future_contract: Contract) -> dict | None:
             'exchange': chain.exchange,
             'tradingClass': chain.tradingClass,
             'expirations': sorted(chain.expirations),
-            'strikes_by_expiration': {exp: sorted([normalize_strike(s) for s in chain.strikes]) for exp in chain.expirations}
+            'strikes_by_expiration': {exp: sorted(chain.strikes) for exp in chain.expirations}
         }
     except Exception as e:
         logging.error(f"Failed to build option chain for {future_contract.localSymbol}: {e}"); return None
