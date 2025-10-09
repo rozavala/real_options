@@ -79,25 +79,23 @@ async def generate_and_queue_orders(config: dict):
                 logger.info(f"Requesting market price for {future.localSymbol}...")
                 ticker = ib.reqMktData(future, '', False, False)
 
-                # Wait for the ticker to update with a valid price, with a timeout
-                start_time = time.time()
-                while util.isNan(ticker.marketPrice()):
-                    await asyncio.sleep(0.1) # Use asyncio's sleep to allow ib_insync to process messages
-                    if (time.time() - start_time) > 5: # 5-second timeout
-                        logger.error(f"Timeout waiting for market price for {future.localSymbol}.")
-                        logger.error(f"Ticker data received: {ticker}")
-                        price = float('nan')
-                        break
-                else:
-                    price = ticker.marketPrice()
-                    if util.isNan(price):
-                        logger.error(f"Received invalid NaN price for {future.localSymbol}. Ticker: {ticker}")
-                        price = float('nan')
-                    else:
-                        logger.info(f"Successfully received market price for {future.localSymbol}: {price}")
-                except asyncio.TimeoutError:
-                    logger.error(f"Timeout waiting for market price for {future.localSymbol}.")
-                    price = float('nan')
+                price = float('nan')
+                try:
+                    # Wait for the ticker to update with a valid price, with a timeout
+                    start_time = time.time()
+                    while util.isNan(ticker.marketPrice()):
+                        await asyncio.sleep(0.1) # Use asyncio's sleep to allow ib_insync to process messages
+                        if (time.time() - start_time) > 5: # 5-second timeout
+                            logger.error(f"Timeout waiting for market price for {future.localSymbol}.")
+                            logger.error(f"Ticker data received: {ticker}")
+                            break # Exit loop, price remains NaN
+                    else: # Loop completed without break
+                        market_price = ticker.marketPrice()
+                        if not util.isNan(market_price):
+                            price = market_price
+                            logger.info(f"Successfully received market price for {future.localSymbol}: {price}")
+                        else:
+                            logger.error(f"Received invalid NaN price for {future.localSymbol}. Ticker: {ticker}")
                 finally:
                     ib.cancelMktData(future)
                 if util.isNan(price):
