@@ -104,7 +104,7 @@ async def get_position_details(ib: IB, position: Position) -> dict:
 
     if isinstance(contract, FuturesOption):
         details['type'] = 'SINGLE_LEG'
-        details['key_strikes'].append(normalize_strike(contract.strike))
+        details['key_strikes'].append(contract.strike)
         return details
 
     if not isinstance(contract, Bag):
@@ -131,7 +131,7 @@ async def get_position_details(ib: IB, position: Position) -> dict:
     # Now we can determine the strategy type
     actions = ''.join(sorted([leg.action[0] for leg in contract.comboLegs]))
     rights = ''.join(sorted([c.right for c in leg_contracts]))
-    strikes = sorted([normalize_strike(c.strike) for c in leg_contracts])
+    strikes = sorted([c.strike for c in leg_contracts])
 
     if len(leg_contracts) == 2:
         details['key_strikes'] = strikes
@@ -297,7 +297,7 @@ def log_trade_to_ledger(trade: Trade, reason: str = "Strategy Execution"):
             'action': action,
             'quantity': execution.shares,
             'avg_fill_price': execution.price,
-            'strike': normalize_strike(contract.strike) if hasattr(contract, 'strike') else 'N/A',
+            'strike': contract.strike if hasattr(contract, 'strike') else 'N/A',
             'right': contract.right if hasattr(contract, 'right') else 'N/A',
             'total_value_usd': total_value,
             'reason': reason
