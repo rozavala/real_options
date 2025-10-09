@@ -51,31 +51,65 @@ class TestIbInterface(unittest.TestCase):
     @patch('trading_bot.ib_interface.price_option_black_scholes')
     @patch('trading_bot.ib_interface.get_option_market_data')
     def test_create_combo_order_object(self, mock_get_market_data, mock_price_bs):
+        """
+        Tests the new logic flow:
+        1. Create leg contracts.
+        2. Qualify all legs together.
+        3. Price each qualified leg.
+        4. Build the final combo with qualified conIds.
+        """
         async def run_test():
+            # 1. Setup Mocks
             ib = AsyncMock()
+
+            # Mock for the qualification result
+            q_leg1 = FuturesOption(conId=101, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.5, right='C', exchange='NYBOT')
+            q_leg2 = FuturesOption(conId=102, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.6, right='C', exchange='NYBOT')
+            ib.qualifyContractsAsync.return_value = [q_leg1, q_leg2]
+
+            # Mocks for pricing functions
             mock_get_market_data.return_value = {'implied_volatility': 0.2, 'risk_free_rate': 0.05}
-            # Net price = 0.1 (buy) - 0.05 (sell) = 0.05
             mock_price_bs.side_effect = [{'price': 0.1}, {'price': 0.05}]
-            config = {'symbol': 'KC', 'strategy': {'quantity': 1}, 'strategy_tuning': {'slippage_usd_per_contract': 0.01}}
+
+            # 2. Setup Inputs
+            config = {'symbol': 'KC', 'strategy': {'quantity': 1}, 'strategy_tuning': {'slippage_usd_per_contract': 5}}
             strategy_def = {
-                "action": "BUY", "legs_def": [('C', 'BUY', 3.5), ('C', 'SELL', 3.6)],
+                "action": "BUY",
+                "legs_def": [('C', 'BUY', 3.5), ('C', 'SELL', 3.6)],
                 "exp_details": {'exp_date': '20251220', 'days_to_exp': 30},
-                "chain": {'exchange': 'NYBOT', 'tradingClass': 'KCO'}, "underlying_price": 100.0,
+                "chain": {'exchange': 'NYBOT', 'tradingClass': 'KCO'},
+                "underlying_price": 100.0,
             }
 
+            # 3. Execute the function
             result = await create_combo_order_object(ib, config, strategy_def)
 
+            # 4. Assertions
             self.assertIsNotNone(result)
             combo_contract, limit_order = result
+
+            # Assert qualification was called once, with the unqualified contracts
+            ib.qualifyContractsAsync.assert_called_once()
+            unqualified_args = ib.qualifyContractsAsync.call_args[0]
+            self.assertEqual(len(unqualified_args), 2)
+            self.assertEqual(unqualified_args[0].strike, 3.5)
+            self.assertEqual(unqualified_args[1].strike, 3.6)
+
+            # Assert pricing was called with the QUALIFIED contracts
+            mock_get_market_data.assert_any_call(ib, q_leg1)
+            mock_get_market_data.assert_any_call(ib, q_leg2)
+
+            # Assert combo legs have the correct, qualified conIds
             self.assertIsInstance(combo_contract, Bag)
             self.assertEqual(len(combo_contract.comboLegs), 2)
+            self.assertEqual(combo_contract.comboLegs[0].conId, 101)
+            self.assertEqual(combo_contract.comboLegs[1].conId, 102)
+
+            # Assert order details are correct
             self.assertIsInstance(limit_order, LimitOrder)
             self.assertEqual(limit_order.action, 'BUY')
-            self.assertEqual(limit_order.tif, 'DAY')
-            # Check price: net theoretical (0.05) + slippage (0.01) = 0.06
-            self.assertAlmostEqual(limit_order.lmtPrice, 0.06)
-            # Qualify is called for each leg (2) + the final combo (1)
-            self.assertEqual(ib.qualifyContractsAsync.call_count, 3)
+            # Check price: net theoretical (0.1 - 0.05 = 0.05) + slippage (5) = 5.05
+            self.assertAlmostEqual(limit_order.lmtPrice, 5.05)
 
         asyncio.run(run_test())
 
