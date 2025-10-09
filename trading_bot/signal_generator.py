@@ -95,10 +95,21 @@ async def generate_signals(ib: IB, api_response: dict, config: dict) -> list:
         bullish_threshold = thresholds.get('bullish', 7)
         bearish_threshold = thresholds.get('bearish', 0)
 
+        log_msg = (f"Evaluating contract {contract.localSymbol} ({contract.lastTradeDateOrContractMonth[:6]}): "
+                   f"Price Change = {price_change:.2f}. "
+                   f"Thresholds (Bullish > {bullish_threshold}, Bearish < {bearish_threshold}).")
+
+        direction = None
         if price_change > bullish_threshold:
             direction = "BULLISH"
+            log_msg += " -> RESULT: BULLISH"
         elif price_change < bearish_threshold:
             direction = "BEARISH"
+            log_msg += " -> RESULT: BEARISH"
+        else:
+            log_msg += " -> RESULT: NO-TRADE"
+
+        logging.info(log_msg)
 
         if direction:
             signal = {
@@ -107,6 +118,5 @@ async def generate_signals(ib: IB, api_response: dict, config: dict) -> list:
                 "direction": direction
             }
             signals.append(signal)
-            logging.info(f"Generated signal for {signal['contract_month']}: {signal['direction']}")
 
     return signals
