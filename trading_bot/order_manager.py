@@ -44,8 +44,9 @@ async def generate_and_queue_orders(config: dict):
     try:
         logger.info("Step 1: Running data pull...")
         if not run_data_pull(config):
-            logger.error("Data pull failed. Aborting order generation."); return
-        logger.info("Data pull complete.")
+            logger.warning("Data pull failed. Using most recent data file as fallback.")
+        else:
+            logger.info("Data pull complete.")
 
         logger.info("Step 2: Fetching predictions from API...")
         predictions = send_data_and_get_prediction(config)

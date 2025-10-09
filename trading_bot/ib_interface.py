@@ -76,32 +76,78 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
     chain = strategy_def['chain']
     underlying_price = strategy_def['underlying_price']
 
+    # 1. Create all leg contract objects first
+    leg_contracts = []
+    for right, _, strike in legs_def:
+        contract = FuturesOption(
+            symbol=config['symbol'],
+            lastTradeDateOrContractMonth=exp_details['exp_date'],
+            strike=strike,
+            right=right,
+            exchange=chain['exchange'],
+            tradingClass='OK',  # Corrected Trading Class for Coffee Options
+            multiplier="37500"
+        )
+        leg_contracts.append(contract)
+
+    # 2. Qualify all leg contracts in a single batch
+    try:
+        qualified_legs = await ib.qualifyContractsAsync(*leg_contracts)
+    except Exception as e:
+        logging.error(f"Exception during contract qualification: {e}")
+        for lc in leg_contracts:
+            logging.error(f"Contract that failed qualification: {lc}")
+        return None
+
+    # 3. Validate all legs were qualified successfully before pricing
+    validated_legs = []
+    for leg in qualified_legs:
+        if leg.conId == 0:
+            logging.error(f"Failed to qualify contract, conId is 0. Contract details: {leg}")
+            return None
+        validated_legs.append(leg)
+
+    if len(validated_legs) != len(leg_contracts):
+        logging.error("Mismatch between number of requested and qualified legs. Aborting.")
+        return None
+
+    # 4. Price each qualified leg
     net_theoretical_price = 0.0
-    for right, leg_action, strike in legs_def:
-        leg_contract = FuturesOption(config['symbol'], exp_details['exp_date'], strike, right, chain['exchange'], tradingClass=chain['tradingClass'])
-        market_data = await get_option_market_data(ib, leg_contract)
-        if market_data:
-            pricing_result = price_option_black_scholes(S=underlying_price, K=strike, T=exp_details['days_to_exp'] / 365, r=market_data['risk_free_rate'], sigma=market_data['implied_volatility'], option_type=right)
-            if pricing_result:
-                price = pricing_result['price']
-                net_theoretical_price += price if leg_action == 'BUY' else -price
-            else:
-                logging.error(f"Failed to price leg {leg_action} {strike}{right}. Aborting."); return None
-        else:
-            logging.error(f"Failed to get market data for {leg_action} {strike}{right}. Aborting."); return None
+    for i, q_leg in enumerate(validated_legs):
+        leg_action = legs_def[i][1] # 'BUY' or 'SELL'
 
-    slippage_allowance = config.get('strategy_tuning', {}).get('slippage_usd_per_contract', 0.01)
+        market_data = await get_option_market_data(ib, q_leg)
+        if not market_data:
+            logging.error(f"Failed to get market data for {q_leg.localSymbol}. Aborting."); return None
+
+        pricing_result = price_option_black_scholes(
+            S=underlying_price,
+            K=q_leg.strike,
+            T=exp_details['days_to_exp'] / 365,
+            r=market_data['risk_free_rate'],
+            sigma=market_data['implied_volatility'],
+            option_type=q_leg.right
+        )
+
+        if not pricing_result:
+            logging.error(f"Failed to price leg {leg_action} {q_leg.localSymbol}. Aborting."); return None
+
+        price = pricing_result['price']
+        logging.info(f"Theoretical price calculated for {q_leg.right} @ {q_leg.strike}: {pricing_result}")
+        net_theoretical_price += price if leg_action == 'BUY' else -price
+
+    # 5. Calculate final limit price
+    slippage_allowance = config.get('strategy_tuning', {}).get('slippage_usd_per_contract', 5)
     limit_price = round(net_theoretical_price + slippage_allowance if action == 'BUY' else net_theoretical_price - slippage_allowance, 2)
-
     logging.info(f"Net theoretical price: {net_theoretical_price:.2f}, Slippage: {slippage_allowance:.2f}, Final Limit Price: {limit_price:.2f}")
 
+    # 6. Build the Bag contract using qualified leg conIds
     combo = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')
-    for right, leg_action, strike in legs_def:
-        contract = FuturesOption(config['symbol'], exp_details['exp_date'], strike, right, chain['exchange'], tradingClass=chain['tradingClass'])
-        await ib.qualifyContractsAsync(contract)
-        combo.comboLegs.append(ComboLeg(conId=contract.conId, ratio=1, action=leg_action, exchange=chain['exchange']))
+    for i, q_leg in enumerate(validated_legs):
+        leg_action = legs_def[i][1]
+        combo.comboLegs.append(ComboLeg(conId=q_leg.conId, ratio=1, action=leg_action, exchange=chain['exchange']))
 
-    await ib.qualifyContractsAsync(combo)
+    # The Bag contract itself does not need to be qualified if the legs are.
     order = LimitOrder(action, config['strategy']['quantity'], limit_price, tif="DAY")
 
     return (combo, order)
