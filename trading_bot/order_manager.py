@@ -102,7 +102,6 @@ async def generate_and_queue_orders(config: dict):
                 if util.isNan(price):
                     continue
 
-                price = normalize_strike(price)
                 chain = await build_option_chain(ib, future)
                 if not chain: continue
 
