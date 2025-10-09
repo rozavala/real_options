@@ -22,7 +22,7 @@ from trading_bot.ib_interface import (
 )
 from trading_bot.signal_generator import generate_signals
 from trading_bot.strategy import define_directional_strategy, define_volatility_strategy
-from trading_bot.utils import log_trade_to_ledger
+from trading_bot.utils import log_trade_to_ledger, log_order_event
 
 # --- Module-level storage for orders ---
 ORDER_QUEUE = []
@@ -136,16 +136,36 @@ async def place_queued_orders(config: dict):
         return
 
     ib = IB()
+
+    # Define the event handler inside the function to capture the 'ib' instance
+    def order_status_handler(trade: Trade):
+        """Callback for order status updates."""
+        # We only care about terminal states or states with messages
+        if trade.orderStatus.status in [OrderStatus.Filled, OrderStatus.Cancelled, OrderStatus.Inactive] or trade.log:
+            latest_log = trade.log[-1] if trade.log else None
+            message = latest_log.message if latest_log else ""
+            log_order_event(trade, trade.orderStatus.status, message)
+            logger.info(f"Order {trade.order.orderId} status: {trade.orderStatus.status}")
+
     try:
         conn_settings = config.get('connection', {})
         await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000))
         logger.info("Connected to IB for order placement.")
 
+        # Attach the event handler
+        ib.orderStatusEvent += order_status_handler
+
         placed_trades = []
         for contract, order in ORDER_QUEUE:
             trade = place_order(ib, contract, order)
+            # Initial log upon submission
+            log_order_event(trade, trade.orderStatus.status)
             placed_trades.append(trade)
             await asyncio.sleep(0.5) # Small delay between placements
+
+        # Wait for all orders to reach a terminal state (Filled, Cancelled, etc.)
+        while not all(t.isDone() for t in placed_trades):
+            await asyncio.sleep(1)
 
         logger.info(f"--- Finished placing {len(placed_trades)} orders. ---")
         send_pushover_notification(config.get('notifications', {}), "Orders Placed", f"{len(placed_trades)} DAY orders have been submitted to the. exchange.")
@@ -157,6 +177,8 @@ async def place_queued_orders(config: dict):
         send_pushover_notification(config.get('notifications', {}), "Order Placement CRITICAL", msg)
     finally:
         if ib.isConnected():
+            # It's good practice to remove the handler when done
+            ib.orderStatusEvent -= order_status_handler
             ib.disconnect()
 
 async def close_all_open_positions(config: dict):
@@ -221,7 +243,7 @@ async def cancel_all_open_orders(config: dict):
             logger.info(f"Cancelled order ID {trade.order.orderId}.")
             await asyncio.sleep(0.2)
 
-        logger.info(f"--- Finished canceling {len(open_trades)} orders ---")
+        logger.info(f"--- Finished canceling {len(open_trades)} orders ---\")
         send_pushover_notification(config.get('notifications', {}), "Open Orders Canceled", f"Canceled {len(open_trades)} unfilled DAY orders.")
 
     except Exception as e:
@@ -231,3 +253,4 @@ async def cancel_all_open_orders(config: dict):
     finally:
         if ib.isConnected():
             ib.disconnect()
+
