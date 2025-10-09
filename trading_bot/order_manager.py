@@ -22,7 +22,7 @@ from trading_bot.ib_interface import (
 )
 from trading_bot.signal_generator import generate_signals
 from trading_bot.strategy import define_directional_strategy, define_volatility_strategy
-from trading_bot.utils import normalize_strike, log_trade_to_ledger
+from trading_bot.utils import log_trade_to_ledger
 
 # --- Module-level storage for orders ---
 ORDER_QUEUE = []
