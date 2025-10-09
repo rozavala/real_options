@@ -21,22 +21,44 @@ from logging_config import setup_logging
 setup_logging()
 
 
-def normalize_strike(strike: float) -> float:
-    """Normalizes the strike price if it appears to be magnified by 100.
+def log_order_event(trade: Trade, status: str, message: str = ""):
+    """Logs the status change of an order to the `order_events.csv` file.
 
-    Some data feeds from Interactive Brokers may return option strike prices
-    as integers (e.g., 350.0 for a 3.5 strike). This function corrects such
-    values by dividing them by 100 if they exceed a certain threshold.
+    This provides a detailed audit trail of every stage an order goes through,
+    from submission to cancellation or fill.
 
     Args:
-        strike (float): The strike price to normalize.
-
-    Returns:
-        The normalized strike price.
+        trade (Trade): The `ib_insync.Trade` object.
+        status (str): The new status of the order (e.g., 'Submitted', 'Filled').
+        message (str, optional): Any additional message, like an error reason.
     """
-    if strike > 100:
-        return strike / 100.0
-    return strike
+    ledger_path = 'order_events.csv'
+    file_exists = os.path.isfile(ledger_path)
+
+    fieldnames = [
+        'timestamp', 'orderId', 'permId', 'clientId', 'local_symbol',
+        'action', 'quantity', 'lmtPrice', 'status', 'message'
+    ]
+
+    try:
+        with open(ledger_path, 'a', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow({
+                'timestamp': datetime.now(pytz.utc).strftime('%Y-%m-%d %H:%M:%S'),
+                'orderId': trade.order.orderId,
+                'permId': trade.order.permId,
+                'clientId': trade.order.clientId,
+                'local_symbol': trade.contract.localSymbol,
+                'action': trade.order.action,
+                'quantity': trade.order.totalQuantity,
+                'lmtPrice': trade.order.lmtPrice,
+                'status': status,
+                'message': message
+            })
+    except Exception as e:
+        logging.error(f"Error writing to order event log: {e}")
 
 
 def price_option_black_scholes(S: float, K: float, T: float, r: float, sigma: float, option_type: str) -> dict | None:
@@ -313,3 +335,4 @@ def log_trade_to_ledger(trade: Trade, reason: str = "Strategy Execution"):
         logging.info(f"Logged {len(rows_to_write)} leg(s) to ledger for combo_id {combo_id} ({reason})")
     except Exception as e:
         logging.error(f"Error writing to trade ledger: {e}")
+
