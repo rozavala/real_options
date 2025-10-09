@@ -8,6 +8,7 @@ strategy definition from the execution timing.
 import asyncio
 import logging
 import random
+import time
 import traceback
 from ib_insync import *
 
@@ -79,10 +80,10 @@ async def generate_and_queue_orders(config: dict):
                 ticker = ib.reqMktData(future, '', False, False)
 
                 # Wait for the ticker to update with a valid price, with a timeout
-                start_time = ib.time()
+                start_time = time.time()
                 while util.isNan(ticker.marketPrice()):
                     await ib.sleepAsync(0.1) # Use ib_insync's sleep to allow it to process messages
-                    if (ib.time() - start_time) > 5: # 5-second timeout
+                    if (time.time() - start_time) > 5: # 5-second timeout
                         logger.error(f"Timeout waiting for market price for {future.localSymbol}.")
                         logger.error(f"Ticker data received: {ticker}")
                         price = float('nan')
