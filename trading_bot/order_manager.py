@@ -243,7 +243,7 @@ async def cancel_all_open_orders(config: dict):
             logger.info(f"Cancelled order ID {trade.order.orderId}.")
             await asyncio.sleep(0.2)
 
-        logger.info(f"--- Finished canceling {len(open_trades)} orders ---\")
+        logger.info(f"--- Finished canceling {len(open_trades)} orders ---")
         send_pushover_notification(config.get('notifications', {}), "Open Orders Canceled", f"Canceled {len(open_trades)} unfilled DAY orders.")
 
     except Exception as e:
