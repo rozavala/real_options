@@ -51,7 +51,7 @@ async def generate_and_queue_orders(config: dict):
         if not predictions:
             send_pushover_notification(config.get('notifications', {}), "Order Generation Failure", "Failed to get predictions from API.")
             return
-        logger.info("Successfully received predictions.")
+        logger.info(f"Successfully received predictions from API: {predictions}")
 
         ib = IB()
         try:
@@ -61,6 +61,7 @@ async def generate_and_queue_orders(config: dict):
 
             logger.info("Step 2.5: Generating structured signals from predictions...")
             signals = await generate_signals(ib, predictions, config)
+            logger.info(f"Generated {len(signals)} signals: {signals}")
             if not signals:
                 logger.info("No actionable trading signals were generated. Concluding.")
                 return
