@@ -82,7 +82,7 @@ async def generate_and_queue_orders(config: dict):
                 # Wait for the ticker to update with a valid price, with a timeout
                 start_time = time.time()
                 while util.isNan(ticker.marketPrice()):
-                    await ib.sleep(0.1) # Use ib_insync's sleep to allow it to process messages
+                    await asyncio.sleep(0.1) # Use asyncio's sleep to allow ib_insync to process messages
                     if (time.time() - start_time) > 5: # 5-second timeout
                         logger.error(f"Timeout waiting for market price for {future.localSymbol}.")
                         logger.error(f"Ticker data received: {ticker}")
@@ -204,13 +204,14 @@ async def cancel_all_open_orders(config: dict):
         await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000))
         logger.info("Connected to IB for canceling open orders.")
 
-        open_trades = ib.reqOpenOrders()
+        # Use ib.openTrades() which is a non-blocking property
+        open_trades = ib.openTrades()
         if not open_trades:
             logger.info("No open orders found to cancel.")
             return
 
         logger.info(f"Found {len(open_trades)} open orders to cancel.")
-        for trade in open_trades:
+        for trade in list(open_trades): # Iterate over a copy
             ib.cancelOrder(trade.order)
             logger.info(f"Cancelled order ID {trade.order.orderId}.")
             await asyncio.sleep(0.2)
