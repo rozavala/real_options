@@ -173,13 +173,23 @@ def main(config: dict) -> bool:
 
     print("\nFetching other market data from yfinance...")
     try:
-        yf_multi_data = yf.download(list(config['yf_series_map'].keys()), start=start_date, end=end_date, progress=False)
-        for ticker, name in config['yf_series_map'].items():
-            if not yf_multi_data.empty and ticker in yf_multi_data['Close'].columns:
-                all_data[name] = yf_multi_data['Close'][[ticker]].copy().rename(columns={ticker: name})
+        tickers_list = list(config['yf_series_map'].keys())
+        yf_multi_data = yf.download(tickers_list, start=start_date, end=end_date, progress=False)
+
+        if not yf_multi_data.empty:
+            # If only one ticker is requested, yfinance returns a DataFrame with simple columns
+            if len(tickers_list) == 1:
+                ticker = tickers_list[0]
+                name = config['yf_series_map'][ticker]
+                all_data[name] = yf_multi_data[['Close']].copy().rename(columns={'Close': name})
+            # If multiple tickers are requested, yfinance returns a DataFrame with multi-level columns
+            else:
+                for ticker, name in config['yf_series_map'].items():
+                    if 'Close' in yf_multi_data.columns and ticker in yf_multi_data['Close'].columns:
+                        all_data[name] = yf_multi_data['Close'][[ticker]].copy().rename(columns={ticker: name})
+        validator.add_check("Other Market Data Fetch", True, "Completed all other yfinance requests.")
     except Exception as e:
          validator.add_check("Other Market Data Fetch", False, f"An error occurred: {e}")
-    validator.add_check("Other Market Data Fetch", True, "Completed all other yfinance requests.")
 
     # --- 3a. Process OHLV and Fetch COT Data ---
     print("\nProcessing OHLV and fetching COT data...")
