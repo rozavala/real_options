@@ -77,10 +77,18 @@ async def generate_and_queue_orders(config: dict):
                     logger.warning(f"No active future for signal month {signal.get('contract_month')}."); continue
 
                 logger.info(f"Requesting market price for {future.localSymbol}...")
-                ib.reqMktData(future, '', False, False)
-                try:
-                    # Use await ib.ticker(future) which is a more robust way to wait for data
-                    ticker = await asyncio.wait_for(ib.ticker(future), timeout=5.0)
+                ticker = ib.reqMktData(future, '', False, False)
+
+                # Wait for the ticker to update with a valid price, with a timeout
+                start_time = time.time()
+                while util.isNan(ticker.marketPrice()):
+                    await asyncio.sleep(0.1) # Use asyncio's sleep to allow ib_insync to process messages
+                    if (time.time() - start_time) > 5: # 5-second timeout
+                        logger.error(f"Timeout waiting for market price for {future.localSymbol}.")
+                        logger.error(f"Ticker data received: {ticker}")
+                        price = float('nan')
+                        break
+                else:
                     price = ticker.marketPrice()
                     if util.isNan(price):
                         logger.error(f"Received invalid NaN price for {future.localSymbol}. Ticker: {ticker}")
