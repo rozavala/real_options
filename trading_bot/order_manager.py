@@ -90,9 +90,16 @@ async def generate_and_queue_orders(config: dict):
                         break
                 else:
                     price = ticker.marketPrice()
-                    logger.info(f"Successfully received market price for {future.localSymbol}: {price}")
-
-                ib.cancelMktData(future)
+                    if util.isNan(price):
+                        logger.error(f"Received invalid NaN price for {future.localSymbol}. Ticker: {ticker}")
+                        price = float('nan')
+                    else:
+                        logger.info(f"Successfully received market price for {future.localSymbol}: {price}")
+                except asyncio.TimeoutError:
+                    logger.error(f"Timeout waiting for market price for {future.localSymbol}.")
+                    price = float('nan')
+                finally:
+                    ib.cancelMktData(future)
                 if util.isNan(price):
                     continue
 
