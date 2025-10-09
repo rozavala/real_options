@@ -139,9 +139,20 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         net_theoretical_price += price if leg_action == 'BUY' else -price
 
     # 5. Calculate final limit price
-    slippage_allowance = config.get('strategy_tuning', {}).get('slippage_usd_per_contract', 5)
-    limit_price = round(net_theoretical_price + slippage_allowance if action == 'BUY' else net_theoretical_price - slippage_allowance, 2)
-    logging.info(f"Net theoretical price: {net_theoretical_price:.2f}, Slippage: {slippage_allowance:.2f}, Final Limit Price: {limit_price:.2f}")
+    slippage_usd_per_contract = config.get('strategy_tuning', {}).get('slippage_usd_per_contract', 5)
+
+    # FIX: Convert slippage from total USD per contract to cents per pound to match the price's unit.
+    try:
+        # The multiplier is defined as a string in the contract object. Assume 37500 if not in config.
+        multiplier = float(config.get('multiplier', "37500"))
+        # Convert dollars to cents, then divide by contract size (lbs) to get cents/lb.
+        slippage_in_cents_per_lb = (slippage_usd_per_contract * 100) / multiplier
+    except (ValueError, ZeroDivisionError):
+        logging.warning(f"Could not parse multiplier. Defaulting slippage to 0.")
+        slippage_in_cents_per_lb = 0.0
+
+    limit_price = round(net_theoretical_price + slippage_in_cents_per_lb if action == 'BUY' else net_theoretical_price - slippage_in_cents_per_lb, 2)
+    logging.info(f"Net theoretical price: {net_theoretical_price:.2f} cents/lb, Slippage: ${slippage_usd_per_contract:.2f} ({slippage_in_cents_per_lb:.4f} cents/lb), Final Limit Price: {limit_price:.2f} cents/lb")
 
     # 6. Build the Bag contract using qualified leg conIds
     combo = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')
@@ -171,3 +182,4 @@ def place_order(ib: IB, contract: Contract, order: Order) -> Trade:
     trade = ib.placeOrder(contract, order)
     logging.info(f"Successfully placed order ID {trade.order.orderId} for {contract.localSymbol}.")
     return trade
+
