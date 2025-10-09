@@ -75,13 +75,25 @@ async def generate_and_queue_orders(config: dict):
                 if not future:
                     logger.warning(f"No active future for signal month {signal.get('contract_month')}."); continue
 
-                logger.info(f"Processing signal for {future.localSymbol}")
+                logger.info(f"Requesting market price for {future.localSymbol}...")
                 ticker = ib.reqMktData(future, '', False, False)
-                await asyncio.sleep(1)
-                price = ticker.marketPrice()
+
+                # Wait for the ticker to update with a valid price, with a timeout
+                start_time = ib.time()
+                while util.isNan(ticker.marketPrice()):
+                    await ib.sleepAsync(0.1) # Use ib_insync's sleep to allow it to process messages
+                    if (ib.time() - start_time) > 5: # 5-second timeout
+                        logger.error(f"Timeout waiting for market price for {future.localSymbol}.")
+                        logger.error(f"Ticker data received: {ticker}")
+                        price = float('nan')
+                        break
+                else:
+                    price = ticker.marketPrice()
+                    logger.info(f"Successfully received market price for {future.localSymbol}: {price}")
+
                 ib.cancelMktData(future)
                 if util.isNan(price):
-                    logger.error(f"Failed to get market price for {future.localSymbol}."); continue
+                    continue
 
                 price = normalize_strike(price)
                 chain = await build_option_chain(ib, future)
