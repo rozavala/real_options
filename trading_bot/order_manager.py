@@ -43,8 +43,7 @@ async def generate_and_queue_orders(config: dict):
     try:
         logger.info("Step 1: Running data pull...")
         if not run_data_pull(config):
-            logger.error("Data pull failed. Aborting order generation.")
-            return
+            logger.error("Data pull failed. Aborting order generation."); return
         logger.info("Data pull complete.")
 
         logger.info("Step 2: Fetching predictions from API...")
@@ -58,18 +57,24 @@ async def generate_and_queue_orders(config: dict):
         try:
             conn_settings = config.get('connection', {})
             await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000))
-            logger.info("Connected to IB for order generation.")
+            logger.info("Connected to IB for signal generation.")
+
+            logger.info("Step 2.5: Generating structured signals from predictions...")
+            signals = await generate_signals(ib, predictions, config)
+            if not signals:
+                logger.info("No actionable trading signals were generated. Concluding.")
+                return
 
             active_futures = await get_active_futures(ib, config['symbol'], config['exchange'])
             if not active_futures:
                 raise ConnectionError("Could not find any active futures contracts.")
 
-            for prediction in predictions:
-                future = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(prediction.get("contract_month", ""))), None)
+            for signal in signals:
+                future = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal.get("contract_month", ""))), None)
                 if not future:
-                    logger.warning(f"No active future for prediction month {prediction.get('contract_month')}."); continue
+                    logger.warning(f"No active future for signal month {signal.get('contract_month')}."); continue
 
-                logger.info(f"Processing prediction for {future.localSymbol}")
+                logger.info(f"Processing signal for {future.localSymbol}")
                 ticker = ib.reqMktData(future, '', False, False)
                 await asyncio.sleep(1)
                 price = ticker.marketPrice()
@@ -81,15 +86,14 @@ async def generate_and_queue_orders(config: dict):
                 chain = await build_option_chain(ib, future)
                 if not chain: continue
 
-                define_func = define_directional_strategy if prediction['prediction_type'] == 'DIRECTIONAL' else define_volatility_strategy
-                strategy_def = define_func(config, prediction, chain, price, future)
+                define_func = define_directional_strategy if signal['prediction_type'] == 'DIRECTIONAL' else define_volatility_strategy
+                strategy_def = define_func(config, signal, chain, price, future)
 
                 if strategy_def:
                     order_objects = await create_combo_order_object(ib, config, strategy_def)
                     if order_objects:
                         ORDER_QUEUE.append(order_objects)
                         logger.info(f"Successfully queued order for {future.localSymbol}.")
-
         finally:
             if ib.isConnected():
                 ib.disconnect()
