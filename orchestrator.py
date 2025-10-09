@@ -204,10 +204,10 @@ async def main():
 
     # Schedule mapping run times (GMT) to functions
     schedule = {
-        time(7, 55): start_monitoring,      # Start monitoring before trading
-        time(0, 10): run_trading_cycle,       # Run the main trading logic
-        time(21, 55): stop_monitoring,      # Stop monitoring after market hours
-        time(22, 0): analyze_performance    # Run performance analysis
+        time(8, 30): start_monitoring,      # Start monitoring before trading
+        time(8, 0): run_trading_cycle,       # Run the main trading logic
+        time(18, 30): stop_monitoring,      # Stop monitoring after market hours
+        time(19, 0): analyze_performance    # Run performance analysis
     }
 
     try:
