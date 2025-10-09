@@ -85,7 +85,8 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
             strike=strike,
             right=right,
             exchange=chain['exchange'],
-            tradingClass=chain['tradingClass']
+            tradingClass=chain['tradingClass'],
+            multiplier="37500"
         )
         leg_contracts.append(contract)
 

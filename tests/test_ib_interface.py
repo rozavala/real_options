@@ -93,7 +93,9 @@ class TestIbInterface(unittest.TestCase):
             unqualified_args = ib.qualifyContractsAsync.call_args[0]
             self.assertEqual(len(unqualified_args), 2)
             self.assertEqual(unqualified_args[0].strike, 3.5)
+            self.assertEqual(unqualified_args[0].multiplier, "37500")
             self.assertEqual(unqualified_args[1].strike, 3.6)
+            self.assertEqual(unqualified_args[1].multiplier, "37500")
 
             # Assert pricing was called with the QUALIFIED contracts
             mock_get_market_data.assert_any_call(ib, q_leg1)
