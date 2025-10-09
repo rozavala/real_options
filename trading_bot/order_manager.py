@@ -150,7 +150,7 @@ async def place_queued_orders(config: dict):
             await asyncio.sleep(0.5) # Small delay between placements
 
         logger.info(f"--- Finished placing {len(placed_trades)} orders. ---")
-        send_pushover_notification(config.get('notifications', {}), "Orders Placed", f"{len(placed_trades)} DAY orders have been submitted to the exchange.")
+        send_pushover_notification(config.get('notifications', {}), "Orders Placed", f"{len(placed_trades)} DAY orders have been submitted to the. exchange.")
         ORDER_QUEUE.clear()
 
     except Exception as e:
