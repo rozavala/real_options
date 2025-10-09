@@ -85,7 +85,9 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
             strike=strike,
             right=right,
             exchange=chain['exchange'],
-            tradingClass='OK',  # Corrected Trading Class for Coffee Options
+            # FIX: Use the dynamically fetched tradingClass instead of a hardcoded value.
+            # The tradingClass for Coffee (KC) options is 'OKC', not 'OK'.
+            tradingClass=chain['tradingClass'],
             multiplier="37500"
         )
         leg_contracts.append(contract)
