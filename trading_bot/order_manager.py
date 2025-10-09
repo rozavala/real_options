@@ -82,7 +82,7 @@ async def generate_and_queue_orders(config: dict):
                 # Wait for the ticker to update with a valid price, with a timeout
                 start_time = time.time()
                 while util.isNan(ticker.marketPrice()):
-                    await ib.sleepAsync(0.1) # Use ib_insync's sleep to allow it to process messages
+                    await ib.sleep(0.1) # Use ib_insync's sleep to allow it to process messages
                     if (time.time() - start_time) > 5: # 5-second timeout
                         logger.error(f"Timeout waiting for market price for {future.localSymbol}.")
                         logger.error(f"Ticker data received: {ticker}")
