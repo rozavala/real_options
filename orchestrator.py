@@ -122,9 +122,9 @@ async def main():
 
     # New schedule mapping run times (GMT) to functions
     schedule = {
-        time(17, 14): generate_and_queue_orders,
-        time(17, 16): start_monitoring,
-        time(17, 16): place_queued_orders,
+        time(17, 27): generate_and_queue_orders,
+        time(17, 28): start_monitoring,
+        time(17, 28): place_queued_orders,
         time(18, 0): close_all_open_positions,
         time(18, 30): cancel_and_stop_monitoring,
         time(18, 0): analyze_performance
