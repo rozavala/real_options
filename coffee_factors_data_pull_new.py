@@ -13,7 +13,7 @@ generates a report summarizing the validation results and sends a notification.
 """
 # --- Install all required libraries ---
 # You should run this command in your terminal or command prompt, not inside the script:
-# pip install yfinance fredapi pandas nasdaq-data-link xlrd openpyxl requests
+# pip install yfinance fredapi pandas requests openpyxl
 
 # --- Import Libraries ---
 import yfinance as yf
@@ -22,8 +22,9 @@ from datetime import datetime, timedelta
 import json
 import os
 from fredapi import Fred
-import nasdaqdatalink as ndl
 import requests
+import zipfile
+import io
 from pandas.tseries.offsets import BDay
 
 # --- Custom Modules ---
@@ -31,56 +32,21 @@ from notifications import send_pushover_notification
 
 # --- Validation Manager Class ---
 class ValidationManager:
-    """A class to manage and report data validation checks.
-
-    This class provides a structured way to run a series of data quality
-    checks, store their results, and generate a formatted report.
-
-    Attributes:
-        results (list[dict]): A list to store the outcome of each check.
-        final_shape (tuple | None): The shape (rows, columns) of the final
-            processed DataFrame.
-    """
+    """A class to manage and report data validation checks."""
     def __init__(self):
-        """Initializes the ValidationManager."""
         self.results = []
         self.final_shape = None
 
     def add_check(self, check_name: str, success: bool, message: str):
-        """Adds a validation check result to the manager.
-
-        Args:
-            check_name (str): The name of the validation check.
-            success (bool): True if the check passed, False otherwise.
-            message (str): A descriptive message about the check's outcome.
-        """
         self.results.append({'check': check_name, 'success': success, 'message': message})
 
     def set_final_shape(self, shape: tuple[int, int]):
-        """Stores the shape of the final DataFrame for reporting.
-
-        Args:
-            shape (tuple[int, int]): The (rows, columns) shape of the final df.
-        """
         self.final_shape = shape
 
     def was_successful(self) -> bool:
-        """Checks if all validation checks passed.
-
-        Returns:
-            True if all checks were successful, False otherwise.
-        """
         return all(r['success'] for r in self.results)
 
     def generate_report(self) -> str:
-        """Generates a summary report of all validation checks.
-
-        The report includes an overall status, a list of individual check
-        results, and statistics about the final generated data file.
-
-        Returns:
-            A formatted string containing the full validation report.
-        """
         report = "<b>Data Pull Validation Report</b>\n"
         report += f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         
@@ -105,21 +71,7 @@ class ValidationManager:
 # --- Main Script ---
 
 def get_kc_expiration_date(year: int, month_code: str) -> pd.Timestamp:
-    """Calculates the expiration date for a Coffee 'C' futures contract.
-
-    The expiration for KC futures is the business day prior to the last
-    business day of the contract month.
-
-    Args:
-        year (int): The contract year (e.g., 2025).
-        month_code (str): The month code ('H', 'K', 'N', 'U', 'Z').
-
-    Returns:
-        The calculated expiration date as a pandas Timestamp.
-
-    Raises:
-        ValueError: If the month code is invalid.
-    """
+    """Calculates the expiration date for a Coffee 'C' futures contract."""
     month_map = {'H': 3, 'K': 5, 'N': 7, 'U': 9, 'Z': 12}
     month = month_map.get(month_code)
     if not month:
@@ -131,18 +83,7 @@ def get_kc_expiration_date(year: int, month_code: str) -> pd.Timestamp:
     return last_business_day - BDay(1)
 
 def get_active_coffee_tickers(num_contracts: int = 5) -> list[str]:
-    """Determines the tickers for the next N active coffee futures contracts.
-
-    It identifies upcoming contracts that have not yet expired and returns
-    their tickers in chronological order of expiration.
-
-    Args:
-        num_contracts (int): The number of active contract tickers to return.
-
-    Returns:
-        A list of Yahoo Finance tickers for the active contracts, sorted
-        chronologically (e.g., ['KCK25.NYB', 'KCN25.NYB']).
-    """
+    """Determines the tickers for the next N active coffee futures contracts."""
     print(f"Dynamically determining the next {num_contracts} coffee tickers...")
     now = datetime.now()
     current_year = now.year
@@ -163,21 +104,7 @@ def get_active_coffee_tickers(num_contracts: int = 5) -> list[str]:
     return active_tickers
 
 def main(config: dict) -> bool:
-    """Runs the main data pull, validation, and processing pipeline.
-
-    This function orchestrates the entire data gathering process. It uses the
-    provided configuration to fetch data from various APIs, validates each
-    step using the ValidationManager, consolidates the data, and saves the
-    final result if all checks pass.
-
-    Args:
-        config (dict): The application configuration dictionary, which must
-            contain API keys and other settings.
-
-    Returns:
-        True if the entire process, including all validations, completes
-        successfully. False otherwise.
-    """
+    """Runs the main data pull, validation, and processing pipeline."""
     if not config:
         return False
 
@@ -185,7 +112,6 @@ def main(config: dict) -> bool:
     
     # --- API and Date Configuration ---
     fred = Fred(api_key=config['fred_api_key'])
-    ndl.api_key = config['nasdaq_api_key']
     start_date = datetime(1980, 1, 1)
     end_date = datetime.now()
     
@@ -194,6 +120,7 @@ def main(config: dict) -> bool:
     
     # --- 1. Fetch Coffee Futures Data ---
     chronological_tickers = get_active_coffee_tickers(num_contracts=5)
+    df_coffee = pd.DataFrame() 
     if not chronological_tickers:
         validator.add_check("Coffee Ticker Generation", False, "Could not determine active coffee tickers.")
     else:
@@ -254,6 +181,66 @@ def main(config: dict) -> bool:
          validator.add_check("Other Market Data Fetch", False, f"An error occurred: {e}")
     validator.add_check("Other Market Data Fetch", True, "Completed all other yfinance requests.")
 
+    # --- 3a. Process OHLV and Fetch COT Data ---
+    print("\nProcessing OHLV and fetching COT data...")
+
+    if not df_coffee.empty:
+        try:
+            df_ohlv = df_coffee[['Open', 'High', 'Low', 'Volume']].copy()
+            df_ohlv.columns = ['_'.join(col).strip() for col in df_ohlv.columns.values]
+            
+            rename_map = {}
+            for col in df_ohlv.columns:
+                measure, ticker = col.split('_')
+                contract_name = ticker.replace('.NYB', '')
+                rename_map[col] = f"{contract_name}_{measure.lower()}"
+            df_ohlv.rename(columns=rename_map, inplace=True)
+            all_data['coffee_ohlv'] = df_ohlv
+            validator.add_check("Coffee OHLV Processing", True, "Successfully processed OHLV data.")
+        except Exception as e:
+            validator.add_check("Coffee OHLV Processing", False, f"Error processing OHLV data: {e}")
+
+    try:
+        print("Fetching historical COT data directly from CFTC...")
+        all_cot_dfs = []
+        cftc_ticker = 'COFFEE C'
+        
+        for year in range(start_date.year, end_date.year + 1):
+            url = f"https://www.cftc.gov/files/dea/history/deacot{year}.zip"
+            try:
+                response = requests.get(url)
+                if response.status_code == 200:
+                    with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+                        with z.open('annual.txt') as f:
+                            yearly_df = pd.read_csv(f, low_memory=False)
+                            all_cot_dfs.append(yearly_df)
+                    print(f"... Successfully processed year {year}")
+            except Exception as e:
+                print(f"... Warning: Could not process COT data for year {year}. Error: {e}")
+                
+        cot_df = pd.concat(all_cot_dfs, ignore_index=True)
+
+        cot_df = cot_df[cot_df['Market and Exchange Names'].str.contains(cftc_ticker, na=False)].copy()
+        cot_df['Date'] = pd.to_datetime(cot_df['As of Date in Form YYYY-MM-DD'], format='%Y-%m-%d')
+        cot_df.set_index('Date', inplace=True)
+        
+        cot_cols = {
+            'Noncommercial Positions-Long (All)': 'cot_noncomm_long',
+            'Noncommercial Positions-Short (All)': 'cot_noncomm_short',
+        }
+        cot_df = cot_df.rename(columns=cot_cols)
+        
+        cot_df['cot_noncomm_long'] = pd.to_numeric(cot_df['cot_noncomm_long'])
+        cot_df['cot_noncomm_short'] = pd.to_numeric(cot_df['cot_noncomm_short'])
+        
+        cot_df['cot_noncomm_net'] = cot_df['cot_noncomm_long'] - cot_df['cot_noncomm_short']
+        
+        all_data['cot_report'] = cot_df[['cot_noncomm_net']]
+        validator.add_check("COT Report Fetch", True, f"Successfully fetched CFTC data. Last entry: {cot_df.index.max().strftime('%Y-%m-%d')}")
+
+    except Exception as e:
+        validator.add_check("COT Report Fetch", False, f"Could not fetch CFTC data directly: {e}")
+
     print("\nAll data fetching complete.")
 
     # --- 4. Consolidate, Validate, and Save ---
@@ -280,19 +267,18 @@ def main(config: dict) -> bool:
             max_spike = final_df['price_pct_change'].max()
             spike_threshold = config['validation_thresholds']['price_spike_pct']
             no_spikes = max_spike < spike_threshold
-            validator.add_check("Price Spike Detection", no_spikes, f"Max daily change for front-month was {max_spike:.2%}. Threshold is {spike_threshold:.0%}.")
+            validator.add_check("Price Spike Detection", no_spikes, f"Max daily change was {max_spike:.2%}. Threshold is {spike_threshold:.0%}.")
             final_df.drop(columns=['price_pct_change'], inplace=True)
         else:
-            validator.add_check("Price Spike Detection", False, "Front-month column not found for spike check.")
+            validator.add_check("Price Spike Detection", False, "Front-month column not found.")
 
         if validator.was_successful():
             if front_month_col and front_month_col in final_df.columns:
                 final_df.dropna(subset=[front_month_col], inplace=True)
 
-            # CORRECTED: Robustly parse contract details and reformat columns
             for col in list(final_df.columns):
                 if col.startswith('coffee_price_KC'):
-                    ticker = col.replace('coffee_price_', '') # e.g., 'KCH25'
+                    ticker = col.replace('coffee_price_', '')
                     if len(ticker) >= 4:
                         month_code = ticker[2]
                         year_str = ticker[3:]
@@ -301,14 +287,20 @@ def main(config: dict) -> bool:
                             exp = get_kc_expiration_date(year, month_code)
                             final_df[f'{month_code}_dte'] = (exp.tz_localize(None) - final_df.index).days
                             final_df.loc[final_df[f'{month_code}_dte'] < 0, f'{month_code}_dte'] = None
-                            final_df[f'{month_code}_symbol'] = ticker
                             final_df.rename(columns={col: f'{month_code}_price'}, inplace=True)
                         except (ValueError, TypeError):
-                            print(f"Warning: Could not parse ticker details from column '{col}'. Skipping.")
+                            print(f"Warning: Could not parse ticker details from column '{col}'.")
                             continue
             
             final_df['date'] = final_df.index.strftime('%-m/%-d/%y')
-            final_cols = [c for c in config['final_column_order'] if c in final_df.columns]
+            
+            final_cols_from_config = config['final_column_order']
+            all_available_cols = list(final_df.columns)
+            final_cols = [c for c in final_cols_from_config if c in all_available_cols]
+            for col in all_available_cols:
+                if col not in final_cols:
+                    final_cols.append(col)
+
             final_df = final_df[final_cols]
             
             for col in [c for c in final_cols if '_dte' in c]:
@@ -324,7 +316,7 @@ def main(config: dict) -> bool:
             print("\nValidation failures occurred. Skipping final processing and file save.")
 
     else:
-        validator.add_check("Consolidation", False, "No coffee price data was fetched. Cannot create final data file.")
+        validator.add_check("Consolidation", False, "No coffee price data was fetched.")
     
     report = validator.generate_report()
     print("\n" + "="*30 + "\n" + report + "\n" + "="*30)
