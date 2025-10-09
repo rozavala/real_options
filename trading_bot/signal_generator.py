@@ -42,11 +42,18 @@ async def generate_signals(ib: IB, api_response: dict, config: dict) -> list:
         not enough active futures can be fetched.
     """
     price_changes = api_response.get("price_changes")
-    if not price_changes or not isinstance(price_changes, list):
+    if not price_changes or not isinstance(price_changes, list) or len(price_changes) != 5:
         logging.error(f"Invalid or missing 'price_changes' in API response: {api_response}")
         return []
 
     logging.info("Generating trading signals from API response...")
+
+    # The API returns predictions sorted alphabetically by month code (H, K, N, U, Z)
+    # Create a mapping from the month code to its corresponding prediction.
+    month_codes_alpha = ['H', 'K', 'N', 'U', 'Z']
+    predictions_by_month = dict(zip(month_codes_alpha, price_changes))
+    logging.info(f"Received predictions mapped to month codes: {predictions_by_month}")
+
 
     # Fetch the active futures contracts to map predictions to
     active_futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=5)
@@ -79,16 +86,19 @@ async def generate_signals(ib: IB, api_response: dict, config: dict) -> list:
             logging.warning(f"Could not parse date for contract: {contract.localSymbol}")
             return (9999, 99) # Place problematic contracts at the end
 
-    # Sort contracts to ensure predictions align with the correct months
+    # Sort contracts chronologically to ensure we are evaluating the nearest expirations
     sorted_contracts = sorted(active_futures, key=get_sort_key)
 
     signals = []
-    for i, contract in enumerate(sorted_contracts):
-        if i >= len(price_changes):
-            break
+    for contract in sorted_contracts:
+        # Extract the month code from the contract's local symbol (e.g., 'K' from 'KCK6')
+        contract_month_code = contract.localSymbol[2]
 
-        price_change = price_changes[i]
-        direction = None
+        # Look up the correct prediction using the contract's month code
+        price_change = predictions_by_month.get(contract_month_code)
+        if price_change is None:
+            logging.warning(f"No prediction found for month code '{contract_month_code}' in contract {contract.localSymbol}. Skipping.")
+            continue
 
         # Determine signal direction based on configured thresholds
         thresholds = config.get('signal_thresholds', {})

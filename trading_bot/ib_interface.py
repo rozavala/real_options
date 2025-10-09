@@ -23,7 +23,7 @@ async def get_option_market_data(ib: IB, contract: Contract) -> dict | None:
     logging.info(f"Fetching market data for option: {contract.localSymbol}")
     ticker = ib.reqMktData(contract, '106', False, False)
     await asyncio.sleep(2)
-    iv = ticker.modelGreeks.impliedVol if ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol) else 0.25
+    iv = ticker.modelGreeks.impliedVol if ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol) else 0.5
     ib.cancelMktData(contract)
     return {'implied_volatility': iv, 'risk_free_rate': 0.04}
 
