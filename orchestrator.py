@@ -40,6 +40,16 @@ logger = logging.getLogger("Orchestrator")
 monitor_process = None
 
 
+async def log_stream(stream, logger_func):
+    """Reads and logs lines from a subprocess stream."""
+    while True:
+        line = await stream.readline()
+        if line:
+            logger_func(line.decode('utf-8').strip())
+        else:
+            break
+
+
 async def start_monitoring(config: dict):
     """Starts the `position_monitor.py` script as a background process."""
     global monitor_process
@@ -52,9 +62,14 @@ async def start_monitoring(config: dict):
         monitor_process = await asyncio.create_subprocess_exec(
             sys.executable, 'position_monitor.py',
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE  # Capture both stdout and stderr
         )
         logger.info(f"Successfully started position monitor with PID: {monitor_process.pid}")
+
+        # Create tasks to log the output from the monitor process in the background
+        asyncio.create_task(log_stream(monitor_process.stdout, logger.info))
+        asyncio.create_task(log_stream(monitor_process.stderr, logger.error))
+
         send_pushover_notification(config.get('notifications', {}), "Orchestrator", "Started position monitoring service.")
     except Exception as e:
         logger.critical(f"Failed to start position monitor: {e}\n{traceback.format_exc()}")
@@ -122,9 +137,9 @@ async def main():
 
     # New schedule mapping run times (GMT) to functions
     schedule = {
-        time(14, 31): generate_and_queue_orders,
-        time(14, 32): start_monitoring,
-        time(14, 33): place_queued_orders,
+        time(16, 14): generate_and_queue_orders,
+        time(16, 14): start_monitoring,
+        time(16, 16): place_queued_orders,
         time(17, 0): close_all_open_positions,
         time(17, 30): cancel_and_stop_monitoring,
         time(18, 0): analyze_performance
