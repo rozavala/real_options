@@ -127,7 +127,7 @@ def get_next_task(now_gmt: datetime, schedule: dict) -> tuple[datetime, callable
 
 # New schedule mapping run times (GMT) to functions
 schedule = {
-    time(16, 38): generate_and_queue_orders,
+    time(8, 30): generate_and_queue_orders,
     time(16, 45): start_monitoring,
     time(16, 42): place_queued_orders,
     time(17, 0): close_all_open_positions,
