@@ -7,6 +7,7 @@ cd ~/real_options
 
 echo "--- 1. Stopping the old trading bot process... ---"
 pkill -f orchestrator.py || true
+mv ~/real_options/logs/orchestrator.log ~/real_options/logs/orchestrator-$(date --iso=s).log  || true
 
 echo "--- 2. Activating virtual environment... ---"
 source ~/Desktop/ib_env/bin/activate
