@@ -8,7 +8,6 @@ import os
 from ib_insync import FuturesOption, Bag, ComboLeg, OrderStatus, Trade, Order, Fill, Execution
 
 from trading_bot.utils import (
-    normalize_strike,
     price_option_black_scholes,
     get_position_details,
     is_market_open,
@@ -19,11 +18,6 @@ from trading_bot.utils import (
 
 
 class TestUtils(unittest.TestCase):
-
-    def test_normalize_strike(self):
-        self.assertEqual(normalize_strike(350.0), 3.5)
-        self.assertEqual(normalize_strike(3.5), 3.5)
-        self.assertEqual(normalize_strike(99), 99)
 
     def test_price_option_black_scholes(self):
         # Test with known values
@@ -40,8 +34,7 @@ class TestUtils(unittest.TestCase):
 
             # --- Test with a single leg option ---
             position_single = Mock()
-            # Mock a magnified strike price
-            position_single.contract = FuturesOption(symbol='KC', lastTradeDateOrContractMonth='202512', strike=350.0, right='C', exchange='NYBOT')
+            position_single.contract = FuturesOption(symbol='KC', lastTradeDateOrContractMonth='202512', strike=3.5, right='C', exchange='NYBOT')
             details_single = await get_position_details(ib, position_single)
             self.assertEqual(details_single['type'], 'SINGLE_LEG')
             self.assertEqual(details_single['key_strikes'], [3.5])
@@ -54,9 +47,9 @@ class TestUtils(unittest.TestCase):
 
             # Mock the contract details resolution for the legs
             mock_cd1 = Mock()
-            mock_cd1.contract = FuturesOption(conId=1, right='C', strike=350.0) # Magnified
+            mock_cd1.contract = FuturesOption(conId=1, right='C', strike=3.5)
             mock_cd2 = Mock()
-            mock_cd2.contract = FuturesOption(conId=2, right='C', strike=360.0) # Magnified
+            mock_cd2.contract = FuturesOption(conId=2, right='C', strike=3.6)
 
             ib.reqContractDetailsAsync = AsyncMock(side_effect=[[mock_cd1], [mock_cd2]])
 

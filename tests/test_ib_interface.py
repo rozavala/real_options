@@ -63,16 +63,21 @@ class TestIbInterface(unittest.TestCase):
             ib = AsyncMock()
 
             # Mock for the qualification result
-            q_leg1 = FuturesOption(conId=101, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.5, right='C', exchange='NYBOT')
-            q_leg2 = FuturesOption(conId=102, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.6, right='C', exchange='NYBOT')
+            q_leg1 = FuturesOption(conId=101, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.5, right='C', exchange='NYBOT', multiplier="37500")
+            q_leg2 = FuturesOption(conId=102, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.6, right='C', exchange='NYBOT', multiplier="37500")
             ib.qualifyContractsAsync.return_value = [q_leg1, q_leg2]
 
             # Mocks for pricing functions
             mock_get_market_data.return_value = {'implied_volatility': 0.2, 'risk_free_rate': 0.05}
-            mock_price_bs.side_effect = [{'price': 0.1}, {'price': 0.05}]
+            mock_price_bs.side_effect = [{'price': 1.0}, {'price': 0.5}] # Price in cents/lb
 
             # 2. Setup Inputs
-            config = {'symbol': 'KC', 'strategy': {'quantity': 1}, 'strategy_tuning': {'slippage_usd_per_contract': 5}}
+            config = {
+                'symbol': 'KC',
+                'multiplier': "37500",
+                'strategy': {'quantity': 1},
+                'strategy_tuning': {'slippage_usd_per_contract': 5}
+            }
             strategy_def = {
                 "action": "BUY",
                 "legs_def": [('C', 'BUY', 3.5), ('C', 'SELL', 3.6)],
@@ -110,8 +115,10 @@ class TestIbInterface(unittest.TestCase):
             # Assert order details are correct
             self.assertIsInstance(limit_order, LimitOrder)
             self.assertEqual(limit_order.action, 'BUY')
-            # Check price: net theoretical (0.1 - 0.05 = 0.05) + slippage (5) = 5.05
-            self.assertAlmostEqual(limit_order.lmtPrice, 5.05)
+            # Check price: net theoretical (1.0 - 0.5 = 0.5) + slippage ($5 -> 1.33 cents/lb)
+            # $5 * 100 cents/$ / 37500 lbs = 0.01333 cents/lb
+            expected_price = (1.0 - 0.5) + ((5 * 100) / 37500)
+            self.assertAlmostEqual(limit_order.lmtPrice, round(expected_price, 2))
 
         asyncio.run(run_test())
 
@@ -136,7 +143,7 @@ class TestIbInterface(unittest.TestCase):
             strategy_def = {
                 "action": "BUY", "legs_def": [('C', 'BUY', 3.5), ('C', 'SELL', 3.6)],
                 "exp_details": {'exp_date': '20251220', 'days_to_exp': 30},
-                "chain": {'exchange': 'NYBOT'}, "underlying_price": 100.0,
+                "chain": {'exchange': 'NYBOT', 'tradingClass': 'KCO'}, "underlying_price": 100.0,
             }
 
             # 3. Execute the function

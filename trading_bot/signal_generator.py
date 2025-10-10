@@ -91,8 +91,13 @@ async def generate_signals(ib: IB, api_response: dict, config: dict) -> list:
 
     signals = []
     for contract in sorted_contracts:
-        # Extract the month code from the contract's local symbol (e.g., 'K' from 'KCK6')
-        contract_month_code = contract.localSymbol[2]
+        # Extract the month from the contract's expiration date string
+        try:
+            month = int(contract.lastTradeDateOrContractMonth[4:6])
+            contract_month_code = month_to_code.get(month)
+        except (ValueError, IndexError):
+            logging.warning(f"Could not determine month code for contract: {contract.localSymbol}. Skipping.")
+            continue
 
         # Look up the correct prediction using the contract's month code
         price_change = predictions_by_month.get(contract_month_code)

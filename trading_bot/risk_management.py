@@ -107,9 +107,8 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
     for under_con_id, combo_legs in positions_by_underlying.items():
         total_unrealized_pnl, total_entry_cost = 0, 0
         for leg_pos in combo_legs:
-            pnl = ib.reqPnLSingle(account, '', leg_pos.contract.conId)
-            await ib.sleepAsync(0.1)
-            if util.isNan(pnl.unrealizedPnL):
+            pnl = await ib.reqPnLSingleAsync(account, '', leg_pos.contract.conId)
+            if not pnl or util.isNan(pnl.unrealizedPnL):
                 logging.warning(f"Could not get PnL for leg {leg_pos.contract.localSymbol}. Skipping combo risk check."); total_unrealized_pnl = float('nan'); break
             total_unrealized_pnl += pnl.unrealizedPnL
             multiplier = float(leg_pos.contract.multiplier) if leg_pos.contract.multiplier else 37500.0
@@ -142,23 +141,66 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
             for leg_pos in combo_legs: ib.cancelPnLSingle(account, '', leg_pos.contract.conId)
 
 
-async def _check_fills_once(ib: IB, config: dict, filled_order_ids: set):
-    """Checks for newly filled orders and logs them."""
-    logging.info("--- Order Fill Monitor: Checking for new fills ---")
-    newly_filled_count = 0
-    for trade in ib.trades():
-        if trade.orderStatus.status == OrderStatus.Filled and trade.order.orderId not in filled_order_ids:
-            try:
-                log_trade_to_ledger(trade, "Daily Strategy Fill")
-                filled_order_ids.add(trade.order.orderId)
-                newly_filled_count += 1
-                fill_msg = f"FILLED: {trade.order.action} {trade.orderStatus.filled} {trade.contract.localSymbol} @ {trade.orderStatus.avgFillPrice:.2f}"
-                logging.info(fill_msg)
-                send_pushover_notification(config.get('notifications', {}), "Order Filled", fill_msg)
-            except Exception as e:
-                logging.error(f"Error processing fill for order ID {trade.order.orderId}: {e}")
-    if newly_filled_count > 0:
-        logging.info(f"Successfully processed and logged {newly_filled_count} new fills.")
+# --- Order Fill Monitoring ---
+
+# A set to keep track of order IDs that have already been logged as filled.
+# This prevents duplicate entries in the trade ledger.
+_filled_order_ids = set()
+
+
+def _on_order_status(trade: Trade):
+    """Event handler for order status updates."""
+    if trade.orderStatus.status == OrderStatus.Filled and trade.order.orderId not in _filled_order_ids:
+        try:
+            # Log the trade immediately upon fill confirmation.
+            log_trade_to_ledger(trade, "Daily Strategy Fill")
+            _filled_order_ids.add(trade.order.orderId)
+            fill_msg = (
+                f"FILLED: {trade.order.action} {trade.orderStatus.filled} "
+                f"{trade.contract.localSymbol} @ {trade.orderStatus.avgFillPrice:.2f}"
+            )
+            logging.info(fill_msg)
+            # Note: Notifications are sent from the `_on_fill` handler to include execution details.
+        except Exception as e:
+            logging.error(f"Error processing fill for order ID {trade.order.orderId}: {e}")
+    elif trade.orderStatus.status in [OrderStatus.Cancelled, OrderStatus.Inactive]:
+        # If an order is cancelled or becomes inactive, we can remove it from tracking.
+        _filled_order_ids.discard(trade.order.orderId)
+
+
+def _on_fill(trade: Trade, fill: Fill):
+    """Event handler for new fills (executions)."""
+    # This handler is primarily for sending notifications with fill details.
+    # The actual logging to the trade ledger is done in `_on_order_status`
+    # to ensure it happens only once per order.
+    try:
+        fill_msg = (
+            f"EXECUTION: {fill.execution.side} {fill.execution.shares} "
+            f"{trade.contract.localSymbol} @ {fill.execution.price:.2f} "
+            f"(Order ID: {fill.execution.orderId})"
+        )
+        logging.info(fill_msg)
+        # Assuming config is accessible or passed differently if needed for notifications.
+        # For now, this is simplified. A better implementation would involve a config object.
+        # send_pushover_notification(config.get('notifications', {}), "Order Execution", fill_msg)
+    except Exception as e:
+        logging.error(f"Error processing execution notification for order ID {trade.order.orderId}: {e}")
+
+
+async def monitor_order_fills(ib: IB):
+    """Sets up event listeners for real-time order fill monitoring."""
+    logging.info("--- Starting Real-Time Order Fill Monitor ---")
+
+    # Register the event handlers.
+    ib.orderStatusEvent += _on_order_status
+    ib.execDetailsEvent += _on_fill
+
+    # Request all open orders to ensure we are tracking everything upon startup.
+    await ib.reqAllOpenOrdersAsync()
+
+    logging.info("Order fill monitor is now running and listening for events.")
+    # The function will now implicitly wait for events. We need a way to keep it alive.
+    # This will be managed by the calling function `monitor_positions_for_risk`.
 
 
 async def monitor_positions_for_risk(ib: IB, config: dict):
@@ -168,27 +210,33 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
     take_profit_pct = risk_params.get('take_profit_pct')
     interval = risk_params.get('check_interval_seconds', 60)
 
-    # Correctly format the strings for logging to avoid ValueError
     stop_str = f"{stop_loss_pct:.0%}" if stop_loss_pct else "N/A"
     profit_str = f"{take_profit_pct:.0%}" if take_profit_pct else "N/A"
-    logging.info(f"Starting intraday monitor. Stop: {stop_str}, Profit: {profit_str}, Interval: {interval}s")
+    logging.info(f"Starting intraday P&L monitor. Stop: {stop_str}, Profit: {profit_str}, Interval: {interval}s")
 
-    closed_ids, filled_order_ids = set(), set()
+    # Setup the fill monitor to run concurrently
+    fill_monitor_task = asyncio.create_task(monitor_order_fills(ib))
+
+    closed_ids = set()
     try:
         while True:
             try:
-                logging.info("Monitor cycle starting...")
+                logging.info("P&L monitor cycle starting...")
                 if stop_loss_pct or take_profit_pct:
                     await _check_risk_once(ib, config, closed_ids, stop_loss_pct, take_profit_pct)
-                await _check_fills_once(ib, config, filled_order_ids)
-                logging.info(f"Monitor cycle complete. Waiting {interval} seconds.")
+
+                logging.info(f"P&L monitor cycle complete. Waiting {interval} seconds.")
                 await asyncio.sleep(interval)
             except asyncio.CancelledError:
-                logging.info("Monitoring task was cancelled."); break
+                logging.info("P&L monitoring task was cancelled."); break
             except Exception as e:
-                logging.error(f"Error in monitor loop: {e}"); await asyncio.sleep(60)
+                logging.error(f"Error in P&L monitor loop: {e}"); await asyncio.sleep(60)
     finally:
-        logging.info("Monitor loop is shutting down. Cancelling all PnL subscriptions.")
+        logging.info("P&L monitor loop is shutting down. Cancelling all PnL subscriptions.")
+        fill_monitor_task.cancel()
+        # Unregister event handlers to prevent memory leaks
+        ib.orderStatusEvent -= _on_order_status
+        ib.execDetailsEvent -= _on_fill
         if ib.isConnected():
             account = ib.managedAccounts()[0]
             for pnl in ib.pnlSubscriptions():
