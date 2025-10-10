@@ -107,7 +107,7 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
     for under_con_id, combo_legs in positions_by_underlying.items():
         total_unrealized_pnl, total_entry_cost = 0, 0
         for leg_pos in combo_legs:
-            pnl = await ib.reqPnLSingle(account, '', leg_pos.contract.conId)
+            pnl = ib.reqPnLSingle(account, '', leg_pos.contract.conId)
             await ib.sleepAsync(0.1)
             if util.isNan(pnl.unrealizedPnL):
                 logging.warning(f"Could not get PnL for leg {leg_pos.contract.localSymbol}. Skipping combo risk check."); total_unrealized_pnl = float('nan'); break
