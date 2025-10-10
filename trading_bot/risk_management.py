@@ -168,7 +168,11 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
     take_profit_pct = risk_params.get('take_profit_pct')
     interval = risk_params.get('check_interval_seconds', 60)
 
-    logging.info(f"Starting intraday monitor. Stop: {stop_loss_pct:.0% if stop_loss_pct else 'N/A'}, Profit: {take_profit_pct:.0% if take_profit_pct else 'N/A'}, Interval: {interval}s")
+    # Correctly format the strings for logging to avoid ValueError
+    stop_str = f"{stop_loss_pct:.0%}" if stop_loss_pct else "N/A"
+    profit_str = f"{take_profit_pct:.0%}" if take_profit_pct else "N/A"
+    logging.info(f"Starting intraday monitor. Stop: {stop_str}, Profit: {profit_str}, Interval: {interval}s")
+
     closed_ids, filled_order_ids = set(), set()
     try:
         while True:
@@ -189,3 +193,4 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
             account = ib.managedAccounts()[0]
             for pnl in ib.pnlSubscriptions():
                 ib.cancelPnLSingle(account, pnl.modelCode, pnl.conId)
+

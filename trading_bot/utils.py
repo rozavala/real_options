@@ -21,6 +21,21 @@ from logging_config import setup_logging
 setup_logging()
 
 
+def _get_combo_description(trade: Trade) -> str:
+    """Creates a human-readable description for a combo/bag trade."""
+    if not isinstance(trade.contract, Bag) or not trade.contract.comboLegs:
+        return trade.contract.localSymbol
+
+    # Attempt to derive the underlying from the first leg's symbol
+    try:
+        first_leg = trade.contract.comboLegs[0]
+        # This is an assumption, but for single-underlying spreads it holds
+        underlying_symbol = util.stockContract(first_leg.conId).symbol
+        return f"{underlying_symbol} Combo"
+    except Exception:
+        return f"Bag_{trade.order.permId}"
+
+
 def log_order_event(trade: Trade, status: str, message: str = ""):
     """Logs the status change of an order to the `order_events.csv` file.
 
@@ -40,6 +55,8 @@ def log_order_event(trade: Trade, status: str, message: str = ""):
         'action', 'quantity', 'lmtPrice', 'status', 'message'
     ]
 
+    symbol = _get_combo_description(trade)
+
     try:
         with open(ledger_path, 'a', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -50,7 +67,7 @@ def log_order_event(trade: Trade, status: str, message: str = ""):
                 'orderId': trade.order.orderId,
                 'permId': trade.order.permId,
                 'clientId': trade.order.clientId,
-                'local_symbol': trade.contract.localSymbol,
+                'local_symbol': symbol,
                 'action': trade.order.action,
                 'quantity': trade.order.totalQuantity,
                 'lmtPrice': trade.order.lmtPrice,

@@ -128,7 +128,9 @@ async def generate_and_queue_orders(config: dict):
 
 async def place_queued_orders(config: dict):
     """
-    Connects to IB and places all orders currently in the queue.
+    Connects to IB and places all orders currently in the queue. This function
+    is "fire-and-forget"; it submits the orders and lets the separate
+    monitoring process handle fill notifications.
     """
     logger.info(f"--- Placing {len(ORDER_QUEUE)} queued orders ---")
     if not ORDER_QUEUE:
@@ -163,12 +165,11 @@ async def place_queued_orders(config: dict):
             placed_trades.append(trade)
             await asyncio.sleep(0.5) # Small delay between placements
 
-        # Wait for all orders to reach a terminal state (Filled, Cancelled, etc.)
-        while not all(t.isDone() for t in placed_trades):
-            await asyncio.sleep(1)
+        # Allow a moment for initial status updates to come through
+        await asyncio.sleep(5)
 
-        logger.info(f"--- Finished placing {len(placed_trades)} orders. ---")
-        send_pushover_notification(config.get('notifications', {}), "Orders Placed", f"{len(placed_trades)} DAY orders have been submitted to the. exchange.")
+        logger.info(f"--- Finished submitting {len(placed_trades)} orders. ---")
+        send_pushover_notification(config.get('notifications', {}), "Orders Placed", f"{len(placed_trades)} DAY orders have been submitted to the exchange.")
         ORDER_QUEUE.clear()
 
     except Exception as e:
