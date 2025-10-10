@@ -1,76 +1,118 @@
+"""Analyzes and reports the performance of trading activities.
+
+This script reads the `trade_ledger.csv` file to calculate and summarize
+the performance of trading strategies. It groups trades by their combo ID
+to correctly attribute profit and loss for multi-leg positions. The script
+generates a daily report that includes the net P&L for positions closed
+that day and a list of all currently open positions.
+"""
+
 import pandas as pd
 from datetime import datetime
 import os
+import logging
+from logging_config import setup_logging
+from notifications import send_pushover_notification
 
-def analyze_daily_performance():
-    """
-    Analyzes the trade ledger to provide a summary of the day's trading performance,
-    broken down by strategy and underlying symbol.
+# --- Logging Setup ---
+setup_logging()
+logger = logging.getLogger("PerformanceAnalyzer")
+
+
+def analyze_performance(config: dict):
+    """Analyzes the trade ledger to report on daily trading performance.
+
+    This function reads the trade ledger, calculates the total profit or loss
+    for all combo positions that were closed on the current day, and identifies
+    all currently open positions. It then formats this information into a
+    report and sends it as a Pushover notification.
+
+    The P&L for a combo is calculated by summing the `total_value_usd` for
+    all its legs. A position is considered closed if the sum of its signed
+    quantities (where buys are negative and sells are positive) for each
+    leg is zero.
+
+    Args:
+        config (dict): The application configuration dictionary, used for
+            sending notifications.
     """
     ledger_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trade_ledger.csv')
     if not os.path.exists(ledger_path):
-        print("Trade ledger not found.")
+        logger.error("Trade ledger not found. Cannot analyze performance.")
         return
 
-    print("--- Daily Performance Analysis ---")
+    logger.info("--- Starting Daily Performance Analysis ---")
     
     try:
         df = pd.read_csv(ledger_path)
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         
         today_str = datetime.now().strftime('%Y-%m-%d')
-        print(f"Analyzing trades for: {today_str}\n")
         
-        today_df = df[df['timestamp'].dt.strftime('%Y-%m-%d') == today_str].copy()
+        # --- Analyze all trades by grouping them into combos ---
+        grouped = df.groupby('combo_id')
 
-        if today_df.empty:
-            print("No trades executed today.")
-            return
-            
-        # --- Correct P&L Calculation ---
-        # BUY action is a debit (cash out, negative value)
-        # SELL action is a credit (cash in, positive value)
-        today_df['cash_flow'] = today_df.apply(
-            lambda row: -row['total_value_usd'] if row['action'] == 'BUY' else row['total_value_usd'],
-            axis=1
+        total_pnl = 0
+        closed_positions_summary = []
+        open_positions_summary = []
+
+        # Use a signed quantity to determine if a position is open or closed
+        # BUY actions decrease position (cost), SELL actions increase it (credit)
+        # So we treat BUY as negative and SELL as positive to sum up to zero.
+        df['signed_quantity'] = df.apply(lambda row: -row['quantity'] if row['action'] == 'BUY' else row['quantity'], axis=1)
+
+        for combo_id, group in grouped:
+            # A position is closed if the quantities for each leg cancel out.
+            leg_quantities = group.groupby('local_symbol')['signed_quantity'].sum()
+
+            if (leg_quantities == 0).all():
+                # --- This is a closed position ---
+                # Include it in today's P&L report if it was closed today.
+                if group['timestamp'].dt.strftime('%Y-%m-%d').max() == today_str:
+                    combo_pnl = group['total_value_usd'].sum()
+                    total_pnl += combo_pnl
+
+                    summary_line = (
+                        f"  - Combo {combo_id}: Net P&L = ${combo_pnl:,.2f} "
+                        f"(Closed {group['timestamp'].max().strftime('%H:%M')})"
+                    )
+                    closed_positions_summary.append(summary_line)
+            else:
+                # --- This is an open position ---
+                entry_cost = -group['total_value_usd'].sum()
+                position_details = []
+                for _, row in group.iterrows():
+                    position_details.append(f"{row['action']} {int(row['quantity'])} {row['local_symbol']}")
+
+                summary_line = f"  - {' | '.join(position_details)} (Entry Cost: ${entry_cost:,.2f})"
+                open_positions_summary.append(summary_line)
+
+        # --- Construct the final report ---
+        report = f"<b>Trading Performance Report: {today_str}</b>\n\n"
+        report += f"<b>Daily Net P&L: ${total_pnl:,.2f}</b>\n\n"
+        
+        if closed_positions_summary:
+            report += "<b>Positions Closed Today:</b>\n"
+            report += "\n".join(closed_positions_summary)
+            report += "\n\n"
+        else:
+            report += "No positions were closed today.\n\n"
+
+        if open_positions_summary:
+            report += "<b>Currently Open Positions:</b>\n"
+            report += "\n".join(open_positions_summary)
+        else:
+            report += "No currently open positions."
+
+        logger.info("--- Analysis Complete ---")
+        print(report) # Print report to console/log
+        
+        # --- Send Notification ---
+        send_pushover_notification(
+            config.get('notifications', {}),
+            title=f"Daily Report: P&L ${total_pnl:,.2f}",
+            message=report
         )
-        total_pnl = today_df['cash_flow'].sum()
 
-        print(f"** Overall Summary **")
-        print(f"Total Net P&L (Cash Flow) for Today: ${total_pnl:,.2f}")
-        print(f"Total Trades Executed: {len(today_df)}")
-        print("-" * 40)
-        
-        # --- Breakdown by Strategy ---
-        print("\n** P&L Breakdown by Strategy **")
-        strategy_pnl = today_df.groupby('strategy_type')['cash_flow'].sum()
-        strategy_counts = today_df['strategy_type'].value_counts()
-        strategy_summary = pd.DataFrame({
-            'Net P&L': strategy_pnl,
-            'Trade Count': strategy_counts
-        })
-        print(strategy_summary.to_string())
-        print("-" * 40)
-
-        # --- Breakdown by Underlying ---
-        print("\n** P&L Breakdown by Underlying Symbol **")
-        underlying_pnl = today_df.groupby('underlying_symbol')['cash_flow'].sum()
-        underlying_counts = today_df['underlying_symbol'].value_counts()
-        underlying_summary = pd.DataFrame({
-            'Net P&L': underlying_pnl,
-            'Trade Count': underlying_counts
-        })
-        print(underlying_summary.to_string())
-        print("-" * 40)
-        
-        # --- Detailed Trade Log ---
-        print("\n** Today's Detailed Trade Log **")
-        display_cols = ['timestamp', 'underlying_symbol', 'strategy_type', 'strikes', 
-                        'action', 'quantity', 'avg_fill_price', 'cash_flow', 'reason']
-        print(today_df[display_cols].to_string(index=False))
-        
     except Exception as e:
-        print(f"An error occurred during analysis: {e}")
-
-if __name__ == "__main__":
-    analyze_daily_performance()
+        logger.error(f"An error occurred during performance analysis: {e}", exc_info=True)

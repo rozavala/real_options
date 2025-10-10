@@ -1,9 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "real-options"
+name = "coffee-trading-bot"
 version = "0.1.0"
-requires-python = ">=3.13"
-dependencies = [
-    "fastapi[standard-no-fastapi-cloud-cli]>=0.117.1",
-    "pydantic>=2.11.9",
-    "uvicorn>=0.37.0",
+description = "A trading bot for coffee futures options."
+authors = [
+  { name="User" },
 ]
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi",
+    "pydantic",
+    "uvicorn",
+    "ib_insync",
+    "numpy",
+    "scipy",
+    "requests",
+    "pytz",
+    "yfinance",
+    "fredapi",
+    "Nasdaq-Data-Link",
+    "pytest",
+    "pytest-asyncio"
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
