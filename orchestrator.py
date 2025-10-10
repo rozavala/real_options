@@ -125,6 +125,16 @@ def get_next_task(now_gmt: datetime, schedule: dict) -> tuple[datetime, callable
     return next_run_time, next_task
 
 
+# New schedule mapping run times (GMT) to functions
+schedule = {
+    time(8, 40): generate_and_queue_orders,
+    time(8, 45): start_monitoring,
+    time(8, 45): place_queued_orders,
+    time(17, 0): close_all_open_positions,
+    time(17, 30): cancel_and_stop_monitoring,
+    time(18, 0): analyze_performance
+}
+
 async def main():
     """The main long-running orchestrator process."""
     logger.info("=============================================")
@@ -135,15 +145,6 @@ async def main():
     if not config:
         logger.critical("Orchestrator cannot start without a valid configuration."); return
 
-    # New schedule mapping run times (GMT) to functions
-    schedule = {
-        time(16, 38): generate_and_queue_orders,
-        time(16, 45): start_monitoring,
-        time(16, 42): place_queued_orders,
-        time(17, 0): close_all_open_positions,
-        time(17, 30): cancel_and_stop_monitoring,
-        time(18, 0): analyze_performance
-    }
 
     try:
         while True:
@@ -177,16 +178,25 @@ async def main():
             await stop_monitoring(config)
 
 
+async def sequential_main():
+    for task in schedule.values():
+        await task()
+
+
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    main_task = None
-    try:
-        main_task = loop.create_task(main())
-        loop.run_until_complete(main_task)
-    except (KeyboardInterrupt, SystemExit):
-        logger.info("Orchestrator stopped by user.")
-        if main_task:
-            main_task.cancel()
+
+    if len(sys.argv) > 1:
+        asyncio.run(sequential_main())
+    else:
+        loop = asyncio.get_event_loop()
+        main_task = None
+        try:
+            main_task = loop.create_task(main())
             loop.run_until_complete(main_task)
-    finally:
-        loop.close()
+        except (KeyboardInterrupt, SystemExit):
+            logger.info("Orchestrator stopped by user.")
+            if main_task:
+                main_task.cancel()
+                loop.run_until_complete(main_task)
+        finally:
+            loop.close()
