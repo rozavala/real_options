@@ -83,9 +83,9 @@ class TestRiskManagement(unittest.TestCase):
             ib.reqPositionsAsync.return_value = [leg1_pos, leg2_pos]
             ib.reqContractDetailsAsync.side_effect = [[MagicMock(underConId=999)], [MagicMock(underConId=999)]]
 
-            pnl1 = PnLSingle(unrealizedPnL=-10000.0)
-            pnl2 = PnLSingle(unrealizedPnL=-2000.0)
-            ib.reqPnLSingleAsync.side_effect = [pnl1, pnl2]
+            pnl1 = PnLSingle(conId=123, unrealizedPnL=-10000.0)
+            pnl2 = PnLSingle(conId=124, unrealizedPnL=-2000.0)
+            ib.pnlSingles = MagicMock(return_value=[pnl1, pnl2])
 
             await _check_risk_once(ib, config, set(), 0.20, 3.00)
             self.assertEqual(ib.placeOrder.call_count, 2)

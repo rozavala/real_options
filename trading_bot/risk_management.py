@@ -104,12 +104,31 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
     account = ib.managedAccounts()[0]
     logging.info(f"--- Risk Monitor: Checking {len(positions_by_underlying)} combo position(s) ---")
 
+    # Start PnL subscriptions for any positions that are not yet being tracked
+    active_pnl_con_ids = {p.conId for p in ib.pnlSingles()}
+    new_subscriptions_made = False
+    for under_con_id, combo_legs in positions_by_underlying.items():
+        for leg_pos in combo_legs:
+            if leg_pos.contract.conId not in active_pnl_con_ids:
+                logging.info(f"Starting new PnL subscription for {leg_pos.contract.localSymbol}")
+                ib.reqPnLSingle(account, '', leg_pos.contract.conId)
+                new_subscriptions_made = True
+
+    # If new subscriptions were started, wait for data to arrive.
+    if new_subscriptions_made:
+        await asyncio.sleep(2)
+
+    # Create a map for efficient lookup of PnL data
+    pnl_map = {p.conId: p for p in ib.pnlSingles()}
+
     for under_con_id, combo_legs in positions_by_underlying.items():
         total_unrealized_pnl, total_entry_cost = 0, 0
         for leg_pos in combo_legs:
-            pnl = await ib.reqPnLSingleAsync(account, '', leg_pos.contract.conId)
+            pnl = pnl_map.get(leg_pos.contract.conId)
+
             if not pnl or util.isNan(pnl.unrealizedPnL):
                 logging.warning(f"Could not get PnL for leg {leg_pos.contract.localSymbol}. Skipping combo risk check."); total_unrealized_pnl = float('nan'); break
+
             total_unrealized_pnl += pnl.unrealizedPnL
             multiplier = float(leg_pos.contract.multiplier) if leg_pos.contract.multiplier else 37500.0
             total_entry_cost += abs(leg_pos.position * leg_pos.avgCost * multiplier)
