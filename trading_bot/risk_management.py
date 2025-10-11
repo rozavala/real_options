@@ -105,7 +105,7 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
     logging.info(f"--- Risk Monitor: Checking {len(positions_by_underlying)} combo position(s) ---")
 
     # Start PnL subscriptions for any positions that are not yet being tracked
-    active_pnl_con_ids = {p.conId for p in ib.pnlSingles()}
+    active_pnl_con_ids = {p.conId for p in ib.pnlSingle()}
     new_subscriptions_made = False
     for under_con_id, combo_legs in positions_by_underlying.items():
         for leg_pos in combo_legs:
@@ -119,7 +119,7 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
         await asyncio.sleep(2)
 
     # Create a map for efficient lookup of PnL data
-    pnl_map = {p.conId: p for p in ib.pnlSingles()}
+    pnl_map = {p.conId: p for p in ib.pnlSingle()}
 
     for under_con_id, combo_legs in positions_by_underlying.items():
         total_unrealized_pnl, total_entry_cost = 0, 0
