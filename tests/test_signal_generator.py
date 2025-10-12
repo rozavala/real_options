@@ -12,14 +12,15 @@ class TestSignalGenerator(unittest.TestCase):
     def test_generate_signals(self):
         async def run_test():
             ib = AsyncMock()
-            config = {'symbol': 'KC', 'exchange': 'NYBOT'}
+            # Thresholds are > 7 for BULLISH, < 0 for BEARISH
+            config = {'symbol': 'KC', 'exchange': 'NYBOT', 'signal_thresholds': {'bullish': 7, 'bearish': 0}}
             api_response = {
                 "price_changes": [
-                    10.0,  # BULLISH
-                    -5.0,  # BEARISH
-                    3.0,   # NO-TRADE
-                    8.0,   # BULLISH
-                    -1.0   # BEARISH
+                    10.0,  # Corresponds to H -> BULLISH
+                    -5.0,  # Corresponds to K -> BEARISH
+                    3.0,   # Corresponds to N -> NO-TRADE
+                    8.0,   # Corresponds to U -> BULLISH
+                    -1.0   # Corresponds to Z -> BEARISH
                 ]
             }
 
@@ -39,26 +40,24 @@ class TestSignalGenerator(unittest.TestCase):
             # We expect 4 signals (2 BULLISH, 2 BEARISH) because one price change is a no-trade
             self.assertEqual(len(signals), 4)
 
-            # The order of signals should match the alphabetical order of month codes
-            # H, K, N, U, Z -> maps to price changes at index 1, 2, 3, 4, 0
+            # The contracts are sorted chronologically. Let's trace the logic:
+            # 1. Z25 (202512) -> month 12 -> code 'Z' -> prediction -1.0 -> BEARISH
+            # 2. H26 (202603) -> month 3  -> code 'H' -> prediction 10.0 -> BULLISH
+            # 3. K26 (202605) -> month 5  -> code 'K' -> prediction -5.0 -> BEARISH
+            # 4. N26 (202607) -> month 7  -> code 'N' -> prediction 3.0  -> NO-TRADE
+            # 5. U26 (202609) -> month 9  -> code 'U' -> prediction 8.0  -> BULLISH
 
-            # Expected order: H, K, N, U, Z
-            # H26 -> -5.0 (BEARISH)
-            # K26 -> 3.0 (NO-TRADE)
-            # N26 -> 8.0 (BULLISH)
-            # U26 -> -1.0 (BEARISH)
-            # Z25 -> 10.0 (BULLISH)
-
-            self.assertEqual(signals[0]['direction'], 'BULLISH') # Z25
+            # The final signals list should be ordered chronologically:
+            self.assertEqual(signals[0]['direction'], 'BEARISH')
             self.assertEqual(signals[0]['contract_month'], '202512')
 
-            self.assertEqual(signals[1]['direction'], 'BEARISH') # H26
+            self.assertEqual(signals[1]['direction'], 'BULLISH')
             self.assertEqual(signals[1]['contract_month'], '202603')
 
-            self.assertEqual(signals[2]['direction'], 'BULLISH') # N26
-            self.assertEqual(signals[2]['contract_month'], '202607')
+            self.assertEqual(signals[2]['direction'], 'BEARISH')
+            self.assertEqual(signals[2]['contract_month'], '202605')
 
-            self.assertEqual(signals[3]['direction'], 'BEARISH') # U26
+            self.assertEqual(signals[3]['direction'], 'BULLISH')
             self.assertEqual(signals[3]['contract_month'], '202609')
 
 
