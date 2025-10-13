@@ -145,8 +145,8 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
 
         pricing_result = price_option_black_scholes(
             # Dividing the underlying price by 100 to "scale" it
-            S=underlying_price / 100,
-            K=q_leg.strike / 100,
+            S=underlying_price,
+            K=q_leg.strike,
             T=exp_details['days_to_exp'] / 365,
             r=market_data['risk_free_rate'],
             sigma=market_data['implied_volatility'],
