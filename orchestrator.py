@@ -31,6 +31,8 @@ from trading_bot.order_manager import (
     close_all_open_positions,
     cancel_all_open_orders,
 )
+from trading_bot.utils import archive_trade_ledger
+from trading_bot.performance_graphs import generate_performance_chart
 
 # --- Logging Setup ---
 setup_logging()
@@ -125,6 +127,41 @@ def get_next_task(now_gmt: datetime, schedule: dict) -> tuple[datetime, callable
     return next_run_time, next_task
 
 
+async def analyze_and_archive(config: dict):
+    """
+    Analyzes performance, generates a report with a chart, sends a notification,
+    and then archives the trade ledger.
+    """
+    logger.info("--- Initiating end-of-day analysis, reporting, and archiving ---")
+    try:
+        # 1. Analyze performance to get the report data
+        analysis_result = analyze_performance(config)
+        if not analysis_result:
+            logger.error("Performance analysis failed. Skipping report and archiving.")
+            return
+
+        report_text, total_pnl = analysis_result
+
+        # 2. Generate the performance chart
+        chart_path = generate_performance_chart()
+
+        # 3. Send the notification with the chart
+        notification_title = f"Daily Report: P&L ${total_pnl:,.2f}"
+        send_pushover_notification(
+            config.get('notifications', {}),
+            title=notification_title,
+            message=report_text,
+            attachment_path=chart_path
+        )
+
+        # 4. Archive the ledger
+        archive_trade_ledger()
+
+        logger.info("--- End-of-day analysis, reporting, and archiving complete ---")
+
+    except Exception as e:
+        logger.critical(f"An error occurred during the analysis and archiving process: {e}\n{traceback.format_exc()}")
+
 # New schedule mapping run times (GMT) to functions
 schedule = {
     time(8, 35): generate_and_queue_orders,
@@ -132,7 +169,7 @@ schedule = {
     time(8, 45): place_queued_orders,
     time(17, 0): close_all_open_positions,
     time(17, 30): cancel_and_stop_monitoring,
-    time(18, 0): analyze_performance
+    time(18, 0): analyze_and_archive
 }
 
 async def main():
@@ -161,10 +198,8 @@ async def main():
                 await asyncio.sleep(wait_seconds)
 
                 logger.info(f"--- Running scheduled task: {task_name} ---")
-                if asyncio.iscoroutinefunction(next_task_func):
-                    await next_task_func(config)
-                else:
-                    next_task_func(config) # For non-async functions like analyze_performance
+                # All scheduled tasks that take config are now async
+                await next_task_func(config)
 
             except asyncio.CancelledError:
                 logger.info("Orchestrator main loop cancelled."); break

@@ -9,6 +9,7 @@ market hour checks, and trade logging utilities.
 import csv
 import logging
 import os
+import shutil
 from datetime import datetime
 import pytz
 from ib_insync import *
@@ -353,3 +354,31 @@ def log_trade_to_ledger(trade: Trade, reason: str = "Strategy Execution"):
     except Exception as e:
         logging.error(f"Error writing to trade ledger: {e}")
 
+
+def archive_trade_ledger():
+    """Archives the `trade_ledger.csv` file by moving it to the `archive` directory
+    with a timestamp appended to its name.
+    """
+    ledger_filename = 'trade_ledger.csv'
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ledger_path = os.path.join(base_dir, ledger_filename)
+
+    if not os.path.exists(ledger_path):
+        logging.info(f"'{ledger_filename}' not found, no action taken.")
+        return
+
+    archive_dir = os.path.join(base_dir, 'archive')
+    if not os.path.exists(archive_dir):
+        os.makedirs(archive_dir)
+        logging.info(f"Created archive directory at: {archive_dir}")
+
+    # Format the current date and time to append to the filename
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    archive_filename = f'trade_ledger_{timestamp}.csv'
+    archive_path = os.path.join(archive_dir, archive_filename)
+
+    try:
+        shutil.move(ledger_path, archive_path)
+        logging.info(f"Successfully archived '{ledger_filename}' to '{archive_path}'")
+    except Exception as e:
+        logging.error(f"Failed to archive '{ledger_filename}': {e}")
