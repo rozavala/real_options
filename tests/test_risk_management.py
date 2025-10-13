@@ -2,7 +2,7 @@ import unittest
 import asyncio
 from unittest.mock import MagicMock, patch, AsyncMock
 
-from ib_insync import Contract, Future, Bag, ComboLeg, Position, OrderStatus, Trade, FuturesOption, PnL, PnLSingle
+from ib_insync import IB, Contract, Future, Bag, ComboLeg, Position, OrderStatus, Trade, FuturesOption, PnL, PnLSingle
 
 import sys
 import os
@@ -75,17 +75,21 @@ class TestRiskManagement(unittest.TestCase):
 
     def test_check_risk_once_stop_loss(self):
         async def run_test():
-            ib = AsyncMock(isConnected=MagicMock(return_value=True), managedAccounts=MagicMock(return_value=['DU12345']))
+            ib = AsyncMock(spec=IB)
+            ib.isConnected.return_value = True
+            ib.managedAccounts.return_value = ['DU12345']
             ib.placeOrder.return_value = self.mock_trade
+
             config = {'notifications': {}, 'risk_management': {'stop_loss_pct': 0.20, 'take_profit_pct': 3.00}}
             leg1_pos = Position('Test', FuturesOption('KC', conId=123, multiplier='37500', right='C', strike=3.5), 1, 1.0)
             leg2_pos = Position('Test', FuturesOption('KC', conId=124, multiplier='37500', right='C', strike=3.6), -1, 0.5)
-            ib.reqPositionsAsync.return_value = [leg1_pos, leg2_pos]
-            ib.reqContractDetailsAsync.side_effect = [[MagicMock(underConId=999)], [MagicMock(underConId=999)]]
+
+            ib.reqPositionsAsync = AsyncMock(return_value=[leg1_pos, leg2_pos])
+            ib.reqContractDetailsAsync = AsyncMock(side_effect=[[MagicMock(underConId=999)], [MagicMock(underConId=999)]])
 
             pnl1 = PnLSingle(conId=123, unrealizedPnL=-10000.0)
             pnl2 = PnLSingle(conId=124, unrealizedPnL=-2000.0)
-            ib.pnlSingles = MagicMock(return_value=[pnl1, pnl2])
+            ib.pnlSingle.return_value = [pnl1, pnl2]
 
             await _check_risk_once(ib, config, set(), 0.20, 3.00)
             self.assertEqual(ib.placeOrder.call_count, 2)

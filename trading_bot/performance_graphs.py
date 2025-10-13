@@ -1,55 +1,86 @@
 import os
-os.system('clear')
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.ticker import StrMethodFormatter
 
-# Read the CSV file and attempt to infer timestamp format
-df = pd.read_csv('trade_ledger.csv')
+def load_all_ledgers():
+    """
+    Loads and combines the main trade ledger with any archived ledgers.
+    """
+    dataframes = []
+    # Load the main ledger if it exists
+    if os.path.exists('trade_ledger.csv'):
+        dataframes.append(pd.read_csv('trade_ledger.csv'))
 
-# Sum SELL and BUY in total_value_usd
-sell_total = df[df['action'] == 'SELL']['total_value_usd'].sum()
-buy_total = df[df['action'] == 'BUY']['total_value_usd'].sum()
-net_profit = sell_total - buy_total
-print(f"Buy total: ${buy_total:,.2f}")
-print(f"Sell total: ${sell_total:,.2f}")
-print(f"Net Profit: ${net_profit:,.2f}")
+    # Load archived ledgers
+    if os.path.exists('archive'):
+        for filename in os.listdir('archive'):
+            if filename.startswith('trade_ledger_') and filename.endswith('.csv'):
+                dataframes.append(pd.read_csv(os.path.join('archive', filename)))
 
-# Set SELL as positive cashflows and BUY as negative cashflows
-df['net_value'] = df.apply(
-    lambda row: row['total_value_usd'] if row['action'] == 'SELL' else -row['total_value_usd'],
-    axis=1
-)
+    if not dataframes:
+        print("No trade ledger data found.")
+        return pd.DataFrame()
 
-# Group or aggregate net_value by timestamp
-df['net_value_grouped'] = df.groupby('timestamp')['net_value'].transform('sum')
+    # Combine all ledgers and sort by timestamp
+    full_ledger = pd.concat(dataframes, ignore_index=True)
+    full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
+    return full_ledger.sort_values(by='timestamp').reset_index(drop=True)
 
-# Calculates the cumulative net value
-df['cumulative_net_value'] = df['net_value'].cumsum()
+def generate_performance_chart(output_path: str = 'daily_performance.png') -> str | None:
+    """
+    Generates a performance chart and saves it to a file.
 
-# Create a single figure with two subplots
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True, gridspec_kw={'height_ratios': [1, 1]})
+    Returns the path to the saved chart image, or None if no data is found.
+    """
+    df = load_all_ledgers()
+    if df.empty:
+        return None
 
-# Plot the cashflows on the top subplot
-ax1.bar(df['timestamp'], df['net_value'], color=['green' if x > 0 else 'red' for x in df['net_value']], label='Cashflows')
-ax1.set_title('Cashflows (SELL positive, BUY negative)')
-ax1.set_ylabel('Cashflows (USD)')
-ax1.legend()
-ax1.xaxis.set_major_locator(mdates.AutoDateLocator())
-ax1.tick_params(axis='x', rotation=45)
-ax1.yaxis.set_major_formatter(StrMethodFormatter('{x:,.0f}'))
+    # Set SELL as positive cashflows and BUY as negative cashflows
+    df['net_value'] = df.apply(
+        lambda row: row['total_value_usd'] if row['action'] == 'SELL' else -row['total_value_usd'],
+        axis=1
+    )
 
-# Plot the cumulative net value on the bottom subplot
-ax2.plot(df['timestamp'], df['cumulative_net_value'], color='#1E90FF', label='Cumulative Net Value')
-ax2.set_title('Cumulative cashflows')
-ax2.set_xlabel('Date & time')
-ax2.set_ylabel('Cumulative cashflows (USD)')
-ax2.legend()
-ax2.xaxis.set_major_locator(mdates.AutoDateLocator())
-ax2.tick_params(axis='x', rotation=45)
-ax2.yaxis.set_major_formatter(StrMethodFormatter('{x:,.0f}'))
+    # Calculates the cumulative net value
+    df['cumulative_net_value'] = df['net_value'].cumsum()
 
-# Adjust layout to prevent overlap
-plt.tight_layout()
-plt.show()
+    # Create a single figure with two subplots
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True, gridspec_kw={'height_ratios': [1, 1]})
+    fig.suptitle('Trading Performance', fontsize=16)
+
+    # Plot the cashflows on the top subplot
+    ax1.bar(df['timestamp'], df['net_value'], color=['green' if x > 0 else 'red' for x in df['net_value']], label='Daily P&L')
+    ax1.set_title('Daily Profit & Loss')
+    ax1.set_ylabel('P&L (USD)')
+    ax1.legend()
+    ax1.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax1.yaxis.set_major_formatter(StrMethodFormatter('{x:,.0f}'))
+
+    # Plot the cumulative net value on the bottom subplot
+    ax2.plot(df['timestamp'], df['cumulative_net_value'], color='#1E90FF', marker='o', linestyle='-', label='Cumulative P&L')
+    ax2.set_title('Cumulative Performance')
+    ax2.set_xlabel('Date & Time')
+    ax2.set_ylabel('Total P&L (USD)')
+    ax2.legend()
+    ax2.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax2.yaxis.set_major_formatter(StrMethodFormatter('{x:,.0f}'))
+
+    # Improve date formatting
+    fig.autofmt_xdate()
+    ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+
+    # Adjust layout and save the figure
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig(output_path)
+    plt.close(fig)  # Close the figure to free memory
+
+    return os.path.abspath(output_path)
+
+if __name__ == '__main__':
+    # For standalone testing of the chart generation
+    chart_path = generate_performance_chart()
+    if chart_path:
+        print(f"Performance chart saved to: {chart_path}")

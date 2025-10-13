@@ -19,100 +19,104 @@ setup_logging()
 logger = logging.getLogger("PerformanceAnalyzer")
 
 
-def analyze_performance(config: dict):
+def get_trade_ledger_df():
+    """Reads and consolidates trade ledgers for analysis.
+
+    This function first looks for the main `trade_ledger.csv`. If it exists,
+    it reads it. If not, it scans the `archive` directory for all ledger files,
+    combines them into a single DataFrame, and returns it. This ensures that
+    performance analysis can run on the most recent (unarchived) data or on
+    the entire history of archived data.
+
+    Returns:
+        pandas.DataFrame: A DataFrame containing all trade data, or None if
+        no trade ledger files can be found.
+    """
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
+    archive_dir = os.path.join(base_dir, 'archive')
+
+    if os.path.exists(ledger_path):
+        logger.info("Reading main trade ledger...")
+        return pd.read_csv(ledger_path)
+
+    elif os.path.exists(archive_dir):
+        logger.info("Main ledger not found. Reading from archive...")
+        archive_files = [os.path.join(archive_dir, f) for f in os.listdir(archive_dir) if f.startswith('trade_ledger_') and f.endswith('.csv')]
+        if not archive_files:
+            return None
+
+        df_list = [pd.read_csv(file) for file in archive_files]
+        return pd.concat(df_list, ignore_index=True)
+
+    else:
+        return None
+
+
+def analyze_performance(config: dict) -> tuple[str, float] | None:
     """Analyzes the trade ledger to report on daily trading performance.
 
-    This function reads the trade ledger, calculates the total profit or loss
-    for all combo positions that were closed on the current day, and identifies
-    all currently open positions. It then formats this information into a
-    report and sends it as a Pushover notification.
-
-    The P&L for a combo is calculated by summing the `total_value_usd` for
-    all its legs. A position is considered closed if the sum of its signed
-    quantities (where buys are negative and sells are positive) for each
-    leg is zero.
-
     Args:
-        config (dict): The application configuration dictionary, used for
-            sending notifications.
+        config (dict): The application configuration dictionary.
+
+    Returns:
+        A tuple containing the formatted report string and the total P&L,
+        or None if analysis cannot be completed.
     """
-    ledger_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trade_ledger.csv')
-    if not os.path.exists(ledger_path):
-        logger.error("Trade ledger not found. Cannot analyze performance.")
-        return
+    df = get_trade_ledger_df()
+    if df is None or df.empty:
+        logger.error("Trade ledger is empty or not found. Cannot analyze performance.")
+        return None
 
     logger.info("--- Starting Daily Performance Analysis ---")
-    
+
     try:
-        df = pd.read_csv(ledger_path)
         df['timestamp'] = pd.to_datetime(df['timestamp'])
-        
         today_str = datetime.now().strftime('%Y-%m-%d')
         
-        # --- Analyze all trades by grouping them into combos ---
         grouped = df.groupby('combo_id')
-
         total_pnl = 0
         closed_positions_summary = []
         open_positions_summary = []
 
-        # Use a signed quantity to determine if a position is open or closed
-        # BUY actions decrease position (cost), SELL actions increase it (credit)
-        # So we treat BUY as negative and SELL as positive to sum up to zero.
         df['signed_quantity'] = df.apply(lambda row: -row['quantity'] if row['action'] == 'BUY' else row['quantity'], axis=1)
 
         for combo_id, group in grouped:
-            # A position is closed if the quantities for each leg cancel out.
             leg_quantities = group.groupby('local_symbol')['signed_quantity'].sum()
 
             if (leg_quantities == 0).all():
-                # --- This is a closed position ---
-                # Include it in today's P&L report if it was closed today.
                 if group['timestamp'].dt.strftime('%Y-%m-%d').max() == today_str:
                     combo_pnl = group['total_value_usd'].sum()
                     total_pnl += combo_pnl
-
                     summary_line = (
                         f"  - Combo {combo_id}: Net P&L = ${combo_pnl:,.2f} "
                         f"(Closed {group['timestamp'].max().strftime('%H:%M')})"
                     )
                     closed_positions_summary.append(summary_line)
             else:
-                # --- This is an open position ---
                 entry_cost = -group['total_value_usd'].sum()
-                position_details = []
-                for _, row in group.iterrows():
-                    position_details.append(f"{row['action']} {int(row['quantity'])} {row['local_symbol']}")
-
+                position_details = [f"{row['action']} {int(row['quantity'])} {row['local_symbol']}" for _, row in group.iterrows()]
                 summary_line = f"  - {' | '.join(position_details)} (Entry Cost: ${entry_cost:,.2f})"
                 open_positions_summary.append(summary_line)
 
-        # --- Construct the final report ---
         report = f"<b>Trading Performance Report: {today_str}</b>\n\n"
         report += f"<b>Daily Net P&L: ${total_pnl:,.2f}</b>\n\n"
         
         if closed_positions_summary:
-            report += "<b>Positions Closed Today:</b>\n"
-            report += "\n".join(closed_positions_summary)
-            report += "\n\n"
+            report += "<b>Positions Closed Today:</b>\n" + "\n".join(closed_positions_summary) + "\n\n"
         else:
             report += "No positions were closed today.\n\n"
 
         if open_positions_summary:
-            report += "<b>Currently Open Positions:</b>\n"
-            report += "\n".join(open_positions_summary)
+            report += "<b>Currently Open Positions:</b>\n" + "\n".join(open_positions_summary)
         else:
             report += "No currently open positions."
 
         logger.info("--- Analysis Complete ---")
-        print(report) # Print report to console/log
+        print(report)
         
-        # --- Send Notification ---
-        send_pushover_notification(
-            config.get('notifications', {}),
-            title=f"Daily Report: P&L ${total_pnl:,.2f}",
-            message=report
-        )
+        return report, total_pnl
 
     except Exception as e:
         logger.error(f"An error occurred during performance analysis: {e}", exc_info=True)
+        return None
