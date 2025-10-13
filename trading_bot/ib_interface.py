@@ -45,7 +45,9 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
             # Fallback if both live and historical data fail
             logging.warning("Could not get live or historical volatility. Using a reasonable fallback.")
             iv = 0.3 # A more reasonable fallback (30%)
+            return {'implied_volatility': 0.3, 'risk_free_rate': 0.04} # <-- FIX: Return a fallback dictionary directly
 
+    return {'implied_volatility': iv, 'risk_free_rate': 0.04}
 
 async def get_active_futures(ib: IB, symbol: str, exchange: str, count: int = 5) -> list[Contract]:
     """Fetches the next N active futures contracts for a given symbol."""
