@@ -39,7 +39,7 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
         )
         if bars:
             # Use the most recent historical volatility value
-            iv = bars[-1].close 
+            iv = bars[-1].close / 100
             logging.info(f"Using historical volatility: {iv:.4f}")
         else:
             # Fallback if both live and historical data fail
