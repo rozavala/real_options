@@ -34,7 +34,7 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
             endDateTime="",
             durationStr='30 D', # 30-day lookback period
             barSizeSetting='1 day',
-            whatToShow='HV', # Request Historical Volatility
+            whatToShow='HISTORICAL_VOLATILITY', # CORRECT parameter for Historical Volatility
             useRTH=True
         )
         if bars:
