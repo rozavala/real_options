@@ -157,6 +157,7 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
             logging.error(f"Failed to price leg {leg_action} {q_leg.localSymbol}. Aborting."); return None
 
         price = pricing_result['price']
+        logging.info(f"  -> Leg Price ({leg_action}): {q_leg.localSymbol} theoretical price = {price:.2f} cents/lb")
         logging.info(f"Theoretical price calculated for {q_leg.right} @ {q_leg.strike}: {pricing_result}")
         net_theoretical_price += price if leg_action == 'BUY' else -price
 
