@@ -86,7 +86,7 @@ async def generate_and_queue_orders(config: dict):
                     start_time = time.time()
                     while util.isNan(ticker.marketPrice()):
                         await asyncio.sleep(0.1) # Use asyncio's sleep to allow ib_insync to process messages
-                        if (time.time() - start_time) > 5: # 5-second timeout
+                        if (time.time() - start_time) > 30: # 30-second timeout
                             logger.error(f"Timeout waiting for market price for {future.localSymbol}.")
                             logger.error(f"Ticker data received: {ticker}")
                             break # Exit loop, price remains NaN
