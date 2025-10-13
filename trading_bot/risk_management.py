@@ -130,8 +130,9 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
                 logging.warning(f"Could not get PnL for leg {leg_pos.contract.localSymbol}. Skipping combo risk check."); total_unrealized_pnl = float('nan'); break
 
             total_unrealized_pnl += pnl.unrealizedPnL
-            multiplier = float(leg_pos.contract.multiplier) if leg_pos.contract.multiplier else 37500.0
-            total_entry_cost += abs(leg_pos.position * leg_pos.avgCost * multiplier)
+            # multiplier = float(leg_pos.contract.multiplier) if leg_pos.contract.multiplier else 37500.0
+            # Multiplier is already included in the cost so no needed again
+            total_entry_cost += abs(leg_pos.position * leg_pos.avgCost)
 
         if util.isNan(total_unrealized_pnl) or total_entry_cost == 0: continue
 
