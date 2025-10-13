@@ -58,7 +58,7 @@ async def generate_and_queue_orders(config: dict):
         ib = IB()
         try:
             conn_settings = config.get('connection', {})
-            await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000))
+            await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
             logger.info("Connected to IB for signal generation.")
 
             logger.info("Step 2.5: Generating structured signals from predictions...")
@@ -151,7 +151,7 @@ async def place_queued_orders(config: dict):
 
     try:
         conn_settings = config.get('connection', {})
-        await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000))
+        await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
         logger.info("Connected to IB for order placement.")
 
         # Attach the event handler
@@ -190,7 +190,7 @@ async def close_all_open_positions(config: dict):
     ib = IB()
     try:
         conn_settings = config.get('connection', {})
-        await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000))
+        await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
         logger.info("Connected to IB for closing positions.")
 
         positions = await ib.reqPositionsAsync()
@@ -229,7 +229,7 @@ async def cancel_all_open_orders(config: dict):
     ib = IB()
     try:
         conn_settings = config.get('connection', {})
-        await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000))
+        await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
         logger.info("Connected to IB for canceling open orders.")
 
         # Use ib.openTrades() which is a non-blocking property
