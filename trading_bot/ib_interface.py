@@ -18,7 +18,7 @@ from trading_bot.utils import price_option_black_scholes, log_trade_to_ledger
 setup_logging()
 
 
-async def get_option_market_data(ib: IB, contract: Contract) -> dict | None:
+async def get_option_market_data(ib: IB, contract: Contract, underlying_future: Contract) -> dict | None:
     """Fetches live market data for a single option contract."""
     logging.info(f"Fetching market data for option: {contract.localSymbol}")
     ticker = ib.reqMktData(contract, '106', False, False)
@@ -137,7 +137,7 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
     for i, q_leg in enumerate(validated_legs):
         leg_action = legs_def[i][1] # 'BUY' or 'SELL'
 
-        market_data = await get_option_market_data(ib, q_leg)
+        market_data = await get_option_market_data(ib, q_leg, strategy_def['future_contract'])
         if not market_data:
             logging.error(f"Failed to get market data for {q_leg.localSymbol}. Aborting."); return None
 
