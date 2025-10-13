@@ -144,9 +144,9 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
             logging.error(f"Failed to get market data for {q_leg.localSymbol}. Aborting."); return None
 
         pricing_result = price_option_black_scholes(
-            # Divind the underlying price by 100 to "scale" it
+            # Dividing the underlying price by 100 to "scale" it
             S=underlying_price / 100,
-            K=q_leg.strike,
+            K=q_leg.strike / 100,
             T=exp_details['days_to_exp'] / 365,
             r=market_data['risk_free_rate'],
             sigma=market_data['implied_volatility'],
