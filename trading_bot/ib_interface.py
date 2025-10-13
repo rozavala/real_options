@@ -23,9 +23,28 @@ async def get_option_market_data(ib: IB, contract: Contract) -> dict | None:
     logging.info(f"Fetching market data for option: {contract.localSymbol}")
     ticker = ib.reqMktData(contract, '106', False, False)
     await asyncio.sleep(2)
-    iv = ticker.modelGreeks.impliedVol if ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol) else 0.5
+    iv = ticker.modelGreeks.impliedVol if ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol) else None
     ib.cancelMktData(contract)
-    return {'implied_volatility': iv, 'risk_free_rate': 0.04}
+
+    # If live IV is not available, calculate historical volatility
+    if iv is None:
+        logging.info(f"Live implied volatility not available for {contract.localSymbol}. Calculating historical volatility.")
+        bars = await ib.reqHistoricalDataAsync(
+            underlying_future,
+            endDateTime="",
+            durationStr='30 D', # 30-day lookback period
+            barSizeSetting='1 day',
+            whatToShow='HV', # Request Historical Volatility
+            useRTH=True
+        )
+        if bars:
+            # Use the most recent historical volatility value
+            iv = bars[-1].close 
+            logging.info(f"Using historical volatility: {iv:.4f}")
+        else:
+            # Fallback if both live and historical data fail
+            logging.warning("Could not get live or historical volatility. Using a reasonable fallback.")
+            iv = 0.3 # A more reasonable fallback (30%)
 
 
 async def get_active_futures(ib: IB, symbol: str, exchange: str, count: int = 5) -> list[Contract]:
