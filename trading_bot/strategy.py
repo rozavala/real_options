@@ -51,7 +51,7 @@ def define_directional_strategy(config: dict, signal: dict, chain: dict, underly
     """
     logging.info(f"--- Defining {signal['direction']} Spread for {future_contract.localSymbol} ---")
     tuning = config.get('strategy_tuning', {})
-    spread_width_usd = tuning.get('spread_width_usd', 0.05)
+    spread_width_points = tuning.get('spread_width_points', 2.0)
 
     exp_details = get_expiration_details(chain, future_contract.lastTradeDateOrContractMonth)
     if not exp_details:
@@ -68,7 +68,7 @@ def define_directional_strategy(config: dict, signal: dict, chain: dict, underly
     legs_def, order_action = [], ''
     if signal['direction'] == 'BULLISH':
         long_leg_strike = atm_strike
-        target_short_leg_strike = long_leg_strike + spread_width_usd
+        target_short_leg_strike = long_leg_strike + spread_width_points
         short_leg_strike = find_closest_strike(target_short_leg_strike, [s for s in strikes if s > long_leg_strike])
         if short_leg_strike is None: return None
         legs_def, order_action = [('C', 'BUY', long_leg_strike), ('C', 'SELL', short_leg_strike)], 'BUY'
@@ -76,7 +76,7 @@ def define_directional_strategy(config: dict, signal: dict, chain: dict, underly
 
     else:  # BEARISH
         long_leg_strike = atm_strike
-        target_short_leg_strike = long_leg_strike - spread_width_usd
+        target_short_leg_strike = long_leg_strike - spread_width_points
         short_leg_strike = find_closest_strike(target_short_leg_strike, [s for s in strikes if s < long_leg_strike])
         if short_leg_strike is None: return None
         legs_def, order_action = [('P', 'BUY', long_leg_strike), ('P', 'SELL', short_leg_strike)], 'BUY'
