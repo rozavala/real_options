@@ -146,7 +146,14 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
 
         if reason:
             logging.info(f"{reason.upper()} TRIGGERED for combo {combo_symbols} at {pnl_percentage:+.2%}")
-            send_pushover_notification(config, reason, f"Combo {combo_symbols} closed at {pnl_percentage:+.2%}")
+            # Create a detailed notification message
+            message = (
+                f"<b>{reason} Triggered</b>\n"
+                f"Combo: {combo_symbols}\n"
+                f"P&L: {pnl_percentage:+.2%} (${total_unrealized_pnl:+.2f})\n"
+                f"Entry Cost: ${total_entry_cost:.2f}"
+            )
+            send_pushover_notification(config.get('notifications', {}), f"Risk Alert: {reason}", message)
             for leg_pos_to_close in combo_legs:
                 try:
                     order = MarketOrder('BUY' if leg_pos_to_close.position < 0 else 'SELL', abs(leg_pos_to_close.position))
@@ -188,43 +195,30 @@ def _on_order_status(trade: Trade):
         _filled_order_ids.discard(trade.order.orderId)
 
 
-def _on_fill(trade: Trade, fill: Fill):
+def _on_fill(trade: Trade, fill: Fill, config: dict):
     """Event handler for new fills (executions)."""
     # This handler is primarily for sending notifications with fill details.
     # The actual logging to the trade ledger is done in `_on_order_status`
     # to ensure it happens only once per order.
     try:
-        fill_msg = (
-            f"EXECUTION: {fill.execution.side} {fill.execution.shares} "
-            f"{trade.contract.localSymbol} @ {fill.execution.price:.2f} "
-            f"(Order ID: {fill.execution.orderId})"
+        # Create a detailed notification message
+        message = (
+            f"<b>✅ Order Executed</b>\n"
+            f"<b>{fill.execution.side} {fill.execution.shares}</b> {trade.contract.localSymbol}\n"
+            f"Avg Price: ${fill.execution.price:.2f}\n"
+            f"Order ID: {fill.execution.orderId}"
         )
-        logging.info(fill_msg)
-        # Assuming config is accessible or passed differently if needed for notifications.
-        # For now, this is simplified. A better implementation would involve a config object.
-        # send_pushover_notification(config.get('notifications', {}), "Order Execution", fill_msg)
+        logging.info(f"Sending execution notification for Order ID {fill.execution.orderId}")
+        send_pushover_notification(config.get('notifications', {}), "Order Execution", message)
     except Exception as e:
         logging.error(f"Error processing execution notification for order ID {trade.order.orderId}: {e}")
 
 
-async def monitor_order_fills(ib: IB):
-    """Sets up event listeners for real-time order fill monitoring."""
-    logging.info("--- Starting Real-Time Order Fill Monitor ---")
-
-    # Register the event handlers.
-    ib.orderStatusEvent += _on_order_status
-    ib.execDetailsEvent += _on_fill
-
-    # Request all open orders to ensure we are tracking everything upon startup.
-    await ib.reqAllOpenOrdersAsync()
-
-    logging.info("Order fill monitor is now running and listening for events.")
-    # The function will now implicitly wait for events. We need a way to keep it alive.
-    # This will be managed by the calling function `monitor_positions_for_risk`.
-
-
 async def monitor_positions_for_risk(ib: IB, config: dict):
-    """Continuously monitors for risk triggers and order fills."""
+    """
+    Continuously monitors for risk triggers (P&L) and order fills, handling
+    real-time events.
+    """
     risk_params = config.get('risk_management', {})
     stop_loss_pct = risk_params.get('stop_loss_pct')
     take_profit_pct = risk_params.get('take_profit_pct')
@@ -234,8 +228,19 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
     profit_str = f"{take_profit_pct:.0%}" if take_profit_pct else "N/A"
     logging.info(f"Starting intraday P&L monitor. Stop: {stop_str}, Profit: {profit_str}, Interval: {interval}s")
 
-    # Setup the fill monitor to run concurrently
-    fill_monitor_task = asyncio.create_task(monitor_order_fills(ib))
+    # --- Event Handler Setup ---
+    # Create a lambda to pass the config to the fill handler.
+    # This ensures the handler has access to notification settings.
+    # We define it here so we can also remove it accurately in the finally block.
+    fill_handler = lambda t, f: _on_fill(t, f, config)
+
+    # Register the event handlers before starting the tasks.
+    ib.orderStatusEvent += _on_order_status
+    ib.execDetailsEvent += fill_handler
+    logging.info("Order status and execution event handlers registered.")
+
+    # Request all open orders to ensure we are tracking everything upon startup.
+    await ib.reqAllOpenOrdersAsync()
 
     closed_ids = set()
     try:
@@ -252,12 +257,14 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
             except Exception as e:
                 logging.error(f"Error in P&L monitor loop: {e}"); await asyncio.sleep(60)
     finally:
-        logging.info("P&L monitor loop is shutting down. Cancelling all PnL subscriptions.")
-        fill_monitor_task.cancel()
+        logging.info("Shutting down monitor. Unregistering event handlers and cancelling PnL subscriptions.")
         # Unregister event handlers to prevent memory leaks
-        ib.orderStatusEvent -= _on_order_status
-        ib.execDetailsEvent -= _on_fill
         if ib.isConnected():
+            if _on_order_status in ib.orderStatusEvent:
+                ib.orderStatusEvent -= _on_order_status
+            if fill_handler in ib.execDetailsEvent:
+                ib.execDetailsEvent -= fill_handler
+
             account = ib.managedAccounts()[0]
             for pnl in ib.pnlSubscriptions():
                 ib.cancelPnLSingle(account, pnl.modelCode, pnl.conId)

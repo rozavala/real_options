@@ -7,10 +7,12 @@ from performance_analyzer import analyze_performance
 
 class TestPerformanceAnalyzer(unittest.TestCase):
 
+    @patch('performance_analyzer.generate_performance_chart')
     @patch('performance_analyzer.get_trade_ledger_df')
-    def test_analyze_performance(self, mock_get_ledger):
+    def test_analyze_performance(self, mock_get_ledger, mock_generate_chart):
         # --- Setup Mocks ---
         mock_config = {} # Config is not used for notification anymore
+        mock_generate_chart.return_value = "/path/to/fake_chart.png"
         today_str = datetime.now().strftime('%Y-%m-%d')
         yesterday_str = (datetime.now() - pd.Timedelta(days=1)).strftime('%Y-%m-%d')
 
@@ -27,7 +29,7 @@ class TestPerformanceAnalyzer(unittest.TestCase):
         # --- Act ---
         result = analyze_performance(config=mock_config)
         self.assertIsNotNone(result)
-        report, total_pnl = result
+        report, total_pnl, chart_path = result
 
         # --- Assertions ---
         self.assertAlmostEqual(total_pnl, 15000.00)

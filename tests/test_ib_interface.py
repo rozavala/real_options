@@ -84,6 +84,7 @@ class TestIbInterface(unittest.TestCase):
                 "exp_details": {'exp_date': '20251220', 'days_to_exp': 30},
                 "chain": {'exchange': 'NYBOT', 'tradingClass': 'KCO'},
                 "underlying_price": 100.0,
+                "future_contract": Future(conId=1, symbol='KC', lastTradeDateOrContractMonth='202512')
             }
 
             # 3. Execute the function
@@ -103,8 +104,8 @@ class TestIbInterface(unittest.TestCase):
             self.assertEqual(unqualified_args[1].multiplier, "37500")
 
             # Assert pricing was called with the QUALIFIED contracts
-            mock_get_market_data.assert_any_call(ib, q_leg1)
-            mock_get_market_data.assert_any_call(ib, q_leg2)
+            mock_get_market_data.assert_any_call(ib, q_leg1, strategy_def['future_contract'])
+            mock_get_market_data.assert_any_call(ib, q_leg2, strategy_def['future_contract'])
 
             # Assert combo legs have the correct, qualified conIds
             self.assertIsInstance(combo_contract, Bag)
