@@ -315,8 +315,8 @@ async def cancel_all_open_orders(config: dict):
         await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
         logger.info("Connected to IB for canceling open orders.")
 
-        # Use ib.reqAllOpenOrders() to get all open orders from the broker
-        open_trades = ib.reqAllOpenOrders()
+        # Use ib.reqAllOpenOrdersAsync() to get all open orders from the broker
+        open_trades = await ib.reqAllOpenOrdersAsync()
         if not open_trades:
             logger.info("No open orders found to cancel.")
             return
