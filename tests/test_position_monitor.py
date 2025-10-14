@@ -12,7 +12,8 @@ class TestPositionMonitor(unittest.TestCase):
     @patch('position_monitor.IB')
     @patch('position_monitor.send_pushover_notification')
     @patch('position_monitor.monitor_positions_for_risk', new_callable=AsyncMock)
-    def test_monitor_startup_and_shutdown(self, mock_monitor_positions, mock_send_notification, mock_ib_class, mock_load_config):
+    @patch('random.randint', return_value=1)
+    def test_monitor_startup_and_shutdown(self, mock_randint, mock_monitor_positions, mock_send_notification, mock_ib_class, mock_load_config):
         async def run_test():
             # --- Mocks ---
             mock_load_config.return_value = {
@@ -38,6 +39,7 @@ class TestPositionMonitor(unittest.TestCase):
             await asyncio.sleep(0.1)
 
             # --- Assertions for startup ---
+            # clientId is base (10) + randint (mocked to 1) = 11
             ib_instance.connectAsync.assert_awaited_once_with('127.0.0.1', 7497, clientId=11)
             mock_send_notification.assert_called_once_with(
                 {}, "Position Monitor Started", "The position monitoring service has started and is now watching open positions."
