@@ -20,37 +20,44 @@ logger = logging.getLogger("PerformanceAnalyzer")
 
 
 def get_trade_ledger_df():
-    """Reads and consolidates trade ledgers for analysis.
+    """Reads and consolidates the main and archived trade ledgers for analysis.
 
-    This function first looks for the main `trade_ledger.csv`. If it exists,
-    it reads it. If not, it scans the `archive` directory for all ledger files,
-    combines them into a single DataFrame, and returns it. This ensures that
-    performance analysis can run on the most recent (unarchived) data or on
-    the entire history of archived data.
+    This function combines data from `trade_ledger.csv` and all CSV files
+    in the `archive/` directory into a single DataFrame. This ensures that
+    performance analysis is always run on the complete history of trades.
 
     Returns:
-        pandas.DataFrame: A DataFrame containing all trade data, or None if
-        no trade ledger files can be found.
+        pandas.DataFrame: A DataFrame containing all trade data, or an empty
+        DataFrame if no trade ledger files are found.
     """
     base_dir = os.path.dirname(os.path.abspath(__file__))
     ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
     archive_dir = os.path.join(base_dir, 'archive')
 
+    dataframes = []
+
+    # Load the main ledger if it exists
     if os.path.exists(ledger_path):
         logger.info("Reading main trade ledger...")
-        return pd.read_csv(ledger_path)
+        dataframes.append(pd.read_csv(ledger_path))
 
-    elif os.path.exists(archive_dir):
-        logger.info("Main ledger not found. Reading from archive...")
+    # Load archived ledgers
+    if os.path.exists(archive_dir):
+        logger.info("Reading archived trade ledgers...")
         archive_files = [os.path.join(archive_dir, f) for f in os.listdir(archive_dir) if f.startswith('trade_ledger_') and f.endswith('.csv')]
-        if not archive_files:
-            return None
+        if archive_files:
+            df_list = [pd.read_csv(file) for file in archive_files]
+            dataframes.extend(df_list)
 
-        df_list = [pd.read_csv(file) for file in archive_files]
-        return pd.concat(df_list, ignore_index=True)
+    if not dataframes:
+        logger.warning("No trade ledger data found.")
+        return pd.DataFrame()
 
-    else:
-        return None
+    # Combine all ledgers and sort by timestamp
+    logger.info(f"Consolidating {len(dataframes)} ledger file(s).")
+    full_ledger = pd.concat(dataframes, ignore_index=True)
+    full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
+    return full_ledger.sort_values(by='timestamp').reset_index(drop=True)
 
 
 from trading_bot.performance_graphs import generate_performance_chart
@@ -121,12 +128,14 @@ def analyze_performance(config: dict) -> tuple[str, float, str | None] | None:
         # --- Generate Performance Chart ---
         chart_path = None
         try:
+            # Pass the dataframe to the chart generation function
             chart_path = generate_performance_chart(df)
             if chart_path:
                 logger.info(f"Performance chart generated at: {chart_path}")
             else:
                 logger.warning("Performance chart could not be generated.")
         except Exception as e:
+            # The original traceback is preserved with exc_info=True
             logger.error(f"Error generating performance chart: {e}", exc_info=True)
 
 

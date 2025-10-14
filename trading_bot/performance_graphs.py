@@ -4,37 +4,19 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.ticker import StrMethodFormatter
 
-def load_all_ledgers():
+
+def generate_performance_chart(df: pd.DataFrame, output_path: str = 'daily_performance.png') -> str | None:
     """
-    Loads and combines the main trade ledger with any archived ledgers.
+    Generates a performance chart from a DataFrame and saves it to a file.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing the trade ledger data.
+                          Must include 'timestamp', 'total_value_usd', and 'action' columns.
+        output_path (str): The path to save the output PNG file.
+
+    Returns:
+        The absolute path to the saved chart image, or None if the DataFrame is empty.
     """
-    dataframes = []
-    # Load the main ledger if it exists
-    if os.path.exists('trade_ledger.csv'):
-        dataframes.append(pd.read_csv('trade_ledger.csv'))
-
-    # Load archived ledgers
-    if os.path.exists('archive'):
-        for filename in os.listdir('archive'):
-            if filename.startswith('trade_ledger_') and filename.endswith('.csv'):
-                dataframes.append(pd.read_csv(os.path.join('archive', filename)))
-
-    if not dataframes:
-        print("No trade ledger data found.")
-        return pd.DataFrame()
-
-    # Combine all ledgers and sort by timestamp
-    full_ledger = pd.concat(dataframes, ignore_index=True)
-    full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
-    return full_ledger.sort_values(by='timestamp').reset_index(drop=True)
-
-def generate_performance_chart(output_path: str = 'daily_performance.png') -> str | None:
-    """
-    Generates a performance chart and saves it to a file.
-
-    Returns the path to the saved chart image, or None if no data is found.
-    """
-    df = load_all_ledgers()
     if df.empty:
         return None
 
