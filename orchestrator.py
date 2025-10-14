@@ -167,7 +167,7 @@ schedule = {
     time(14, 25): generate_and_queue_orders,
     time(14, 30): start_monitoring,
     time(14, 27): place_queued_orders,
-    time(17, 0): close_all_open_positions,
+    time(17, 16): close_all_open_positions,
     time(17, 20): cancel_and_stop_monitoring,
     time(18, 0): analyze_and_archive
 }
