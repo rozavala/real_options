@@ -327,7 +327,8 @@ def log_trade_to_ledger(trade: Trade, reason: str = "Strategy Execution"):
         except (ValueError, TypeError):
             multiplier = 37500.0
 
-        total_value = execution.price * execution.shares * multiplier
+        # The price is in cents, so we divide by 100 to get the value in dollars.
+        total_value = (execution.price * execution.shares * multiplier) / 100.0
         action = 'BUY' if execution.side == 'BOT' else 'SELL'
 
         row = {
