@@ -220,19 +220,46 @@ async def close_all_open_positions(config: dict):
             logger.info("No open positions to close.")
             return
 
-        logger.info(f"Found {len(positions)} positions to close.")
+        # Filter for positions that match the symbol we are trading
+        symbol_to_close = config.get('symbol', 'KC')
+        relevant_positions = [p for p in positions if p.contract.symbol == symbol_to_close and p.position != 0]
+
+        logger.info(f"Found {len(relevant_positions)} positions for symbol '{symbol_to_close}' to close.")
         closed_count = 0
-        for pos in positions:
-            if pos.position == 0: continue
+        if not relevant_positions:
+            logger.info("No relevant positions to close.")
+            return
+
+        for pos in relevant_positions:
+            # The contract from reqPositionsAsync() doesn't include the exchange,
+            # which is required for placing orders. We must add it manually.
+            pos.contract.exchange = config.get('exchange')
+            if not pos.contract.exchange:
+                logger.error(f"Exchange not found in config. Cannot close position for {pos.contract.localSymbol}")
+                continue
+
             action = 'SELL' if pos.position > 0 else 'BUY'
             order = MarketOrder(action, abs(pos.position))
+
+            # The place_order function returns a Trade object.
+            # We need to inspect the trade's order status to see if it was successful.
             trade = place_order(ib, pos.contract, order)
+
+            # Wait a moment to allow the order status to update.
+            await asyncio.sleep(2)
+
+            # Check the final status of the order
             if trade.orderStatus.status == OrderStatus.Filled:
                 log_trade_to_ledger(trade, "Daily Close")
                 closed_count += 1
+                logger.info(f"Successfully closed position for {pos.contract.localSymbol}.")
+            else:
+                logger.warning(f"Failed to close position for {pos.contract.localSymbol}. "
+                               f"Final order status: {trade.orderStatus.status}")
+
             await asyncio.sleep(1) # Pace the closing orders
 
-        logger.info(f"--- Finished closing {closed_count}/{len(positions)} positions ---")
+        logger.info(f"--- Finished closing {closed_count}/{len(relevant_positions)} positions ---")
 
         # Create a detailed notification message
         if positions:
