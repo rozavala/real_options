@@ -206,10 +206,14 @@ async def place_queued_orders(config: dict):
 
 async def close_all_open_positions(config: dict):
     """
-    Fetches all open positions and places opposing orders to close them.
+    Fetches all open positions, places opposing orders to close them, and
+    sends a detailed notification of the outcome.
     """
     logger.info("--- Initiating end-of-day position closing ---")
     ib = IB()
+    closed_position_details = []
+    failed_closes = []
+
     try:
         conn_settings = config.get('connection', {})
         await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
@@ -218,57 +222,79 @@ async def close_all_open_positions(config: dict):
         positions = await ib.reqPositionsAsync()
         if not positions:
             logger.info("No open positions to close.")
+            send_pushover_notification(config.get('notifications', {}), "Position Closing", "No open positions were found to close.")
             return
 
-        # Filter for positions that match the symbol we are trading
         symbol_to_close = config.get('symbol', 'KC')
         relevant_positions = [p for p in positions if p.contract.symbol == symbol_to_close and p.position != 0]
 
-        logger.info(f"Found {len(relevant_positions)} positions for symbol '{symbol_to_close}' to close.")
-        closed_count = 0
         if not relevant_positions:
-            logger.info("No relevant positions to close.")
+            logger.info("No relevant positions to close for the target symbol.")
             return
 
+        logger.info(f"Found {len(relevant_positions)} positions for symbol '{symbol_to_close}' to close.")
+
         for pos in relevant_positions:
-            # The contract from reqPositionsAsync() doesn't include the exchange,
-            # which is required for placing orders. We must add it manually.
             pos.contract.exchange = config.get('exchange')
             if not pos.contract.exchange:
                 logger.error(f"Exchange not found in config. Cannot close position for {pos.contract.localSymbol}")
+                failed_closes.append(f"{pos.contract.localSymbol}: Missing exchange in config")
                 continue
 
             action = 'SELL' if pos.position > 0 else 'BUY'
             order = MarketOrder(action, abs(pos.position))
-
-            # The place_order function returns a Trade object.
-            # We need to inspect the trade's order status to see if it was successful.
             trade = place_order(ib, pos.contract, order)
 
-            # Wait a moment to allow the order status to update.
-            await asyncio.sleep(2)
+            await asyncio.sleep(2)  # Wait for order status updates
 
-            # Check the final status of the order
-            if trade.orderStatus.status == OrderStatus.Filled:
+            if trade.orderStatus.status == OrderStatus.Filled and trade.fills:
+                fill = trade.fills[0]
+                realized_pnl = fill.commissionReport.realizedPNL
+                fill_price = fill.execution.avgPrice
                 log_trade_to_ledger(trade, "Daily Close")
-                closed_count += 1
+                closed_position_details.append({
+                    "symbol": pos.contract.localSymbol,
+                    "action": action,
+                    "quantity": pos.position,
+                    "price": fill_price,
+                    "pnl": realized_pnl
+                })
                 logger.info(f"Successfully closed position for {pos.contract.localSymbol}.")
             else:
-                logger.warning(f"Failed to close position for {pos.contract.localSymbol}. "
-                               f"Final order status: {trade.orderStatus.status}")
+                logger.warning(f"Failed to close position for {pos.contract.localSymbol}. Final status: {trade.orderStatus.status}")
+                failed_closes.append(f"{pos.contract.localSymbol}: Failed with status {trade.orderStatus.status}")
 
-            await asyncio.sleep(1) # Pace the closing orders
+            await asyncio.sleep(1)
 
-        logger.info(f"--- Finished closing {closed_count}/{len(relevant_positions)} positions ---")
+        logger.info(f"--- Finished closing process. Success: {len(closed_position_details)}, Failed: {len(failed_closes)} ---")
 
-        # Create a detailed notification message
-        if positions:
-            summary_items = [f"  - {pos.contract.localSymbol} ({pos.position} shares)" for pos in positions]
-            message = f"<b>Attempted to close {len(positions)} positions:</b>\n" + "\n".join(summary_items)
+        # --- Build and send detailed notification ---
+        message_parts = []
+        total_pnl = 0
+        if closed_position_details:
+            message_parts.append(f"<b>✅ Successfully closed {len(closed_position_details)} positions:</b>")
+            for detail in closed_position_details:
+                pnl_str = f"${detail['pnl']:,.2f}"
+                pnl_color = "green" if detail['pnl'] >= 0 else "red"
+                message_parts.append(
+                    f"  - <b>{detail['symbol']}</b>: {detail['action']} {abs(detail['quantity'])} "
+                    f"@ ${detail['price']:.2f}. P&L: <font color='{pnl_color}'>{pnl_str}</font>"
+                )
+                total_pnl += detail.get('pnl', 0)
+            message_parts.append(f"<b>Total Realized P&L: ${total_pnl:,.2f}</b>")
+
+
+        if failed_closes:
+            message_parts.append(f"\n<b>❌ Failed to close {len(failed_closes)} positions:</b>")
+            message_parts.extend([f"  - {reason}" for reason in failed_closes])
+
+        if not message_parts:
+            message = "No positions were processed for closing."
         else:
-            message = "No open positions were found to close."
+            message = "\n".join(message_parts)
 
-        send_pushover_notification(config.get('notifications', {}), "Positions Closed", message)
+        notification_title = f"Position Close Report: P&L ${total_pnl:,.2f}"
+        send_pushover_notification(config.get('notifications', {}), notification_title, message)
 
     except Exception as e:
         msg = f"A critical error occurred while closing positions: {e}\n{traceback.format_exc()}"
