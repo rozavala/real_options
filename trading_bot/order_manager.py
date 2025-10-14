@@ -118,7 +118,22 @@ async def generate_and_queue_orders(config: dict):
                 ib.disconnect()
 
         logger.info(f"--- Order generation complete. {len(ORDER_QUEUE)} orders queued. ---")
-        send_pushover_notification(config.get('notifications', {}), "Orders Queued", f"{len(ORDER_QUEUE)} strategies have been generated and are ready for placement.")
+
+        # Create a detailed notification message
+        if ORDER_QUEUE:
+            summary_items = []
+            for contract, order in ORDER_QUEUE:
+                summary = (
+                    f"<b>{contract.localSymbol}</b> ({order.action} {order.totalQuantity}): "
+                    f"LMT @ ${order.lmtPrice}, "
+                    f"{len(contract.comboLegs)} legs"
+                )
+                summary_items.append(summary)
+            message = f"<b>{len(ORDER_QUEUE)} strategies generated and queued:</b>\n" + "\n".join(summary_items)
+        else:
+            message = "No new orders were generated or queued."
+
+        send_pushover_notification(config.get('notifications', {}), "Orders Queued", message)
 
     except Exception as e:
         msg = f"A critical error occurred during order generation: {e}\n{traceback.format_exc()}"
@@ -169,7 +184,14 @@ async def place_queued_orders(config: dict):
         await asyncio.sleep(5)
 
         logger.info(f"--- Finished submitting {len(placed_trades)} orders. ---")
-        send_pushover_notification(config.get('notifications', {}), "Orders Placed", f"{len(placed_trades)} DAY orders have been submitted to the exchange.")
+        # Create a detailed notification message
+        if placed_trades:
+            summary_items = [f"  - {trade.contract.localSymbol} ({trade.order.action} {trade.order.totalQuantity}) ID: {trade.order.orderId}" for trade in placed_trades]
+            message = f"<b>{len(placed_trades)} DAY orders submitted to the exchange:</b>\n" + "\n".join(summary_items)
+        else:
+            message = "No orders were submitted for placement."
+
+        send_pushover_notification(config.get('notifications', {}), "Orders Placed", message)
         ORDER_QUEUE.clear()
 
     except Exception as e:
@@ -211,7 +233,15 @@ async def close_all_open_positions(config: dict):
             await asyncio.sleep(1) # Pace the closing orders
 
         logger.info(f"--- Finished closing {closed_count}/{len(positions)} positions ---")
-        send_pushover_notification(config.get('notifications', {}), "Positions Closed", f"Attempted to close {len(positions)} positions. See logs for details.")
+
+        # Create a detailed notification message
+        if positions:
+            summary_items = [f"  - {pos.contract.localSymbol} ({pos.position} shares)" for pos in positions]
+            message = f"<b>Attempted to close {len(positions)} positions:</b>\n" + "\n".join(summary_items)
+        else:
+            message = "No open positions were found to close."
+
+        send_pushover_notification(config.get('notifications', {}), "Positions Closed", message)
 
     except Exception as e:
         msg = f"A critical error occurred while closing positions: {e}\n{traceback.format_exc()}"
@@ -245,7 +275,14 @@ async def cancel_all_open_orders(config: dict):
             await asyncio.sleep(0.2)
 
         logger.info(f"--- Finished canceling {len(open_trades)} orders ---")
-        send_pushover_notification(config.get('notifications', {}), "Open Orders Canceled", f"Canceled {len(open_trades)} unfilled DAY orders.")
+        # Create a detailed notification message
+        if open_trades:
+            summary_items = [f"  - {trade.contract.localSymbol} ({trade.order.action} {trade.order.totalQuantity}) ID: {trade.order.orderId}" for trade in open_trades]
+            message = f"<b>Canceled {len(open_trades)} unfilled DAY orders:</b>\n" + "\n".join(summary_items)
+        else:
+            message = "No open orders were found to cancel."
+
+        send_pushover_notification(config.get('notifications', {}), "Open Orders Canceled", message)
 
     except Exception as e:
         msg = f"A critical error occurred while canceling orders: {e}\n{traceback.format_exc()}"

@@ -53,15 +53,19 @@ def get_trade_ledger_df():
         return None
 
 
-def analyze_performance(config: dict) -> tuple[str, float] | None:
+from trading_bot.performance_graphs import generate_performance_chart
+from config_loader import load_config
+
+
+def analyze_performance(config: dict) -> tuple[str, float, str | None] | None:
     """Analyzes the trade ledger to report on daily trading performance.
 
     Args:
         config (dict): The application configuration dictionary.
 
     Returns:
-        A tuple containing the formatted report string and the total P&L,
-        or None if analysis cannot be completed.
+        A tuple containing the report string, total P&L, and chart path,
+        or None if analysis fails.
     """
     df = get_trade_ledger_df()
     if df is None or df.empty:
@@ -85,7 +89,8 @@ def analyze_performance(config: dict) -> tuple[str, float] | None:
             leg_quantities = group.groupby('local_symbol')['signed_quantity'].sum()
 
             if (leg_quantities == 0).all():
-                if group['timestamp'].dt.strftime('%Y-%m-%d').max() == today_str:
+                # Only include positions that were closed today in the P&L calculation
+                if group['timestamp'].dt.date.max() == datetime.now().date():
                     combo_pnl = group['total_value_usd'].sum()
                     total_pnl += combo_pnl
                     summary_line = (
@@ -94,6 +99,7 @@ def analyze_performance(config: dict) -> tuple[str, float] | None:
                     )
                     closed_positions_summary.append(summary_line)
             else:
+                # This logic correctly calculates the current open positions
                 entry_cost = -group['total_value_usd'].sum()
                 position_details = [f"{row['action']} {int(row['quantity'])} {row['local_symbol']}" for _, row in group.iterrows()]
                 summary_line = f"  - {' | '.join(position_details)} (Entry Cost: ${entry_cost:,.2f})"
@@ -112,11 +118,56 @@ def analyze_performance(config: dict) -> tuple[str, float] | None:
         else:
             report += "No currently open positions."
 
+        # --- Generate Performance Chart ---
+        chart_path = None
+        try:
+            chart_path = generate_performance_chart(df)
+            if chart_path:
+                logger.info(f"Performance chart generated at: {chart_path}")
+            else:
+                logger.warning("Performance chart could not be generated.")
+        except Exception as e:
+            logger.error(f"Error generating performance chart: {e}", exc_info=True)
+
+
         logger.info("--- Analysis Complete ---")
-        print(report)
+        print(report) # Keep for console output
         
-        return report, total_pnl
+        return report, total_pnl, chart_path
 
     except Exception as e:
         logger.error(f"An error occurred during performance analysis: {e}", exc_info=True)
         return None
+
+def main():
+    """
+    Main function to run the performance analysis and send a notification.
+    """
+    config = load_config()
+    if not config:
+        logger.critical("Failed to load configuration. Exiting.")
+        return
+
+    analysis_result = analyze_performance(config)
+
+    if analysis_result:
+        report, total_pnl, chart_path = analysis_result
+        title = f"Daily Report: P&L ${total_pnl:,.2f}"
+
+        # Send notification with the chart if available
+        send_pushover_notification(
+            config.get('notifications', {}),
+            title,
+            report,
+            attachment_path=chart_path
+        )
+    else:
+        # Send a failure notification
+        send_pushover_notification(
+            config.get('notifications', {}),
+            "Performance Analysis FAILED",
+            "The performance analysis script failed to run. Check logs for details."
+        )
+
+if __name__ == "__main__":
+    main()
