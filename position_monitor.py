@@ -73,7 +73,7 @@ async def main():
         host = conn_settings.get('host', '127.0.0.1')
         port = conn_settings.get('port', 7497)
         # Use a client ID offset from the main one to avoid conflicts
-        client_id = conn_settings.get('clientId', 10) + 1
+        client_id = conn_settings.get('clientId', 55) + random.randint(1, 100)
 
         logger.info(f"Connecting to {host}:{port} with client ID {client_id} for monitoring...")
         await ib.connectAsync(host, port, clientId=client_id)
