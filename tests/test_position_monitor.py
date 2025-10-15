@@ -12,8 +12,9 @@ class TestPositionMonitor(unittest.TestCase):
     @patch('position_monitor.IB')
     @patch('position_monitor.send_pushover_notification')
     @patch('position_monitor.monitor_positions_for_risk', new_callable=AsyncMock)
+    @patch('position_monitor.poll_order_queue_and_place', new_callable=AsyncMock)
     @patch('random.randint', return_value=1)
-    def test_monitor_startup_and_shutdown(self, mock_randint, mock_monitor_positions, mock_send_notification, mock_ib_class, mock_load_config):
+    def test_monitor_startup_and_shutdown(self, mock_randint, mock_poll, mock_monitor_risk, mock_send_notification, mock_ib_class, mock_load_config):
         async def run_test():
             # --- Mocks ---
             mock_load_config.return_value = {
@@ -25,26 +26,24 @@ class TestPositionMonitor(unittest.TestCase):
             ib_instance.disconnect = MagicMock()
             mock_ib_class.return_value = ib_instance
 
-            # Define an async side_effect that waits indefinitely, simulating the real function
-            async def dummy_wait(_ib, _config):
+            # Define an async side_effect that waits indefinitely
+            async def dummy_wait(*args, **kwargs):
                 await asyncio.Event().wait()
 
-            mock_monitor_positions.side_effect = dummy_wait
+            mock_monitor_risk.side_effect = dummy_wait
+            mock_poll.side_effect = dummy_wait
 
             # --- Run Test ---
-            # We run the main function but cancel it shortly after to simulate a shutdown
             main_task = asyncio.create_task(position_monitor_main())
-
-            # Allow some time for the connection and monitoring to start
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.1) # Allow time for setup
 
             # --- Assertions for startup ---
-            # clientId is base (10) + randint (mocked to 1) = 11
-            ib_instance.connectAsync.assert_awaited_once_with('127.0.0.1', 7497, clientId=11)
+            ib_instance.connectAsync.assert_awaited_once_with('127.0.0.1', 7497, clientId=11, timeout=30)
             mock_send_notification.assert_called_once_with(
-                {}, "Position Monitor Started", "The position monitoring service has started and is now watching open positions."
+                {}, "Central Monitor Online", "The central monitoring and execution service is now online."
             )
-            mock_monitor_positions.assert_awaited_once()
+            mock_monitor_risk.assert_awaited_once()
+            mock_poll.assert_awaited_once()
 
             # --- Simulate shutdown and assert ---
             main_task.cancel()
