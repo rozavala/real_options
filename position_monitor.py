@@ -20,7 +20,7 @@ from config_loader import load_config
 from logging_config import setup_logging
 from notifications import send_pushover_notification
 from trading_bot.risk_management import monitor_positions_for_risk
-from trading_bot.utils import log_trade_to_ledger, log_order_event
+from trading_bot.utils import log_trade_to_ledger, log_order_event, create_contract_from_dict
 from trading_bot.ib_interface import place_order
 
 # --- Constants ---
@@ -84,7 +84,7 @@ async def poll_order_queue_and_place(ib: IB, config: dict):
                             order_data = json.load(f)
 
                         # Reconstruct the contract and order objects
-                        contract = Contract(**order_data['contract'])
+                        contract = create_contract_from_dict(order_data['contract'])
                         order = Order(**order_data['order'])
 
                         logger.info(f"Placing order from file: {filename}")
