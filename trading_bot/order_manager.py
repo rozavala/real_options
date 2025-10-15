@@ -34,6 +34,36 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("OrderManager")
 
 
+def _contract_to_dict(contract: Contract) -> dict:
+    """Converts an IB-insync Contract object to a serializable dictionary."""
+    # A set of attributes to include in the dictionary
+    attrs = {
+        'conId', 'symbol', 'secType', 'lastTradeDateOrContractMonth',
+        'strike', 'right', 'multiplier', 'exchange', 'currency', 'localSymbol',
+        'tradingClass'
+    }
+    contract_dict = {attr: getattr(contract, attr) for attr in attrs if hasattr(contract, attr)}
+
+    # Handle combo legs for Bag contracts
+    if contract.secType == 'BAG' and contract.comboLegs:
+        contract_dict['comboLegs'] = [
+            {
+                'conId': leg.conId, 'ratio': leg.ratio, 'action': leg.action,
+                'exchange': leg.exchange
+            }
+            for leg in contract.comboLegs
+        ]
+    return contract_dict
+
+
+def _order_to_dict(order: Order) -> dict:
+    """Converts an IB-insync Order object to a serializable dictionary."""
+    attrs = {
+        'orderId', 'action', 'totalQuantity', 'orderType', 'lmtPrice', 'tif'
+    }
+    return {attr: getattr(order, attr) for attr in attrs if hasattr(order, attr)}
+
+
 async def generate_and_queue_orders(config: dict):
     """
     Generates trading strategies, serializes them as JSON, and saves them
@@ -115,8 +145,8 @@ async def generate_and_queue_orders(config: dict):
                     order_objects = await create_combo_order_object(ib, config, strategy_def)
                     if order_objects:
                         # Serialize the contract and order objects
-                        contract_dict = util.tree_to_dict(order_objects[0])
-                        order_dict = util.tree_to_dict(order_objects[1])
+                        contract_dict = _contract_to_dict(order_objects[0])
+                        order_dict = _order_to_dict(order_objects[1])
                         order_data = {"contract": contract_dict, "order": order_dict}
 
                         # Save to a unique file in the queue directory
@@ -127,7 +157,6 @@ async def generate_and_queue_orders(config: dict):
 
                         queued_orders_count += 1
                         logger.info(f"Successfully queued order for {future.localSymbol} to file: {filename}")
-
         finally:
             if ib.isConnected():
                 ib.disconnect()
@@ -142,8 +171,6 @@ async def generate_and_queue_orders(config: dict):
         msg = f"A critical error occurred during order generation: {e}\n{traceback.format_exc()}"
         logger.critical(msg)
         send_pushover_notification(config.get('notifications', {}), "Order Generation CRITICAL", msg)
-
-
 
 async def close_all_open_positions(config: dict):
     """
