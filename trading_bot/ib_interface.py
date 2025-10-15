@@ -197,11 +197,11 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
     slippage_pct = config.get('strategy_tuning', {}).get('slippage_spread_percentage', 0.5)
     market_spread = combo_ask_price - combo_bid_price
 
-    if market_spread > 0:
-        slippage_amount = market_spread * slippage_pct
-    else:
-        logging.warning(f"Market spread is non-positive ({market_spread:.2f}). No dynamic slippage applied.")
-        slippage_amount = 0
+    if market_spread <= 0:
+        logging.error(f"Market spread is non-positive ({market_spread:.2f}). This indicates invalid or missing live market data for one or more legs. Aborting order to prevent unsafe trade.")
+        return None
+
+    slippage_amount = market_spread * slippage_pct
 
     # 6. Calculate final limit price
     # Start with the theoretical price and apply the dynamic slippage
@@ -217,6 +217,10 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
 
     # 6. Build the Bag contract using qualified leg conIds
     combo = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')
+    # For KC contracts, the multiplier must be explicitly set on the BAG contract.
+    if config['symbol'] == 'KC':
+        combo.multiplier = '37500'
+
     for i, q_leg in enumerate(validated_legs):
         leg_action = legs_def[i][1]
         combo.comboLegs.append(ComboLeg(conId=q_leg.conId, ratio=1, action=leg_action, exchange=chain['exchange']))

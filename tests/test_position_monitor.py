@@ -13,8 +13,7 @@ class TestPositionMonitor(unittest.TestCase):
     @patch('position_monitor.send_pushover_notification')
     @patch('position_monitor.monitor_positions_for_risk', new_callable=AsyncMock)
     @patch('position_monitor.poll_order_queue_and_place', new_callable=AsyncMock)
-    @patch('random.randint', return_value=1)
-    def test_monitor_startup_and_shutdown(self, mock_randint, mock_poll, mock_monitor_risk, mock_send_notification, mock_ib_class, mock_load_config):
+    def test_monitor_startup_and_shutdown(self, mock_poll, mock_monitor_risk, mock_send_notification, mock_ib_class, mock_load_config):
         async def run_test():
             # --- Mocks ---
             mock_load_config.return_value = {
@@ -38,7 +37,9 @@ class TestPositionMonitor(unittest.TestCase):
             await asyncio.sleep(0.1) # Allow time for setup
 
             # --- Assertions for startup ---
-            ib_instance.connectAsync.assert_awaited_once_with('127.0.0.1', 7497, clientId=11, timeout=30)
+            ib_instance.connectAsync.assert_awaited_once_with(
+                host='127.0.0.1', port=7497, clientId=10, timeout=30
+            )
             mock_send_notification.assert_called_once_with(
                 {}, "Central Monitor Online", "The central monitoring and execution service is now online."
             )
