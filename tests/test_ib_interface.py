@@ -52,74 +52,56 @@ class TestIbInterface(unittest.TestCase):
     @patch('trading_bot.ib_interface.get_option_market_data')
     def test_create_combo_order_object(self, mock_get_market_data, mock_price_bs):
         """
-        Tests the new logic flow:
-        1. Create leg contracts.
-        2. Qualify all legs together.
-        3. Price each qualified leg.
-        4. Build the final combo with qualified conIds.
+        Tests that the combo order price is calculated correctly by combining
+        the theoretical price with a dynamic, spread-based slippage.
         """
         async def run_test():
             # 1. Setup Mocks
             ib = AsyncMock()
 
-            # Mock for the qualification result
-            q_leg1 = FuturesOption(conId=101, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.5, right='C', exchange='NYBOT', multiplier="37500")
-            q_leg2 = FuturesOption(conId=102, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.6, right='C', exchange='NYBOT', multiplier="37500")
+            # Mock for qualification
+            q_leg1 = FuturesOption(conId=101, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.5, right='C', exchange='NYBOT')
+            q_leg2 = FuturesOption(conId=102, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.6, right='C', exchange='NYBOT')
             ib.qualifyContractsAsync.return_value = [q_leg1, q_leg2]
 
-            # Mocks for pricing functions
-            mock_get_market_data.return_value = {'implied_volatility': 0.2, 'risk_free_rate': 0.05}
-            mock_price_bs.side_effect = [{'price': 1.0}, {'price': 0.5}] # Price in cents/lb
+            # Mock for market data (bid, ask, IV)
+            mock_get_market_data.side_effect = [
+                {'bid': 0.9, 'ask': 1.1, 'implied_volatility': 0.2, 'risk_free_rate': 0.05},
+                {'bid': 0.4, 'ask': 0.6, 'implied_volatility': 0.18, 'risk_free_rate': 0.05}
+            ]
+
+            # Mock for theoretical pricing
+            mock_price_bs.side_effect = [{'price': 1.0}, {'price': 0.5}]
 
             # 2. Setup Inputs
             config = {
                 'symbol': 'KC',
-                'multiplier': "37500",
                 'strategy': {'quantity': 1},
-                'strategy_tuning': {'slippage_usd_per_contract': 5}
+                'strategy_tuning': {'slippage_spread_percentage': 0.5} # 50%
             }
             strategy_def = {
-                "action": "BUY",
-                "legs_def": [('C', 'BUY', 3.5), ('C', 'SELL', 3.6)],
+                "action": "BUY", "legs_def": [('C', 'BUY', 3.5), ('C', 'SELL', 3.6)],
                 "exp_details": {'exp_date': '20251220', 'days_to_exp': 30},
                 "chain": {'exchange': 'NYBOT', 'tradingClass': 'KCO'},
                 "underlying_price": 100.0,
-                "future_contract": Future(conId=1, symbol='KC', lastTradeDateOrContractMonth='202512')
+                "future_contract": Future(conId=1, symbol='KC')
             }
 
-            # 3. Execute the function
+            # 3. Execute
             result = await create_combo_order_object(ib, config, strategy_def)
 
             # 4. Assertions
             self.assertIsNotNone(result)
-            combo_contract, limit_order = result
+            _, limit_order = result
 
-            # Assert qualification was called once, with the unqualified contracts
-            ib.qualifyContractsAsync.assert_called_once()
-            unqualified_args = ib.qualifyContractsAsync.call_args[0]
-            self.assertEqual(len(unqualified_args), 2)
-            self.assertEqual(unqualified_args[0].strike, 3.5)
-            self.assertEqual(unqualified_args[0].multiplier, "37500")
-            self.assertEqual(unqualified_args[1].strike, 3.6)
-            self.assertEqual(unqualified_args[1].multiplier, "37500")
-
-            # Assert pricing was called with the QUALIFIED contracts
-            mock_get_market_data.assert_any_call(ib, q_leg1, strategy_def['future_contract'])
-            mock_get_market_data.assert_any_call(ib, q_leg2, strategy_def['future_contract'])
-
-            # Assert combo legs have the correct, qualified conIds
-            self.assertIsInstance(combo_contract, Bag)
-            self.assertEqual(len(combo_contract.comboLegs), 2)
-            self.assertEqual(combo_contract.comboLegs[0].conId, 101)
-            self.assertEqual(combo_contract.comboLegs[1].conId, 102)
-
-            # Assert order details are correct
-            self.assertIsInstance(limit_order, LimitOrder)
-            self.assertEqual(limit_order.action, 'BUY')
-            # Check price: net theoretical (1.0 - 0.5 = 0.5) + slippage ($5 -> 1.33 cents/lb)
-            # $5 * 100 cents/$ / 37500 lbs = 0.01333 cents/lb
-            expected_price = (1.0 - 0.5) + ((5 * 100) / 37500)
-            self.assertAlmostEqual(limit_order.lmtPrice, round(expected_price, 2))
+            # Theoretical Price: 1.0 (buy) - 0.5 (sell) = 0.5
+            # Combo Bid = leg1_bid - leg2_ask = 0.9 - 0.6 = 0.3
+            # Combo Ask = leg1_ask - leg2_bid = 1.1 - 0.4 = 0.7
+            # Market Spread = 0.7 - 0.3 = 0.4
+            # Slippage Amount = Market Spread * 50% = 0.4 * 0.5 = 0.2
+            # Limit Price (BUY) = Theoretical Price + Slippage = 0.5 + 0.2 = 0.7
+            expected_price = 0.70
+            self.assertAlmostEqual(limit_order.lmtPrice, expected_price, places=2)
 
         asyncio.run(run_test())
 

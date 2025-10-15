@@ -19,35 +19,56 @@ setup_logging()
 
 
 async def get_option_market_data(ib: IB, contract: Contract, underlying_future: Contract) -> dict | None:
-    """Fetches live market data for a single option contract."""
+    """
+    Fetches live market data for a single option contract, including bid, ask,
+    and implied volatility.
+    """
     logging.info(f"Fetching market data for option: {contract.localSymbol}")
-    ticker = ib.reqMktData(contract, '106', False, False)
-    await asyncio.sleep(2)
-    iv = ticker.modelGreeks.impliedVol if ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol) else None
-    ib.cancelMktData(contract)
+    # Generic tick list 106 provides model-based option greeks
+    # Generic tick list 104 provides bid, ask, and last prices
+    ticker = ib.reqMktData(contract, '104,106', False, False)
+    await asyncio.sleep(2)  # Allow time for data to arrive
 
-    # If live IV is not available, calculate historical volatility
+    # Extract data from the ticker
+    bid = ticker.bid if not util.isNan(ticker.bid) else None
+    ask = ticker.ask if not util.isNan(ticker.ask) else None
+    iv = ticker.modelGreeks.impliedVol if ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol) else None
+
+    ib.cancelMktData(contract) # Clean up the market data subscription
+
+    # If live IV is not available, calculate historical volatility as a fallback
     if iv is None:
-        logging.info(f"Live implied volatility not available for {contract.localSymbol}. Calculating historical volatility.")
+        logging.info(f"Live IV not available for {contract.localSymbol}. Calculating historical volatility.")
         bars = await ib.reqHistoricalDataAsync(
             underlying_future,
             endDateTime="",
-            durationStr='30 D', # 30-day lookback period
+            durationStr='30 D',
             barSizeSetting='1 day',
-            whatToShow='HISTORICAL_VOLATILITY', # CORRECT parameter for Historical Volatility
+            whatToShow='HISTORICAL_VOLATILITY',
             useRTH=True
         )
         if bars:
-            # Use the most recent historical volatility value
-            iv = bars[-1].close / 100
+            iv = bars[-1].close / 100  # Use the most recent historical value
             logging.info(f"Using historical volatility: {iv:.4f}")
         else:
-            # Fallback if both live and historical data fail
-            logging.warning("Could not get live or historical volatility. Using a reasonable fallback.")
-            iv = 0.3 # A more reasonable fallback (30%)
-            return {'implied_volatility': 0.3, 'risk_free_rate': 0.04} # <-- FIX: Return a fallback dictionary directly
+            logging.warning(f"Could not get historical volatility for {contract.localSymbol}. Using fallback.")
+            iv = 0.3  # Fallback IV
 
-    return {'implied_volatility': iv, 'risk_free_rate': 0.04}
+    # Ensure we have valid bid/ask prices, otherwise we cannot price the spread
+    if bid is None or ask is None:
+        logging.error(f"Failed to get valid bid/ask prices for {contract.localSymbol}. Bid: {bid}, Ask: {ask}")
+        # Still return IV if available, as theoretical price might still be useful
+        if iv is None:
+             return None # Can't do anything without any data
+        bid = 0 # Default to 0 if not available
+        ask = 0
+
+    return {
+        'bid': bid,
+        'ask': ask,
+        'implied_volatility': iv,
+        'risk_free_rate': 0.04  # Assuming a constant risk-free rate
+    }
 
 async def get_active_futures(ib: IB, symbol: str, exchange: str, count: int = 5) -> list[Contract]:
     """Fetches the next N active futures contracts for a given symbol."""
@@ -134,17 +155,20 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         logging.error("Mismatch between number of requested and qualified legs. Aborting.")
         return None
 
-    # 4. Price each qualified leg
+    # 4. Price each leg theoretically and get live market spread
     net_theoretical_price = 0.0
+    combo_bid_price = 0.0
+    combo_ask_price = 0.0
     for i, q_leg in enumerate(validated_legs):
-        leg_action = legs_def[i][1] # 'BUY' or 'SELL'
+        leg_action = legs_def[i][1]  # 'BUY' or 'SELL'
 
         market_data = await get_option_market_data(ib, q_leg, strategy_def['future_contract'])
         if not market_data:
-            logging.error(f"Failed to get market data for {q_leg.localSymbol}. Aborting."); return None
+            logging.error(f"Failed to get market data for {q_leg.localSymbol}. Aborting order.")
+            return None
 
+        # Calculate theoretical price using Black-Scholes
         pricing_result = price_option_black_scholes(
-            # Dividing the underlying price by 100 to "scale" it
             S=underlying_price,
             K=q_leg.strike,
             T=exp_details['days_to_exp'] / 365,
@@ -152,30 +176,44 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
             sigma=market_data['implied_volatility'],
             option_type=q_leg.right
         )
-
         if not pricing_result:
             logging.error(f"Failed to price leg {leg_action} {q_leg.localSymbol}. Aborting."); return None
 
         price = pricing_result['price']
-        logging.info(f"  -> Leg Price ({leg_action}): {q_leg.localSymbol} theoretical price = {price:.2f} cents/lb")
-        logging.info(f"Theoretical price calculated for {q_leg.right} @ {q_leg.strike}: {pricing_result}")
         net_theoretical_price += price if leg_action == 'BUY' else -price
+        logging.info(f"  -> Leg Theoretical Price ({leg_action}): {q_leg.localSymbol} @ {price:.2f}")
 
-    # 5. Calculate final limit price
-    slippage_usd_per_contract = config.get('strategy_tuning', {}).get('slippage_usd_per_contract', 5)
+        # Aggregate combo bid/ask from live market data
+        leg_bid = market_data['bid']
+        leg_ask = market_data['ask']
+        if leg_action == 'BUY':
+            combo_bid_price += leg_bid
+            combo_ask_price += leg_ask
+        else:  # 'SELL'
+            combo_bid_price -= leg_ask
+            combo_ask_price -= leg_bid
 
-    # FIX: Convert slippage from total USD per contract to cents per pound to match the price's unit.
-    try:
-        # The multiplier is defined as a string in the contract object. Assume 37500 if not in config.
-        multiplier = float(config.get('multiplier', "37500"))
-        # Convert dollars to cents, then divide by contract size (lbs) to get cents/lb.
-        slippage_in_cents_per_lb = (slippage_usd_per_contract * 100) / multiplier
-    except (ValueError, ZeroDivisionError):
-        logging.warning(f"Could not parse multiplier. Defaulting slippage to 0.")
-        slippage_in_cents_per_lb = 0.0
+    # 5. Calculate dynamic slippage from the live market spread
+    slippage_pct = config.get('strategy_tuning', {}).get('slippage_spread_percentage', 0.5)
+    market_spread = combo_ask_price - combo_bid_price
 
-    limit_price = round(net_theoretical_price + slippage_in_cents_per_lb if action == 'BUY' else net_theoretical_price - slippage_in_cents_per_lb, 2)
-    logging.info(f"Net theoretical price: {net_theoretical_price:.2f} cents/lb, Slippage: ${slippage_usd_per_contract:.2f} ({slippage_in_cents_per_lb:.4f} cents/lb), Final Limit Price: {limit_price:.2f} cents/lb")
+    if market_spread > 0:
+        slippage_amount = market_spread * slippage_pct
+    else:
+        logging.warning(f"Market spread is non-positive ({market_spread:.2f}). No dynamic slippage applied.")
+        slippage_amount = 0
+
+    # 6. Calculate final limit price
+    # Start with the theoretical price and apply the dynamic slippage
+    # For a BUY order, we are willing to pay more (add slippage).
+    # For a SELL order, we are willing to accept less (subtract slippage).
+    if action == 'BUY':
+        limit_price = round(net_theoretical_price + slippage_amount, 2)
+    else: # SELL
+        limit_price = round(net_theoretical_price - slippage_amount, 2)
+
+    logging.info(f"Net Theoretical: {net_theoretical_price:.2f}, Market Spread: {market_spread:.2f}, Slippage Pct: {slippage_pct:.2%}, Slippage Amount: {slippage_amount:.4f}")
+    logging.info(f"Final Limit Price: {limit_price:.2f} cents/lb")
 
     # 6. Build the Bag contract using qualified leg conIds
     combo = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')
