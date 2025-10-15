@@ -22,6 +22,29 @@ from logging_config import setup_logging
 setup_logging()
 
 
+def create_contract_from_dict(d: dict) -> Contract:
+    """Creates an IB-insync Contract object from a dictionary.
+
+    This is the reverse of the `_contract_to_dict` function in the
+    `order_manager` module. It pays special attention to reconstructing
+    the `comboLegs` from their dictionary representation.
+
+    Args:
+        d (dict): A dictionary containing the contract's attributes.
+
+    Returns:
+        An `ib_insync.Contract` object.
+    """
+    if d.get('secType') == 'BAG' and 'comboLegs' in d:
+        # Create ComboLeg objects from the list of dicts
+        combo_legs_list = d.get('comboLegs', [])
+        d['comboLegs'] = [ComboLeg(**leg_dict) for leg_dict in combo_legs_list]
+
+    # Create the contract, excluding any potential comboLegs dict
+    contract = Contract(**d)
+    return contract
+
+
 def _get_combo_description(trade: Trade) -> str:
     """Creates a human-readable description for a combo/bag trade."""
     if not isinstance(trade.contract, Bag) or not trade.contract.comboLegs:
