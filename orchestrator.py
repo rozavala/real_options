@@ -180,8 +180,8 @@ async def analyze_and_archive(config: dict):
 
 # The schedule is crucial. start_monitoring must run before generate_and_queue_orders.
 schedule = {
-    time(8, 30): start_monitoring,             # Start monitor well before trading
-    time(8, 50): generate_and_queue_orders,    # Generate signals after monitor is ready
+    time(17, 14): start_monitoring,             # Start monitor well before trading
+    time(17, 17): generate_and_queue_orders,    # Generate signals after monitor is ready
     time(17, 10): close_all_open_positions,   # Close positions before market close
     time(17, 8): cancel_and_stop_monitoring,  # Cancel leftovers and stop monitor
     time(18, 0): analyze_and_archive          # Analyze after everything is shut down
