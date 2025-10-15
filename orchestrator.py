@@ -27,7 +27,6 @@ from notifications import send_pushover_notification
 from performance_analyzer import analyze_performance
 from trading_bot.order_manager import (
     generate_and_queue_orders,
-    place_queued_orders,
     close_all_open_positions,
     cancel_all_open_orders,
 )
@@ -162,9 +161,8 @@ async def analyze_and_archive(config: dict):
 
 # New schedule mapping run times (GMT) to functions
 schedule = {
-    time(8, 50): generate_and_queue_orders,
-    time(8, 30): start_monitoring,
-    time(8, 55): place_queued_orders,
+    time(14, 29): generate_and_queue_orders,
+    time(14, 28): start_monitoring,
     time(17, 10): close_all_open_positions,
     time(17, 8): cancel_and_stop_monitoring,
     time(18, 0): analyze_and_archive

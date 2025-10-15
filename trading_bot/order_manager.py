@@ -6,7 +6,9 @@ acts as the central hub for all order-related activities, decoupling the
 strategy definition from the execution timing.
 """
 import asyncio
+import json
 import logging
+import os
 import random
 import time
 import traceback
@@ -24,8 +26,8 @@ from trading_bot.signal_generator import generate_signals
 from trading_bot.strategy import define_directional_strategy, define_volatility_strategy
 from trading_bot.utils import log_trade_to_ledger, log_order_event
 
-# --- Module-level storage for orders ---
-ORDER_QUEUE = []
+# --- Constants ---
+ORDER_QUEUE_DIR = "order_queue"
 
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -34,12 +36,13 @@ logger = logging.getLogger("OrderManager")
 
 async def generate_and_queue_orders(config: dict):
     """
-    Generates trading strategies based on market data and API predictions,
-    and queues them for later execution.
+    Generates trading strategies, serializes them as JSON, and saves them
+    as individual files in the order queue directory for the 'listener'
+    process to pick up.
     """
     logger.info("--- Starting order generation and queuing process ---")
-    global ORDER_QUEUE
-    ORDER_QUEUE.clear()  # Clear queue at the start of each day
+    os.makedirs(ORDER_QUEUE_DIR, exist_ok=True)
+    queued_orders_count = 0
 
     try:
         logger.info("Step 1: Running data pull...")
@@ -111,29 +114,29 @@ async def generate_and_queue_orders(config: dict):
                 if strategy_def:
                     order_objects = await create_combo_order_object(ib, config, strategy_def)
                     if order_objects:
-                        ORDER_QUEUE.append(order_objects)
-                        logger.info(f"Successfully queued order for {future.localSymbol}.")
+                        # Serialize the contract and order objects
+                        contract_dict = util.tree_to_dict(order_objects[0])
+                        order_dict = util.tree_to_dict(order_objects[1])
+                        order_data = {"contract": contract_dict, "order": order_dict}
+
+                        # Save to a unique file in the queue directory
+                        timestamp = int(time.time() * 1000)
+                        filename = os.path.join(ORDER_QUEUE_DIR, f"order_{timestamp}.json")
+                        with open(filename, 'w') as f:
+                            json.dump(order_data, f, indent=4)
+
+                        queued_orders_count += 1
+                        logger.info(f"Successfully queued order for {future.localSymbol} to file: {filename}")
+
         finally:
             if ib.isConnected():
                 ib.disconnect()
 
-        logger.info(f"--- Order generation complete. {len(ORDER_QUEUE)} orders queued. ---")
+        logger.info(f"--- Order generation complete. {queued_orders_count} orders queued. ---")
 
-        # Create a detailed notification message
-        if ORDER_QUEUE:
-            summary_items = []
-            for contract, order in ORDER_QUEUE:
-                summary = (
-                    f"<b>{contract.localSymbol}</b> ({order.action} {order.totalQuantity}): "
-                    f"LMT @ ${order.lmtPrice}, "
-                    f"{len(contract.comboLegs)} legs"
-                )
-                summary_items.append(summary)
-            message = f"<b>{len(ORDER_QUEUE)} strategies generated and queued:</b>\n" + "\n".join(summary_items)
-        else:
-            message = "No new orders were generated or queued."
-
-        send_pushover_notification(config.get('notifications', {}), "Orders Queued", message)
+        # Notification is simplified as the listener will provide detailed execution reports
+        message = f"Order generation cycle complete. {queued_orders_count} new strategies were identified and queued for placement."
+        send_pushover_notification(config.get('notifications', {}), f"{queued_orders_count} Orders Queued", message)
 
     except Exception as e:
         msg = f"A critical error occurred during order generation: {e}\n{traceback.format_exc()}"
@@ -141,68 +144,6 @@ async def generate_and_queue_orders(config: dict):
         send_pushover_notification(config.get('notifications', {}), "Order Generation CRITICAL", msg)
 
 
-async def place_queued_orders(config: dict):
-    """
-    Connects to IB and places all orders currently in the queue. This function
-    is "fire-and-forget"; it submits the orders and lets the separate
-    monitoring process handle fill notifications.
-    """
-    logger.info(f"--- Placing {len(ORDER_QUEUE)} queued orders ---")
-    if not ORDER_QUEUE:
-        logger.info("Order queue is empty. Nothing to place.")
-        return
-
-    ib = IB()
-
-    # Define the event handler inside the function to capture the 'ib' instance
-    def order_status_handler(trade: Trade):
-        """Callback for order status updates."""
-        # We only care about terminal states or states with messages
-        if trade.orderStatus.status in [OrderStatus.Filled, OrderStatus.Cancelled, OrderStatus.Inactive] or trade.log:
-            latest_log = trade.log[-1] if trade.log else None
-            message = latest_log.message if latest_log else ""
-            log_order_event(trade, trade.orderStatus.status, message)
-            logger.info(f"Order {trade.order.orderId} status: {trade.orderStatus.status}")
-
-    try:
-        conn_settings = config.get('connection', {})
-        await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
-        logger.info("Connected to IB for order placement.")
-
-        # Attach the event handler
-        ib.orderStatusEvent += order_status_handler
-
-        placed_trades = []
-        for contract, order in ORDER_QUEUE:
-            trade = place_order(ib, contract, order)
-            # Initial log upon submission
-            log_order_event(trade, trade.orderStatus.status)
-            placed_trades.append(trade)
-            await asyncio.sleep(0.5) # Small delay between placements
-
-        # Allow a moment for initial status updates to come through
-        await asyncio.sleep(5)
-
-        logger.info(f"--- Finished submitting {len(placed_trades)} orders. ---")
-        # Create a detailed notification message
-        if placed_trades:
-            summary_items = [f"  - {trade.contract.localSymbol} ({trade.order.action} {trade.order.totalQuantity}) ID: {trade.order.orderId}" for trade in placed_trades]
-            message = f"<b>{len(placed_trades)} DAY orders submitted to the exchange:</b>\n" + "\n".join(summary_items)
-        else:
-            message = "No orders were submitted for placement."
-
-        send_pushover_notification(config.get('notifications', {}), "Orders Placed", message)
-        ORDER_QUEUE.clear()
-
-    except Exception as e:
-        msg = f"A critical error occurred during order placement: {e}\n{traceback.format_exc()}"
-        logger.critical(msg)
-        send_pushover_notification(config.get('notifications', {}), "Order Placement CRITICAL", msg)
-    finally:
-        if ib.isConnected():
-            # It's good practice to remove the handler when done
-            ib.orderStatusEvent -= order_status_handler
-            ib.disconnect()
 
 async def close_all_open_positions(config: dict):
     """
