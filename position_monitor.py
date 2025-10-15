@@ -73,6 +73,7 @@ def _exec_details_handler(trade: Trade, fill: Fill, config: dict):
 async def poll_order_queue_and_place(ib: IB, config: dict):
     """Continuously polls the order queue directory and places new orders."""
     logger.info(f"Starting order queue poller for directory: '{ORDER_QUEUE_DIR}'")
+    os.makedirs(ORDER_QUEUE_DIR, exist_ok=True) # Ensure the queue directory exists
     while True:
         try:
             for filename in os.listdir(ORDER_QUEUE_DIR):
