@@ -1,21 +1,19 @@
 import os
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-from matplotlib.ticker import StrMethodFormatter
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-
-def generate_performance_chart(df: pd.DataFrame, output_path: str = 'daily_performance.png') -> str | None:
+def generate_performance_chart(df: pd.DataFrame, output_path: str = 'daily_performance.html') -> str | None:
     """
-    Generates a performance chart from a DataFrame and saves it to a file.
+    Generates an interactive performance chart from a DataFrame and saves it to an HTML file.
 
     Args:
         df (pd.DataFrame): DataFrame containing the trade ledger data.
                           Must include 'timestamp', 'total_value_usd', and 'action' columns.
-        output_path (str): The path to save the output PNG file.
+        output_path (str): The path to save the output HTML file.
 
     Returns:
-        The absolute path to the saved chart image, or None if the DataFrame is empty.
+        The absolute path to the saved chart HTML file, or None if the DataFrame is empty.
     """
     if df.empty:
         return None
@@ -29,40 +27,56 @@ def generate_performance_chart(df: pd.DataFrame, output_path: str = 'daily_perfo
     # Calculates the cumulative net value
     df['cumulative_net_value'] = df['net_value'].cumsum()
 
-    # Create a single figure with two subplots
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True, gridspec_kw={'height_ratios': [1, 1]})
-    fig.suptitle('Trading Performance', fontsize=16)
+    # Create a figure with two subplots
+    fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.1,
+        subplot_titles=('Daily Profit & Loss', 'Cumulative Performance')
+    )
 
-    # Plot the cashflows on the top subplot
-    ax1.bar(df['timestamp'], df['net_value'], color=['green' if x > 0 else 'red' for x in df['net_value']], label='Daily P&L')
-    ax1.set_title('Daily Profit & Loss')
-    ax1.set_ylabel('P&L (USD)')
-    ax1.legend()
-    ax1.grid(True, which='both', linestyle='--', linewidth=0.5)
-    ax1.yaxis.set_major_formatter(StrMethodFormatter('{x:,.0f}'))
+    # Daily P&L Bar Chart
+    fig.add_trace(go.Bar(
+        x=df['timestamp'],
+        y=df['net_value'],
+        marker_color=['green' if x > 0 else 'red' for x in df['net_value']],
+        name='Daily P&L'
+    ), row=1, col=1)
 
-    # Plot the cumulative net value on the bottom subplot
-    ax2.plot(df['timestamp'], df['cumulative_net_value'], color='#1E90FF', marker='o', linestyle='-', label='Cumulative P&L')
-    ax2.set_title('Cumulative Performance')
-    ax2.set_xlabel('Date & Time')
-    ax2.set_ylabel('Total P&L (USD)')
-    ax2.legend()
-    ax2.grid(True, which='both', linestyle='--', linewidth=0.5)
-    ax2.yaxis.set_major_formatter(StrMethodFormatter('{x:,.0f}'))
+    # Cumulative P&L Line Chart
+    fig.add_trace(go.Scatter(
+        x=df['timestamp'],
+        y=df['cumulative_net_value'],
+        mode='lines+markers',
+        name='Cumulative P&L',
+        line=dict(color='#1E90FF')
+    ), row=2, col=1)
 
-    # Improve date formatting
-    fig.autofmt_xdate()
-    ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+    # Update layout
+    fig.update_layout(
+        title_text='Trading Performance',
+        xaxis_title='Date & Time',
+        yaxis_title='P&L (USD)',
+        yaxis2_title='Total P&L (USD)',
+        showlegend=False,
+        height=600
+    )
 
-    # Adjust layout and save the figure
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig(output_path)
-    plt.close(fig)  # Close the figure to free memory
+    # Save to HTML
+    fig.write_html(output_path)
 
     return os.path.abspath(output_path)
 
 if __name__ == '__main__':
     # For standalone testing of the chart generation
-    chart_path = generate_performance_chart()
+    # Create a dummy dataframe for testing
+    data = {
+        'timestamp': pd.to_datetime(['2023-01-01 10:00', '2023-01-01 12:00', '2023-01-02 10:00', '2023-01-02 12:00']),
+        'total_value_usd': [100, 150, -50, 200],
+        'action': ['SELL', 'SELL', 'BUY', 'SELL']
+    }
+    df = pd.DataFrame(data)
+
+    chart_path = generate_performance_chart(df)
     if chart_path:
         print(f"Performance chart saved to: {chart_path}")
