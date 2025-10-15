@@ -224,6 +224,10 @@ async def main():
         tasks.append(queue_poller_task)
 
         logger.info("P&L monitoring and Signal Queue polling tasks are now running concurrently.")
+
+        # Signal to the orchestrator that the monitor is fully initialized and ready.
+        print("MONITOR_READY", flush=True)
+
         await asyncio.gather(*tasks)
 
     except ConnectionRefusedError:

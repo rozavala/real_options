@@ -5,9 +5,8 @@ as a long-lived process, responsible for scheduling and executing all the
 different components of the trading pipeline at the correct times.
 
 The orchestrator manages a daily schedule that includes:
+- Starting a separate position monitoring process and waiting for it to be ready.
 - Generating and queuing orders pre-market.
-- Starting a separate position monitoring process.
-- Placing the queued orders after the market opens.
 - Closing all positions before the market closes.
 - Canceling any remaining open orders.
 - Stopping the position monitoring process.
@@ -41,18 +40,33 @@ logger = logging.getLogger("Orchestrator")
 monitor_process = None
 
 
-async def log_stream(stream, logger_func):
-    """Reads and logs lines from a subprocess stream."""
+async def log_stream(stream, logger_func, readiness_event=None, readiness_signal=""):
+    """
+    Reads and logs lines from a subprocess stream. If a readiness_event is
+    provided, it sets the event when the readiness_signal is detected.
+    """
     while True:
-        line = await stream.readline()
-        if line:
-            logger_func(line.decode('utf-8').strip())
-        else:
+        try:
+            line_bytes = await stream.readline()
+            if line_bytes:
+                line = line_bytes.decode('utf-8').strip()
+                logger_func(line)
+                if readiness_event and readiness_signal and readiness_signal in line:
+                    readiness_event.set()
+            else:
+                break
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Error in log_stream: {e}")
             break
 
 
 async def start_monitoring(config: dict):
-    """Starts the `position_monitor.py` script as a background process."""
+    """
+    Starts the `position_monitor.py` script as a background process and waits
+    for it to signal that it's ready before proceeding.
+    """
     global monitor_process
     if monitor_process and monitor_process.returncode is None:
         logger.warning("Monitoring process is already running.")
@@ -60,21 +74,34 @@ async def start_monitoring(config: dict):
 
     try:
         logger.info("--- Starting position monitoring process ---")
+        readiness_event = asyncio.Event()
+        readiness_signal = "MONITOR_READY"
+
         monitor_process = await asyncio.create_subprocess_exec(
             sys.executable, 'position_monitor.py',
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE  # Capture both stdout and stderr
+            stderr=asyncio.subprocess.PIPE
         )
         logger.info(f"Successfully started position monitor with PID: {monitor_process.pid}")
 
-        # Create tasks to log the output from the monitor process in the background
-        asyncio.create_task(log_stream(monitor_process.stdout, logger.info))
+        # Create tasks to log output and watch for the readiness signal
+        asyncio.create_task(log_stream(monitor_process.stdout, logger.info, readiness_event, readiness_signal))
         asyncio.create_task(log_stream(monitor_process.stderr, logger.error))
 
-        send_pushover_notification(config.get('notifications', {}), "Orchestrator", "Started position monitoring service.")
+        # Wait for the monitor to be ready, with a timeout
+        logger.info("Waiting for position monitor to signal readiness...")
+        await asyncio.wait_for(readiness_event.wait(), timeout=120.0)
+
+        logger.info("--- Position monitor is ready. Orchestrator can now proceed. ---")
+        send_pushover_notification(config.get('notifications', {}), "Orchestrator", "Position monitoring service is online and ready.")
+    except asyncio.TimeoutError:
+        logger.critical("Timeout: Position monitor did not become ready in 120 seconds. Terminating.")
+        await stop_monitoring(config)
+        raise
     except Exception as e:
         logger.critical(f"Failed to start position monitor: {e}\n{traceback.format_exc()}")
         send_pushover_notification(config.get('notifications', {}), "Orchestrator CRITICAL", "Failed to start position monitor.")
+        raise
 
 
 async def stop_monitoring(config: dict):
@@ -133,16 +160,12 @@ async def analyze_and_archive(config: dict):
     """
     logger.info("--- Initiating end-of-day analysis, reporting, and archiving ---")
     try:
-        # 1. Analyze performance to get the report data and chart path
         analysis_result = analyze_performance(config)
         if not analysis_result:
             logger.error("Performance analysis failed. Skipping report and archiving.")
             return
 
-        # Unpack all three values: report, P&L, and chart path
         report_text, total_pnl, chart_path = analysis_result
-
-        # 2. Send the notification with the chart
         notification_title = f"Daily Report: P&L ${total_pnl:,.2f}"
         send_pushover_notification(
             config.get('notifications', {}),
@@ -150,22 +173,18 @@ async def analyze_and_archive(config: dict):
             message=report_text,
             attachment_path=chart_path
         )
-
-        # 3. Archive the ledger
         archive_trade_ledger()
-
         logger.info("--- End-of-day analysis, reporting, and archiving complete ---")
-
     except Exception as e:
         logger.critical(f"An error occurred during the analysis and archiving process: {e}\n{traceback.format_exc()}")
 
-# New schedule mapping run times (GMT) to functions
+# The schedule is crucial. start_monitoring must run before generate_and_queue_orders.
 schedule = {
-    time(16, 55): generate_and_queue_orders,
-    time(16, 54): start_monitoring,
-    time(17, 10): close_all_open_positions,
-    time(17, 8): cancel_and_stop_monitoring,
-    time(18, 0): analyze_and_archive
+    time(8, 30): start_monitoring,             # Start monitor well before trading
+    time(8, 50): generate_and_queue_orders,    # Generate signals after monitor is ready
+    time(17, 10): close_all_open_positions,   # Close positions before market close
+    time(17, 8): cancel_and_stop_monitoring,  # Cancel leftovers and stop monitor
+    time(18, 0): analyze_and_archive          # Analyze after everything is shut down
 }
 
 async def main():
@@ -177,7 +196,6 @@ async def main():
     config = load_config()
     if not config:
         logger.critical("Orchestrator cannot start without a valid configuration."); return
-
 
     try:
         while True:
@@ -194,7 +212,6 @@ async def main():
                 await asyncio.sleep(wait_seconds)
 
                 logger.info(f"--- Running scheduled task: {task_name} ---")
-                # All scheduled tasks that take config are now async
                 await next_task_func(config)
 
             except asyncio.CancelledError:
@@ -208,26 +225,16 @@ async def main():
         if monitor_process and monitor_process.returncode is None:
             await stop_monitoring(config)
 
-
-async def sequential_main():
-    for task in schedule.values():
-        await task()
-
-
 if __name__ == "__main__":
-
-    if len(sys.argv) > 1:
-        asyncio.run(sequential_main())
-    else:
-        loop = asyncio.get_event_loop()
-        main_task = None
-        try:
-            main_task = loop.create_task(main())
+    loop = asyncio.get_event_loop()
+    main_task = None
+    try:
+        main_task = loop.create_task(main())
+        loop.run_until_complete(main_task)
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Orchestrator stopped by user.")
+        if main_task:
+            main_task.cancel()
             loop.run_until_complete(main_task)
-        except (KeyboardInterrupt, SystemExit):
-            logger.info("Orchestrator stopped by user.")
-            if main_task:
-                main_task.cancel()
-                loop.run_until_complete(main_task)
-        finally:
-            loop.close()
+    finally:
+        loop.close()
