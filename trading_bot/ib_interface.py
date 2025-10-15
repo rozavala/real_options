@@ -217,6 +217,10 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
 
     # 6. Build the Bag contract using qualified leg conIds
     combo = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')
+    # For KC contracts, the multiplier must be explicitly set on the BAG contract.
+    if config['symbol'] == 'KC':
+        combo.multiplier = '37500'
+
     for i, q_leg in enumerate(validated_legs):
         leg_action = legs_def[i][1]
         combo.comboLegs.append(ComboLeg(conId=q_leg.conId, ratio=1, action=leg_action, exchange=chain['exchange']))
