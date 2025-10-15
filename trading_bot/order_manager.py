@@ -143,66 +143,118 @@ async def generate_and_queue_orders(config: dict):
 
 async def place_queued_orders(config: dict):
     """
-    Connects to IB and places all orders currently in the queue. This function
-    is "fire-and-forget"; it submits the orders and lets the separate
-    monitoring process handle fill notifications.
+    Connects to IB, places all queued orders, and monitors them until they
+    are filled or reach a terminal state, ensuring all fills are logged.
     """
-    logger.info(f"--- Placing {len(ORDER_QUEUE)} queued orders ---")
+    logger.info(f"--- Placing and monitoring {len(ORDER_QUEUE)} queued orders ---")
     if not ORDER_QUEUE:
         logger.info("Order queue is empty. Nothing to place.")
         return
 
     ib = IB()
+    live_orders = {} # Dictionary to track order status by orderId
 
-    # Define the event handler inside the function to capture the 'ib' instance
-    def order_status_handler(trade: Trade):
-        """Callback for order status updates."""
-        # We only care about terminal states or states with messages
-        if trade.orderStatus.status in [OrderStatus.Filled, OrderStatus.Cancelled, OrderStatus.Inactive] or trade.log:
-            latest_log = trade.log[-1] if trade.log else None
-            message = latest_log.message if latest_log else ""
-            log_order_event(trade, trade.orderStatus.status, message)
-            logger.info(f"Order {trade.order.orderId} status: {trade.orderStatus.status}")
+    # --- Event Handlers ---
+    def on_order_status(trade: Trade):
+        """Handles order status updates."""
+        order_id = trade.order.orderId
+        status = trade.orderStatus.status
+        if order_id in live_orders and live_orders[order_id]['status'] != status:
+            live_orders[order_id]['status'] = status
+            logger.info(f"Order {order_id} status update: {status}")
+            log_order_event(trade, status)
+
+    def on_exec_details(trade: Trade, fill: Fill):
+        """Handles trade execution details and logs the trade."""
+        order_id = trade.order.orderId
+        if order_id in live_orders and not live_orders[order_id].get('is_filled', False):
+            logger.info(f"Order {order_id} FILLED. Logging to trade ledger.")
+            # Log the trade to the ledger. The fill object has all necessary details.
+            log_trade_to_ledger(trade, "Strategy Execution")
+            live_orders[order_id]['is_filled'] = True # Mark as filled to avoid duplicate logging
 
     try:
         conn_settings = config.get('connection', {})
         await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
-        logger.info("Connected to IB for order placement.")
+        logger.info("Connected to IB for order placement and monitoring.")
 
-        # Attach the event handler
-        ib.orderStatusEvent += order_status_handler
+        # Attach event handlers
+        ib.orderStatusEvent += on_order_status
+        ib.execDetailsEvent += on_exec_details
 
-        placed_trades = []
+        placed_trades_summary = []
         for contract, order in ORDER_QUEUE:
             trade = place_order(ib, contract, order)
             # Initial log upon submission
             log_order_event(trade, trade.orderStatus.status)
-            placed_trades.append(trade)
-            await asyncio.sleep(0.5) # Small delay between placements
+            live_orders[trade.order.orderId] = {'trade': trade, 'status': trade.orderStatus.status, 'is_filled': False}
+            placed_trades_summary.append(f"  - {trade.contract.localSymbol} ({trade.order.action} {trade.order.totalQuantity}) ID: {trade.order.orderId}")
+            await asyncio.sleep(0.5)
 
-        # Allow a moment for initial status updates to come through
-        await asyncio.sleep(5)
+        if placed_trades_summary:
+            message = f"<b>{len(live_orders)} DAY orders submitted, now monitoring:</b>\n" + "\n".join(placed_trades_summary)
+            send_pushover_notification(config.get('notifications', {}), "Orders Placed & Monitored", message)
 
-        logger.info(f"--- Finished submitting {len(placed_trades)} orders. ---")
-        # Create a detailed notification message
-        if placed_trades:
-            summary_items = [f"  - {trade.contract.localSymbol} ({trade.order.action} {trade.order.totalQuantity}) ID: {trade.order.orderId}" for trade in placed_trades]
-            message = f"<b>{len(placed_trades)} DAY orders submitted to the exchange:</b>\n" + "\n".join(summary_items)
+        # --- Monitoring Loop ---
+        start_time = time.time()
+        monitoring_duration = 900  # 15 minutes
+        logger.info(f"Monitoring orders for up to {monitoring_duration / 60} minutes...")
+        while time.time() - start_time < monitoring_duration:
+            if not live_orders: break # Exit if all orders were somehow removed
+            all_done = all(
+                details['status'] in OrderStatus.DoneStates
+                for details in live_orders.values()
+            )
+            if all_done:
+                logger.info("All orders have reached a terminal state. Concluding monitoring.")
+                break
+            await asyncio.sleep(15) # Check status every 15 seconds
         else:
-            message = "No orders were submitted for placement."
+            logger.warning("Monitoring loop timed out. Some orders may not be in a terminal state.")
 
-        send_pushover_notification(config.get('notifications', {}), "Orders Placed", message)
+        # --- Cancellation and Final Reporting ---
+        filled_orders = []
+        cancelled_orders = []
+        for order_id, details in live_orders.items():
+            trade = details['trade']
+            if details['status'] == OrderStatus.Filled:
+                filled_orders.append(f"  - <b>{trade.contract.localSymbol}</b> ({trade.order.action})")
+            elif details['status'] not in OrderStatus.DoneStates:
+                logger.info(f"Order {order_id} did not fill. Cancelling it now.")
+                ib.cancelOrder(trade.order)
+                cancelled_orders.append(f"  - <b>{trade.contract.localSymbol}</b> ({trade.order.action}) ID: {order_id}")
+                await asyncio.sleep(0.2) # Small delay for cancellation request
+
+        # Build and send the final summary notification
+        message_parts = []
+        if filled_orders:
+            message_parts.append(f"<b>✅ {len(filled_orders)} orders were successfully filled:</b>")
+            message_parts.extend(filled_orders)
+        if cancelled_orders:
+            message_parts.append(f"\n<b>❌ {len(cancelled_orders)} unfilled orders were cancelled:</b>")
+            message_parts.extend(cancelled_orders)
+
+        if not message_parts:
+            summary_message = "Order monitoring complete. No orders were filled or needed cancellation."
+        else:
+            summary_message = "\n".join(message_parts)
+
+        send_pushover_notification(config.get('notifications', {}), "Order Monitoring Complete", summary_message)
+
         ORDER_QUEUE.clear()
+        logger.info("--- Finished monitoring and cleanup. ---")
 
     except Exception as e:
-        msg = f"A critical error occurred during order placement: {e}\n{traceback.format_exc()}"
+        msg = f"A critical error occurred during order placement/monitoring: {e}\n{traceback.format_exc()}"
         logger.critical(msg)
         send_pushover_notification(config.get('notifications', {}), "Order Placement CRITICAL", msg)
     finally:
         if ib.isConnected():
-            # It's good practice to remove the handler when done
-            ib.orderStatusEvent -= order_status_handler
+            # It's good practice to remove the handlers when done
+            ib.orderStatusEvent -= on_order_status
+            ib.execDetailsEvent -= on_exec_details
             ib.disconnect()
+            logger.info("Disconnected from IB.")
 
 async def close_all_open_positions(config: dict):
     """
