@@ -127,7 +127,8 @@ class TestUtils(unittest.TestCase):
 
         # --- Assertions ---
         # Check that the file was opened correctly
-        mock_open.assert_called_once_with('trade_ledger.csv', 'a', newline='')
+        expected_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'trade_ledger.csv')
+        mock_open.assert_called_once_with(expected_path, 'a', newline='')
 
         # Check that DictWriter was called with correct fieldnames
         expected_fieldnames = [

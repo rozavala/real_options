@@ -48,7 +48,9 @@ def log_order_event(trade: Trade, status: str, message: str = ""):
         status (str): The new status of the order (e.g., 'Submitted', 'Filled').
         message (str, optional): Any additional message, like an error reason.
     """
-    ledger_path = 'order_events.csv'
+    # Use absolute path to ensure ledger is in the project root
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ledger_path = os.path.join(base_dir, 'order_events.csv')
     file_exists = os.path.isfile(ledger_path)
 
     fieldnames = [
@@ -301,10 +303,9 @@ def log_trade_to_ledger(trade: Trade, reason: str = "Strategy Execution"):
         reason (str): A string describing why the trade was executed (e.g.,
             'Strategy Execution', 'Position Misaligned', 'Stop-Loss').
     """
-    if trade.orderStatus.status != OrderStatus.Filled:
-        return
-
-    ledger_path = 'trade_ledger.csv'
+    # Use absolute path to ensure ledger is in the project root
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
     file_exists = os.path.isfile(ledger_path)
 
     fieldnames = [
