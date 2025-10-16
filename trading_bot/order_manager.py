@@ -215,28 +215,46 @@ async def place_queued_orders(config: dict):
         ib.execDetailsEvent += on_exec_details
 
         placed_trades_summary = []
+        
+        # --- PLACEMENT LOOP (ENHANCED LOGGING) ---
         for contract, order in ORDER_QUEUE:
-            # --- Fetch market data for each leg before placing the order ---
-            tickers = await asyncio.gather(
-                *[
-                    _get_market_data_for_leg(ib, leg)
-                    for leg in contract.comboLegs
-                ]
+            
+            # --- 1. Get BAG (Spread) Market Data ---
+            bag_ticker = ib.reqMktData(contract, '', False, False)
+            await asyncio.sleep(2) # Wait for ticker to populate
+            
+            bag_bid = bag_ticker.bid if not util.isNan(bag_ticker.bid) else "N/A"
+            bag_ask = bag_ticker.ask if not util.isNan(bag_ticker.ask) else "N/A"
+            bag_vol = bag_ticker.volume if not util.isNan(bag_ticker.volume) else "N/A"
+            bag_last = bag_ticker.last if not util.isNan(bag_ticker.last) else "N/A"
+            bag_last_time = bag_ticker.time.strftime('%H:%M:%S') if bag_ticker.time else "N/A"
+            
+            ib.cancelMktData(contract) # Cleanup
+
+            # --- 2. Get LEG Market Data ---
+            leg_tickers = await asyncio.gather(
+                *[_get_market_data_for_leg(ib, leg) for leg in contract.comboLegs]
             )
-
-            log_messages = []
-            for ticker in tickers:
+            
+            leg_log_messages = []
+            for ticker in leg_tickers:
                 if ticker:
-                    market_bid = ticker.bid if not util.isNan(ticker.bid) else "N/A"
-                    market_ask = ticker.ask if not util.isNan(ticker.ask) else "N/A"
-                    log_messages.append(f"Leg {ticker.contract.localSymbol}: {market_bid} x {market_ask}")
+                    leg_bid = ticker.bid if not util.isNan(ticker.bid) else "N/A"
+                    leg_ask = ticker.ask if not util.isNan(ticker.ask) else "N/A"
+                    leg_log_messages.append(f"Leg {ticker.contract.localSymbol}: {leg_bid} x {leg_ask}")
                 else:
-                    log_messages.append("Leg: Data N/A")
+                    leg_log_messages.append("Leg: Data N/A")
 
-            market_state_message = f"Placing Order. Limit: {order.lmtPrice:.2f}. Market: " + ", ".join(log_messages)
+            # --- 3. Create Enhanced Log and Place Order ---
+            market_state_message = (
+                f"Placing Order for {contract.localSymbol}. Limit: {order.lmtPrice:.2f}. "
+                f"BAG Market: {bag_bid} x {bag_ask}. "
+                f"BAG Vol: {bag_vol}, Last: {bag_last} @ {bag_last_time}. "
+                f"LEG Markets: " + ", ".join(leg_log_messages)
+            )
             logger.info(market_state_message)
 
-            # --- Place the actual order ---
+            # --- 4. Place the actual order ---
             trade = place_order(ib, contract, order)
             log_order_event(trade, trade.orderStatus.status, market_state_message)
             live_orders[trade.order.orderId] = {'trade': trade, 'status': trade.orderStatus.status, 'is_filled': False}
@@ -247,7 +265,7 @@ async def place_queued_orders(config: dict):
                 f"    Limit: {order.lmtPrice:.2f}"
             )
             placed_trades_summary.append(summary_line)
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.5) # Throttle order placement
 
         if placed_trades_summary:
             message = f"<b>{len(live_orders)} DAY orders submitted, now monitoring:</b>\n" + "\n".join(placed_trades_summary)
@@ -270,36 +288,54 @@ async def place_queued_orders(config: dict):
         else:
             logger.warning("Monitoring loop timed out. Some orders may not be in a terminal state.")
 
-        # --- Cancellation and Final Reporting ---
+        # --- CANCELLATION AND FINAL REPORTING (ENHANCED LOGGING) ---
         filled_orders = []
         cancelled_orders = []
         for order_id, details in live_orders.items():
             trade = details['trade']
             if details['status'] == OrderStatus.Filled:
                 filled_orders.append(f"  - <b>{trade.contract.localSymbol}</b> ({trade.order.action})")
+            
             elif details['status'] not in OrderStatus.DoneStates:
-                # --- Fetch final market data for each leg before cancelling ---
-                tickers = await asyncio.gather(
-                    *[
-                        _get_market_data_for_leg(ib, leg)
-                        for leg in trade.contract.comboLegs
-                    ]
+                
+                # --- 1. Get FINAL BAG (Spread) Market Data ---
+                final_bag_ticker = ib.reqMktData(trade.contract, '', False, False)
+                await asyncio.sleep(2) # Wait for ticker
+                
+                final_bag_bid = final_bag_ticker.bid if not util.isNan(final_bag_ticker.bid) else "N/A"
+                final_bag_ask = final_bag_ticker.ask if not util.isNan(final_bag_ticker.ask) else "N/A"
+                final_bag_vol = final_bag_ticker.volume if not util.isNan(final_bag_ticker.volume) else "N/A"
+                final_bag_last = final_bag_ticker.last if not util.isNan(final_bag_ticker.last) else "N/A"
+                final_bag_last_time = final_bag_ticker.time.strftime('%H:%M:%S') if final_bag_ticker.time else "N/A"
+
+                ib.cancelMktData(trade.contract) # Cleanup
+                
+                final_bag_state = (
+                    f"{final_bag_bid} x {final_bag_ask}, Vol: {final_bag_vol}, Last: {final_bag_last} @ {final_bag_last_time}"
                 )
 
-                log_messages = []
-                for ticker in tickers:
-                    if ticker:
-                        final_bid = ticker.bid if not util.isNan(ticker.bid) else "N/A"
-                        final_ask = ticker.ask if not util.isNan(ticker.ask) else "N/A"
-                        log_messages.append(f"Leg {ticker.contract.localSymbol}: {final_bid} x {final_ask}")
-                    else:
-                        log_messages.append("Leg: Data N/A")
+                # --- 2. Get FINAL LEG Market Data ---
+                final_leg_tickers = await asyncio.gather(
+                    *[_get_market_data_for_leg(ib, leg) for leg in trade.contract.comboLegs]
+                )
 
-                final_market_state = ", ".join(log_messages)
+                final_leg_messages = []
+                for ticker in final_leg_tickers:
+                    if ticker:
+                        f_leg_bid = ticker.bid if not util.isNan(ticker.bid) else "N/A"
+                        f_leg_ask = ticker.ask if not util.isNan(ticker.ask) else "N/A"
+                        final_leg_messages.append(f"{ticker.contract.localSymbol}: {f_leg_bid} x {f_leg_ask}")
+                    else:
+                        final_leg_messages.append("Leg: N/A")
+                
+                final_leg_state = ", ".join(final_leg_messages)
+
+                # --- 3. Create Enhanced Log and Cancel Order ---
                 log_message = (
                     f"Order {trade.order.orderId} ({trade.contract.localSymbol}) TIMED OUT. "
                     f"Original Limit: {trade.order.lmtPrice:.2f}. "
-                    f"Final Market: {final_market_state}"
+                    f"Final BAG Market: {final_bag_state}. "
+                    f"Final LEG Markets: {final_leg_state}"
                 )
                 logger.warning(log_message)
                 log_order_event(trade, "TimedOut", log_message)
@@ -307,10 +343,10 @@ async def place_queued_orders(config: dict):
                 # Now, cancel the order
                 ib.cancelOrder(trade.order)
 
-                # Append detailed info for Pushover notification
+                # --- 4. Update Notification String ---
                 cancel_line = (
                     f"  - <b>{trade.contract.localSymbol}</b> (ID: {order_id})<br>"
-                    f"    Limit: {trade.order.lmtPrice:.2f}, Final Mkt: Leg data logged."
+                    f"    Limit: {trade.order.lmtPrice:.2f}, Final BAG: {final_bag_state}"
                 )
                 cancelled_orders.append(cancel_line)
                 await asyncio.sleep(0.2)
@@ -486,4 +522,3 @@ async def cancel_all_open_orders(config: dict):
     finally:
         if ib.isConnected():
             ib.disconnect()
-
