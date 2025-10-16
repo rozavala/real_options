@@ -141,6 +141,38 @@ async def generate_and_queue_orders(config: dict):
         send_pushover_notification(config.get('notifications', {}), "Order Generation CRITICAL", msg)
 
 
+async def _get_market_data_for_leg(ib: IB, leg: ComboLeg) -> Ticker | None:
+    """
+    Fetches market data for a single contract leg with a timeout.
+    Returns the Ticker object on success, None on failure.
+    """
+    try:
+        contract = await ib.reqContractDetailsAsync(Contract(conId=leg.conId))
+        if not contract:
+            logger.warning(f"Could not resolve contract for leg conId {leg.conId}")
+            return None
+
+        ticker = ib.reqMktData(contract[0].contract, '', False, False)
+
+        # Wait for the ticker to update with a valid price, with a timeout
+        start_time = time.time()
+        while util.isNan(ticker.bid) and util.isNan(ticker.ask):
+            await asyncio.sleep(0.1)
+            if (time.time() - start_time) > 5: # 5-second timeout
+                logger.error(f"Timeout waiting for market data for {contract[0].contract.localSymbol}.")
+                ib.cancelMktData(ticker.contract)
+                return None
+
+        # Return a copy of the ticker and cancel the subscription
+        ticker_copy = ticker
+        ib.cancelMktData(ticker.contract)
+        return ticker_copy
+
+    except Exception as e:
+        logger.error(f"Error fetching market data for leg {leg.conId}: {e}")
+        return None
+
+
 async def place_queued_orders(config: dict):
     """
     Connects to IB, places all queued orders, and monitors them until they
@@ -184,11 +216,37 @@ async def place_queued_orders(config: dict):
 
         placed_trades_summary = []
         for contract, order in ORDER_QUEUE:
+            # --- Fetch market data for each leg before placing the order ---
+            tickers = await asyncio.gather(
+                *[
+                    _get_market_data_for_leg(ib, leg)
+                    for leg in contract.comboLegs
+                ]
+            )
+
+            log_messages = []
+            for ticker in tickers:
+                if ticker:
+                    market_bid = ticker.bid if not util.isNan(ticker.bid) else "N/A"
+                    market_ask = ticker.ask if not util.isNan(ticker.ask) else "N/A"
+                    log_messages.append(f"Leg {ticker.contract.localSymbol}: {market_bid} x {market_ask}")
+                else:
+                    log_messages.append("Leg: Data N/A")
+
+            market_state_message = f"Placing Order. Limit: {order.lmtPrice:.2f}. Market: " + ", ".join(log_messages)
+            logger.info(market_state_message)
+
+            # --- Place the actual order ---
             trade = place_order(ib, contract, order)
-            # Initial log upon submission
-            log_order_event(trade, trade.orderStatus.status)
+            log_order_event(trade, trade.orderStatus.status, market_state_message)
             live_orders[trade.order.orderId] = {'trade': trade, 'status': trade.orderStatus.status, 'is_filled': False}
-            placed_trades_summary.append(f"  - {trade.contract.localSymbol} ({trade.order.action} {trade.order.totalQuantity}) ID: {trade.order.orderId}")
+
+            # Append detailed info for Pushover notification
+            summary_line = (
+                f"  - <b>{contract.localSymbol}</b> ({order.action} {order.totalQuantity}) ID: {trade.order.orderId}<br>"
+                f"    Limit: {order.lmtPrice:.2f}"
+            )
+            placed_trades_summary.append(summary_line)
             await asyncio.sleep(0.5)
 
         if placed_trades_summary:
@@ -220,10 +278,42 @@ async def place_queued_orders(config: dict):
             if details['status'] == OrderStatus.Filled:
                 filled_orders.append(f"  - <b>{trade.contract.localSymbol}</b> ({trade.order.action})")
             elif details['status'] not in OrderStatus.DoneStates:
-                logger.info(f"Order {order_id} did not fill. Cancelling it now.")
+                # --- Fetch final market data for each leg before cancelling ---
+                tickers = await asyncio.gather(
+                    *[
+                        _get_market_data_for_leg(ib, leg)
+                        for leg in trade.contract.comboLegs
+                    ]
+                )
+
+                log_messages = []
+                for ticker in tickers:
+                    if ticker:
+                        final_bid = ticker.bid if not util.isNan(ticker.bid) else "N/A"
+                        final_ask = ticker.ask if not util.isNan(ticker.ask) else "N/A"
+                        log_messages.append(f"Leg {ticker.contract.localSymbol}: {final_bid} x {final_ask}")
+                    else:
+                        log_messages.append("Leg: Data N/A")
+
+                final_market_state = ", ".join(log_messages)
+                log_message = (
+                    f"Order {trade.order.orderId} ({trade.contract.localSymbol}) TIMED OUT. "
+                    f"Original Limit: {trade.order.lmtPrice:.2f}. "
+                    f"Final Market: {final_market_state}"
+                )
+                logger.warning(log_message)
+                log_order_event(trade, "TimedOut", log_message)
+
+                # Now, cancel the order
                 ib.cancelOrder(trade.order)
-                cancelled_orders.append(f"  - <b>{trade.contract.localSymbol}</b> ({trade.order.action}) ID: {order_id}")
-                await asyncio.sleep(0.2) # Small delay for cancellation request
+
+                # Append detailed info for Pushover notification
+                cancel_line = (
+                    f"  - <b>{trade.contract.localSymbol}</b> (ID: {order_id})<br>"
+                    f"    Limit: {trade.order.lmtPrice:.2f}, Final Mkt: Leg data logged."
+                )
+                cancelled_orders.append(cancel_line)
+                await asyncio.sleep(0.2)
 
         # Build and send the final summary notification
         message_parts = []
