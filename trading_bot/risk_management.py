@@ -17,6 +17,7 @@ from ib_insync import util
 
 from logging_config import setup_logging
 from trading_bot.utils import get_position_details, log_trade_to_ledger
+from trading_bot.ib_interface import place_order
 from notifications import send_pushover_notification
 
 # --- Logging Setup ---
@@ -156,13 +157,22 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
             send_pushover_notification(config.get('notifications', {}), f"Risk Alert: {reason}", message)
             for leg_pos_to_close in combo_legs:
                 try:
+                    # Set exchange on the contract to ensure order is routed correctly
+                    leg_pos_to_close.contract.exchange = config.get('exchange', 'NYBOT')
+
                     order = MarketOrder('BUY' if leg_pos_to_close.position < 0 else 'SELL', abs(leg_pos_to_close.position))
-                    trade = ib.placeOrder(leg_pos_to_close.contract, order)
-                    while not trade.isDone():
-                        await ib.sleepAsync(0.1)
-                    if trade.orderStatus.status == OrderStatus.Filled:
-                        log_trade_to_ledger(trade, f"Combo {reason}")
-                        closed_ids.add(leg_pos_to_close.contract.conId)
+
+                    # Use the centralized place_order function
+                    trade = place_order(ib, leg_pos_to_close.contract, order)
+
+                    # The trade object is returned immediately, but we need to wait for it to fill
+                    # The monitoring logic will handle logging the fill via event handlers.
+                    # We just add the conId to the set of closed positions to prevent re-triggering.
+                    closed_ids.add(leg_pos_to_close.contract.conId)
+
+                    # Wait a moment for the order to be processed before closing the next leg
+                    await asyncio.sleep(1)
+
                 except Exception as e:
                     logging.error(f"Failed to close leg {leg_pos_to_close.contract.localSymbol}: {e}")
             for leg_pos in combo_legs: ib.cancelPnLSingle(account, '', leg_pos.contract.conId)
