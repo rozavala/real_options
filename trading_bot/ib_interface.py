@@ -222,7 +222,16 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         combo.comboLegs.append(ComboLeg(conId=q_leg.conId, ratio=1, action=leg_action, exchange=chain['exchange']))
 
     # The Bag contract itself does not need to be qualified if the legs are.
-    order = LimitOrder(action, config['strategy']['quantity'], limit_price, tif="DAY")
+
+    order_type = config.get('strategy_tuning', {}).get('order_type', 'LMT').upper()
+
+    if order_type == 'MKT':
+        order = MarketOrder(action, config['strategy']['quantity'], tif="DAY")
+        logging.info(f"Creating Market Order for {action} {config['strategy']['quantity']}.")
+    else: # Default to Limit Order
+        order = LimitOrder(action, config['strategy']['quantity'], limit_price, tif="DAY")
+        logging.info(f"Creating Limit Order for {action} {config['strategy']['quantity']} @ {limit_price:.2f}.")
+
 
     return (combo, order)
 

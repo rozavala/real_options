@@ -123,9 +123,10 @@ async def generate_and_queue_orders(config: dict):
         if ORDER_QUEUE:
             summary_items = []
             for contract, order in ORDER_QUEUE:
+                price_info = f"LMT @ ${order.lmtPrice}" if order.orderType == "LMT" else "MKT"
                 summary = (
                     f"<b>{contract.localSymbol}</b> ({order.action} {order.totalQuantity}): "
-                    f"LMT @ ${order.lmtPrice}, "
+                    f"{price_info}, "
                     f"{len(contract.comboLegs)} legs"
                 )
                 summary_items.append(summary)
@@ -250,8 +251,9 @@ async def place_queued_orders(config: dict):
             leg_state_for_log = ", ".join(leg_state_strings)
 
             # --- 3. Create Enhanced Log and Place Order ---
+            price_info_log = f"Limit: {order.lmtPrice:.2f}" if order.orderType == "LMT" else "Market Order"
             market_state_message = (
-                f"Placing Order for {contract.localSymbol}. Limit: {order.lmtPrice:.2f}. "
+                f"Placing Order for {contract.localSymbol}. {price_info_log}. "
                 f"{bag_state_str}. "
                 f"LEGs: {leg_state_for_log}"
             )
@@ -262,17 +264,18 @@ async def place_queued_orders(config: dict):
             log_order_event(trade, trade.orderStatus.status, market_state_message)
             
             live_orders[trade.order.orderId] = {
-                'trade': trade, 
-                'status': trade.orderStatus.status, 
-                'is_filled': False, 
+                'trade': trade,
+                'status': trade.orderStatus.status,
+                'is_filled': False,
                 'fill_price': 0.0
             }
 
             # --- 5. Build Notification String (ENHANCED FOR ALL DATA) ---
+            price_info_notify = f"LMT: {order.lmtPrice:.2f}" if order.orderType == "LMT" else "MKT"
             leg_state_for_notify = "<br>    ".join(leg_state_strings) # HTML newline
             summary_line = (
                 f"  - <b>{contract.localSymbol}</b> (ID: {trade.order.orderId})<br>"
-                f"    LMT: {order.lmtPrice:.2f}<br>"
+                f"    {price_info_notify}<br>"
                 f"    {bag_state_str}<br>"
                 f"    {leg_state_for_notify}"
             )
@@ -338,9 +341,10 @@ async def place_queued_orders(config: dict):
                 final_leg_state_for_log = ", ".join(final_leg_state_strings)
 
                 # --- 3. Create Enhanced Log and Cancel Order ---
+                price_info_log = f"Original Limit: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "Original Order: MKT"
                 log_message = (
                     f"Order {trade.order.orderId} ({trade.contract.localSymbol}) TIMED OUT. "
-                    f"Original Limit: {trade.order.lmtPrice:.2f}. "
+                    f"{price_info_log}. "
                     f"Final {final_bag_state}. "
                     f"Final LEGs: {final_leg_state_for_log}"
                 )
@@ -350,10 +354,11 @@ async def place_queued_orders(config: dict):
                 ib.cancelOrder(trade.order)
 
                 # --- 4. Update Notification String (ENHANCED FOR ALL DATA) ---
+                price_info_notify = f"LMT: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "MKT"
                 final_leg_state_for_notify = "<br>    ".join(final_leg_state_strings) # HTML newline
                 cancel_line = (
                     f"  - <b>{trade.contract.localSymbol}</b> (ID: {order_id})<br>"
-                    f"    LMT: {trade.order.lmtPrice:.2f}<br>"
+                    f"    {price_info_notify}<br>"
                     f"    Final {final_bag_state}<br>"
                     f"    Final {final_leg_state_for_notify}"
                 )

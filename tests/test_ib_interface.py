@@ -50,6 +50,51 @@ class TestIbInterface(unittest.TestCase):
 
     @patch('trading_bot.ib_interface.price_option_black_scholes')
     @patch('trading_bot.ib_interface.get_option_market_data')
+    def test_create_combo_order_object_market_order(self, mock_get_market_data, mock_price_bs):
+        """
+        Tests that a MarketOrder is created when the config is set to 'MKT'.
+        """
+        async def run_test():
+            # 1. Setup Mocks
+            ib = AsyncMock()
+            q_leg1 = FuturesOption(conId=101, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.5, right='C', exchange='NYBOT')
+            q_leg2 = FuturesOption(conId=102, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.6, right='C', exchange='NYBOT')
+            ib.qualifyContractsAsync.return_value = [q_leg1, q_leg2]
+            mock_get_market_data.side_effect = [
+                {'bid': 0.9, 'ask': 1.1, 'implied_volatility': 0.2, 'risk_free_rate': 0.05},
+                {'bid': 0.4, 'ask': 0.6, 'implied_volatility': 0.18, 'risk_free_rate': 0.05}
+            ]
+            mock_price_bs.side_effect = [{'price': 1.0}, {'price': 0.5}]
+
+            # 2. Setup Inputs - with order_type set to MKT
+            config = {
+                'symbol': 'KC',
+                'strategy': {'quantity': 1},
+                'strategy_tuning': {'order_type': 'MKT'}
+            }
+            strategy_def = {
+                "action": "BUY", "legs_def": [('C', 'BUY', 3.5), ('C', 'SELL', 3.6)],
+                "exp_details": {'exp_date': '20251220', 'days_to_exp': 30},
+                "chain": {'exchange': 'NYBOT', 'tradingClass': 'KCO'},
+                "underlying_price": 100.0,
+                "future_contract": Future(conId=1, symbol='KC')
+            }
+
+            # 3. Execute
+            result = await create_combo_order_object(ib, config, strategy_def)
+
+            # 4. Assertions
+            self.assertIsNotNone(result)
+            _, market_order = result
+            self.assertIsInstance(market_order, Order)
+            self.assertEqual(market_order.orderType, "MKT")
+            self.assertEqual(market_order.action, "BUY")
+            self.assertEqual(market_order.totalQuantity, 1)
+
+        asyncio.run(run_test())
+
+    @patch('trading_bot.ib_interface.price_option_black_scholes')
+    @patch('trading_bot.ib_interface.get_option_market_data')
     def test_create_combo_order_object(self, mock_get_market_data, mock_price_bs):
         """
         Tests that the combo order price is calculated correctly by combining
