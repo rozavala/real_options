@@ -99,27 +99,28 @@ class TestRiskManagement(unittest.TestCase):
     @patch('trading_bot.risk_management.log_trade_to_ledger')
     def test_on_order_status_handles_new_fill(self, mock_log_trade):
         """Verify that a new fill is logged correctly and the ID is tracked."""
-        # Arrange: Create a mock trade representing a new fill
+        # Arrange
+        mock_ib = MagicMock(spec=IB)
         newly_filled_trade = MagicMock(
             spec=Trade,
             order=MagicMock(orderId=102, action='BUY'),
             contract=MagicMock(localSymbol='KCH5'),
             orderStatus=MagicMock(status=OrderStatus.Filled, filled=1, avgFillPrice=3.50)
         )
-        # Ensure the orderId is not already in the tracked set
         self.assertNotIn(102, filled_set_module)
 
-        # Act: Call the event handler
-        _on_order_status(newly_filled_trade)
+        # Act
+        _on_order_status(mock_ib, newly_filled_trade)
 
-        # Assert: Check that the trade was logged and the ID is now tracked
-        mock_log_trade.assert_called_once_with(newly_filled_trade, "Daily Strategy Fill")
+        # Assert
+        mock_log_trade.assert_called_once_with(mock_ib, newly_filled_trade, "Daily Strategy Fill")
         self.assertIn(102, filled_set_module)
 
     @patch('trading_bot.risk_management.log_trade_to_ledger')
     def test_on_order_status_ignores_duplicate_fill(self, mock_log_trade):
         """Verify that a fill for an already logged order is ignored."""
-        # Arrange: Add an order ID to the set of filled orders
+        # Arrange
+        mock_ib = MagicMock(spec=IB)
         filled_set_module.add(101)
         duplicate_fill_trade = MagicMock(
             spec=Trade,
@@ -127,10 +128,10 @@ class TestRiskManagement(unittest.TestCase):
             orderStatus=MagicMock(status=OrderStatus.Filled)
         )
 
-        # Act: Call the event handler with the duplicate fill
-        _on_order_status(duplicate_fill_trade)
+        # Act
+        _on_order_status(mock_ib, duplicate_fill_trade)
 
-        # Assert: Ensure the logging function was not called again
+        # Assert
         mock_log_trade.assert_not_called()
 
 if __name__ == '__main__':

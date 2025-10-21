@@ -291,7 +291,7 @@ def get_expiration_details(chain: dict, future_exp: str) -> dict | None:
     days = (datetime.strptime(chosen_exp, '%Y%m%d').date() - datetime.now().date()).days
     return {'exp_date': chosen_exp, 'days_to_exp': days, 'strikes': chain['strikes_by_expiration'][chosen_exp]}
 
-def log_trade_to_ledger(trade: Trade, reason: str = "Strategy Execution"):
+def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution"):
     """Logs the details of a filled trade to the `trade_ledger.csv` file.
 
     For combo trades, this function logs each leg as a separate entry in the
@@ -322,6 +322,17 @@ def log_trade_to_ledger(trade: Trade, reason: str = "Strategy Execution"):
 
     for fill in trade.fills:
         contract = fill.contract
+        # The contract in the Fill object may not be fully detailed.
+        # If it's missing option-specific details, find the full contract
+        # in the IB instance's cache using the conId.
+        if not hasattr(contract, 'right') or not hasattr(contract, 'strike'):
+            cached_contract = ib.contracts.get(contract.conId)
+            if cached_contract:
+                logging.info(f"Found detailed contract for conId {contract.conId} in cache.")
+                contract = cached_contract
+            else:
+                logging.warning(f"Could not find detailed contract for {contract.conId}. Ledger may be incomplete.")
+
         execution = fill.execution
         try:
             multiplier = float(contract.multiplier) if contract.multiplier else 37500.0

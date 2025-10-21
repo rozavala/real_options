@@ -209,8 +209,8 @@ async def place_queued_orders(config: dict):
         order_id = trade.order.orderId
         if order_id in live_orders and not live_orders[order_id].get('is_filled', False):
             logger.info(f"Order {order_id} FILLED. Logging to trade ledger.")
-            # Log the trade to the ledger. The fill object has all necessary details.
-            log_trade_to_ledger(trade, "Strategy Execution")
+            # Log the trade to the ledger, passing the ib instance.
+            log_trade_to_ledger(ib, trade, "Strategy Execution")
             
             # --- Store fill price for final notification ---
             live_orders[order_id]['is_filled'] = True
@@ -442,7 +442,7 @@ async def close_all_open_positions(config: dict):
                 fill = trade.fills[0]
                 realized_pnl = fill.commissionReport.realizedPNL
                 fill_price = fill.execution.avgPrice
-                log_trade_to_ledger(trade, "Daily Close")
+                log_trade_to_ledger(ib, trade, "Daily Close")
                 closed_position_details.append({
                     "symbol": pos.contract.localSymbol,
                     "action": action,
