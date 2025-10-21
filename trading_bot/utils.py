@@ -291,17 +291,20 @@ def get_expiration_details(chain: dict, future_exp: str) -> dict | None:
     days = (datetime.strptime(chosen_exp, '%Y%m%d').date() - datetime.now().date()).days
     return {'exp_date': chosen_exp, 'days_to_exp': days, 'strikes': chain['strikes_by_expiration'][chosen_exp]}
 
-def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution"):
+def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution", specific_fill: Fill = None):
     """Logs the details of a filled trade to the `trade_ledger.csv` file.
 
     For combo trades, this function logs each leg as a separate entry in the
-    CSV, linked by a common `combo_id` (the order's permId). This allows for
-    detailed P&L analysis of multi-leg strategies.
+    CSV, linked by a common `combo_id` (the order's permId).
+
+    If `specific_fill` is provided, only that single fill is logged. Otherwise,
+    all fills associated with the `trade` object are logged.
 
     Args:
         trade (Trade): The filled `ib_insync.Trade` object.
-        reason (str): A string describing why the trade was executed (e.g.,
-            'Strategy Execution', 'Position Misaligned', 'Stop-Loss').
+        reason (str): A string describing why the trade was executed.
+        specific_fill (Fill, optional): If provided, log only this fill.
+            Defaults to None.
     """
     # Use absolute path to ensure ledger is in the project root
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -316,11 +319,13 @@ def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution"
     rows_to_write = []
     combo_id = trade.order.permId
 
-    if not trade.fills:
-        logging.warning(f"Trade {trade.order.orderId} is Filled but has no fills to log.")
+    fills_to_log = [specific_fill] if specific_fill else trade.fills
+    if not fills_to_log:
+        logging.warning(f"Trade {trade.order.orderId} has no fills to log.")
         return
 
-    for fill in trade.fills:
+    for fill in fills_to_log:
+        if not fill: continue
         contract = fill.contract
         # The contract in the Fill object may not be fully detailed.
         # If it's missing option-specific details, find the full contract
