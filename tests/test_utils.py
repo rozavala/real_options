@@ -5,7 +5,7 @@ from datetime import datetime
 import pandas as pd
 import pytz
 import os
-from ib_insync import FuturesOption, Bag, ComboLeg, OrderStatus, Trade, Order, Fill, Execution
+from ib_insync import IB, Contract, FuturesOption, Bag, ComboLeg, OrderStatus, Trade, Order, Fill, Execution
 
 from trading_bot.utils import (
     price_option_black_scholes,
@@ -101,18 +101,17 @@ class TestUtils(unittest.TestCase):
     @patch('os.path.isfile', return_value=True)
     def test_log_trade_to_ledger(self, mock_isfile, mock_open, mock_csv_writer):
         # --- Setup Mocks ---
+        mock_ib = Mock(spec=IB)
         trade = Mock(spec=Trade)
         trade.orderStatus = Mock(spec=OrderStatus)
         trade.order = Mock(spec=Order)
         trade.orderStatus.status = OrderStatus.Filled
-        trade.order.permId = 123456  # This will be the combo_id
+        trade.order.permId = 123456
 
-        # Mock Fill 1 (Leg 1)
         fill1 = Mock(spec=Fill)
         fill1.contract = FuturesOption(symbol='KC', localSymbol='KCH6 C3.5', strike=3.5, right='C', multiplier='37500')
         fill1.execution = Execution(execId='E1', time=datetime.now(), side='BOT', shares=1, price=0.5)
 
-        # Mock Fill 2 (Leg 2)
         fill2 = Mock(spec=Fill)
         fill2.contract = FuturesOption(symbol='KC', localSymbol='KCH6 C3.6', strike=3.6, right='C', multiplier='37500')
         fill2.execution = Execution(execId='E2', time=datetime.now(), side='SLD', shares=1, price=0.2)
@@ -123,7 +122,7 @@ class TestUtils(unittest.TestCase):
         mock_csv_writer.return_value = mock_writer_instance
 
         # --- Call the function ---
-        log_trade_to_ledger(trade, "Test Combo")
+        log_trade_to_ledger(mock_ib, trade, "Test Combo")
 
         # --- Assertions ---
         # Check that the file was opened correctly
@@ -157,6 +156,57 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(written_rows[1]['strike'], 3.6)
         # Verify the value is correctly calculated in dollars (0.2 cents * 1 share * 37500 multiplier / 100)
         self.assertAlmostEqual(written_rows[1]['total_value_usd'], 75.0)
+
+    @patch('csv.DictWriter')
+    @patch('builtins.open', new_callable=mock_open)
+    @patch('os.path.isfile', return_value=True)
+    def test_log_trade_to_ledger_enriches_contract_details(self, mock_isfile, mock_open, mock_csv_writer):
+        """
+        Verify that if a fill contains an incomplete contract, the logger
+        correctly uses the conId to find the full contract details from the
+        ib.contracts cache.
+        """
+        # --- Setup Mocks ---
+        # 1. Mock the IB object and its contracts cache
+        mock_ib = Mock(spec=IB)
+        complete_contract = FuturesOption(
+            conId=123, symbol='KC', localSymbol='KCH6 P3.2',
+            strike=3.2, right='P', multiplier='37500'
+        )
+        mock_ib.contracts = {123: complete_contract} # Simulate the cache
+
+        # 2. Create a trade where the fill contains an INCOMPLETE contract
+        trade = Mock(spec=Trade)
+        trade.order = Mock(spec=Order, permId=98765)
+
+        incomplete_contract = Mock(spec=Contract, conId=123)
+        # We explicitly remove strike/right to simulate the problem
+        del incomplete_contract.strike
+        del incomplete_contract.right
+
+        fill = Mock(spec=Fill)
+        fill.contract = incomplete_contract
+        fill.execution = Execution(execId='E3', time=datetime.now(), side='BOT', shares=1, price=0.8)
+        trade.fills = [fill]
+
+        mock_writer_instance = Mock()
+        mock_csv_writer.return_value = mock_writer_instance
+
+        # --- Call the function ---
+        log_trade_to_ledger(mock_ib, trade, "Test Enrichment")
+
+        # --- Assertions ---
+        # Verify that writerows was called and captured the data
+        mock_writer_instance.writerows.assert_called_once()
+        written_rows = mock_writer_instance.writerows.call_args[0][0]
+
+        self.assertEqual(len(written_rows), 1)
+
+        # CRITICAL: Assert that the logged data used the ENRICHED details
+        # from the 'complete_contract' in the cache, not the incomplete one.
+        self.assertEqual(written_rows[0]['strike'], 3.2)
+        self.assertEqual(written_rows[0]['right'], 'P')
+        self.assertEqual(written_rows[0]['local_symbol'], 'KCH6 P3.2')
 
 
 if __name__ == '__main__':

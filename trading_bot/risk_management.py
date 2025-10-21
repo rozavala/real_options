@@ -75,7 +75,7 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
                 while not trade.isDone():
                     await ib.sleepAsync(0.1)
                 if trade.orderStatus.status == OrderStatus.Filled:
-                    log_trade_to_ledger(trade, "Position Misaligned")
+                    log_trade_to_ledger(ib, trade, "Position Misaligned")
             except Exception as e:
                 logging.error(f"Failed to close position for conId {pos_to_close.contract.conId}: {e}\n{traceback.format_exc()}")
         return True
@@ -185,12 +185,12 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
 _filled_order_ids = set()
 
 
-def _on_order_status(trade: Trade):
+def _on_order_status(ib: IB, trade: Trade):
     """Event handler for order status updates."""
     if trade.orderStatus.status == OrderStatus.Filled and trade.order.orderId not in _filled_order_ids:
         try:
             # Log the trade immediately upon fill confirmation.
-            log_trade_to_ledger(trade, "Daily Strategy Fill")
+            log_trade_to_ledger(ib, trade, "Daily Strategy Fill")
             _filled_order_ids.add(trade.order.orderId)
             fill_msg = (
                 f"FILLED: {trade.order.action} {trade.orderStatus.filled} "
@@ -242,10 +242,11 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
     # Create a lambda to pass the config to the fill handler.
     # This ensures the handler has access to notification settings.
     # We define it here so we can also remove it accurately in the finally block.
+    order_status_handler = lambda t: _on_order_status(ib, t)
     fill_handler = lambda t, f: _on_fill(t, f, config)
 
     # Register the event handlers before starting the tasks.
-    ib.orderStatusEvent += _on_order_status
+    ib.orderStatusEvent += order_status_handler
     ib.execDetailsEvent += fill_handler
     logging.info("Order status and execution event handlers registered.")
 
@@ -270,8 +271,8 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
         logging.info("Shutting down monitor. Unregistering event handlers and cancelling PnL subscriptions.")
         # Unregister event handlers to prevent memory leaks
         if ib.isConnected():
-            if _on_order_status in ib.orderStatusEvent:
-                ib.orderStatusEvent -= _on_order_status
+            if order_status_handler in ib.orderStatusEvent:
+                ib.orderStatusEvent -= order_status_handler
             if fill_handler in ib.execDetailsEvent:
                 ib.execDetailsEvent -= fill_handler
 
