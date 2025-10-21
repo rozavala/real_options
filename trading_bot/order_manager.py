@@ -221,6 +221,17 @@ async def place_queued_orders(config: dict):
         await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
         logger.info("Connected to IB for order placement and monitoring.")
 
+        # --- Prime Contract Cache ---
+        # Before placing orders, qualify all individual leg contracts to ensure
+        # their full details are cached in this session. This prevents issues
+        # where fill events contain incomplete contract objects.
+        all_leg_conids = {leg.conId for contract, _ in ORDER_QUEUE for leg in contract.comboLegs}
+        if all_leg_conids:
+            logger.info(f"Priming cache for {len(all_leg_conids)} leg contract(s)...")
+            leg_contracts_to_qualify = [Contract(conId=conid) for conid in all_leg_conids]
+            await ib.qualifyContractsAsync(*leg_contracts_to_qualify)
+            logger.info("Contract cache primed successfully.")
+
         # Attach event handlers
         ib.orderStatusEvent += on_order_status
         ib.execDetailsEvent += on_exec_details
