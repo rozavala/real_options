@@ -181,6 +181,39 @@ async def _get_market_data_for_leg(ib: IB, leg: ComboLeg) -> str:
         return f"Leg conId {leg.conId}: Error"
 
 
+async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill):
+    """
+    Handles the logic for processing a trade fill, ensuring the contract
+    details are complete before logging.
+    """
+    try:
+        # The contract object in the Fill can be incomplete. We need to get the
+        # full contract details to log accurately, especially for options.
+        # We create a new contract object from the conId and qualify it.
+        detailed_contract = Contract(conId=fill.contract.conId)
+        await ib.qualifyContractsAsync(detailed_contract)
+
+        # To ensure the fill object contains the full contract details for logging,
+        # we can replace the potentially incomplete contract with the qualified one.
+        fill.contract = detailed_contract
+
+        # If the parent trade is a Bag, find the specific leg that was filled
+        # to ensure context is maintained.
+        if isinstance(trade.contract, Bag):
+            for leg in trade.contract.comboLegs:
+                if leg.conId == fill.contract.conId:
+                    logger.info(f"Matched fill conId {fill.contract.conId} to leg in {trade.contract.localSymbol}.")
+                    break
+            else:
+                logger.warning(f"Could not match fill conId {fill.contract.conId} to any leg in {trade.contract.localSymbol}.")
+
+        log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=fill)
+        logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId})")
+
+    except Exception as e:
+        logger.error(f"Error processing and logging fill for order {trade.order.orderId}: {e}\n{traceback.format_exc()}")
+
+
 async def place_queued_orders(config: dict):
     """
     Connects to IB, places all queued orders, and monitors them until they
@@ -208,10 +241,10 @@ async def place_queued_orders(config: dict):
         """Handles trade execution details and logs the trade."""
         order_id = trade.order.orderId
         if order_id in live_orders and not live_orders[order_id].get('is_filled', False):
-            logger.info(f"Order {order_id} FILLED. Logging to trade ledger.")
-            # Log the trade to the ledger, passing the ib instance.
-            log_trade_to_ledger(ib, trade, "Strategy Execution")
-            
+            logger.info(f"Order {order_id} FILLED. Creating task to process and log the fill.")
+            # Create a task to handle the fill asynchronously
+            asyncio.create_task(_handle_and_log_fill(ib, trade, fill))
+
             # --- Store fill price for final notification ---
             live_orders[order_id]['is_filled'] = True
             live_orders[order_id]['fill_price'] = fill.execution.avgPrice
@@ -220,17 +253,6 @@ async def place_queued_orders(config: dict):
         conn_settings = config.get('connection', {})
         await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
         logger.info("Connected to IB for order placement and monitoring.")
-
-        # --- Prime Contract Cache ---
-        # Before placing orders, qualify all individual leg contracts to ensure
-        # their full details are cached in this session. This prevents issues
-        # where fill events contain incomplete contract objects.
-        all_leg_conids = {leg.conId for contract, _ in ORDER_QUEUE for leg in contract.comboLegs}
-        if all_leg_conids:
-            logger.info(f"Priming cache for {len(all_leg_conids)} leg contract(s)...")
-            leg_contracts_to_qualify = [Contract(conId=conid) for conid in all_leg_conids]
-            await ib.qualifyContractsAsync(*leg_contracts_to_qualify)
-            logger.info("Contract cache primed successfully.")
 
         # Attach event handlers
         ib.orderStatusEvent += on_order_status
