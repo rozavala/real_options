@@ -217,9 +217,15 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int):
         detailed_contract = Contract(conId=fill.contract.conId)
         await ib.qualifyContractsAsync(detailed_contract)
 
-        # To ensure the fill object contains the full contract details for logging,
-        # we can replace the potentially incomplete contract with the qualified one.
-        fill.contract = detailed_contract
+        # Create a new Fill object with the detailed contract, preserving the
+        # original execution and commission report details. This avoids the
+        # "can't set attribute" error on the original immutable Fill object.
+        corrected_fill = Fill(
+            contract=detailed_contract,
+            execution=fill.execution,
+            commissionReport=fill.commissionReport,
+            time=fill.time
+        )
 
         # If the parent trade is a Bag, find the specific leg that was filled
         # to ensure context is maintained.
@@ -231,7 +237,7 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int):
             else:
                 logger.warning(f"Could not match fill conId {fill.contract.conId} to any leg in {trade.contract.localSymbol}.")
 
-        log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=fill, combo_id=combo_id)
+        log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=corrected_fill, combo_id=combo_id)
         logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId}, Combo ID: {combo_id})")
 
     except Exception as e:
