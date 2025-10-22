@@ -119,22 +119,46 @@ async def generate_and_queue_orders(config: dict):
 
         logger.info(f"--- Order generation complete. {len(ORDER_QUEUE)} orders queued. ---")
 
-        # Create a detailed notification message
-        if ORDER_QUEUE:
-            summary_items = []
-            for contract, order in ORDER_QUEUE:
-                price_info = f"LMT @ ${order.lmtPrice}" if order.orderType == "LMT" else "MKT"
-                summary = (
-                    f"<b>{contract.localSymbol}</b> ({order.action} {order.totalQuantity}): "
-                    f"{price_info}, "
-                    f"{len(contract.comboLegs)} legs"
-                )
-                summary_items.append(summary)
-            message = f"<b>{len(ORDER_QUEUE)} strategies generated and queued:</b>\n" + "\n".join(summary_items)
-        else:
-            message = "No new orders were generated or queued."
+        # --- Create a detailed notification message ---
 
-        send_pushover_notification(config.get('notifications', {}), "Orders Queued", message)
+        # 1. Summarize the API signals
+        signal_summary_parts = []
+        if signals:
+            for signal in signals:
+                future_month = signal.get("contract_month", "N/A")
+                if signal['prediction_type'] == 'DIRECTIONAL':
+                    direction = signal.get("direction", "N/A")
+                    signal_summary_parts.append(f"  - <b>{future_month}</b>: {direction} signal")
+                elif signal['prediction_type'] == 'VOLATILITY':
+                    vol_level = signal.get("level", "N/A")
+                    signal_summary_parts.append(f"  - <b>{future_month}</b>: {vol_level} Volatility signal")
+
+        signal_summary = "<b>Signals from Prediction API:</b>\n" + "\n".join(signal_summary_parts)
+
+        # 2. Summarize the queued orders
+        order_summary_parts = []
+        if ORDER_QUEUE:
+            for contract, order in ORDER_QUEUE:
+                # Determine the strategy name from the contract symbol if possible
+                strategy_name = "Strategy" # Default
+                if "PUT" in contract.localSymbol and "CALL" in contract.localSymbol:
+                     strategy_name = "IRON_CONDOR" if "IRON" in contract.localSymbol else "STRADDLE/STRANGLE" # Placeholder
+                elif "PUT" in contract.localSymbol:
+                    strategy_name = "BEAR_PUT_SPREAD"
+                elif "CALL" in contract.localSymbol:
+                    strategy_name = "BULL_CALL_SPREAD"
+
+                price_info = f"LMT @ ${order.lmtPrice:.2f}" if order.orderType == "LMT" else "MKT"
+                order_summary_parts.append(
+                    f"  - <b>{strategy_name}</b> for {contract.localSymbol}: {order.action} {order.totalQuantity} @ {price_info}"
+                )
+            order_summary = f"\n<b>{len(ORDER_QUEUE)} strategies generated and queued:</b>\n" + "\n".join(order_summary_parts)
+        else:
+            order_summary = "\nNo new orders were generated or queued based on these signals."
+
+        # 3. Combine and send
+        message = signal_summary + order_summary
+        send_pushover_notification(config.get('notifications', {}), "Trading Orders Queued", message)
 
     except Exception as e:
         msg = f"A critical error occurred during order generation: {e}\n{traceback.format_exc()}"
@@ -347,10 +371,11 @@ async def place_queued_orders(config: dict):
             trade = details['trade']
             if details['status'] == OrderStatus.Filled:
                 # --- Build Enhanced Fill Notification ---
-                fill_price = details.get('fill_price', 'N/A')
+                price_info = f"LMT: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "MKT"
+                fill_price = details.get('fill_price', 0.0)
                 fill_line = (
                     f"  - <b>{trade.contract.localSymbol}</b> ({trade.order.action})<br>"
-                    f"    FILLED @ ${fill_price:.2f}"
+                    f"    {price_info} -> FILLED @ ${fill_price:.2f}"
                 )
                 filled_orders.append(fill_line)
             
