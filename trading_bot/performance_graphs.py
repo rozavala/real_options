@@ -18,8 +18,8 @@ def generate_performance_chart(df: pd.DataFrame, output_path: str = 'daily_perfo
     if df.empty:
         return None
 
-    # The 'total_value_usd' column already represents cashflow (SELL positive, BUY negative)
-    df['net_value'] = df['total_value_usd']
+    # The 'signed_value_usd' column represents cashflow (SELL positive, BUY negative)
+    df['net_value'] = df['signed_value_usd']
 
     # Calculates the cumulative net value
     df['cumulative_net_value'] = df['net_value'].cumsum()
