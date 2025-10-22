@@ -90,6 +90,11 @@ def analyze_performance(config: dict) -> tuple[str, float, str | None] | None:
         closed_positions_summary = []
         open_positions_summary = []
 
+        # Create a signed value based on action for correct P&L and cost calculation
+        df['signed_value_usd'] = df.apply(
+            lambda row: -row['total_value_usd'] if row['action'] == 'BUY' else row['total_value_usd'],
+            axis=1
+        )
         df['signed_quantity'] = df.apply(lambda row: -row['quantity'] if row['action'] == 'BUY' else row['quantity'], axis=1)
 
         for combo_id, group in grouped:
@@ -98,18 +103,30 @@ def analyze_performance(config: dict) -> tuple[str, float, str | None] | None:
             if (leg_quantities == 0).all():
                 # Only include positions that were closed today in the P&L calculation
                 if group['timestamp'].dt.date.max() == datetime.now().date():
-                    combo_pnl = group['total_value_usd'].sum()
+                    combo_pnl = group['signed_value_usd'].sum()
                     total_pnl += combo_pnl
+
+                    # Handle combo_id that might be numeric or string
+                    if isinstance(combo_id, str) and '-' in combo_id:
+                        underlying_symbol = combo_id.split('-')[0]
+                        display_id = f"{underlying_symbol} ({combo_id})"
+                    else:
+                        display_id = f"Combo {combo_id}"
+
                     summary_line = (
-                        f"  - Combo {combo_id}: Net P&L = ${combo_pnl:,.2f} "
+                        f"  - {display_id}: Net P&L = ${combo_pnl:,.2f} "
                         f"(Closed {group['timestamp'].max().strftime('%H:%M')})"
                     )
                     closed_positions_summary.append(summary_line)
             else:
                 # This logic correctly calculates the current open positions
-                entry_cost = -group['total_value_usd'].sum()
+                entry_cost = group['signed_value_usd'].sum()
                 position_details = [f"{row['action']} {int(row['quantity'])} {row['local_symbol']}" for _, row in group.iterrows()]
-                summary_line = f"  - {' | '.join(position_details)} (Entry Cost: ${entry_cost:,.2f})"
+
+                # Determine if it's a credit or debit for clear reporting
+                cost_type = "Credit" if entry_cost > 0 else "Debit"
+
+                summary_line = f"  - {' | '.join(position_details)} (Net {cost_type}: ${abs(entry_cost):,.2f})"
                 open_positions_summary.append(summary_line)
 
         report = f"<b>Trading Performance Report: {today_str}</b>\n\n"
