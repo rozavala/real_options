@@ -147,34 +147,60 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
 
         if reason:
             logging.info(f"{reason.upper()} TRIGGERED for combo {combo_symbols} at {pnl_percentage:+.2%}")
-            # Create a detailed notification message
-            message = (
-                f"<b>{reason} Triggered</b>\n"
-                f"Combo: {combo_symbols}\n"
-                f"P&L: {pnl_percentage:+.2%} (${total_unrealized_pnl:+.2f})\n"
-                f"Entry Cost: ${total_entry_cost:.2f}"
+
+            initial_message = (
+                f"<b>{reason} Triggered for {combo_symbols}</b>\n"
+                f"P&L: {pnl_percentage:+.2%} (${total_unrealized_pnl:+.2f}) vs "
+                f"Entry Cost: ${total_entry_cost:.2f}\n"
+                f"Closing position..."
             )
-            send_pushover_notification(config.get('notifications', {}), f"Risk Alert: {reason}", message)
+            send_pushover_notification(config.get('notifications', {}), f"Risk Alert: {reason}", initial_message)
+
+            closed_trades_details = []
             for leg_pos_to_close in combo_legs:
                 try:
-                    # Set exchange on the contract to ensure order is routed correctly
                     leg_pos_to_close.contract.exchange = config.get('exchange', 'NYBOT')
-
                     order = MarketOrder('BUY' if leg_pos_to_close.position < 0 else 'SELL', abs(leg_pos_to_close.position))
 
-                    # Use the centralized place_order function
+                    # Set a flag to identify this as a risk management order
+                    order.outsideRth = True
+
                     trade = place_order(ib, leg_pos_to_close.contract, order)
 
-                    # The trade object is returned immediately, but we need to wait for it to fill
-                    # The monitoring logic will handle logging the fill via event handlers.
-                    # We just add the conId to the set of closed positions to prevent re-triggering.
-                    closed_ids.add(leg_pos_to_close.contract.conId)
+                    # --- Wait for the fill and capture details ---
+                    start_time = time.time()
+                    while not trade.isDone():
+                        await asyncio.sleep(0.2)
+                        if time.time() - start_time > 30: # 30-second timeout
+                            logging.error(f"Timeout waiting for fill on risk closure for {leg_pos_to_close.contract.localSymbol}")
+                            break
 
-                    # Wait a moment for the order to be processed before closing the next leg
-                    await asyncio.sleep(1)
+                    if trade.orderStatus.status == OrderStatus.Filled and trade.fills:
+                        fill = trade.fills[0]
+                        closed_trades_details.append(
+                            f"  - Closed <b>{leg_pos_to_close.contract.localSymbol}</b> "
+                            f"@{fill.execution.avgPrice:.2f}, "
+                            f"P&L: ${fill.commissionReport.realizedPNL:,.2f}"
+                        )
+                        # Log the closure to the ledger
+                        log_trade_to_ledger(ib, trade, reason, combo_id=trade.order.permId)
+                    else:
+                        closed_trades_details.append(f"  - Failed to close {leg_pos_to_close.contract.localSymbol}. Status: {trade.orderStatus.status}")
+
+                    closed_ids.add(leg_pos_to_close.contract.conId)
 
                 except Exception as e:
                     logging.error(f"Failed to close leg {leg_pos_to_close.contract.localSymbol}: {e}")
+                    closed_trades_details.append(f"  - Error closing {leg_pos_to_close.contract.localSymbol}")
+
+            # --- Send the consolidated final notification ---
+            if closed_trades_details:
+                final_message = (
+                    f"<b>Closure Report for {combo_symbols}:</b>\n" +
+                    "\n".join(closed_trades_details)
+                )
+                send_pushover_notification(config.get('notifications', {}), f"Position Closed: {reason}", final_message)
+
             for leg_pos in combo_legs: ib.cancelPnLSingle(account, '', leg_pos.contract.conId)
 
 
@@ -210,6 +236,15 @@ def _on_fill(trade: Trade, fill: Fill, config: dict):
     # This handler is primarily for sending notifications with fill details.
     # The actual logging to the trade ledger is done in `_on_order_status`
     # to ensure it happens only once per order.
+
+    # --- Check if this fill is from a risk management closure ---
+    # We use the order's `outsideRth` flag as a proxy. When we place risk
+    # management orders, we can set this to True to identify them here and
+    # suppress the individual notification, as a consolidated one will be sent.
+    if trade.order.outsideRth:
+        logging.info(f"Skipping individual fill notification for risk management closure of order ID {fill.execution.orderId}.")
+        return
+
     try:
         # Create a detailed notification message
         message = (
