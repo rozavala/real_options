@@ -75,7 +75,7 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
                 while not trade.isDone():
                     await ib.sleepAsync(0.1)
                 if trade.orderStatus.status == OrderStatus.Filled:
-                    log_trade_to_ledger(ib, trade, "Position Misaligned")
+                    log_trade_to_ledger(ib, trade, "Position Misaligned", combo_id=trade.order.permId)
             except Exception as e:
                 logging.error(f"Failed to close position for conId {pos_to_close.contract.conId}: {e}\n{traceback.format_exc()}")
         return True
@@ -190,7 +190,7 @@ def _on_order_status(ib: IB, trade: Trade):
     if trade.orderStatus.status == OrderStatus.Filled and trade.order.orderId not in _filled_order_ids:
         try:
             # Log the trade immediately upon fill confirmation.
-            log_trade_to_ledger(ib, trade, "Daily Strategy Fill")
+            log_trade_to_ledger(ib, trade, "Daily Strategy Fill", combo_id=trade.order.permId)
             _filled_order_ids.add(trade.order.orderId)
             fill_msg = (
                 f"FILLED: {trade.order.action} {trade.orderStatus.filled} "

@@ -143,18 +143,16 @@ class TestUtils(unittest.TestCase):
         written_rows = mock_writer_instance.writerows.call_args[0][0]
         self.assertEqual(len(written_rows), 2)
 
-        # Check the first leg
+        # Check the first leg (BUY order should have negative value)
         self.assertEqual(written_rows[0]['combo_id'], 123456)
         self.assertEqual(written_rows[0]['action'], 'BUY')
         self.assertEqual(written_rows[0]['strike'], 3.5)
-        # Verify the value is correctly calculated in dollars (0.5 cents * 1 share * 37500 multiplier / 100)
-        self.assertAlmostEqual(written_rows[0]['total_value_usd'], 187.50)
+        self.assertAlmostEqual(written_rows[0]['total_value_usd'], -187.50)
 
-        # Check the second leg
+        # Check the second leg (SELL order should have positive value)
         self.assertEqual(written_rows[1]['combo_id'], 123456)
         self.assertEqual(written_rows[1]['action'], 'SELL')
         self.assertEqual(written_rows[1]['strike'], 3.6)
-        # Verify the value is correctly calculated in dollars (0.2 cents * 1 share * 37500 multiplier / 100)
         self.assertAlmostEqual(written_rows[1]['total_value_usd'], 75.0)
 
     @patch('csv.DictWriter')

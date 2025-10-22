@@ -181,7 +181,7 @@ async def _get_market_data_for_leg(ib: IB, leg: ComboLeg) -> str:
         return f"Leg conId {leg.conId}: Error"
 
 
-async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill):
+async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int):
     """
     Handles the logic for processing a trade fill, ensuring the contract
     details are complete before logging.
@@ -207,8 +207,8 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill):
             else:
                 logger.warning(f"Could not match fill conId {fill.contract.conId} to any leg in {trade.contract.localSymbol}.")
 
-        log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=fill)
-        logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId})")
+        log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=fill, combo_id=combo_id)
+        logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId}, Combo ID: {combo_id})")
 
     except Exception as e:
         logger.error(f"Error processing and logging fill for order {trade.order.orderId}: {e}\n{traceback.format_exc()}")
@@ -241,9 +241,13 @@ async def place_queued_orders(config: dict):
         """Handles trade execution details and logs the trade."""
         order_id = trade.order.orderId
         if order_id in live_orders and not live_orders[order_id].get('is_filled', False):
-            logger.info(f"Order {order_id} FILLED. Creating task to process and log the fill.")
-            # Create a task to handle the fill asynchronously
-            asyncio.create_task(_handle_and_log_fill(ib, trade, fill))
+            # The trade object here is for the specific leg. We need the permId
+            # of the parent combo order, which is stored in our tracking dict.
+            parent_trade = live_orders[order_id]['trade']
+            combo_perm_id = parent_trade.order.permId
+
+            logger.info(f"Order {order_id} FILLED. Creating task to process fill with Combo ID {combo_perm_id}.")
+            asyncio.create_task(_handle_and_log_fill(ib, trade, fill, combo_perm_id))
 
             # --- Store fill price for final notification ---
             live_orders[order_id]['is_filled'] = True
@@ -475,7 +479,8 @@ async def close_all_open_positions(config: dict):
                 fill = trade.fills[0]
                 realized_pnl = fill.commissionReport.realizedPNL
                 fill_price = fill.execution.avgPrice
-                log_trade_to_ledger(ib, trade, "Daily Close")
+                # Pass the permId explicitly as the combo_id for consistency.
+                log_trade_to_ledger(ib, trade, "Daily Close", combo_id=trade.order.permId)
                 closed_position_details.append({
                     "symbol": pos.contract.localSymbol,
                     "action": action,

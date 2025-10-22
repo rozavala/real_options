@@ -113,7 +113,9 @@ class TestRiskManagement(unittest.TestCase):
         _on_order_status(mock_ib, newly_filled_trade)
 
         # Assert
-        mock_log_trade.assert_called_once_with(mock_ib, newly_filled_trade, "Daily Strategy Fill")
+        mock_log_trade.assert_called_once_with(
+            mock_ib, newly_filled_trade, "Daily Strategy Fill", combo_id=newly_filled_trade.order.permId
+        )
         self.assertIn(102, filled_set_module)
 
     @patch('trading_bot.risk_management.log_trade_to_ledger')
