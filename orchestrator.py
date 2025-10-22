@@ -167,7 +167,7 @@ schedule = {
     time(8, 52): place_queued_orders,
     time(17, 25): close_all_open_positions,
     time(17, 29): cancel_and_stop_monitoring,
-    time(18, 55): analyze_and_archive
+    time(19, 49): analyze_and_archive
 }
 
 async def main():
