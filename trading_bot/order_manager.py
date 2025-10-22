@@ -217,6 +217,13 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int):
         detailed_contract = Contract(conId=fill.contract.conId)
         await ib.qualifyContractsAsync(detailed_contract)
 
+        # After qualifying, we can check the contract type. If it's a Bag,
+        # it's the summary fill for the combo, which we don't want in the ledger
+        # as it's redundant. We only want the individual legs.
+        if isinstance(detailed_contract, Bag):
+            logger.info(f"Skipping ledger log for summary combo fill: {detailed_contract.localSymbol}")
+            return
+
         # Create a new Fill object with the detailed contract, preserving the
         # original execution and commission report details. This avoids the
         # "can't set attribute" error on the original immutable Fill object.
@@ -268,20 +275,36 @@ async def place_queued_orders(config: dict):
             log_order_event(trade, status)
 
     def on_exec_details(trade: Trade, fill: Fill):
-        """Handles trade execution details and logs the trade."""
+        """
+        Handles trade execution details for each leg, logs the trade, and
+        tracks the overall fill status of the combo order.
+        """
         order_id = trade.order.orderId
-        if order_id in live_orders and not live_orders[order_id].get('is_filled', False):
+        if order_id in live_orders:
+            leg_con_id = fill.contract.conId
+            order_details = live_orders[order_id]
+
+            # Check if this leg has already been processed to avoid duplicates
+            if leg_con_id in order_details['filled_legs']:
+                logger.info(f"Duplicate fill event for leg {leg_con_id} in order {order_id}. Ignoring.")
+                return
+
             # The trade object here is for the specific leg. We need the permId
             # of the parent combo order, which is stored in our tracking dict.
-            parent_trade = live_orders[order_id]['trade']
+            parent_trade = order_details['trade']
             combo_perm_id = parent_trade.order.permId
 
-            logger.info(f"Order {order_id} FILLED. Creating task to process fill with Combo ID {combo_perm_id}.")
+            logger.info(f"Fill received for leg {leg_con_id} in order {order_id}. Processing with Combo ID {combo_perm_id}.")
             asyncio.create_task(_handle_and_log_fill(ib, trade, fill, combo_perm_id))
 
-            # --- Store fill price for final notification ---
-            live_orders[order_id]['is_filled'] = True
-            live_orders[order_id]['fill_price'] = fill.execution.avgPrice
+            # --- Track the fill details for this leg ---
+            order_details['filled_legs'].add(leg_con_id)
+            order_details['fill_prices'][leg_con_id] = fill.execution.avgPrice
+
+            # --- Check if all legs of the combo are now filled ---
+            if len(order_details['filled_legs']) == order_details['total_legs']:
+                logger.info(f"All {order_details['total_legs']} legs of combo order {order_id} are now filled.")
+                order_details['is_filled'] = True # Mark the entire order as filled
 
     try:
         conn_settings = config.get('connection', {})
@@ -334,7 +357,9 @@ async def place_queued_orders(config: dict):
                 'trade': trade,
                 'status': trade.orderStatus.status,
                 'is_filled': False,
-                'fill_price': 0.0
+                'total_legs': len(contract.comboLegs) if isinstance(contract, Bag) else 1,
+                'filled_legs': set(),
+                'fill_prices': {} # Stores fill prices by conId
             }
 
             # --- 5. Build Notification String (ENHANCED FOR ALL DATA) ---
@@ -375,14 +400,24 @@ async def place_queued_orders(config: dict):
         cancelled_orders = []
         for order_id, details in live_orders.items():
             trade = details['trade']
-            if details['status'] == OrderStatus.Filled:
+            # Check the new 'is_filled' flag which confirms all legs are filled
+            if details.get('is_filled', False):
                 # --- Build Enhanced Fill Notification ---
                 price_info = f"LMT: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "MKT"
-                fill_price = details.get('fill_price', 0.0)
-                fill_line = (
-                    f"  - <b>{trade.contract.localSymbol}</b> ({trade.order.action})<br>"
-                    f"    {price_info} -> FILLED @ ${fill_price:.2f}"
-                )
+
+                # Since this is a combo, we report the fills for each leg
+                if details['total_legs'] > 1:
+                    avg_fill_price = sum(details['fill_prices'].values()) / len(details['fill_prices'])
+                    fill_line = (
+                        f"  - <b>{trade.contract.localSymbol}</b> ({trade.order.action})<br>"
+                        f"    {price_info} -> FILLED @ avg ${avg_fill_price:.2f}"
+                    )
+                else: # Single leg order
+                    fill_price = next(iter(details['fill_prices'].values()), 0.0)
+                    fill_line = (
+                        f"  - <b>{trade.contract.localSymbol}</b> ({trade.order.action})<br>"
+                        f"    {price_info} -> FILLED @ ${fill_price:.2f}"
+                    )
                 filled_orders.append(fill_line)
             
             elif details['status'] not in OrderStatus.DoneStates:
