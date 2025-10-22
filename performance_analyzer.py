@@ -83,7 +83,8 @@ def analyze_performance(config: dict) -> tuple[str, float, str | None] | None:
 
     try:
         df['timestamp'] = pd.to_datetime(df['timestamp'])
-        today_str = datetime.now().strftime('%Y-%m-%d')
+        today_date = datetime.now().date()
+        today_str = today_date.strftime('%Y-%m-%d')
         
         grouped = df.groupby('combo_id')
         total_pnl = 0
@@ -100,32 +101,50 @@ def analyze_performance(config: dict) -> tuple[str, float, str | None] | None:
         for combo_id, group in grouped:
             leg_quantities = group.groupby('local_symbol')['signed_quantity'].sum()
 
+            # Check if the position is currently flat
             if (leg_quantities == 0).all():
-                # Only include positions that were closed today in the P&L calculation
-                if group['timestamp'].dt.date.max() == datetime.now().date():
-                    combo_pnl = group['signed_value_usd'].sum()
-                    total_pnl += combo_pnl
+                # To be considered "closed today", it must have trades today AND not have been closed before today.
+                trades_today = group[group['timestamp'].dt.date == today_date]
+                if not trades_today.empty:
+                    trades_before_today = group[group['timestamp'].dt.date < today_date]
 
-                    # Handle combo_id that might be numeric or string
-                    if isinstance(combo_id, str) and '-' in combo_id:
-                        underlying_symbol = combo_id.split('-')[0]
-                        display_id = f"{underlying_symbol} ({combo_id})"
-                    else:
-                        display_id = f"Combo {combo_id}"
+                    is_closed_before_today = False
+                    if not trades_before_today.empty:
+                        qtys_before_today = trades_before_today.groupby('local_symbol')['signed_quantity'].sum()
+                        # Reindex to handle legs that only appeared today
+                        qtys_before_today = qtys_before_today.reindex(leg_quantities.index, fill_value=0)
+                        if (qtys_before_today == 0).all():
+                            is_closed_before_today = True
 
-                    summary_line = (
-                        f"  - {display_id}: Net P&L = ${combo_pnl:,.2f} "
-                        f"(Closed {group['timestamp'].max().strftime('%H:%M')})"
-                    )
-                    closed_positions_summary.append(summary_line)
+                    if not is_closed_before_today:
+                        # This position was officially closed today. P&L is the sum of all its transactions.
+                        combo_pnl = group['signed_value_usd'].sum()
+                        total_pnl += combo_pnl
+
+                        if isinstance(combo_id, str) and '-' in combo_id:
+                            underlying_symbol = combo_id.split('-')[0]
+                            display_id = f"{underlying_symbol} ({combo_id})"
+                        else:
+                            display_id = f"Combo {combo_id}"
+
+                        summary_line = (
+                            f"  - {display_id}: Net P&L = ${combo_pnl:,.2f} "
+                            f"(Closed {group['timestamp'].max().strftime('%H:%M')})"
+                        )
+                        closed_positions_summary.append(summary_line)
             else:
-                # This logic correctly calculates the current open positions
+                # It's an open position. Summarize it correctly.
                 entry_cost = group['signed_value_usd'].sum()
-                position_details = [f"{row['action']} {int(row['quantity'])} {row['local_symbol']}" for _, row in group.iterrows()]
 
-                # Determine if it's a credit or debit for clear reporting
+                position_details = []
+                net_leg_quantities = group.groupby('local_symbol')['signed_quantity'].sum()
+                for symbol, qty in net_leg_quantities.items():
+                    if qty == 0:
+                        continue
+                    action = 'SELL' if qty > 0 else 'BUY'
+                    position_details.append(f"{action} {int(abs(qty))} {symbol}")
+
                 cost_type = "Credit" if entry_cost > 0 else "Debit"
-
                 summary_line = f"  - {' | '.join(position_details)} (Net {cost_type}: ${abs(entry_cost):,.2f})"
                 open_positions_summary.append(summary_line)
 

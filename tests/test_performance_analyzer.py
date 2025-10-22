@@ -35,7 +35,7 @@ class TestPerformanceAnalyzer(unittest.TestCase):
         # --- Assertions ---
         self.assertAlmostEqual(total_pnl, 15000.00)
         self.assertIn("<b>Daily Net P&L: $15,000.00</b>", report)
-        self.assertIn("KC (KC-123): Net P&L = $15,000.00", report)
+        self.assertIn("Combo 123: Net P&L = $15,000.00", report)
         self.assertIn("<b>Currently Open Positions:</b>", report)
         self.assertIn("BUY 1 KCK6 P3.4", report)
         self.assertIn("(Net Debit: $15,000.00)", report)
