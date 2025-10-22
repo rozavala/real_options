@@ -217,6 +217,13 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int):
         detailed_contract = Contract(conId=fill.contract.conId)
         await ib.qualifyContractsAsync(detailed_contract)
 
+        # After qualifying, we can check the contract type. If it's a Bag,
+        # it's the summary fill for the combo, which we don't want in the ledger
+        # as it's redundant. We only want the individual legs.
+        if isinstance(detailed_contract, Bag):
+            logger.info(f"Skipping ledger log for summary combo fill: {detailed_contract.localSymbol}")
+            return
+
         # Create a new Fill object with the detailed contract, preserving the
         # original execution and commission report details. This avoids the
         # "can't set attribute" error on the original immutable Fill object.
