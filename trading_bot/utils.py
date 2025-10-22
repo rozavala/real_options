@@ -377,7 +377,7 @@ def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution"
 
 
 def archive_trade_ledger():
-    """Archives the `trade_ledger.csv` file by moving it to the `archive` directory
+    """Archives the `trade_ledger.csv` file by moving it to the `archive_ledger` directory
     with a timestamp appended to its name.
     """
     ledger_filename = 'trade_ledger.csv'
@@ -388,7 +388,7 @@ def archive_trade_ledger():
         logging.info(f"'{ledger_filename}' not found, no action taken.")
         return
 
-    archive_dir = os.path.join(base_dir, 'archive')
+    archive_dir = os.path.join(base_dir, 'archive_ledger')
     if not os.path.exists(archive_dir):
         os.makedirs(archive_dir)
         logging.info(f"Created archive directory at: {archive_dir}")
