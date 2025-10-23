@@ -7,7 +7,7 @@ import asyncio
 
 from performance_analyzer import analyze_performance
 
-class TestPerformanceAnalyzer(unittest.TestCase):
+class TestPerformanceAnalyzer:
 
     @pytest.mark.asyncio
     async def test_analyze_performance(self):
@@ -42,17 +42,14 @@ class TestPerformanceAnalyzer(unittest.TestCase):
             with patch('performance_analyzer.check_for_open_orders', return_value=[]):
                 # --- Act ---
                 result = await analyze_performance(config=mock_config)
-                self.assertIsNotNone(result)
+                assert result is not None
                 report, total_pnl, chart_paths = result
 
             # --- Assertions ---
-            self.assertAlmostEqual(total_pnl, 15000.00)
-            self.assertIn("<b>Section 1: Executive Summary</b>", report)
-            self.assertIn("Net P&L", report)
-            self.assertIn("$15,000.00", report)
-            self.assertIn("<b>Section 2: Model Performance & Attribution</b>", report)
-            self.assertIn("<b>Section 3: System Status Check</b>", report)
-            self.assertIn("Data Integrity Check: PASS", report)
-
-if __name__ == '__main__':
-    unittest.main()
+            assert total_pnl == pytest.approx(15000.00)
+            assert "<b>Section 1: Executive Summary</b>" in report
+            assert "Net P&L" in report
+            assert "$15,000.00" in report
+            assert "<b>Section 2: Model Performance & Attribution</b>" in report
+            assert "<b>Section 3: System Status Check</b>" in report
+            assert "Data Integrity Check: PASS" in report
