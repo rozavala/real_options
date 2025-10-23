@@ -23,7 +23,7 @@ def get_trade_ledger_df():
     """Reads and consolidates the main and archived trade ledgers for analysis."""
     base_dir = os.path.dirname(os.path.abspath(__file__))
     ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-    archive_dir = os.path.join(base_dir, 'archive_ledger') # Corrected path
+    archive_dir = os.path.join(base_dir, 'archive')
 
     dataframes = []
 
@@ -63,7 +63,9 @@ def generate_executive_summary(trade_df: pd.DataFrame, signals_df: pd.DataFrame,
         pnl_per_position = closed_positions.groupby('position_id')['total_value_usd'].sum()
 
         net_pnl = pnl_per_position.sum()
-        trades_executed = pnl_per_position.count()
+        # Trades executed should be based on the number of opening trades, not the total number of trades
+        opening_trades = trades[trades['reason'] == 'Strategy Execution']
+        trades_executed = len(opening_trades.groupby('position_id'))
 
         wins = pnl_per_position[pnl_per_position > 0]
         losses = pnl_per_position[pnl_per_position <= 0]
@@ -158,6 +160,7 @@ def generate_model_performance_report(trade_df: pd.DataFrame, signals_df: pd.Dat
     report_df = pd.merge(today_signals, pnl_per_position, left_on='signal_contract_prefix', right_on='contract_prefix', how='left')
 
     # 3. Populate report columns
+    report_df['signal'] = report_df['signal'].str.replace('BEA', 'BEARISH', case=False)
     report_df['Trade Executed?'] = report_df['net_pnl'].notna().map({True: 'Yes', False: 'No'})
     report_df['Position'] = report_df['position_id'].apply(lambda x: ' / '.join(x) if isinstance(x, tuple) else 'N/A')
     report_df['Net P&L'] = report_df['net_pnl'].fillna(0)
@@ -180,7 +183,7 @@ def generate_model_performance_report(trade_df: pd.DataFrame, signals_df: pd.Dat
     for _, row in report_df.iterrows():
         pnl_str = f"${row['Net P&L']:,.2f}"
         executed_str = row['Trade Executed?']
-        exit_reason_str = row['Exit Reason'][:13] # Truncate for display
+        exit_reason_str = row['Exit Reason']
         signal_hit_str = row['Signal Hit?']
 
         report += (f"{row['contract_x']:<10} {row['signal']:<10} {executed_str:<11} "
