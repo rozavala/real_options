@@ -211,18 +211,19 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int):
     details are complete before logging.
     """
     try:
+        # With combo orders, IB sends fills for the parent 'Bag' in addition
+        # to the individual legs. These Bag fills are redundant for our ledger
+        # and trying to qualify them will cause an API error. We identify and
+        # skip them here.
+        if isinstance(fill.contract, Bag):
+            logger.info(f"Skipping ledger log for summary combo fill with conId: {fill.contract.conId}")
+            return
+
         # The contract object in the Fill can be incomplete. We need to get the
         # full contract details to log accurately, especially for options.
         # We create a new contract object from the conId and qualify it.
         detailed_contract = Contract(conId=fill.contract.conId)
         await ib.qualifyContractsAsync(detailed_contract)
-
-        # After qualifying, we can check the contract type. If it's a Bag,
-        # it's the summary fill for the combo, which we don't want in the ledger
-        # as it's redundant. We only want the individual legs.
-        if isinstance(detailed_contract, Bag):
-            logger.info(f"Skipping ledger log for summary combo fill: {detailed_contract.localSymbol}")
-            return
 
         # Create a new Fill object with the detailed contract, preserving the
         # original execution and commission report details. This avoids the
