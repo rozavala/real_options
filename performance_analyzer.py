@@ -40,6 +40,11 @@ def get_trade_ledger_df():
 
     full_ledger = pd.concat(dataframes, ignore_index=True)
     full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
+
+    # Correct the P&L calculation by converting from cents to dollars
+    if 'total_value_usd' in full_ledger.columns:
+        full_ledger['total_value_usd'] = full_ledger['total_value_usd'] / 100.0
+
     return full_ledger.sort_values(by='timestamp').reset_index(drop=True)
 
 
@@ -89,28 +94,28 @@ def generate_executive_summary(trade_df: pd.DataFrame, signals_df: pd.DataFrame,
     ltd_metrics = calculate_metrics(trade_df, signals_df)
 
     # --- Build Monospaced Text Report Table ---
-    report = "<b>Section 1: Executive Summary</b>\n"
-    report += "<pre>" # Start monospaced block
-    # Header
-    report += f"{'Metric':<22} {'Today':>12} {'Life-to-Date':>15}\n"
-    report += "-" * 51 + "\n"
+    report = "Section 1: Exec. Summary\n"
+    report += "<pre>"
+    report += f"{'Metric':<18} {'Today':>12} {'LTD':>12}\n"
+    report += "-" * 44 + "\n"
 
-    # --- Rows ---
+    # --- Rows (with abbreviated metric names) ---
     rows = {
         "Net P&L": (f"${today_metrics['pnl']:,.2f}", f"${ltd_metrics['pnl']:,.2f}"),
-        "Model Signals Fired": (f"{today_metrics['signals_fired']}", f"{ltd_metrics['signals_fired']}"),
+        "Signals Fired": (f"{today_metrics['signals_fired']}", f"{ltd_metrics['signals_fired']}"),
         "Trades Executed": (f"{today_metrics['trades_executed']}", f"{ltd_metrics['trades_executed']}"),
-        "Execution Rate": (f"{today_metrics['execution_rate']:.1%}", f"{ltd_metrics['execution_rate']:.1%}"),
-        "Win Rate (by P&L)": (f"{today_metrics['win_rate']:.1%}", f"{ltd_metrics['win_rate']:.1%}"),
-        "Avg. Win / Avg. Loss": (f"${today_metrics['avg_win']:,.0f}/${today_metrics['avg_loss']:,.0f}", f"${ltd_metrics['avg_win']:,.0f}/${ltd_metrics['avg_loss']:,.0f}")
+        "Exec. Rate": (f"{today_metrics['execution_rate']:.1%}", f"{ltd_metrics['execution_rate']:.1%}"),
+        "Win Rate": (f"{today_metrics['win_rate']:.1%}", f"{ltd_metrics['win_rate']:.1%}"),
+        "Avg. Win/Loss": (f"${today_metrics['avg_win']:,.0f}/${today_metrics['avg_loss']:,.0f}", f"${ltd_metrics['avg_win']:,.0f}/${ltd_metrics['avg_loss']:,.0f}")
     }
 
     for metric, (today_val, ltd_val) in rows.items():
-        report += f"{metric:<22} {today_val:>12} {ltd_val:>15}\n"
+        report += f"{metric:<18} {today_val:>12} {ltd_val:>12}\n"
 
     report += "</pre>\n"
 
     return report, today_metrics['pnl']
+
 
 def generate_model_performance_report(trade_df: pd.DataFrame, signals_df: pd.DataFrame, today_date: datetime.date) -> tuple[str, float]:
     """Generates Section 2: Model Performance & Attribution."""
@@ -118,7 +123,7 @@ def generate_model_performance_report(trade_df: pd.DataFrame, signals_df: pd.Dat
     today_trades = trade_df[trade_df['timestamp'].dt.date == today_date].copy()
 
     if today_signals.empty:
-        return "<b>Section 2: Model Performance & Attribution</b>\nNo model signals for today.\n\n", 0.0
+        return "Section 2: Model Performance\nNo model signals for today.\n\n", 0.0
 
     # 1. Process trade data to get P&L per position
     if not today_trades.empty:
@@ -174,20 +179,22 @@ def generate_model_performance_report(trade_df: pd.DataFrame, signals_df: pd.Dat
     report_df['Signal Hit?'] = report_df.apply(determine_signal_hit, axis=1)
 
     # --- Build Monospaced Text Report Table ---
-    report = "<b>Section 2: Model Performance & Attribution</b>\n"
+    report = "Section 2: Model Performance\n"
     report += "<pre>"
-    header = f"{'Contract':<10} {'Signal':<10} {'Executed?':<11} {'P&L':>10} {'Exit Reason':<15} {'Signal Hit?':<12}"
+    header = f"{'Contract':<9} {'Signal':<9} {'Exec?':<6} {'P&L':>9} {'Exit':<10} {'Hit?':<5}"
     report += header + "\n"
     report += "-" * len(header) + "\n"
 
     for _, row in report_df.iterrows():
-        pnl_str = f"${row['Net P&L']:,.2f}"
+        pnl_str = f"${row['Net P&L']:,.0f}" # Abbreviated to no decimals
         executed_str = row['Trade Executed?']
-        exit_reason_str = row['Exit Reason']
+        # Abbreviate Exit Reason
+        exit_reason_str = row['Exit Reason'].replace('Execution', 'Exec').replace('Management', 'Mgmt')
         signal_hit_str = row['Signal Hit?']
+        signal_str = row['signal'].replace('BEARISH', 'BEAR') # Abbreviate signal
 
-        report += (f"{row['contract_x']:<10} {row['signal']:<10} {executed_str:<11} "
-                   f"{pnl_str:>10} {exit_reason_str:<15} {signal_hit_str:<12}\n")
+        report += (f"{row['contract_x']:<9} {signal_str:<9} {executed_str:<6} "
+                   f"{pnl_str:>9} {exit_reason_str:<10} {signal_hit_str:<5}\n")
 
     report += "</pre>\n"
 
@@ -195,9 +202,10 @@ def generate_model_performance_report(trade_df: pd.DataFrame, signals_df: pd.Dat
 
     return report, model_pnl_sum
 
+
 async def generate_system_status_report(trade_df: pd.DataFrame, config: dict) -> tuple[str, bool]:
     """Generates Section 3: System Status Check."""
-    report = "<b>Section 3: System Status Check</b>\n"
+    report = "Section 3: System Status\n"
     is_ok = True
 
     # 1. Position Check
@@ -208,29 +216,29 @@ async def generate_system_status_report(trade_df: pd.DataFrame, config: dict) ->
     open_positions = net_positions[net_positions != 0]
 
     if not open_positions.empty:
-        report += "<b><font color='red'>!! WARNING: OPEN POSITIONS !!</font></b>\n<pre>"
+        report += "!! WARNING: OPEN POSITIONS !!\n<pre>"
         for symbol, qty in open_positions.items():
             action = "SELL" if qty > 0 else "BUY"
             report += f"- {action} {int(abs(qty))} {symbol}\n"
         report += "</pre>"
         is_ok = False
     else:
-        report += "Position Check: <b>PASS</b> (All positions are flat)\n"
+        report += "Position Check: PASS (All flat)\n"
 
     # 2. Pending Orders Check
     try:
-        open_orders = await check_for_open_orders(config) # Await the async function
+        open_orders = await check_for_open_orders(config)
         if open_orders:
-            report += "<b><font color='red'>!! WARNING: PENDING ORDERS !!</font></b>\n<pre>"
+            report += "!! WARNING: PENDING ORDERS !!\n<pre>"
             for order in open_orders:
-                report += f"- {order.action} {order.totalQuantity} {order.contract.localSymbol} (Status: {order.orderStatus.status})\n"
+                report += f"- {order.action} {order.totalQuantity} {order.contract.localSymbol} ({order.orderStatus.status})\n"
             report += "</pre>"
             is_ok = False
         else:
-            report += "Pending Orders Check: <b>PASS</b> (No open orders found)\n"
+            report += "Pending Orders: PASS (None found)\n"
     except Exception as e:
         logger.error(f"Failed to check for open orders: {e}")
-        report += "Pending Orders Check: <b>FAIL</b> (Could not connect to broker)\n"
+        report += "Pending Orders: FAIL (No connection)\n"
         is_ok = False
 
     return report, is_ok
@@ -276,21 +284,23 @@ async def analyze_performance(config: dict) -> tuple[str, float, list[str]] | No
         status_report, is_status_ok = await generate_system_status_report(trade_df, config)
 
         # --- Data Integrity Check ---
+        integrity_check_msg = "\nData Integrity Check: "
         if not is_status_ok or abs(daily_pnl - model_pnl) > 0.01: # Using a small tolerance for float comparison
-            status_report += "\n<b><font color='red'>!! DATA INTEGRITY CHECK: FAIL !!</font></b>"
+            integrity_check_msg += "FAIL"
             logger.error(f"Data integrity check failed: Exec Summary P&L (${daily_pnl}) != Model Perf P&L (${model_pnl})")
         else:
-            status_report += "\n<b>Data Integrity Check: PASS</b>"
+            integrity_check_msg += "PASS"
 
 
         # --- Assemble Final Report ---
-        full_report = f"<b>Trading Performance Report: {today_str}</b>\n\n"
+        full_report = f"Trading Performance Report: {today_str}\n\n"
         full_report += summary_report
         full_report += model_report
         full_report += status_report
+        full_report += integrity_check_msg
 
         # --- Generate Performance Charts ---
-        chart_paths = [] # Will hold paths to multiple charts
+        chart_paths = []
         try:
             chart_paths = generate_performance_charts(trade_df, signals_df) # Updated function call
             if chart_paths:
@@ -325,6 +335,10 @@ async def main():
         report, total_pnl, chart_paths = analysis_result
         title = f"Daily Report: P&L ${total_pnl:,.2f}"
 
+        # --- Truncate report if it exceeds Pushover's limit (1024 chars) ---
+        if len(report) > 1024:
+            report = report[:1000] + "\n... (report truncated)"
+
         # Send the main report with monospaced formatting
         send_pushover_notification(
             config.get('notifications', {}),
@@ -332,6 +346,7 @@ async def main():
             report,
             monospace=True # Enable monospaced formatting for the report
         )
+        # --- Send Charts (one by one to avoid message size issues) ---
         for i, chart_path in enumerate(chart_paths):
             chart_title = os.path.splitext(os.path.basename(chart_path))[0].replace('_', ' ').title()
             send_pushover_notification(

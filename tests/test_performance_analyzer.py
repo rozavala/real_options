@@ -29,6 +29,10 @@ class TestPerformanceAnalyzer:
     """
             trade_df = pd.read_csv(pd.io.common.StringIO(csv_data))
             trade_df['timestamp'] = pd.to_datetime(trade_df['timestamp'])
+
+            # Manually apply the same scaling that the real get_trade_ledger_df does
+            trade_df['total_value_usd'] = trade_df['total_value_usd'] / 100.0
+
             mock_get_ledger.return_value = trade_df
 
             # Signal data must use YYYYMM format, corresponding to KCH6
@@ -46,10 +50,12 @@ class TestPerformanceAnalyzer:
                 report, total_pnl, chart_paths = result
 
             # --- Assertions ---
-            assert total_pnl == pytest.approx(15000.00)
-            assert "<b>Section 1: Executive Summary</b>" in report
+            # Corrected P&L assertion to reflect the scaling change (15000.00 -> 150.00)
+            assert total_pnl == pytest.approx(150.00)
+            assert "Section 1: Exec. Summary" in report
             assert "Net P&L" in report
-            assert "$15,000.00" in report
-            assert "<b>Section 2: Model Performance & Attribution</b>" in report
-            assert "<b>Section 3: System Status Check</b>" in report
+            # Corrected P&L string check in the report
+            assert "$150.00" in report
+            assert "Section 2: Model Performance" in report
+            assert "Section 3: System Status" in report
             assert "Data Integrity Check: PASS" in report
