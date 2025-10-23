@@ -86,10 +86,12 @@ def generate_executive_summary(trade_df: pd.DataFrame, signals_df: pd.DataFrame,
     today_metrics = calculate_metrics(today_trades, today_signals)
     ltd_metrics = calculate_metrics(trade_df, signals_df)
 
-    # --- Build HTML Report Table ---
+    # --- Build Monospaced Text Report Table ---
     report = "<b>Section 1: Executive Summary</b>\n"
-    report += "<table border='1' cellpadding='5' cellspacing='0'>"
-    report += "<tr><th>Metric</th><th>Today</th><th>Life-to-Date</th></tr>"
+    report += "<pre>" # Start monospaced block
+    # Header
+    report += f"{'Metric':<22} {'Today':>12} {'Life-to-Date':>15}\n"
+    report += "-" * 51 + "\n"
 
     # --- Rows ---
     rows = {
@@ -98,13 +100,13 @@ def generate_executive_summary(trade_df: pd.DataFrame, signals_df: pd.DataFrame,
         "Trades Executed": (f"{today_metrics['trades_executed']}", f"{ltd_metrics['trades_executed']}"),
         "Execution Rate": (f"{today_metrics['execution_rate']:.1%}", f"{ltd_metrics['execution_rate']:.1%}"),
         "Win Rate (by P&L)": (f"{today_metrics['win_rate']:.1%}", f"{ltd_metrics['win_rate']:.1%}"),
-        "Avg. Win / Avg. Loss": (f"${today_metrics['avg_win']:,.0f} / ${today_metrics['avg_loss']:,.0f}", f"${ltd_metrics['avg_win']:,.0f} / ${ltd_metrics['avg_loss']:,.0f}")
+        "Avg. Win / Avg. Loss": (f"${today_metrics['avg_win']:,.0f}/${today_metrics['avg_loss']:,.0f}", f"${ltd_metrics['avg_win']:,.0f}/${ltd_metrics['avg_loss']:,.0f}")
     }
 
     for metric, (today_val, ltd_val) in rows.items():
-        report += f"<tr><td>{metric}</td><td>{today_val}</td><td>{ltd_val}</td></tr>"
+        report += f"{metric:<22} {today_val:>12} {ltd_val:>15}\n"
 
-    report += "</table>\n\n"
+    report += "</pre>\n"
 
     return report, today_metrics['pnl']
 
@@ -128,8 +130,9 @@ def generate_model_performance_report(trade_df: pd.DataFrame, signals_df: pd.Dat
         # Get exit reason and contract for each position
         def get_position_details(group):
             exit_reason = group[group['reason'] != 'Strategy Execution']['reason'].iloc[0] if not group[group['reason'] != 'Strategy Execution'].empty else 'N/A'
-            # Extract underlying from the first leg's local symbol (e.g., 'KOZ5' from 'KOZ5 P4.175')
-            contract = group['local_symbol'].iloc[0].split(' ')[0][:4]
+            # Extract underlying, forcing 'KC' as the prefix because the ledger incorrectly uses 'KO'
+            local_sym_prefix = group['local_symbol'].iloc[0].split(' ')[0][:4]
+            contract = "KC" + local_sym_prefix[2:]
             return pd.Series({'exit_reason': exit_reason, 'contract': contract})
 
         position_details = closed_positions.groupby('position_id').apply(get_position_details).reset_index()
@@ -149,6 +152,7 @@ def generate_model_performance_report(trade_df: pd.DataFrame, signals_df: pd.Dat
     month_code_map = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M', 7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
     today_signals['month'] = pd.to_datetime(today_signals['contract'], format='%Y%m').dt.month
     today_signals['year_last_digit'] = pd.to_datetime(today_signals['contract'], format='%Y%m').dt.strftime('%y').str[-1]
+    # Corrected 'KO' to 'KC'
     today_signals['signal_contract_prefix'] = "KC" + today_signals['month'].map(month_code_map) + today_signals['year_last_digit']
 
     report_df = pd.merge(today_signals, pnl_per_position, left_on='signal_contract_prefix', right_on='contract_prefix', how='left')
@@ -166,24 +170,29 @@ def generate_model_performance_report(trade_df: pd.DataFrame, signals_df: pd.Dat
         
     report_df['Signal Hit?'] = report_df.apply(determine_signal_hit, axis=1)
 
-    # --- Build HTML Report Table ---
+    # --- Build Monospaced Text Report Table ---
     report = "<b>Section 2: Model Performance & Attribution</b>\n"
-    report += "<table border='1' cellpadding='5' cellspacing='0'>"
-    report += "<tr><th>Contract</th><th>Model Signal</th><th>Trade Executed?</th><th>Position</th><th>Net P&L</th><th>Exit Reason</th><th>Signal Hit?</th></tr>"
+    report += "<pre>"
+    header = f"{'Contract':<10} {'Signal':<10} {'Executed?':<11} {'P&L':>10} {'Exit Reason':<15} {'Signal Hit?':<12}"
+    report += header + "\n"
+    report += "-" * len(header) + "\n"
 
     for _, row in report_df.iterrows():
-        pnl_color = 'green' if row['Net P&L'] > 0 else 'red' if row['Net P&L'] < 0 else 'black'
-        pnl_str = f"<font color='{pnl_color}'>${row['Net P&L']:,.2f}</font>"
-        report += (f"<tr><td>{row['contract_x']}</td><td>{row['signal']}</td><td>{row['Trade Executed?']}</td>"
-                   f"<td>{row['Position']}</td><td>{pnl_str}</td><td>{row['Exit Reason']}</td><td>{row['Signal Hit?']}</td></tr>")
+        pnl_str = f"${row['Net P&L']:,.2f}"
+        executed_str = row['Trade Executed?']
+        exit_reason_str = row['Exit Reason'][:13] # Truncate for display
+        signal_hit_str = row['Signal Hit?']
 
-    report += "</table>\n\n"
+        report += (f"{row['contract_x']:<10} {row['signal']:<10} {executed_str:<11} "
+                   f"{pnl_str:>10} {exit_reason_str:<15} {signal_hit_str:<12}\n")
+
+    report += "</pre>\n"
 
     model_pnl_sum = report_df['Net P&L'].sum()
 
     return report, model_pnl_sum
 
-def generate_system_status_report(trade_df: pd.DataFrame, config: dict) -> tuple[str, bool]:
+async def generate_system_status_report(trade_df: pd.DataFrame, config: dict) -> tuple[str, bool]:
     """Generates Section 3: System Status Check."""
     report = "<b>Section 3: System Status Check</b>\n"
     is_ok = True
@@ -196,27 +205,29 @@ def generate_system_status_report(trade_df: pd.DataFrame, config: dict) -> tuple
     open_positions = net_positions[net_positions != 0]
 
     if not open_positions.empty:
-        report += "<b><font color='red'>!! WARNING: OPEN POSITIONS !!</font></b>\n"
+        report += "<b><font color='red'>!! WARNING: OPEN POSITIONS !!</font></b>\n<pre>"
         for symbol, qty in open_positions.items():
             action = "SELL" if qty > 0 else "BUY"
-            report += f"  - {action} {int(abs(qty))} {symbol}\n"
+            report += f"- {action} {int(abs(qty))} {symbol}\n"
+        report += "</pre>"
         is_ok = False
     else:
-        report += "Position Check: PASS (All positions are flat)\n"
+        report += "Position Check: <b>PASS</b> (All positions are flat)\n"
 
     # 2. Pending Orders Check
     try:
-        open_orders = asyncio.run(check_for_open_orders(config))
+        open_orders = await check_for_open_orders(config) # Await the async function
         if open_orders:
-            report += "<b><font color='red'>!! WARNING: PENDING ORDERS !!</font></b>\n"
+            report += "<b><font color='red'>!! WARNING: PENDING ORDERS !!</font></b>\n<pre>"
             for order in open_orders:
-                report += f"  - {order.action} {order.totalQuantity} {order.contract.localSymbol} (Status: {order.orderStatus.status})\n"
+                report += f"- {order.action} {order.totalQuantity} {order.contract.localSymbol} (Status: {order.orderStatus.status})\n"
+            report += "</pre>"
             is_ok = False
         else:
-            report += "Pending Orders Check: PASS (No open orders found)\n"
+            report += "Pending Orders Check: <b>PASS</b> (No open orders found)\n"
     except Exception as e:
         logger.error(f"Failed to check for open orders: {e}")
-        report += "Pending Orders Check: FAIL (Could not connect to broker)\n"
+        report += "Pending Orders Check: <b>FAIL</b> (Could not connect to broker)\n"
         is_ok = False
 
     return report, is_ok
@@ -238,7 +249,7 @@ async def check_for_open_orders(config: dict) -> list:
         if ib.isConnected():
             ib.disconnect()
 
-def analyze_performance(config: dict) -> tuple[str, float, list[str]] | None:
+async def analyze_performance(config: dict) -> tuple[str, float, list[str]] | None:
     """
     Analyzes the trade ledger to report on daily trading performance.
     Orchestrates the generation of all report sections.
@@ -259,7 +270,7 @@ def analyze_performance(config: dict) -> tuple[str, float, list[str]] | None:
         # --- Generate Sections ---
         summary_report, daily_pnl = generate_executive_summary(trade_df, signals_df, today_date)
         model_report, model_pnl = generate_model_performance_report(trade_df, signals_df, today_date)
-        status_report, is_status_ok = generate_system_status_report(trade_df, config)
+        status_report, is_status_ok = await generate_system_status_report(trade_df, config)
 
         # --- Data Integrity Check ---
         if not is_status_ok or abs(daily_pnl - model_pnl) > 0.01: # Using a small tolerance for float comparison
@@ -296,7 +307,7 @@ def analyze_performance(config: dict) -> tuple[str, float, list[str]] | None:
         logger.error(f"An error occurred during performance analysis: {e}", exc_info=True)
         return None
 
-def main():
+async def main():
     """
     Main function to run the performance analysis and send a notification.
     """
@@ -305,23 +316,25 @@ def main():
         logger.critical("Failed to load configuration. Exiting.")
         return
 
-    analysis_result = analyze_performance(config)
+    analysis_result = await analyze_performance(config)
 
     if analysis_result:
         report, total_pnl, chart_paths = analysis_result
         title = f"Daily Report: P&L ${total_pnl:,.2f}"
 
-        # Send multiple notifications, one for the report and one for each chart
+        # Send the main report with monospaced formatting
         send_pushover_notification(
             config.get('notifications', {}),
             title,
-            report
+            report,
+            monospace=True # Enable monospaced formatting for the report
         )
-        for chart_path in chart_paths:
+        for i, chart_path in enumerate(chart_paths):
+            chart_title = os.path.splitext(os.path.basename(chart_path))[0].replace('_', ' ').title()
             send_pushover_notification(
                 config.get('notifications', {}),
-                f"Performance Chart: {os.path.basename(chart_path)}",
-                "",
+                f"Chart {i+1}/{len(chart_paths)}: {chart_title}",
+                f"See attached chart: {chart_title}",
                 attachment_path=chart_path
             )
     else:
@@ -332,4 +345,4 @@ def main():
         )
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
