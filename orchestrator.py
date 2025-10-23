@@ -146,12 +146,12 @@ async def analyze_and_archive(config: dict):
 
 # New schedule mapping run times (GMT) to functions
 schedule = {
-    time(17, 0): start_monitoring,
-    time(17, 2): generate_and_queue_orders,
-    time(17, 4): place_queued_orders,
-    time(16, 54): close_all_open_positions,
-    time(16, 56): cancel_and_stop_monitoring,
-    time(16, 57): analyze_and_archive
+    time(8, 30): start_monitoring,
+    time(8, 50): generate_and_queue_orders,
+    time(8, 52): place_queued_orders,
+    time(17, 29): close_all_open_positions,
+    time(17, 30): cancel_and_stop_monitoring,
+    time(17, 35): analyze_and_archive
 }
 
 async def main():
