@@ -13,6 +13,7 @@ from ib_insync import IB, Contract
 
 from logging_config import setup_logging
 from trading_bot.ib_interface import get_active_futures
+from trading_bot.model_signals import log_model_signal
 
 # --- Logging Setup ---
 setup_logging()
@@ -114,7 +115,7 @@ async def generate_signals(ib: IB, api_response: dict, config: dict) -> list:
                    f"Price Change = {price_change:.2f}. "
                    f"Thresholds (Bullish > {bullish_threshold}, Bearish < {bearish_threshold}).")
 
-        direction = None
+        direction = "NEUTRAL"
         if price_change > bullish_threshold:
             direction = "BULLISH"
             log_msg += " -> RESULT: BULLISH"
@@ -126,7 +127,10 @@ async def generate_signals(ib: IB, api_response: dict, config: dict) -> list:
 
         logging.info(log_msg)
 
-        if direction:
+        # Log the signal regardless of whether it's a trade signal or not
+        log_model_signal(contract.lastTradeDateOrContractMonth[:6], direction)
+
+        if direction != "NEUTRAL":
             signal = {
                 "contract_month": contract.lastTradeDateOrContractMonth[:6],
                 "prediction_type": "DIRECTIONAL",
