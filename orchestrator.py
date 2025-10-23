@@ -134,7 +134,7 @@ async def analyze_and_archive(config: dict):
     logger.info("--- Initiating end-of-day analysis and archiving ---")
     try:
         # 1. Run the full analysis and reporting process
-        run_performance_analysis()
+        await run_performance_analysis()
 
         # 2. Archive the ledger
         archive_trade_ledger()
