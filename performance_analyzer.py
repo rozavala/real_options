@@ -98,12 +98,13 @@ def analyze_performance(config: dict) -> tuple[str, float, str | None] | None:
         closed_positions_summary = []
         open_positions_summary = []
 
-        # Create a signed value based on action for correct P&L and cost calculation
-        df['signed_value_usd'] = df.apply(
-            lambda row: -row['total_value_usd'] if row['action'] == 'BUY' else row['total_value_usd'],
+        # The 'total_value_usd' column is already signed correctly (negative for BUY, positive for SELL),
+        # representing the cash flow for each transaction. We use it directly for P&L calculations.
+        df['signed_value_usd'] = df['total_value_usd']
+        df['signed_quantity'] = df.apply(
+            lambda row: -row['quantity'] if row['action'] == 'BUY' else row['quantity'],
             axis=1
         )
-        df['signed_quantity'] = df.apply(lambda row: -row['quantity'] if row['action'] == 'BUY' else row['quantity'], axis=1)
 
         for position_id, group in grouped:
             leg_quantities = group.groupby('local_symbol')['signed_quantity'].sum()
