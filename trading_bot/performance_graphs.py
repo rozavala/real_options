@@ -1,15 +1,15 @@
 import os
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 def generate_performance_chart(df: pd.DataFrame, output_path: str = 'daily_performance.png') -> str | None:
     """
-    Generates an interactive performance chart from a DataFrame and saves it to a PNG file.
+    Generates a performance chart using Matplotlib and saves it to a PNG file.
+    The top subplot shows daily net P&L, and the bottom shows cumulative P&L.
 
     Args:
         df (pd.DataFrame): DataFrame containing the trade ledger data.
-                          Must include 'timestamp', 'total_value_usd', and 'action' columns.
         output_path (str): The path to save the output PNG file.
 
     Returns:
@@ -18,48 +18,46 @@ def generate_performance_chart(df: pd.DataFrame, output_path: str = 'daily_perfo
     if df.empty:
         return None
 
-    # The 'signed_value_usd' column represents cashflow (SELL positive, BUY negative)
+    # --- Data Preparation ---
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
     df['net_value'] = df['signed_value_usd']
 
-    # Calculates the cumulative net value
-    df['cumulative_net_value'] = df['net_value'].cumsum()
+    # Aggregate P&L by day for the bar chart
+    daily_pnl = df.resample('D', on='timestamp')['net_value'].sum()
 
-    # Create a figure with two subplots
-    fig = make_subplots(
-        rows=2, cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.1,
-        subplot_titles=('Daily Profit & Loss', 'Cumulative Performance')
-    )
+    # Calculate cumulative P&L for the line chart
+    df_sorted = df.sort_values('timestamp')
+    df_sorted['cumulative_net_value'] = df_sorted['net_value'].cumsum()
 
-    # Daily P&L Bar Chart
-    fig.add_trace(go.Bar(
-        x=df['timestamp'],
-        y=df['net_value'],
-        marker_color=['green' if x > 0 else 'red' for x in df['net_value']],
-        name='Daily P&L'
-    ), row=1, col=1)
+    # --- Chart Creation ---
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(12, 8),
+                                   gridspec_kw={'height_ratios': [1, 1]})
 
-    # Cumulative P&L Line Chart
-    fig.add_trace(go.Scatter(
-        x=df['timestamp'],
-        y=df['cumulative_net_value'],
-        mode='lines+markers',
-        name='Cumulative P&L',
-        line=dict(color='#1E90FF')
-    ), row=2, col=1)
+    # --- Daily P&L Bar Chart ---
+    colors = ['g' if x >= 0 else 'r' for x in daily_pnl]
+    ax1.bar(daily_pnl.index, daily_pnl, color=colors, width=0.5)
+    ax1.set_title('Daily Profit & Loss')
+    ax1.set_ylabel('Net P&L (USD)')
+    ax1.grid(True, linestyle='--', alpha=0.6)
 
-    # Update layout
-    fig.update_layout(
-        title_text='Trading Performance',
-        xaxis_title='Date & Time',
-        yaxis_title='P&L (USD)',
-        yaxis2_title='Total P&L (USD)',
-        showlegend=False,
-        height=600
-    )
+    # --- Cumulative P&L Line Chart ---
+    ax2.plot(df_sorted['timestamp'], df_sorted['cumulative_net_value'],
+             marker='o', linestyle='-', color='b', markersize=4)
+    ax2.set_title('Cumulative Performance')
+    ax2.set_xlabel('Date')
+    ax2.set_ylabel('Total P&L (USD)')
+    ax2.grid(True, linestyle='--', alpha=0.6)
 
-    # Save to PNG
-    fig.write_image(output_path)
+    # --- Formatting ---
+    # Improve date formatting on the x-axis
+    ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    fig.autofmt_xdate()
+
+    fig.suptitle('Trading Performance', fontsize=16)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    # --- Save to PNG ---
+    plt.savefig(output_path, dpi=150)
+    plt.close(fig)
 
     return os.path.abspath(output_path)
