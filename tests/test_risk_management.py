@@ -103,7 +103,7 @@ class TestRiskManagement(unittest.TestCase):
         mock_ib = MagicMock(spec=IB)
         newly_filled_trade = MagicMock(
             spec=Trade,
-            order=MagicMock(orderId=102, action='BUY'),
+            order=MagicMock(orderId=102, action='BUY', outsideRth=False),
             contract=MagicMock(localSymbol='KCH5'),
             orderStatus=MagicMock(status=OrderStatus.Filled, filled=1, avgFillPrice=3.50)
         )

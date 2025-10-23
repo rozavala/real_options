@@ -166,6 +166,9 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
                     # Set a flag to identify this as a risk management order
                     order.outsideRth = True
 
+                    # Set a flag to identify this as a risk management order
+                    order.outsideRth = True
+
                     trade = place_order(ib, leg_pos_to_close.contract, order)
 
                     # --- Wait for the fill and capture details ---
@@ -216,6 +219,12 @@ def _on_order_status(ib: IB, trade: Trade):
     """Event handler for order status updates."""
     if trade.orderStatus.status == OrderStatus.Filled and trade.order.orderId not in _filled_order_ids:
         try:
+            # --- Skip logging if this is a risk management closure ---
+            # These are logged separately. The `outsideRth` flag is used as an identifier.
+            if trade.order.outsideRth:
+                logging.info(f"Skipping duplicate log for risk management closure of order ID {trade.order.orderId}.")
+                return
+
             # Skip logging for the parent Bag contract, only log the legs.
             if isinstance(trade.contract, Bag):
                 logging.info(f"Skipping summary fill event for Bag order {trade.order.orderId}.")
