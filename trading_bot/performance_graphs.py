@@ -2,68 +2,78 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from datetime import datetime
 
-def generate_performance_chart(df: pd.DataFrame, output_path: str = 'daily_performance.png') -> str | None:
+def generate_performance_charts(trade_df: pd.DataFrame, signals_df: pd.DataFrame) -> list[str]:
     """
-    Generates a Month-to-Date (MTD) performance chart and saves it to a PNG file.
-    The top subplot shows a cumulative P&L line chart (equity curve).
-    The bottom subplot shows a daily P&L bar chart.
+    Generates a series of life-to-date performance charts.
+    - Chart 1: Cumulative P&L (Line Chart)
+    - Chart 2: Daily P&L (Bar Chart)
+    - Chart 3: P&L by Model Signal (Bar Chart)
 
     Args:
-        df (pd.DataFrame): DataFrame containing the complete trade ledger data.
-        output_path (str): The path to save the output PNG file.
+        trade_df (pd.DataFrame): DataFrame with all trade data.
+        signals_df (pd.DataFrame): DataFrame with all model signal data.
 
     Returns:
-        The absolute path to the saved chart PNG file, or None if the DataFrame is empty.
+        A list of file paths for the generated charts.
     """
-    if df.empty:
-        return None
+    if trade_df.empty:
+        return []
 
-    # --- Data Preparation ---
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    output_paths = []
 
-    # Determine the analysis month from the most recent trade
-    latest_date = df['timestamp'].max()
-    start_of_month = latest_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    # --- Data Prep ---
+    trade_df['timestamp'] = pd.to_datetime(trade_df['timestamp'])
+    daily_pnl = trade_df.resample('D', on='timestamp')['total_value_usd'].sum()
+    cumulative_pnl = daily_pnl.cumsum()
 
-    # Filter for Month-to-Date (MTD) data
-    mtd_df = df[df['timestamp'] >= start_of_month].copy()
-    if mtd_df.empty:
-        return None # No trades this month
+    # --- Chart 1: Cumulative P&L (Life-to-Date) ---
+    plt.figure(figsize=(12, 6))
+    plt.plot(cumulative_pnl.index, cumulative_pnl, marker='o', linestyle='-', color='b', markersize=4)
+    plt.title("Cumulative P&L (Life-to-Date)")
+    plt.ylabel("Equity Curve (USD)")
+    plt.xlabel("Date")
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    plt.gcf().autofmt_xdate()
+    path1 = os.path.abspath('cumulative_pnl_ltd.png')
+    plt.savefig(path1, dpi=150)
+    plt.close()
+    output_paths.append(path1)
 
-    # Aggregate daily P&L for the bar chart
-    daily_pnl = mtd_df.resample('D', on='timestamp')['signed_value_usd'].sum()
-
-    # Calculate cumulative P&L for the line chart (equity curve)
-    mtd_df_sorted = mtd_df.sort_values('timestamp')
-    mtd_df_sorted['cumulative_pnl'] = mtd_df_sorted['signed_value_usd'].cumsum()
-
-    # --- Chart Creation ---
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
-
-    # --- Cumulative P&L (MTD) Line Chart ---
-    ax1.plot(mtd_df_sorted['timestamp'], mtd_df_sorted['cumulative_pnl'],
-             marker='o', linestyle='-', color='b', markersize=4)
-    ax1.set_title(f"Cumulative P&L (MTD - {start_of_month.strftime('%B %Y')})")
-    ax1.set_ylabel('Equity Curve (USD)')
-    ax1.grid(True, linestyle='--', alpha=0.6)
-
-    # --- Daily P&L (MTD) Bar Chart ---
+    # --- Chart 2: Daily P&L (Life-to-Date) ---
+    plt.figure(figsize=(12, 6))
     colors = ['g' if x >= 0 else 'r' for x in daily_pnl]
-    ax2.bar(daily_pnl.index, daily_pnl, color=colors, width=0.6)
-    ax2.set_title(f"Daily P&L (MTD - {start_of_month.strftime('%B %Y')})")
-    ax2.set_ylabel('Net P&L (USD)')
-    ax2.set_xlabel('Date')
-    ax2.grid(True, linestyle='--', alpha=0.6)
+    plt.bar(daily_pnl.index, daily_pnl, color=colors, width=0.8)
+    plt.title("Daily P&L (Life-to-Date)")
+    plt.ylabel("Net P&L (USD)")
+    plt.xlabel("Date")
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    plt.gcf().autofmt_xdate()
+    path2 = os.path.abspath('daily_pnl_ltd.png')
+    plt.savefig(path2, dpi=150)
+    plt.close()
+    output_paths.append(path2)
 
-    # --- Formatting ---
-    ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-    fig.autofmt_xdate()
-    plt.tight_layout()
+    # --- Chart 3: P&L by Model Signal (Life-to-Date) ---
+    if not signals_df.empty:
+        # This logic is a simplified representation. The full logic from model performance report should be used here.
+        # For now, we will just group by signal type.
+        signals_df['timestamp'] = pd.to_datetime(signals_df['timestamp'])
+        merged_df = pd.merge_asof(trade_df.sort_values('timestamp'), signals_df.sort_values('timestamp'), on='timestamp', direction='backward')
+        pnl_by_signal = merged_df.groupby('signal')['total_value_usd'].sum()
 
-    # --- Save to PNG ---
-    plt.savefig(output_path, dpi=150)
-    plt.close(fig)
+        plt.figure(figsize=(10, 6))
+        pnl_by_signal.plot(kind='bar', color=['g' if x >= 0 else 'r' for x in pnl_by_signal])
+        plt.title("Total P&L by Model Signal (Life-to-Date)")
+        plt.ylabel("Total Net P&L (USD)")
+        plt.xlabel("Model Signal")
+        plt.xticks(rotation=0)
+        plt.grid(True, axis='y', linestyle='--', alpha=0.6)
+        path3 = os.path.abspath('pnl_by_signal_ltd.png')
+        plt.savefig(path3, dpi=150)
+        plt.close()
+        output_paths.append(path3)
 
-    return os.path.abspath(output_path)
+    return output_paths

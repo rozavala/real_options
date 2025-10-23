@@ -1,18 +1,18 @@
-"""Analyzes and reports the performance of trading activities.
-
-This script reads the `trade_ledger.csv` file to calculate and summarize
-the performance of trading strategies. It groups trades by their combo ID
-to correctly attribute profit and loss for multi-leg positions. The script
-generates a daily report that includes the net P&L for positions closed
-that day and a list of all currently open positions.
-"""
+"""Analyzes and reports the performance of trading activities."""
 
 import pandas as pd
 from datetime import datetime
 import os
 import logging
+import asyncio
+import random
+from ib_insync import IB
+
 from logging_config import setup_logging
 from notifications import send_pushover_notification
+from trading_bot.model_signals import get_model_signals_df
+from trading_bot.performance_graphs import generate_performance_charts
+from config_loader import load_config
 
 # --- Logging Setup ---
 setup_logging()
@@ -20,171 +20,277 @@ logger = logging.getLogger("PerformanceAnalyzer")
 
 
 def get_trade_ledger_df():
-    """Reads and consolidates the main and archived trade ledgers for analysis.
-
-    This function combines data from `trade_ledger.csv` and all CSV files
-    in the `archive/` directory into a single DataFrame. This ensures that
-    performance analysis is always run on the complete history of trades.
-
-    Returns:
-        pandas.DataFrame: A DataFrame containing all trade data, or an empty
-        DataFrame if no trade ledger files are found.
-    """
+    """Reads and consolidates the main and archived trade ledgers for analysis."""
     base_dir = os.path.dirname(os.path.abspath(__file__))
     ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-    archive_dir = os.path.join(base_dir, 'archive_ledger')
+    archive_dir = os.path.join(base_dir, 'archive_ledger') # Corrected path
 
     dataframes = []
 
-    # Load the main ledger if it exists
     if os.path.exists(ledger_path):
-        logger.info("Reading main trade ledger...")
         dataframes.append(pd.read_csv(ledger_path))
-
-    # Load archived ledgers
     if os.path.exists(archive_dir):
-        logger.info("Reading archived trade ledgers...")
         archive_files = [os.path.join(archive_dir, f) for f in os.listdir(archive_dir) if f.startswith('trade_ledger_') and f.endswith('.csv')]
         if archive_files:
             df_list = [pd.read_csv(file) for file in archive_files]
             dataframes.extend(df_list)
 
     if not dataframes:
-        logger.warning("No trade ledger data found.")
         return pd.DataFrame()
 
-    # Combine all ledgers and sort by timestamp
-    logger.info(f"Consolidating {len(dataframes)} ledger file(s).")
     full_ledger = pd.concat(dataframes, ignore_index=True)
     full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
     return full_ledger.sort_values(by='timestamp').reset_index(drop=True)
 
 
-from trading_bot.performance_graphs import generate_performance_chart
-from config_loader import load_config
+def generate_executive_summary(trade_df: pd.DataFrame, signals_df: pd.DataFrame, today_date: datetime.date) -> tuple[str, float]:
+    """Generates Section 1: The Executive Summary."""
 
+    # --- Helper function to calculate metrics for a given period ---
+    def calculate_metrics(trades, signals):
+        if trades.empty:
+            return {
+                "pnl": 0, "signals_fired": len(signals), "trades_executed": 0,
+                "execution_rate": 0, "win_rate": 0, "avg_win": 0, "avg_loss": 0
+            }
 
-def analyze_performance(config: dict) -> tuple[str, float, str | None] | None:
-    """Analyzes the trade ledger to report on daily trading performance.
+        # Create a stable position identifier
+        combo_legs_map = trades.groupby('combo_id')['local_symbol'].unique().apply(lambda legs: tuple(sorted(legs)))
+        trades['position_id'] = trades['combo_id'].map(combo_legs_map)
 
-    Args:
-        config (dict): The application configuration dictionary.
+        # Calculate P&L for each closed position
+        closed_positions = trades.groupby('position_id').filter(lambda x: (x['action'].eq('BUY').astype(int) - x['action'].eq('SELL').astype(int)).sum() == 0)
+        pnl_per_position = closed_positions.groupby('position_id')['total_value_usd'].sum()
 
-    Returns:
-        A tuple containing the report string, total P&L, and chart path,
-        or None if analysis fails.
+        net_pnl = pnl_per_position.sum()
+        trades_executed = pnl_per_position.count()
+
+        wins = pnl_per_position[pnl_per_position > 0]
+        losses = pnl_per_position[pnl_per_position <= 0]
+
+        win_rate = len(wins) / trades_executed if trades_executed > 0 else 0
+        avg_win = wins.mean() if not wins.empty else 0
+        avg_loss = losses.mean() if not losses.empty else 0
+        signals_fired = len(signals[signals['signal'] != 'NEUTRAL'])
+        execution_rate = trades_executed / signals_fired if signals_fired > 0 else 0
+
+        return {
+            "pnl": net_pnl, "signals_fired": signals_fired, "trades_executed": trades_executed,
+            "execution_rate": execution_rate, "win_rate": win_rate, "avg_win": avg_win, "avg_loss": avg_loss
+        }
+
+    # --- Calculate for Today and Life-to-Date ---
+    today_trades = trade_df[trade_df['timestamp'].dt.date == today_date]
+    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date]
+
+    today_metrics = calculate_metrics(today_trades, today_signals)
+    ltd_metrics = calculate_metrics(trade_df, signals_df)
+
+    # --- Build HTML Report Table ---
+    report = "<b>Section 1: Executive Summary</b>\n"
+    report += "<table border='1' cellpadding='5' cellspacing='0'>"
+    report += "<tr><th>Metric</th><th>Today</th><th>Life-to-Date</th></tr>"
+
+    # --- Rows ---
+    rows = {
+        "Net P&L": (f"${today_metrics['pnl']:,.2f}", f"${ltd_metrics['pnl']:,.2f}"),
+        "Model Signals Fired": (f"{today_metrics['signals_fired']}", f"{ltd_metrics['signals_fired']}"),
+        "Trades Executed": (f"{today_metrics['trades_executed']}", f"{ltd_metrics['trades_executed']}"),
+        "Execution Rate": (f"{today_metrics['execution_rate']:.1%}", f"{ltd_metrics['execution_rate']:.1%}"),
+        "Win Rate (by P&L)": (f"{today_metrics['win_rate']:.1%}", f"{ltd_metrics['win_rate']:.1%}"),
+        "Avg. Win / Avg. Loss": (f"${today_metrics['avg_win']:,.0f} / ${today_metrics['avg_loss']:,.0f}", f"${ltd_metrics['avg_win']:,.0f} / ${ltd_metrics['avg_loss']:,.0f}")
+    }
+
+    for metric, (today_val, ltd_val) in rows.items():
+        report += f"<tr><td>{metric}</td><td>{today_val}</td><td>{ltd_val}</td></tr>"
+
+    report += "</table>\n\n"
+
+    return report, today_metrics['pnl']
+
+def generate_model_performance_report(trade_df: pd.DataFrame, signals_df: pd.DataFrame, today_date: datetime.date) -> tuple[str, float]:
+    """Generates Section 2: Model Performance & Attribution."""
+    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date].copy()
+    today_trades = trade_df[trade_df['timestamp'].dt.date == today_date].copy()
+
+    if today_signals.empty:
+        return "<b>Section 2: Model Performance & Attribution</b>\nNo model signals for today.\n\n", 0.0
+
+    # 1. Process trade data to get P&L per position
+    if not today_trades.empty:
+        combo_legs_map = today_trades.groupby('combo_id')['local_symbol'].unique().apply(lambda legs: tuple(sorted(legs)))
+        today_trades['position_id'] = today_trades['combo_id'].map(combo_legs_map)
+
+        closed_positions = today_trades.groupby('position_id').filter(lambda x: (x['action'].eq('BUY').astype(int) - x['action'].eq('SELL').astype(int)).sum() == 0)
+        pnl_per_position = closed_positions.groupby('position_id')['total_value_usd'].sum().reset_index()
+        pnl_per_position = pnl_per_position.rename(columns={'total_value_usd': 'net_pnl'})
+
+        # Get exit reason and contract for each position
+        def get_position_details(group):
+            exit_reason = group[group['reason'] != 'Strategy Execution']['reason'].iloc[0] if not group[group['reason'] != 'Strategy Execution'].empty else 'N/A'
+            # Extract underlying from the first leg's local symbol (e.g., 'KOZ5' from 'KOZ5 P4.175')
+            contract = group['local_symbol'].iloc[0].split(' ')[0][:4]
+            return pd.Series({'exit_reason': exit_reason, 'contract': contract})
+
+        position_details = closed_positions.groupby('position_id').apply(get_position_details).reset_index()
+        pnl_per_position = pd.merge(pnl_per_position, position_details, on='position_id')
+
+    else:
+        pnl_per_position = pd.DataFrame(columns=['position_id', 'net_pnl', 'exit_reason', 'contract'])
+
+    # 2. Join signal data with trade data
+    def get_contract_prefix(contract_string):
+        # Extracts 'KOM6' from 'KOM6 C1.23'
+        return contract_string.split(' ')[0][:4]
+
+    pnl_per_position['contract_prefix'] = pnl_per_position['contract'].apply(get_contract_prefix)
+
+    # The signal 'contract' is like '202512', need to map to month codes
+    month_code_map = {1: 'F', 2: 'G', 3: 'H', 4: 'J', 5: 'K', 6: 'M', 7: 'N', 8: 'Q', 9: 'U', 10: 'V', 11: 'X', 12: 'Z'}
+    today_signals['month'] = pd.to_datetime(today_signals['contract'], format='%Y%m').dt.month
+    today_signals['year_last_digit'] = pd.to_datetime(today_signals['contract'], format='%Y%m').dt.strftime('%y').str[-1]
+    today_signals['signal_contract_prefix'] = "KC" + today_signals['month'].map(month_code_map) + today_signals['year_last_digit']
+
+    report_df = pd.merge(today_signals, pnl_per_position, left_on='signal_contract_prefix', right_on='contract_prefix', how='left')
+
+    # 3. Populate report columns
+    report_df['Trade Executed?'] = report_df['net_pnl'].notna().map({True: 'Yes', False: 'No'})
+    report_df['Position'] = report_df['position_id'].apply(lambda x: ' / '.join(x) if isinstance(x, tuple) else 'N/A')
+    report_df['Net P&L'] = report_df['net_pnl'].fillna(0)
+    report_df['Exit Reason'] = report_df['exit_reason'].fillna('N/A')
+
+    def determine_signal_hit(row):
+        if row['Trade Executed?'] == 'No':
+            return 'N/A'
+        return 'Yes' if row['Net P&L'] > 0 else 'No'
+        
+    report_df['Signal Hit?'] = report_df.apply(determine_signal_hit, axis=1)
+
+    # --- Build HTML Report Table ---
+    report = "<b>Section 2: Model Performance & Attribution</b>\n"
+    report += "<table border='1' cellpadding='5' cellspacing='0'>"
+    report += "<tr><th>Contract</th><th>Model Signal</th><th>Trade Executed?</th><th>Position</th><th>Net P&L</th><th>Exit Reason</th><th>Signal Hit?</th></tr>"
+
+    for _, row in report_df.iterrows():
+        pnl_color = 'green' if row['Net P&L'] > 0 else 'red' if row['Net P&L'] < 0 else 'black'
+        pnl_str = f"<font color='{pnl_color}'>${row['Net P&L']:,.2f}</font>"
+        report += (f"<tr><td>{row['contract_x']}</td><td>{row['signal']}</td><td>{row['Trade Executed?']}</td>"
+                   f"<td>{row['Position']}</td><td>{pnl_str}</td><td>{row['Exit Reason']}</td><td>{row['Signal Hit?']}</td></tr>")
+
+    report += "</table>\n\n"
+
+    model_pnl_sum = report_df['Net P&L'].sum()
+
+    return report, model_pnl_sum
+
+def generate_system_status_report(trade_df: pd.DataFrame, config: dict) -> tuple[str, bool]:
+    """Generates Section 3: System Status Check."""
+    report = "<b>Section 3: System Status Check</b>\n"
+    is_ok = True
+
+    # 1. Position Check
+    trade_df['signed_quantity'] = trade_df.apply(
+        lambda row: row['quantity'] if row['action'] == 'SELL' else -row['quantity'], axis=1
+    )
+    net_positions = trade_df.groupby('local_symbol')['signed_quantity'].sum()
+    open_positions = net_positions[net_positions != 0]
+
+    if not open_positions.empty:
+        report += "<b><font color='red'>!! WARNING: OPEN POSITIONS !!</font></b>\n"
+        for symbol, qty in open_positions.items():
+            action = "SELL" if qty > 0 else "BUY"
+            report += f"  - {action} {int(abs(qty))} {symbol}\n"
+        is_ok = False
+    else:
+        report += "Position Check: PASS (All positions are flat)\n"
+
+    # 2. Pending Orders Check
+    try:
+        open_orders = asyncio.run(check_for_open_orders(config))
+        if open_orders:
+            report += "<b><font color='red'>!! WARNING: PENDING ORDERS !!</font></b>\n"
+            for order in open_orders:
+                report += f"  - {order.action} {order.totalQuantity} {order.contract.localSymbol} (Status: {order.orderStatus.status})\n"
+            is_ok = False
+        else:
+            report += "Pending Orders Check: PASS (No open orders found)\n"
+    except Exception as e:
+        logger.error(f"Failed to check for open orders: {e}")
+        report += "Pending Orders Check: FAIL (Could not connect to broker)\n"
+        is_ok = False
+
+    return report, is_ok
+
+async def check_for_open_orders(config: dict) -> list:
+    """Connects to IB and checks for any open orders."""
+    ib = IB()
+    try:
+        conn_settings = config.get('connection', {})
+        await ib.connectAsync(
+            host=conn_settings.get('host', '127.0.0.1'),
+            port=conn_settings.get('port', 7497),
+            clientId=random.randint(200, 2000),
+            timeout=10
+        )
+        open_orders = await ib.reqAllOpenOrdersAsync()
+        return open_orders
+    finally:
+        if ib.isConnected():
+            ib.disconnect()
+
+def analyze_performance(config: dict) -> tuple[str, float, list[str]] | None:
     """
-    df = get_trade_ledger_df()
-    if df is None or df.empty:
+    Analyzes the trade ledger to report on daily trading performance.
+    Orchestrates the generation of all report sections.
+    """
+    trade_df = get_trade_ledger_df()
+    signals_df = get_model_signals_df()
+
+    if trade_df.empty:
         logger.error("Trade ledger is empty or not found. Cannot analyze performance.")
         return None
 
     logger.info("--- Starting Daily Performance Analysis ---")
 
     try:
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        # Use the latest date in the ledger as the analysis date
-        today_date = df['timestamp'].max().date()
+        today_date = trade_df['timestamp'].max().date()
         today_str = today_date.strftime('%Y-%m-%d')
-        
-        # Create a stable position identifier from the sorted legs of each combo
-        # This ensures that an open and its corresponding close are grouped together
-        # regardless of their `combo_id`.
-        combo_legs_map = df.groupby('combo_id')['local_symbol'].unique().apply(lambda legs: tuple(sorted(legs)))
-        df['position_id'] = df['combo_id'].map(combo_legs_map)
 
-        grouped = df.groupby('position_id')
-        total_pnl = 0
-        closed_positions_summary = []
-        open_positions_summary = []
+        # --- Generate Sections ---
+        summary_report, daily_pnl = generate_executive_summary(trade_df, signals_df, today_date)
+        model_report, model_pnl = generate_model_performance_report(trade_df, signals_df, today_date)
+        status_report, is_status_ok = generate_system_status_report(trade_df, config)
 
-        # The 'total_value_usd' column is already signed correctly (negative for BUY, positive for SELL),
-        # representing the cash flow for each transaction. We use it directly for P&L calculations.
-        df['signed_value_usd'] = df['total_value_usd']
-        df['signed_quantity'] = df.apply(
-            lambda row: -row['quantity'] if row['action'] == 'BUY' else row['quantity'],
-            axis=1
-        )
-
-        for position_id, group in grouped:
-            leg_quantities = group.groupby('local_symbol')['signed_quantity'].sum()
-
-            # Check if the position is currently flat
-            if (leg_quantities == 0).all():
-                # To be considered "closed today", it must have trades today AND not have been closed before today.
-                trades_today = group[group['timestamp'].dt.date == today_date]
-                if not trades_today.empty:
-                    trades_before_today = group[group['timestamp'].dt.date < today_date]
-
-                    is_closed_before_today = False
-                    if not trades_before_today.empty:
-                        qtys_before_today = trades_before_today.groupby('local_symbol')['signed_quantity'].sum()
-                        # Reindex to handle legs that only appeared today
-                        qtys_before_today = qtys_before_today.reindex(leg_quantities.index, fill_value=0)
-                        if (qtys_before_today == 0).all():
-                            is_closed_before_today = True
-
-                    if not is_closed_before_today:
-                        # This position was officially closed today. P&L is the sum of all its transactions.
-                        combo_pnl = group['signed_value_usd'].sum()
-                        total_pnl += combo_pnl
-
-                        # Create a display string for the position's legs
-                        legs_str = " | ".join(position_id)
-                        display_id = f"Spread: {legs_str}"
-
-                        summary_line = (
-                            f"  - {display_id}: Net P&L = ${combo_pnl:,.2f} "
-                            f"(Closed {group['timestamp'].max().strftime('%H:%M')})"
-                        )
-                        closed_positions_summary.append(summary_line)
-            else:
-                # It's an open position. Summarize it correctly.
-                entry_cost = group['signed_value_usd'].sum()
-
-                position_details = []
-                net_leg_quantities = group.groupby('local_symbol')['signed_quantity'].sum()
-                for symbol, qty in net_leg_quantities.items():
-                    if qty == 0:
-                        continue
-                    action = 'SELL' if qty > 0 else 'BUY'
-                    position_details.append(f"{action} {int(abs(qty))} {symbol}")
-
-                cost_type = "Credit" if entry_cost > 0 else "Debit"
-                summary_line = f"  - {' | '.join(position_details)} (Net {cost_type}: ${abs(entry_cost):,.2f})"
-                open_positions_summary.append(summary_line)
-
-        report = f"<b>Trading Performance Report: {today_str}</b>\n\n"
-        report += f"<b>Daily Net P&L: ${total_pnl:,.2f}</b>\n\n"
-        
-        if closed_positions_summary:
-            report += "<b>Positions Closed Today:</b>\n" + "\n".join(closed_positions_summary) + "\n\n"
+        # --- Data Integrity Check ---
+        if not is_status_ok or abs(daily_pnl - model_pnl) > 0.01: # Using a small tolerance for float comparison
+            status_report += "\n<b><font color='red'>!! DATA INTEGRITY CHECK: FAIL !!</font></b>"
+            logger.error(f"Data integrity check failed: Exec Summary P&L (${daily_pnl}) != Model Perf P&L (${model_pnl})")
         else:
-            report += "No positions were closed today.\n\n"
+            status_report += "\n<b>Data Integrity Check: PASS</b>"
 
-        if open_positions_summary:
-            report += "<b>Currently Open Positions:</b>\n" + "\n".join(open_positions_summary)
-        else:
-            report += "No currently open positions."
 
-        # --- Generate Performance Chart ---
-        chart_path = None
+        # --- Assemble Final Report ---
+        full_report = f"<b>Trading Performance Report: {today_str}</b>\n\n"
+        full_report += summary_report
+        full_report += model_report
+        full_report += status_report
+
+        # --- Generate Performance Charts ---
+        chart_paths = [] # Will hold paths to multiple charts
         try:
-            # Pass the dataframe to the chart generation function
-            chart_path = generate_performance_chart(df)
-            if chart_path:
-                logger.info(f"Performance chart generated at: {chart_path}")
+            chart_paths = generate_performance_charts(trade_df, signals_df) # Updated function call
+            if chart_paths:
+                logger.info(f"Performance charts generated.")
             else:
-                logger.warning("Performance chart could not be generated.")
+                logger.warning("Performance charts could not be generated.")
         except Exception as e:
-            # The original traceback is preserved with exc_info=True
-            logger.error(f"Error generating performance chart: {e}", exc_info=True)
+            logger.error(f"Error generating performance charts: {e}", exc_info=True)
 
 
         logger.info("--- Analysis Complete ---")
-        print(report) # Keep for console output
+        print(full_report)
         
-        return report, total_pnl, chart_path
+        return full_report, daily_pnl, chart_paths
 
     except Exception as e:
         logger.error(f"An error occurred during performance analysis: {e}", exc_info=True)
@@ -202,18 +308,23 @@ def main():
     analysis_result = analyze_performance(config)
 
     if analysis_result:
-        report, total_pnl, chart_path = analysis_result
+        report, total_pnl, chart_paths = analysis_result
         title = f"Daily Report: P&L ${total_pnl:,.2f}"
 
-        # Send notification with the chart if available
+        # Send multiple notifications, one for the report and one for each chart
         send_pushover_notification(
             config.get('notifications', {}),
             title,
-            report,
-            attachment_path=chart_path
+            report
         )
+        for chart_path in chart_paths:
+            send_pushover_notification(
+                config.get('notifications', {}),
+                f"Performance Chart: {os.path.basename(chart_path)}",
+                "",
+                attachment_path=chart_path
+            )
     else:
-        # Send a failure notification
         send_pushover_notification(
             config.get('notifications', {}),
             "Performance Analysis FAILED",

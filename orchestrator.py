@@ -24,7 +24,7 @@ import pytz
 from config_loader import load_config
 from logging_config import setup_logging
 from notifications import send_pushover_notification
-from performance_analyzer import analyze_performance
+from performance_analyzer import main as run_performance_analysis
 from trading_bot.order_manager import (
     generate_and_queue_orders,
     place_queued_orders,
@@ -32,7 +32,6 @@ from trading_bot.order_manager import (
     cancel_all_open_orders,
 )
 from trading_bot.utils import archive_trade_ledger
-from trading_bot.performance_graphs import generate_performance_chart
 
 # --- Logging Setup ---
 setup_logging()
@@ -129,33 +128,18 @@ def get_next_task(now_gmt: datetime, schedule: dict) -> tuple[datetime, callable
 
 async def analyze_and_archive(config: dict):
     """
-    Analyzes performance, generates a report with a chart, sends a notification,
-    and then archives the trade ledger.
+    Triggers the performance analysis and then archives the trade ledger.
+    The performance analyzer is responsible for generating and sending the report.
     """
-    logger.info("--- Initiating end-of-day analysis, reporting, and archiving ---")
+    logger.info("--- Initiating end-of-day analysis and archiving ---")
     try:
-        # 1. Analyze performance to get the report data and chart path
-        analysis_result = analyze_performance(config)
-        if not analysis_result:
-            logger.error("Performance analysis failed. Skipping report and archiving.")
-            return
+        # 1. Run the full analysis and reporting process
+        run_performance_analysis()
 
-        # Unpack all three values: report, P&L, and chart path
-        report_text, total_pnl, chart_path = analysis_result
-
-        # 2. Send the notification with the chart
-        notification_title = f"Daily Report: P&L ${total_pnl:,.2f}"
-        send_pushover_notification(
-            config.get('notifications', {}),
-            title=notification_title,
-            message=report_text,
-            attachment_path=chart_path
-        )
-
-        # 3. Archive the ledger
+        # 2. Archive the ledger
         archive_trade_ledger()
 
-        logger.info("--- End-of-day analysis, reporting, and archiving complete ---")
+        logger.info("--- End-of-day analysis and archiving complete ---")
 
     except Exception as e:
         logger.critical(f"An error occurred during the analysis and archiving process: {e}\n{traceback.format_exc()}")
@@ -167,7 +151,7 @@ schedule = {
     time(8, 52): place_queued_orders,
     time(17, 25): close_all_open_positions,
     time(17, 29): cancel_and_stop_monitoring,
-    time(17, 40): analyze_and_archive
+    time(18, 00): analyze_and_archive
 }
 
 async def main():
