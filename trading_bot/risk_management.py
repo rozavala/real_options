@@ -10,6 +10,7 @@ This module contains the core logic for three key risk management functions:
 
 import asyncio
 import logging
+import time
 import traceback
 
 from ib_insync import *
@@ -215,6 +216,11 @@ def _on_order_status(ib: IB, trade: Trade):
     """Event handler for order status updates."""
     if trade.orderStatus.status == OrderStatus.Filled and trade.order.orderId not in _filled_order_ids:
         try:
+            # Skip logging for the parent Bag contract, only log the legs.
+            if isinstance(trade.contract, Bag):
+                logging.info(f"Skipping summary fill event for Bag order {trade.order.orderId}.")
+                return
+
             # Log the trade immediately upon fill confirmation.
             log_trade_to_ledger(ib, trade, "Daily Strategy Fill", combo_id=trade.order.permId)
             _filled_order_ids.add(trade.order.orderId)
