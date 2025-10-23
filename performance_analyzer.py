@@ -83,22 +83,30 @@ def analyze_performance(config: dict) -> tuple[str, float, str | None] | None:
 
     try:
         df['timestamp'] = pd.to_datetime(df['timestamp'])
-        today_date = datetime.now().date()
+        # Use the latest date in the ledger as the analysis date
+        today_date = df['timestamp'].max().date()
         today_str = today_date.strftime('%Y-%m-%d')
         
-        grouped = df.groupby('combo_id')
+        # Create a stable position identifier from the sorted legs of each combo
+        # This ensures that an open and its corresponding close are grouped together
+        # regardless of their `combo_id`.
+        combo_legs_map = df.groupby('combo_id')['local_symbol'].unique().apply(lambda legs: tuple(sorted(legs)))
+        df['position_id'] = df['combo_id'].map(combo_legs_map)
+
+        grouped = df.groupby('position_id')
         total_pnl = 0
         closed_positions_summary = []
         open_positions_summary = []
 
-        # Create a signed value based on action for correct P&L and cost calculation
-        df['signed_value_usd'] = df.apply(
-            lambda row: -row['total_value_usd'] if row['action'] == 'BUY' else row['total_value_usd'],
+        # The 'total_value_usd' column is already signed correctly (negative for BUY, positive for SELL),
+        # representing the cash flow for each transaction. We use it directly for P&L calculations.
+        df['signed_value_usd'] = df['total_value_usd']
+        df['signed_quantity'] = df.apply(
+            lambda row: -row['quantity'] if row['action'] == 'BUY' else row['quantity'],
             axis=1
         )
-        df['signed_quantity'] = df.apply(lambda row: -row['quantity'] if row['action'] == 'BUY' else row['quantity'], axis=1)
 
-        for combo_id, group in grouped:
+        for position_id, group in grouped:
             leg_quantities = group.groupby('local_symbol')['signed_quantity'].sum()
 
             # Check if the position is currently flat
@@ -121,11 +129,9 @@ def analyze_performance(config: dict) -> tuple[str, float, str | None] | None:
                         combo_pnl = group['signed_value_usd'].sum()
                         total_pnl += combo_pnl
 
-                        if isinstance(combo_id, str) and '-' in combo_id:
-                            underlying_symbol = combo_id.split('-')[0]
-                            display_id = f"{underlying_symbol} ({combo_id})"
-                        else:
-                            display_id = f"Combo {combo_id}"
+                        # Create a display string for the position's legs
+                        legs_str = " | ".join(position_id)
+                        display_id = f"Spread: {legs_str}"
 
                         summary_line = (
                             f"  - {display_id}: Net P&L = ${combo_pnl:,.2f} "
