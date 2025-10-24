@@ -41,10 +41,6 @@ def get_trade_ledger_df():
     full_ledger = pd.concat(dataframes, ignore_index=True)
     full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
 
-    # Correct the P&L calculation by converting from cents to dollars
-    if 'total_value_usd' in full_ledger.columns:
-        full_ledger['total_value_usd'] = full_ledger['total_value_usd'] / 100.0
-
     return full_ledger.sort_values(by='timestamp').reset_index(drop=True)
 
 
@@ -95,7 +91,6 @@ def generate_executive_summary(trade_df: pd.DataFrame, signals_df: pd.DataFrame,
 
     # --- Build Monospaced Text Report Table ---
     report = "Section 1: Exec. Summary\n"
-    report += "<pre>"
     report += f"{'Metric':<18} {'Today':>12} {'LTD':>12}\n"
     report += "-" * 44 + "\n"
 
@@ -112,7 +107,7 @@ def generate_executive_summary(trade_df: pd.DataFrame, signals_df: pd.DataFrame,
     for metric, (today_val, ltd_val) in rows.items():
         report += f"{metric:<18} {today_val:>12} {ltd_val:>12}\n"
 
-    report += "</pre>\n"
+    report += "\n"
 
     return report, today_metrics['pnl']
 
@@ -180,7 +175,6 @@ def generate_model_performance_report(trade_df: pd.DataFrame, signals_df: pd.Dat
 
     # --- Build Monospaced Text Report Table ---
     report = "Section 2: Model Performance\n"
-    report += "<pre>"
     header = f"{'Contract':<9} {'Signal':<9} {'Exec?':<6} {'P&L':>9} {'Exit':<10} {'Hit?':<5}"
     report += header + "\n"
     report += "-" * len(header) + "\n"
@@ -196,7 +190,7 @@ def generate_model_performance_report(trade_df: pd.DataFrame, signals_df: pd.Dat
         report += (f"{row['contract_x']:<9} {signal_str:<9} {executed_str:<6} "
                    f"{pnl_str:>9} {exit_reason_str:<10} {signal_hit_str:<5}\n")
 
-    report += "</pre>\n"
+    report += "\n"
 
     model_pnl_sum = report_df['Net P&L'].sum()
 
@@ -216,11 +210,10 @@ async def generate_system_status_report(trade_df: pd.DataFrame, config: dict) ->
     open_positions = net_positions[net_positions != 0]
 
     if not open_positions.empty:
-        report += "!! WARNING: OPEN POSITIONS !!\n<pre>"
+        report += "!! WARNING: OPEN POSITIONS !!\n"
         for symbol, qty in open_positions.items():
             action = "SELL" if qty > 0 else "BUY"
             report += f"- {action} {int(abs(qty))} {symbol}\n"
-        report += "</pre>"
         is_ok = False
     else:
         report += "Position Check: PASS (All flat)\n"
@@ -229,10 +222,9 @@ async def generate_system_status_report(trade_df: pd.DataFrame, config: dict) ->
     try:
         open_orders = await check_for_open_orders(config)
         if open_orders:
-            report += "!! WARNING: PENDING ORDERS !!\n<pre>"
+            report += "!! WARNING: PENDING ORDERS !!\n"
             for order in open_orders:
                 report += f"- {order.action} {order.totalQuantity} {order.contract.localSymbol} ({order.orderStatus.status})\n"
-            report += "</pre>"
             is_ok = False
         else:
             report += "Pending Orders: PASS (None found)\n"
