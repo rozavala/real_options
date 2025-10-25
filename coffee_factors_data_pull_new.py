@@ -31,6 +31,7 @@ from bs4 import BeautifulSoup
 
 # --- Custom Modules ---
 from notifications import send_pushover_notification
+from config_loader import load_config
 
 # --- Validation Manager Class ---
 class ValidationManager:
@@ -362,7 +363,7 @@ def process_historical_contracts(df_coffee: pd.DataFrame) -> pd.DataFrame:
     all_rows = []
 
     # Iterate through each business day in the data's range
-    for date in pd.bdate_range(start=df_coffee.index.min(), end=df_coffee.index.max()):
+    for date in df_coffee.index:
 
         # Find active contracts for this date
         active_contracts = []
@@ -397,3 +398,11 @@ def process_historical_contracts(df_coffee: pd.DataFrame) -> pd.DataFrame:
     processed_df = pd.DataFrame(all_rows).set_index('date')
     print("...historical data processed.")
     return processed_df
+
+if __name__ == "__main__":
+    print("Running data pull script directly...")
+    config = load_config()
+    if config:
+        main(config)
+    else:
+        print("CRITICAL: Could not load configuration. Exiting.")
