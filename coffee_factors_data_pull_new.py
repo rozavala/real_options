@@ -28,6 +28,7 @@ import io
 import re
 from pandas.tseries.offsets import BDay
 from bs4 import BeautifulSoup
+import cloudscraper
 
 # --- Custom Modules ---
 from notifications import send_pushover_notification
@@ -196,10 +197,8 @@ def main(config: dict) -> bool:
     print("\nFetching ICE Certified Coffee Stocks...")
     try:
         url = "https://en.macromicro.me/charts/23838/ice-coffee-stock"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-        }
-        response = requests.get(url, headers=headers)
+        scraper = cloudscraper.create_scraper()
+        response = scraper.get(url)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
 
