@@ -200,38 +200,21 @@ def main(config: dict) -> bool:
             browser = p.chromium.launch()
             page = browser.new_page()
             page.goto("https://en.macromicro.me/charts/23838/ice-coffee-stock")
-            # Wait for the main chart container to be visible, with a longer timeout
             page.wait_for_selector('#chart-container', timeout=60000)
-            html_content = page.content()
+
+            # Execute JavaScript to get the chart data directly
+            chart_data_list = page.evaluate("() => { return Highcharts.charts[0].series[0].options.data; }")
             browser.close()
 
-        soup = BeautifulSoup(html_content, 'html.parser')
-
-        # Find the script tag containing the chart data
-        chart_data = None
-        for script_tag in soup.find_all('script'):
-            if script_tag.string:
-                # Use a regex to find a JSON object that looks like chart data
-                match = re.search(r'{\s*"series":\s*\[.*\]\s*}', script_tag.string)
-                if match:
-                    try:
-                        chart_data = json.loads(match.group(0))
-                        break
-                    except json.JSONDecodeError:
-                        continue # Ignore scripts that look like data but aren't valid JSON
-
-        if chart_data:
-            # The data is in the 'series' list, first element
-            data_points = chart_data['series'][0]['data']
-
-            dates = [datetime.fromtimestamp(d[0] / 1000) for d in data_points]
-            values = [d[1] for d in data_points]
+        if chart_data_list:
+            dates = [datetime.fromtimestamp(d[0] / 1000) for d in chart_data_list]
+            values = [d[1] for d in chart_data_list]
 
             df_ice_stocks = pd.DataFrame({'ice_coffee_stocks': values}, index=dates)
             all_data['ice_coffee_stocks'] = df_ice_stocks
             validator.add_check("ICE Coffee Stocks Fetch", True, "Successfully scraped data from macromicro.me.")
         else:
-            validator.add_check("ICE Coffee Stocks Fetch", False, "Could not find chart data script on the page.")
+            validator.add_check("ICE Coffee Stocks Fetch", False, "Could not extract chart data using JavaScript.")
 
     except Exception as e:
         validator.add_check("ICE Coffee Stocks Fetch", False, f"Could not scrape ICE coffee stocks: {e}")

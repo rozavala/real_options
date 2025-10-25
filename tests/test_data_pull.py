@@ -91,9 +91,7 @@ class TestDataPull(unittest.TestCase):
         mock_page = MagicMock()
         mock_playwright.chromium.launch.return_value = mock_browser
         mock_browser.new_page.return_value = mock_page
-        mock_page.content.return_value = mock_ice_response.content
-        # Ensure the wait_for_selector call in the script does not hang
-        mock_page.wait_for_selector.return_value = None
+        mock_page.evaluate.return_value = [[1672531200000, 100], [1672617600000, 101]]
 
         def requests_get_side_effect(url, **kwargs):
             if "open-meteo.com" in url: return mock_weather_response
