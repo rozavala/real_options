@@ -28,7 +28,7 @@ import io
 import re
 from pandas.tseries.offsets import BDay
 from bs4 import BeautifulSoup
-import cloudscraper
+from playwright.sync_api import sync_playwright
 
 # --- Custom Modules ---
 from notifications import send_pushover_notification
@@ -196,11 +196,16 @@ def main(config: dict) -> bool:
     # --- 3a. Fetch ICE Coffee Stock Data ---
     print("\nFetching ICE Certified Coffee Stocks...")
     try:
-        url = "https://en.macromicro.me/charts/23838/ice-coffee-stock"
-        scraper = cloudscraper.create_scraper()
-        response = scraper.get(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, 'html.parser')
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page()
+            page.goto("https://en.macromicro.me/charts/23838/ice-coffee-stock")
+            # Wait for the chart to be visible
+            page.wait_for_selector('.highcharts-series-group')
+            html_content = page.content()
+            browser.close()
+
+        soup = BeautifulSoup(html_content, 'html.parser')
 
         # Find the script tag containing the chart data
         chart_data = None

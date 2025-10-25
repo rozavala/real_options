@@ -27,10 +27,10 @@ class TestDataPull(unittest.TestCase):
     @patch('coffee_factors_data_pull_new.yf.download')
     @patch('coffee_factors_data_pull_new.Fred')
     @patch('coffee_factors_data_pull_new.requests.get')
-    @patch('coffee_factors_data_pull_new.cloudscraper.create_scraper')
+    @patch('coffee_factors_data_pull_new.sync_playwright')
     @patch('coffee_factors_data_pull_new.send_pushover_notification')
     @patch('pandas.DataFrame.to_csv')
-    def test_data_pull_success(self, mock_to_csv, mock_send_notification, mock_create_scraper, mock_requests_get, mock_fred, mock_yf_download, mock_datetime, mock_get_tickers):
+    def test_data_pull_success(self, mock_to_csv, mock_send_notification, mock_sync_playwright, mock_requests_get, mock_fred, mock_yf_download, mock_datetime, mock_get_tickers):
         # --- Mock yfinance data for historical contracts ---
         mock_coffee_data = {
             ('Open', 'KCH25.NYB'): {'2025-01-01': 99, '2025-01-02': 100},
@@ -84,9 +84,14 @@ class TestDataPull(unittest.TestCase):
             </html>
         """
 
-        mock_scraper = MagicMock()
-        mock_create_scraper.return_value = mock_scraper
-        mock_scraper.get.return_value = mock_ice_response
+        # --- Mock Playwright ---
+        mock_playwright = MagicMock()
+        mock_sync_playwright.return_value.__enter__.return_value = mock_playwright
+        mock_browser = MagicMock()
+        mock_page = MagicMock()
+        mock_playwright.chromium.launch.return_value = mock_browser
+        mock_browser.new_page.return_value = mock_page
+        mock_page.content.return_value = mock_ice_response.content
 
         def requests_get_side_effect(url, **kwargs):
             if "open-meteo.com" in url: return mock_weather_response
