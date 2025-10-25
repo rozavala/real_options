@@ -25,7 +25,9 @@ from fredapi import Fred
 import requests
 import zipfile
 import io
+import re
 from pandas.tseries.offsets import BDay
+from bs4 import BeautifulSoup
 
 # --- Custom Modules ---
 from notifications import send_pushover_notification
@@ -82,26 +84,25 @@ def get_kc_expiration_date(year: int, month_code: str) -> pd.Timestamp:
         last_business_day -= pd.Timedelta(days=1)
     return last_business_day - BDay(1)
 
-def get_active_coffee_tickers(num_contracts: int = 5) -> list[str]:
-    """Determines the tickers for the next N active coffee futures contracts."""
-    print(f"Dynamically determining the next {num_contracts} coffee tickers...")
+def get_historical_coffee_tickers(years: int = 10) -> list[str]:
+    """Generates a list of historical coffee futures tickers for the last N years."""
+    print(f"Generating historical coffee tickers for the last {years} years...")
     now = datetime.now()
-    current_year = now.year
-    contract_months = {'H': 3, 'K': 5, 'N': 7, 'U': 9, 'Z': 12}
-    potential_tickers = []
-    for year_offset in range(3):
-        year = current_year + year_offset
-        for code in contract_months.keys():
-            try:
-                expiration_date = get_kc_expiration_date(year, code)
-                if expiration_date.date() >= now.date():
-                    potential_tickers.append((f"KC{code}{str(year)[-2:]}.NYB", expiration_date))
-            except ValueError:
-                continue
-    potential_tickers.sort(key=lambda x: x[1])
-    active_tickers = [ticker for ticker, exp in potential_tickers[:num_contracts]]
-    print(f"... chronological tickers found: {active_tickers}")
-    return active_tickers
+    end_year = now.year
+    start_year = end_year - years
+
+    contract_months = ['H', 'K', 'N', 'U', 'Z']
+    tickers = []
+
+    for year in range(start_year, end_year + 1):
+        for month_code in contract_months:
+            # Construct the ticker, e.g., KCH24.NYB for March 2024
+            ticker = f"KC{month_code}{str(year)[-2:]}.NYB"
+            tickers.append(ticker)
+
+    print(f"...generated {len(tickers)} tickers.")
+    return tickers
+
 
 def main(config: dict) -> bool:
     """Runs the main data pull, validation, and processing pipeline."""
@@ -112,31 +113,30 @@ def main(config: dict) -> bool:
     
     # --- API and Date Configuration ---
     fred = Fred(api_key=config['fred_api_key'])
-    start_date = datetime(1980, 1, 1)
+    start_date = datetime.now() - timedelta(days=10*365) # Approx 10 years
     end_date = datetime.now()
     
     print("Setup complete.")
     all_data = {}
     
     # --- 1. Fetch Coffee Futures Data ---
-    chronological_tickers = get_active_coffee_tickers(num_contracts=5)
-    df_coffee = pd.DataFrame() 
-    if not chronological_tickers:
-        validator.add_check("Coffee Ticker Generation", False, "Could not determine active coffee tickers.")
+    historical_tickers = get_historical_coffee_tickers(years=10)
+    df_coffee = pd.DataFrame()
+    if not historical_tickers:
+        validator.add_check("Coffee Ticker Generation", False, "Could not determine historical coffee tickers.")
     else:
-        print("\nFetching Coffee Prices...")
+        print(f"\nFetching {len(historical_tickers)} historical coffee contracts for full OHLCV data...")
         try:
-            df_coffee = yf.download(chronological_tickers, start=start_date, end=end_date, progress=False)
-            if not df_coffee.empty and 'Close' in df_coffee and not df_coffee['Close'].dropna(how='all').empty:
-                df_price = df_coffee['Close'].copy()
-                df_price.dropna(axis=1, how='all', inplace=True)
-                df_price.columns = [f"coffee_price_{t.replace('.NYB', '')}" for t in df_price.columns]
-                all_data['coffee_prices'] = df_price
-                validator.add_check("Coffee Price Fetch", True, f"Successfully fetched {df_price.shape[1]} active contracts.")
+            # Download all OHLCV data. The default yfinance format will have multi-level columns.
+            df_coffee = yf.download(historical_tickers, start=start_date, end=datetime.now(), progress=False)
+
+            if not df_coffee.empty:
+                # The raw data is now in df_coffee. It will be processed in the next step.
+                validator.add_check("Coffee Full Data Fetch", True, f"Successfully fetched OHLCV data for {len(df_coffee.columns.levels[1])} contracts.")
             else:
-                validator.add_check("Coffee Price Fetch", False, "yfinance returned no data for coffee tickers.")
+                validator.add_check("Coffee Full Data Fetch", False, "yfinance returned no data for historical coffee tickers.")
         except Exception as e:
-            validator.add_check("Coffee Price Fetch", False, f"An error occurred: {e}")
+            validator.add_check("Coffee Full Data Fetch", False, f"An error occurred: {e}")
 
     # --- 2. Fetch Weather Data ---
     print("\nFetching weather data...")
@@ -191,25 +191,42 @@ def main(config: dict) -> bool:
     except Exception as e:
          validator.add_check("Other Market Data Fetch", False, f"An error occurred: {e}")
 
-    # --- 3a. Process OHLV and Fetch COT Data ---
-    print("\nProcessing OHLV and fetching COT data...")
+    # --- 3a. Fetch ICE Coffee Stock Data ---
+    print("\nFetching ICE Certified Coffee Stocks...")
+    try:
+        url = "https://en.macromicro.me/charts/23838/ice-coffee-stock"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+        }
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
 
-    if not df_coffee.empty:
-        try:
-            df_ohlv = df_coffee[['Open', 'High', 'Low', 'Volume']].copy()
-            df_ohlv.columns = ['_'.join(col).strip() for col in df_ohlv.columns.values]
+        # Find the script tag containing the chart data
+        script_tag = soup.find('script', string=re.compile('var chart_config'))
+        if script_tag:
+            script_content = script_tag.string
+            # Extract the JSON part from the script content
+            json_str = re.search(r'var chart_config\s*=\s*({.*?});', script_content, re.DOTALL).group(1)
+            chart_data = json.loads(json_str)
             
-            rename_map = {}
-            for col in df_ohlv.columns:
-                measure, ticker = col.split('_')
-                contract_name = ticker.replace('.NYB', '')
-                rename_map[col] = f"{contract_name}_{measure.lower()}"
-            df_ohlv.rename(columns=rename_map, inplace=True)
-            all_data['coffee_ohlv'] = df_ohlv
-            validator.add_check("Coffee OHLV Processing", True, "Successfully processed OHLV data.")
-        except Exception as e:
-            validator.add_check("Coffee OHLV Processing", False, f"Error processing OHLV data: {e}")
+            # The data is in the 'series' list, first element
+            data_points = chart_data['series'][0]['data']
 
+            dates = [datetime.fromtimestamp(d[0] / 1000) for d in data_points]
+            values = [d[1] for d in data_points]
+
+            df_ice_stocks = pd.DataFrame({'ice_coffee_stocks': values}, index=dates)
+            all_data['ice_coffee_stocks'] = df_ice_stocks
+            validator.add_check("ICE Coffee Stocks Fetch", True, "Successfully scraped data from macromicro.me.")
+        else:
+            validator.add_check("ICE Coffee Stocks Fetch", False, "Could not find chart data script on the page.")
+
+    except Exception as e:
+        validator.add_check("ICE Coffee Stocks Fetch", False, f"Could not scrape ICE coffee stocks: {e}")
+
+    # --- 3b. Fetch COT Data ---
+    print("\nFetching COT data...")
     try:
         print("Fetching historical COT data directly from CFTC...")
         all_cot_dfs = []
@@ -253,69 +270,52 @@ def main(config: dict) -> bool:
 
     print("\nAll data fetching complete.")
 
-    # --- 4. Consolidate, Validate, and Save ---
-    if 'coffee_prices' in all_data and not all_data['coffee_prices'].empty:
-        final_df = all_data['coffee_prices'].copy()
+    # --- 4. Process Historical Contracts and Consolidate ---
+    if 'df_coffee' in locals() and not df_coffee.empty:
+        final_df = process_historical_contracts(df_coffee)
+        validator.add_check("Process Historical Contracts", True, "Successfully processed and structured historical coffee data.")
+
+        # Join other data sources
         for name, df in all_data.items():
-            if name != 'coffee_prices':
-                final_df = final_df.join(df, how='left')
+            final_df = final_df.join(df, how='left')
         
         total_cells = final_df.size
         missing_before = final_df.isnull().sum().sum()
         missing_pct = (missing_before / total_cells) * 100 if total_cells > 0 else 0
         validator.add_check("Pre-Fill Missing Data", missing_pct < 50, f"Total missing data before fill is {missing_pct:.2f}%.")
-        final_df.ffill(inplace=True)
 
-        front_month_col = f"coffee_price_{chronological_tickers[0].replace('.NYB', '')}" if chronological_tickers else None
-        
+        final_df.ffill(inplace=True)
+        final_df.bfill(inplace=True)
+
+        # Validation (Recency and Spikes)
+        # Using the front month price for validation checks
         last_date = final_df.index.max()
         is_recent = (datetime.now() - last_date) < timedelta(days=5)
         validator.add_check("Data Recency", is_recent, f"Most recent data point is from {last_date.strftime('%Y-%m-%d')}.")
         
-        if front_month_col and front_month_col in final_df.columns:
-            final_df['price_pct_change'] = final_df[front_month_col].pct_change().abs()
+        if 'H_price' in final_df.columns: # Assuming H is always one of the active contracts
+            final_df['price_pct_change'] = final_df['H_price'].pct_change().abs()
             max_spike = final_df['price_pct_change'].max()
             spike_threshold = config['validation_thresholds']['price_spike_pct']
             no_spikes = max_spike < spike_threshold
             validator.add_check("Price Spike Detection", no_spikes, f"Max daily change was {max_spike:.2%}. Threshold is {spike_threshold:.0%}.")
             final_df.drop(columns=['price_pct_change'], inplace=True)
         else:
-            validator.add_check("Price Spike Detection", False, "Front-month column not found.")
+            validator.add_check("Price Spike Detection", False, "Could not find a price column for spike detection.")
 
         if validator.was_successful():
-            if front_month_col and front_month_col in final_df.columns:
-                final_df.dropna(subset=[front_month_col], inplace=True)
-
-            for col in list(final_df.columns):
-                if col.startswith('coffee_price_KC'):
-                    ticker = col.replace('coffee_price_', '')
-                    if len(ticker) >= 4:
-                        month_code = ticker[2]
-                        year_str = ticker[3:]
-                        try:
-                            year = int(f"20{year_str}")
-                            exp = get_kc_expiration_date(year, month_code)
-                            final_df[f'{month_code}_dte'] = (exp.tz_localize(None) - final_df.index).days
-                            final_df.loc[final_df[f'{month_code}_dte'] < 0, f'{month_code}_dte'] = None
-                            final_df.rename(columns={col: f'{month_code}_price'}, inplace=True)
-                        except (ValueError, TypeError):
-                            print(f"Warning: Could not parse ticker details from column '{col}'.")
-                            continue
-            
+            final_df.index = pd.to_datetime(final_df.index)
             final_df['date'] = final_df.index.strftime('%-m/%-d/%y')
             
             final_cols_from_config = config['final_column_order']
             all_available_cols = list(final_df.columns)
             final_cols = [c for c in final_cols_from_config if c in all_available_cols]
+
             for col in all_available_cols:
                 if col not in final_cols:
                     final_cols.append(col)
 
             final_df = final_df[final_cols]
-            
-            for col in [c for c in final_cols if '_dte' in c]:
-                final_df.loc[:, col] = pd.to_numeric(final_df[col], errors='coerce').astype('Int64')
-            
             final_df.dropna(inplace=True)
             output_filename = f"coffee_futures_data_reformatted_{datetime.now().strftime('%Y-%m-%d')}.csv"
             final_df.to_csv(output_filename, index=False)
@@ -324,7 +324,6 @@ def main(config: dict) -> bool:
             validator.set_final_shape(final_df.shape)
         else:
             print("\nValidation failures occurred. Skipping final processing and file save.")
-
     else:
         validator.add_check("Consolidation", False, "No coffee price data was fetched.")
     
@@ -335,3 +334,66 @@ def main(config: dict) -> bool:
     send_pushover_notification(config.get('notifications', {}), notification_title, report)
 
     return validator.was_successful()
+
+def process_historical_contracts(df_coffee: pd.DataFrame) -> pd.DataFrame:
+    """
+    Processes historical OHLCV data to create a structured DataFrame with the
+    5 closest-to-expiration contracts for each day.
+    """
+    print("Processing historical coffee contract data...")
+
+    # Clean up the raw yfinance data
+    df_coffee.dropna(how='all', inplace=True)
+    df_coffee.index = pd.to_datetime(df_coffee.index)
+
+    # Cache expiration dates
+    expirations = {}
+    contract_tickers = [col for col in df_coffee.columns.levels[1] if 'KC' in col]
+    for ticker in contract_tickers:
+        try:
+            month_code = ticker[2]
+            year_suffix = ticker[3:5]
+            year = int(f"20{year_suffix}")
+            expirations[ticker] = get_kc_expiration_date(year, month_code)
+        except (ValueError, IndexError, TypeError):
+            print(f"Warning: Could not parse expiration for ticker '{ticker}'. Skipping.")
+            continue
+
+    all_rows = []
+
+    # Iterate through each business day in the data's range
+    for date in pd.bdate_range(start=df_coffee.index.min(), end=df_coffee.index.max()):
+
+        # Find active contracts for this date
+        active_contracts = []
+        for ticker, exp_date in expirations.items():
+            if date <= exp_date:
+                dte = (exp_date - date).days
+                active_contracts.append({'ticker': ticker, 'dte': dte})
+
+        # Sort by DTE and take the 5 closest
+        active_contracts.sort(key=lambda x: x['dte'])
+        closest_contracts = active_contracts[:5]
+
+        row_data = {'date': date}
+
+        # For each of the 5 contracts, extract OHLCV and DTE
+        for contract_info in closest_contracts:
+            ticker = contract_info['ticker']
+            month_code = ticker[2]
+
+            # Check if we have data for this ticker on this date
+            if ('Close', ticker) in df_coffee.columns and not pd.isna(df_coffee.loc[date, ('Close', ticker)]):
+                row_data[f'{month_code}_dte'] = contract_info['dte']
+                row_data[f'{month_code}_price'] = df_coffee.loc[date, ('Close', ticker)]
+                row_data[f'{month_code}_open'] = df_coffee.loc[date, ('Open', ticker)]
+                row_data[f'{month_code}_high'] = df_coffee.loc[date, ('High', ticker)]
+                row_data[f'{month_code}_low'] = df_coffee.loc[date, ('Low', ticker)]
+                row_data[f'{month_code}_volume'] = df_coffee.loc[date, ('Volume', ticker)]
+
+        if len(row_data) > 1: # Only add row if it has more than just the date
+            all_rows.append(row_data)
+
+    processed_df = pd.DataFrame(all_rows).set_index('date')
+    print("...historical data processed.")
+    return processed_df

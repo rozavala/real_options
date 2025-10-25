@@ -22,7 +22,7 @@ class TestDataPull(unittest.TestCase):
             "notifications": {"enabled": True}
         }
 
-    @patch('coffee_factors_data_pull_new.get_active_coffee_tickers')
+    @patch('coffee_factors_data_pull_new.get_historical_coffee_tickers')
     @patch('coffee_factors_data_pull_new.datetime')
     @patch('coffee_factors_data_pull_new.yf.download')
     @patch('coffee_factors_data_pull_new.Fred')
@@ -30,19 +30,26 @@ class TestDataPull(unittest.TestCase):
     @patch('coffee_factors_data_pull_new.send_pushover_notification')
     @patch('pandas.DataFrame.to_csv')
     def test_data_pull_success(self, mock_to_csv, mock_send_notification, mock_requests_get, mock_fred, mock_yf_download, mock_datetime, mock_get_tickers):
-        # --- Mock comprehensive yfinance data (including OHLV) ---
-        mock_coffee_data = pd.DataFrame({
-            ('Close', 'KCH25.NYB'): [100, 101], ('Open', 'KCH25.NYB'): [99, 100],
-            ('High', 'KCH25.NYB'): [101, 102], ('Low', 'KCH25.NYB'): [98, 99],
-            ('Volume', 'KCH25.NYB'): [1000, 1100],
-            ('Close', 'KCK25.NYB'): [102, 103], ('Open', 'KCK25.NYB'): [101, 102],
-            ('High', 'KCK25.NYB'): [103, 104], ('Low', 'KCK25.NYB'): [100, 101],
-            ('Volume', 'KCK25.NYB'): [1200, 1300],
-        }, index=pd.to_datetime(['2025-01-01', '2025-01-02']))
-        mock_coffee_data.columns = pd.MultiIndex.from_tuples(mock_coffee_data.columns)
+        # --- Mock yfinance data for historical contracts ---
+        mock_coffee_data = {
+            ('Open', 'KCH25.NYB'): {'2025-01-01': 99, '2025-01-02': 100},
+            ('High', 'KCH25.NYB'): {'2025-01-01': 101, '2025-01-02': 102},
+            ('Low', 'KCH25.NYB'): {'2025-01-01': 98, '2025-01-02': 99},
+            ('Close', 'KCH25.NYB'): {'2025-01-01': 100, '2025-01-02': 101},
+            ('Volume', 'KCH25.NYB'): {'2025-01-01': 1000, '2025-01-02': 1100},
+            ('Open', 'KCK25.NYB'): {'2025-01-01': 101, '2025-01-02': 102},
+            ('High', 'KCK25.NYB'): {'2025-01-01': 103, '2025-01-02': 104},
+            ('Low', 'KCK25.NYB'): {'2025-01-01': 100, '2025-01-02': 101},
+            ('Close', 'KCK25.NYB'): {'2025-01-01': 102, '2025-01-02': 103},
+            ('Volume', 'KCK25.NYB'): {'2025-01-01': 1200, '2025-01-02': 1300},
+        }
+        mock_coffee_df = pd.DataFrame(mock_coffee_data)
+        mock_coffee_df.index = pd.to_datetime(mock_coffee_df.index)
 
         mock_other_yf_data = pd.DataFrame({'Close': {'USDBRL=X': [5.0, 5.1]}}, index=pd.to_datetime(['2025-01-01', '2025-01-02']))
-        mock_yf_download.side_effect = [mock_coffee_data, mock_other_yf_data]
+
+        # The first call to yf.download is for coffee, the second is for other market data.
+        mock_yf_download.side_effect = [mock_coffee_df, mock_other_yf_data]
 
         mock_datetime.now.return_value = datetime(2025, 1, 3)
         mock_get_tickers.return_value = ['KCH25.NYB', 'KCK25.NYB']
@@ -64,9 +71,22 @@ class TestDataPull(unittest.TestCase):
         zip_buffer.seek(0)
         mock_cot_response = MagicMock(status_code=200, content=zip_buffer.read())
 
+        mock_ice_response = MagicMock()
+        mock_ice_response.status_code = 200
+        mock_ice_response.content = b"""
+            <html>
+                <body>
+                    <script>
+                        var chart_config = {"series":[{"data":[[1672531200000, 100], [1672617600000, 101]]}]};
+                    </script>
+                </body>
+            </html>
+        """
+
         def requests_get_side_effect(url, **kwargs):
             if "open-meteo.com" in url: return mock_weather_response
             if "cftc.gov" in url: return mock_cot_response
+            if "macromicro.me" in url: return mock_ice_response
             return MagicMock(status_code=404)
 
         mock_requests_get.side_effect = requests_get_side_effect
