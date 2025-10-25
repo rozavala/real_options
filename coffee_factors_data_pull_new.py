@@ -200,8 +200,8 @@ def main(config: dict) -> bool:
             browser = p.chromium.launch()
             page = browser.new_page()
             page.goto("https://en.macromicro.me/charts/23838/ice-coffee-stock")
-            # Wait for the chart to be visible
-            page.wait_for_selector('.highcharts-series-group')
+            # Wait for the main chart container to be visible, with a longer timeout
+            page.wait_for_selector('#chart-container', timeout=60000)
             html_content = page.content()
             browser.close()
 

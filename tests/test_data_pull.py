@@ -92,6 +92,8 @@ class TestDataPull(unittest.TestCase):
         mock_playwright.chromium.launch.return_value = mock_browser
         mock_browser.new_page.return_value = mock_page
         mock_page.content.return_value = mock_ice_response.content
+        # Ensure the wait_for_selector call in the script does not hang
+        mock_page.wait_for_selector.return_value = None
 
         def requests_get_side_effect(url, **kwargs):
             if "open-meteo.com" in url: return mock_weather_response
