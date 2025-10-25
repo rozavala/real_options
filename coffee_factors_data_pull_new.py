@@ -203,13 +203,19 @@ def main(config: dict) -> bool:
         soup = BeautifulSoup(response.content, 'html.parser')
 
         # Find the script tag containing the chart data
-        script_tag = soup.find('script', string=re.compile('var chart_config'))
-        if script_tag:
-            script_content = script_tag.string
-            # Extract the JSON part from the script content
-            json_str = re.search(r'var chart_config\s*=\s*({.*?});', script_content, re.DOTALL).group(1)
-            chart_data = json.loads(json_str)
-            
+        chart_data = None
+        for script_tag in soup.find_all('script'):
+            if script_tag.string:
+                # Use a regex to find a JSON object that looks like chart data
+                match = re.search(r'{\s*"series":\s*\[.*\]\s*}', script_tag.string)
+                if match:
+                    try:
+                        chart_data = json.loads(match.group(0))
+                        break
+                    except json.JSONDecodeError:
+                        continue # Ignore scripts that look like data but aren't valid JSON
+
+        if chart_data:
             # The data is in the 'series' list, first element
             data_points = chart_data['series'][0]['data']
 
