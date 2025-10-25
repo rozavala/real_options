@@ -197,7 +197,7 @@ def main(config: dict) -> bool:
     try:
         url = "https://en.macromicro.me/charts/23838/ice-coffee-stock"
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
         }
         response = requests.get(url, headers=headers)
         response.raise_for_status()
@@ -293,13 +293,16 @@ def main(config: dict) -> bool:
         last_date = final_df.index.max()
         is_recent = (datetime.now() - last_date) < timedelta(days=5)
         validator.add_check("Data Recency", is_recent, f"Most recent data point is from {last_date.strftime('%Y-%m-%d')}.")
-        
-        if 'H_price' in final_df.columns: # Assuming H is always one of the active contracts
-            final_df['price_pct_change'] = final_df['H_price'].pct_change().abs()
+
+        # Find the first available price column to use for spike detection
+        price_column = next((col for col in final_df.columns if '_price' in col), None)
+
+        if price_column:
+            final_df['price_pct_change'] = final_df[price_column].pct_change().abs()
             max_spike = final_df['price_pct_change'].max()
             spike_threshold = config['validation_thresholds']['price_spike_pct']
             no_spikes = max_spike < spike_threshold
-            validator.add_check("Price Spike Detection", no_spikes, f"Max daily change was {max_spike:.2%}. Threshold is {spike_threshold:.0%}.")
+            validator.add_check("Price Spike Detection", no_spikes, f"Max daily change on '{price_column}' was {max_spike:.2%}. Threshold is {spike_threshold:.0%}.")
             final_df.drop(columns=['price_pct_change'], inplace=True)
         else:
             validator.add_check("Price Spike Detection", False, "Could not find a price column for spike detection.")
