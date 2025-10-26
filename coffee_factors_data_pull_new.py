@@ -28,7 +28,6 @@ import io
 import re
 from pandas.tseries.offsets import BDay
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 
 # --- Custom Modules ---
 from notifications import send_pushover_notification
@@ -192,32 +191,6 @@ def main(config: dict) -> bool:
         validator.add_check("Other Market Data Fetch", True, "Completed all other yfinance requests.")
     except Exception as e:
          validator.add_check("Other Market Data Fetch", False, f"An error occurred: {e}")
-
-    # --- 3a. Fetch ICE Coffee Stock Data ---
-    print("\nFetching ICE Certified Coffee Stocks...")
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            page = browser.new_page()
-            page.goto("https://en.macromicro.me/charts/23838/ice-coffee-stock")
-            page.wait_for_selector('#chart-container', timeout=60000)
-
-            # Execute JavaScript to get the chart data directly
-            chart_data_list = page.evaluate("() => { return Highcharts.charts[0].series[0].options.data; }")
-            browser.close()
-
-        if chart_data_list:
-            dates = [datetime.fromtimestamp(d[0] / 1000) for d in chart_data_list]
-            values = [d[1] for d in chart_data_list]
-
-            df_ice_stocks = pd.DataFrame({'ice_coffee_stocks': values}, index=dates)
-            all_data['ice_coffee_stocks'] = df_ice_stocks
-            validator.add_check("ICE Coffee Stocks Fetch", True, "Successfully scraped data from macromicro.me.")
-        else:
-            validator.add_check("ICE Coffee Stocks Fetch", False, "Could not extract chart data using JavaScript.")
-
-    except Exception as e:
-        validator.add_check("ICE Coffee Stocks Fetch", False, f"Could not scrape ICE coffee stocks: {e}")
 
     # --- 3b. Fetch COT Data ---
     print("\nFetching COT data...")

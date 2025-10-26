@@ -27,10 +27,9 @@ class TestDataPull(unittest.TestCase):
     @patch('coffee_factors_data_pull_new.yf.download')
     @patch('coffee_factors_data_pull_new.Fred')
     @patch('coffee_factors_data_pull_new.requests.get')
-    @patch('coffee_factors_data_pull_new.sync_playwright')
     @patch('coffee_factors_data_pull_new.send_pushover_notification')
     @patch('pandas.DataFrame.to_csv')
-    def test_data_pull_success(self, mock_to_csv, mock_send_notification, mock_sync_playwright, mock_requests_get, mock_fred, mock_yf_download, mock_datetime, mock_get_tickers):
+    def test_data_pull_success(self, mock_to_csv, mock_send_notification, mock_requests_get, mock_fred, mock_yf_download, mock_datetime, mock_get_tickers):
         # --- Mock yfinance data for historical contracts ---
         mock_coffee_data = {
             ('Open', 'KCH25.NYB'): {'2025-01-01': 99, '2025-01-02': 100},
@@ -71,27 +70,6 @@ class TestDataPull(unittest.TestCase):
             zf.writestr('annual.txt', cot_csv_data)
         zip_buffer.seek(0)
         mock_cot_response = MagicMock(status_code=200, content=zip_buffer.read())
-
-        mock_ice_response = MagicMock()
-        mock_ice_response.status_code = 200
-        mock_ice_response.content = b"""
-            <html>
-                <body>
-                    <script>
-                        var chart_config = {"series":[{"data":[[1672531200000, 100], [1672617600000, 101]]}]};
-                    </script>
-                </body>
-            </html>
-        """
-
-        # --- Mock Playwright ---
-        mock_playwright = MagicMock()
-        mock_sync_playwright.return_value.__enter__.return_value = mock_playwright
-        mock_browser = MagicMock()
-        mock_page = MagicMock()
-        mock_playwright.chromium.launch.return_value = mock_browser
-        mock_browser.new_page.return_value = mock_page
-        mock_page.evaluate.return_value = [[1672531200000, 100], [1672617600000, 101]]
 
         def requests_get_side_effect(url, **kwargs):
             if "open-meteo.com" in url: return mock_weather_response
