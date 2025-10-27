@@ -28,7 +28,7 @@ import io
 import re
 from pandas.tseries.offsets import BDay
 from bs4 import BeautifulSoup
-from tvDatafeed import TvDatafeed, Interval
+import databento as db
 
 # --- Custom Modules ---
 from notifications import send_pushover_notification
@@ -73,14 +73,6 @@ class ValidationManager:
 
 # --- Main Script ---
 
-def get_kc_expiration_date(year: int, month_code: str) -> pd.Timestamp:
-    """Calculates the expiration date for a Coffee 'C' futures contract."""
-    month_map = {'H': 3, 'K': 5, 'N': 7, 'U': 9, 'Z': 12}
-    month = month_map.get(month_code)
-    if not month:
-        raise ValueError(f"Invalid month code: {month_code}")
-    last_day_of_month = pd.Timestamp(year, month, 1) + pd.offsets.MonthEnd(1)
-    last_business_day = last_day_of_month
 def main(config: dict) -> bool:
     """Runs the main data pull, validation, and processing pipeline."""
     if not config:
@@ -90,77 +82,55 @@ def main(config: dict) -> bool:
     
     # --- API and Date Configuration ---
     fred = Fred(api_key=config['fred_api_key'])
-    start_date = datetime.now() - timedelta(days=10*365)
-    end_date = datetime.now()
+    start_date_dt = datetime.now() - timedelta(days=10*365)
+    end_date_dt = datetime.now()
+    start_date = start_date_dt.strftime('%Y-%m-%d')
+    end_date = end_date_dt.strftime('%Y-%m-%d')
     
     print("Setup complete.")
     all_data = {}
 
-    # --- 1. Fetch Coffee Futures Data using tvdatafeed ---
-    print("\nFetching historical coffee futures data from TradingView...")
-    df_coffee = pd.DataFrame()
+    # --- 1. Fetch Coffee Futures Data using Databento ---
+    print("\nFetching historical coffee futures data from Databento...")
+    final_df = pd.DataFrame()
     try:
-        # Load TradingView credentials securely from the config file.
-        tv_config = config.get('tradingview', {})
-        username = tv_config.get('username')
-        password = tv_config.get('password')
+        api_key = config.get('databento_api_key')
+        if not api_key:
+            raise ValueError("Databento API key not found in config.json.")
 
-        tv = None
-        if username and password:
-            try:
-                tv = TvDatafeed(username, password)
-                print("Successfully logged in to TradingView.")
-            except Exception as e:
-                print(f"Warning: Could not log in to TradingView with credentials. Error: {e}")
-                print("Proceeding without authentication. Data may be limited.")
-                tv = TvDatafeed()
-        else:
-            print("No TradingView credentials found in config. Proceeding without authentication.")
-            tv = TvDatafeed()
-
-        search_results = tv.search_symbol('coffee')
-        futures_symbols = [s for s in search_results if 'futures' in s.get('type', '').lower()]
-        if not futures_symbols:
-            raise ValueError("Could not find a futures symbol for 'coffee' on TradingView.")
-
-        target_symbol = futures_symbols[0]['symbol']
-        target_exchange = futures_symbols[0]['exchange']
-
-        print(f"Found symbol: {target_symbol} on {target_exchange}. Fetching 5 nearest contracts...")
+        client = db.Historical(key=api_key)
 
         all_contracts_data = []
         for i in range(1, 6):
-            contract_data = tv.get_hist(
-                symbol=target_symbol,
-                exchange=target_exchange,
-                interval=Interval.in_daily,
-                n_bars=5000,
-                fut_contract=i
-            )
-            if contract_data is not None and not contract_data.empty:
-                contract_data.rename(columns={
+            symbol = f"KC.c.{i}"
+            print(f"Fetching {symbol}...")
+            data = client.timeseries.get_range(
+                dataset="IFUS.IMPACT",
+                symbols=symbol,
+                schema="ohlcv-1d",
+                start=start_date,
+                end=end_date,
+                stype_in="smart" # Use smart symbology for continuous contracts
+            ).to_df()
+
+            if not data.empty:
+                data.set_index('ts_event', inplace=True)
+                data.index = data.index.date
+                data.rename(columns={
                     'open': f'c{i}_open', 'high': f'c{i}_high', 'low': f'c{i}_low',
                     'close': f'c{i}_price', 'volume': f'c{i}_volume',
                 }, inplace=True)
-
-                if 'expiration' in contract_data.columns:
-                     contract_data[f'c{i}_dte'] = (contract_data['expiration'] - contract_data.index).dt.days
-
-                all_contracts_data.append(contract_data.drop(columns=['symbol', 'expiration'], errors='ignore'))
+                all_contracts_data.append(data)
 
         if all_contracts_data:
-            df_coffee = pd.concat(all_contracts_data, axis=1)
-            df_coffee.index.name = 'date'
+            final_df = pd.concat(all_contracts_data, axis=1)
+            final_df.index.name = 'date'
             validator.add_check("Coffee Full Data Fetch", True, f"Successfully fetched and combined data for {len(all_contracts_data)} contracts.")
-            # This becomes the main DataFrame now
-            final_df = df_coffee
         else:
-            validator.add_check("Coffee Full Data Fetch", False, "TradingView returned no data for coffee futures.")
-            final_df = pd.DataFrame()
+            validator.add_check("Coffee Full Data Fetch", False, "Databento returned no data for coffee futures.")
 
     except Exception as e:
         validator.add_check("Coffee Full Data Fetch", False, f"An error occurred: {e}")
-        final_df = pd.DataFrame()
 
     # --- 2. Fetch Weather Data ---
     print("\nFetching weather data...")
@@ -168,7 +138,7 @@ def main(config: dict) -> bool:
     try:
         lats = ",".join(map(str, [v[0] for v in weather_stations.values()]))
         lons = ",".join(map(str, [v[1] for v in weather_stations.values()]))
-        api_url = f"https://archive-api.open-meteo.com/v1/archive?latitude={lats}&longitude={lons}&start_date={start_date.strftime('%Y-%m-%d')}&end_date={end_date.strftime('%Y-%m-%d')}&daily=temperature_2m_mean,precipitation_sum&timezone=GMT"
+        api_url = f"https://archive-api.open-meteo.com/v1/archive?latitude={lats}&longitude={lons}&start_date={start_date_dt.strftime('%Y-%m-%d')}&end_date={end_date_dt.strftime('%Y-%m-%d')}&daily=temperature_2m_mean,precipitation_sum&timezone=GMT"
         response = requests.get(api_url, timeout=30)
         response.raise_for_status()
         batch_data = response.json()
@@ -254,7 +224,7 @@ def main(config: dict) -> bool:
         all_cot_dfs = []
         cftc_ticker = 'COFFEE C'
         
-        for year in range(start_date.year, end_date.year + 1):
+        for year in range(start_date_dt.year, end_date_dt.year + 1):
             url = f"https://www.cftc.gov/files/dea/history/deacot{year}.zip"
             try:
                 response = requests.get(url)

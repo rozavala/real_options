@@ -12,6 +12,7 @@ class TestDataPull(unittest.TestCase):
     def setUp(self):
         """Set up a mock config for all tests in this class."""
         self.mock_config = {
+            "databento_api_key": "test_api_key",
             "fred_api_key": "test",
             "weather_stations": {"loc1": [0, 0]},
             "fred_series": {"DCOILWTICO": "oil_price"},
@@ -19,38 +20,44 @@ class TestDataPull(unittest.TestCase):
             "final_column_order": ["c1_price"],
             "validation_thresholds": {"price_spike_pct": 0.15},
             "notifications": {"enabled": True},
-            "tradingview": {"username": "testuser", "password": "testpassword"}
         }
 
-    @patch('coffee_factors_data_pull_new.TvDatafeed')
+    @patch('coffee_factors_data_pull_new.db.Historical')
     @patch('coffee_factors_data_pull_new.datetime')
     @patch('coffee_factors_data_pull_new.yf.download')
     @patch('coffee_factors_data_pull_new.Fred')
     @patch('coffee_factors_data_pull_new.requests.get')
     @patch('coffee_factors_data_pull_new.send_pushover_notification')
     @patch('pandas.DataFrame.to_csv')
-    def test_data_pull_success(self, mock_to_csv, mock_send_notification, mock_requests_get, mock_fred, mock_yf_download, mock_datetime, mock_tvdatafeed):
-        # --- Mock TvDatafeed ---
-        mock_tv_instance = mock_tvdatafeed.return_value
-        mock_tv_instance.search_symbol.return_value = [{'symbol': 'KC', 'exchange': 'ICE', 'type': 'futures'}]
+    def test_data_pull_success(self, mock_to_csv, mock_send_notification, mock_requests_get, mock_fred, mock_yf_download, mock_datetime, mock_databento):
+        # --- Mock Databento ---
+        mock_db_client = mock_databento.return_value
 
-        mock_contracts = []
-        for i in range(1, 6):
-            exp_date = pd.to_datetime('2025-03-20')
+        # Mock the DBNStore object and its to_df method
+        mock_dbn_store = MagicMock()
+        mock_df = pd.DataFrame({
+            'ts_event': [pd.to_datetime('2025-01-01T00:00:00Z')],
+            'open': [101], 'high': [106], 'low': [99],
+            'close': [103], 'volume': [1000],
+        })
+        mock_dbn_store.to_df.return_value = mock_df
+
+        # Make get_range return a new mock store for each call
+        def mock_get_range(*args, **kwargs):
+            mock_dbn_store = MagicMock()
             mock_df = pd.DataFrame({
-                'open': [100 + i], 'high': [105 + i], 'low': [98 + i],
-                'close': [102 + i], 'volume': [1000 * i],
-                'expiration': [exp_date]
-            }, index=[pd.to_datetime('2025-01-01')])
-            mock_contracts.append(mock_df)
-
-        mock_tv_instance.get_hist.side_effect = mock_contracts
+                'ts_event': [pd.to_datetime('2025-01-01T00:00:00Z')],
+                'open': [101], 'high': [106], 'low': [99],
+                'close': [103], 'volume': [1000],
+            })
+            mock_dbn_store.to_df.return_value = mock_df
+            return mock_dbn_store
+        mock_db_client.timeseries.get_range.side_effect = mock_get_range
 
         # --- Mock other APIs ---
         mock_other_yf_data = pd.DataFrame({'Close': {'USDBRL=X': [5.0]}}, index=pd.to_datetime(['2025-01-01']))
         mock_yf_download.return_value = mock_other_yf_data
 
-        # Mock datetime to be close to the mock data's date
         mock_datetime.now.return_value = datetime(2025, 1, 2)
         mock_fred_instance = mock_fred.return_value
         mock_fred_instance.get_series.return_value = pd.Series([80], name="oil_price", index=pd.to_datetime(['2025-01-01']))
@@ -80,58 +87,19 @@ class TestDataPull(unittest.TestCase):
         # --- Assertions ---
         self.assertTrue(success, "The data pull script should return True on success.")
         mock_to_csv.assert_called_once()
-        self.assertEqual(mock_tv_instance.get_hist.call_count, 5)
+        self.assertEqual(mock_db_client.timeseries.get_range.call_count, 5)
         self.assertIn("SUCCESS", mock_send_notification.call_args[0][1])
 
-    @patch('coffee_factors_data_pull_new.TvDatafeed')
+    @patch('coffee_factors_data_pull_new.db.Historical')
     @patch('coffee_factors_data_pull_new.send_pushover_notification')
-    def test_data_pull_failure_on_tv_fetch(self, mock_send_notification, mock_tvdatafeed):
-        mock_tv_instance = mock_tvdatafeed.return_value
-        mock_tv_instance.search_symbol.side_effect = Exception("TradingView unavailable")
+    def test_data_pull_failure_on_databento_fetch(self, mock_send_notification, mock_databento):
+        mock_db_client = mock_databento.return_value
+        mock_db_client.timeseries.get_range.side_effect = Exception("Databento unavailable")
 
         success = run_data_pull(self.mock_config)
 
         self.assertFalse(success, "The data pull script should return False on failure.")
         self.assertIn("FAILURE", mock_send_notification.call_args[0][1])
-        # The exact error message is in the validation report, which is good enough.
-        # Just checking for the overall failure is sufficient here.
-
-    @patch('coffee_factors_data_pull_new.TvDatafeed')
-    @patch('coffee_factors_data_pull_new.send_pushover_notification')
-    @patch('pandas.DataFrame.to_csv')
-    def test_data_pull_fallback_to_nologin(self, mock_to_csv, mock_send_notification, mock_tvdatafeed):
-        def tv_side_effect(*args, **kwargs):
-            if args:
-                raise Exception("Login failed")
-            mock_no_login = MagicMock()
-            mock_no_login.search_symbol.return_value = []
-            return mock_no_login
-
-        mock_tvdatafeed.side_effect = tv_side_effect
-
-        with patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
-            run_data_pull(self.mock_config)
-            output = mock_stdout.getvalue()
-
-        self.assertEqual(mock_tvdatafeed.call_count, 2)
-        self.assertIn("Warning: Could not log in", output)
-
-    @patch('coffee_factors_data_pull_new.TvDatafeed')
-    @patch('coffee_factors_data_pull_new.send_pushover_notification')
-    def test_data_pull_no_credentials(self, mock_send_notification, mock_tvdatafeed):
-        no_cred_config = self.mock_config.copy()
-        del no_cred_config['tradingview']
-
-        mock_tv_instance = MagicMock()
-        mock_tv_instance.search_symbol.return_value = []
-        mock_tvdatafeed.return_value = mock_tv_instance
-
-        with patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
-            run_data_pull(no_cred_config)
-            output = mock_stdout.getvalue()
-
-        mock_tvdatafeed.assert_called_once_with()
-        self.assertIn("No TradingView credentials found", output)
 
 if __name__ == '__main__':
     unittest.main()
