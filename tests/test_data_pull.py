@@ -96,5 +96,42 @@ class TestDataPull(unittest.TestCase):
         # The exact error message is in the validation report, which is good enough.
         # Just checking for the overall failure is sufficient here.
 
+    @patch('coffee_factors_data_pull_new.TvDatafeed')
+    @patch('coffee_factors_data_pull_new.send_pushover_notification')
+    @patch('pandas.DataFrame.to_csv')
+    def test_data_pull_fallback_to_nologin(self, mock_to_csv, mock_send_notification, mock_tvdatafeed):
+        def tv_side_effect(*args, **kwargs):
+            if args:
+                raise Exception("Login failed")
+            mock_no_login = MagicMock()
+            mock_no_login.search_symbol.return_value = []
+            return mock_no_login
+
+        mock_tvdatafeed.side_effect = tv_side_effect
+
+        with patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
+            run_data_pull(self.mock_config)
+            output = mock_stdout.getvalue()
+
+        self.assertEqual(mock_tvdatafeed.call_count, 2)
+        self.assertIn("Warning: Could not log in", output)
+
+    @patch('coffee_factors_data_pull_new.TvDatafeed')
+    @patch('coffee_factors_data_pull_new.send_pushover_notification')
+    def test_data_pull_no_credentials(self, mock_send_notification, mock_tvdatafeed):
+        no_cred_config = self.mock_config.copy()
+        del no_cred_config['tradingview']
+
+        mock_tv_instance = MagicMock()
+        mock_tv_instance.search_symbol.return_value = []
+        mock_tvdatafeed.return_value = mock_tv_instance
+
+        with patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
+            run_data_pull(no_cred_config)
+            output = mock_stdout.getvalue()
+
+        mock_tvdatafeed.assert_called_once_with()
+        self.assertIn("No TradingView credentials found", output)
+
 if __name__ == '__main__':
     unittest.main()

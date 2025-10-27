@@ -105,10 +105,18 @@ def main(config: dict) -> bool:
         username = tv_config.get('username')
         password = tv_config.get('password')
 
-        if not username or not password:
-            raise ValueError("TradingView username and password are not configured in config.json.")
-
-        tv = TvDatafeed(username, password)
+        tv = None
+        if username and password:
+            try:
+                tv = TvDatafeed(username, password)
+                print("Successfully logged in to TradingView.")
+            except Exception as e:
+                print(f"Warning: Could not log in to TradingView with credentials. Error: {e}")
+                print("Proceeding without authentication. Data may be limited.")
+                tv = TvDatafeed()
+        else:
+            print("No TradingView credentials found in config. Proceeding without authentication.")
+            tv = TvDatafeed()
 
         search_results = tv.search_symbol('coffee')
         futures_symbols = [s for s in search_results if 'futures' in s.get('type', '').lower()]
