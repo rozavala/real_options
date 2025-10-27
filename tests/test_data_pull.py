@@ -46,10 +46,9 @@ class TestDataPull(unittest.TestCase):
         def mock_get_range(*args, **kwargs):
             mock_dbn_store = MagicMock()
             mock_df = pd.DataFrame({
-                'ts_event': [pd.to_datetime('2025-01-01T00:00:00Z')],
                 'open': [101], 'high': [106], 'low': [99],
                 'close': [103], 'volume': [1000],
-            })
+            }, index=pd.to_datetime(['2025-01-01T00:00:00Z']))
             mock_dbn_store.to_df.return_value = mock_df
             return mock_dbn_store
         mock_db_client.timeseries.get_range.side_effect = mock_get_range

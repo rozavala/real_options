@@ -115,14 +115,12 @@ def main(config: dict) -> bool:
             ).to_df()
 
             if not data.empty:
-                contract_df = data.copy()
-                contract_df.set_index('ts_event', inplace=True)
-                contract_df.index = contract_df.index.date
-                contract_df.rename(columns={
+                data.index = data.index.date
+                data.rename(columns={
                     'open': f'c{i}_open', 'high': f'c{i}_high', 'low': f'c{i}_low',
                     'close': f'c{i}_price', 'volume': f'c{i}_volume',
                 }, inplace=True)
-                all_contracts_data.append(contract_df)
+                all_contracts_data.append(data)
 
         if all_contracts_data:
             final_df = pd.concat(all_contracts_data, axis=1)
