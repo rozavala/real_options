@@ -82,7 +82,8 @@ def main(config: dict) -> bool:
     
     # --- API and Date Configuration ---
     fred = Fred(api_key=config['fred_api_key'])
-    start_date_dt = datetime.now() - timedelta(days=10*365)
+    # Set the start date to respect Databento's data availability
+    start_date_dt = datetime(2018, 12, 24)
     end_date_dt = datetime.now()
     start_date = start_date_dt.strftime('%Y-%m-%d')
     end_date = end_date_dt.strftime('%Y-%m-%d')
@@ -184,38 +185,6 @@ def main(config: dict) -> bool:
         validator.add_check("Other Market Data Fetch", True, "Completed all other yfinance requests.")
     except Exception as e:
          validator.add_check("Other Market Data Fetch", False, f"An error occurred: {e}")
-
-    # --- 3a. Fetch ICE Coffee Stock Data ---
-    print("\nFetching ICE Certified Coffee Stocks...")
-    # This scraper is brittle; wrap in a try/except to ensure its failure doesn't stop the whole script.
-    try:
-        url = "https://en.macromicro.me/charts/23838/ice-coffee-stock"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-        }
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, 'html.parser')
-
-        script_tag = soup.find('script', string=re.compile('var chart_config'))
-        if script_tag and script_tag.string:
-            script_content = script_tag.string
-            json_match = re.search(r'var chart_config\s*=\s*({.*?});', script_content, re.DOTALL)
-            if json_match:
-                chart_data = json.loads(json_match.group(1))
-                data_points = chart_data['series'][0]['data']
-                dates = [datetime.fromtimestamp(d[0] / 1000) for d in data_points]
-                values = [d[1] for d in data_points]
-                df_ice_stocks = pd.DataFrame({'ice_coffee_stocks': values}, index=dates)
-                all_data['ice_coffee_stocks'] = df_ice_stocks
-                validator.add_check("ICE Coffee Stocks Fetch", True, "Successfully scraped data from macromicro.me.")
-            else:
-                validator.add_check("ICE Coffee Stocks Fetch", False, "Could not extract JSON from script tag.")
-        else:
-            validator.add_check("ICE Coffee Stocks Fetch", False, "Could not find chart data script on the page.")
-    except Exception as e:
-        # Log this as a non-critical failure
-        validator.add_check("ICE Coffee Stocks Fetch", False, f"Scraper failed and was skipped: {e}")
 
     # --- 3b. Fetch COT Data ---
     print("\nFetching COT data...")

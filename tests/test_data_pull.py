@@ -72,12 +72,9 @@ class TestDataPull(unittest.TestCase):
         zip_buffer.seek(0)
         mock_cot_response = MagicMock(status_code=200, content=zip_buffer.read())
 
-        mock_ice_response = MagicMock(status_code=200, content=b'<html><body><script>var chart_config = {"series":[{"data":[[1672531200000, 100]]}]};</script></body></html>')
-
         def requests_get_side_effect(url, **kwargs):
             if "open-meteo.com" in url: return mock_weather_response
             if "cftc.gov" in url: return mock_cot_response
-            if "macromicro.me" in url: return mock_ice_response
             return MagicMock(status_code=404)
         mock_requests_get.side_effect = requests_get_side_effect
 
