@@ -110,7 +110,7 @@ def main(config: dict) -> bool:
                 schema="ohlcv-1d",
                 start=start_date,
                 end=end_date,
-                stype_in="smart" # Use smart symbology for continuous contracts
+                stype_in="continuous" # Use continuous symbology for continuous contracts
             ).to_df()
 
             if not data.empty:
