@@ -136,7 +136,7 @@ def main(config: dict) -> bool:
 
             try:
                 # Use the correct column name 'expiration'
-                definitions['expiration'] = pd.to_datetime(definitions['expiration'])
+                definitions['expiration'] = pd.to_datetime(definitions['expiration']).dt.tz_localize(None)
 
                 # 4. Merge OHLCV data with definitions
                 merged_data = pd.merge_asof(
