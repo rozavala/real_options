@@ -115,6 +115,8 @@ def main(config: dict) -> bool:
             ).to_df()
 
             if not data.empty:
+                # Ensure the index is unique by keeping the first entry for any duplicate dates.
+                data = data[~data.index.duplicated(keep='first')]
                 data.index = data.index.date
                 data.rename(columns={
                     'open': f'c{i}_open', 'high': f'c{i}_high', 'low': f'c{i}_low',
