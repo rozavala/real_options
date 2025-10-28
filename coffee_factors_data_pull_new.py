@@ -18,6 +18,7 @@ generates a report summarizing the validation results and sends a notification.
 # --- Import Libraries ---
 import yfinance as yf
 import pandas as pd
+import numpy as np
 from datetime import datetime, timedelta
 import json
 import os
@@ -254,7 +255,10 @@ def main(config: dict) -> bool:
 
         price_column = next((col for col in final_df.columns if '_price' in col), None)
         if price_column:
+            # Calculate absolute percentage change and replace infinite values with NaN
             final_df['price_pct_change'] = final_df[price_column].pct_change().abs()
+            final_df.replace([np.inf, -np.inf], np.nan, inplace=True)
+
             max_spike = final_df['price_pct_change'].max()
             spike_threshold = config['validation_thresholds']['price_spike_pct']
             no_spikes = max_spike < spike_threshold
