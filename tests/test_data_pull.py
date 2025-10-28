@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 import io
 import zipfile
+import numpy as np
 
 from coffee_factors_data_pull_new import main as run_data_pull
 
@@ -17,7 +18,7 @@ class TestDataPull(unittest.TestCase):
             "weather_stations": {"loc1": [0, 0]},
             "fred_series": {"DCOILWTICO": "oil_price"},
             "yf_series_map": {"USDBRL=X": "usd_brl_fx"},
-            "final_column_order": ["c1_price"],
+            "final_column_order": ["front_month_price", "front_month_dte"],
             "validation_thresholds": {"price_spike_pct": 0.15},
             "notifications": {"enabled": True},
         }
@@ -33,35 +34,22 @@ class TestDataPull(unittest.TestCase):
         # --- Mock Databento ---
         mock_db_client = mock_databento.return_value
 
-        # Mock the DBNStore object and its to_df method
-        mock_dbn_store = MagicMock()
-        mock_df = pd.DataFrame({
-            'ts_event': [pd.to_datetime('2025-01-01T00:00:00Z')],
-            'open': [101], 'high': [106], 'low': [99],
-            'close': [103], 'volume': [1000],
-        })
-        mock_dbn_store.to_df.return_value = mock_df
-
-        # This side effect function will be called for each `get_range` call
         def mock_get_range_side_effect(*args, **kwargs):
             schema = kwargs.get('schema')
             mock_dbn_store = MagicMock()
 
             if schema == 'ohlcv-1d':
-                # Return OHLCV data
                 mock_df = pd.DataFrame({
                     'open': [101], 'high': [106], 'low': [99],
                     'close': [103], 'volume': [1000],
                 }, index=pd.to_datetime(['2025-01-01T00:00:00Z']))
                 mock_dbn_store.to_df.return_value = mock_df
             elif schema == 'definition':
-                # Return definition data with an expiration date
                 mock_df = pd.DataFrame({
-                    'expiration_date': [pd.Timestamp('2025-03-20').date()]
+                    'expiration': [pd.Timestamp('2025-03-20').date()]
                 }, index=pd.to_datetime(['2025-01-01T00:00:00Z']))
                 mock_dbn_store.to_df.return_value = mock_df
             else:
-                # Return empty for any other schema
                 mock_dbn_store.to_df.return_value = pd.DataFrame()
 
             return mock_dbn_store
@@ -98,8 +86,7 @@ class TestDataPull(unittest.TestCase):
         # --- Assertions ---
         self.assertTrue(success, "The data pull script should return True on success.")
         mock_to_csv.assert_called_once()
-        # Each of the 5 contracts makes 2 calls: one for ohlcv and one for definition
-        self.assertEqual(mock_db_client.timeseries.get_range.call_count, 10)
+        self.assertEqual(mock_db_client.timeseries.get_range.call_count, 10) # 5 contracts * 2 calls each
         self.assertIn("SUCCESS", mock_send_notification.call_args[0][1])
 
     @patch('coffee_factors_data_pull_new.db.Historical')

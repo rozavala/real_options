@@ -2,19 +2,16 @@
 
 This script pulls data from multiple sources to create a comprehensive dataset
 for analysis and model training. The sources include:
-- Yahoo Finance (yfinance): For coffee futures prices and other market data.
+- Databento: For coffee futures prices, including OHLCV and days to expiration.
+- Yahoo Finance (yfinance): For other market data.
 - Federal Reserve Economic Data (FRED): For key economic indicators.
 - Open-Meteo: For historical weather data from relevant locations.
-- Nasdaq Data Link: For other financial data.
+- CFTC: For Commitment of Traders (COT) report data.
 
 The script performs a series of validation checks, consolidates the data into
 a single time-series DataFrame, and saves the result as a CSV file. It also
 generates a report summarizing the validation results and sends a notification.
 """
-# --- Install all required libraries ---
-# You should run this command in your terminal or command prompt, not inside the script:
-# pip install yfinance fredapi pandas requests openpyxl
-
 # --- Import Libraries ---
 import yfinance as yf
 import pandas as pd
@@ -26,9 +23,6 @@ from fredapi import Fred
 import requests
 import zipfile
 import io
-import re
-from pandas.tseries.offsets import BDay
-from bs4 import BeautifulSoup
 import databento as db
 
 # --- Custom Modules ---
@@ -129,49 +123,52 @@ def main(config: dict) -> bool:
             ).to_df()
 
             if definitions.empty:
-                # If definitions are missing, we can't calculate DTE. Skip this contract.
                 print(f"Warning: Could not fetch definitions for {symbol}. Skipping DTE calculation.")
-                all_contracts_data.append(ohlcv_data) # Add data without DTE
-                continue
+                month_name = month_names.get(i)
+                ohlcv_data[f'{month_name}_dte'] = np.nan
 
             # 3. Prepare data for merge
             ohlcv_data = ohlcv_data[~ohlcv_data.index.duplicated(keep='first')]
             definitions = definitions[~definitions.index.duplicated(keep='first')]
 
-            # Convert tz-aware index to tz-naive for calculation
             ohlcv_data.index = ohlcv_data.index.tz_localize(None)
             definitions.index = definitions.index.tz_localize(None)
 
-            # Ensure expiration is a datetime object
-            definitions['expiration_date'] = pd.to_datetime(definitions['expiration_date'])
+            try:
+                # Use the correct column name 'expiration'
+                definitions['expiration'] = pd.to_datetime(definitions['expiration'])
 
-            # 4. Merge OHLCV data with definitions
-            # Use merge_asof to find the correct active contract definition for each trading day
-            merged_data = pd.merge_asof(
-                ohlcv_data.sort_index(),
-                definitions[['expiration_date']].sort_index(),
-                left_index=True,
-                right_index=True,
-                direction='backward'
-            )
+                # 4. Merge OHLCV data with definitions
+                merged_data = pd.merge_asof(
+                    ohlcv_data.sort_index(),
+                    definitions[['expiration']].sort_index(),
+                    left_index=True,
+                    right_index=True,
+                    direction='backward'
+                )
 
-            # 5. Calculate DTE
-            merged_data['dte'] = (merged_data['expiration_date'] - merged_data.index).dt.days
+                # 5. Calculate DTE
+                merged_data['dte'] = (merged_data['expiration'] - merged_data.index).dt.days
+                ohlcv_data = merged_data
+
+            except KeyError:
+                print(f"Warning: 'expiration' column not found for {symbol}. Available columns: {list(definitions.columns)}")
+                month_name = month_names.get(i)
+                ohlcv_data[f'{month_name}_dte'] = np.nan
 
             # 6. Clean up and rename columns
             month_name = month_names.get(i)
-            merged_data.rename(columns={
+            ohlcv_data.rename(columns={
                 'open': f'{month_name}_open', 'high': f'{month_name}_high',
                 'low': f'{month_name}_low', 'close': f'{month_name}_price',
                 'volume': f'{month_name}_volume', 'dte': f'{month_name}_dte'
             }, inplace=True)
 
-            # Keep only the columns we need
             final_cols = [
                 f'{month_name}_open', f'{month_name}_high', f'{month_name}_low',
                 f'{month_name}_price', f'{month_name}_volume', f'{month_name}_dte'
             ]
-            all_contracts_data.append(merged_data[final_cols])
+            all_contracts_data.append(ohlcv_data[final_cols])
 
         if all_contracts_data:
             final_df = pd.concat(all_contracts_data, axis=1)
@@ -222,12 +219,10 @@ def main(config: dict) -> bool:
         yf_multi_data = yf.download(tickers_list, start=start_date, end=end_date, progress=False)
 
         if not yf_multi_data.empty:
-            # If only one ticker is requested, yfinance returns a DataFrame with simple columns
             if len(tickers_list) == 1:
                 ticker = tickers_list[0]
                 name = config['yf_series_map'][ticker]
                 all_data[name] = yf_multi_data[['Close']].copy().rename(columns={'Close': name})
-            # If multiple tickers are requested, yfinance returns a DataFrame with multi-level columns
             else:
                 for ticker, name in config['yf_series_map'].items():
                     if 'Close' in yf_multi_data.columns and ticker in yf_multi_data['Close'].columns:
@@ -236,7 +231,7 @@ def main(config: dict) -> bool:
     except Exception as e:
          validator.add_check("Other Market Data Fetch", False, f"An error occurred: {e}")
 
-    # --- 3b. Fetch COT Data ---
+    # --- 4. Fetch COT Data ---
     print("\nFetching COT data...")
     try:
         print("Fetching historical COT data directly from CFTC...")
@@ -281,9 +276,8 @@ def main(config: dict) -> bool:
 
     print("\nAll data fetching complete.")
 
-    # --- 4. Consolidate Data ---
+    # --- 5. Consolidate Data ---
     if not final_df.empty:
-        # Join other data sources
         for name, df in all_data.items():
             final_df = final_df.join(df, how='left')
         
@@ -296,14 +290,12 @@ def main(config: dict) -> bool:
         final_df.bfill(inplace=True)
 
         # Validation (Recency and Spikes)
-        # Using the front month price for validation checks
         last_date = final_df.index.max()
-        is_recent = (datetime.now() - last_date) < timedelta(days=5)
-        validator.add_check("Data Recency", is_recent, f"Most recent data point is from {last_date.strftime('%Y-%m-%d')}.")
+        is_recent = (datetime.now() - pd.to_datetime(last_date)) < timedelta(days=5)
+        validator.add_check("Data Recency", is_recent, f"Most recent data point is from {pd.to_datetime(last_date).strftime('%Y-%m-%d')}.")
 
         price_column = next((col for col in final_df.columns if '_price' in col), None)
         if price_column:
-            # Calculate absolute percentage change and replace infinite values with NaN
             final_df['price_pct_change'] = final_df[price_column].pct_change().abs()
             final_df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
