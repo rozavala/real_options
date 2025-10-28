@@ -84,7 +84,7 @@ def main(config: dict) -> bool:
     fred = Fred(api_key=config['fred_api_key'])
     # Set the start date to respect Databento's data availability
     start_date_dt = datetime(2018, 12, 24)
-    end_date_dt = datetime.now()
+    end_date_dt = datetime.now() - timedelta(days=1)
     start_date = start_date_dt.strftime('%Y-%m-%d')
     end_date = end_date_dt.strftime('%Y-%m-%d')
     
@@ -292,3 +292,23 @@ def main(config: dict) -> bool:
     send_pushover_notification(config.get('notifications', {}), notification_title, report)
 
     return validator.was_successful()
+
+def load_config(filepath: str = 'config.json') -> dict:
+    """Loads the configuration from a JSON file."""
+    if not os.path.exists(filepath):
+        print(f"Error: Configuration file '{filepath}' not found.")
+        return {}
+    try:
+        with open(filepath, 'r') as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        print(f"Error: Could not decode JSON from '{filepath}'.")
+        return {}
+
+if __name__ == "__main__":
+    print("Running data pull script directly...")
+    config = load_config()
+    if config:
+        main(config)
+    else:
+        print("Could not load configuration. Exiting.")
