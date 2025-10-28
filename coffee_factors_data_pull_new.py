@@ -102,28 +102,76 @@ def main(config: dict) -> bool:
 
         client = db.Historical(key=api_key)
 
+        # Define descriptive names for the contracts
+        month_names = {
+            1: "front_month", 2: "second_month", 3: "third_month",
+            4: "fourth_month", 5: "fifth_month"
+        }
+
         all_contracts_data = []
         for i in range(1, 6):
             symbol = f"KC.c.{i}"
             print(f"Fetching {symbol}...")
-            data = client.timeseries.get_range(
-                dataset="IFUS.IMPACT",
-                symbols=symbol,
-                schema="ohlcv-1d",
-                start=start_date,
-                end=end_date,
-                stype_in="continuous" # Use continuous symbology for continuous contracts
+
+            # 1. Fetch OHLCV data
+            ohlcv_data = client.timeseries.get_range(
+                dataset="IFUS.IMPACT", symbols=symbol, schema="ohlcv-1d",
+                start=start_date, end=end_date, stype_in="continuous"
             ).to_df()
 
-            if not data.empty:
-                # Ensure the index is unique by keeping the first entry for any duplicate dates.
-                data = data[~data.index.duplicated(keep='first')]
-                data.index = data.index.date
-                data.rename(columns={
-                    'open': f'c{i}_open', 'high': f'c{i}_high', 'low': f'c{i}_low',
-                    'close': f'c{i}_price', 'volume': f'c{i}_volume',
-                }, inplace=True)
-                all_contracts_data.append(data)
+            if ohlcv_data.empty:
+                continue
+
+            # 2. Fetch contract definition data to get expiration dates
+            definitions = client.timeseries.get_range(
+                dataset="IFUS.IMPACT", symbols=symbol, schema="definition",
+                start=start_date, end=end_date, stype_in="continuous"
+            ).to_df()
+
+            if definitions.empty:
+                # If definitions are missing, we can't calculate DTE. Skip this contract.
+                print(f"Warning: Could not fetch definitions for {symbol}. Skipping DTE calculation.")
+                all_contracts_data.append(ohlcv_data) # Add data without DTE
+                continue
+
+            # 3. Prepare data for merge
+            ohlcv_data = ohlcv_data[~ohlcv_data.index.duplicated(keep='first')]
+            definitions = definitions[~definitions.index.duplicated(keep='first')]
+
+            # Convert tz-aware index to tz-naive for calculation
+            ohlcv_data.index = ohlcv_data.index.tz_localize(None)
+            definitions.index = definitions.index.tz_localize(None)
+
+            # Ensure expiration is a datetime object
+            definitions['expiration_date'] = pd.to_datetime(definitions['expiration_date'])
+
+            # 4. Merge OHLCV data with definitions
+            # Use merge_asof to find the correct active contract definition for each trading day
+            merged_data = pd.merge_asof(
+                ohlcv_data.sort_index(),
+                definitions[['expiration_date']].sort_index(),
+                left_index=True,
+                right_index=True,
+                direction='backward'
+            )
+
+            # 5. Calculate DTE
+            merged_data['dte'] = (merged_data['expiration_date'] - merged_data.index).dt.days
+
+            # 6. Clean up and rename columns
+            month_name = month_names.get(i)
+            merged_data.rename(columns={
+                'open': f'{month_name}_open', 'high': f'{month_name}_high',
+                'low': f'{month_name}_low', 'close': f'{month_name}_price',
+                'volume': f'{month_name}_volume', 'dte': f'{month_name}_dte'
+            }, inplace=True)
+
+            # Keep only the columns we need
+            final_cols = [
+                f'{month_name}_open', f'{month_name}_high', f'{month_name}_low',
+                f'{month_name}_price', f'{month_name}_volume', f'{month_name}_dte'
+            ]
+            all_contracts_data.append(merged_data[final_cols])
 
         if all_contracts_data:
             final_df = pd.concat(all_contracts_data, axis=1)

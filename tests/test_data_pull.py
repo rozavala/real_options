@@ -42,16 +42,31 @@ class TestDataPull(unittest.TestCase):
         })
         mock_dbn_store.to_df.return_value = mock_df
 
-        # Make get_range return a new mock store for each call
-        def mock_get_range(*args, **kwargs):
+        # This side effect function will be called for each `get_range` call
+        def mock_get_range_side_effect(*args, **kwargs):
+            schema = kwargs.get('schema')
             mock_dbn_store = MagicMock()
-            mock_df = pd.DataFrame({
-                'open': [101], 'high': [106], 'low': [99],
-                'close': [103], 'volume': [1000],
-            }, index=pd.to_datetime(['2025-01-01T00:00:00Z']))
-            mock_dbn_store.to_df.return_value = mock_df
+
+            if schema == 'ohlcv-1d':
+                # Return OHLCV data
+                mock_df = pd.DataFrame({
+                    'open': [101], 'high': [106], 'low': [99],
+                    'close': [103], 'volume': [1000],
+                }, index=pd.to_datetime(['2025-01-01T00:00:00Z']))
+                mock_dbn_store.to_df.return_value = mock_df
+            elif schema == 'definition':
+                # Return definition data with an expiration date
+                mock_df = pd.DataFrame({
+                    'expiration_date': [pd.Timestamp('2025-03-20').date()]
+                }, index=pd.to_datetime(['2025-01-01T00:00:00Z']))
+                mock_dbn_store.to_df.return_value = mock_df
+            else:
+                # Return empty for any other schema
+                mock_dbn_store.to_df.return_value = pd.DataFrame()
+
             return mock_dbn_store
-        mock_db_client.timeseries.get_range.side_effect = mock_get_range
+
+        mock_db_client.timeseries.get_range.side_effect = mock_get_range_side_effect
 
         # --- Mock other APIs ---
         mock_other_yf_data = pd.DataFrame({'Close': {'USDBRL=X': [5.0]}}, index=pd.to_datetime(['2025-01-01']))
@@ -83,7 +98,8 @@ class TestDataPull(unittest.TestCase):
         # --- Assertions ---
         self.assertTrue(success, "The data pull script should return True on success.")
         mock_to_csv.assert_called_once()
-        self.assertEqual(mock_db_client.timeseries.get_range.call_count, 5)
+        # Each of the 5 contracts makes 2 calls: one for ohlcv and one for definition
+        self.assertEqual(mock_db_client.timeseries.get_range.call_count, 10)
         self.assertIn("SUCCESS", mock_send_notification.call_args[0][1])
 
     @patch('coffee_factors_data_pull_new.db.Historical')
