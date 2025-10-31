@@ -121,17 +121,7 @@ def generate_inference_features(raw_df, assets):
     logging.info("Generating features from new data...")
     df = raw_df.copy()
 
-    # --- 4a. Create Base Features (for Transformer) ---
-    base_feature_cols = [
-        'brazil_minas_gerais_avg_temp', 'brazil_minas_gerais_precipitation',
-        'vietnam_ho_chi_minh_avg_temp', 'vietnam_ho_chi_minh_precipitation',
-        'colombia_antioquia_avg_temp', 'colombia_antioquia_precipitation',
-        'indonesia_sumatra_avg_temp', 'indonesia_sumatra_precipitation',
-        'cot_noncomm_net', 'brl_usd_exchange_rate', 'oil_price_wti',
-        'indonesia_idr_usd', 'mexico_mxn_usd', 'sugar_price', 'sp500_price',
-        'nestle_stock', 'us_dollar_index', 'shipping_proxy', 'volatility_index',
-        'dgs10_yield'
-    ]
+    # --- 4a. Create derived features (GARCH, TA, Spreads) ---
 
     # 1. GARCH Features
     df['main_log_return'] = np.log(df['front_month_price'] / df['front_month_price'].shift(1))
@@ -149,11 +139,19 @@ def generate_inference_features(raw_df, assets):
     df['spread_3_4'] = df['third_month_price'] - df['fourth_month_price']
     df['spread_4_5'] = df['fourth_month_price'] - df['fifth_month_price']
 
-    # This is our full 30-feature set for the Transformer
-    all_base_features = base_feature_cols + [
-        'conditional_vol', 'std_residuals', 'ta_rsi_14d',
-        'MACD_12_26_9', 'MACDh_12_26_9', 'MACDs_12_26_9',
-        'spread_1_2', 'spread_2_3', 'spread_3_4', 'spread_4_5'
+    # This is our full 30-feature set for the Transformer.
+    # The order MUST match the columns from the training data EXACTLY.
+    all_base_features = [
+        'conditional_vol', 'std_residuals', 'ta_rsi_14d', 'MACD_12_26_9',
+        'MACDh_12_26_9', 'MACDs_12_26_9', 'spread_1_2', 'spread_2_3',
+        'spread_3_4', 'spread_4_5', 'brazil_minas_gerais_avg_temp',
+        'brazil_minas_gerais_precipitation', 'vietnam_ho_chi_minh_avg_temp',
+        'vietnam_ho_chi_minh_precipitation', 'colombia_antioquia_avg_temp',
+        'colombia_antioquia_precipitation', 'indonesia_sumatra_avg_temp',
+        'indonesia_sumatra_precipitation', 'cot_noncomm_net',
+        'brl_usd_exchange_rate', 'oil_price_wti', 'indonesia_idr_usd',
+        'mexico_mxn_usd', 'sugar_price', 'sp500_price', 'nestle_stock',
+        'us_dollar_index', 'shipping_proxy', 'volatility_index', 'dgs10_yield'
     ]
     df_base_features = df[all_base_features]
 
