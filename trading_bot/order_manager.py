@@ -503,6 +503,31 @@ from datetime import datetime, date
 import os
 from pandas.tseries.holiday import USFederalHolidayCalendar
 
+def get_trade_ledger_df():
+    """Reads and consolidates the main and archived trade ledgers for analysis."""
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
+    archive_dir = os.path.join(base_dir, 'archive')
+
+    dataframes = []
+
+    if os.path.exists(ledger_path):
+        dataframes.append(pd.read_csv(ledger_path))
+    if os.path.exists(archive_dir):
+        archive_files = [os.path.join(archive_dir, f) for f in os.listdir(archive_dir) if f.startswith('trade_ledger_') and f.endswith('.csv')]
+        if archive_files:
+            df_list = [pd.read_csv(file) for file in archive_files]
+            dataframes.extend(df_list)
+
+    if not dataframes:
+        return pd.DataFrame()
+
+    full_ledger = pd.concat(dataframes, ignore_index=True)
+    full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
+
+    return full_ledger.sort_values(by='timestamp').reset_index(drop=True)
+
+
 async def close_positions_after_5_days(config: dict):
     """
     Fetches all open positions, and closes them if they have been open for
@@ -515,14 +540,10 @@ async def close_positions_after_5_days(config: dict):
     kept_positions_details = []
 
     try:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-        if not os.path.exists(ledger_path):
-            logger.warning("Trade ledger not found.")
+        trade_ledger = get_trade_ledger_df()
+        if trade_ledger.empty:
+            logger.info("Trade ledger is empty. No positions to close.")
             return
-
-        trade_ledger = pd.read_csv(ledger_path)
-        trade_ledger['timestamp'] = pd.to_datetime(trade_ledger['timestamp'])
 
         opening_trades = trade_ledger[trade_ledger['reason'] == 'Strategy Execution']
         position_open_dates = opening_trades.groupby('position_id')['timestamp'].min().to_dict()

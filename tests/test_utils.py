@@ -17,47 +17,44 @@ from trading_bot.utils import (
 )
 
 
-class TestUtils(unittest.TestCase):
+class TestUtils:
 
     def test_price_option_black_scholes(self):
         # Test with known values
         price = price_option_black_scholes(100, 100, 1, 0.05, 0.2, 'C')
-        self.assertAlmostEqual(price['price'], 10.45, delta=0.01)
+        assert abs(price['price'] - 10.45) < 0.01
 
         # Test edge cases
         price = price_option_black_scholes(100, 100, 0, 0.05, 0.2, 'C')
-        self.assertIsNone(price)
+        assert price is None
 
-    def test_get_position_details(self):
-        async def run_test():
-            ib = Mock()
+    async def test_get_position_details(self):
+        ib = Mock()
 
-            # --- Test with a single leg option ---
-            position_single = Mock()
-            position_single.contract = FuturesOption(symbol='KC', lastTradeDateOrContractMonth='202512', strike=3.5, right='C', exchange='NYBOT')
-            details_single = await get_position_details(ib, position_single)
-            self.assertEqual(details_single['type'], 'SINGLE_LEG')
-            self.assertEqual(details_single['key_strikes'], [3.5])
+        # --- Test with a single leg option ---
+        position_single = Mock()
+        position_single.contract = FuturesOption(symbol='KC', lastTradeDateOrContractMonth='202512', strike=3.5, right='C', exchange='NYBOT')
+        details_single = await get_position_details(ib, position_single)
+        assert details_single['type'] == 'SINGLE_LEG'
+        assert details_single['key_strikes'] == [3.5]
 
-            # --- Test with a bag option ---
-            position_bag = Mock()
-            leg1 = ComboLeg(conId=1, ratio=1, action='BUY', exchange='NYBOT')
-            leg2 = ComboLeg(conId=2, ratio=1, action='SELL', exchange='NYBOT')
-            position_bag.contract = Bag(symbol='KC', comboLegs=[leg1, leg2])
+        # --- Test with a bag option ---
+        position_bag = Mock()
+        leg1 = ComboLeg(conId=1, ratio=1, action='BUY', exchange='NYBOT')
+        leg2 = ComboLeg(conId=2, ratio=1, action='SELL', exchange='NYBOT')
+        position_bag.contract = Bag(symbol='KC', comboLegs=[leg1, leg2])
 
-            # Mock the contract details resolution for the legs
-            mock_cd1 = Mock()
-            mock_cd1.contract = FuturesOption(conId=1, right='C', strike=3.5)
-            mock_cd2 = Mock()
-            mock_cd2.contract = FuturesOption(conId=2, right='C', strike=3.6)
+        # Mock the contract details resolution for the legs
+        mock_cd1 = Mock()
+        mock_cd1.contract = FuturesOption(conId=1, right='C', strike=3.5)
+        mock_cd2 = Mock()
+        mock_cd2.contract = FuturesOption(conId=2, right='C', strike=3.6)
 
-            ib.reqContractDetailsAsync = AsyncMock(side_effect=[[mock_cd1], [mock_cd2]])
+        ib.reqContractDetailsAsync = AsyncMock(side_effect=[[mock_cd1], [mock_cd2]])
 
-            details_bag = await get_position_details(ib, position_bag)
-            self.assertEqual(details_bag['type'], 'BULL_CALL_SPREAD')
-            self.assertEqual(details_bag['key_strikes'], [3.5, 3.6])
-
-        asyncio.run(run_test())
+        details_bag = await get_position_details(ib, position_bag)
+        assert details_bag['type'] == 'BULL_CALL_SPREAD'
+        assert details_bag['key_strikes'] == [3.5, 3.6]
 
     def test_is_market_open(self):
         contract_details = Mock()
@@ -71,11 +68,11 @@ class TestUtils(unittest.TestCase):
 
             # Simulate market is open
             mock_datetime.now.return_value = tz.localize(test_date.replace(hour=10, minute=0))
-            self.assertTrue(is_market_open(contract_details, 'America/New_York'))
+            assert is_market_open(contract_details, 'America/New_York')
 
             # Simulate market is closed
             mock_datetime.now.return_value = tz.localize(test_date.replace(hour=18, minute=0))
-            self.assertFalse(is_market_open(contract_details, 'America/New_York'))
+            assert not is_market_open(contract_details, 'America/New_York')
 
     def test_calculate_wait_until_market_open(self):
         contract_details = Mock()
@@ -83,7 +80,7 @@ class TestUtils(unittest.TestCase):
         with patch('trading_bot.utils.datetime') as mock_dt:
             mock_dt.now.return_value = datetime(2025, 10, 7, 18, 0)
             wait_time = calculate_wait_until_market_open(contract_details, 'America/New_York')
-            self.assertGreater(wait_time, 0)
+            assert wait_time > 0
 
     def test_get_expiration_details(self):
         chain = {
@@ -94,19 +91,24 @@ class TestUtils(unittest.TestCase):
             }
         }
         details = get_expiration_details(chain, '202512')
-        self.assertEqual(details['exp_date'], '20251220')
+        assert details['exp_date'] == '20251220'
 
     @patch('csv.DictWriter')
     @patch('builtins.open', new_callable=mock_open)
     @patch('os.path.isfile', return_value=True)
-    def test_log_trade_to_ledger(self, mock_isfile, mock_open, mock_csv_writer):
+    async def test_log_trade_to_ledger(self, mock_isfile, mock_open, mock_csv_writer):
         # --- Setup Mocks ---
-        mock_ib = Mock(spec=IB)
+        mock_ib = AsyncMock(spec=IB)
+        mock_ib.qualifyContractsAsync = AsyncMock(return_value=[
+            FuturesOption(symbol='KC', localSymbol='KCH6 C3.5', strike=3.5, right='C', multiplier='37500'),
+            FuturesOption(symbol='KC', localSymbol='KCH6 C3.6', strike=3.6, right='C', multiplier='37500')
+        ])
         trade = Mock(spec=Trade)
         trade.orderStatus = Mock(spec=OrderStatus)
         trade.order = Mock(spec=Order)
         trade.orderStatus.status = OrderStatus.Filled
         trade.order.permId = 123456
+        trade.contract = Bag(symbol='KC', comboLegs=[Mock(), Mock()]) # Required for position_id generation
 
         fill1 = Mock(spec=Fill)
         fill1.contract = FuturesOption(symbol='KC', localSymbol='KCH6 C3.5', strike=3.5, right='C', multiplier='37500')
@@ -122,7 +124,7 @@ class TestUtils(unittest.TestCase):
         mock_csv_writer.return_value = mock_writer_instance
 
         # --- Call the function ---
-        log_trade_to_ledger(mock_ib, trade, "Test Combo")
+        await log_trade_to_ledger(mock_ib, trade, "Test Combo")
 
         # --- Assertions ---
         # Check that the file was opened correctly
@@ -131,7 +133,7 @@ class TestUtils(unittest.TestCase):
 
         # Check that DictWriter was called with correct fieldnames
         expected_fieldnames = [
-            'timestamp', 'combo_id', 'local_symbol', 'action', 'quantity',
+            'timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity',
             'avg_fill_price', 'strike', 'right', 'total_value_usd', 'reason'
         ]
         mock_csv_writer.assert_called_once_with(mock_open.return_value, fieldnames=expected_fieldnames)
@@ -141,24 +143,24 @@ class TestUtils(unittest.TestCase):
 
         # Check the content of the written rows
         written_rows = mock_writer_instance.writerows.call_args[0][0]
-        self.assertEqual(len(written_rows), 2)
+        assert len(written_rows) == 2
 
         # Check the first leg (BUY order should have negative value)
-        self.assertEqual(written_rows[0]['combo_id'], 123456)
-        self.assertEqual(written_rows[0]['action'], 'BUY')
-        self.assertEqual(written_rows[0]['strike'], 3.5)
-        self.assertAlmostEqual(written_rows[0]['total_value_usd'], -187.50)
+        assert written_rows[0]['combo_id'] == 123456
+        assert written_rows[0]['action'] == 'BUY'
+        assert written_rows[0]['strike'] == 3.5
+        assert abs(written_rows[0]['total_value_usd'] - -187.50) < 0.01
 
         # Check the second leg (SELL order should have positive value)
-        self.assertEqual(written_rows[1]['combo_id'], 123456)
-        self.assertEqual(written_rows[1]['action'], 'SELL')
-        self.assertEqual(written_rows[1]['strike'], 3.6)
-        self.assertAlmostEqual(written_rows[1]['total_value_usd'], 75.0)
+        assert written_rows[1]['combo_id'] == 123456
+        assert written_rows[1]['action'] == 'SELL'
+        assert written_rows[1]['strike'] == 3.6
+        assert abs(written_rows[1]['total_value_usd'] - 75.0) < 0.01
 
     @patch('csv.DictWriter')
     @patch('builtins.open', new_callable=mock_open)
     @patch('os.path.isfile', return_value=True)
-    def test_log_trade_to_ledger_enriches_contract_details(self, mock_isfile, mock_open, mock_csv_writer):
+    async def test_log_trade_to_ledger_enriches_contract_details(self, mock_isfile, mock_open, mock_csv_writer):
         """
         Verify that if a fill contains an incomplete contract, the logger
         correctly uses the conId to find the full contract details from the
@@ -166,16 +168,19 @@ class TestUtils(unittest.TestCase):
         """
         # --- Setup Mocks ---
         # 1. Mock the IB object and its contracts cache
-        mock_ib = Mock(spec=IB)
+        mock_ib = AsyncMock(spec=IB)
         complete_contract = FuturesOption(
             conId=123, symbol='KC', localSymbol='KCH6 P3.2',
             strike=3.2, right='P', multiplier='37500'
         )
         mock_ib.contracts = {123: complete_contract} # Simulate the cache
+        # Mock the async qualification to return the complete contract
+        mock_ib.qualifyContractsAsync = AsyncMock(return_value=[complete_contract])
 
         # 2. Create a trade where the fill contains an INCOMPLETE contract
         trade = Mock(spec=Trade)
         trade.order = Mock(spec=Order, permId=98765)
+        trade.contract = Bag(symbol='KC', comboLegs=[Mock()])
 
         incomplete_contract = Mock(spec=Contract, conId=123)
         # We explicitly remove strike/right to simulate the problem
@@ -191,21 +196,75 @@ class TestUtils(unittest.TestCase):
         mock_csv_writer.return_value = mock_writer_instance
 
         # --- Call the function ---
-        log_trade_to_ledger(mock_ib, trade, "Test Enrichment")
+        await log_trade_to_ledger(mock_ib, trade, "Test Enrichment")
 
         # --- Assertions ---
         # Verify that writerows was called and captured the data
         mock_writer_instance.writerows.assert_called_once()
         written_rows = mock_writer_instance.writerows.call_args[0][0]
 
-        self.assertEqual(len(written_rows), 1)
+        assert len(written_rows) == 1
 
         # CRITICAL: Assert that the logged data used the ENRICHED details
         # from the 'complete_contract' in the cache, not the incomplete one.
-        self.assertEqual(written_rows[0]['strike'], 3.2)
-        self.assertEqual(written_rows[0]['right'], 'P')
-        self.assertEqual(written_rows[0]['local_symbol'], 'KCH6 P3.2')
+        assert written_rows[0]['strike'] == 3.2
+        assert written_rows[0]['right'] == 'P'
+        assert written_rows[0]['local_symbol'] == 'KCH6 P3.2'
 
+    async def test_log_trade_to_ledger_race_condition(self):
+        """
+        Verify that when multiple coroutines call log_trade_to_ledger
+        concurrently on a new file, the header is only written once.
+        """
+        # --- Setup ---
+        # NOTE: This test writes to the actual trade_ledger.csv.
+        # It's critical to clean it up before and after the test.
+        ledger_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'trade_ledger.csv')
+        if os.path.exists(ledger_path):
+            os.remove(ledger_path)
 
-if __name__ == '__main__':
-    unittest.main()
+        # Mock IB and a sample trade
+        mock_ib = AsyncMock(spec=IB)
+        # Mock the async qualification to return a valid contract
+        qualified_contract = FuturesOption(conId=123, localSymbol='KC H6 C3.5', strike=3.5, right='C', multiplier='37500')
+        mock_ib.qualifyContractsAsync = AsyncMock(return_value=[qualified_contract])
+
+        trade = Mock(spec=Trade)
+        trade.order = Mock(spec=Order, permId=123)
+        trade.contract = Bag(symbol='KC') # Simulate a combo to trigger qualification path
+        trade.contract.comboLegs = [Mock()]
+
+        fill = Mock(spec=Fill)
+        fill.contract = Contract(conId=123)
+        fill.execution = Execution(execId='E1', time=datetime.now(), side='BOT', shares=1, price=0.5)
+        trade.fills = [fill]
+
+        # --- Create concurrent logging tasks ---
+        tasks = []
+        for i in range(5):
+            # Create a unique trade mock for each task to avoid shared state issues
+            task_trade = Mock(spec=Trade)
+            task_trade.order = Mock(spec=Order, permId=12345 + i)
+            task_trade.contract = trade.contract
+            task_trade.fills = [fill]
+            tasks.append(log_trade_to_ledger(mock_ib, task_trade, f"Concurrent Write {i}"))
+
+        # --- Run tasks concurrently ---
+        await asyncio.gather(*tasks)
+
+        # --- Assertions ---
+        # 1. Check the final content of the file
+        with open(ledger_path, 'r') as f:
+            content = f.read()
+
+        # 2. Assert that the header appears exactly once
+        header = "timestamp,position_id,combo_id,local_symbol,action,quantity,avg_fill_price,strike,right,total_value_usd,reason"
+        assert content.count(header) == 1, "Header should only appear once in the ledger file."
+
+        # 3. Assert that all 5 trade rows were written
+        num_lines = len(content.strip().split('\n'))
+        assert num_lines == 6, "File should contain 1 header line and 5 data lines."
+
+        # --- Cleanup ---
+        os.remove(ledger_path)
+
