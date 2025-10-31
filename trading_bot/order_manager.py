@@ -14,7 +14,7 @@ from ib_insync import *
 
 from config_loader import load_config
 from coffee_factors_data_pull_new import main as run_data_pull
-from send_data_to_api import send_data_and_get_prediction
+from trading_bot.inference import get_model_predictions
 from notifications import send_pushover_notification
 
 from trading_bot.ib_interface import (
@@ -43,17 +43,19 @@ async def generate_and_queue_orders(config: dict):
 
     try:
         logger.info("Step 1: Running data pull...")
-        if not run_data_pull(config):
-            logger.warning("Data pull failed. Using most recent data file as fallback.")
-        else:
-            logger.info("Data pull complete.")
-
-        logger.info("Step 2: Fetching predictions from API...")
-        predictions = send_data_and_get_prediction(config)
-        if not predictions:
-            send_pushover_notification(config.get('notifications', {}), "Order Generation Failure", "Failed to get predictions from API.")
+        data_df = run_data_pull(config)
+        if data_df is None:
+            logger.error("Data pull failed. Cannot proceed with order generation.")
+            send_pushover_notification(config.get('notifications', {}), "Order Generation Failure", "Data pull failed. Aborting.")
             return
-        logger.info(f"Successfully received predictions from API: {predictions}")
+        logger.info("Data pull complete.")
+
+        logger.info("Step 2: Running local model inference...")
+        predictions = get_model_predictions(data_df)
+        if not predictions:
+            send_pushover_notification(config.get('notifications', {}), "Order Generation Failure", "Failed to get predictions from local model.")
+            return
+        logger.info(f"Successfully received predictions from local model: {predictions}")
 
         ib = IB()
         try:
@@ -133,7 +135,7 @@ async def generate_and_queue_orders(config: dict):
                     vol_level = signal.get("level", "N/A")
                     signal_summary_parts.append(f"  - <b>{future_month}</b>: {vol_level} Volatility signal")
 
-        signal_summary = "<b>Signals from Prediction API:</b>\n" + "\n".join(signal_summary_parts)
+        signal_summary = "<b>Signals from Local Model:</b>\n" + "\n".join(signal_summary_parts)
 
         # 2. Summarize the queued orders
         order_summary_parts = []
