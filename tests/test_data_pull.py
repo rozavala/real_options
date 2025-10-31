@@ -77,11 +77,10 @@ def test_data_pull_success(mock_send_notification, mock_requests_get, mock_fred,
     mock_requests_get.side_effect = requests_get_side_effect
 
     # --- Run the script ---
-    success, df_result = run_data_pull(mock_config)
+    df_result = run_data_pull(mock_config)
 
     # --- Assertions ---
-    assert success, "The data pull script should return True on success."
-    assert df_result is not None
+    assert df_result is not None, "The data pull script should return a DataFrame on success."
 
     # Add specific assertions about the content of the CSV
     assert "front_month_price" in df_result.columns
@@ -95,7 +94,6 @@ def test_data_pull_success(mock_send_notification, mock_requests_get, mock_fred,
 @patch('coffee_factors_data_pull_new.send_pushover_notification')
 def test_data_pull_failure(mock_send_notification, mock_yf_download, mock_config):
     mock_yf_download.return_value = pd.DataFrame() # Simulate yfinance failure
-    success, df_result = run_data_pull(mock_config)
-    assert not success, "The data pull script should return False on failure."
-    assert df_result is None
+    df_result = run_data_pull(mock_config)
+    assert df_result is None, "The data pull script should return None on failure."
     assert "FAILURE" in mock_send_notification.call_args[0][1]

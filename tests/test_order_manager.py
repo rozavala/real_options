@@ -12,19 +12,19 @@ from trading_bot.order_manager import generate_and_queue_orders, place_queued_or
 class TestOrderManager(unittest.TestCase):
 
     @patch('trading_bot.order_manager.run_data_pull')
-    @patch('trading_bot.order_manager.send_data_and_get_prediction')
+    @patch('trading_bot.order_manager.get_model_predictions')
     @patch('trading_bot.order_manager.IB')
-    def test_generate_orders_uses_fallback_on_data_pull_failure(self, mock_ib, mock_send_data, mock_run_data_pull):
+    def test_generate_orders_aborts_on_data_pull_failure(self, mock_ib, mock_get_predictions, mock_run_data_pull):
         """
-        Verify that if run_data_pull fails, the process doesn't abort and
-        instead proceeds to the next step (fetching predictions).
+        Verify that if run_data_pull fails (returns None), the process aborts
+        and does not proceed to model inference.
         """
         async def run_test():
             # Arrange: Simulate a data pull failure
-            mock_run_data_pull.return_value = False
+            mock_run_data_pull.return_value = None
 
             # Arrange: Mock the subsequent functions to prevent them from running their full logic
-            mock_send_data.return_value = {'price_changes': [1.0]} # Needs to return something to proceed
+            mock_get_predictions.return_value = {'price_changes': [1.0]} # Needs to return something to proceed
             mock_ib_instance = AsyncMock()
             mock_ib.return_value = mock_ib_instance
 
@@ -36,11 +36,9 @@ class TestOrderManager(unittest.TestCase):
             # Assert: Check that the data pull was called
             mock_run_data_pull.assert_called_once()
 
-            # Assert: Check that despite the failure, the process continued to the next step
-            mock_send_data.assert_called_once()
-
-            # Assert: Check that it tried to connect to IB, which is after the prediction step
-            mock_ib_instance.connectAsync.assert_called_once()
+            # Assert: Check that because of the failure, the process did NOT continue
+            mock_get_predictions.assert_not_called()
+            mock_ib_instance.connectAsync.assert_not_called()
 
         asyncio.run(run_test())
 

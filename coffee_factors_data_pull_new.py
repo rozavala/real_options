@@ -103,10 +103,13 @@ def get_active_coffee_tickers(num_contracts: int = 5) -> list[str]:
     print(f"... chronological tickers found: {active_tickers}")
     return active_tickers
 
-def main(config: dict) -> bool:
-    """Runs the main data pull, validation, and processing pipeline."""
+def main(config: dict) -> pd.DataFrame | None:
+    """
+    Runs the main data pull, validation, and processing pipeline.
+    Returns a DataFrame on success, None on failure.
+    """
     if not config:
-        return False
+        return None
 
     validator = ValidationManager()
 
@@ -313,16 +316,15 @@ def main(config: dict) -> bool:
                 final_df[col] = pd.to_numeric(final_df[col], errors='coerce').astype('Int64')
             
             final_df.dropna(inplace=True)
-            output_filename = f"coffee_futures_data_reformatted_{datetime.now().strftime('%Y-%m-%d')}.csv"
-            final_df.to_csv(output_filename, index=False)
-            
-            print(f"\nSuccessfully saved data to {output_filename}. Shape: {final_df.shape}")
+            print(f"\nSuccessfully processed data. Shape: {final_df.shape}")
             validator.set_final_shape(final_df.shape)
         else:
-            print("\nValidation failures occurred. Skipping final processing and file save.")
+            print("\nValidation failures occurred. Skipping final processing.")
+            final_df = None
 
     else:
         validator.add_check("Consolidation", False, "No coffee price data was fetched.")
+        final_df = None
     
     report = validator.generate_report()
     print("\n" + "="*30 + "\n" + report + "\n" + "="*30)
@@ -330,7 +332,4 @@ def main(config: dict) -> bool:
     notification_title = f"Coffee Data Pull: {'SUCCESS' if validator.was_successful() else 'FAILURE'}"
     send_pushover_notification(config.get('notifications', {}), notification_title, report)
 
-    if 'final_df' in locals():
-        return validator.was_successful(), final_df
-    else:
-        return validator.was_successful(), None
+    return final_df
