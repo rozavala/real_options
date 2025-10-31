@@ -84,24 +84,32 @@ async def generate_and_queue_orders(config: dict):
 
                 price = float('nan')
                 try:
-                    # Wait for the ticker to update with a valid price, with a timeout
+                    # Wait for the ticker to update with a valid bid/ask spread
                     start_time = time.time()
-                    while util.isNan(ticker.marketPrice()):
-                        await asyncio.sleep(0.1) # Use asyncio's sleep to allow ib_insync to process messages
-                        if (time.time() - start_time) > 30: # 30-second timeout
-                            logger.error(f"Timeout waiting for market price for {future.localSymbol}.")
+                    while ticker.bid <= 0 or ticker.ask <= 0 or util.isNan(ticker.bid) or util.isNan(ticker.ask):
+                        await asyncio.sleep(0.1)
+                        if (time.time() - start_time) > 30:
+                            logger.error(f"Timeout waiting for valid bid/ask for {future.localSymbol}.")
                             logger.error(f"Ticker data received: {ticker}")
-                            break # Exit loop, price remains NaN
-                    else: # Loop completed without break
-                        market_price = ticker.marketPrice()
-                        if not util.isNan(market_price):
-                            price = market_price
-                            logger.info(f"Successfully received market price for {future.localSymbol}: {price}")
-                        else:
-                            logger.error(f"Received invalid NaN price for {future.localSymbol}. Ticker: {ticker}")
+                            break
+
+                    # Fallback Price Discovery Logic
+                    if ticker.bid > 0 and ticker.ask > 0:
+                        price = (ticker.bid + ticker.ask) / 2
+                        logger.info(f"Using bid/ask midpoint for {future.localSymbol}: {price}")
+                    elif not util.isNan(ticker.last):
+                        price = ticker.last
+                        logger.info(f"Using last price for {future.localSymbol}: {price}")
+                    elif not util.isNan(ticker.close):
+                        price = ticker.close
+                        logger.info(f"Using close price for {future.localSymbol}: {price}")
+                    else:
+                        logger.error(f"Could not determine a valid price for {future.localSymbol}. Ticker: {ticker}")
                 finally:
                     ib.cancelMktData(future)
+
                 if util.isNan(price):
+                    logger.warning(f"Skipping strategy for {future.localSymbol} due to missing price.")
                     continue
 
                 chain = await build_option_chain(ib, future)
