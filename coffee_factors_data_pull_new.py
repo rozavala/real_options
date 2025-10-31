@@ -109,18 +109,19 @@ def main(config: dict) -> bool:
         return False
 
     validator = ValidationManager()
-    
+
     # --- API and Date Configuration ---
     fred = Fred(api_key=config['fred_api_key'])
     start_date = datetime(1980, 1, 1)
     end_date = datetime.now()
-    
+
     print("Setup complete.")
     all_data = {}
-    
+    ordinal_names = ["front_month", "second_month", "third_month", "fourth_month", "fifth_month"]
+
     # --- 1. Fetch Coffee Futures Data ---
     chronological_tickers = get_active_coffee_tickers(num_contracts=5)
-    df_coffee = pd.DataFrame() 
+    df_coffee = pd.DataFrame()
     if not chronological_tickers:
         validator.add_check("Coffee Ticker Generation", False, "Could not determine active coffee tickers.")
     else:
@@ -130,7 +131,14 @@ def main(config: dict) -> bool:
             if not df_coffee.empty and 'Close' in df_coffee and not df_coffee['Close'].dropna(how='all').empty:
                 df_price = df_coffee['Close'].copy()
                 df_price.dropna(axis=1, how='all', inplace=True)
-                df_price.columns = [f"coffee_price_{t.replace('.NYB', '')}" for t in df_price.columns]
+
+                valid_tickers = [t for t in chronological_tickers if t in df_price.columns]
+                price_rename_map = {
+                    ticker: f"{ordinal_names[i]}_price"
+                    for i, ticker in enumerate(valid_tickers) if i < len(ordinal_names)
+                }
+                df_price.rename(columns=price_rename_map, inplace=True)
+
                 all_data['coffee_prices'] = df_price
                 validator.add_check("Coffee Price Fetch", True, f"Successfully fetched {df_price.shape[1]} active contracts.")
             else:
@@ -177,12 +185,10 @@ def main(config: dict) -> bool:
         yf_multi_data = yf.download(tickers_list, start=start_date, end=end_date, progress=False)
 
         if not yf_multi_data.empty:
-            # If only one ticker is requested, yfinance returns a DataFrame with simple columns
             if len(tickers_list) == 1:
                 ticker = tickers_list[0]
                 name = config['yf_series_map'][ticker]
                 all_data[name] = yf_multi_data[['Close']].copy().rename(columns={'Close': name})
-            # If multiple tickers are requested, yfinance returns a DataFrame with multi-level columns
             else:
                 for ticker, name in config['yf_series_map'].items():
                     if 'Close' in yf_multi_data.columns and ticker in yf_multi_data['Close'].columns:
@@ -198,13 +204,22 @@ def main(config: dict) -> bool:
         try:
             df_ohlv = df_coffee[['Open', 'High', 'Low', 'Volume']].copy()
             df_ohlv.columns = ['_'.join(col).strip() for col in df_ohlv.columns.values]
-            
+
+            ticker_to_ordinal = {
+                ticker: ordinal_names[i]
+                for i, ticker in enumerate(chronological_tickers)
+                if i < len(ordinal_names)
+            }
+
             rename_map = {}
             for col in df_ohlv.columns:
-                measure, ticker = col.split('_')
-                contract_name = ticker.replace('.NYB', '')
-                rename_map[col] = f"{contract_name}_{measure.lower()}"
+                measure, ticker = col.split('_', 1)
+                if ticker in ticker_to_ordinal:
+                    ordinal_name = ticker_to_ordinal[ticker]
+                    rename_map[col] = f"{ordinal_name}_{measure.lower()}"
+
             df_ohlv.rename(columns=rename_map, inplace=True)
+
             all_data['coffee_ohlv'] = df_ohlv
             validator.add_check("Coffee OHLV Processing", True, "Successfully processed OHLV data.")
         except Exception as e:
@@ -229,22 +244,14 @@ def main(config: dict) -> bool:
                 print(f"... Warning: Could not process COT data for year {year}. Error: {e}")
                 
         cot_df = pd.concat(all_cot_dfs, ignore_index=True)
-
         cot_df = cot_df[cot_df['Market and Exchange Names'].str.contains(cftc_ticker, na=False)].copy()
         cot_df['Date'] = pd.to_datetime(cot_df['As of Date in Form YYYY-MM-DD'], format='%Y-%m-%d')
         cot_df.set_index('Date', inplace=True)
-        
-        cot_cols = {
-            'Noncommercial Positions-Long (All)': 'cot_noncomm_long',
-            'Noncommercial Positions-Short (All)': 'cot_noncomm_short',
-        }
-        cot_df = cot_df.rename(columns=cot_cols)
-        
-        cot_df['cot_noncomm_long'] = pd.to_numeric(cot_df['cot_noncomm_long'])
-        cot_df['cot_noncomm_short'] = pd.to_numeric(cot_df['cot_noncomm_short'])
-        
+        cot_cols = {'Noncommercial Positions-Long (All)': 'cot_noncomm_long', 'Noncommercial Positions-Short (All)': 'cot_noncomm_short'}
+        cot_df.rename(columns=cot_cols, inplace=True)
+        cot_df['cot_noncomm_long'] = pd.to_numeric(cot_df['cot_noncomm_long'], errors='coerce')
+        cot_df['cot_noncomm_short'] = pd.to_numeric(cot_df['cot_noncomm_short'], errors='coerce')
         cot_df['cot_noncomm_net'] = cot_df['cot_noncomm_long'] - cot_df['cot_noncomm_short']
-        
         all_data['cot_report'] = cot_df[['cot_noncomm_net']]
         validator.add_check("COT Report Fetch", True, f"Successfully fetched CFTC data. Last entry: {cot_df.index.max().strftime('%Y-%m-%d')}")
 
@@ -266,13 +273,12 @@ def main(config: dict) -> bool:
         validator.add_check("Pre-Fill Missing Data", missing_pct < 50, f"Total missing data before fill is {missing_pct:.2f}%.")
         final_df.ffill(inplace=True)
 
-        front_month_col = f"coffee_price_{chronological_tickers[0].replace('.NYB', '')}" if chronological_tickers else None
-        
+        front_month_col = "front_month_price"
         last_date = final_df.index.max()
-        is_recent = (datetime.now() - last_date) < timedelta(days=5)
-        validator.add_check("Data Recency", is_recent, f"Most recent data point is from {last_date.strftime('%Y-%m-%d')}.")
+        is_recent = (datetime.now() - last_date) < timedelta(days=5) if pd.notna(last_date) else False
+        validator.add_check("Data Recency", is_recent, f"Most recent data point is from {last_date.strftime('%Y-%m-%d') if pd.notna(last_date) else 'N/A'}.")
         
-        if front_month_col and front_month_col in final_df.columns:
+        if front_month_col in final_df.columns:
             final_df['price_pct_change'] = final_df[front_month_col].pct_change().abs()
             max_spike = final_df['price_pct_change'].max()
             spike_threshold = config['validation_thresholds']['price_spike_pct']
@@ -280,41 +286,31 @@ def main(config: dict) -> bool:
             validator.add_check("Price Spike Detection", no_spikes, f"Max daily change was {max_spike:.2%}. Threshold is {spike_threshold:.0%}.")
             final_df.drop(columns=['price_pct_change'], inplace=True)
         else:
-            validator.add_check("Price Spike Detection", False, "Front-month column not found.")
+            validator.add_check("Price Spike Detection", False, "Front-month price column not found.")
 
         if validator.was_successful():
-            if front_month_col and front_month_col in final_df.columns:
+            if front_month_col in final_df.columns:
                 final_df.dropna(subset=[front_month_col], inplace=True)
 
-            for col in list(final_df.columns):
-                if col.startswith('coffee_price_KC'):
-                    ticker = col.replace('coffee_price_', '')
-                    if len(ticker) >= 4:
-                        month_code = ticker[2]
-                        year_str = ticker[3:]
-                        try:
-                            year = int(f"20{year_str}")
-                            exp = get_kc_expiration_date(year, month_code)
-                            final_df[f'{month_code}_dte'] = (exp.tz_localize(None) - final_df.index).days
-                            final_df.loc[final_df[f'{month_code}_dte'] < 0, f'{month_code}_dte'] = None
-                            final_df.rename(columns={col: f'{month_code}_price'}, inplace=True)
-                        except (ValueError, TypeError):
-                            print(f"Warning: Could not parse ticker details from column '{col}'.")
-                            continue
+            for i, ticker in enumerate(chronological_tickers):
+                if i < len(ordinal_names):
+                    try:
+                        month_code, year_str = ticker[2], ticker[3:5]
+                        year = int(f"20{year_str}")
+                        exp = get_kc_expiration_date(year, month_code)
+                        dte_col_name = f"{ordinal_names[i]}_dte"
+                        final_df[dte_col_name] = (exp.tz_localize(None) - final_df.index).days
+                        final_df.loc[final_df[dte_col_name] < 0, dte_col_name] = None
+                    except (ValueError, TypeError, IndexError):
+                        print(f"Warning: Could not parse ticker details for DTE from '{ticker}'.")
             
             final_df['date'] = final_df.index.strftime('%-m/%-d/%y')
             
-            final_cols_from_config = config['final_column_order']
-            all_available_cols = list(final_df.columns)
-            final_cols = [c for c in final_cols_from_config if c in all_available_cols]
-            for col in all_available_cols:
-                if col not in final_cols:
-                    final_cols.append(col)
-
-            final_df = final_df[final_cols]
+            final_cols_from_config = config.get('final_column_order', [])
+            final_df = final_df.reindex(columns=final_cols_from_config)
             
-            for col in [c for c in final_cols if '_dte' in c]:
-                final_df.loc[:, col] = pd.to_numeric(final_df[col], errors='coerce').astype('Int64')
+            for col in [c for c in final_cols_from_config if '_dte' in c and c in final_df.columns]:
+                final_df[col] = pd.to_numeric(final_df[col], errors='coerce').astype('Int64')
             
             final_df.dropna(inplace=True)
             output_filename = f"coffee_futures_data_reformatted_{datetime.now().strftime('%Y-%m-%d')}.csv"
@@ -334,4 +330,7 @@ def main(config: dict) -> bool:
     notification_title = f"Coffee Data Pull: {'SUCCESS' if validator.was_successful() else 'FAILURE'}"
     send_pushover_notification(config.get('notifications', {}), notification_title, report)
 
-    return validator.was_successful()
+    if 'final_df' in locals():
+        return validator.was_successful(), final_df
+    else:
+        return validator.was_successful(), None
