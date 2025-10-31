@@ -213,23 +213,13 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int):
     details are complete before logging.
     """
     try:
-        # With combo orders, IB sends fills for the parent 'Bag' in addition
-        # to the individual legs. These Bag fills are redundant for our ledger
-        # and trying to qualify them will cause an API error. We identify and
-        # skip them here.
         if isinstance(fill.contract, Bag):
             logger.info(f"Skipping ledger log for summary combo fill with conId: {fill.contract.conId}")
             return
 
-        # The contract object in the Fill can be incomplete. We need to get the
-        # full contract details to log accurately, especially for options.
-        # We create a new contract object from the conId and qualify it.
         detailed_contract = Contract(conId=fill.contract.conId)
         await ib.qualifyContractsAsync(detailed_contract)
 
-        # Create a new Fill object with the detailed contract, preserving the
-        # original execution and commission report details. This avoids the
-        # "can't set attribute" error on the original immutable Fill object.
         corrected_fill = Fill(
             contract=detailed_contract,
             execution=fill.execution,
@@ -237,8 +227,6 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int):
             time=fill.time
         )
 
-        # If the parent trade is a Bag, find the specific leg that was filled
-        # to ensure context is maintained.
         if isinstance(trade.contract, Bag):
             for leg in trade.contract.comboLegs:
                 if leg.conId == fill.contract.conId:
@@ -247,7 +235,8 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int):
             else:
                 logger.warning(f"Could not match fill conId {fill.contract.conId} to any leg in {trade.contract.localSymbol}.")
 
-        log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=corrected_fill, combo_id=combo_id)
+        # This now calls the async version of the function
+        await log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=corrected_fill, combo_id=combo_id)
         logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId}, Combo ID: {combo_id})")
 
     except Exception as e:
@@ -501,76 +490,118 @@ async def place_queued_orders(config: dict):
             ib.disconnect()
             logger.info("Disconnected from IB.")
 
-async def close_all_open_positions(config: dict):
+import pandas as pd
+from datetime import datetime, date
+import os
+from pandas.tseries.holiday import USFederalHolidayCalendar
+
+async def close_positions_after_5_days(config: dict):
     """
-    Fetches all open positions, places opposing orders to close them, and
-    sends a detailed notification of the outcome.
+    Fetches all open positions, and closes them if they have been open for
+    5 or more trading days, based on a stable position_id.
     """
-    logger.info("--- Initiating end-of-day position closing ---")
+    logger.info("--- Initiating position closing based on 5-day holding period ---")
     ib = IB()
     closed_position_details = []
     failed_closes = []
+    kept_positions_details = []
 
     try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
+        if not os.path.exists(ledger_path):
+            logger.warning("Trade ledger not found.")
+            return
+
+        trade_ledger = pd.read_csv(ledger_path)
+        trade_ledger['timestamp'] = pd.to_datetime(trade_ledger['timestamp'])
+
+        opening_trades = trade_ledger[trade_ledger['reason'] == 'Strategy Execution']
+        position_open_dates = opening_trades.groupby('position_id')['timestamp'].min().to_dict()
+
+        if not position_open_dates:
+            logger.info("No opening trades found in the ledger.")
+            return
+
         conn_settings = config.get('connection', {})
         await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
         logger.info("Connected to IB for closing positions.")
 
         positions = await ib.reqPositionsAsync()
         if not positions:
-            logger.info("No open positions to close.")
-            send_pushover_notification(config.get('notifications', {}), "Position Closing", "No open positions were found to close.")
+            logger.info("No open IB positions to close.")
+            send_pushover_notification(config.get('notifications', {}), "Position Closing", "No open IB positions were found to close.")
             return
 
-        symbol_to_close = config.get('symbol', 'KC')
-        relevant_positions = [p for p in positions if p.contract.symbol == symbol_to_close and p.position != 0]
+        # --- Determine which positions are still open from the ledger's perspective ---
+        open_positions_from_ledger = trade_ledger.groupby('position_id').filter(lambda x: x['quantity'].sum() != 0)
+        open_position_ids = open_positions_from_ledger['position_id'].unique()
 
-        if not relevant_positions:
-            logger.info("No relevant positions to close for the target symbol.")
-            return
+        logger.info(f"Found {len(open_position_ids)} unique open positions in the trade ledger.")
 
-        logger.info(f"Found {len(relevant_positions)} positions for symbol '{symbol_to_close}' to close.")
+        cal = USFederalHolidayCalendar()
+        holidays = cal.holidays(start=date(date.today().year - 1, 1, 1), end=date.today()).to_pydatetime().tolist()
+        today = datetime.now().date()
 
-        for pos in relevant_positions:
-            pos.contract.exchange = config.get('exchange')
-            if not pos.contract.exchange:
-                logger.error(f"Exchange not found in config. Cannot close position for {pos.contract.localSymbol}")
-                failed_closes.append(f"{pos.contract.localSymbol}: Missing exchange in config")
+        # Create a custom business day frequency that observes the holidays
+        custom_bday = pd.offsets.CustomBusinessDay(holidays=holidays)
+
+        for pos_id in open_position_ids:
+            open_date = position_open_dates.get(pos_id)
+            if not open_date:
+                logger.warning(f"Could not find opening date for position_id {pos_id}. Skipping.")
                 continue
 
-            action = 'SELL' if pos.position > 0 else 'BUY'
-            order = MarketOrder(action, abs(pos.position))
-            trade = place_order(ib, pos.contract, order)
+            trading_days = pd.date_range(start=open_date.date(), end=today, freq=custom_bday)
+            age_in_trading_days = len(trading_days)
 
-            await asyncio.sleep(2)  # Wait for order status updates
+            logger.info(f"Position {pos_id} opened on {open_date.date()}, age: {age_in_trading_days} trading days.")
 
-            if trade.orderStatus.status == OrderStatus.Filled and trade.fills:
-                fill = trade.fills[0]
-                realized_pnl = fill.commissionReport.realizedPNL
-                fill_price = fill.execution.avgPrice
-                # Pass the permId explicitly as the combo_id for consistency.
-                log_trade_to_ledger(ib, trade, "Daily Close", combo_id=trade.order.permId)
-                closed_position_details.append({
-                    "symbol": pos.contract.localSymbol,
-                    "action": action,
-                    "quantity": pos.position,
-                    "price": fill_price,
-                    "pnl": realized_pnl
-                })
-                logger.info(f"Successfully closed position for {pos.contract.localSymbol}.")
+            if age_in_trading_days >= 5:
+                logger.info(f"Position {pos_id} is {age_in_trading_days} days old. Marking for closure.")
+
+                # Get the current net position for each leg from the ledger
+                position_legs = open_positions_from_ledger[open_positions_from_ledger['position_id'] == pos_id]
+                net_leg_positions = position_legs.groupby('local_symbol')['quantity'].sum()
+
+                for symbol, quantity in net_leg_positions.items():
+                    if quantity == 0: continue
+
+                    # Find the corresponding position in the live IB data
+                    ib_position = next((p for p in positions if p.contract.localSymbol == symbol and p.position == quantity), None)
+
+                    if ib_position:
+                        action = 'SELL' if ib_position.position > 0 else 'BUY'
+                        order = MarketOrder(action, abs(ib_position.position))
+                        order.outsideRth = True # Mark as risk management order
+
+                        ib_position.contract.exchange = config.get('exchange')
+                        trade = place_order(ib, ib_position.contract, order)
+                        await asyncio.sleep(2)
+
+                        if trade.orderStatus.status == OrderStatus.Filled and trade.fills:
+                            fill = trade.fills[0]
+                            await log_trade_to_ledger(ib, trade, "5-Day Close", position_id=pos_id)
+                            closed_position_details.append({
+                                "symbol": ib_position.contract.localSymbol,
+                                "action": action,
+                                "quantity": ib_position.position,
+                                "price": fill.execution.avgPrice,
+                                "pnl": fill.commissionReport.realizedPNL
+                            })
+                        else:
+                            failed_closes.append(f"{symbol}: Failed with status {trade.orderStatus.status}")
+                        await asyncio.sleep(1)
+                    else:
+                        failed_closes.append(f"{symbol} (pos_id {pos_id}): Live position not found or quantity mismatch.")
             else:
-                logger.warning(f"Failed to close position for {pos.contract.localSymbol}. Final status: {trade.orderStatus.status}")
-                failed_closes.append(f"{pos.contract.localSymbol}: Failed with status {trade.orderStatus.status}")
+                kept_positions_details.append(f"{pos_id} (age: {age_in_trading_days} days)")
 
-            await asyncio.sleep(1)
-
-        logger.info(f"--- Finished closing process. Success: {len(closed_position_details)}, Failed: {len(failed_closes)} ---")
-
-        # --- Build and send detailed notification ---
+        # --- Notification Logic (same as before) ---
         message_parts = []
         total_pnl = 0
         if closed_position_details:
-            message_parts.append(f"<b>✅ Successfully closed {len(closed_position_details)} positions:</b>")
+            message_parts.append(f"<b>✅ Successfully closed {len(closed_position_details)} positions (5-day rule):</b>")
             for detail in closed_position_details:
                 pnl_str = f"${detail['pnl']:,.2f}"
                 pnl_color = "green" if detail['pnl'] >= 0 else "red"
@@ -580,17 +611,16 @@ async def close_all_open_positions(config: dict):
                 )
                 total_pnl += detail.get('pnl', 0)
             message_parts.append(f"<b>Total Realized P&L: ${total_pnl:,.2f}</b>")
-
-
         if failed_closes:
             message_parts.append(f"\n<b>❌ Failed to close {len(failed_closes)} positions:</b>")
             message_parts.extend([f"  - {reason}" for reason in failed_closes])
-
+        if kept_positions_details:
+            message_parts.append(f"\n<b> Positions held (less than 5 days old):</b>")
+            message_parts.extend([f"  - {reason}" for reason in kept_positions_details])
         if not message_parts:
-            message = "No positions were processed for closing."
+            message = "No positions were eligible for closing today."
         else:
             message = "\n".join(message_parts)
-
         notification_title = f"Position Close Report: P&L ${total_pnl:,.2f}"
         send_pushover_notification(config.get('notifications', {}), notification_title, message)
 

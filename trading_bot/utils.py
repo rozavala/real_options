@@ -291,21 +291,43 @@ def get_expiration_details(chain: dict, future_exp: str) -> dict | None:
     days = (datetime.strptime(chosen_exp, '%Y%m%d').date() - datetime.now().date()).days
     return {'exp_date': chosen_exp, 'days_to_exp': days, 'strikes': chain['strikes_by_expiration'][chosen_exp]}
 
-def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution", specific_fill: Fill = None, combo_id: int = None):
+async def _generate_position_id_from_trade(ib: IB, trade: Trade) -> str:
+    """
+    Generates a stable, canonical position identifier from a Trade object.
+    For combos, it fetches leg details to create a sorted string of symbols.
+    For single legs, it uses the local symbol.
+    """
+    if isinstance(trade.contract, Bag) and trade.contract.comboLegs:
+        leg_symbols = []
+        # To get the symbols, we need to resolve the conId for each leg.
+        # This requires an async call.
+        leg_contracts = [Contract(conId=leg.conId) for leg in trade.contract.comboLegs]
+        qualified_legs = await ib.qualifyContractsAsync(*leg_contracts)
+
+        if qualified_legs:
+            leg_symbols = sorted([c.localSymbol for c in qualified_legs])
+            return "-".join(leg_symbols)
+        else:
+            # Fallback if qualification fails
+            return f"combo_{trade.order.permId}"
+    else:
+        # For single-leg trades, the local symbol is sufficient.
+        return trade.contract.localSymbol
+
+
+async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution", specific_fill: Fill = None, combo_id: int = None, position_id: str = None):
     """Logs the details of a filled trade to the `trade_ledger.csv` file.
 
     For combo trades, this function logs each leg as a separate entry in the
-    CSV, linked by a common `combo_id`.
-
-    If `specific_fill` is provided, only that single fill is logged. Otherwise,
-    all fills associated with the `trade` object are logged.
+    CSV, linked by a common `position_id` and `combo_id`.
 
     Args:
+        ib (IB): The connected ib_insync instance.
         trade (Trade): The filled `ib_insync.Trade` object.
         reason (str): A string describing why the trade was executed.
         specific_fill (Fill, optional): If provided, log only this fill.
         combo_id (int, optional): The permanent ID of the parent combo order.
-            If not provided, the trade's own permId is used.
+        position_id (str, optional): The stable identifier for the position.
     """
     # Use absolute path to ensure ledger is in the project root
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -313,14 +335,18 @@ def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution"
     file_exists = os.path.isfile(ledger_path)
 
     fieldnames = [
-        'timestamp', 'combo_id', 'local_symbol', 'action', 'quantity',
+        'timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity',
         'avg_fill_price', 'strike', 'right', 'total_value_usd', 'reason'
     ]
 
     rows_to_write = []
-    # Use the provided combo_id, falling back to the trade's permId.
-    # This ensures all legs of a combo share the same ID.
     final_combo_id = combo_id if combo_id is not None else trade.order.permId
+
+    # Generate the position ID if it wasn't provided.
+    final_position_id = position_id
+    if not final_position_id:
+        final_position_id = await _generate_position_id_from_trade(ib, trade)
+
 
     fills_to_log = [specific_fill] if specific_fill else trade.fills
     if not fills_to_log:
@@ -344,8 +370,6 @@ def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution"
         except (ValueError, TypeError):
             multiplier = 37500.0
 
-        # Price is in cents, so divide by 100 for dollars.
-        # BUY is negative cash flow, SELL is positive.
         total_value = (execution.price * execution.shares * multiplier) / 100.0
         action = 'BUY' if execution.side == 'BOT' else 'SELL'
         if action == 'BUY':
@@ -353,6 +377,7 @@ def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution"
 
         row = {
             'timestamp': execution.time.strftime('%Y-%m-%d %H:%M:%S'),
+            'position_id': final_position_id,
             'combo_id': final_combo_id,
             'local_symbol': contract.localSymbol,
             'action': action,
@@ -371,7 +396,7 @@ def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution"
             if not file_exists:
                 writer.writeheader()
             writer.writerows(rows_to_write)
-        logging.info(f"Logged {len(rows_to_write)} leg(s) to ledger for combo_id {final_combo_id} ({reason})")
+        logging.info(f"Logged {len(rows_to_write)} leg(s) to ledger for position_id {final_position_id} ({reason})")
     except Exception as e:
         logging.error(f"Error writing to trade ledger: {e}")
 
