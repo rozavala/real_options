@@ -28,7 +28,7 @@ from performance_analyzer import main as run_performance_analysis
 from trading_bot.order_manager import (
     generate_and_queue_orders,
     place_queued_orders,
-    close_all_open_positions,
+    close_positions_after_5_days,
     cancel_all_open_orders,
 )
 from trading_bot.utils import archive_trade_ledger
@@ -149,7 +149,7 @@ schedule = {
     time(8, 30): start_monitoring,
     time(8, 50): generate_and_queue_orders,
     time(8, 52): place_queued_orders,
-    time(17, 20): close_all_open_positions,
+    time(17, 20): close_positions_after_5_days,
     time(17, 22): cancel_and_stop_monitoring,
     time(17, 35): analyze_and_archive
 }
