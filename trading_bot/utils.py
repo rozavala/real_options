@@ -6,6 +6,7 @@ helpers for normalizing and parsing contract data from Interactive Brokers,
 market hour checks, and trade logging utilities.
 """
 
+import asyncio
 import csv
 import logging
 import os
@@ -20,6 +21,9 @@ from logging_config import setup_logging
 
 # --- Logging Setup ---
 setup_logging()
+
+# Global lock for writing to the trade ledger to prevent race conditions
+TRADE_LEDGER_LOCK = asyncio.Lock()
 
 
 def _get_combo_description(trade: Trade) -> str:
@@ -332,7 +336,6 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
     # Use absolute path to ensure ledger is in the project root
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-    file_exists = os.path.isfile(ledger_path)
 
     fieldnames = [
         'timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity',
@@ -390,15 +393,23 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
         }
         rows_to_write.append(row)
 
-    try:
-        with open(ledger_path, 'a', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            if not file_exists:
-                writer.writeheader()
-            writer.writerows(rows_to_write)
-        logging.info(f"Logged {len(rows_to_write)} leg(s) to ledger for position_id {final_position_id} ({reason})")
-    except Exception as e:
-        logging.error(f"Error writing to trade ledger: {e}")
+    async with TRADE_LEDGER_LOCK:
+        try:
+            # CRITICAL: Check for file existence and content *inside* the lock
+            # to prevent the TOCTOU race condition.
+            try:
+                file_exists_and_has_content = os.path.getsize(ledger_path) > 0
+            except OSError:
+                file_exists_and_has_content = False
+
+            with open(ledger_path, 'a', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                if not file_exists_and_has_content:
+                    writer.writeheader()
+                writer.writerows(rows_to_write)
+            logging.info(f"Logged {len(rows_to_write)} leg(s) to ledger for position_id {final_position_id} ({reason})")
+        except Exception as e:
+            logging.error(f"Error writing to trade ledger: {e}")
 
 
 def archive_trade_ledger():
