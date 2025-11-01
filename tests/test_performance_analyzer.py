@@ -56,7 +56,8 @@ class TestPerformanceAnalyzer:
                 contract=mock_open_contract, position=2.0,
                 averageCost=0.75, unrealizedPNL=-150.0
             )
-            mock_ib_instance.reqPortfolioAsync.return_value = [mock_open_position]
+            # Configure the portfolio() method, which is synchronous, using a MagicMock
+            mock_ib_instance.portfolio = MagicMock(return_value=[mock_open_position])
 
             # 2. Mock other dependencies
             mock_config = {'connection': {'account_number': 'U12345'}}
@@ -119,5 +120,5 @@ class TestPerformanceAnalyzer:
             # Verify IB methods were called
             mock_ib_instance.connectAsync.assert_awaited_once()
             mock_ib_instance.accountSummaryAsync.assert_awaited_once()
-            mock_ib_instance.reqPortfolioAsync.assert_awaited_once()
+            mock_ib_instance.portfolio.assert_called_once()
             mock_ib_instance.disconnect.assert_called_once()
