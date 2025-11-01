@@ -6,7 +6,7 @@ import os
 import logging
 import asyncio
 import random
-from ib_insync import IB
+from ib_insync import IB, PortfolioItem
 
 from logging_config import setup_logging
 from notifications import send_pushover_notification
@@ -45,39 +45,42 @@ def get_trade_ledger_df():
 
 
 async def get_account_pnl_and_positions(config: dict) -> dict | None:
-    """Connects to IB, fetches P&L and current positions."""
+    """
+    Connects to IB, fetches P&L and current portfolio using fully async methods.
+    """
     ib = IB()
-    summary = {}
+    summary_data = {}
     try:
         conn_settings = config.get('connection', {})
         await ib.connectAsync(
             host=conn_settings.get('host', '127.0.0.1'),
             port=conn_settings.get('port', 7497),
             clientId=random.randint(200, 2000),
-            timeout=10
+            timeout=15  # Increased timeout for reliability
         )
 
-        # Subscribe to portfolio updates
         account = conn_settings.get('account_number', '')
-        ib.reqAccountUpdates(account)
 
-        # Give the subscription a moment to deliver the first batch of data
-        await asyncio.sleep(2.5)
+        # Use accountSummaryAsync to get a snapshot of account values.
+        # This is a one-time request/response, not a subscription.
+        summary_list = await ib.accountSummaryAsync(account)
 
-        portfolio = ib.portfolio()
-        positions = await ib.reqPositionsAsync()
+        daily_pnl_val = next((s.value for s in summary_list if s.tag == 'DailyPnL' and s.account == account), '0.0')
+        daily_pnl = float(daily_pnl_val)
 
-        # Calculate Daily P&L by summing realized and unrealized P&L
-        realized_pnl = sum(item.realizedPNL for item in portfolio if isinstance(item.realizedPNL, float))
-        unrealized_pnl = sum(item.unrealizedPNL for item in portfolio if isinstance(item.unrealizedPNL, float))
-        daily_pnl = realized_pnl + unrealized_pnl
+        # For the open positions report, we need the portfolio.
+        # reqPortfolioAsync is a one-time request/response.
+        portfolio_items = await ib.reqPortfolioAsync(account)
 
-        summary = {
+        summary_data = {
             'daily_pnl': daily_pnl,
-            'positions': positions
+            'portfolio': portfolio_items,
         }
-        logger.info(f"Successfully fetched account P&L from IB: ${summary['daily_pnl']:.2f}")
+        logger.info(f"Successfully fetched account P&L from IB: ${summary_data['daily_pnl']:.2f}")
 
+    except asyncio.TimeoutError:
+        logger.error("Connection to IB timed out during P&L/portfolio fetch.", exc_info=True)
+        return None
     except Exception as e:
         logger.error(f"Failed to get account summary from IB: {e}", exc_info=True)
         return None
@@ -85,7 +88,7 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
         if ib.isConnected():
             ib.disconnect()
 
-    return summary
+    return summary_data
 
 def generate_executive_summary(trade_df: pd.DataFrame, signals_df: pd.DataFrame, today_date: datetime.date, live_daily_pnl: float | None) -> tuple[str, float]:
     """Generates Section 1: The Executive Summary."""
@@ -270,8 +273,8 @@ async def analyze_performance(config: dict) -> dict | None:
     logger.info("--- Starting Daily Performance Analysis ---")
 
     try:
-        # Determine the analysis date from the ledger
-        today_date = trade_df['timestamp'].max().date()
+        # Use the current date for the report
+        today_date = datetime.now().date()
         today_str = today_date.strftime('%Y-%m-%d')
 
         # Fetch live data from IB
@@ -324,12 +327,10 @@ async def main():
 
         # --- Send Report Sections ---
         for title, content in analysis_result['reports'].items():
-            # The content is wrapped in <pre> tags for monospaced formatting
-            message = f"<pre>{content}</pre>"
             send_pushover_notification(
                 notification_config,
                 f"Report Section: {title}",
-                message,
+                content,  # Content is already formatted
                 monospace=True
             )
             await asyncio.sleep(1) # Small delay to ensure notifications arrive in order
