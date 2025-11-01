@@ -69,8 +69,8 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
         daily_pnl = float(daily_pnl_val)
 
         # For the open positions report, we need the portfolio.
-        # reqPortfolioAsync is a one-time request/response.
-        portfolio_items = await ib.reqPortfolioAsync(account)
+        # The portfolio is automatically populated after connection.
+        portfolio_items = ib.portfolio()
 
         summary_data = {
             'daily_pnl': daily_pnl,
