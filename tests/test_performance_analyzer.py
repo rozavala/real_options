@@ -24,7 +24,7 @@ class TestPerformanceAnalyzer:
             # Mock the live data fetch
             mock_get_account_summary.return_value = {
                 'daily_pnl': 155.25, # A slightly different value to confirm it's used
-                'positions': []
+                'portfolio': [] # Mock portfolio for open positions report
             }
 
             # Trade data uses 'KCH6' -> March 2026 contract

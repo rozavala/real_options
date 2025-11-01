@@ -45,7 +45,7 @@ def get_trade_ledger_df():
 
 
 async def get_account_pnl_and_positions(config: dict) -> dict | None:
-    """Connects to IB and fetches P&L and current positions."""
+    """Connects to IB, fetches P&L and current positions."""
     ib = IB()
     summary = {}
     try:
@@ -57,18 +57,23 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
             timeout=10
         )
 
-        # Use reqAccountSummary with a subscription to get live updates
-        # The values will arrive in the accountSummary event
-        ib.reqAccountSummary('All', 'NetLiquidation,DailyPnL,RealizedPnL,UnrealizedPnL')
+        # Subscribe to portfolio updates
+        account = conn_settings.get('account_number', '')
+        ib.reqAccountUpdates(account)
 
         # Give the subscription a moment to deliver the first batch of data
         await asyncio.sleep(2.5)
 
-        account_values = ib.accountSummary()
+        portfolio = ib.portfolio()
         positions = await ib.reqPositionsAsync()
 
+        # Calculate Daily P&L by summing realized and unrealized P&L
+        realized_pnl = sum(item.realizedPNL for item in portfolio if isinstance(item.realizedPNL, float))
+        unrealized_pnl = sum(item.unrealizedPNL for item in portfolio if isinstance(item.unrealizedPNL, float))
+        daily_pnl = realized_pnl + unrealized_pnl
+
         summary = {
-            'daily_pnl': next((float(v.value) for v in account_values if v.tag == 'DailyPnL'), 0.0),
+            'daily_pnl': daily_pnl,
             'positions': positions
         }
         logger.info(f"Successfully fetched account P&L from IB: ${summary['daily_pnl']:.2f}")
@@ -160,23 +165,23 @@ def generate_morning_signals_report(signals_df: pd.DataFrame, today_date: dateti
         report += f"{row['contract']:<12} {row['signal']:<10}\n"
     return report
 
-def generate_open_positions_report(positions: list) -> str:
-    """Creates a summary of all currently open positions from IB."""
-    if not positions:
+def generate_open_positions_report(portfolio: list) -> str:
+    """Creates a summary of all currently open positions from IB's portfolio."""
+
+    # Filter out positions that are flat (position == 0)
+    open_positions = [p for p in portfolio if p.position != 0]
+
+    if not open_positions:
         return "No open positions.\n"
 
     report = f"{'Symbol':<25} {'Qty':>5} {'Avg Cost':>10} {'Unreal. P&L':>15}\n"
     report += "-" * 57 + "\n"
-    for pos in positions:
-        # Skip positions with zero quantity
-        if pos.position == 0:
-            continue
+    for pos in open_positions:
         symbol = pos.contract.localSymbol
         qty = int(pos.position)
-        avg_cost = f"${pos.avgCost/100.0:,.2f}" # Assuming cost is in cents
-        # P&L for positions is not directly provided in this object, would need another call
-        # For now, we will mark it as N/A
-        unreal_pnl_str = "N/A" # This would require fetching live market data
+        avg_cost = f"${pos.averageCost:,.2f}"
+        unreal_pnl = pos.unrealizedPNL
+        unreal_pnl_str = f"${unreal_pnl:,.2f}" if isinstance(unreal_pnl, float) else "N/A"
         
         report += f"{symbol:<25} {qty:>5} {avg_cost:>10} {unreal_pnl_str:>15}\n"
 
@@ -272,12 +277,12 @@ async def analyze_performance(config: dict) -> dict | None:
         # Fetch live data from IB
         account_summary = await get_account_pnl_and_positions(config)
         live_pnl = account_summary.get('daily_pnl') if account_summary else None
-        live_positions = account_summary.get('positions') if account_summary else []
+        live_portfolio = account_summary.get('portfolio') if account_summary else []
 
         # --- Generate Report Sections ---
         exec_summary, pnl_for_title = generate_executive_summary(trade_df, signals_df, today_date, live_pnl)
         morning_signals = generate_morning_signals_report(signals_df, today_date)
-        open_positions = generate_open_positions_report(live_positions)
+        open_positions = generate_open_positions_report(live_portfolio)
         closed_positions = generate_closed_positions_report(trade_df, today_date)
 
         # --- Generate Charts ---
