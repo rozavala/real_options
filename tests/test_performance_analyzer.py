@@ -14,11 +14,18 @@ class TestPerformanceAnalyzer:
         # --- Setup Mocks ---
         with patch('performance_analyzer.generate_performance_charts') as mock_generate_charts, \
              patch('performance_analyzer.get_model_signals_df') as mock_get_signals, \
-             patch('performance_analyzer.get_trade_ledger_df') as mock_get_ledger:
+             patch('performance_analyzer.get_trade_ledger_df') as mock_get_ledger, \
+             patch('performance_analyzer.get_account_pnl_and_positions') as mock_get_account_summary:
 
             mock_config = {}
             mock_generate_charts.return_value = ["/path/to/fake_chart.png"]
             today_str = datetime.now().strftime('%Y-%m-%d')
+
+            # Mock the live data fetch
+            mock_get_account_summary.return_value = {
+                'daily_pnl': 155.25, # A slightly different value to confirm it's used
+                'portfolio': [] # Mock portfolio for open positions report
+            }
 
             # Trade data uses 'KCH6' -> March 2026 contract
             csv_data = f"""timestamp,combo_id,local_symbol,action,quantity,avg_fill_price,strike,right,total_value_usd,reason
@@ -30,7 +37,7 @@ class TestPerformanceAnalyzer:
             trade_df = pd.read_csv(pd.io.common.StringIO(csv_data))
             trade_df['timestamp'] = pd.to_datetime(trade_df['timestamp'])
 
-            # Manually apply the same scaling that the real get_trade_ledger_df does
+            # Manually apply the scaling as the real function would
             trade_df['total_value_usd'] = trade_df['total_value_usd'] / 100.0
 
             mock_get_ledger.return_value = trade_df
@@ -43,19 +50,31 @@ class TestPerformanceAnalyzer:
             signals_df['timestamp'] = pd.to_datetime(signals_df['timestamp'])
             mock_get_signals.return_value = signals_df
 
-            with patch('performance_analyzer.check_for_open_orders', return_value=[]):
-                # --- Act ---
-                result = await analyze_performance(config=mock_config)
-                assert result is not None
-                report, total_pnl, chart_paths = result
+            # --- Act ---
+            result = await analyze_performance(config=mock_config)
 
             # --- Assertions ---
-            # Corrected P&L assertion to reflect the scaling change (15000.00 -> 150.00)
-            assert total_pnl == pytest.approx(150.00)
-            assert "Section 1: Exec. Summary" in report
-            assert "Net P&L" in report
-            # Corrected P&L string check in the report
-            assert "$150.00" in report
-            assert "Section 2: Model Performance" in report
-            assert "Section 3: System Status" in report
-            assert "Data Integrity Check: PASS" in report
+            assert result is not None
+            assert "title" in result
+            assert "reports" in result
+            assert "charts" in result
+
+            # Check that the title uses the live P&L from the mock
+            assert "$155.25" in result['title']
+
+            # Check that all the report sections were generated
+            reports = result['reports']
+            assert "Exec. Summary" in reports
+            assert "Morning Signals" in reports
+            assert "Open Positions" in reports
+            assert "Closed Positions" in reports
+
+            # Spot check some content
+            assert "Net P&L" in reports['Exec. Summary']
+            assert "$155.25" in reports['Exec. Summary'] # Live P&L in the summary table
+            assert "BULLISH" in reports['Morning Signals']
+            assert "No open positions" in reports['Open Positions']
+            assert "KCH6 C3.5 / KCH6 C3.6" in reports['Closed Positions']
+            assert "$150.00" in reports['Closed Positions'] # Ledger P&L for closed positions
+
+            assert result['charts'] == ["/path/to/fake_chart.png"]
