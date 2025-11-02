@@ -511,7 +511,7 @@ def get_trade_ledger_df():
     """
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-    archive_dir = os.path.join(base_dir, 'archive') # Corrected from archive_ledger
+    archive_dir = os.path.join(base_dir, 'archive_ledger')
 
     dataframes = []
 
