@@ -504,28 +504,50 @@ import os
 from pandas.tseries.holiday import USFederalHolidayCalendar
 
 def get_trade_ledger_df():
-    """Reads and consolidates the main and archived trade ledgers for analysis."""
+    """
+    Reads and consolidates the main and archived trade ledgers for analysis.
+    This function is now robust to historical ledgers that may be missing
+    the 'position_id' column, using 'combo_id' as a fallback.
+    """
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-    archive_dir = os.path.join(base_dir, 'archive')
+    archive_dir = os.path.join(base_dir, 'archive_ledger')
 
     dataframes = []
 
+    def load_and_prepare_ledger(file_path):
+        """Loads a single ledger file and ensures it has a position_id."""
+        df = pd.read_csv(file_path)
+        if 'position_id' not in df.columns:
+            logger.warning(f"File '{file_path}' is missing 'position_id'. Using 'combo_id' as fallback.")
+            if 'combo_id' in df.columns:
+                df['position_id'] = df['combo_id']
+            else:
+                logger.error(f"Cannot create fallback 'position_id' as 'combo_id' is also missing in '{file_path}'.")
+                # Return an empty dataframe with the expected columns if a critical column is missing
+                return pd.DataFrame(columns=['timestamp', 'position_id']) # Ensure it has minimal columns
+        return df
+
     if os.path.exists(ledger_path):
-        dataframes.append(pd.read_csv(ledger_path))
+        dataframes.append(load_and_prepare_ledger(ledger_path))
+
     if os.path.exists(archive_dir):
         archive_files = [os.path.join(archive_dir, f) for f in os.listdir(archive_dir) if f.startswith('trade_ledger_') and f.endswith('.csv')]
-        if archive_files:
-            df_list = [pd.read_csv(file) for file in archive_files]
-            dataframes.extend(df_list)
+        for file in archive_files:
+            dataframes.append(load_and_prepare_ledger(file))
 
     if not dataframes:
         return pd.DataFrame()
 
     full_ledger = pd.concat(dataframes, ignore_index=True)
-    full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
 
-    return full_ledger.sort_values(by='timestamp').reset_index(drop=True)
+    # Ensure timestamp column exists and is in datetime format
+    if 'timestamp' in full_ledger.columns:
+        full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
+        return full_ledger.sort_values(by='timestamp').reset_index(drop=True)
+    else:
+        logger.error("Consolidated ledger is missing the 'timestamp' column.")
+        return pd.DataFrame()
 
 
 async def close_positions_after_5_days(config: dict):
