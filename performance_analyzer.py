@@ -6,6 +6,7 @@ import os
 import logging
 import asyncio
 import random
+import math
 from ib_insync import IB, PortfolioItem
 
 from logging_config import setup_logging
@@ -71,8 +72,8 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
         # Poll for 10 seconds (50 iterations * 200ms sleep)
         for _ in range(50):
             pnl_obj = ib.pnl(account)
-            # pnl() returns a list, we check if it's populated and has a valid dailyPnL
-            if pnl_obj and pnl_obj[0].dailyPnL:
+            # pnl() returns a list; we check if it's populated and dailyPnL is a valid number
+            if pnl_obj and pnl_obj[0].dailyPnL and not math.isnan(pnl_obj[0].dailyPnL):
                 daily_pnl = pnl_obj[0].dailyPnL
                 break
             await asyncio.sleep(0.2)

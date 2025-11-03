@@ -54,10 +54,10 @@ class TestPerformanceAnalyzer:
             mock_ib_instance.reqPnL = MagicMock()
             mock_ib_instance.cancelPnL = MagicMock()
 
-            # Mock the polling behavior for pnl
-            mock_pnl_obj = MockPnL(dailyPnL=155.25)
-            # First call returns empty, second call returns the value
-            mock_ib_instance.pnl = MagicMock(side_effect=[[], [mock_pnl_obj]])
+            # Mock the polling behavior for pnl, simulating a NaN value first
+            mock_pnl_nan = MockPnL(dailyPnL=float('nan'))
+            mock_pnl_valid = MockPnL(dailyPnL=155.25)
+            mock_ib_instance.pnl = MagicMock(side_effect=[[], [mock_pnl_nan], [mock_pnl_valid]])
 
             mock_open_contract = MockContract(localSymbol="KOZ5 P4.5")
             mock_open_position = MockPortfolioItem(
@@ -127,5 +127,7 @@ class TestPerformanceAnalyzer:
 
             # Verify IB methods were called
             mock_ib_instance.connectAsync.assert_awaited_once()
+            mock_ib_instance.reqPnL.assert_called_once_with('U12345')
+            mock_ib_instance.cancelPnL.assert_called_once_with('U12345')
             mock_ib_instance.portfolio.assert_called_once()
             mock_ib_instance.disconnect.assert_called_once()
