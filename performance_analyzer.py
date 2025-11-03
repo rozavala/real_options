@@ -46,12 +46,15 @@ def get_trade_ledger_df():
 
 async def get_account_pnl_and_positions(config: dict) -> dict | None:
     """
-    Connects to IB, fetches P&L and current portfolio, waiting for data to stream in.
+    Connects to IB, subscribes to P&L updates, and fetches the portfolio.
     """
     ib = IB()
     summary_data = {}
+    account = ""  # Define account here to be accessible in finally block
     try:
         conn_settings = config.get('connection', {})
+        account = conn_settings.get('account_number', '')
+
         await ib.connectAsync(
             host=conn_settings.get('host', '127.0.0.1'),
             port=conn_settings.get('port', 7497),
@@ -59,20 +62,25 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
             timeout=15
         )
 
-        # After connecting, portfolio and account data streams in.
-        # A short delay ensures this data is populated before we access it.
-        logger.info("Waiting for IB data to stream in...")
-        await asyncio.sleep(2)
+        # Explicitly subscribe to DailyPnL updates. This is not subscribed by default.
+        ib.reqAccountSummary(account, tags='DailyPnL')
 
-        account = conn_settings.get('account_number', '')
+        # Poll for the PnL value with a timeout
+        daily_pnl = 0.0
+        pnl_item = None
 
-        # Access the live-updated account values
-        account_values = ib.accountValues(account)
+        # Poll for 10 seconds (50 iterations * 200ms sleep)
+        for _ in range(50):
+            account_vals = ib.accountValues(account)
+            pnl_item = next((v for v in account_vals if v.tag == 'DailyPnL'), None)
+            if pnl_item and pnl_item.value:
+                daily_pnl = float(pnl_item.value)
+                break
+            await asyncio.sleep(0.2)
+        else:
+            logger.error("Timed out after 10s waiting for DailyPnL update.")
 
-        daily_pnl_item = next((v for v in account_values if v.tag == 'DailyPnL' and v.account == account), None)
-        daily_pnl = float(daily_pnl_item.value) if daily_pnl_item else 0.0
-
-        # Access the live-updated portfolio
+        # Portfolio items should be populated automatically after connection
         portfolio_items = ib.portfolio()
 
         summary_data = {
@@ -89,6 +97,8 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
         return None
     finally:
         if ib.isConnected():
+            if account:
+                ib.cancelAccountSummary(account)  # Clean up the subscription
             ib.disconnect()
 
     return summary_data

@@ -47,9 +47,16 @@ class TestPerformanceAnalyzer:
             mock_ib_instance.disconnect = MagicMock()
             mock_ib_class.return_value = mock_ib_instance
 
-            # Mock the sync methods' return values
+            # Configure sync methods with MagicMock to avoid RuntimeWarning
+            mock_ib_instance.isConnected = MagicMock(return_value=True)
+            mock_ib_instance.disconnect = MagicMock()
+            mock_ib_instance.reqAccountSummary = MagicMock()
+            mock_ib_instance.cancelAccountSummary = MagicMock()
+
+            # Mock the polling behavior for accountValues
             mock_pnl_summary = MockAccountValue(tag='DailyPnL', value='155.25', account='U12345')
-            mock_ib_instance.accountValues = MagicMock(return_value=[mock_pnl_summary])
+            # First call returns empty, second call returns the value
+            mock_ib_instance.accountValues = MagicMock(side_effect=[[], [mock_pnl_summary]])
 
             mock_open_contract = MockContract(localSymbol="KOZ5 P4.5")
             mock_open_position = MockPortfolioItem(
