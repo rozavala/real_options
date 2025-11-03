@@ -46,7 +46,7 @@ def get_trade_ledger_df():
 
 async def get_account_pnl_and_positions(config: dict) -> dict | None:
     """
-    Connects to IB, fetches P&L and current portfolio using fully async methods.
+    Connects to IB, fetches P&L and current portfolio, waiting for data to stream in.
     """
     ib = IB()
     summary_data = {}
@@ -56,20 +56,23 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
             host=conn_settings.get('host', '127.0.0.1'),
             port=conn_settings.get('port', 7497),
             clientId=random.randint(200, 2000),
-            timeout=15  # Increased timeout for reliability
+            timeout=15
         )
+
+        # After connecting, portfolio and account data streams in.
+        # A short delay ensures this data is populated before we access it.
+        logger.info("Waiting for IB data to stream in...")
+        await asyncio.sleep(2)
 
         account = conn_settings.get('account_number', '')
 
-        # Use accountSummaryAsync to get a snapshot of account values.
-        # This is a one-time request/response, not a subscription.
-        summary_list = await ib.accountSummaryAsync(account)
+        # Access the live-updated account values
+        account_values = ib.accountValues(account)
 
-        daily_pnl_val = next((s.value for s in summary_list if s.tag == 'DailyPnL' and s.account == account), '0.0')
-        daily_pnl = float(daily_pnl_val)
+        daily_pnl_item = next((v for v in account_values if v.tag == 'DailyPnL' and v.account == account), None)
+        daily_pnl = float(daily_pnl_item.value) if daily_pnl_item else 0.0
 
-        # For the open positions report, we need the portfolio.
-        # The portfolio is automatically populated after connection.
+        # Access the live-updated portfolio
         portfolio_items = ib.portfolio()
 
         summary_data = {
