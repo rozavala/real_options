@@ -16,6 +16,10 @@ class MockPortfolioItem:
         self.averageCost = averageCost
         self.unrealizedPNL = unrealizedPNL
 
+class MockPnL:
+    def __init__(self, dailyPnL):
+        self.dailyPnL = dailyPnL
+
 class MockAccountValue:
     def __init__(self, tag, value, account):
         self.tag = tag
@@ -42,14 +46,18 @@ class TestPerformanceAnalyzer:
 
             # 1. Mock IB Class and its methods
             mock_ib_instance = AsyncMock()
+            mock_ib_class.return_value = mock_ib_instance
+
             # Configure sync methods with MagicMock to avoid RuntimeWarning
             mock_ib_instance.isConnected = MagicMock(return_value=True)
             mock_ib_instance.disconnect = MagicMock()
-            mock_ib_class.return_value = mock_ib_instance
+            mock_ib_instance.reqPnL = MagicMock()
+            mock_ib_instance.cancelPnL = MagicMock()
 
-            # Mock the async methods' return values
-            mock_pnl_summary = MockAccountValue(tag='DailyPnL', value='155.25', account='U12345')
-            mock_ib_instance.accountSummaryAsync.return_value = [mock_pnl_summary]
+            # Mock the polling behavior for pnl
+            mock_pnl_obj = MockPnL(dailyPnL=155.25)
+            # First call returns empty, second call returns the value
+            mock_ib_instance.pnl = MagicMock(side_effect=[[], [mock_pnl_obj]])
 
             mock_open_contract = MockContract(localSymbol="KOZ5 P4.5")
             mock_open_position = MockPortfolioItem(
@@ -119,6 +127,5 @@ class TestPerformanceAnalyzer:
 
             # Verify IB methods were called
             mock_ib_instance.connectAsync.assert_awaited_once()
-            mock_ib_instance.accountSummaryAsync.assert_awaited_once()
             mock_ib_instance.portfolio.assert_called_once()
             mock_ib_instance.disconnect.assert_called_once()
