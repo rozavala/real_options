@@ -16,6 +16,10 @@ class MockPortfolioItem:
         self.averageCost = averageCost
         self.unrealizedPNL = unrealizedPNL
 
+class MockPnL:
+    def __init__(self, dailyPnL):
+        self.dailyPnL = dailyPnL
+
 class MockAccountValue:
     def __init__(self, tag, value, account):
         self.tag = tag
@@ -42,14 +46,19 @@ class TestPerformanceAnalyzer:
 
             # 1. Mock IB Class and its methods
             mock_ib_instance = AsyncMock()
+            mock_ib_class.return_value = mock_ib_instance
+
             # Configure sync methods with MagicMock to avoid RuntimeWarning
             mock_ib_instance.isConnected = MagicMock(return_value=True)
             mock_ib_instance.disconnect = MagicMock()
-            mock_ib_class.return_value = mock_ib_instance
+            mock_ib_instance.reqPnL = MagicMock()
+            mock_ib_instance.cancelPnL = MagicMock()
+            mock_ib_instance.managedAccounts = MagicMock(return_value=['U54321'])
 
-            # Mock the async methods' return values
-            mock_pnl_summary = MockAccountValue(tag='DailyPnL', value='155.25', account='U12345')
-            mock_ib_instance.accountSummaryAsync.return_value = [mock_pnl_summary]
+            # Mock the polling behavior for pnl, simulating a NaN value first
+            mock_pnl_nan = MockPnL(dailyPnL=float('nan'))
+            mock_pnl_valid = MockPnL(dailyPnL=155.25)
+            mock_ib_instance.pnl = MagicMock(side_effect=[[], [mock_pnl_nan], [mock_pnl_valid]])
 
             mock_open_contract = MockContract(localSymbol="KOZ5 P4.5")
             mock_open_position = MockPortfolioItem(
@@ -119,6 +128,49 @@ class TestPerformanceAnalyzer:
 
             # Verify IB methods were called
             mock_ib_instance.connectAsync.assert_awaited_once()
-            mock_ib_instance.accountSummaryAsync.assert_awaited_once()
+            mock_ib_instance.reqPnL.assert_called_once_with('U12345')
+            mock_ib_instance.cancelPnL.assert_called_once_with('U12345')
             mock_ib_instance.portfolio.assert_called_once()
             mock_ib_instance.disconnect.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_analyze_performance_no_account_in_config(self):
+        # --- Test Setup ---
+        test_date = datetime(2025, 10, 31)
+
+        # --- Setup Mocks ---
+        with patch('performance_analyzer.generate_performance_charts'), \
+             patch('performance_analyzer.get_model_signals_df') as mock_get_signals, \
+             patch('performance_analyzer.get_trade_ledger_df') as mock_get_ledger, \
+             patch('performance_analyzer.datetime') as mock_datetime, \
+             patch('performance_analyzer.IB') as mock_ib_class:
+
+            # 1. Mock IB Class and its methods
+            mock_ib_instance = AsyncMock()
+            mock_ib_class.return_value = mock_ib_instance
+
+            mock_ib_instance.isConnected = MagicMock(return_value=True)
+            mock_ib_instance.disconnect = MagicMock()
+            mock_ib_instance.reqPnL = MagicMock()
+            mock_ib_instance.cancelPnL = MagicMock()
+            mock_ib_instance.managedAccounts = MagicMock(return_value=['U54321'])
+
+            mock_pnl_valid = MockPnL(dailyPnL=155.25)
+            mock_ib_instance.pnl = MagicMock(return_value=[mock_pnl_valid])
+
+            mock_ib_instance.portfolio = MagicMock(return_value=[])
+
+            # 2. Mock other dependencies
+            mock_config = {'connection': {'account_number': ''}} # Empty account number
+            mock_datetime.now.return_value = test_date
+            mock_get_ledger.return_value = pd.DataFrame({'timestamp': [test_date]})
+            mock_get_signals.return_value = pd.DataFrame({'timestamp': [test_date]})
+
+            # --- Act ---
+            await analyze_performance(config=mock_config)
+
+            # --- Assertions ---
+            # Verify that the fallback account is used for PnL request
+            mock_ib_instance.managedAccounts.assert_called_once()
+            mock_ib_instance.reqPnL.assert_called_once_with('U54321')
+            mock_ib_instance.cancelPnL.assert_called_once_with('U54321')

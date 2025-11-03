@@ -6,6 +6,7 @@ import os
 import logging
 import asyncio
 import random
+import math
 from ib_insync import IB, PortfolioItem
 
 from logging_config import setup_logging
@@ -46,30 +47,47 @@ def get_trade_ledger_df():
 
 async def get_account_pnl_and_positions(config: dict) -> dict | None:
     """
-    Connects to IB, fetches P&L and current portfolio using fully async methods.
+    Connects to IB, subscribes to P&L updates, and fetches the portfolio.
     """
     ib = IB()
     summary_data = {}
+    conn_settings = config.get('connection', {})
+    account = conn_settings.get('account_number', '')
     try:
-        conn_settings = config.get('connection', {})
         await ib.connectAsync(
             host=conn_settings.get('host', '127.0.0.1'),
             port=conn_settings.get('port', 7497),
             clientId=random.randint(200, 2000),
-            timeout=15  # Increased timeout for reliability
+            timeout=15
         )
 
-        account = conn_settings.get('account_number', '')
+        if not account:
+            accounts = ib.managedAccounts()
+            if accounts:
+                account = accounts[0]
+                logger.info(f"Account number not in config, using managed account: {account}")
+            else:
+                logger.error("No account number in config and no managed accounts found.")
+                return None
 
-        # Use accountSummaryAsync to get a snapshot of account values.
-        # This is a one-time request/response, not a subscription.
-        summary_list = await ib.accountSummaryAsync(account)
+        # Explicitly subscribe to P&L updates for the account.
+        ib.reqPnL(account)
 
-        daily_pnl_val = next((s.value for s in summary_list if s.tag == 'DailyPnL' and s.account == account), '0.0')
-        daily_pnl = float(daily_pnl_val)
+        # Poll for the PnL value with a timeout
+        daily_pnl = 0.0
 
-        # For the open positions report, we need the portfolio.
-        # The portfolio is automatically populated after connection.
+        # Poll for 10 seconds (50 iterations * 200ms sleep)
+        for _ in range(50):
+            pnl_obj = ib.pnl(account)
+            # pnl() returns a list; we check if it's populated and dailyPnL is a valid number
+            if pnl_obj and pnl_obj[0].dailyPnL and not math.isnan(pnl_obj[0].dailyPnL):
+                daily_pnl = pnl_obj[0].dailyPnL
+                break
+            await asyncio.sleep(0.2)
+        else:
+            logger.error("Timed out after 10s waiting for Daily PnL update.")
+
+        # Portfolio items should be populated automatically after connection
         portfolio_items = ib.portfolio()
 
         summary_data = {
@@ -82,10 +100,12 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
         logger.error("Connection to IB timed out during P&L/portfolio fetch.", exc_info=True)
         return None
     except Exception as e:
-        logger.error(f"Failed to get account summary from IB: {e}", exc_info=True)
+        logger.error(f"Failed to get account P&L from IB: {e}", exc_info=True)
         return None
     finally:
         if ib.isConnected():
+            if account:
+                ib.cancelPnL(account)  # Clean up the P&L subscription
             ib.disconnect()
 
     return summary_data
