@@ -51,11 +51,9 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
     """
     ib = IB()
     summary_data = {}
-    account = ""  # Define account here to be accessible in finally block
+    conn_settings = config.get('connection', {})
+    account = conn_settings.get('account_number', '')
     try:
-        conn_settings = config.get('connection', {})
-        account = conn_settings.get('account_number', '')
-
         await ib.connectAsync(
             host=conn_settings.get('host', '127.0.0.1'),
             port=conn_settings.get('port', 7497),
