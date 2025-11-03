@@ -62,23 +62,22 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
             timeout=15
         )
 
-        # Explicitly subscribe to DailyPnL updates. This is not subscribed by default.
-        ib.reqAccountSummary(account, tags='DailyPnL')
+        # Explicitly subscribe to P&L updates for the account.
+        ib.reqPnL(account)
 
         # Poll for the PnL value with a timeout
         daily_pnl = 0.0
-        pnl_item = None
 
         # Poll for 10 seconds (50 iterations * 200ms sleep)
         for _ in range(50):
-            account_vals = ib.accountValues(account)
-            pnl_item = next((v for v in account_vals if v.tag == 'DailyPnL'), None)
-            if pnl_item and pnl_item.value:
-                daily_pnl = float(pnl_item.value)
+            pnl_obj = ib.pnl(account)
+            # pnl() returns a list, we check if it's populated and has a valid dailyPnL
+            if pnl_obj and pnl_obj[0].dailyPnL:
+                daily_pnl = pnl_obj[0].dailyPnL
                 break
             await asyncio.sleep(0.2)
         else:
-            logger.error("Timed out after 10s waiting for DailyPnL update.")
+            logger.error("Timed out after 10s waiting for Daily PnL update.")
 
         # Portfolio items should be populated automatically after connection
         portfolio_items = ib.portfolio()
@@ -93,12 +92,12 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
         logger.error("Connection to IB timed out during P&L/portfolio fetch.", exc_info=True)
         return None
     except Exception as e:
-        logger.error(f"Failed to get account summary from IB: {e}", exc_info=True)
+        logger.error(f"Failed to get account P&L from IB: {e}", exc_info=True)
         return None
     finally:
         if ib.isConnected():
             if account:
-                ib.cancelAccountSummary(account)  # Clean up the subscription
+                ib.cancelPnL(account)  # Clean up the P&L subscription
             ib.disconnect()
 
     return summary_data
