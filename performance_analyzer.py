@@ -6,6 +6,7 @@ import os
 import logging
 import asyncio
 import random
+import math
 from ib_insync import IB, PortfolioItem
 
 from logging_config import setup_logging
@@ -46,30 +47,46 @@ def get_trade_ledger_df():
 
 async def get_account_pnl_and_positions(config: dict) -> dict | None:
     """
-    Connects to IB, fetches P&L and current portfolio using fully async methods.
+    Connects to IB, subscribes to P&L updates, and fetches the portfolio.
     """
     ib = IB()
     summary_data = {}
+    conn_settings = config.get('connection', {})
+    account = conn_settings.get('account_number', '')
     try:
-        conn_settings = config.get('connection', {})
         await ib.connectAsync(
             host=conn_settings.get('host', '127.0.0.1'),
             port=conn_settings.get('port', 7497),
             clientId=random.randint(200, 2000),
-            timeout=15  # Increased timeout for reliability
+            timeout=15
         )
 
-        account = conn_settings.get('account_number', '')
+        if not account:
+            accounts = ib.managedAccounts()
+            if accounts:
+                account = accounts[0]
+                logger.info(f"Account number not in config, using managed account: {account}")
+            else:
+                logger.error("No account number in config and no managed accounts found.")
+                return None
 
-        # Use accountSummaryAsync to get a snapshot of account values.
-        # This is a one-time request/response, not a subscription.
-        summary_list = await ib.accountSummaryAsync(account)
+        # Fetch account summary to calculate daily P&L from equity change.
+        # This is more reliable than the streaming PnL value.
+        summary = await ib.accountSummaryAsync()
 
-        daily_pnl_val = next((s.value for s in summary_list if s.tag == 'DailyPnL' and s.account == account), '0.0')
-        daily_pnl = float(daily_pnl_val)
+        # Filter for the specific account and create a dictionary of tags to values.
+        account_summary_values = [v for v in summary if v.account == account]
+        summary_dict = {v.tag: v.value for v in account_summary_values}
 
-        # For the open positions report, we need the portfolio.
-        # The portfolio is automatically populated after connection.
+        daily_pnl = 0.0
+        try:
+            current_equity = float(summary_dict['EquityWithLoanValue'])
+            previous_equity = float(summary_dict['PreviousDayEquityWithLoanValue'])
+            daily_pnl = current_equity - previous_equity
+        except (ValueError, KeyError) as e:
+            logger.error(f"Could not calculate daily P&L from account summary. Missing value or format error: {e}")
+
+        # Portfolio items should be populated automatically after connection
         portfolio_items = ib.portfolio()
 
         summary_data = {
@@ -82,7 +99,7 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
         logger.error("Connection to IB timed out during P&L/portfolio fetch.", exc_info=True)
         return None
     except Exception as e:
-        logger.error(f"Failed to get account summary from IB: {e}", exc_info=True)
+        logger.error(f"Failed to get account P&L from IB: {e}", exc_info=True)
         return None
     finally:
         if ib.isConnected():
@@ -179,6 +196,7 @@ def generate_open_positions_report(portfolio: list) -> str:
 
     report = f"{'Symbol':<25} {'Qty':>5} {'Avg Cost':>10} {'Unreal. P&L':>15}\n"
     report += "-" * 57 + "\n"
+    total_pnl = 0
     for pos in open_positions:
         symbol = pos.contract.localSymbol
         qty = int(pos.position)
@@ -187,6 +205,13 @@ def generate_open_positions_report(portfolio: list) -> str:
         unreal_pnl_str = f"${unreal_pnl:,.2f}" if isinstance(unreal_pnl, float) else "N/A"
         
         report += f"{symbol:<25} {qty:>5} {avg_cost:>10} {unreal_pnl_str:>15}\n"
+        if isinstance(unreal_pnl, float):
+            total_pnl += unreal_pnl
+
+    # --- Add Total Row ---
+    report += "-" * 57 + "\n"
+    total_pnl_str = f"${total_pnl:,.2f}"
+    report += f"{'TOTAL':<42} {total_pnl_str:>15}\n"
 
     return report
 
