@@ -103,6 +103,8 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
         return None
     finally:
         if ib.isConnected():
+            if account:
+                ib.cancelPnL(account)  # Clean up the P&L subscription
             ib.disconnect()
 
     return summary_data

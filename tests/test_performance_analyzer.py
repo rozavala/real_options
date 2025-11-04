@@ -128,7 +128,8 @@ class TestPerformanceAnalyzer:
 
             # Verify IB methods were called
             mock_ib_instance.connectAsync.assert_awaited_once()
-            mock_ib_instance.accountSummaryAsync.assert_awaited_once()
+            mock_ib_instance.reqPnL.assert_called_once_with('U12345')
+            mock_ib_instance.cancelPnL.assert_called_once_with('U12345')
             mock_ib_instance.portfolio.assert_called_once()
             mock_ib_instance.disconnect.assert_called_once()
 
