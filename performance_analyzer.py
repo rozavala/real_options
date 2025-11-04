@@ -70,22 +70,21 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
                 logger.error("No account number in config and no managed accounts found.")
                 return None
 
-        # Explicitly subscribe to P&L updates for the account.
-        ib.reqPnL(account)
+        # Fetch account summary to calculate daily P&L from equity change.
+        # This is more reliable than the streaming PnL value.
+        summary = await ib.accountSummaryAsync()
 
-        # Poll for the PnL value with a timeout
+        # Filter for the specific account and create a dictionary of tags to values.
+        account_summary_values = [v for v in summary if v.account == account]
+        summary_dict = {v.tag: v.value for v in account_summary_values}
+
         daily_pnl = 0.0
-
-        # Poll for 10 seconds (50 iterations * 200ms sleep)
-        for _ in range(50):
-            pnl_obj = ib.pnl(account)
-            # pnl() returns a list; we check if it's populated and dailyPnL is a valid number
-            if pnl_obj and pnl_obj[0].dailyPnL and not math.isnan(pnl_obj[0].dailyPnL):
-                daily_pnl = pnl_obj[0].dailyPnL
-                break
-            await asyncio.sleep(0.2)
-        else:
-            logger.error("Timed out after 10s waiting for Daily PnL update.")
+        try:
+            current_equity = float(summary_dict['EquityWithLoanValue'])
+            previous_equity = float(summary_dict['PreviousDayEquityWithLoanValue'])
+            daily_pnl = current_equity - previous_equity
+        except (ValueError, KeyError) as e:
+            logger.error(f"Could not calculate daily P&L from account summary. Missing value or format error: {e}")
 
         # Portfolio items should be populated automatically after connection
         portfolio_items = ib.portfolio()
@@ -199,6 +198,7 @@ def generate_open_positions_report(portfolio: list) -> str:
 
     report = f"{'Symbol':<25} {'Qty':>5} {'Avg Cost':>10} {'Unreal. P&L':>15}\n"
     report += "-" * 57 + "\n"
+    total_pnl = 0
     for pos in open_positions:
         symbol = pos.contract.localSymbol
         qty = int(pos.position)
@@ -207,6 +207,13 @@ def generate_open_positions_report(portfolio: list) -> str:
         unreal_pnl_str = f"${unreal_pnl:,.2f}" if isinstance(unreal_pnl, float) else "N/A"
         
         report += f"{symbol:<25} {qty:>5} {avg_cost:>10} {unreal_pnl_str:>15}\n"
+        if isinstance(unreal_pnl, float):
+            total_pnl += unreal_pnl
+
+    # --- Add Total Row ---
+    report += "-" * 57 + "\n"
+    total_pnl_str = f"${total_pnl:,.2f}"
+    report += f"{'TOTAL':<42} {total_pnl_str:>15}\n"
 
     return report
 

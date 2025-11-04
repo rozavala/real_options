@@ -51,14 +51,14 @@ class TestPerformanceAnalyzer:
             # Configure sync methods with MagicMock to avoid RuntimeWarning
             mock_ib_instance.isConnected = MagicMock(return_value=True)
             mock_ib_instance.disconnect = MagicMock()
-            mock_ib_instance.reqPnL = MagicMock()
-            mock_ib_instance.cancelPnL = MagicMock()
             mock_ib_instance.managedAccounts = MagicMock(return_value=['U54321'])
 
-            # Mock the polling behavior for pnl, simulating a NaN value first
-            mock_pnl_nan = MockPnL(dailyPnL=float('nan'))
-            mock_pnl_valid = MockPnL(dailyPnL=155.25)
-            mock_ib_instance.pnl = MagicMock(side_effect=[[], [mock_pnl_nan], [mock_pnl_valid]])
+            # Mock accountSummaryAsync to return the required P&L values
+            mock_account_summary = [
+                MockAccountValue(tag='EquityWithLoanValue', value='100155.25', account='U12345'),
+                MockAccountValue(tag='PreviousDayEquityWithLoanValue', value='100000.00', account='U12345')
+            ]
+            mock_ib_instance.accountSummaryAsync = AsyncMock(return_value=mock_account_summary)
 
             mock_open_contract = MockContract(localSymbol="KOZ5 P4.5")
             mock_open_position = MockPortfolioItem(
@@ -151,12 +151,14 @@ class TestPerformanceAnalyzer:
 
             mock_ib_instance.isConnected = MagicMock(return_value=True)
             mock_ib_instance.disconnect = MagicMock()
-            mock_ib_instance.reqPnL = MagicMock()
-            mock_ib_instance.cancelPnL = MagicMock()
             mock_ib_instance.managedAccounts = MagicMock(return_value=['U54321'])
 
-            mock_pnl_valid = MockPnL(dailyPnL=155.25)
-            mock_ib_instance.pnl = MagicMock(return_value=[mock_pnl_valid])
+            # Mock accountSummaryAsync to return the required P&L values for the fallback account
+            mock_account_summary = [
+                MockAccountValue(tag='EquityWithLoanValue', value='100155.25', account='U54321'),
+                MockAccountValue(tag='PreviousDayEquityWithLoanValue', value='100000.00', account='U54321')
+            ]
+            mock_ib_instance.accountSummaryAsync = AsyncMock(return_value=mock_account_summary)
 
             mock_ib_instance.portfolio = MagicMock(return_value=[])
 
@@ -170,7 +172,7 @@ class TestPerformanceAnalyzer:
             await analyze_performance(config=mock_config)
 
             # --- Assertions ---
-            # Verify that the fallback account is used for PnL request
+            # Verify that the fallback account is used
             mock_ib_instance.managedAccounts.assert_called_once()
-            mock_ib_instance.reqPnL.assert_called_once_with('U54321')
-            mock_ib_instance.cancelPnL.assert_called_once_with('U54321')
+            # Verify that accountSummaryAsync is called, as that's where the P&L is derived from
+            mock_ib_instance.accountSummaryAsync.assert_awaited_once()
