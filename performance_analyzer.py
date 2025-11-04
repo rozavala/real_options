@@ -61,6 +61,15 @@ async def get_account_pnl_and_positions(config: dict) -> dict | None:
             timeout=15
         )
 
+        if not account:
+            accounts = ib.managedAccounts()
+            if accounts:
+                account = accounts[0]
+                logger.info(f"Account number not in config, using managed account: {account}")
+            else:
+                logger.error("No account number in config and no managed accounts found.")
+                return None
+
         # Explicitly subscribe to P&L updates for the account.
         ib.reqPnL(account)
 
