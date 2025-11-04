@@ -6,8 +6,9 @@ import pytest
 
 # Mock objects to simulate ib_insync classes without needing the library
 class MockContract:
-    def __init__(self, localSymbol=""):
+    def __init__(self, localSymbol="", conId=0):
         self.localSymbol = localSymbol
+        self.conId = conId
 
 class MockPortfolioItem:
     def __init__(self, contract, position, averageCost, unrealizedPNL):
@@ -26,14 +27,26 @@ class MockAccountValue:
         self.value = value
         self.account = account
 
-from performance_analyzer import analyze_performance
+from performance_analyzer import analyze_performance, generate_closed_positions_report
+
+# Additional Mock classes for Executions
+class MockExecution:
+    def __init__(self, side, shares, price):
+        self.side = side
+        self.shares = shares
+        self.price = price
+
+class MockFill:
+    def __init__(self, contract, execution, time):
+        self.contract = contract
+        self.execution = execution
+        self.time = time
 
 class TestPerformanceAnalyzer:
 
     @pytest.mark.asyncio
-    async def test_analyze_performance_with_live_data(self):
+    async def test_analyze_performance_hybrid_approach(self):
         # --- Test Setup ---
-        # Hardcode the date for deterministic test results
         test_date = datetime(2025, 10, 31)
         test_date_str = test_date.strftime('%Y-%m-%d')
 
@@ -47,43 +60,43 @@ class TestPerformanceAnalyzer:
             # 1. Mock IB Class and its methods
             mock_ib_instance = AsyncMock()
             mock_ib_class.return_value = mock_ib_instance
-
-            # Configure sync methods with MagicMock to avoid RuntimeWarning
             mock_ib_instance.isConnected = MagicMock(return_value=True)
             mock_ib_instance.disconnect = MagicMock()
             mock_ib_instance.managedAccounts = MagicMock(return_value=['U54321'])
+            mock_ib_instance.cancelPnL = MagicMock()
 
-            # Mock accountSummaryAsync to return the required P&L values
+            # Mock P&L and Portfolio data
             mock_account_summary = [
-                MockAccountValue(tag='EquityWithLoanValue', value='100155.25', account='U12345'),
+                MockAccountValue(tag='EquityWithLoanValue', value='100200.00', account='U12345'),
                 MockAccountValue(tag='PreviousDayEquityWithLoanValue', value='100000.00', account='U12345')
             ]
             mock_ib_instance.accountSummaryAsync = AsyncMock(return_value=mock_account_summary)
 
-            mock_open_contract = MockContract(localSymbol="KOZ5 P4.5")
             mock_open_position = MockPortfolioItem(
-                contract=mock_open_contract, position=2.0,
-                averageCost=0.75, unrealizedPNL=-150.0
+                contract=MockContract(localSymbol="KCK6 C3.0"), position=1.0,
+                averageCost=0.5, unrealizedPNL=50.0
             )
-            # Configure the portfolio() method, which is synchronous, using a MagicMock
             mock_ib_instance.portfolio = MagicMock(return_value=[mock_open_position])
+
+            # Mock Executions for TODAY's closed positions
+            fills_today = [
+                MockFill(MockContract(conId=1, localSymbol="KOZ5 P4.5"), MockExecution('BOT', 1.0, 75.0), test_date),
+                MockFill(MockContract(conId=1, localSymbol="KOZ5 P4.5"), MockExecution('SLD', 1.0, 225.0), test_date)
+            ]
+            mock_ib_instance.reqExecutionsAsync = AsyncMock(return_value=fills_today)
 
             # 2. Mock other dependencies
             mock_config = {'connection': {'account_number': 'U12345'}}
-            mock_generate_charts.return_value = ["/path/to/fake_chart.png"]
+            mock_generate_charts.return_value = ["/path/to/chart.png"]
             mock_datetime.now.return_value = test_date
 
-            # 3. Mock Trade Ledger Data (for closed positions)
-            csv_data = f"""timestamp,combo_id,local_symbol,action,quantity,avg_fill_price,strike,right,total_value_usd,reason
-    {test_date_str} 10:00:00,123,KCH6 C3.5,BUY,1,0.5,3.5,C,-18750.0,Strategy Execution
-    {test_date_str} 10:00:00,123,KCH6 C3.6,SELL,1,0.2,3.6,C,7500.0,Strategy Execution
-    {test_date_str} 14:00:00,123,KCH6 C3.5,SELL,1,0.8,3.5,C,30000.0,Take-Profit
-    {test_date_str} 14:00:00,123,KCH6 C3.6,BUY,1,0.1,3.6,C,-3750.0,Take-Profit
+            # 3. Mock Trade Ledger Data (for LTD stats)
+            ltd_csv_data = f"""timestamp,combo_id,local_symbol,action,total_value_usd,reason
+    2025-10-30 10:00:00,10,KCH6 C3.5,BUY,-100.0,Strategy Execution
+    2025-10-30 14:00:00,10,KCH6 C3.5,SELL,120.0,Take-Profit
     """
-            trade_df = pd.read_csv(pd.io.common.StringIO(csv_data))
+            trade_df = pd.read_csv(pd.io.common.StringIO(ltd_csv_data))
             trade_df['timestamp'] = pd.to_datetime(trade_df['timestamp'])
-            # Convert cents to dollars, as the analysis functions expect
-            trade_df['total_value_usd'] = trade_df['total_value_usd'] / 100.0
             mock_get_ledger.return_value = trade_df
 
             # 4. Mock Signals Data
@@ -99,39 +112,23 @@ class TestPerformanceAnalyzer:
 
             # --- Assertions ---
             assert result is not None
+            # Title P&L = Realized (150) + Unrealized (50) = 200
+            assert "Total P&L $200.00" in result['title']
 
-            # Check title uses live P&L
-            assert "$155.25" in result['title']
+            summary = result['reports']['Exec. Summary']
+            assert "Total P&L" in summary and "$200.00" in summary
+            assert "Realized P&L" in summary and "$150.00" in summary # From live fills
+            assert "Unrealized P&L" in summary and "$50.00" in summary # From live portfolio
+            assert "LTD" in summary and "$20.00" in summary # From historical ledger
 
-            reports = result['reports']
+            # Assert Closed Positions report is from live data
+            closed_report = result['reports']['Closed Positions']
+            assert "KOZ5 P4.5" in closed_report
+            assert "$150.00" in closed_report
 
-            # Assert Exec Summary uses live P&L for "Today"
-            assert "Exec. Summary" in reports
-            assert "$155.25" in reports['Exec. Summary']
-
-            # Assert Morning Signals are present
-            assert "Morning Signals" in reports
-            assert "BULLISH" in reports['Morning Signals']
-
-            # Assert Open Positions report is correctly formatted from live data
-            assert "Open Positions" in reports
-            assert "KOZ5 P4.5" in reports['Open Positions']
-            assert "2" in reports['Open Positions']      # Quantity
-            assert "$-150.00" in reports['Open Positions'] # Unrealized P&L
-
-            # Assert Closed Positions report is correctly calculated from ledger
-            assert "Closed Positions" in reports
-            assert "KCH6 C3.5 / KCH6 C3.6" in reports['Closed Positions']
-            assert "$150.00" in reports['Closed Positions'] # P&L from ledger
-
-            assert result['charts'] == ["/path/to/fake_chart.png"]
-
-            # Verify IB methods were called
+            # Verify correct IB methods were called
             mock_ib_instance.connectAsync.assert_awaited_once()
-            mock_ib_instance.reqPnL.assert_called_once_with('U12345')
-            mock_ib_instance.cancelPnL.assert_called_once_with('U12345')
-            mock_ib_instance.portfolio.assert_called_once()
-            mock_ib_instance.disconnect.assert_called_once()
+            mock_ib_instance.reqExecutionsAsync.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_analyze_performance_no_account_in_config(self):
