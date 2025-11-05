@@ -107,7 +107,7 @@ def generate_executive_summary(
         if trades.empty:
             return {"pnl": 0, "trades_executed": 0, "win_rate": 0}
 
-        trades['position_id'] = trades.apply(lambda row: tuple(sorted(row['combo_id'].split(','))), axis=1)
+        trades['position_id'] = trades.apply(lambda row: tuple(sorted(str(row['combo_id']).split(','))), axis=1)
         closed_positions = trades.groupby('position_id').filter(lambda x: x['action'].eq('BUY').count() == x['action'].eq('SELL').count())
         pnl_per_position = closed_positions.groupby('position_id')['total_value_usd'].sum()
 

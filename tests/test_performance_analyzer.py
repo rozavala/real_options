@@ -103,8 +103,18 @@ class TestPerformanceAnalyzer:
             mock_datetime.now.return_value = test_date
 
             # 3. Mock Trade Ledger and Signals Data (for LTD stats)
-            mock_get_ledger.return_value = pd.DataFrame() # No LTD trades for simplicity in this test
-            signals_df = pd.DataFrame({'timestamp': [test_date], 'contract': ['202603'], 'signal': ['BULLISH']})
+            mock_ledger_data = {
+                'timestamp': [test_date, test_date, test_date, test_date],
+                'action': ['BUY', 'SELL', 'BUY', 'SELL'],
+                'combo_id': ['123,456', '123,456', 999888, 999888], # Test string and int combo_ids
+                'total_value_usd': [-100, 150, -200, 180]
+            }
+            mock_get_ledger.return_value = pd.DataFrame(mock_ledger_data)
+            signals_df = pd.DataFrame({
+                'timestamp': [test_date, test_date],
+                'contract': ['202603', '202604'],
+                'signal': ['BULLISH', 'BEARISH']
+            })
             mock_get_signals.return_value = signals_df
 
             # --- Act ---
@@ -112,11 +122,21 @@ class TestPerformanceAnalyzer:
 
             # --- Assertions ---
             assert result is not None
+            # --- Assertions ---
+            # --- Daily Assertions ---
             # Total PNL = Realized (1875.00) + Unrealized (50 - 20 + 100) = 1875 + 130 = 2005.00
             assert "Total P&L $2,005.00" in result['title']
 
             summary = result['reports']['Exec. Summary']
             assert "Realized P&L" in summary and "$1,875.00" in summary
+            assert "Unrealized P&L" in summary and "$130.00" in summary
+            assert "Trades Executed" in summary and "      1" in summary # Today's trades
+
+            # --- LTD Assertions (verifies the integer combo_id fix) ---
+            # LTD PNL = (150-100) + (180-200) = 50 - 20 = 30
+            assert "Total P&L" in summary and "$30.00" in summary
+            assert "Trades Executed" in summary and "      2" in summary # LTD trades
+            assert "Win Rate" in summary and "50.0%" in summary
             assert "Unrealized P&L" in summary and "$130.00" in summary
             assert "Trades Executed" in summary and "1" in summary
 
