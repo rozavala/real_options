@@ -73,27 +73,72 @@ class TestRiskManagement(unittest.TestCase):
 
         asyncio.run(run_test())
 
-    def test_check_risk_once_stop_loss(self):
+    @patch('trading_bot.risk_management.get_trade_ledger_df')
+    def test_check_risk_once_stop_loss(self, mock_get_ledger):
         async def run_test():
+            # Arrange
             ib = AsyncMock(spec=IB)
             ib.isConnected.return_value = True
             ib.managedAccounts.return_value = ['DU12345']
             ib.placeOrder.return_value = self.mock_trade
 
-            config = {'notifications': {}, 'risk_management': {'stop_loss_pct': 0.20, 'take_profit_pct': 3.00}}
-            leg1_pos = Position('Test', FuturesOption('KC', conId=123, multiplier='37500', right='C', strike=3.5), 1, 1.0)
-            leg2_pos = Position('Test', FuturesOption('KC', conId=124, multiplier='37500', right='C', strike=3.6), -1, 0.5)
+            config = {
+                'notifications': {},
+                'risk_management': {
+                    'stop_loss_pct': 0.20,
+                    'take_profit_pct': 3.00,
+                    'monitoring_grace_period_seconds': 60
+                }
+            }
+            # Mock the ledger to show the position was opened a while ago
+            mock_df = pd.DataFrame({
+                'timestamp': [pd.Timestamp.now() - pd.Timedelta(minutes=5)],
+                'position_id': ['KCH5-KCJ5'], # Example ID
+                'quantity': [1]
+            })
+            mock_get_ledger.return_value = mock_df
 
+            leg1_pos = Position('Test', FuturesOption('KC', localSymbol='KCH5', conId=123, multiplier='37500', right='C', strike=3.5), 1, 1.0)
+            leg2_pos = Position('Test', FuturesOption('KC', localSymbol='KCJ5', conId=124, multiplier='37500', right='C', strike=3.6), -1, 0.5)
             ib.reqPositionsAsync = AsyncMock(return_value=[leg1_pos, leg2_pos])
             ib.reqContractDetailsAsync = AsyncMock(side_effect=[[MagicMock(underConId=999)], [MagicMock(underConId=999)]])
 
-            pnl1 = PnLSingle(conId=123, unrealizedPnL=-10000.0)
-            pnl2 = PnLSingle(conId=124, unrealizedPnL=-2000.0)
-            ib.pnlSingle.return_value = [pnl1, pnl2]
+            # Mock the PnL polling
+            pnl1_nan = PnLSingle(conId=123, unrealizedPnL=float('nan'))
+            pnl1_valid = PnLSingle(conId=123, unrealizedPnL=-10000.0)
+            pnl2_valid = PnLSingle(conId=124, unrealizedPnL=-2000.0)
 
+            # Use a side_effect to simulate the two ways pnlSingle is called
+            pnl_side_effects = {
+                123: [pnl1_nan, pnl1_valid, pnl1_valid], # First call is NaN
+                124: [pnl2_valid, pnl2_valid, pnl2_valid]
+            }
+            # Make a mutable copy for the poller to consume
+            pnl_effects_copy = {k: v[:] for k, v in pnl_side_effects.items()}
+
+            def pnl_handler(*args):
+                """Handles both ib.pnlSingle() and ib.pnlSingle(conId)."""
+                if not args:
+                    # Called as ib.pnlSingle(): return list of subscriptions.
+                    # Return empty to force the code to create new ones.
+                    return []
+                else:
+                    # Called as ib.pnlSingle(conId): act as a poller.
+                    con_id = args[0]
+                    if con_id in pnl_effects_copy and pnl_effects_copy[con_id]:
+                        return pnl_effects_copy[con_id].pop(0)
+                    return None # Default case if conId not found or list is empty
+
+            ib.pnlSingle.side_effect = pnl_handler
+
+            # Act
             await _check_risk_once(ib, config, set(), 0.20, 3.00)
+
+            # Assert
             self.assertEqual(ib.placeOrder.call_count, 2)
 
+        # We need pandas for this test
+        import pandas as pd
         asyncio.run(run_test())
 
     @patch('trading_bot.risk_management.log_trade_to_ledger')
