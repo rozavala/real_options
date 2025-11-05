@@ -48,14 +48,13 @@ def get_trade_ledger_df():
 async def get_live_account_data(config: dict) -> dict | None:
     """
     Connects to IB and fetches all live data needed for the daily report:
-    - P&L from account summary.
     - Open positions from the portfolio.
-    - Today's trade executions (fills).
+    - Today's trade executions (fills) and their commission reports.
     """
     ib = IB()
-    summary_data = {}
+    live_data = {}
     conn_settings = config.get('connection', {})
-    account = conn_settings.get('account_number', '')
+
     try:
         await ib.connectAsync(
             host=conn_settings.get('host', '127.0.0.1'),
@@ -64,43 +63,19 @@ async def get_live_account_data(config: dict) -> dict | None:
             timeout=15
         )
 
-        if not account:
-            accounts = ib.managedAccounts()
-            if accounts:
-                account = accounts[0]
-                logger.info(f"Account number not in config, using managed account: {account}")
-            else:
-                logger.error("No account number in config and no managed accounts found.")
-                return None
+        # 1. Fetch open positions
+        portfolio_items = await ib.reqPositionsAsync()
 
-        # 1. Fetch account summary to calculate daily P&L from equity change.
-        summary = await ib.accountSummaryAsync()
-        account_summary_values = [v for v in summary if v.account == account]
-        summary_dict = {v.tag: v.value for v in account_summary_values}
-
-        daily_pnl = 0.0
-        try:
-            current_equity = float(summary_dict['EquityWithLoanValue'])
-            previous_equity = float(summary_dict['PreviousDayEquityWithLoanValue'])
-            daily_pnl = current_equity - previous_equity
-        except (ValueError, KeyError) as e:
-            logger.error(f"Could not calculate daily P&L from account summary: {e}")
-
-        # 2. Fetch open positions
-        portfolio_items = ib.portfolio()
-
-        # 3. Fetch today's executions for live realized P&L calculation
-        executions = await ib.reqExecutionsAsync()
+        # 2. Fetch today's executions for live realized P&L calculation
+        fills = await ib.reqExecutionsAsync()
         today_date = datetime.now().date()
-        todays_fills = [f for f in executions if f.time.date() == today_date]
+        todays_fills = [f for f in fills if f.time.date() == today_date]
         logger.info(f"Successfully fetched {len(todays_fills)} execution(s) for today from IB.")
 
-        summary_data = {
-            'daily_pnl': daily_pnl,
+        live_data = {
             'portfolio': portfolio_items,
-            'executions': todays_fills
+            'executions': todays_fills,
         }
-        logger.info(f"Successfully fetched live account data. Daily P&L: ${daily_pnl:,.2f}")
 
     except asyncio.TimeoutError:
         logger.error("Connection to IB timed out during live data fetch.", exc_info=True)
@@ -110,16 +85,15 @@ async def get_live_account_data(config: dict) -> dict | None:
         return None
     finally:
         if ib.isConnected():
-            if account:
-                ib.cancelPnL(account)
             ib.disconnect()
 
-    return summary_data
+    return live_data
 
 def generate_executive_summary(
     trade_df: pd.DataFrame,
     signals_df: pd.DataFrame,
     today_date: datetime.date,
+    todays_fills: list,
     total_daily_pnl: float | None,
     realized_daily_pnl: float,
     unrealized_daily_pnl: float
@@ -127,45 +101,35 @@ def generate_executive_summary(
     """Generates Section 1: The Executive Summary, separating Realized and Unrealized P&L."""
 
     # --- Helper function to calculate metrics from the trade ledger ---
-    def calculate_ledger_metrics(trades, signals):
-        # This function primarily calculates LTD realized P&L and other stats
+    def calculate_ledger_metrics(trades: pd.DataFrame, signals: pd.DataFrame):
         if trades.empty:
-            return {
-                "pnl": 0, "signals_fired": len(signals), "trades_executed": 0,
-                "execution_rate": 0, "win_rate": 0, "avg_win": 0, "avg_loss": 0
-            }
+            return {"pnl": 0, "trades_executed": 0, "win_rate": 0}
 
-        combo_legs_map = trades.groupby('combo_id')['local_symbol'].unique().apply(lambda legs: tuple(sorted(legs)))
-        trades['position_id'] = trades['combo_id'].map(combo_legs_map)
-
-        closed_positions = trades.groupby('position_id').filter(lambda x: (x['action'].eq('BUY').astype(int) - x['action'].eq('SELL').astype(int)).sum() == 0)
+        trades['position_id'] = trades.apply(lambda row: tuple(sorted(row['combo_id'].split(','))), axis=1)
+        closed_positions = trades.groupby('position_id').filter(lambda x: x['action'].eq('BUY').count() == x['action'].eq('SELL').count())
         pnl_per_position = closed_positions.groupby('position_id')['total_value_usd'].sum()
 
         net_pnl = pnl_per_position.sum()
-        opening_trades = trades[trades['reason'] == 'Strategy Execution']
-        trades_executed = len(opening_trades.groupby('position_id'))
-        wins = pnl_per_position[pnl_per_position > 0]
-        losses = pnl_per_position[pnl_per_position <= 0]
-        win_rate = len(wins) / trades_executed if trades_executed > 0 else 0
-        avg_win = wins.mean() if not wins.empty else 0
-        avg_loss = losses.mean() if not losses.empty else 0
-        signals_fired = len(signals[signals['signal'] != 'NEUTRAL'])
-        execution_rate = trades_executed / signals_fired if signals_fired > 0 else 0
+        trades_executed = len(pnl_per_position)
+        win_rate = (pnl_per_position > 0).mean() if trades_executed > 0 else 0
 
-        return {
-            "pnl": net_pnl, "signals_fired": signals_fired, "trades_executed": trades_executed,
-            "execution_rate": execution_rate, "win_rate": win_rate, "avg_win": avg_win, "avg_loss": avg_loss
-        }
+        return {"pnl": net_pnl, "trades_executed": trades_executed, "win_rate": win_rate}
 
     # --- Calculate metrics ---
-    today_trades = trade_df[trade_df['timestamp'].dt.date == today_date]
     today_signals = signals_df[signals_df['timestamp'].dt.date == today_date]
+    signals_fired_today = len(today_signals[today_signals['signal'] != 'NEUTRAL'])
+    signals_fired_ltd = len(signals_df[signals_df['signal'] != 'NEUTRAL'])
 
     # LTD metrics are always from the ledger (realized P&L)
     ltd_metrics = calculate_ledger_metrics(trade_df, signals_df)
 
-    # Today's non-P&L stats are from the daily ledger slice
-    today_stats = calculate_ledger_metrics(today_trades, today_signals)
+    # Today's trades executed count is from live fills
+    trades_executed_today = len(set(f.execution.permId for f in todays_fills))
+
+    # Win rate for today can't be calculated without P&L for each live trade, so we omit it.
+
+    execution_rate_today = trades_executed_today / signals_fired_today if signals_fired_today > 0 else 0
+    execution_rate_ltd = ltd_metrics['trades_executed'] / signals_fired_ltd if signals_fired_ltd > 0 else 0
 
     # --- Build Report ---
     report = f"{'Metric':<18} {'Today':>12} {'LTD':>12}\n"
@@ -189,10 +153,10 @@ def generate_executive_summary(
 
     # Other metric rows
     other_rows = {
-        "Signals Fired": (f"{today_stats['signals_fired']}", f"{ltd_metrics['signals_fired']}"),
-        "Trades Executed": (f"{today_stats['trades_executed']}", f"{ltd_metrics['trades_executed']}"),
-        "Exec. Rate": (f"{today_stats['execution_rate']:.1%}", f"{ltd_metrics['execution_rate']:.1%}"),
-        "Win Rate": (f"{today_stats['win_rate']:.1%}", f"{ltd_metrics['win_rate']:.1%}"),
+        "Signals Fired": (f"{signals_fired_today}", f"{signals_fired_ltd}"),
+        "Trades Executed": (f"{trades_executed_today}", f"{ltd_metrics['trades_executed']}"),
+        "Exec. Rate": (f"{execution_rate_today:.1%}", f"{execution_rate_ltd:.1%}"),
+        "Win Rate": ("N/A", f"{ltd_metrics['win_rate']:.1%}"),
     }
     for metric, (today_val, ltd_val) in other_rows.items():
         report += f"{metric:<18} {today_val:>12} {ltd_val:>12}\n"
@@ -214,79 +178,87 @@ def generate_morning_signals_report(signals_df: pd.DataFrame, today_date: dateti
 
 def generate_open_positions_report(portfolio: list) -> tuple[str, float]:
     """
-    Creates a summary of all currently open positions and calculates the total unrealized P&L.
-    Returns the report string and the total unrealized P&L amount.
+    Creates a summary of all currently open positions, grouped by contract month,
+    and calculates the total unrealized P&L.
     """
-    # Filter out positions that are flat (position == 0)
     open_positions = [p for p in portfolio if p.position != 0]
 
     if not open_positions:
         return "No open positions.\n", 0.0
 
+    # Group positions by the root of the local symbol (e.g., 'KOZ5')
+    grouped_positions = {}
+    for pos in open_positions:
+        # Extract the common root (e.g., 'KOZ5' from 'KOZ5 C4.15')
+        root_symbol = pos.contract.localSymbol.split(' ')[0]
+        if root_symbol not in grouped_positions:
+            grouped_positions[root_symbol] = []
+        grouped_positions[root_symbol].append(pos)
+
     report = f"{'Symbol':<25} {'Qty':>5} {'Avg Cost':>10} {'Unreal. P&L':>15}\n"
     report += "-" * 57 + "\n"
     total_unrealized_pnl = 0
-    for pos in open_positions:
-        symbol = pos.contract.localSymbol
-        qty = int(pos.position)
-        avg_cost = f"${pos.averageCost:,.2f}"
-        unreal_pnl = pos.unrealizedPNL
-        unreal_pnl_str = f"${unreal_pnl:,.2f}" if isinstance(unreal_pnl, float) else "N/A"
 
-        report += f"{symbol:<25} {qty:>5} {avg_cost:>10} {unreal_pnl_str:>15}\n"
-        if isinstance(unreal_pnl, float):
+    # Sort groups by symbol for consistent ordering
+    for root_symbol in sorted(grouped_positions.keys()):
+        positions_in_group = grouped_positions[root_symbol]
+        subtotal_pnl = 0
+        
+        # Sort positions within the group for readability
+        for pos in sorted(positions_in_group, key=lambda p: p.contract.localSymbol):
+            symbol = pos.contract.localSymbol
+            qty = int(pos.position)
+            avg_cost = f"${pos.averageCost:,.2f}"
+            unreal_pnl = pos.unrealizedPNL if isinstance(pos.unrealizedPNL, float) else 0.0
+            unreal_pnl_str = f"${unreal_pnl:,.2f}"
+
+            report += f"{symbol:<25} {qty:>5} {avg_cost:>10} {unreal_pnl_str:>15}\n"
             total_unrealized_pnl += unreal_pnl
+            subtotal_pnl += unreal_pnl
 
-    # --- Add Total Row ---
-    report += "-" * 57 + "\n"
+        # Add a subtotal for the group
+        subtotal_pnl_str = f"${subtotal_pnl:,.2f}"
+        report += f"{'':<42} {'-'*15}\n"
+        report += f"{'Subtotal for ' + root_symbol:<42} {subtotal_pnl_str:>15}\n"
+        report += "\n" # Add a blank line for spacing between groups
+
+    # --- Add Grand Total Row ---
+    report += "=" * 57 + "\n"
     total_pnl_str = f"${total_unrealized_pnl:,.2f}"
-    report += f"{'TOTAL':<42} {total_pnl_str:>15}\n"
+    report += f"{'GRAND TOTAL':<42} {total_pnl_str:>15}\n"
 
     return report, total_unrealized_pnl
 
 def generate_closed_positions_report(fills: list) -> tuple[str, float]:
     """
     Creates a report of positions closed today from live execution data from IB.
-    Calculates realized P&L from the fills.
+    Calculates realized P&L from the commission reports of each fill.
     """
     if not fills:
-        return "No positions were closed today.\n", 0.0
+        return "No trades resulting in a closed position today.\n", 0.0
 
-    # Group fills by contract to determine net positions for the day
+    # Sum realized P&L directly from commission reports. This is the source of truth.
+    total_realized_pnl = sum(f.commissionReport.realizedPNL for f in fills if f.commissionReport and f.commissionReport.realizedPNL != 0.0)
+
+    # For the report body, group fills by contract to show P&L per position.
     positions = {}
-    for fill in fills:
-        conId = fill.contract.conId
-        if conId not in positions:
-            positions[conId] = {'qty': 0, 'cost': 0, 'symbol': fill.contract.localSymbol}
+    for f in fills:
+        if f.commissionReport and f.commissionReport.realizedPNL != 0.0:
+            symbol = f.contract.localSymbol
+            if symbol not in positions:
+                positions[symbol] = 0.0
+            positions[symbol] += f.commissionReport.realizedPNL
 
-        # 'BOT' is a buy, 'SLD' is a sell
-        action_multiplier = 1 if fill.execution.side == 'BOT' else -1
-        positions[conId]['qty'] += fill.execution.shares * action_multiplier
-        positions[conId]['cost'] += fill.execution.shares * fill.execution.price * action_multiplier
-
-    # A position is considered closed today if its net quantity change for the day is zero.
-    # Note: This simple logic assumes no overnight holdings of the same contract.
-    # For more complex scenarios, cross-referencing with open positions would be needed.
-    total_realized_pnl = 0
-    closed_positions_details = []
-    for conId, data in positions.items():
-        if data['qty'] == 0:
-            # The cost is negative for buys, positive for sells. Summing them gives the P&L.
-            # We multiply by -1 because a net cost of -100 (bought for 100) and
-            # a final value of +110 (sold for 110) should result in a profit of 10.
-            pnl = data['cost'] * -1
-            total_realized_pnl += pnl
-            closed_positions_details.append({'symbol': data['symbol'], 'pnl': pnl})
-
-    if not closed_positions_details:
-        return "No positions were closed today.\n", 0.0
+    if not positions:
+        return "No trades resulting in a closed position today.\n", total_realized_pnl
 
     # --- Build Report String ---
     report = f"{'Position':<25} {'Net P&L':>12}\n"
     report += "-" * 39 + "\n"
-    for pos in sorted(closed_positions_details, key=lambda x: x['symbol']):
-        pos_str = pos['symbol'][:25]
-        pnl_str = f"${pos['pnl']:,.2f}"
+    # Sort by symbol for consistent ordering
+    for symbol, pnl in sorted(positions.items()):
+        pos_str = symbol[:25]
+        pnl_str = f"${pnl:,.2f}"
         report += f"{pos_str:<25} {pnl_str:>12}\n"
 
     # --- Add Total Row ---
@@ -350,27 +322,29 @@ async def analyze_performance(config: dict) -> dict | None:
     logger.info("--- Starting Daily Performance Analysis ---")
 
     try:
-        # Use the current date for the report
         today_date = datetime.now().date()
         today_str = today_date.strftime('%Y-%m-%d')
 
         # Fetch live data from IB for all daily metrics
-        account_summary = await get_live_account_data(config)
-        total_daily_pnl = account_summary.get('daily_pnl') if account_summary else None
-        live_portfolio = account_summary.get('portfolio') if account_summary else []
-        todays_fills = account_summary.get('executions') if account_summary else []
+        live_data = await get_live_account_data(config)
+        live_portfolio = live_data.get('portfolio') if live_data else []
+        todays_fills = live_data.get('executions') if live_data else []
 
         # --- Generate Report Sections and get P&L values from LIVE data ---
         open_positions_report, unrealized_pnl = generate_open_positions_report(live_portfolio)
         closed_positions_report, realized_pnl = generate_closed_positions_report(todays_fills)
         morning_signals_report = generate_morning_signals_report(signals_df, today_date)
 
+        # Calculate Total P&L as the sum of its parts for consistency
+        total_pnl = realized_pnl + unrealized_pnl
+
         # Generate the executive summary with a mix of live daily data and historical ledger data
         exec_summary, pnl_for_title = generate_executive_summary(
-            trade_df,           # Used for LTD stats
-            signals_df,         # Used for LTD stats
+            trade_df,
+            signals_df,
             today_date,
-            total_daily_pnl,    # Live from IB
+            todays_fills,
+            total_pnl,          # Sum of realized and unrealized
             realized_pnl,       # Live from IB fills
             unrealized_pnl      # Live from IB portfolio
         )
