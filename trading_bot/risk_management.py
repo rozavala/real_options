@@ -12,12 +12,16 @@ import asyncio
 import logging
 import time
 import traceback
+from datetime import datetime, timedelta
+import pytz
+
 
 from ib_insync import *
 from ib_insync import util
 
 from logging_config import setup_logging
 from trading_bot.utils import get_position_details, log_trade_to_ledger
+from trading_bot.order_manager import get_trade_ledger_df
 from trading_bot.ib_interface import place_order
 from notifications import send_pushover_notification
 
@@ -88,6 +92,18 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
     """Performs a single iteration of the P&L risk check for all open positions."""
     if not ib.isConnected(): return
 
+    # --- Grace Period Implementation ---
+    grace_period_seconds = config.get('risk_management', {}).get('monitoring_grace_period_seconds', 0)
+    trade_ledger = get_trade_ledger_df()
+
+    # Create a timezone-aware 'now' for comparison
+    utc = pytz.utc
+    now_utc = datetime.now(utc)
+
+    # Get the opening timestamp for each currently open position
+    open_positions_from_ledger = trade_ledger.groupby('position_id').filter(lambda x: x['quantity'].sum() != 0)
+    position_open_dates = open_positions_from_ledger.groupby('position_id')['timestamp'].min().dt.tz_localize(utc).to_dict()
+
     all_positions = [p for p in await ib.reqPositionsAsync() if p.position != 0 and p.contract.conId not in closed_ids]
     if not all_positions: return
 
@@ -118,18 +134,30 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
 
     # If new subscriptions were started, wait for data to arrive.
     if new_subscriptions_made:
-        await asyncio.sleep(2)
-
-    # Create a map for efficient lookup of PnL data
-    pnl_map = {p.conId: p for p in ib.pnlSingle()}
+        logging.info("New P&L subscriptions started. Waiting for initial data...")
+        await asyncio.sleep(2) # Initial sleep to allow connections to establish
 
     for under_con_id, combo_legs in positions_by_underlying.items():
         total_unrealized_pnl, total_entry_cost = 0, 0
-        for leg_pos in combo_legs:
-            pnl = pnl_map.get(leg_pos.contract.conId)
 
-            if not pnl or util.isNan(pnl.unrealizedPnL):
-                logging.warning(f"Could not get PnL for leg {leg_pos.contract.localSymbol}. Skipping combo risk check."); total_unrealized_pnl = float('nan'); break
+        # --- Robust P&L Polling ---
+        pnl_data_is_valid = True
+        for leg_pos in combo_legs:
+            pnl = ib.pnlSingle(leg_pos.contract.conId)
+
+            # Poll until we get a valid PnL value, with a timeout
+            start_time = time.time()
+            while not pnl or util.isNan(pnl.unrealizedPnL):
+                if time.time() - start_time > 15: # 15-second timeout
+                    logging.error(f"Timeout waiting for valid PnL for {leg_pos.contract.localSymbol}. Aborting risk check for this combo.")
+                    pnl_data_is_valid = False
+                    break
+                await asyncio.sleep(0.5)
+                pnl = ib.pnlSingle(leg_pos.contract.conId)
+
+            if not pnl_data_is_valid:
+                total_unrealized_pnl = float('nan') # Ensure the combo is skipped
+                break
 
             total_unrealized_pnl += pnl.unrealizedPnL
             # multiplier = float(leg_pos.contract.multiplier) if leg_pos.contract.multiplier else 37500.0
@@ -145,6 +173,25 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
         reason = None
         if stop_loss_pct and pnl_percentage <= -abs(stop_loss_pct): reason = "Stop-Loss"
         elif take_profit_pct and pnl_percentage >= abs(take_profit_pct): reason = "Take-Profit"
+
+        # --- Grace Period Check ---
+        # A position_id is required to check the age.
+        # This assumes combo_symbols can be used as a stable identifier if needed,
+        # but a proper position_id would be better. For now, we find any matching open date.
+
+        position_age_seconds = float('inf')
+        # This is a fallback identifier. It's not perfect but works for now.
+        # A better solution would be to pass the position_id into this function.
+        temp_position_id = "-".join(sorted([p.contract.localSymbol for p in combo_legs]))
+
+        open_date = position_open_dates.get(temp_position_id)
+        if open_date:
+            position_age_seconds = (now_utc - open_date).total_seconds()
+
+        if reason and position_age_seconds < grace_period_seconds:
+            logging.info(f"'{reason}' trigger for {combo_symbols} IGNORED. Position age ({position_age_seconds:.0f}s) is within the grace period ({grace_period_seconds}s).")
+            reason = None # Suppress the trigger
+
 
         if reason:
             logging.info(f"{reason.upper()} TRIGGERED for combo {combo_symbols} at {pnl_percentage:+.2%}")
@@ -186,8 +233,8 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
                             f"@{fill.execution.avgPrice:.2f}, "
                             f"P&L: ${fill.commissionReport.realizedPNL:,.2f}"
                         )
-                        # Log the closure to the ledger
-                        log_trade_to_ledger(ib, trade, reason, combo_id=trade.order.permId)
+                        # The closure will be logged by the universal `_on_order_status` handler
+                        # now that the outsideRth check has been removed.
                     else:
                         closed_trades_details.append(f"  - Failed to close {leg_pos_to_close.contract.localSymbol}. Status: {trade.orderStatus.status}")
 
@@ -219,12 +266,6 @@ def _on_order_status(ib: IB, trade: Trade):
     """Event handler for order status updates."""
     if trade.orderStatus.status == OrderStatus.Filled and trade.order.orderId not in _filled_order_ids:
         try:
-            # --- Skip logging if this is a risk management closure ---
-            # These are logged separately. The `outsideRth` flag is used as an identifier.
-            if trade.order.outsideRth:
-                logging.info(f"Skipping duplicate log for risk management closure of order ID {trade.order.orderId}.")
-                return
-
             # Skip logging for the parent Bag contract, only log the legs.
             if isinstance(trade.contract, Bag):
                 logging.info(f"Skipping summary fill event for Bag order {trade.order.orderId}.")
