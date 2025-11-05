@@ -122,7 +122,7 @@ def generate_executive_summary(
     signals_fired_today = len(today_signals[today_signals['signal'] != 'NEUTRAL'])
     signals_fired_ltd = len(signals_df[signals_df['signal'] != 'NEUTRAL'])
 
-    # LTD metrics are always from the ledger
+    # LTD metrics are always from the ledger (realized P&L)
     ltd_metrics = calculate_ledger_metrics(trade_df, signals_df)
 
     # Today's trades executed count is from live fills

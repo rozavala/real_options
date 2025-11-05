@@ -70,6 +70,7 @@ class TestPerformanceAnalyzer:
             mock_ib_instance.isConnected = MagicMock(return_value=True)
             mock_ib_instance.disconnect = MagicMock()
             mock_ib_instance.managedAccounts = MagicMock(return_value=['U54321'])
+            mock_ib_instance.cancelPnL = MagicMock()
 
             # Mock Portfolio data
             mock_open_positions = [
