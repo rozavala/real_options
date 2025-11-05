@@ -193,7 +193,7 @@ async def _get_market_data_for_leg(ib: IB, leg: ComboLeg) -> str:
         start_time = time.time()
         while util.isNan(ticker.bid) and util.isNan(ticker.ask) and util.isNan(ticker.last):
             await asyncio.sleep(0.1)
-            if (time.time() - start_time) > 5: # 5-second timeout
+            if (time.time() - start_time) > 15: # 15-second timeout
                 logger.error(f"Timeout waiting for market data for {contract[0].contract.localSymbol}.")
                 ib.cancelMktData(ticker.contract)
                 return f"Leg {contract[0].contract.localSymbol}: Timeout"
@@ -320,9 +320,14 @@ async def place_queued_orders(config: dict):
         # --- PLACEMENT LOOP (ENHANCED LOGGING & NOTIFICATIONS) ---
         for contract, order in ORDER_QUEUE:
             
-            # --- 1. Get BAG (Spread) Market Data ---
+            # --- 1. Get BAG (Spread) Market Data with a robust polling loop ---
             bag_ticker = ib.reqMktData(contract, '', False, False)
-            await asyncio.sleep(2) # Wait for ticker to populate
+            start_time = time.time()
+            while util.isNan(bag_ticker.bid) and util.isNan(bag_ticker.ask) and util.isNan(bag_ticker.last):
+                await asyncio.sleep(0.1)
+                if (time.time() - start_time) > 15: # 15-second timeout
+                    logger.error(f"Timeout waiting for market data for BAG {contract.localSymbol}.")
+                    break
             
             bag_bid = bag_ticker.bid if not util.isNan(bag_ticker.bid) else "N/A"
             bag_ask = bag_ticker.ask if not util.isNan(bag_ticker.ask) else "N/A"
@@ -405,27 +410,25 @@ async def place_queued_orders(config: dict):
                 # --- Build Enhanced Fill Notification ---
                 price_info = f"LMT: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "MKT"
 
-                # Since this is a combo, we report the fills for each leg
-                if details['total_legs'] > 1:
-                    avg_fill_price = sum(details['fill_prices'].values()) / len(details['fill_prices'])
-                    fill_line = (
-                        f"  - <b>{trade.contract.localSymbol}</b> ({trade.order.action})<br>"
-                        f"    {price_info} -> FILLED @ avg ${avg_fill_price:.2f}"
-                    )
-                else: # Single leg order
-                    fill_price = next(iter(details['fill_prices'].values()), 0.0)
-                    fill_line = (
-                        f"  - <b>{trade.contract.localSymbol}</b> ({trade.order.action})<br>"
-                        f"    {price_info} -> FILLED @ ${fill_price:.2f}"
-                    )
+                # Use the official avgFillPrice from the parent trade status, which is correct for both combos and single legs
+                avg_fill_price = trade.orderStatus.avgFillPrice
+                fill_line = (
+                    f"  - <b>{trade.contract.localSymbol}</b> ({trade.order.action})<br>"
+                    f"    {price_info} -> FILLED @ avg ${avg_fill_price:.2f}"
+                )
                 filled_orders.append(fill_line)
             
             elif details['status'] not in OrderStatus.DoneStates:
                 
-                # --- 1. Get FINAL BAG (Spread) Market Data ---
+                # --- 1. Get FINAL BAG (Spread) Market Data with a robust polling loop ---
                 final_bag_ticker = ib.reqMktData(trade.contract, '', False, False)
-                await asyncio.sleep(2)
-                
+                start_time = time.time()
+                while util.isNan(final_bag_ticker.bid) and util.isNan(final_bag_ticker.ask) and util.isNan(final_bag_ticker.last):
+                    await asyncio.sleep(0.1)
+                    if (time.time() - start_time) > 15: # 15-second timeout
+                        logger.error(f"Timeout waiting for final market data for BAG {trade.contract.localSymbol}.")
+                        break
+
                 final_bag_bid = final_bag_ticker.bid if not util.isNan(final_bag_ticker.bid) else "N/A"
                 final_bag_ask = final_bag_ticker.ask if not util.isNan(final_bag_ticker.ask) else "N/A"
                 final_bag_vol = final_bag_ticker.volume if not util.isNan(final_bag_ticker.volume) else "N/A"
