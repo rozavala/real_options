@@ -78,7 +78,7 @@ class TestPerformanceAnalyzer:
                 MockPortfolioItem(contract=MockContract(localSymbol="KOZ5 C4.1"), position=-1.0, averageCost=120, unrealizedPNL=-20.0),
                 MockPortfolioItem(contract=MockContract(localSymbol="KOH6 C3.8"), position=1.0, averageCost=200, unrealizedPNL=100.0),
             ]
-            mock_ib_instance.reqPositionsAsync = AsyncMock(return_value=mock_open_positions)
+            mock_ib_instance.portfolio = MagicMock(return_value=mock_open_positions)
 
             # Mock Executions for TODAY's closed positions
             fills_today = [
@@ -94,13 +94,6 @@ class TestPerformanceAnalyzer:
                     MockCommissionReport(realizedPNL=1875.00),
                     test_date
                 ),
-            ]
-            mock_ib_instance.reqExecutionsAsync = AsyncMock(return_value=fills_today)
-
-            # Mock Executions for TODAY's closed positions
-            fills_today = [
-                MockFill(MockContract(conId=1, localSymbol="KOZ5 P4.5"), MockExecution('BOT', 1.0, 75.0), test_date),
-                MockFill(MockContract(conId=1, localSymbol="KOZ5 P4.5"), MockExecution('SLD', 1.0, 225.0), test_date)
             ]
             mock_ib_instance.reqExecutionsAsync = AsyncMock(return_value=fills_today)
 
@@ -143,7 +136,7 @@ class TestPerformanceAnalyzer:
             # Verify correct IB methods were called
             mock_ib_instance.connectAsync.assert_awaited_once()
             mock_ib_instance.reqExecutionsAsync.assert_awaited_once()
-            mock_ib_instance.reqPositionsAsync.assert_awaited_once()
+            mock_ib_instance.portfolio.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_analyze_performance_runs_without_error(self):

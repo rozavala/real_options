@@ -63,8 +63,10 @@ async def get_live_account_data(config: dict) -> dict | None:
             timeout=15
         )
 
-        # 1. Fetch open positions
-        portfolio_items = await ib.reqPositionsAsync()
+        # 1. Fetch open positions (PortfolioItems have P&L data)
+        # Wait a moment for portfolio data to stream in after connection.
+        await asyncio.sleep(2)
+        portfolio_items = ib.portfolio()
 
         # 2. Fetch today's executions for live realized P&L calculation
         fills = await ib.reqExecutionsAsync()
