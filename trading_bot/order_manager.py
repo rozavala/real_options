@@ -555,107 +555,104 @@ def get_trade_ledger_df():
 
 async def close_positions_after_5_days(config: dict):
     """
-    Fetches all open positions, and closes them if they have been open for
-    5 or more trading days, based on a stable position_id.
+    Closes any open positions that have been held for 5 or more trading days.
+    This function now uses the live portfolio from IB as the source of truth
+    and falls back to the trade ledger only to find the opening date.
     """
     logger.info("--- Initiating position closing based on 5-day holding period ---")
     ib = IB()
     closed_position_details = []
     failed_closes = []
     kept_positions_details = []
+    orphaned_positions = []
 
     try:
-        trade_ledger = get_trade_ledger_df()
-        if trade_ledger.empty:
-            logger.info("Trade ledger is empty. No positions to close.")
-            return
-
-        opening_trades = trade_ledger[trade_ledger['reason'] == 'Strategy Execution']
-        position_open_dates = opening_trades.groupby('position_id')['timestamp'].min().to_dict()
-
-        if not position_open_dates:
-            logger.info("No opening trades found in the ledger.")
-            return
-
+        # --- 1. Connect to IB and get the ground truth of current positions ---
         conn_settings = config.get('connection', {})
         await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
         logger.info("Connected to IB for closing positions.")
 
-        positions = await ib.reqPositionsAsync()
-        if not positions:
-            logger.info("No open IB positions to close.")
+        live_positions = await ib.reqPositionsAsync()
+        if not live_positions:
+            logger.info("No open positions found in the IB account. Nothing to close.")
             send_pushover_notification(config.get('notifications', {}), "Position Closing", "No open IB positions were found to close.")
             return
 
-        # --- Determine which positions are still open from the ledger's perspective ---
-        open_positions_from_ledger = trade_ledger.groupby('position_id').filter(lambda x: x['quantity'].sum() != 0)
-        open_position_ids = open_positions_from_ledger['position_id'].unique()
+        logger.info(f"Found {len(live_positions)} live position legs in the IB account.")
 
-        logger.info(f"Found {len(open_position_ids)} unique open positions in the trade ledger.")
+        # --- 2. Load trade ledger to get historical data (open dates) ---
+        trade_ledger = get_trade_ledger_df()
+        if trade_ledger.empty:
+            logger.warning("Trade ledger is empty. Cannot determine position ages. Skipping closure.")
+            return
 
+        opening_trades = trade_ledger[trade_ledger['reason'] == 'Strategy Execution'].copy()
+        opening_trades.drop_duplicates(subset=['local_symbol'], keep='first', inplace=True)
+
+        # Create a map from symbol to position_id and another for open dates
+        symbol_to_pos_id = pd.Series(opening_trades.position_id.values, index=opening_trades.local_symbol).to_dict()
+        position_open_dates = opening_trades.groupby('position_id')['timestamp'].min().to_dict()
+
+        # --- 3. Calculate trading day logic ---
         cal = USFederalHolidayCalendar()
         holidays = cal.holidays(start=date(date.today().year - 1, 1, 1), end=date.today()).to_pydatetime().tolist()
         today = datetime.now().date()
-
-        # Create a custom business day frequency that observes the holidays
         custom_bday = pd.offsets.CustomBusinessDay(holidays=holidays)
 
-        for pos_id in open_position_ids:
+        # --- 4. Iterate through LIVE positions and decide whether to close ---
+        for pos in live_positions:
+            symbol = pos.contract.localSymbol
+            pos_id = symbol_to_pos_id.get(symbol)
+
+            if not pos_id:
+                orphaned_positions.append(f"{symbol} (Qty: {pos.position})")
+                logger.warning(f"Orphaned position: {symbol} is live in IB but has no corresponding opening trade in the ledger. Cannot determine age.")
+                continue
+
             open_date = position_open_dates.get(pos_id)
             if not open_date:
-                logger.warning(f"Could not find opening date for position_id {pos_id}. Skipping.")
+                logger.warning(f"Could not find opening date for position_id {pos_id} (Symbol: {symbol}). Skipping.")
                 continue
 
             trading_days = pd.date_range(start=open_date.date(), end=today, freq=custom_bday)
             age_in_trading_days = len(trading_days)
 
-            logger.info(f"Position {pos_id} opened on {open_date.date()}, age: {age_in_trading_days} trading days.")
+            logger.info(f"Checking position: {symbol} (Pos ID: {pos_id}), Opened: {open_date.date()}, Age: {age_in_trading_days} trading days.")
 
             if age_in_trading_days >= 5:
-                logger.info(f"Position {pos_id} is {age_in_trading_days} days old. Marking for closure.")
+                logger.info(f"Position {symbol} is {age_in_trading_days} days old. MARKING FOR CLOSURE.")
 
-                # Get the current net position for each leg from the ledger
-                position_legs = open_positions_from_ledger[open_positions_from_ledger['position_id'] == pos_id]
-                net_leg_positions = position_legs.groupby('local_symbol')['quantity'].sum()
+                # Use the live data directly to create the closing order
+                action = 'SELL' if pos.position > 0 else 'BUY'
+                order = MarketOrder(action, abs(pos.position))
+                order.outsideRth = True # Mark as risk management order
 
-                for symbol, quantity in net_leg_positions.items():
-                    if quantity == 0: continue
+                pos.contract.exchange = config.get('exchange')
+                trade = place_order(ib, pos.contract, order)
+                await asyncio.sleep(2) # Allow time for order processing and fill event
 
-                    # Find the corresponding position in the live IB data
-                    ib_position = next((p for p in positions if p.contract.localSymbol == symbol and p.position == quantity), None)
-
-                    if ib_position:
-                        action = 'SELL' if ib_position.position > 0 else 'BUY'
-                        order = MarketOrder(action, abs(ib_position.position))
-                        order.outsideRth = True # Mark as risk management order
-
-                        ib_position.contract.exchange = config.get('exchange')
-                        trade = place_order(ib, ib_position.contract, order)
-                        await asyncio.sleep(2)
-
-                        if trade.orderStatus.status == OrderStatus.Filled and trade.fills:
-                            fill = trade.fills[0]
-                            await log_trade_to_ledger(ib, trade, "5-Day Close", position_id=pos_id)
-                            closed_position_details.append({
-                                "symbol": ib_position.contract.localSymbol,
-                                "action": action,
-                                "quantity": ib_position.position,
-                                "price": fill.execution.avgPrice,
-                                "pnl": fill.commissionReport.realizedPNL
-                            })
-                        else:
-                            failed_closes.append(f"{symbol}: Failed with status {trade.orderStatus.status}")
-                        await asyncio.sleep(1)
-                    else:
-                        failed_closes.append(f"{symbol} (pos_id {pos_id}): Live position not found or quantity mismatch.")
+                if trade.orderStatus.status == OrderStatus.Filled and trade.fills:
+                    fill = trade.fills[0]
+                    # Log the closure against the correct position_id
+                    await log_trade_to_ledger(ib, trade, "5-Day Close", position_id=pos_id)
+                    closed_position_details.append({
+                        "symbol": symbol,
+                        "action": action,
+                        "quantity": pos.position,
+                        "price": fill.execution.avgPrice,
+                        "pnl": fill.commissionReport.realizedPNL
+                    })
+                else:
+                    failed_closes.append(f"{symbol}: Failed with status {trade.orderStatus.status}")
+                await asyncio.sleep(1) # Throttle orders
             else:
-                kept_positions_details.append(f"{pos_id} (age: {age_in_trading_days} days)")
+                kept_positions_details.append(f"{pos_id} ({symbol}) - Age: {age_in_trading_days} days")
 
-        # --- Notification Logic (same as before) ---
+        # --- 5. Build and send a comprehensive notification ---
         message_parts = []
         total_pnl = 0
         if closed_position_details:
-            message_parts.append(f"<b>✅ Successfully closed {len(closed_position_details)} positions (5-day rule):</b>")
+            message_parts.append(f"<b>✅ Successfully closed {len(closed_position_details)} legs (5-day rule):</b>")
             for detail in closed_position_details:
                 pnl_str = f"${detail['pnl']:,.2f}"
                 pnl_color = "green" if detail['pnl'] >= 0 else "red"
@@ -665,16 +662,25 @@ async def close_positions_after_5_days(config: dict):
                 )
                 total_pnl += detail.get('pnl', 0)
             message_parts.append(f"<b>Total Realized P&L: ${total_pnl:,.2f}</b>")
+
         if failed_closes:
-            message_parts.append(f"\n<b>❌ Failed to close {len(failed_closes)} positions:</b>")
+            message_parts.append(f"\n<b>❌ Failed to close {len(failed_closes)} legs:</b>")
             message_parts.extend([f"  - {reason}" for reason in failed_closes])
+
         if kept_positions_details:
-            message_parts.append(f"\n<b> Positions held (less than 5 days old):</b>")
-            message_parts.extend([f"  - {reason}" for reason in kept_positions_details])
+            unique_kept = sorted(list(set(kept_positions_details)))
+            message_parts.append(f"\n<b> Positions held ({len(unique_kept)} unique combos):</b>")
+            message_parts.extend([f"  - {reason}" for reason in unique_kept])
+
+        if orphaned_positions:
+             message_parts.append(f"\n<b>️ Orphaned Positions Found:</b>")
+             message_parts.extend([f"  - {pos}" for pos in orphaned_positions])
+
         if not message_parts:
-            message = "No positions were eligible for closing today."
+            message = "No positions were eligible for closing today based on the 5-day rule."
         else:
             message = "\n".join(message_parts)
+
         notification_title = f"Position Close Report: P&L ${total_pnl:,.2f}"
         send_pushover_notification(config.get('notifications', {}), notification_title, message)
 
