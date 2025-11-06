@@ -22,3 +22,8 @@ def setup_logging():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         stream=sys.stdout  # Direct logs to standard output
     )
+    # --- Quieter Logging for ib_insync ---
+    # The ib_insync library is very verbose at the INFO level. To avoid
+    # spamming the logs with routine messages (like 'updatePortfolio'),
+    # we set its specific logger to the WARNING level.
+    logging.getLogger('ib_insync').setLevel(logging.WARNING)

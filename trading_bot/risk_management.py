@@ -88,6 +88,40 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
     return not position_is_aligned
 
 
+async def get_unrealized_pnl(ib: IB, contract: Contract) -> float:
+    """
+    Retrieves the unrealized P&L for a specific contract.
+
+    This function first attempts to find the P&L from the portfolio data,
+    which is generally faster and more reliable. If the contract is not found
+    in the portfolio or if the P&L is NaN, it falls back to the polling
+    mechanism using `ib.pnlSingle()`.
+
+    Args:
+        ib: The connected IB client instance.
+        contract: The contract for which to retrieve the P&L.
+
+    Returns:
+        The unrealized P&L as a float, or float('nan') if it cannot be determined.
+    """
+    # 1. Prioritize portfolio data
+    portfolio_item = next((p for p in ib.portfolio() if p.contract.conId == contract.conId), None)
+    if portfolio_item and not util.isNan(portfolio_item.unrealizedPNL):
+        return portfolio_item.unrealizedPNL
+
+    # 2. Fallback to polling pnlSingle
+    pnl = ib.pnlSingle(contract.conId)
+    start_time = time.time()
+    while not pnl or util.isNan(pnl.unrealizedPnL):
+        if time.time() - start_time > 15:  # 15-second timeout
+            logging.error(f"Timeout waiting for valid PnL for {contract.localSymbol} via pnlSingle.")
+            return float('nan')
+        await asyncio.sleep(0.5)
+        pnl = ib.pnlSingle(contract.conId)
+
+    return pnl.unrealizedPnL if pnl else float('nan')
+
+
 async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct: float, take_profit_pct: float):
     """Performs a single iteration of the P&L risk check for all open positions."""
     if not ib.isConnected(): return
@@ -141,27 +175,15 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
         total_unrealized_pnl, total_entry_cost = 0, 0
 
         # --- Robust P&L Polling ---
-        pnl_data_is_valid = True
         for leg_pos in combo_legs:
-            pnl = ib.pnlSingle(leg_pos.contract.conId)
+            unrealized_pnl = await get_unrealized_pnl(ib, leg_pos.contract)
 
-            # Poll until we get a valid PnL value, with a timeout
-            start_time = time.time()
-            while not pnl or util.isNan(pnl.unrealizedPnL):
-                if time.time() - start_time > 15: # 15-second timeout
-                    logging.error(f"Timeout waiting for valid PnL for {leg_pos.contract.localSymbol}. Aborting risk check for this combo.")
-                    pnl_data_is_valid = False
-                    break
-                await asyncio.sleep(0.5)
-                pnl = ib.pnlSingle(leg_pos.contract.conId)
-
-            if not pnl_data_is_valid:
-                total_unrealized_pnl = float('nan') # Ensure the combo is skipped
+            if util.isNan(unrealized_pnl):
+                logging.warning(f"Could not determine PnL for {leg_pos.contract.localSymbol}. Skipping combo in this cycle.")
+                total_unrealized_pnl = float('nan')
                 break
 
-            total_unrealized_pnl += pnl.unrealizedPnL
-            # multiplier = float(leg_pos.contract.multiplier) if leg_pos.contract.multiplier else 37500.0
-            # Multiplier is already included in the cost so no needed again
+            total_unrealized_pnl += unrealized_pnl
             total_entry_cost += leg_pos.position * leg_pos.avgCost
 
         if util.isNan(total_unrealized_pnl) or total_entry_cost == 0: continue
