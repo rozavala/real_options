@@ -205,9 +205,16 @@ async def get_ib_trades(config: dict) -> list[Fill]:
         logger.info("Waiting for 5 seconds for data stream synchronization...")
         await asyncio.sleep(5)
 
-        # Use a global ExecutionFilter to get trades from all client IDs.
-        # This is crucial for fetching trades not placed by this script's session.
-        exec_filter = ExecutionFilter()
+        # Dynamically get the account code to ensure the filter is specific.
+        accounts = ib.managedAccounts()
+        if not accounts:
+            logger.error("Could not retrieve managed account list from IB.")
+            return []
+        account_code = accounts[0]
+        logger.info(f"Fetching executions for account: {account_code}")
+
+        # Use an ExecutionFilter with the specific account code.
+        exec_filter = ExecutionFilter(acctCode=account_code)
         fills = await ib.reqExecutionsAsync(exec_filter)
         logger.info(f"Fetched {len(fills)} total fills from IB's 24-hour history.")
         return fills
