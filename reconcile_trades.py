@@ -199,6 +199,12 @@ async def get_ib_trades(config: dict) -> list[Fill]:
         )
         logger.info("Successfully connected to IB.")
 
+        # It is crucial to wait for the API connection to fully synchronize before
+        # requesting historical data like executions. A short delay resolves the
+        # race condition where the script requests data before the server is ready.
+        logger.info("Waiting for 5 seconds for data stream synchronization...")
+        await asyncio.sleep(5)
+
         # Use a global ExecutionFilter to get trades from all client IDs.
         # This is crucial for fetching trades not placed by this script's session.
         exec_filter = ExecutionFilter()
