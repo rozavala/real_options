@@ -16,7 +16,8 @@ import os
 from datetime import datetime
 
 import pandas as pd
-from ib_insync import IB, Fill, ExecFilter
+from ib_insync import IB, Fill
+from ib_insync.objects import ExecutionFilter
 
 from config_loader import load_config
 
@@ -198,9 +199,9 @@ async def get_ib_trades(config: dict) -> list[Fill]:
         )
         logger.info("Successfully connected to IB.")
 
-        # Use a global ExecFilter to get trades from all client IDs.
+        # Use a global ExecutionFilter to get trades from all client IDs.
         # This is crucial for fetching trades not placed by this script's session.
-        exec_filter = ExecFilter()
+        exec_filter = ExecutionFilter()
         fills = await ib.reqExecutionsAsync(exec_filter)
         logger.info(f"Fetched {len(fills)} total fills from IB's 24-hour history.")
         return fills
