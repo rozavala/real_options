@@ -1,22 +1,22 @@
 """
 A standalone script to reconcile trades from Interactive Brokers with the local trade ledger.
 
-This tool fetches trade executions from IB for a given date range, compares them
+This tool fetches trade executions from the last 24 hours from IB, compares them
 against the local `trade_ledger.csv` and its archives, and outputs any missing
 trades to a `missing_trades.csv` file.
+
+Note: The Interactive Brokers API via `reqExecutionsAsync` only provides fills
+from the last 24 hours. This script is therefore designed for daily reconciliation.
 """
 
-import argparse
 import asyncio
 import csv
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pandas as pd
 from ib_insync import IB, Fill
-
-import pytz
 
 from config_loader import load_config
 
@@ -179,10 +179,10 @@ def get_trade_ledger_df() -> pd.DataFrame:
     return full_ledger
 
 
-async def get_ib_trades(config: dict, start_date: datetime, end_date: datetime) -> list[Fill]:
+async def get_ib_trades(config: dict) -> list[Fill]:
     """
     Connects to Interactive Brokers and fetches all trade executions (fills)
-    within the specified date range.
+    from the last 24 hours.
     """
     ib = IB()
     conn_settings = config.get('connection', {})
@@ -198,20 +198,10 @@ async def get_ib_trades(config: dict, start_date: datetime, end_date: datetime) 
         )
         logger.info("Successfully connected to IB.")
 
-        # Fetch all available executions. Filtering by time will be done locally
-        # as the reqExecutionsAsync method does not support a time filter.
-        all_fills = await ib.reqExecutionsAsync()
-        logger.info(f"Fetched {len(all_fills)} total fills from IB's history.")
-
-        # Filter the fills to the desired date range.
-        # IB fill.time is timezone-aware (UTC), so we use the aware start/end dates.
-        date_range_fills = [
-            f for f in all_fills
-            if f.time and start_date <= f.time <= end_date
-        ]
-
-        logger.info(f"Found {len(date_range_fills)} fills within the specified date range.")
-        return date_range_fills
+        # reqExecutionsAsync() only returns fills from the last 24 hours.
+        fills = await ib.reqExecutionsAsync()
+        logger.info(f"Fetched {len(fills)} total fills from IB's 24-hour history.")
+        return fills
 
     except asyncio.TimeoutError:
         logger.error("Connection to IB timed out.", exc_info=True)
@@ -229,52 +219,33 @@ async def main():
     """
     Main function to orchestrate the trade reconciliation process.
     """
-    # --- 1. Parse Command-Line Arguments ---
-    parser = argparse.ArgumentParser(description="Reconcile IB trades with the local trade ledger.")
-    parser.add_argument(
-        '--days',
-        type=int,
-        default=7,
-        help="The number of past days to fetch trades for. Default is 7."
-    )
-    args = parser.parse_args()
+    logger.info("Starting trade reconciliation for the last 24 hours.")
 
-    # Create timezone-aware start and end datetimes for accurate filtering
-    utc_tz = pytz.utc
-    local_end_date = datetime.now().astimezone()  # Aware in local timezone
-    local_start_date = local_end_date - timedelta(days=args.days)
-
-    # Convert to UTC to match the timezone of IB's execution timestamps
-    end_date_utc = local_end_date.astimezone(utc_tz)
-    start_date_utc = local_start_date.astimezone(utc_tz)
-
-    logger.info(f"Reconciling trades from {start_date_utc.strftime('%Y-%m-%d %H:%M:%S %Z')} to {end_date_utc.strftime('%Y-%m-%d %H:%M:%S %Z')}.")
-
-    # --- 2. Load Configuration ---
+    # --- 1. Load Configuration ---
     config = load_config()
     if not config:
         logger.critical("Failed to load configuration. Exiting.")
         return
 
-    # --- 3. Fetch Trades from IB ---
-    ib_trades = await get_ib_trades(config, start_date_utc, end_date_utc)
+    # --- 2. Fetch Trades from IB (Last 24 hours) ---
+    ib_trades = await get_ib_trades(config)
     if not ib_trades:
-        logger.warning("No trades were fetched from IB for the specified period. Exiting.")
+        logger.warning("No trades were fetched from IB for the past 24 hours. Exiting.")
         return
 
-    # --- 4. Load Local Trade Ledger ---
+    # --- 3. Load Local Trade Ledger ---
     local_trades_df = get_trade_ledger_df()
     if local_trades_df.empty:
         logger.warning("Local trade ledger is empty. All fetched IB trades will be considered missing.")
 
-    # --- 5. Reconcile Trades ---
+    # --- 4. Reconcile Trades ---
     missing_trades = reconcile_trades(ib_trades, local_trades_df)
 
     if not missing_trades:
         logger.info("No missing trades found. The local ledger is up to date.")
         return
 
-    # --- 6. Output Missing Trades ---
+    # --- 5. Output Missing Trades ---
     write_missing_trades_to_csv(missing_trades)
 
 
