@@ -212,9 +212,18 @@ async def fetch_flex_query_report(config: dict) -> str | None:
                 resp = await client.get(get_url, timeout=30.0)
                 
                 # The report is ready when the response is not an XML error message
-                # A successful CSV report will not start with '<?xml'
                 if not resp.text.strip().startswith('<?xml'):
                     logger.info("Successfully downloaded Flex Query report.")
+                    
+                    # --- DEBUG: Write raw report to file ---
+                    try:
+                        with open('debug_report.csv', 'w', encoding='utf-8') as f:
+                            f.write(resp.text)
+                        logger.info(f"Wrote raw downloaded report to 'debug_report.csv' for debugging.")
+                    except Exception as e:
+                        logger.error(f"Failed to write debug report: {e}")
+                    # --- END DEBUG ---
+
                     return resp.text
                 
                 # If it IS an XML, it's probably an error or "still processing"
