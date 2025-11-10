@@ -37,7 +37,7 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
     archive_dir = os.path.join(base_dir, 'archive_ledger')
-    output_path = os.path.join(archive_dir, 'missing_trades.csv')
+    output_path = os.path.join(archive_dir, 'trade_ledger_missing_trades.csv')
 
     # Create the archive directory if it doesn't exist
     os.makedirs(archive_dir, exist_ok=True)
@@ -413,45 +413,45 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
 async def main():
     """
     Main function to orchestrate the trade reconciliation process.
+    Returns dataframes of discrepancies.
     """
     logger.info("Starting trade reconciliation using Flex Query.")
 
     # --- 1. Load Configuration ---
     config = load_config()
-    if not config:
-        logger.critical("Failed to load configuration. Exiting.")
-        return
-    if 'flex_query' not in config:
-        logger.critical("Configuration is missing the 'flex_query' section. Exiting.")
-        return
+    if not config or 'flex_query' not in config:
+        logger.critical("Configuration missing or incomplete. Exiting.")
+        return pd.DataFrame(), pd.DataFrame()
 
-    # --- 2. Fetch Trades from IB (Flex Query) ---
+    # --- 2. Fetch and Parse Trades from IB (Flex Query) ---
     csv_data = await fetch_flex_query_report(config)
     if not csv_data:
         logger.warning("No trade data was fetched from IB Flex Query. Exiting.")
-        return
-        
-    # --- 3. Parse Flex Query Report ---
+        return pd.DataFrame(), pd.DataFrame()
+
     ib_trades_df = parse_flex_csv_to_df(csv_data)
     if ib_trades_df.empty:
         logger.warning("Failed to parse trades from the Flex Query report. Exiting.")
-        return
+        return pd.DataFrame(), pd.DataFrame()
 
-    # --- 4. Load Local Trade Ledger ---
+    # --- 3. Load Local Trade Ledger ---
     local_trades_df = get_trade_ledger_df()
     if local_trades_df.empty:
         logger.warning("Local trade ledger is empty. All fetched IB trades will be considered missing.")
 
-    # --- 5. Reconcile Trades ---
+    # --- 4. Reconcile Trades ---
     missing_trades_df, superfluous_trades_df = reconcile_trades(ib_trades_df, local_trades_df)
 
     if missing_trades_df.empty and superfluous_trades_df.empty:
         logger.info("No discrepancies found. The local ledger is perfectly in sync with the IB report.")
-        return
+    else:
+        # --- 5. Output Discrepancy Reports ---
+        logger.info("Discrepancies found. Writing to output files.")
+        write_missing_trades_to_csv(missing_trades_df)
+        write_superfluous_trades_to_csv(superfluous_trades_df)
 
-    # --- 6. Output Discrepancy Reports ---
-    write_missing_trades_to_csv(missing_trades_df)
-    write_superfluous_trades_to_csv(superfluous_trades_df)
+    # --- 6. Return the dataframes for the orchestrator ---
+    return missing_trades_df, superfluous_trades_df
 
 
 if __name__ == "__main__":
