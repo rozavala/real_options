@@ -25,6 +25,7 @@ from config_loader import load_config
 from logging_config import setup_logging
 from notifications import send_pushover_notification
 from performance_analyzer import main as run_performance_analysis
+from reconcile_trades import main as run_reconciliation
 from trading_bot.order_manager import (
     generate_and_queue_orders,
     place_queued_orders,
@@ -144,14 +145,49 @@ async def analyze_and_archive(config: dict):
     except Exception as e:
         logger.critical(f"An error occurred during the analysis and archiving process: {e}\n{traceback.format_exc()}")
 
+
+async def reconcile_and_notify(config: dict):
+    """Runs the trade reconciliation and sends a notification if discrepancies are found."""
+    logger.info("--- Starting trade reconciliation ---")
+    try:
+        missing_df, superfluous_df = await run_reconciliation()
+
+        if not missing_df.empty or not superfluous_df.empty:
+            logger.warning("Trade reconciliation found discrepancies.")
+            message = ""
+            if not missing_df.empty:
+                message += f"Found {len(missing_df)} missing trades in the local ledger.\n"
+            if not superfluous_df.empty:
+                message += f"Found {len(superfluous_df)} superfluous trades in the local ledger.\n"
+            message += "Check the `archive_ledger` directory for details."
+
+            send_pushover_notification(
+                config.get('notifications', {}),
+                "Trade Reconciliation Alert",
+                message
+            )
+        else:
+            logger.info("Trade reconciliation complete. No discrepancies found.")
+    except Exception as e:
+        logger.critical(f"An error occurred during trade reconciliation: {e}\n{traceback.format_exc()}")
+
+
+async def reconcile_and_analyze(config: dict):
+    """Runs reconciliation, then analysis and archiving."""
+    logger.info("--- Kicking off end-of-day reconciliation and analysis process ---")
+    await reconcile_and_notify(config)
+    await analyze_and_archive(config)
+    logger.info("--- End-of-day reconciliation and analysis process complete ---")
+
+
 # New schedule mapping run times (GMT) to functions
 schedule = {
+    time(2, 0): reconcile_and_analyze,
     time(8, 30): start_monitoring,
     time(9, 30): generate_and_queue_orders,
     time(9, 35): place_queued_orders,
     time(17, 20): close_positions_after_5_days,
     time(17, 22): cancel_and_stop_monitoring,
-    time(17, 35): analyze_and_archive
 }
 
 async def main():
