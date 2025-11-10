@@ -52,6 +52,9 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
         final_df = missing_trades_df.copy()
         final_df['reason'] = 'RECONCILIATION_MISSING'
         
+        # Sort by timestamp before writing
+        final_df.sort_values(by='timestamp', inplace=True)
+
         # Format timestamp to string for CSV
         final_df['timestamp'] = final_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -73,17 +76,68 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
         logger.error(f"An unexpected error occurred in write_missing_trades_to_csv: {e}")
 
 
-def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) -> pd.DataFrame:
+def write_superfluous_trades_to_csv(superfluous_trades_df: pd.DataFrame):
     """
-    Compares IB trades with the local ledger to find missing trades.
+    Writes the DataFrame of superfluous local trades to a CSV file
+    inside the `archive_ledger` directory.
+    """
+    if superfluous_trades_df.empty:
+        return
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    archive_dir = os.path.join(base_dir, 'archive_ledger')
+    output_path = os.path.join(archive_dir, 'superfluous_local_trades.csv')
+
+    # Create the archive directory if it doesn't exist
+    os.makedirs(archive_dir, exist_ok=True)
+    
+    try:
+        # Format timestamp back to string for CSV consistency
+        final_df = superfluous_trades_df.copy()
+        if 'timestamp' in final_df.columns:
+            # Sort by timestamp before writing
+            final_df.sort_values(by='timestamp', inplace=True)
+            final_df['timestamp'] = pd.to_datetime(final_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+
+        final_df.to_csv(
+            output_path,
+            index=False,
+            header=True,
+            float_format='%.2f'
+        )
+
+        logger.info(f"Successfully wrote {len(final_df)} superfluous local trade(s) to '{output_path}'.")
+
+    except IOError as e:
+        logger.error(f"Error writing to superfluous trades CSV file: {e}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred in write_superfluous_trades_to_csv: {e}")
+
+
+def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Compares IB trades with the local ledger to identify discrepancies.
+
+    This function performs a two-way comparison:
+    1. It finds trades that exist in the IB report but are missing from the local ledger.
+    2. It finds trades that exist in the local ledger but are not in the IB report.
 
     This enhanced version ignores `combo_id` and `position_id` and instead
     matches trades based on a combination of symbol, quantity, action, and
     a 2-second timestamp tolerance for robustness.
+
+    Returns:
+        A tuple containing two DataFrames:
+        - missing_from_local_df: Trades in IB report, but not in local ledger.
+        - superfluous_in_local_df: Trades in local ledger, but not in IB report.
     """
+    if ib_trades_df.empty:
+        logger.warning("IB trades report is empty. All local trades will be marked as superfluous.")
+        return pd.DataFrame(), local_trades_df
+
     if local_trades_df.empty:
         logger.warning("Local ledger is empty. All IB trades will be marked as missing.")
-        return ib_trades_df
+        return ib_trades_df, pd.DataFrame()
 
     # Convert quantities to a consistent numeric type
     local_trades_df['quantity'] = pd.to_numeric(local_trades_df['quantity'], errors='coerce')
@@ -95,7 +149,7 @@ def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) 
 
     # Use a copy to track which local trades have been matched
     local_trades_unmatched = local_trades_df.copy()
-    missing_trades = []
+    missing_from_local = []
 
     for ib_index, ib_trade in ib_trades_df.iterrows():
         is_matched = False
@@ -120,14 +174,13 @@ def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) 
                 is_matched = True
 
         if not is_matched:
-            missing_trades.append(ib_trade)
+            missing_from_local.append(ib_trade)
 
-    logger.info(f"Reconciliation complete. Found {len(missing_trades)} missing trade(s).")
+    logger.info(f"Reconciliation complete. "
+                f"Found {len(missing_from_local)} trade(s) missing from local ledger. "
+                f"Found {len(local_trades_unmatched)} superfluous trade(s) in local ledger.")
 
-    if not missing_trades:
-        return pd.DataFrame()
-    else:
-        return pd.DataFrame(missing_trades)
+    return pd.DataFrame(missing_from_local), local_trades_unmatched
 
 
 def get_trade_ledger_df() -> pd.DataFrame:
@@ -347,7 +400,8 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     # --- Calculate Value (using your original script's logic) ---
     # A 'BUY' is a negative value (cash outflow)
     multiplier = df['Multiplier']
-    total_value = (df['TradePrice'] * df_out['quantity'] * multiplier) / 100.0
+    # The division by 100 was incorrect, as the price is not in cents.
+    total_value = (df['TradePrice'] * df_out['quantity'] * multiplier)
     
     # Apply negative sign for 'BUY' actions
     df_out['total_value_usd'] = total_value.where(df_out['action'] == 'SELL', -total_value)
@@ -389,14 +443,15 @@ async def main():
         logger.warning("Local trade ledger is empty. All fetched IB trades will be considered missing.")
 
     # --- 5. Reconcile Trades ---
-    missing_trades_df = reconcile_trades(ib_trades_df, local_trades_df)
+    missing_trades_df, superfluous_trades_df = reconcile_trades(ib_trades_df, local_trades_df)
 
-    if missing_trades_df.empty:
-        logger.info("No missing trades found. The local ledger is up to date.")
+    if missing_trades_df.empty and superfluous_trades_df.empty:
+        logger.info("No discrepancies found. The local ledger is perfectly in sync with the IB report.")
         return
 
-    # --- 6. Output Missing Trades ---
+    # --- 6. Output Discrepancy Reports ---
     write_missing_trades_to_csv(missing_trades_df)
+    write_superfluous_trades_to_csv(superfluous_trades_df)
 
 
 if __name__ == "__main__":
