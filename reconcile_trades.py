@@ -28,14 +28,19 @@ logger = logging.getLogger("TradeReconciler")
 
 def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
     """
-    Writes the DataFrame of missing trades to a `missing_trades.csv` file.
+    Writes the DataFrame of missing trades to a `missing_trades.csv` file
+    inside the `archive_ledger` directory.
     The format matches the `trade_ledger.csv`.
     """
     if missing_trades_df.empty:
         return
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    output_path = os.path.join(base_dir, 'missing_trades.csv')
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    archive_dir = os.path.join(base_dir, 'archive_ledger')
+    output_path = os.path.join(archive_dir, 'missing_trades.csv')
+
+    # Create the archive directory if it doesn't exist
+    os.makedirs(archive_dir, exist_ok=True)
 
     fieldnames = [
         'timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity',
@@ -70,42 +75,59 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
 
 def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Compares the IB trades DataFrame with the local trade ledger DataFrame
-    and returns a DataFrame of IB trades that are missing from the ledger.
+    Compares IB trades with the local ledger to find missing trades.
+
+    This enhanced version ignores `combo_id` and `position_id` and instead
+    matches trades based on a combination of symbol, quantity, action, and
+    a 2-second timestamp tolerance for robustness.
     """
     if local_trades_df.empty:
         logger.warning("Local ledger is empty. All IB trades will be marked as missing.")
         return ib_trades_df
 
-    # --- Generate a set of unique keys for local trades for efficient lookup ---
-    local_trade_keys = set()
-    for _, row in local_trades_df.iterrows():
-        if 'combo_id' in row and 'local_symbol' in row and 'timestamp' in row:
-            # The timestamp is already a timezone-aware pandas timestamp object in UTC
-            key = (
-                str(row['combo_id']),
-                row['local_symbol'],
-                row['timestamp'].round('S')  # Round to the nearest second
-            )
-            local_trade_keys.add(key)
-    
-    logger.info(f"Loaded {len(local_trade_keys)} unique trade keys from local ledger.")
+    # Convert quantities to a consistent numeric type
+    local_trades_df['quantity'] = pd.to_numeric(local_trades_df['quantity'], errors='coerce')
+    ib_trades_df['quantity'] = pd.to_numeric(ib_trades_df['quantity'], errors='coerce')
 
-    # --- Find IB trades that are not in the local ledger ---
-    missing_rows = []
-    for _, row in ib_trades_df.iterrows():
-        # Generate the same unique key for the IB trade.
-        ib_key = (
-            str(row['combo_id']),
-            row['local_symbol'],
-            row['timestamp'].round('S')  # Round to the nearest second
-        )
+    # Drop rows where quantity could not be parsed
+    local_trades_df.dropna(subset=['quantity'], inplace=True)
+    ib_trades_df.dropna(subset=['quantity'], inplace=True)
 
-        if ib_key not in local_trade_keys:
-            missing_rows.append(row)
+    # Use a copy to track which local trades have been matched
+    local_trades_unmatched = local_trades_df.copy()
+    missing_trades = []
 
-    logger.info(f"Reconciliation complete. Found {len(missing_rows)} missing trade(s).")
-    return pd.DataFrame(missing_rows)
+    for ib_index, ib_trade in ib_trades_df.iterrows():
+        is_matched = False
+        # Find potential matches based on symbol, action, and quantity
+        potential_matches = local_trades_unmatched[
+            (local_trades_unmatched['local_symbol'] == ib_trade['local_symbol']) &
+            (local_trades_unmatched['action'] == ib_trade['action']) &
+            (local_trades_unmatched['quantity'] == ib_trade['quantity'])
+        ]
+
+        if not potential_matches.empty:
+            # Check for a timestamp match within the tolerance
+            time_diff = (potential_matches['timestamp'] - ib_trade['timestamp']).abs()
+
+            # Find the index of the first match within the 2-second window
+            match_indices = potential_matches[time_diff <= pd.Timedelta(seconds=2)].index
+
+            if len(match_indices) > 0:
+                # If a match is found, remove it from the unmatched pool
+                # to prevent it from being matched again.
+                local_trades_unmatched.drop(match_indices[0], inplace=True)
+                is_matched = True
+
+        if not is_matched:
+            missing_trades.append(ib_trade)
+
+    logger.info(f"Reconciliation complete. Found {len(missing_trades)} missing trade(s).")
+
+    if not missing_trades:
+        return pd.DataFrame()
+    else:
+        return pd.DataFrame(missing_trades)
 
 
 def get_trade_ledger_df() -> pd.DataFrame:
@@ -114,8 +136,8 @@ def get_trade_ledger_df() -> pd.DataFrame:
     DataFrame for analysis.
     (This function is unchanged from your original script)
     """
-    # Use an absolute path relative to this script's location to find the project root
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Define paths relative to the script's location, which is the project root.
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
     archive_dir = os.path.join(base_dir, 'archive_ledger')
 
@@ -306,8 +328,15 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     # --- Map to script's internal column names ---
     df_out = pd.DataFrame()
     df_out['timestamp'] = df['timestamp_utc']
-    df_out['position_id'] = 'transId_' + df['TransactionID'].astype(str)
-    df_out['combo_id'] = df['TransactionID'].astype(str)
+
+    # Create a more descriptive position_id from the instrument details
+    df_out['position_id'] = (
+        df['Symbol'].astype(str) + "_" +
+        df['Strike'].astype(str) + "_" +
+        df['Put/Call'].astype(str)
+    )
+
+    df_out['combo_id'] = df['TransactionID'].astype(str) # Keep transID for combo_id
     df_out['local_symbol'] = df['Symbol']
     df_out['action'] = df['Buy/Sell'] # Use the column directly
     df_out['quantity'] = df['Quantity'].abs() # Use absolute quantity for ledger
