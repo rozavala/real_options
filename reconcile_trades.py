@@ -215,18 +215,23 @@ async def fetch_flex_query_report(config: dict) -> str | None:
                 if not resp.text.strip().startswith('<?xml'):
                     logger.info("Successfully downloaded Flex Query report.")
                     
-                    # --- DEBUG: Write raw report to file ---
+                    # --- DEBUG: Write raw report to a specific file path ---
                     try:
-                        with open('debug_report.csv', 'w', encoding='utf-8') as f:
+                        # Get the directory where this script is located
+                        script_dir = os.path.dirname(os.path.abspath(__file__))
+                        # Name the debug file path
+                        debug_path = os.path.join(script_dir, 'debug_report.csv')
+
+                        with open(debug_path, 'w', encoding='utf-8') as f:
                             f.write(resp.text)
-                        logger.info(f"Wrote raw downloaded report to 'debug_report.csv' for debugging.")
+                        logger.info(f"Wrote raw downloaded report to '{debug_path}' for debugging.")
                     except Exception as e:
-                        logger.error(f"Failed to write debug report: {e}")
+                        logger.error(f"Failed to write debug report to '{debug_path}': {e}")
                     # --- END DEBUG ---
 
                     return resp.text
                 
-                # If it IS an XML, it's probably an error or "still processing"
+                # If it IS an XML, it's a "still processing" or error message
                 root = ET.fromstring(resp.content)
                 status = root.find('Status').text
                 if status != 'Success':
