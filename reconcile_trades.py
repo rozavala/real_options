@@ -303,8 +303,8 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     # --- Map to script's internal column names ---
     df_out = pd.DataFrame()
     df_out['timestamp'] = df['Trade Date/Time']
-    df_out['position_id'] = 'permId_' + df['permId']
-    df_out['combo_id'] = df['permId']
+    df_out['position_id'] = 'transId_' + df['Transaction ID']
+    df_out['combo_id'] = df['Transaction ID']
     df_out['local_symbol'] = df['Symbol']
     df_out['action'] = df['Buy/Sell'].apply(lambda x: 'BUY' if x == 'B' else 'SELL')
     df_out['quantity'] = df['Quantity']
