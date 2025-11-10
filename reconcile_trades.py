@@ -28,14 +28,19 @@ logger = logging.getLogger("TradeReconciler")
 
 def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
     """
-    Writes the DataFrame of missing trades to a `missing_trades.csv` file.
+    Writes the DataFrame of missing trades to a `missing_trades.csv` file
+    inside the `archive_ledger` directory.
     The format matches the `trade_ledger.csv`.
     """
     if missing_trades_df.empty:
         return
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    output_path = os.path.join(base_dir, 'missing_trades.csv')
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    archive_dir = os.path.join(base_dir, 'archive_ledger')
+    output_path = os.path.join(archive_dir, 'missing_trades.csv')
+
+    # Create the archive directory if it doesn't exist
+    os.makedirs(archive_dir, exist_ok=True)
 
     fieldnames = [
         'timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity',
@@ -47,6 +52,9 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
         final_df = missing_trades_df.copy()
         final_df['reason'] = 'RECONCILIATION_MISSING'
         
+        # Sort by timestamp before writing
+        final_df.sort_values(by='timestamp', inplace=True)
+
         # Format timestamp to string for CSV
         final_df['timestamp'] = final_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -68,44 +76,111 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
         logger.error(f"An unexpected error occurred in write_missing_trades_to_csv: {e}")
 
 
-def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) -> pd.DataFrame:
+def write_superfluous_trades_to_csv(superfluous_trades_df: pd.DataFrame):
     """
-    Compares the IB trades DataFrame with the local trade ledger DataFrame
-    and returns a DataFrame of IB trades that are missing from the ledger.
+    Writes the DataFrame of superfluous local trades to a CSV file
+    inside the `archive_ledger` directory.
     """
-    if local_trades_df.empty:
-        logger.warning("Local ledger is empty. All IB trades will be marked as missing.")
-        return ib_trades_df
+    if superfluous_trades_df.empty:
+        return
 
-    # --- Generate a set of unique keys for local trades for efficient lookup ---
-    local_trade_keys = set()
-    for _, row in local_trades_df.iterrows():
-        if 'combo_id' in row and 'local_symbol' in row and 'timestamp' in row:
-            # The timestamp is already a timezone-aware pandas timestamp object in UTC
-            key = (
-                str(row['combo_id']),
-                row['local_symbol'],
-                row['timestamp'].round('S')  # Round to the nearest second
-            )
-            local_trade_keys.add(key)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    archive_dir = os.path.join(base_dir, 'archive_ledger')
+    output_path = os.path.join(archive_dir, 'superfluous_local_trades.csv')
+
+    # Create the archive directory if it doesn't exist
+    os.makedirs(archive_dir, exist_ok=True)
     
-    logger.info(f"Loaded {len(local_trade_keys)} unique trade keys from local ledger.")
+    try:
+        # Format timestamp back to string for CSV consistency
+        final_df = superfluous_trades_df.copy()
+        if 'timestamp' in final_df.columns:
+            # Sort by timestamp before writing
+            final_df.sort_values(by='timestamp', inplace=True)
+            final_df['timestamp'] = pd.to_datetime(final_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
 
-    # --- Find IB trades that are not in the local ledger ---
-    missing_rows = []
-    for _, row in ib_trades_df.iterrows():
-        # Generate the same unique key for the IB trade.
-        ib_key = (
-            str(row['combo_id']),
-            row['local_symbol'],
-            row['timestamp'].round('S')  # Round to the nearest second
+        final_df.to_csv(
+            output_path,
+            index=False,
+            header=True,
+            float_format='%.2f'
         )
 
-        if ib_key not in local_trade_keys:
-            missing_rows.append(row)
+        logger.info(f"Successfully wrote {len(final_df)} superfluous local trade(s) to '{output_path}'.")
 
-    logger.info(f"Reconciliation complete. Found {len(missing_rows)} missing trade(s).")
-    return pd.DataFrame(missing_rows)
+    except IOError as e:
+        logger.error(f"Error writing to superfluous trades CSV file: {e}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred in write_superfluous_trades_to_csv: {e}")
+
+
+def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Compares IB trades with the local ledger to identify discrepancies.
+
+    This function performs a two-way comparison:
+    1. It finds trades that exist in the IB report but are missing from the local ledger.
+    2. It finds trades that exist in the local ledger but are not in the IB report.
+
+    This enhanced version ignores `combo_id` and `position_id` and instead
+    matches trades based on a combination of symbol, quantity, action, and
+    a 2-second timestamp tolerance for robustness.
+
+    Returns:
+        A tuple containing two DataFrames:
+        - missing_from_local_df: Trades in IB report, but not in local ledger.
+        - superfluous_in_local_df: Trades in local ledger, but not in IB report.
+    """
+    if ib_trades_df.empty:
+        logger.warning("IB trades report is empty. All local trades will be marked as superfluous.")
+        return pd.DataFrame(), local_trades_df
+
+    if local_trades_df.empty:
+        logger.warning("Local ledger is empty. All IB trades will be marked as missing.")
+        return ib_trades_df, pd.DataFrame()
+
+    # Convert quantities to a consistent numeric type
+    local_trades_df['quantity'] = pd.to_numeric(local_trades_df['quantity'], errors='coerce')
+    ib_trades_df['quantity'] = pd.to_numeric(ib_trades_df['quantity'], errors='coerce')
+
+    # Drop rows where quantity could not be parsed
+    local_trades_df.dropna(subset=['quantity'], inplace=True)
+    ib_trades_df.dropna(subset=['quantity'], inplace=True)
+
+    # Use a copy to track which local trades have been matched
+    local_trades_unmatched = local_trades_df.copy()
+    missing_from_local = []
+
+    for ib_index, ib_trade in ib_trades_df.iterrows():
+        is_matched = False
+        # Find potential matches based on symbol, action, and quantity
+        potential_matches = local_trades_unmatched[
+            (local_trades_unmatched['local_symbol'] == ib_trade['local_symbol']) &
+            (local_trades_unmatched['action'] == ib_trade['action']) &
+            (local_trades_unmatched['quantity'] == ib_trade['quantity'])
+        ]
+
+        if not potential_matches.empty:
+            # Check for a timestamp match within the tolerance
+            time_diff = (potential_matches['timestamp'] - ib_trade['timestamp']).abs()
+
+            # Find the index of the first match within the 2-second window
+            match_indices = potential_matches[time_diff <= pd.Timedelta(seconds=2)].index
+
+            if len(match_indices) > 0:
+                # If a match is found, remove it from the unmatched pool
+                # to prevent it from being matched again.
+                local_trades_unmatched.drop(match_indices[0], inplace=True)
+                is_matched = True
+
+        if not is_matched:
+            missing_from_local.append(ib_trade)
+
+    logger.info(f"Reconciliation complete. "
+                f"Found {len(missing_from_local)} trade(s) missing from local ledger. "
+                f"Found {len(local_trades_unmatched)} superfluous trade(s) in local ledger.")
+
+    return pd.DataFrame(missing_from_local), local_trades_unmatched
 
 
 def get_trade_ledger_df() -> pd.DataFrame:
@@ -114,8 +189,8 @@ def get_trade_ledger_df() -> pd.DataFrame:
     DataFrame for analysis.
     (This function is unchanged from your original script)
     """
-    # Use an absolute path relative to this script's location to find the project root
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Define paths relative to the script's location, which is the project root.
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
     archive_dir = os.path.join(base_dir, 'archive_ledger')
 
@@ -306,8 +381,15 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     # --- Map to script's internal column names ---
     df_out = pd.DataFrame()
     df_out['timestamp'] = df['timestamp_utc']
-    df_out['position_id'] = 'transId_' + df['TransactionID'].astype(str)
-    df_out['combo_id'] = df['TransactionID'].astype(str)
+
+    # Create a more descriptive position_id from the instrument details
+    df_out['position_id'] = (
+        df['Symbol'].astype(str) + "_" +
+        df['Strike'].astype(str) + "_" +
+        df['Put/Call'].astype(str)
+    )
+
+    df_out['combo_id'] = df['TransactionID'].astype(str) # Keep transID for combo_id
     df_out['local_symbol'] = df['Symbol']
     df_out['action'] = df['Buy/Sell'] # Use the column directly
     df_out['quantity'] = df['Quantity'].abs() # Use absolute quantity for ledger
@@ -318,7 +400,8 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     # --- Calculate Value (using your original script's logic) ---
     # A 'BUY' is a negative value (cash outflow)
     multiplier = df['Multiplier']
-    total_value = (df['TradePrice'] * df_out['quantity'] * multiplier) / 100.0
+    # The division by 100 was incorrect, as the price is not in cents.
+    total_value = (df['TradePrice'] * df_out['quantity'] * multiplier)
     
     # Apply negative sign for 'BUY' actions
     df_out['total_value_usd'] = total_value.where(df_out['action'] == 'SELL', -total_value)
@@ -360,14 +443,15 @@ async def main():
         logger.warning("Local trade ledger is empty. All fetched IB trades will be considered missing.")
 
     # --- 5. Reconcile Trades ---
-    missing_trades_df = reconcile_trades(ib_trades_df, local_trades_df)
+    missing_trades_df, superfluous_trades_df = reconcile_trades(ib_trades_df, local_trades_df)
 
-    if missing_trades_df.empty:
-        logger.info("No missing trades found. The local ledger is up to date.")
+    if missing_trades_df.empty and superfluous_trades_df.empty:
+        logger.info("No discrepancies found. The local ledger is perfectly in sync with the IB report.")
         return
 
-    # --- 6. Output Missing Trades ---
+    # --- 6. Output Discrepancy Reports ---
     write_missing_trades_to_csv(missing_trades_df)
+    write_superfluous_trades_to_csv(superfluous_trades_df)
 
 
 if __name__ == "__main__":
