@@ -258,81 +258,72 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     """
     Parses the raw CSV string from the Flex Query into a clean DataFrame
     that matches the script's required format.
+    
+    This new version reads the CSV data directly, as the debug file shows
+    a clean CSV without extra section headers.
     """
-    # Find the start of the 'Executions' data block
-    lines = csv_data.splitlines()
-    data_start_index = -1
-    header = []
-
-    for i, line in enumerate(lines):
-        if line.startswith("Executions,Data"):
-            header = lines[i+1].split(',')
-            data_start_index = i + 2
-            break
-
-    if data_start_index == -1:
-        logger.error("Could not find 'Executions,Data' section in the Flex Query report.")
+    if not csv_data or not csv_data.strip():
+        logger.warning("Received empty CSV data from Flex Query.")
         return pd.DataFrame()
 
-    # Clean the header (e.g., "Executions,Symbol" -> "Symbol")
-    header[0] = header[0].split(',')[1]
-
-    # Find the end of the data block
-    data_end_index = len(lines)
-    for i, line in enumerate(lines[data_start_index:], start=data_start_index):
-        if not line.startswith("Executions,Data"):
-            data_end_index = i
-            break
-            
-    # Extract the relevant data lines and parse
-    data_rows = []
-    reader = csv.reader(lines[data_start_index:data_end_index])
-    for row in reader:
-        # Clean the first element (e.g., "Executions,Data" -> "Data")
-        row[0] = row[0].split(',')[1]
-        data_rows.append(row)
-
-    if not data_rows:
-        logger.warning("Executions section was found but contained no data.")
+    try:
+        # Use io.StringIO to treat the CSV string as a file
+        df = pd.read_csv(io.StringIO(csv_data))
+        logger.info(f"Parsed {len(df)} executions from the Flex Query report.")
+        
+    except pd.errors.EmptyDataError:
+        logger.warning("Flex Query report was empty.")
+        return pd.DataFrame()
+    except Exception as e:
+        logger.error(f"Failed to read CSV data into pandas: {e}", exc_info=True)
         return pd.DataFrame()
 
-    df = pd.DataFrame(data_rows, columns=header)
-    logger.info(f"Parsed {len(df)} executions from the Flex Query report.")
-
+    if df.empty:
+        logger.warning("Flex Query report contained no data.")
+        return pd.DataFrame()
+        
     # --- Data Cleaning and Type Conversion ---
     try:
-        df['Trade Price'] = pd.to_numeric(df['Trade Price'])
+        # Use the exact column names from your debug_report.csv
+        df['TradePrice'] = pd.to_numeric(df['TradePrice'])
         df['Quantity'] = pd.to_numeric(df['Quantity'])
-        # Use user's default multiplier if missing
         df['Multiplier'] = pd.to_numeric(df['Multiplier'].replace('', '37500.0')).fillna(37500.0)
         df['Strike'] = pd.to_numeric(df['Strike'].replace('', '0')).fillna(0)
-        # IB timestamps are typically EST/EDT. tz_localize(None).tz_localize('UTC')
-        # is a robust way to convert them to UTC, assuming they are naive.
-        # A safer way is to know the report's TZ. Assuming 'America/New_York'
-        df['Trade Date/Time'] = pd.to_datetime(df['Trade Date/Time']).dt.tz_localize('America/New_York').dt.tz_convert('UTC')
+        
+        # Parse the specific 'DateTime' format from your report: '20251106;122010'
+        df['parsed_datetime'] = pd.to_datetime(df['DateTime'], format='%Y%m%d;%H%M%S')
+        
+        # Convert from IBKR's timezone (assumed 'America/New_York') to UTC
+        df['timestamp_utc'] = df['parsed_datetime'].dt.tz_localize('America/New_York').dt.tz_convert('UTC')
+
+    except KeyError as e:
+        logger.error(f"Missing expected column in Flex Query report: {e}", exc_info=True)
+        return pd.DataFrame()
     except Exception as e:
         logger.error(f"Error during data type conversion: {e}", exc_info=True)
         return pd.DataFrame()
 
     # --- Map to script's internal column names ---
     df_out = pd.DataFrame()
-    df_out['timestamp'] = df['Trade Date/Time']
-    df_out['position_id'] = 'transId_' + df['Transaction ID']
-    df_out['combo_id'] = df['Transaction ID']
+    df_out['timestamp'] = df['timestamp_utc']
+    df_out['position_id'] = 'transId_' + df['TransactionID'].astype(str)
+    df_out['combo_id'] = df['TransactionID'].astype(str)
     df_out['local_symbol'] = df['Symbol']
-    df_out['action'] = df['Buy/Sell'].apply(lambda x: 'BUY' if x == 'B' else 'SELL')
-    df_out['quantity'] = df['Quantity']
-    df_out['avg_fill_price'] = df['Trade Price']
+    df_out['action'] = df['Buy/Sell'] # Use the column directly
+    df_out['quantity'] = df['Quantity'].abs() # Use absolute quantity for ledger
+    df_out['avg_fill_price'] = df['TradePrice']
     df_out['strike'] = df['Strike'].replace(0, 'N/A').astype(str)
     df_out['right'] = df['Put/Call'].replace('', 'N/A')
 
-    # --- Calculate Value (using your original logic) ---
-    # Defaulting to 37500.0 multiplier was in your original script
+    # --- Calculate Value (using your original script's logic) ---
+    # A 'BUY' is a negative value (cash outflow)
     multiplier = df['Multiplier']
+    total_value = (df['TradePrice'] * df_out['quantity'] * multiplier) / 100.0
     
-    total_value = (df['Trade Price'] * df['Quantity'] * multiplier) / 100.0
+    # Apply negative sign for 'BUY' actions
     df_out['total_value_usd'] = total_value.where(df_out['action'] == 'SELL', -total_value)
 
+    logger.info(f"Successfully processed {len(df_out)} trades into the reconciliation DataFrame.")
     return df_out
 
 
