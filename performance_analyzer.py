@@ -55,6 +55,9 @@ def get_trade_ledger_df():
     full_ledger = pd.concat(dataframes, ignore_index=True)
     full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
 
+    # Coerce P&L column to numeric, turning any non-numeric values into NaN
+    full_ledger['total_value_usd'] = pd.to_numeric(full_ledger['total_value_usd'], errors='coerce')
+
     logger.info(f"Consolidated a total of {len(full_ledger)} trade records.")
     return full_ledger.sort_values(by='timestamp').reset_index(drop=True)
 
