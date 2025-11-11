@@ -236,7 +236,7 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
 
                     trade = place_order(ib, leg_pos_to_close.contract, order)
                     logging.info(f"Placed closing order for {leg_pos_to_close.contract.localSymbol}. "
-                                 f"Relying on event handlers for fill confirmation. Order ID: {trade.order.id}")
+                                 f"Relying on event handlers for fill confirmation. Order ID: {trade.order.orderId}")
 
                     closed_ids.add(leg_pos_to_close.contract.conId)
 
