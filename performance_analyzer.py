@@ -24,24 +24,41 @@ def get_trade_ledger_df():
     """Reads and consolidates the main and archived trade ledgers for analysis."""
     base_dir = os.path.dirname(os.path.abspath(__file__))
     ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-    archive_dir = os.path.join(base_dir, 'archive')
+    archive_dir = os.path.join(base_dir, 'archive_ledger')
 
     dataframes = []
+    logger.info("--- Consolidating Trade Ledgers ---")
 
     if os.path.exists(ledger_path):
+        logger.info(f"Loading main trade ledger: {os.path.basename(ledger_path)}")
         dataframes.append(pd.read_csv(ledger_path))
+    else:
+        logger.warning("Main trade_ledger.csv not found.")
+
     if os.path.exists(archive_dir):
         archive_files = [os.path.join(archive_dir, f) for f in os.listdir(archive_dir) if f.startswith('trade_ledger_') and f.endswith('.csv')]
         if archive_files:
-            df_list = [pd.read_csv(file) for file in archive_files]
-            dataframes.extend(df_list)
+            logger.info(f"Found {len(archive_files)} archived trade ledger(s).")
+            for file in archive_files:
+                logger.info(f"Loading archived ledger: {os.path.basename(file)}")
+                dataframes.append(pd.read_csv(file))
+        else:
+            logger.info("No archived trade ledgers found.")
+    else:
+        logger.info("Archive directory not found, skipping.")
+
 
     if not dataframes:
+        logger.warning("No trade ledger data found to consolidate.")
         return pd.DataFrame()
 
     full_ledger = pd.concat(dataframes, ignore_index=True)
     full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
 
+    # Coerce P&L column to numeric, turning any non-numeric values into NaN
+    full_ledger['total_value_usd'] = pd.to_numeric(full_ledger['total_value_usd'], errors='coerce')
+
+    logger.info(f"Consolidated a total of {len(full_ledger)} trade records.")
     return full_ledger.sort_values(by='timestamp').reset_index(drop=True)
 
 
