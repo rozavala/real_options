@@ -24,32 +24,48 @@ def generate_performance_charts(trade_df: pd.DataFrame, signals_df: pd.DataFrame
 
     # --- Data Prep ---
     trade_df['timestamp'] = pd.to_datetime(trade_df['timestamp'])
-    daily_pnl = trade_df.resample('D', on='timestamp')['total_value_usd'].sum()
-    cumulative_pnl = daily_pnl.cumsum()
 
-    # --- Chart 1: Cumulative P&L (Life-to-Date) ---
+    # --- Dynamic Granularity ---
+    unique_days = trade_df['timestamp'].dt.normalize().nunique()
+    if unique_days == 1:
+        # Intraday (hourly) view
+        time_unit = 'H'
+        title_suffix = "Intraday"
+        date_format = '%H:%M'
+        bar_width = 0.03
+    else:
+        # Life-to-date (daily) view
+        time_unit = 'D'
+        title_suffix = "Life-to-Date"
+        date_format = '%Y-%m-%d'
+        bar_width = 0.8
+
+    pnl_by_time = trade_df.resample(time_unit, on='timestamp')['total_value_usd'].sum()
+    cumulative_pnl = pnl_by_time.cumsum()
+
+    # --- Chart 1: Cumulative P&L ---
     plt.figure(figsize=(12, 6))
     plt.plot(cumulative_pnl.index, cumulative_pnl, marker='o', linestyle='-', color='b', markersize=4)
-    plt.title("Cumulative P&L (Life-to-Date)")
+    plt.title(f"Cumulative P&L ({title_suffix})")
     plt.ylabel("Equity Curve (USD)")
-    plt.xlabel("Date")
+    plt.xlabel("Time" if time_unit == 'H' else "Date")
     plt.grid(True, linestyle='--', alpha=0.6)
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter(date_format))
     plt.gcf().autofmt_xdate()
     path1 = os.path.abspath('cumulative_pnl_ltd.png')
     plt.savefig(path1, dpi=150)
     plt.close()
     output_paths.append(path1)
 
-    # --- Chart 2: Daily P&L (Life-to-Date) ---
+    # --- Chart 2: Daily P&L ---
     plt.figure(figsize=(12, 6))
-    colors = ['g' if x >= 0 else 'r' for x in daily_pnl]
-    plt.bar(daily_pnl.index, daily_pnl, color=colors, width=0.8)
-    plt.title("Daily P&L (Life-to-Date)")
+    colors = ['g' if x >= 0 else 'r' for x in pnl_by_time]
+    plt.bar(pnl_by_time.index, pnl_by_time, color=colors, width=bar_width)
+    plt.title(f"P&L by { 'Hour' if time_unit == 'H' else 'Day'} ({title_suffix})")
     plt.ylabel("Net P&L (USD)")
-    plt.xlabel("Date")
+    plt.xlabel("Time" if time_unit == 'H' else "Date")
     plt.grid(True, linestyle='--', alpha=0.6)
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter(date_format))
     plt.gcf().autofmt_xdate()
     path2 = os.path.abspath('daily_pnl_ltd.png')
     plt.savefig(path2, dpi=150)
