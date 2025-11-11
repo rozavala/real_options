@@ -182,7 +182,7 @@ async def reconcile_and_analyze(config: dict):
 
 # New schedule mapping run times (GMT) to functions
 schedule = {
-    time(21, 42): reconcile_and_analyze,
+    time(22, 0): reconcile_and_analyze,
     time(8, 30): start_monitoring,
     time(9, 30): generate_and_queue_orders,
     time(9, 35): place_queued_orders,
