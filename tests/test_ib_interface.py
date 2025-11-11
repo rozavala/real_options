@@ -70,7 +70,10 @@ class TestIbInterface(unittest.TestCase):
             config = {
                 'symbol': 'KC',
                 'strategy': {'quantity': 1},
-                'strategy_tuning': {'order_type': 'MKT'}
+                'strategy_tuning': {
+                    'order_type': 'MKT',
+                    'max_liquidity_spread_percentage': 0.9, # 90%
+                }
             }
             strategy_def = {
                 "action": "BUY", "legs_def": [('C', 'BUY', 3.5), ('C', 'SELL', 3.6)],
@@ -122,7 +125,10 @@ class TestIbInterface(unittest.TestCase):
             config = {
                 'symbol': 'KC',
                 'strategy': {'quantity': 1},
-                'strategy_tuning': {'slippage_spread_percentage': 0.5} # 50%
+                'strategy_tuning': {
+                    'max_liquidity_spread_percentage': 0.9, # 90%
+                    'fixed_slippage_cents': 0.2
+                }
             }
             strategy_def = {
                 "action": "BUY", "legs_def": [('C', 'BUY', 3.5), ('C', 'SELL', 3.6)],
@@ -140,11 +146,8 @@ class TestIbInterface(unittest.TestCase):
             _, limit_order = result
 
             # Theoretical Price: 1.0 (buy) - 0.5 (sell) = 0.5
-            # Combo Bid = leg1_bid - leg2_ask = 0.9 - 0.6 = 0.3
-            # Combo Ask = leg1_ask - leg2_bid = 1.1 - 0.4 = 0.7
-            # Market Spread = 0.7 - 0.3 = 0.4
-            # Slippage Amount = Market Spread * 50% = 0.4 * 0.5 = 0.2
-            # Limit Price (BUY) = Theoretical Price + Slippage = 0.5 + 0.2 = 0.7
+            # Fixed Slippage: 0.2
+            # Limit Price (BUY) = Theoretical Price + Fixed Slippage = 0.5 + 0.2 = 0.7
             expected_price = 0.70
             self.assertAlmostEqual(limit_order.lmtPrice, expected_price, places=2)
 

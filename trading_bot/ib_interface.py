@@ -193,26 +193,29 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
             combo_bid_price -= leg_ask
             combo_ask_price -= leg_bid
 
-    # 5. Calculate dynamic slippage from the live market spread
-    slippage_pct = config.get('strategy_tuning', {}).get('slippage_spread_percentage', 0.5)
+    # 5. Add Liquidity Filter and Calculate Limit Price
+    tuning_params = config.get('strategy_tuning', {})
+    max_spread_pct = tuning_params.get('max_liquidity_spread_percentage', 0.7)
+    fixed_slippage = tuning_params.get('fixed_slippage_cents', 0.5)
+
     market_spread = combo_ask_price - combo_bid_price
 
-    if market_spread > 0:
-        slippage_amount = market_spread * slippage_pct
-    else:
-        logging.warning(f"Market spread is non-positive ({market_spread:.2f}). No dynamic slippage applied.")
-        slippage_amount = 0
+    # Liquidity Filter: Check if the market spread is too wide relative to the theoretical price
+    if net_theoretical_price > 0 and (market_spread / net_theoretical_price) > max_spread_pct:
+        logging.warning(
+            f"LIQUIDITY FILTER FAILED: Market spread ({market_spread:.2f}) is "
+            f"{(market_spread / net_theoretical_price):.1%} of theoretical price ({net_theoretical_price:.2f}), "
+            f"which exceeds the max of {max_spread_pct:.1%}. Aborting order."
+        )
+        return None
 
-    # 6. Calculate final limit price
-    # Start with the theoretical price and apply the dynamic slippage
-    # For a BUY order, we are willing to pay more (add slippage).
-    # For a SELL order, we are willing to accept less (subtract slippage).
+    # Revised Limit Price Logic: Based on theoretical price + fixed slippage
     if action == 'BUY':
-        limit_price = round(net_theoretical_price + slippage_amount, 2)
-    else: # SELL
-        limit_price = round(net_theoretical_price - slippage_amount, 2)
+        limit_price = round(net_theoretical_price + fixed_slippage, 2)
+    else:  # SELL
+        limit_price = round(net_theoretical_price - fixed_slippage, 2)
 
-    logging.info(f"Net Theoretical: {net_theoretical_price:.2f}, Market Spread: {market_spread:.2f}, Slippage Pct: {slippage_pct:.2%}, Slippage Amount: {slippage_amount:.4f}")
+    logging.info(f"Net Theoretical: {net_theoretical_price:.2f}, Market Spread: {market_spread:.2f}, Fixed Slippage: {fixed_slippage:.2f}")
     logging.info(f"Final Limit Price: {limit_price:.2f} cents/lb")
 
     # 6. Build the Bag contract using qualified leg conIds
