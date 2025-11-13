@@ -253,7 +253,7 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
 _filled_order_ids = set()
 
 
-def _on_order_status(ib: IB, trade: Trade):
+async def _on_order_status(ib: IB, trade: Trade):
     """Event handler for order status updates."""
     if trade.orderStatus.status == OrderStatus.Filled and trade.order.orderId not in _filled_order_ids:
         try:
@@ -264,7 +264,7 @@ def _on_order_status(ib: IB, trade: Trade):
 
             # Log the trade immediately upon fill confirmation.
             reason = "Risk Management Closure" if trade.order.outsideRth else "Daily Strategy Fill"
-            log_trade_to_ledger(ib, trade, reason, combo_id=trade.order.permId)
+            await log_trade_to_ledger(ib, trade, reason, combo_id=trade.order.permId)
             _filled_order_ids.add(trade.order.orderId)
             fill_msg = (
                 f"FILLED: {trade.order.action} {trade.orderStatus.filled} "
@@ -325,7 +325,9 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
     # Create a lambda to pass the config to the fill handler.
     # This ensures the handler has access to notification settings.
     # We define it here so we can also remove it accurately in the finally block.
-    order_status_handler = lambda t: _on_order_status(ib, t)
+    def order_status_handler(trade: Trade):
+        asyncio.create_task(_on_order_status(ib, trade))
+
     fill_handler = lambda t, f: _on_fill(t, f, config)
 
     # Register the event handlers before starting the tasks.

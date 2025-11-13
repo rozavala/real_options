@@ -141,45 +141,50 @@ class TestRiskManagement(unittest.TestCase):
         import pandas as pd
         asyncio.run(run_test())
 
-    @patch('trading_bot.risk_management.log_trade_to_ledger')
+    @patch('trading_bot.risk_management.log_trade_to_ledger', new_callable=AsyncMock)
     def test_on_order_status_handles_new_fill(self, mock_log_trade):
         """Verify that a new fill is logged correctly and the ID is tracked."""
-        # Arrange
-        mock_ib = MagicMock(spec=IB)
-        newly_filled_trade = MagicMock(
-            spec=Trade,
-            order=MagicMock(orderId=102, action='BUY', outsideRth=False),
-            contract=MagicMock(localSymbol='KCH5'),
-            orderStatus=MagicMock(status=OrderStatus.Filled, filled=1, avgFillPrice=3.50)
-        )
-        self.assertNotIn(102, filled_set_module)
+        async def run_test():
+            # Arrange
+            mock_ib = MagicMock(spec=IB)
+            newly_filled_trade = MagicMock(
+                spec=Trade,
+                order=MagicMock(orderId=102, action='BUY', outsideRth=False, permId=5001),
+                contract=MagicMock(localSymbol='KCH5'),
+                orderStatus=MagicMock(status=OrderStatus.Filled, filled=1, avgFillPrice=3.50)
+            )
+            self.assertNotIn(102, filled_set_module)
 
-        # Act
-        _on_order_status(mock_ib, newly_filled_trade)
+            # Act
+            await _on_order_status(mock_ib, newly_filled_trade)
 
-        # Assert
-        mock_log_trade.assert_called_once_with(
-            mock_ib, newly_filled_trade, "Daily Strategy Fill", combo_id=newly_filled_trade.order.permId
-        )
-        self.assertIn(102, filled_set_module)
+            # Assert
+            mock_log_trade.assert_awaited_once_with(
+                mock_ib, newly_filled_trade, "Daily Strategy Fill", combo_id=newly_filled_trade.order.permId
+            )
+            self.assertIn(102, filled_set_module)
+        asyncio.run(run_test())
 
-    @patch('trading_bot.risk_management.log_trade_to_ledger')
+
+    @patch('trading_bot.risk_management.log_trade_to_ledger', new_callable=AsyncMock)
     def test_on_order_status_ignores_duplicate_fill(self, mock_log_trade):
         """Verify that a fill for an already logged order is ignored."""
-        # Arrange
-        mock_ib = MagicMock(spec=IB)
-        filled_set_module.add(101)
-        duplicate_fill_trade = MagicMock(
-            spec=Trade,
-            order=MagicMock(orderId=101),
-            orderStatus=MagicMock(status=OrderStatus.Filled)
-        )
+        async def run_test():
+            # Arrange
+            mock_ib = MagicMock(spec=IB)
+            filled_set_module.add(101)
+            duplicate_fill_trade = MagicMock(
+                spec=Trade,
+                order=MagicMock(orderId=101),
+                orderStatus=MagicMock(status=OrderStatus.Filled)
+            )
 
-        # Act
-        _on_order_status(mock_ib, duplicate_fill_trade)
+            # Act
+            await _on_order_status(mock_ib, duplicate_fill_trade)
 
-        # Assert
-        mock_log_trade.assert_not_called()
+            # Assert
+            mock_log_trade.assert_not_awaited()
+        asyncio.run(run_test())
 
 if __name__ == '__main__':
     unittest.main()
