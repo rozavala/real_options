@@ -245,17 +245,10 @@ def get_trade_ledger_df() -> pd.DataFrame:
     return full_ledger
 
 
-async def fetch_flex_query_report(config: dict) -> str | None:
+async def fetch_flex_query_report(token: str, query_id: str) -> str | None:
     """
-    Connects to the IBKR Flex Web Service to request and download a trade report.
+    Connects to the IBKR Flex Web Service to request and download a trade report for a specific query ID.
     """
-    try:
-        token = config['flex_query']['token']
-        query_id = config['flex_query']['query_id']
-    except KeyError:
-        logger.critical("Config file is missing 'flex_query' section with 'token' and 'query_id'.")
-        return None
-
     base_url = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService."
     request_url = f"{base_url}SendRequest?t={token}&q={query_id}&v=3"
     
@@ -356,6 +349,15 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     if df.empty:
         logger.warning("Flex Query report contained no data.")
         return pd.DataFrame()
+
+    # --- Column Name Normalization ---
+    # Standardize column names from different reports
+    column_mappings = {
+        'Price': 'TradePrice',
+        'Date/Time': 'DateTime',
+        'TradeID': 'TransactionID',
+    }
+    df.rename(columns=column_mappings, inplace=True)
         
     # --- Data Cleaning and Type Conversion ---
     try:
@@ -413,28 +415,47 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
 async def main():
     """
     Main function to orchestrate the trade reconciliation process.
+    Fetches reports from multiple Flex Queries, consolidates them, and then
+    reconciles them against the local ledger.
     Returns dataframes of discrepancies.
     """
-    logger.info("Starting trade reconciliation using Flex Query.")
+    logger.info("Starting trade reconciliation using Flex Queries.")
 
     # --- 1. Load Configuration ---
     config = load_config()
-    if not config or 'flex_query' not in config:
-        logger.critical("Configuration missing or incomplete. Exiting.")
+    try:
+        token = config['flex_query']['token']
+        query_ids = config['flex_query']['query_ids']
+    except KeyError:
+        logger.critical("Config file is missing 'flex_query' section with 'token' and 'query_ids'.")
         return pd.DataFrame(), pd.DataFrame()
 
-    # --- 2. Fetch and Parse Trades from IB (Flex Query) ---
-    csv_data = await fetch_flex_query_report(config)
-    if not csv_data:
-        logger.warning("No trade data was fetched from IB Flex Query. Exiting.")
+    # --- 2. Fetch and Parse Trades from all configured IB Flex Queries ---
+    all_ib_trades = []
+    for query_id in query_ids:
+        logger.info(f"Fetching report for Query ID: {query_id}")
+        csv_data = await fetch_flex_query_report(token, query_id)
+        if csv_data:
+            ib_trades_df = parse_flex_csv_to_df(csv_data)
+            if not ib_trades_df.empty:
+                all_ib_trades.append(ib_trades_df)
+        else:
+            logger.warning(f"No data returned for Query ID: {query_id}")
+
+    if not all_ib_trades:
+        logger.warning("No trade data was fetched from any IB Flex Query. Exiting.")
         return pd.DataFrame(), pd.DataFrame()
 
-    ib_trades_df = parse_flex_csv_to_df(csv_data)
-    if ib_trades_df.empty:
-        logger.warning("Failed to parse trades from the Flex Query report. Exiting.")
-        return pd.DataFrame(), pd.DataFrame()
+    # --- 3. Consolidate and Deduplicate reports ---
+    ib_trades_df = pd.concat(all_ib_trades, ignore_index=True)
 
-    # --- 3. Load Local Trade Ledger ---
+    # Deduplicate based on a composite key of trade properties
+    cols_to_check = ['timestamp', 'local_symbol', 'action', 'quantity', 'avg_fill_price']
+    ib_trades_df.drop_duplicates(subset=cols_to_check, keep='first', inplace=True)
+
+    logger.info(f"Consolidated to {len(ib_trades_df)} unique trades from all reports.")
+
+    # --- 4. Load Local Trade Ledger ---
     local_trades_df = get_trade_ledger_df()
     if local_trades_df.empty:
         logger.warning("Local trade ledger is empty. All fetched IB trades will be considered missing.")
