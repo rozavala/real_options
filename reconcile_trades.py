@@ -356,6 +356,8 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
         'Price': 'TradePrice',
         'Date/Time': 'DateTime',
         'TradeID': 'TransactionID',
+        'IBOrderID': 'SharedOrderID',
+        'OrderID': 'SharedOrderID',
     }
     df.rename(columns=column_mappings, inplace=True)
         
@@ -384,12 +386,22 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     df_out = pd.DataFrame()
     df_out['timestamp'] = df['timestamp_utc']
 
-    # Create a more descriptive position_id from the instrument details
-    df_out['position_id'] = (
-        df['Symbol'].astype(str) + "_" +
-        df['Strike'].astype(str) + "_" +
-        df['Put/Call'].astype(str)
+    # --- Generate Combo-Aware position_id ---
+    # Create a temporary, human-readable description for each trade leg.
+    # e.g., 'KON6 C3.75'
+    df['leg_description'] = (
+        df['Symbol'].astype(str) + " " +
+        df['Put/Call'].astype(str) +
+        df['Strike'].astype(str)
     )
+
+    # Group legs by SharedOrderID, then create a sorted, combined position_id for each group.
+    # This ensures all legs of a combo get the same unique ID.
+    # e.g., 'KON6 C3.6-KON6 C3.75'
+    combo_position_ids = df.groupby('SharedOrderID')['leg_description'].transform(
+        lambda legs: '-'.join(sorted(legs))
+    )
+    df_out['position_id'] = combo_position_ids
 
     df_out['combo_id'] = df['TransactionID'].astype(str) # Keep transID for combo_id
     df_out['local_symbol'] = df['Symbol']
