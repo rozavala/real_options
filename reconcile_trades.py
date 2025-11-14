@@ -358,6 +358,7 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
         'TradeID': 'TransactionID',
         'IBOrderID': 'SharedOrderID',
         'OrderID': 'SharedOrderID',
+        'OrderReference': 'OrderReference'
     }
     df.rename(columns=column_mappings, inplace=True)
         
@@ -387,18 +388,29 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     df_out['timestamp'] = df['timestamp_utc']
 
     # --- Generate Combo-Aware position_id ---
-    # Create a temporary, human-readable description for each trade leg.
-    # e.g., 'KON6 C3.75'
-    df['leg_description'] = (
-        df['Symbol'].astype(str) + " " +
-        df['Put/Call'].astype(str) +
-        df['Strike'].astype(str)
-    )
+    # The 'Symbol' field from the report is already a good leg description.
+    df['leg_description'] = df['Symbol'].astype(str)
 
-    # Group legs by SharedOrderID, then create a sorted, combined position_id for each group.
-    # This ensures all legs of a combo get the same unique ID.
-    # e.g., 'KON6 C3.6-KON6 C3.75'
-    combo_position_ids = df.groupby('SharedOrderID')['leg_description'].transform(
+    # --- Grouping Logic ---
+    # Prioritize OrderReference for grouping. For older trades, create a
+    # highly specific fallback key to avoid incorrect grouping.
+    if 'OrderReference' in df.columns:
+        # Create the fallback key from Symbol, DateTime, Strike, and Put/Call
+        fallback_id = (df['Symbol'].str.split(' ').str[0] + '_' +
+                       df['DateTime'] + '_' +
+                       df['Strike'].astype(str) + '_' +
+                       df['Put/Call'])
+        # Use OrderReference if present, otherwise use the fallback key.
+        df['grouping_id'] = df['OrderReference'].fillna(fallback_id)
+    else:
+        # If OrderReference column doesn't exist, use the fallback key.
+        df['grouping_id'] = (df['Symbol'].str.split(' ').str[0] + '_' +
+                               df['DateTime'] + '_' +
+                               df['Strike'].astype(str) + '_' +
+                               df['Put/Call'])
+
+    # Group by the new 'grouping_id' to create the combo-aware position_id
+    combo_position_ids = df.groupby('grouping_id')['leg_description'].transform(
         lambda legs: '-'.join(sorted(legs))
     )
     df_out['position_id'] = combo_position_ids
