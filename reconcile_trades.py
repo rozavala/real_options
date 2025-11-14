@@ -287,8 +287,8 @@ async def fetch_flex_query_report(token: str, query_id: str) -> str | None:
                     try:
                         # Get the directory where this script is located
                         script_dir = os.path.dirname(os.path.abspath(__file__))
-                        # Name the debug file path
-                        debug_path = os.path.join(script_dir, 'debug_report.csv')
+                        # Name the debug file path to be unique for each query
+                        debug_path = os.path.join(script_dir, f'debug_report_{query_id}.csv')
 
                         with open(debug_path, 'w', encoding='utf-8') as f:
                             f.write(resp.text)
@@ -392,24 +392,25 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     df['leg_description'] = df['Symbol'].astype(str)
 
     # --- Grouping Logic ---
-    # Prioritize OrderReference for grouping. For older trades, create a
-    # highly specific fallback key to avoid incorrect grouping.
+    # Create a preliminary grouping key for fallbacks.
+    df['prelim_group'] = df['Symbol'].str.split(' ').str[0] + '_' + df['DateTime']
+
+    # For each preliminary group, create a canonical (sorted) key of all its legs.
+    # This ensures that even if two different combos on the same underlying execute
+    # at the exact same second, they get different grouping IDs.
+    canonical_key = df.groupby('prelim_group')['leg_description'].transform(
+        lambda legs: '-'.join(sorted(legs))
+    )
+    # The final fallback key is a combination of the preliminary group and the canonical key.
+    fallback_id = df['prelim_group'] + '_' + canonical_key
+
+    # Prioritize OrderReference, but use the robust fallback_id if it's missing.
     if 'OrderReference' in df.columns:
-        # Create the fallback key from Symbol, DateTime, Strike, and Put/Call
-        fallback_id = (df['Symbol'].str.split(' ').str[0] + '_' +
-                       df['DateTime'] + '_' +
-                       df['Strike'].astype(str) + '_' +
-                       df['Put/Call'])
-        # Use OrderReference if present, otherwise use the fallback key.
         df['grouping_id'] = df['OrderReference'].fillna(fallback_id)
     else:
-        # If OrderReference column doesn't exist, use the fallback key.
-        df['grouping_id'] = (df['Symbol'].str.split(' ').str[0] + '_' +
-                               df['DateTime'] + '_' +
-                               df['Strike'].astype(str) + '_' +
-                               df['Put/Call'])
+        df['grouping_id'] = fallback_id
 
-    # Group by the new 'grouping_id' to create the combo-aware position_id
+    # Group by the final 'grouping_id' to create the combo-aware position_id
     combo_position_ids = df.groupby('grouping_id')['leg_description'].transform(
         lambda legs: '-'.join(sorted(legs))
     )
