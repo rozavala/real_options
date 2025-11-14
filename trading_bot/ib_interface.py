@@ -7,6 +7,7 @@ placing complex combo orders, and managing the order lifecycle.
 
 import asyncio
 import logging
+import uuid
 from datetime import datetime
 
 from ib_insync import *
@@ -235,6 +236,10 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         order = LimitOrder(action, config['strategy']['quantity'], limit_price, tif="DAY")
         logging.info(f"Creating Limit Order for {action} {config['strategy']['quantity']} @ {limit_price:.2f}.")
 
+    # Assign a unique reference ID to the parent order.
+    # IB will propagate this ID to all execution reports for the individual legs.
+    order.orderRef = str(uuid.uuid4())
+    logging.info(f"Assigned OrderRef: {order.orderRef}")
 
     return (combo, order)
 
