@@ -356,6 +356,9 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
         'Price': 'TradePrice',
         'Date/Time': 'DateTime',
         'TradeID': 'TransactionID',
+        'IBOrderID': 'SharedOrderID',
+        'OrderID': 'SharedOrderID',
+        'OrderReference': 'OrderReference'
     }
     df.rename(columns=column_mappings, inplace=True)
         
@@ -384,12 +387,33 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     df_out = pd.DataFrame()
     df_out['timestamp'] = df['timestamp_utc']
 
-    # Create a more descriptive position_id from the instrument details
-    df_out['position_id'] = (
-        df['Symbol'].astype(str) + "_" +
-        df['Strike'].astype(str) + "_" +
-        df['Put/Call'].astype(str)
+    # --- Generate Combo-Aware position_id ---
+    # The 'Symbol' field from the report is already a good leg description.
+    df['leg_description'] = df['Symbol'].astype(str)
+
+    # --- Grouping Logic ---
+    # Prioritize OrderReference for grouping. For older trades, create a
+    # highly specific fallback key to avoid incorrect grouping.
+    if 'OrderReference' in df.columns:
+        # Create the fallback key from Symbol, DateTime, Strike, and Put/Call
+        fallback_id = (df['Symbol'].str.split(' ').str[0] + '_' +
+                       df['DateTime'] + '_' +
+                       df['Strike'].astype(str) + '_' +
+                       df['Put/Call'])
+        # Use OrderReference if present, otherwise use the fallback key.
+        df['grouping_id'] = df['OrderReference'].fillna(fallback_id)
+    else:
+        # If OrderReference column doesn't exist, use the fallback key.
+        df['grouping_id'] = (df['Symbol'].str.split(' ').str[0] + '_' +
+                               df['DateTime'] + '_' +
+                               df['Strike'].astype(str) + '_' +
+                               df['Put/Call'])
+
+    # Group by the new 'grouping_id' to create the combo-aware position_id
+    combo_position_ids = df.groupby('grouping_id')['leg_description'].transform(
+        lambda legs: '-'.join(sorted(legs))
     )
+    df_out['position_id'] = combo_position_ids
 
     df_out['combo_id'] = df['TransactionID'].astype(str) # Keep transID for combo_id
     df_out['local_symbol'] = df['Symbol']
