@@ -246,7 +246,12 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
 
 def place_order(ib: IB, contract: Contract, order: Order) -> Trade:
     """
-    Places a pre-constructed order.
+    Places a pre-constructed order, ensuring it has a unique `orderRef`.
+
+    If the order does not already have an `orderRef`, this function assigns a
+    new UUID to it. This ensures that all orders, including those created for
+    risk management or position closing, have a unique identifier that can be
+    tracked.
 
     Args:
         ib (IB): The connected `ib_insync.IB` instance.
@@ -256,6 +261,10 @@ def place_order(ib: IB, contract: Contract, order: Order) -> Trade:
     Returns:
         The `ib_insync.Trade` object for the placed order.
     """
+    if not order.orderRef:
+        order.orderRef = str(uuid.uuid4())
+        logging.info(f"Assigned new unique OrderRef for tracking: {order.orderRef}")
+
     logging.info(f"Placing {order.action} order for {contract.localSymbol}...")
     trade = ib.placeOrder(contract, order)
     logging.info(f"Successfully placed order ID {trade.order.orderId} for {contract.localSymbol}.")

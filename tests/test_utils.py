@@ -105,9 +105,8 @@ class TestUtils:
         ])
         trade = Mock(spec=Trade)
         trade.orderStatus = Mock(spec=OrderStatus)
-        trade.order = Mock(spec=Order)
+        trade.order = Mock(spec=Order, permId=123456, orderRef='test-uuid-string-longer-than-20-chars')
         trade.orderStatus.status = OrderStatus.Filled
-        trade.order.permId = 123456
         trade.contract = Bag(symbol='KC', comboLegs=[Mock(), Mock()]) # Required for position_id generation
 
         fill1 = Mock(spec=Fill)
@@ -179,7 +178,7 @@ class TestUtils:
 
         # 2. Create a trade where the fill contains an INCOMPLETE contract
         trade = Mock(spec=Trade)
-        trade.order = Mock(spec=Order, permId=98765)
+        trade.order = Mock(spec=Order, permId=98765, orderRef='test-uuid-string-longer-than-20-chars')
         trade.contract = Bag(symbol='KC', comboLegs=[Mock()])
 
         incomplete_contract = Mock(spec=Contract, conId=123)
@@ -230,7 +229,7 @@ class TestUtils:
         mock_ib.qualifyContractsAsync = AsyncMock(return_value=[qualified_contract])
 
         trade = Mock(spec=Trade)
-        trade.order = Mock(spec=Order, permId=123)
+        trade.order = Mock(spec=Order, permId=123, orderRef='test-uuid-string-longer-than-20-chars')
         trade.contract = Bag(symbol='KC') # Simulate a combo to trigger qualification path
         trade.contract.comboLegs = [Mock()]
 
@@ -244,7 +243,7 @@ class TestUtils:
         for i in range(5):
             # Create a unique trade mock for each task to avoid shared state issues
             task_trade = Mock(spec=Trade)
-            task_trade.order = Mock(spec=Order, permId=12345 + i)
+            task_trade.order = Mock(spec=Order, permId=12345 + i, orderRef=f'test-uuid-string-longer-than-20-chars-{i}')
             task_trade.contract = trade.contract
             task_trade.fills = [fill]
             tasks.append(log_trade_to_ledger(mock_ib, task_trade, f"Concurrent Write {i}"))
