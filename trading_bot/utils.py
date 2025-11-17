@@ -298,13 +298,16 @@ def get_expiration_details(chain: dict, future_exp: str) -> dict | None:
 async def _generate_position_id_from_trade(ib: IB, trade: Trade) -> str:
     """
     Generates a stable, canonical position identifier from a Trade object.
-    For combos, it fetches leg details to create a sorted string of symbols.
-    For single legs, it uses the local symbol.
+    It prioritizes the UUID stored in `orderRef`. If not present, it
+    falls back to creating a sorted string of leg symbols for combos or the
+    local symbol for single legs.
     """
+    # Prioritize the unique orderRef if it exists and is a valid UUID string.
+    if hasattr(trade.order, 'orderRef') and trade.order.orderRef and len(trade.order.orderRef) > 20:
+        return trade.order.orderRef
+
     if isinstance(trade.contract, Bag) and trade.contract.comboLegs:
         leg_symbols = []
-        # To get the symbols, we need to resolve the conId for each leg.
-        # This requires an async call.
         leg_contracts = [Contract(conId=leg.conId) for leg in trade.contract.comboLegs]
         qualified_legs = await ib.qualifyContractsAsync(*leg_contracts)
 
@@ -312,11 +315,9 @@ async def _generate_position_id_from_trade(ib: IB, trade: Trade) -> str:
             leg_symbols = sorted([c.localSymbol for c in qualified_legs])
             return "-".join(leg_symbols)
         else:
-            # Fallback if qualification fails
-            return f"combo_{trade.order.permId}"
+            return f"combo_{trade.order.permId}" # Fallback
     else:
-        # For single-leg trades, the local symbol is sufficient.
-        return trade.contract.localSymbol
+        return trade.contract.localSymbol # For single-leg trades
 
 
 async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution", specific_fill: Fill = None, combo_id: int = None, position_id: str = None):

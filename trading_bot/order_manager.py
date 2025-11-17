@@ -215,7 +215,7 @@ async def _get_market_data_for_leg(ib: IB, leg: ComboLeg) -> str:
         return f"Leg conId {leg.conId}: Error"
 
 
-async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int):
+async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, position_uuid: str):
     """
     Handles the logic for processing a trade fill, ensuring the contract
     details are complete before logging.
@@ -243,9 +243,9 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int):
             else:
                 logger.warning(f"Could not match fill conId {fill.contract.conId} to any leg in {trade.contract.localSymbol}.")
 
-        # This now calls the async version of the function
-        await log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=corrected_fill, combo_id=combo_id)
-        logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId}, Combo ID: {combo_id})")
+        # This now calls the async version of the function, passing the unique position ID
+        await log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=corrected_fill, combo_id=combo_id, position_id=position_uuid)
+        logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId}, Position ID: {position_uuid})")
 
     except Exception as e:
         logger.error(f"Error processing and logging fill for order {trade.order.orderId}: {e}\n{traceback.format_exc()}")
@@ -284,20 +284,18 @@ async def place_queued_orders(config: dict):
             leg_con_id = fill.contract.conId
             order_details = live_orders[order_id]
 
-            # Check if this leg has already been processed to avoid duplicates
             if leg_con_id in order_details['filled_legs']:
                 logger.info(f"Duplicate fill event for leg {leg_con_id} in order {order_id}. Ignoring.")
                 return
 
-            # The trade object here is for the specific leg. We need the permId
-            # of the parent combo order, which is stored in our tracking dict.
             parent_trade = order_details['trade']
             combo_perm_id = parent_trade.order.permId
+            # The unique position ID is the orderRef from the PARENT order object.
+            position_uuid = parent_trade.order.orderRef
 
-            logger.info(f"Fill received for leg {leg_con_id} in order {order_id}. Processing with Combo ID {combo_perm_id}.")
-            asyncio.create_task(_handle_and_log_fill(ib, trade, fill, combo_perm_id))
+            logger.info(f"Fill received for leg {leg_con_id} in order {order_id}. Processing with Position ID {position_uuid}.")
+            asyncio.create_task(_handle_and_log_fill(ib, trade, fill, combo_perm_id, position_uuid))
 
-            # --- Track the fill details for this leg ---
             order_details['filled_legs'].add(leg_con_id)
             order_details['fill_prices'][leg_con_id] = fill.execution.avgPrice
 
@@ -587,11 +585,22 @@ async def close_positions_after_5_days(config: dict):
             return
 
         opening_trades = trade_ledger[trade_ledger['reason'] == 'Strategy Execution'].copy()
-        opening_trades.drop_duplicates(subset=['local_symbol'], keep='first', inplace=True)
 
-        # Create a map from symbol to position_id and another for open dates
-        symbol_to_pos_id = pd.Series(opening_trades.position_id.values, index=opening_trades.local_symbol).to_dict()
+        # We can no longer simply drop duplicates on 'local_symbol' because the same
+        # symbol can be part of different, unique positions. Instead, we find the
+        # earliest open time for each unique position_id.
         position_open_dates = opening_trades.groupby('position_id')['timestamp'].min().to_dict()
+
+        # To link a live position leg back to its unique position_id, we create a
+        # map from the local_symbol to the position_id. This is still imperfect if
+        # the same leg is traded solo and as part of a combo, but it's the most
+        # direct link we have. The new unique ID makes the lookup correct.
+        # We sort by timestamp to ensure the *latest* position_id is used for a symbol.
+        opening_trades.sort_values('timestamp', ascending=True, inplace=True)
+        symbol_to_pos_id = pd.Series(
+            opening_trades.position_id.values,
+            index=opening_trades.local_symbol
+        ).to_dict()
 
         # --- 3. Calculate trading day logic ---
         cal = USFederalHolidayCalendar()
