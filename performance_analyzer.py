@@ -7,7 +7,7 @@ import logging
 import asyncio
 import random
 import math
-from ib_insync import IB, PortfolioItem
+# from ib_insync import IB, PortfolioItem
 
 from logging_config import setup_logging
 from notifications import send_pushover_notification
@@ -68,6 +68,7 @@ async def get_live_account_data(config: dict) -> dict | None:
     - Open positions from the portfolio.
     - Today's trade executions (fills) and their commission reports.
     """
+    from ib_insync import IB, PortfolioItem
     ib = IB()
     live_data = {}
     conn_settings = config.get('connection', {})
