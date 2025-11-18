@@ -610,6 +610,11 @@ async def close_positions_after_5_days(config: dict):
 
         # --- 4. Iterate through LIVE positions and decide whether to close ---
         for pos in live_positions:
+            # Filter out any positions with a size of zero to prevent order errors.
+            if pos.position == 0:
+                logger.info(f"Skipping ghost position with zero size for symbol: {pos.contract.localSymbol}")
+                continue
+
             symbol = pos.contract.localSymbol
             pos_id = symbol_to_pos_id.get(symbol)
 
