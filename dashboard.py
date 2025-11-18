@@ -84,11 +84,11 @@ with st.sidebar:
     st.header("Manual Controls")
     st.warning("These actions interact directly with the live trading account.")
 
-    if st.button("🔄 Refresh Data", use_container_width=True):
+    if st.button("🔄 Refresh Data", width='stretch'):
         st.cache_data.clear()
         st.rerun()
 
-    if st.button("⛔ Cancel All Open Orders", type="primary", use_container_width=True):
+    if st.button("⛔ Cancel All Open Orders", type="primary", width='stretch'):
         if config:
             with st.spinner("Executing cancellation..."):
                 try:
@@ -102,7 +102,7 @@ with st.sidebar:
         else:
             st.error("Config not loaded.")
 
-    if st.button("📉 Force Close 5+ Day Positions", use_container_width=True):
+    if st.button("📉 Force Close 5+ Day Positions", width='stretch'):
         if config:
             with st.spinner("Executing force close..."):
                 try:
@@ -183,7 +183,7 @@ def fetch_market_data(config):
     """Connects to IB, fetches future prices, and disconnects."""
     ib = IB()
     try:
-        ib.connect(config['ib_gateway']['host'], config['ib_gateway']['port'], clientId=config['ib_gateway']['client_id'] + 101)
+        ib.connect(config['connection']['host'], config['connection']['port'], clientId=config['connection']['clientId'] + 101)
         st.toast("Connected to IB Gateway...", icon="🔗")
 
         active_futures = asyncio.run(get_active_futures(ib, config['symbol'], config['exchange']))
@@ -218,7 +218,7 @@ def fetch_portfolio_data(config, trade_ledger_df):
     """Fetches live portfolio data from IB and merges it with historical data."""
     ib = IB()
     try:
-        ib.connect(config['ib_gateway']['host'], config['ib_gateway']['port'], clientId=config['ib_gateway']['client_id'] + 102)
+        ib.connect(config['connection']['host'], config['connection']['port'], clientId=config['connection']['clientId'] + 102)
         st.toast("Connected to IB Gateway...", icon="🔗")
 
         portfolio = ib.portfolio()
@@ -265,7 +265,7 @@ with tab1:
     if 'portfolio_data' not in st.session_state:
         st.session_state.portfolio_data = pd.DataFrame()
 
-    if st.button("🔄 Fetch Active Positions", use_container_width=True):
+    if st.button("🔄 Fetch Active Positions", width='stretch'):
         with st.spinner("Connecting to IB... Fetching portfolio..."):
             st.session_state.portfolio_data = fetch_portfolio_data(config, trade_df)
 
@@ -278,7 +278,7 @@ with tab1:
 
         st.dataframe(
             st.session_state.portfolio_data.style.apply(highlight_aged_positions, axis=1),
-            use_container_width=True
+            width='stretch'
         )
     else:
         st.info("Click the button to fetch live portfolio data.")
@@ -290,20 +290,20 @@ with tab2:
         trade_df_sorted = trade_df.sort_values('timestamp')
         trade_df_sorted['cumulative_pnl'] = trade_df_sorted['total_value_usd'].cumsum()
         fig_equity = px.line(trade_df_sorted, x='timestamp', y='cumulative_pnl', title="Equity Curve")
-        st.plotly_chart(fig_equity, use_container_width=True)
+        st.plotly_chart(fig_equity, width='stretch')
 
         # Periodical P&L
         period = 'D' if (trade_df['timestamp'].max() - trade_df['timestamp'].min()).days > 1 else 'H'
         pnl_by_period = trade_df.set_index('timestamp').resample(period)['total_value_usd'].sum().reset_index()
         pnl_by_period['color'] = pnl_by_period['total_value_usd'].apply(lambda x: 'green' if x >= 0 else 'red')
         fig_bar = px.bar(pnl_by_period, x='timestamp', y='total_value_usd', title=f"{'Daily' if period == 'D' else 'Hourly'} P&L", color='color', color_discrete_map={'green':'#2ca02c', 'red':'#d62728'})
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, width='stretch')
 
         # Drawdown Chart
         trade_df_sorted['running_max'] = trade_df_sorted['cumulative_pnl'].cummax()
         trade_df_sorted['drawdown'] = trade_df_sorted['running_max'] - trade_df_sorted['cumulative_pnl']
         fig_drawdown = px.area(trade_df_sorted, x='timestamp', y='drawdown', title="Drawdown from Peak Equity")
-        st.plotly_chart(fig_drawdown, use_container_width=True)
+        st.plotly_chart(fig_drawdown, width='stretch')
 
         # P&L by Strategy/Combo
         if 'combo_id' in trade_df.columns:
@@ -312,14 +312,14 @@ with tab2:
             pnl_by_strategy['color'] = pnl_by_strategy['total_value_usd'].apply(lambda x: 'green' if x >= 0 else 'red')
             fig_strategy = px.bar(pnl_by_strategy, y='combo_id', x='total_value_usd', orientation='h', title="P&L by Strategy", color='color', color_discrete_map={'green':'#2ca02c', 'red':'#d62728'})
             fig_strategy.update_layout(yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig_strategy, use_container_width=True)
+            st.plotly_chart(fig_strategy, width='stretch')
     else:
         st.info("No trade data to display charts.")
 
 with tab3:
     st.subheader("Full Trade Ledger")
     if not trade_df.empty:
-        st.dataframe(trade_df, use_container_width=True, height=600)
+        st.dataframe(trade_df, width='stretch', height=600)
     else:
         st.info("Trade ledger is empty.")
 
@@ -347,11 +347,11 @@ with tab5:
     if 'market_data' not in st.session_state:
         st.session_state.market_data = pd.DataFrame()
 
-    if st.button("📈 Fetch Snapshot", use_container_width=True):
+    if st.button("📈 Fetch Snapshot", width='stretch'):
         with st.spinner("Connecting to IB... Fetching data..."):
             st.session_state.market_data = fetch_market_data(config)
 
     if not st.session_state.market_data.empty:
-        st.dataframe(st.session_state.market_data, use_container_width=True)
+        st.dataframe(st.session_state.market_data, width='stretch')
     else:
         st.info("Click the button to fetch live market data.")
