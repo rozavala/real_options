@@ -7,6 +7,16 @@ import os
 import glob
 from datetime import datetime, timedelta
 import sys
+import random
+
+# --- Asyncio Event Loop Fix for Streamlit ---
+# Streamlit runs in a different thread than the main thread, and asyncio needs
+# an event loop to be explicitly created and set in that thread.
+try:
+    loop = asyncio.get_running_loop()
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
 # --- Asyncio Event Loop Fix for Streamlit ---
 # Streamlit runs in a different thread than the main thread, and asyncio needs
@@ -183,7 +193,11 @@ def fetch_market_data(config):
     """Connects to IB, fetches future prices, and disconnects."""
     ib = IB()
     try:
-        ib.connect(config['connection']['host'], config['connection']['port'], clientId=config['connection']['clientId'] + 101)
+        ib.connect(
+            config['connection']['host'],
+            config['connection']['port'],
+            clientId=random.randint(100, 1000) # Use a random client ID to avoid collisions
+        )
         st.toast("Connected to IB Gateway...", icon="🔗")
 
         active_futures = asyncio.run(get_active_futures(ib, config['symbol'], config['exchange']))
@@ -192,7 +206,16 @@ def fetch_market_data(config):
             return pd.DataFrame()
 
         tickers = [ib.reqMktData(c, '', False, False) for c in active_futures]
-        ib.sleep(2) # Allow time for tickers to update
+
+        # --- Robust Polling for Market Data ---
+        max_wait = 15
+        for _ in range(max_wait * 2):
+            if all(t.last for t in tickers):
+                break
+            ib.sleep(0.5)
+
+        if not all(t.last for t in tickers):
+            st.warning("Timed out waiting for some market data to arrive.")
 
         market_data = []
         for contract, ticker in zip(active_futures, tickers):
@@ -218,7 +241,11 @@ def fetch_portfolio_data(config, trade_ledger_df):
     """Fetches live portfolio data from IB and merges it with historical data."""
     ib = IB()
     try:
-        ib.connect(config['connection']['host'], config['connection']['port'], clientId=config['connection']['clientId'] + 102)
+        ib.connect(
+            config['connection']['host'],
+            config['connection']['port'],
+            clientId=random.randint(100, 1000) # Use a random client ID to avoid collisions
+        )
         st.toast("Connected to IB Gateway...", icon="🔗")
 
         portfolio = ib.portfolio()
