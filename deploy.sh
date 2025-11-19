@@ -2,22 +2,34 @@
 set -e
 
 # Navigate to the project directory.
-# The script assumes it's being run from the repo's root directory on the server.
 cd ~/real_options
 
-echo "--- 1. Stopping the old trading bot process... ---"
+echo "--- 1. Stopping old processes... ---"
+# Stop all related processes
 pkill -f orchestrator.py || true
 pkill -f position_monitor.py || true
 pkill -f dashboard.py || true
-mv ~/real_options/logs/orchestrator.log ~/real_options/logs/orchestrator-$(date --iso=s).log  || true
 
-echo "--- 2. Activating virtual environment... ---"
+# Wait for ports to free up (Crucial for Streamlit)
+sleep 2
+
+echo "--- 2. Rotating logs... ---"
+# Backup Orchestrator Log
+mv ~/real_options/logs/orchestrator.log ~/real_options/logs/orchestrator-$(date --iso=s).log || true
+# Backup Dashboard Log (New)
+mv ~/real_options/logs/dashboard.log ~/real_options/logs/dashboard-$(date --iso=s).log || true
+
+echo "--- 3. Activating virtual environment... ---"
 source ~/Desktop/ib_env/bin/activate
 
-echo "--- 3. Installing/updating dependencies... ---"
+echo "--- 4. Installing/updating dependencies... ---"
 pip install -r requirements.txt
 
-echo "--- 4. Starting the new bot in the background... ---"
+echo "--- 5. Starting the new bot & dashboard... ---"
+# Start Orchestrator
 nohup python -u ~/real_options/orchestrator.py >> ~/real_options/logs/orchestrator.log 2>&1 &
-nohup streamlit run ~/real_options/dashboard.py --server.address 0.0.0.0 > ~/real_options/dashboard.log 2>&1 &
+
+# Start Dashboard
+nohup streamlit run ~/real_options/dashboard.py --server.address 0.0.0.0 > ~/real_options/logs/dashboard.log 2>&1 &
+
 echo "--- Deployment finished successfully! ---"
