@@ -18,6 +18,15 @@ except RuntimeError:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
+# --- Asyncio Event Loop Fix for Streamlit ---
+# Streamlit runs in a different thread than the main thread, and asyncio needs
+# an event loop to be explicitly created and set in that thread.
+try:
+    loop = asyncio.get_running_loop()
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
 # --- Pre-computation ---
 # Add the project root to the Python path to allow importing local modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
