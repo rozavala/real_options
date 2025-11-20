@@ -245,24 +245,51 @@ def main(config: dict) -> pd.DataFrame | None:
                         if file_name:
                             with z.open(file_name) as f:
                                 yearly_df = pd.read_csv(f, low_memory=False)
-                                all_cot_dfs.append(yearly_df)
-                            print(f"... Successfully processed year {year}")
+
+                                # OPTIMIZATION: Filter immediately to reduce memory usage
+                                # Strip whitespace from column names to be safe
+                                yearly_df.columns = yearly_df.columns.str.strip()
+
+                                # Filter for Coffee
+                                if 'Market and Exchange Names' in yearly_df.columns:
+                                    yearly_df = yearly_df[yearly_df['Market and Exchange Names'].str.contains(cftc_ticker, na=False, case=False)]
+
+                                    # Keep only necessary columns
+                                    required_cols = [
+                                        'As of Date in Form YYYY-MM-DD',
+                                        'Noncommercial Positions-Long (All)',
+                                        'Noncommercial Positions-Short (All)'
+                                    ]
+                                    # Check if columns exist (naming might vary slightly over 40 years)
+                                    existing_cols = [c for c in required_cols if c in yearly_df.columns]
+
+                                    if len(existing_cols) == 3:
+                                        all_cot_dfs.append(yearly_df[existing_cols])
+                                        print(f"... Successfully processed and filtered year {year} (Rows: {len(yearly_df)})")
+                                    else:
+                                         print(f"... Warning: Missing columns in year {year}. Found: {existing_cols}")
+                                else:
+                                     print(f"... Warning: 'Market and Exchange Names' column not found in year {year}")
+
                         else:
                             print(f"... Warning: No valid text file found in zip for year {year}")
             except Exception as e:
                 print(f"... Warning: Could not process COT data for year {year}. Error: {e}")
-                
-        cot_df = pd.concat(all_cot_dfs, ignore_index=True)
-        cot_df = cot_df[cot_df['Market and Exchange Names'].str.contains(cftc_ticker, na=False)].copy()
-        cot_df['Date'] = pd.to_datetime(cot_df['As of Date in Form YYYY-MM-DD'], format='%Y-%m-%d')
-        cot_df.set_index('Date', inplace=True)
-        cot_cols = {'Noncommercial Positions-Long (All)': 'cot_noncomm_long', 'Noncommercial Positions-Short (All)': 'cot_noncomm_short'}
-        cot_df.rename(columns=cot_cols, inplace=True)
-        cot_df['cot_noncomm_long'] = pd.to_numeric(cot_df['cot_noncomm_long'], errors='coerce')
-        cot_df['cot_noncomm_short'] = pd.to_numeric(cot_df['cot_noncomm_short'], errors='coerce')
-        cot_df['cot_noncomm_net'] = cot_df['cot_noncomm_long'] - cot_df['cot_noncomm_short']
-        all_data['cot_report'] = cot_df[['cot_noncomm_net']]
-        validator.add_check("COT Report Fetch", True, f"Successfully fetched CFTC data. Last entry: {cot_df.index.max().strftime('%Y-%m-%d')}")
+
+        print("Concatenating COT data...")
+        if all_cot_dfs:
+            cot_df = pd.concat(all_cot_dfs, ignore_index=True)
+            cot_df['Date'] = pd.to_datetime(cot_df['As of Date in Form YYYY-MM-DD'], format='%Y-%m-%d')
+            cot_df.set_index('Date', inplace=True)
+            cot_cols = {'Noncommercial Positions-Long (All)': 'cot_noncomm_long', 'Noncommercial Positions-Short (All)': 'cot_noncomm_short'}
+            cot_df.rename(columns=cot_cols, inplace=True)
+            cot_df['cot_noncomm_long'] = pd.to_numeric(cot_df['cot_noncomm_long'], errors='coerce')
+            cot_df['cot_noncomm_short'] = pd.to_numeric(cot_df['cot_noncomm_short'], errors='coerce')
+            cot_df['cot_noncomm_net'] = cot_df['cot_noncomm_long'] - cot_df['cot_noncomm_short']
+            all_data['cot_report'] = cot_df[['cot_noncomm_net']]
+            validator.add_check("COT Report Fetch", True, f"Successfully fetched CFTC data. Last entry: {cot_df.index.max().strftime('%Y-%m-%d')}")
+        else:
+             validator.add_check("COT Report Fetch", False, "No COT data could be aggregated.")
 
     except Exception as e:
         validator.add_check("COT Report Fetch", False, f"Could not fetch CFTC data directly: {e}")
