@@ -236,6 +236,11 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         order = LimitOrder(action, config['strategy']['quantity'], limit_price, tif="DAY")
         logging.info(f"Creating Limit Order for {action} {config['strategy']['quantity']} @ {limit_price:.2f}.")
 
+    # Switch to IBKR Adaptive Algo
+    order.algoStrategy = 'Adaptive'
+    order.algoParams = [TagValue('adaptivePriority', 'Normal')]
+    logging.info("Configured order to use IBKR Adaptive Algo (Priority: Normal).")
+
     # Assign a unique reference ID to the parent order.
     # IB will propagate this ID to all execution reports for the individual legs.
     order.orderRef = str(uuid.uuid4())
