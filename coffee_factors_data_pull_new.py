@@ -239,10 +239,16 @@ def main(config: dict) -> pd.DataFrame | None:
                 response = requests.get(url)
                 if response.status_code == 200:
                     with zipfile.ZipFile(io.BytesIO(response.content)) as z:
-                        with z.open('annual.txt') as f:
-                            yearly_df = pd.read_csv(f, low_memory=False)
-                            all_cot_dfs.append(yearly_df)
-                    print(f"... Successfully processed year {year}")
+                        # IMPROVEMENT: Dynamically find the text file
+                        file_name = next((f for f in z.namelist() if f.endswith('.txt') or 'annual' in f.lower()), None)
+
+                        if file_name:
+                            with z.open(file_name) as f:
+                                yearly_df = pd.read_csv(f, low_memory=False)
+                                all_cot_dfs.append(yearly_df)
+                            print(f"... Successfully processed year {year}")
+                        else:
+                            print(f"... Warning: No valid text file found in zip for year {year}")
             except Exception as e:
                 print(f"... Warning: Could not process COT data for year {year}. Error: {e}")
                 
