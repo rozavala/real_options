@@ -79,7 +79,7 @@ def fetch_benchmark_data(start_date, end_date):
     try:
         tickers = ['SPY', 'KC=F']
         # Fetch slightly more data to ensure we have a valid starting point
-        data = yf.download(tickers, start=start_date, end=end_date + timedelta(days=1), progress=False)['Close']
+        data = yf.download(tickers, start=start_date, end=end_date + timedelta(days=1), progress=False, auto_adjust=True)['Close']
         
         if data.empty:
             return pd.DataFrame()
@@ -338,7 +338,7 @@ with tab2:
     if not trade_df.empty and not benchmarks.empty:
         # Prepare Bot Data (Daily Equity)
         trade_df_sorted = trade_df.sort_values('timestamp')
-        daily_bot = trade_df_sorted.set_index('timestamp').resample('D')['total_value_usd'].sum().cumsum().fillna(method='ffill')
+        daily_bot = trade_df_sorted.set_index('timestamp').resample('D')['total_value_usd'].sum().cumsum().ffill()
         
         # Normalize Bot to %
         bot_series = (daily_bot / STARTING_CAPITAL) * 100
@@ -347,7 +347,7 @@ with tab2:
         # Merge
         comparison_df = pd.DataFrame(index=benchmarks.index)
         comparison_df = comparison_df.join(benchmarks)
-        comparison_df = comparison_df.join(bot_series, how='outer').fillna(method='ffill').fillna(0)
+        comparison_df = comparison_df.join(bot_series, how='outer').ffill().fillna(0)
 
         # Plot Comparison
         fig_comp = px.line(comparison_df, title="Cumulative Return % (Life-to-Date)")
