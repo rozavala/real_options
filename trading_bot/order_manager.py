@@ -385,7 +385,7 @@ async def place_queued_orders(config: dict):
 
         # --- Monitoring Loop ---
         start_time = time.time()
-        monitoring_duration = 900  # 15 minutes
+        monitoring_duration = 1800  # 30 minutes
         logger.info(f"Monitoring orders for up to {monitoring_duration / 60} minutes...")
         while time.time() - start_time < monitoring_duration:
             if not live_orders: break
