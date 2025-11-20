@@ -27,8 +27,7 @@ from notifications import send_pushover_notification
 from performance_analyzer import main as run_performance_analysis
 from reconcile_trades import main as run_reconciliation
 from trading_bot.order_manager import (
-    generate_and_queue_orders,
-    place_queued_orders,
+    generate_and_execute_orders,
     close_positions_after_5_days,
     cancel_all_open_orders,
 )
@@ -183,8 +182,7 @@ async def reconcile_and_analyze(config: dict):
 # New schedule mapping run times (GMT) to functions
 schedule = {
     time(8, 30): start_monitoring,
-    time(10, 0): generate_and_queue_orders,
-    time(10, 5): place_queued_orders,
+    time(10, 0): generate_and_execute_orders,
     time(17, 20): close_positions_after_5_days,
     time(17, 22): cancel_and_stop_monitoring,
     time(17, 35): reconcile_and_analyze
