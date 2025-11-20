@@ -32,6 +32,23 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("OrderManager")
 
 
+async def generate_and_execute_orders(config: dict):
+    """
+    Generates, queues, and immediately places orders.
+    This ensures that order placement isn't skipped if generation takes
+    longer than the gap between scheduled times.
+    """
+    logger.info(">>> Starting combined task: Generate and Execute Orders <<<")
+    await generate_and_queue_orders(config)
+
+    # Only proceed to placement if orders were actually queued
+    if ORDER_QUEUE:
+        await place_queued_orders(config)
+    else:
+        logger.info("No orders were queued. Skipping placement step.")
+    logger.info(">>> Combined task 'Generate and Execute Orders' complete <<<")
+
+
 async def generate_and_queue_orders(config: dict):
     """
     Generates trading strategies based on market data and API predictions,
