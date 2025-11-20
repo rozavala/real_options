@@ -237,10 +237,9 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         logging.info(f"Creating Limit Order for {action} {config['strategy']['quantity']} @ {limit_price:.2f}.")
 
     # Switch to IBKR Adaptive Algo
-    # Commenting as it seems IBKR Adaptive Algo doesn't support this type of orders
-    # order.algoStrategy = 'Adaptive'
-    # order.algoParams = [TagValue('adaptivePriority', 'Normal')]
-    # logging.info("Configured order to use IBKR Adaptive Algo (Priority: Normal).")
+    order.algoStrategy = 'Adaptive'
+    order.algoParams = [TagValue('adaptivePriority', 'Normal')]
+    logging.info("Configured order to use IBKR Adaptive Algo (Priority: Normal).")
 
     # Assign a unique reference ID to the parent order.
     # IB will propagate this ID to all execution reports for the individual legs.
