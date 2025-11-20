@@ -113,7 +113,9 @@ async def generate_and_queue_orders(config: dict):
                     continue
 
                 chain = await build_option_chain(ib, future)
-                if not chain: continue
+                if not chain:
+                    logger.warning(f"Skipping {future.localSymbol}: Failed to build option chain.")
+                    continue
 
                 define_func = define_directional_strategy if signal['prediction_type'] == 'DIRECTIONAL' else define_volatility_strategy
                 strategy_def = define_func(config, signal, chain, price, future)
