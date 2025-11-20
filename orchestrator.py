@@ -181,8 +181,8 @@ async def reconcile_and_analyze(config: dict):
 
 # New schedule mapping run times (GMT) to functions
 schedule = {
-    time(15, 55): start_monitoring,
-    time(15, 57): generate_and_execute_orders,
+    time(16, 17): start_monitoring,
+    time(16, 20): generate_and_execute_orders,
     time(17, 20): close_positions_after_5_days,
     time(17, 22): cancel_and_stop_monitoring,
     time(17, 35): reconcile_and_analyze
