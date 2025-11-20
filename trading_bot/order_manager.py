@@ -333,6 +333,9 @@ async def place_queued_orders(config: dict):
         ib.execDetailsEvent += on_exec_details
 
         placed_trades_summary = []
+        tuning = config.get('strategy_tuning', {})
+        adaptive_interval = tuning.get('adaptive_step_interval_seconds', 15)
+        adaptive_pct = tuning.get('adaptive_step_percentage', 0.05)
         
         # --- PLACEMENT LOOP (ENHANCED LOGGING & NOTIFICATIONS) ---
         for contract, order in ORDER_QUEUE:
@@ -381,7 +384,9 @@ async def place_queued_orders(config: dict):
                 'is_filled': False,
                 'total_legs': len(contract.comboLegs) if isinstance(contract, Bag) else 1,
                 'filled_legs': set(),
-                'fill_prices': {} # Stores fill prices by conId
+                'fill_prices': {}, # Stores fill prices by conId
+                'last_update_time': time.time(),
+                'adaptive_ceiling_price': getattr(order, 'adaptive_limit_price', None) # Store ceiling/floor
             }
 
             # --- 5. Build Notification String (ENHANCED FOR ALL DATA) ---
@@ -406,14 +411,61 @@ async def place_queued_orders(config: dict):
         logger.info(f"Monitoring orders for up to {monitoring_duration / 60} minutes...")
         while time.time() - start_time < monitoring_duration:
             if not live_orders: break
-            all_done = all(
-                details['status'] in OrderStatus.DoneStates
-                for details in live_orders.values()
-            )
-            if all_done:
+
+            active_orders_count = 0
+            for order_id, details in list(live_orders.items()):
+                trade = details['trade']
+                # Use the live status from the trade object to ensure accuracy
+                status = trade.orderStatus.status
+
+                if status in OrderStatus.DoneStates:
+                    continue
+
+                active_orders_count += 1
+
+                # --- Adaptive "Walking" Logic ---
+                if trade.order.orderType == 'LMT' and details['adaptive_ceiling_price'] is not None:
+                    if (time.time() - details['last_update_time']) >= adaptive_interval:
+                        current_limit = trade.order.lmtPrice
+                        ceiling = details['adaptive_ceiling_price']
+                        action = trade.order.action
+
+                        new_price = None
+                        step_amount = abs(current_limit) * adaptive_pct
+
+                        if action == 'BUY':
+                            if current_limit < ceiling:
+                                # Increase price
+                                proposed_price = current_limit + step_amount
+                                # Round to 2 decimals and ensure we don't exceed ceiling
+                                new_price = min(round(proposed_price, 2), ceiling)
+                                # Ensure we actually move by at least 0.05 or 1 tick if calculated change is too small
+                                if new_price <= current_limit and current_limit < ceiling:
+                                     new_price = min(current_limit + 0.05, ceiling)
+
+                        else: # SELL
+                            if current_limit > ceiling: # Here 'ceiling' is actually floor
+                                # Decrease price
+                                proposed_price = current_limit - step_amount
+                                new_price = max(round(proposed_price, 2), ceiling)
+                                if new_price >= current_limit and current_limit > ceiling:
+                                     new_price = max(current_limit - 0.05, ceiling)
+
+                        if new_price is not None and new_price != current_limit:
+                            logger.info(f"Adaptive Update for Order {order_id} ({trade.contract.localSymbol}): {current_limit} -> {new_price} (Cap/Floor: {ceiling})")
+                            trade.order.lmtPrice = new_price
+                            ib.placeOrder(trade.contract, trade.order) # Update the order
+                            details['last_update_time'] = time.time()
+                            log_order_event(trade, "Updated", f"Adaptive Walk: Price updated to {new_price}")
+                        elif new_price is not None and new_price == current_limit:
+                             # Reached cap/floor
+                             pass
+
+            if active_orders_count == 0:
                 logger.info("All orders have reached a terminal state. Concluding monitoring.")
                 break
-            await asyncio.sleep(15)
+
+            await asyncio.sleep(1) # Check every second, but update logic respects adaptive_interval
         else:
             logger.warning("Monitoring loop timed out. Some orders may not be in a terminal state.")
 

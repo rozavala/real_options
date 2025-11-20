@@ -51,7 +51,8 @@ def define_directional_strategy(config: dict, signal: dict, chain: dict, underly
     """
     logging.info(f"--- Defining {signal['direction']} Spread for {future_contract.localSymbol} ---")
     tuning = config.get('strategy_tuning', {})
-    spread_width_points = tuning.get('spread_width_points', 15.0)
+    spread_width_pct = tuning.get('spread_width_percentage', 0.15)
+    spread_width_points = underlying_price * spread_width_pct
 
     exp_details = get_expiration_details(chain, future_contract.lastTradeDateOrContractMonth)
     if not exp_details:

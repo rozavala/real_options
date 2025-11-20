@@ -194,9 +194,9 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
             combo_bid_price -= leg_ask
             combo_ask_price -= leg_bid
 
-    # 5. Add Liquidity Filter and Calculate Limit Price
+    # 5. Add Liquidity Filter and Calculate Limit Price (Ceiling/Floor) and Initial Price (Start)
     tuning_params = config.get('strategy_tuning', {})
-    max_spread_pct = tuning_params.get('max_liquidity_spread_percentage', 0.7)
+    max_spread_pct = tuning_params.get('max_liquidity_spread_percentage', 0.25)
     fixed_slippage = tuning_params.get('fixed_slippage_cents', 0.5)
 
     market_spread = combo_ask_price - combo_bid_price
@@ -210,14 +210,24 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         )
         return None
 
-    # Revised Limit Price Logic: Based on theoretical price + fixed slippage
+    # Calculate Ceiling/Floor Price (Theoretical Max/Min)
     if action == 'BUY':
-        limit_price = round(net_theoretical_price + fixed_slippage, 2)
+        ceiling_price = round(net_theoretical_price + fixed_slippage, 2)
+        # Start at Bid + 1 tick (assuming tick is approx fixed_slippage for now, or just small increment)
+        # If Bid is 0/invalid, we can't start properly, but we checked market_data earlier.
+        # Actually combo_bid_price is the synthetic bid.
+        initial_price = round(combo_bid_price + fixed_slippage, 2)
+        # Ensure initial price does not exceed ceiling
+        initial_price = min(initial_price, ceiling_price)
     else:  # SELL
-        limit_price = round(net_theoretical_price - fixed_slippage, 2)
+        floor_price = round(net_theoretical_price - fixed_slippage, 2)
+        # Start at Ask - 1 tick
+        initial_price = round(combo_ask_price - fixed_slippage, 2)
+        # Ensure initial price is not below floor
+        initial_price = max(initial_price, floor_price)
 
-    logging.info(f"Net Theoretical: {net_theoretical_price:.2f}, Market Spread: {market_spread:.2f}, Fixed Slippage: {fixed_slippage:.2f}")
-    logging.info(f"Final Limit Price: {limit_price:.2f} cents/lb")
+    logging.info(f"Net Theoretical: {net_theoretical_price:.2f}, Market Spread: {market_spread:.2f}")
+    logging.info(f"Adaptive Strategy: Start @ {initial_price:.2f}, Cap/Floor @ {ceiling_price if action == 'BUY' else floor_price:.2f}")
 
     # 6. Build the Bag contract using qualified leg conIds
     combo = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')
@@ -233,13 +243,21 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         order = MarketOrder(action, config['strategy']['quantity'], tif="DAY")
         logging.info(f"Creating Market Order for {action} {config['strategy']['quantity']}.")
     else: # Default to Limit Order
-        order = LimitOrder(action, config['strategy']['quantity'], limit_price, tif="DAY")
-        logging.info(f"Creating Limit Order for {action} {config['strategy']['quantity']} @ {limit_price:.2f}.")
+        # We set the initial price as the limit price
+        order = LimitOrder(action, config['strategy']['quantity'], initial_price, tif="DAY")
+        # Store the ceiling/floor in the order object for the manager to use
+        if action == 'BUY':
+            order.adaptive_limit_price = ceiling_price
+        else:
+            order.adaptive_limit_price = floor_price
+        logging.info(f"Creating Limit Order for {action} {config['strategy']['quantity']} @ {initial_price:.2f} (Adaptive Cap: {order.adaptive_limit_price:.2f}).")
 
-    # Switch to IBKR Adaptive Algo
-    order.algoStrategy = 'Adaptive'
-    order.algoParams = [TagValue('adaptivePriority', 'Normal')]
-    logging.info("Configured order to use IBKR Adaptive Algo (Priority: Normal).")
+    # Switch to IBKR Adaptive Algo (Still keeping this as user didn't say to remove it, but said "IBKR Adaptive Algo doesn't apply... need to build it".
+    # User said "It seems that Adaptive Algo strategy from IBKR doesn't apply to this type of trading so we'll probably need to build it in our bot."
+    # So I should REMOVE the IBKR Adaptive Algo settings.)
+    # order.algoStrategy = 'Adaptive'
+    # order.algoParams = [TagValue('adaptivePriority', 'Normal')]
+    logging.info("Using Custom Adaptive Logic (IBKR Algo Disabled).")
 
     # Assign a unique reference ID to the parent order.
     # IB will propagate this ID to all execution reports for the individual legs.
