@@ -14,7 +14,8 @@ class TestStrategy(unittest.TestCase):
 
     def test_define_bullish_strategy(self):
         """Tests that the correct legs are defined for a BULLISH signal."""
-        config = {'strategy': {}, 'strategy_tuning': {'spread_width_points': 0.05}}
+        # spread_width_points = 3.51 * 0.01425 ~= 0.05
+        config = {'strategy': {}, 'strategy_tuning': {'spread_width_percentage': 0.01425}}
         signal = {'direction': 'BULLISH', 'prediction_type': 'DIRECTIONAL'}
         future_contract = Future(conId=1, lastTradeDateOrContractMonth='202512')
         chain = {'expirations': ['20251120'], 'strikes_by_expiration': {'20251120': [3.4, 3.45, 3.5, 3.55, 3.6]}}
@@ -32,7 +33,8 @@ class TestStrategy(unittest.TestCase):
 
     def test_define_bearish_strategy(self):
         """Tests that the correct legs are defined for a BEARISH signal."""
-        config = {'strategy': {}, 'strategy_tuning': {'spread_width_points': 0.05}}
+        # spread_width_points = 3.51 * 0.01425 ~= 0.05
+        config = {'strategy': {}, 'strategy_tuning': {'spread_width_percentage': 0.01425}}
         signal = {'direction': 'BEARISH', 'prediction_type': 'DIRECTIONAL'}
         future_contract = Future(conId=1, lastTradeDateOrContractMonth='202512')
         chain = {'expirations': ['20251120'], 'strikes_by_expiration': {'20251120': [3.4, 3.45, 3.5, 3.55, 3.6]}}
