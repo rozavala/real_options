@@ -71,8 +71,7 @@ The application's behavior is controlled by the `config.json` file.
 ### Anatomy of `config.json`
 
 -   `connection`: Settings for connecting to IB TWS/Gateway (`host`, `port`, `clientId`).
--   `api_base_url`: The URL for the running `prediction_api.py` service.
--   `symbol`, `exchange`, `exchange_timezone`: Defines the primary asset to trade (e.g., "KC" on "NYBOT").
+-   `symbol`, `exchange`: Defines the primary asset to trade (e.g., "KC" on "NYBOT").
 -   `strategy`:
     -   `quantity`: The number of contracts to trade for each order.
 -   `signal_thresholds`:
@@ -92,18 +91,7 @@ The application's behavior is controlled by the `config.json` file.
 
 ## How to Run
 
-The application consists of two main processes that need to be run separately: the Prediction API and the Orchestrator.
-
-### 1. Run the Prediction API
-
-The prediction service must be running for the orchestrator to fetch signals.
-
-```bash
-python prediction_api.py
-```
-By default, it will run on `0.0.0.0:8000`. Ensure the `api_base_url` in your `config.json` matches this address.
-
-### 2. Run the Main Orchestrator
+### Run the Main Orchestrator
 
 This is the main entry point for the bot. It will run continuously, executing tasks based on its schedule.
 
@@ -120,8 +108,6 @@ The orchestrator will then handle starting and stopping the position monitor and
 -   **`logging_config.py`**: Sets up centralized logging.
 -   **`notifications.py`**: Handles sending Pushover notifications.
 -   **`coffee_factors_data_pull_new.py`**: Fetches and validates all external data.
--   **`prediction_api.py`**: FastAPI service to simulate predictions.
--   **`send_data_to_api.py`**: Client script to communicate with the prediction API.
 -   **`trading_bot/`**: The core trading logic package.
     -   `main.py`: Orchestrates a single trading cycle.
     -   `ib_interface.py`: Low-level interaction with the IB API.

@@ -147,8 +147,13 @@ class TestIbInterface(unittest.TestCase):
 
             # Theoretical Price: 1.0 (buy) - 0.5 (sell) = 0.5
             # Fixed Slippage: 0.2
-            # Limit Price (BUY) = Theoretical Price + Fixed Slippage = 0.5 + 0.2 = 0.7
-            expected_price = 0.70
+            # Ceiling Price (BUY) = Theoretical Price + Fixed Slippage = 0.5 + 0.2 = 0.7
+
+            # Combo Bid (Synthetic) = Leg1_Bid (0.9) - Leg2_Ask (0.6) = 0.3
+            # Initial Price (BUY) = Combo Bid + Fixed Slippage = 0.3 + 0.2 = 0.5
+            # Ensure Initial Price <= Ceiling Price (0.5 <= 0.7) -> True
+
+            expected_price = 0.50
             self.assertAlmostEqual(limit_order.lmtPrice, expected_price, places=2)
 
         asyncio.run(run_test())
