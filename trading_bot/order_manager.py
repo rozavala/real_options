@@ -97,7 +97,7 @@ async def generate_and_queue_orders(config: dict):
                     logger.warning(f"No active future for signal month {signal.get('contract_month')}."); continue
 
                 logger.info(f"Requesting market price for {future.localSymbol}...")
-                ticker = ib.reqMktData(future, '', False, False)
+                ticker = ib.reqMktData(future, '', True, False)
 
                 price = float('nan')
                 try:
@@ -206,7 +206,7 @@ async def _get_market_data_for_leg(ib: IB, leg: ComboLeg) -> str:
             logger.warning(f"Could not resolve contract for leg conId {leg.conId}")
             return f"Leg conId {leg.conId}: N/A"
 
-        ticker = ib.reqMktData(contract[0].contract, '', False, False)
+        ticker = ib.reqMktData(contract[0].contract, '', True, False)
 
         # Wait for the ticker to update with a valid price, with a timeout
         start_time = time.time()
@@ -341,7 +341,7 @@ async def place_queued_orders(config: dict):
         for contract, order in ORDER_QUEUE:
             
             # --- 1. Get BAG (Spread) Market Data with a robust polling loop ---
-            bag_ticker = ib.reqMktData(contract, '', False, False)
+            bag_ticker = ib.reqMktData(contract, '', True, False)
             start_time = time.time()
             while util.isNan(bag_ticker.bid) and util.isNan(bag_ticker.ask) and util.isNan(bag_ticker.last):
                 await asyncio.sleep(0.1)
@@ -490,7 +490,7 @@ async def place_queued_orders(config: dict):
             elif details['status'] not in OrderStatus.DoneStates:
                 
                 # --- 1. Get FINAL BAG (Spread) Market Data with a robust polling loop ---
-                final_bag_ticker = ib.reqMktData(trade.contract, '', False, False)
+                final_bag_ticker = ib.reqMktData(trade.contract, '', True, False)
                 start_time = time.time()
                 while util.isNan(final_bag_ticker.bid) and util.isNan(final_bag_ticker.ask) and util.isNan(final_bag_ticker.last):
                     await asyncio.sleep(0.1)
