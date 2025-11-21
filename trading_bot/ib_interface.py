@@ -211,18 +211,19 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         return None
 
     # Calculate Ceiling/Floor Price (Theoretical Max/Min)
+    start_offset = 0.05
     if action == 'BUY':
         ceiling_price = round(net_theoretical_price + fixed_slippage, 2)
-        # Start at Bid + 1 tick (assuming tick is approx fixed_slippage for now, or just small increment)
+        # Start at Bid + 1 tick (assuming tick is start_offset, or just small increment)
         # If Bid is 0/invalid, we can't start properly, but we checked market_data earlier.
         # Actually combo_bid_price is the synthetic bid.
-        initial_price = round(combo_bid_price + fixed_slippage, 2)
+        initial_price = round(combo_bid_price + start_offset, 2)
         # Ensure initial price does not exceed ceiling
         initial_price = min(initial_price, ceiling_price)
     else:  # SELL
         floor_price = round(net_theoretical_price - fixed_slippage, 2)
         # Start at Ask - 1 tick
-        initial_price = round(combo_ask_price - fixed_slippage, 2)
+        initial_price = round(combo_ask_price - start_offset, 2)
         # Ensure initial price is not below floor
         initial_price = max(initial_price, floor_price)
 
