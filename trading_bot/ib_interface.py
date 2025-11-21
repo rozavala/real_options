@@ -27,7 +27,7 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
     logging.info(f"Fetching market data for option: {contract.localSymbol}")
     # Generic tick list 106 provides model-based option greeks
     # Generic tick list 104 provides bid, ask, and last prices
-    ticker = ib.reqMktData(contract, '104,106', False, False)
+    ticker = ib.reqMktData(contract, '104,106', True, False)
     await asyncio.sleep(2)  # Allow time for data to arrive
 
     # Extract data from the ticker
