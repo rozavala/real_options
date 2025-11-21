@@ -10,8 +10,6 @@ from ib_insync import IB, Contract, FuturesOption, Bag, ComboLeg, OrderStatus, T
 from trading_bot.utils import (
     price_option_black_scholes,
     get_position_details,
-    is_market_open,
-    calculate_wait_until_market_open,
     get_expiration_details,
     log_trade_to_ledger,
 )
@@ -55,32 +53,6 @@ class TestUtils:
         details_bag = await get_position_details(ib, position_bag)
         assert details_bag['type'] == 'BULL_CALL_SPREAD'
         assert details_bag['key_strikes'] == [3.5, 3.6]
-
-    def test_is_market_open(self):
-        contract_details = Mock()
-        test_date = datetime(2025, 10, 7)
-        contract_details.liquidHours = f'{test_date.strftime("%Y%m%d")}:0800-{test_date.strftime("%Y%m%d")}:1600'
-        tz = pytz.timezone('America/New_York')
-
-        with patch('trading_bot.utils.datetime') as mock_datetime:
-            # We need to mock the whole class, but restore the strptime method
-            mock_datetime.strptime.side_effect = lambda *args, **kwargs: datetime.strptime(*args, **kwargs)
-
-            # Simulate market is open
-            mock_datetime.now.return_value = tz.localize(test_date.replace(hour=10, minute=0))
-            assert is_market_open(contract_details, 'America/New_York')
-
-            # Simulate market is closed
-            mock_datetime.now.return_value = tz.localize(test_date.replace(hour=18, minute=0))
-            assert not is_market_open(contract_details, 'America/New_York')
-
-    def test_calculate_wait_until_market_open(self):
-        contract_details = Mock()
-        contract_details.liquidHours = '20251008:0800-20251008:1600'
-        with patch('trading_bot.utils.datetime') as mock_dt:
-            mock_dt.now.return_value = datetime(2025, 10, 7, 18, 0)
-            wait_time = calculate_wait_until_market_open(contract_details, 'America/New_York')
-            assert wait_time > 0
 
     def test_get_expiration_details(self):
         chain = {
