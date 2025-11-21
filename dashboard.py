@@ -61,17 +61,33 @@ def get_config():
 
 @st.cache_data(ttl=15)
 def load_log_data():
-    """Finds the latest log file and caches the last 50 lines."""
+    """Finds all relevant log files (excluding archived ones) and caches their last 50 lines."""
     try:
         list_of_logs = glob.glob('logs/*.log')
         if not list_of_logs:
-            return None, "No .log files found in the 'logs' directory."
-        latest_log = max(list_of_logs, key=os.path.getctime)
-        with open(latest_log, 'r') as f:
-            lines = f.readlines()
-        return latest_log, lines[-50:]
+            return {}
+
+        logs_content = {}
+        for log_path in list_of_logs:
+            filename = os.path.basename(log_path)
+            # Skip archived logs (those with numbers in their filename)
+            if any(char.isdigit() for char in filename):
+                continue
+
+            # Create a readable name from filename (e.g. 'dashboard.log' -> 'Dashboard')
+            name = filename.split('.')[0].capitalize()
+
+            try:
+                with open(log_path, 'r') as f:
+                    lines = f.readlines()
+                logs_content[name] = lines[-50:]
+            except Exception as e:
+                logs_content[name] = [f"Error reading file: {e}"]
+
+        return logs_content
     except Exception as e:
-        return None, f"Error reading log files: {e}"
+        st.error(f"Error accessing logs directory: {e}")
+        return {}
 
 @st.cache_data(ttl=3600)  # Cache benchmarks for 1 hour
 def fetch_benchmark_data(start_date, end_date):
@@ -219,7 +235,7 @@ st.title("Coffee Bot Mission Control ☕")
 # Load Data
 trade_df = load_trade_data()
 config = get_config()
-log_file, log_lines = load_log_data()
+logs_data = load_log_data()
 
 # --- Sidebar: Manual Controls ---
 with st.sidebar:
@@ -379,24 +395,51 @@ with tab3:
 
 with tab4:
     st.subheader("System Health Logs")
-    if log_file and log_lines:
-        # Heartbeat Logic
-        try:
-            last_ts_str = log_lines[-1].split(',')[0]
-            if " - " in last_ts_str: last_ts_str = last_ts_str.split(' - ')[0]
-            last_ts = datetime.strptime(last_ts_str.strip(), '%Y-%m-%d %H:%M:%S')
+    if logs_data:
+        # Display health summary for each log
+        cols = st.columns(len(logs_data))
+        sorted_logs = sorted(logs_data.items()) # Sort by name
+
+        for idx, (name, lines) in enumerate(sorted_logs):
+            status_msg = "Unknown"
+            is_healthy = False
+            mins_ago = -1
             
-            diff = datetime.now() - last_ts
-            if diff > timedelta(minutes=15):
-                st.error(f"⚠️ SYSTEM STALLED? Last log {diff.seconds//60} mins ago.")
-            else:
-                st.success(f"✅ System Healthy. Last log {diff.seconds//60} mins ago.")
-        except:
-            st.warning("Could not parse heartbeat.")
-            
-        st.text_area("Recent Logs", "".join(log_lines), height=300)
+            if lines:
+                try:
+                    last_line = lines[-1]
+                    # Attempt to parse timestamp from log line
+                    # Format usually: "YYYY-MM-DD HH:MM:SS - ..." or "YYYY-MM-DD HH:MM:SS,ms - ..."
+                    last_ts_str = last_line.split(' - ')[0]
+                    if ',' in last_ts_str: # Handle milliseconds if present
+                        last_ts_str = last_ts_str.split(',')[0]
+
+                    last_ts = datetime.strptime(last_ts_str.strip(), '%Y-%m-%d %H:%M:%S')
+                    diff = datetime.now() - last_ts
+                    mins_ago = int(diff.total_seconds() // 60)
+
+                    if diff < timedelta(minutes=15):
+                        is_healthy = True
+                        status_msg = f"Active ({mins_ago}m ago)"
+                    else:
+                        status_msg = f"Stalled ({mins_ago}m ago)"
+                except Exception:
+                    status_msg = "Parse Error"
+
+            with cols[idx]:
+                if is_healthy:
+                    st.success(f"✅ **{name}**: {status_msg}")
+                else:
+                    st.error(f"⚠️ **{name}**: {status_msg}")
+
+        st.divider()
+
+        # Display log content
+        for name, lines in sorted_logs:
+            with st.expander(f"{name} Log", expanded=False):
+                st.code("".join(lines), language='text')
     else:
-        st.error("No logs available.")
+        st.info("No active log files found (logs with digits in name are skipped).")
 
 with tab5:
     st.subheader("Live Market Data")
