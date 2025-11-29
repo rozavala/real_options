@@ -358,7 +358,10 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
         'TradeID': 'TransactionID',
         'IBOrderID': 'SharedOrderID',
         'OrderID': 'SharedOrderID',
-        'OrderReference': 'OrderReference'
+        'OrderReference': 'OrderReference',
+        'Order Reference': 'OrderReference',
+        'ClientReference': 'OrderReference',
+        'Client Reference': 'OrderReference'
     }
     df.rename(columns=column_mappings, inplace=True)
         
@@ -413,6 +416,8 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
 
     # Prioritize OrderReference, but use the robust fallback_id if it's missing.
     if 'OrderReference' in df.columns:
+        # Ensure empty strings or whitespace are treated as NaN so fillna works
+        df['OrderReference'] = df['OrderReference'].replace(r'^\s*$', float('nan'), regex=True)
         df['grouping_id'] = df['OrderReference'].fillna(fallback_id)
     else:
         df['grouping_id'] = fallback_id
