@@ -110,6 +110,38 @@ def fetch_benchmark_data(start_date, end_date):
 
 # --- 5. Live Data Functions (IB Connection) ---
 
+@st.cache_data(ttl=60)
+def fetch_account_summary_data(_config):
+    """Fetches account summary (Net Liquidation Value) from IB."""
+    ib = IB()
+    summary_data = {"NetLiquidation": 0.0, "UnrealizedPnL": 0.0, "RealizedPnL": 0.0}
+    try:
+        ib.connect(
+            _config['connection']['host'],
+            _config['connection']['port'],
+            clientId=random.randint(1000, 9999)
+        )
+
+        # accountSummary() returns a list of AccountValue objects
+        # We fetch all tags to be safe as tags arg can be problematic in some versions
+        summary = ib.accountSummary()
+
+        for item in summary:
+            if item.tag in summary_data:
+                try:
+                    summary_data[item.tag] = float(item.value)
+                except ValueError:
+                    pass
+
+        ib.disconnect()
+        return summary_data
+
+    except Exception:
+        # Fail silently to avoid disrupting dashboard if IB is offline
+        if ib.isConnected():
+            ib.disconnect()
+        return {}
+
 def fetch_market_data(config):
     """Connects to IB, fetches future prices, handles closed markets, and disconnects."""
     ib = IB()
@@ -276,8 +308,20 @@ with st.sidebar:
 st.header("Performance Dashboard")
 
 if not trade_df.empty:
-    # 1. Bot Metrics
-    total_pnl = trade_df['total_value_usd'].sum()
+    # 1. Fetch Account Summary for Accurate P&L
+    account_data = fetch_account_summary_data(config)
+    net_liq = account_data.get("NetLiquidation", 0.0)
+
+    # Calculate P&L: If we have live data, use it. Else fallback to ledger (which may show dip due to open positions)
+    if net_liq > 0:
+        total_pnl = net_liq - STARTING_CAPITAL
+        pnl_label = "Bot P&L (Total Equity)"
+        pnl_help = f"Net Liquidation Value (${net_liq:,.2f}) - Starting Capital (${STARTING_CAPITAL:,.0f})"
+    else:
+        total_pnl = trade_df['total_value_usd'].sum()
+        pnl_label = "Bot Cash Flow (Realized + Cost)"
+        pnl_help = "Note: This reflects Net Cash Flow. Open positions are counted as cost/loss until closed. Connect IB for Equity P&L."
+
     bot_return_pct = (total_pnl / STARTING_CAPITAL) * 100
     
     # Profit Factor Logic
@@ -300,7 +344,8 @@ if not trade_df.empty:
     # 3. Display
     kpi_cols = st.columns(4)
     
-    kpi_cols[0].metric("Bot P&L (USD)", f"${total_pnl:,.2f}", 
+    kpi_cols[0].metric(pnl_label, f"${total_pnl:,.2f}",
+                       help=pnl_help,
                        delta_color="normal")
     
     kpi_cols[1].metric("Bot Return %", f"{bot_return_pct:.2f}%", 

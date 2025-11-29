@@ -427,7 +427,16 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     # --- Calculate Value (using your original script's logic) ---
     # A 'BUY' is a negative value (cash outflow)
     multiplier = df['Multiplier']
-    # The division by 100 was incorrect, as the price is not in cents.
+    # Normalize TradePrice to CENTS if multiplier is 37500 (Coffee) to match local ledger format.
+    # If the price is already in cents (unlikely for Flex Query), this might be wrong,
+    # but based on discrepancies, Flex Query returns dollars (e.g. 0.41) while ledger uses cents (41.0).
+    df_out['avg_fill_price'] = df['TradePrice'].where(multiplier != 37500.0, df['TradePrice'] * 100)
+
+    # Calculate Value
+    # If we use the normalized price (cents), we divide by 100.
+    # Value = Price(Cents) * Quantity * Multiplier / 100
+    # Or simply: Original Price(Dollars) * Quantity * Multiplier
+    # We use the original price for calculation to be safe, but store the normalized price.
     total_value = (df['TradePrice'] * df_out['quantity'] * multiplier)
     
     # Apply negative sign for 'BUY' actions
