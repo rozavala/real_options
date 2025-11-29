@@ -319,8 +319,9 @@ if not trade_df.empty:
         pnl_help = f"Net Liquidation Value (${net_liq:,.2f}) - Starting Capital (${STARTING_CAPITAL:,.0f})"
     else:
         total_pnl = trade_df['total_value_usd'].sum()
-        pnl_label = "Bot Cash Flow (Realized + Cost)"
-        pnl_help = "Note: This reflects Net Cash Flow. Open positions are counted as cost/loss until closed. Connect IB for Equity P&L."
+        pnl_label = "Net Cash Flow (Not P&L)"
+        pnl_help = "Warning: This is purely cash flow. It ignores the current value of open positions."
+        st.warning("⚠️ Disconnected from IB. This metric shows Net Cash Flow only. It treats open Long positions as 100% loss and open Short positions as 100% profit until closed.")
 
     bot_return_pct = (total_pnl / STARTING_CAPITAL) * 100
     
@@ -398,11 +399,21 @@ with tab2:
     st.subheader("Strategy vs. Benchmarks")
     if not trade_df.empty and not benchmarks.empty:
         # Prepare Bot Data (Daily Equity)
-        trade_df_sorted = trade_df.sort_values('timestamp')
-        daily_bot = trade_df_sorted.set_index('timestamp').resample('D')['total_value_usd'].sum().cumsum().ffill()
-        
-        # Normalize Bot to %
-        bot_series = (daily_bot / STARTING_CAPITAL) * 100
+        # Check for daily_equity.csv first (for accurate Equity Curve)
+        equity_file = os.path.join("data", "daily_equity.csv")
+        if os.path.exists(equity_file):
+            equity_df = pd.read_csv(equity_file)
+            equity_df['timestamp'] = pd.to_datetime(equity_df['timestamp'])
+            daily_vals = equity_df.set_index('timestamp')['total_value_usd']
+            # Calculate Return %: (NetLiq / Start) - 1
+            bot_series = ((daily_vals / STARTING_CAPITAL) - 1) * 100
+        else:
+            # Fallback to Cash Flow (The "Dip" / "Spike" chart)
+            st.warning("⚠️ daily_equity.csv not found. Showing Cash Flow instead of Equity.")
+            trade_df_sorted = trade_df.sort_values('timestamp')
+            daily_bot = trade_df_sorted.set_index('timestamp').resample('D')['total_value_usd'].sum().cumsum().ffill()
+            bot_series = (daily_bot / STARTING_CAPITAL) * 100
+
         bot_series.name = "Bot Strategy"
 
         # Merge

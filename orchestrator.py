@@ -32,6 +32,7 @@ from trading_bot.order_manager import (
     cancel_all_open_orders,
 )
 from trading_bot.utils import archive_trade_ledger
+from equity_logger import log_equity_snapshot
 
 # --- Logging Setup ---
 setup_logging()
@@ -187,6 +188,7 @@ schedule = {
     time(14, 0): generate_and_execute_orders,
     time(17, 20): close_positions_after_5_days,
     time(17, 22): cancel_and_stop_monitoring,
+    time(17, 25): log_equity_snapshot,
     time(17, 35): reconcile_and_analyze
 }
 
