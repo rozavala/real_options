@@ -358,7 +358,10 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
         'TradeID': 'TransactionID',
         'IBOrderID': 'SharedOrderID',
         'OrderID': 'SharedOrderID',
-        'OrderReference': 'OrderReference'
+        'OrderReference': 'OrderReference',
+        'Order Reference': 'OrderReference',
+        'ClientReference': 'OrderReference',
+        'Client Reference': 'OrderReference'
     }
     df.rename(columns=column_mappings, inplace=True)
         
@@ -368,8 +371,15 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
         df['TradePrice'] = pd.to_numeric(df['TradePrice'])
         df['Quantity'] = pd.to_numeric(df['Quantity'])
         df['Multiplier'] = pd.to_numeric(df['Multiplier'].replace('', '37500.0')).fillna(37500.0)
+
+        # Parse Strike: Convert empty to 0
         df['Strike'] = pd.to_numeric(df['Strike'].replace('', '0')).fillna(0)
         
+        # Normalize Strike for Coffee (KC) options (Multiplier 37500)
+        # Ledger uses cents (e.g. 550.0 for 5.5), while IB report uses dollars (5.5).
+        # We multiply by 100 to match the ledger convention.
+        df['Strike'] = df['Strike'].where(df['Multiplier'] != 37500.0, df['Strike'] * 100)
+
         # Parse the specific 'DateTime' format from your report: '20251106;122010'
         df['parsed_datetime'] = pd.to_datetime(df['DateTime'], format='%Y%m%d;%H%M%S')
         
@@ -406,15 +416,16 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
 
     # Prioritize OrderReference, but use the robust fallback_id if it's missing.
     if 'OrderReference' in df.columns:
+        # Ensure empty strings or whitespace are treated as NaN so fillna works
+        df['OrderReference'] = df['OrderReference'].replace(r'^\s*$', float('nan'), regex=True)
         df['grouping_id'] = df['OrderReference'].fillna(fallback_id)
     else:
         df['grouping_id'] = fallback_id
 
-    # Group by the final 'grouping_id' to create the combo-aware position_id
-    combo_position_ids = df.groupby('grouping_id')['leg_description'].transform(
-        lambda legs: '-'.join(sorted(legs))
-    )
-    df_out['position_id'] = combo_position_ids
+    # Use the grouping_id directly as position_id if it's available (which contains the UUID)
+    # The previous logic of joining leg descriptions was overwriting the valid UUID.
+    # We only use the fallback logic if OrderReference (and thus grouping_id) was missing/invalid.
+    df_out['position_id'] = df['grouping_id']
 
     df_out['combo_id'] = df['TransactionID'].astype(str) # Keep transID for combo_id
     df_out['local_symbol'] = df['Symbol']
@@ -427,7 +438,16 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     # --- Calculate Value (using your original script's logic) ---
     # A 'BUY' is a negative value (cash outflow)
     multiplier = df['Multiplier']
-    # The division by 100 was incorrect, as the price is not in cents.
+    # Normalize TradePrice to CENTS if multiplier is 37500 (Coffee) to match local ledger format.
+    # If the price is already in cents (unlikely for Flex Query), this might be wrong,
+    # but based on discrepancies, Flex Query returns dollars (e.g. 0.41) while ledger uses cents (41.0).
+    df_out['avg_fill_price'] = df['TradePrice'].where(multiplier != 37500.0, df['TradePrice'] * 100)
+
+    # Calculate Value
+    # If we use the normalized price (cents), we divide by 100.
+    # Value = Price(Cents) * Quantity * Multiplier / 100
+    # Or simply: Original Price(Dollars) * Quantity * Multiplier
+    # We use the original price for calculation to be safe, but store the normalized price.
     total_value = (df['TradePrice'] * df_out['quantity'] * multiplier)
     
     # Apply negative sign for 'BUY' actions
