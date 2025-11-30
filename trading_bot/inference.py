@@ -20,32 +20,32 @@ tf.get_logger().setLevel('ERROR')
 
 # Configure logging to match your desired output format
 logging.basicConfig(
-level=logging.INFO,
-format='%(asctime)s - %(message)s',
-datefmt='%Y-%m-%d %H:%M:%S'
+    level=logging.INFO,
+    format='%(asctime)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
 )
 
 # --- 2. Define Constants ---
 TIME_STEPS = 60 # Our 60-day lookback
 PREDICTION_HORIZON_DAYS = 5 # T+5
 NUM_CONTRACTS = 5
-MIN_HISTORY_DAYS = 100 # Min days needed in input CSV to run calculations
+MIN_HISTORY_DAYS = 200 # Needed for 200-day SMA
 
 # Define all 10 production assets we need to load
 PRODUCTION_ASSET_FILES = {
-# Scalers (3)
-"x_scaler_seq": "models/x_scaler_sequential.joblib",
-"x_scaler_agg": "models/x_scaler_aggregated.joblib",
-"y_scaler": "models/y_scaler_t5.joblib",
+    # Scalers (3)
+    "x_scaler_seq": "models/x_scaler_sequential.joblib",
+    "x_scaler_agg": "models/x_scaler_aggregated.joblib",
+    "y_scaler": "models/y_scaler_t5.joblib",
 
-# Models (7)
-"transformer": "models/transformer_model.keras",
-"xgb_0": "models/xgboost_tuned_component_0.ubj",
-"xgb_1": "models/xgboost_tuned_component_1.ubj",
-"xgb_2": "models/xgboost_tuned_component_2.ubj",
-"xgb_3": "models/xgboost_tuned_component_3.ubj",
-"xgb_4": "models/xgboost_tuned_component_4.ubj",
-"blender": "models/hybrid_blender.joblib"
+    # Models (7)
+    "transformer": "models/transformer_model.keras",
+    "xgb_0": "models/xgboost_tuned_component_0.ubj",
+    "xgb_1": "models/xgboost_tuned_component_1.ubj",
+    "xgb_2": "models/xgboost_tuned_component_2.ubj",
+    "xgb_3": "models/xgboost_tuned_component_3.ubj",
+    "xgb_4": "models/xgboost_tuned_component_4.ubj",
+    "blender": "models/hybrid_blender.joblib"
 }
 
 # --- 3. Helper Functions for Feature Engineering ---
@@ -78,7 +78,7 @@ def get_slope(array):
     y = array
     x = np.arange(len(y))
     try:
-        slope = linregress(x, y)[0]
+        slope = linregress(x, y)[0] if not np.all(y == y[0]) else 0.0
     except ValueError:
         slope = 0.0 # Handle cases with NaNs
     return slope
@@ -138,6 +138,10 @@ def generate_inference_features(raw_df, assets):
     df['spread_2_3'] = df['second_month_price'] - df['third_month_price']
     df['spread_3_4'] = df['third_month_price'] - df['fourth_month_price']
     df['spread_4_5'] = df['fourth_month_price'] - df['fifth_month_price']
+
+    # Handle NaNs
+    df.fillna(method='ffill', inplace=True)
+    df.fillna(method='bfill', inplace=True)
 
     # This is our full 30-feature set for the Transformer.
     # The order MUST match the columns from the training data EXACTLY.
@@ -206,9 +210,9 @@ def get_hybrid_prediction(lstm_input, xgb_input, assets):
 
 # --- 5. Main Execution ---
 
-def get_model_predictions(raw_df: pd.DataFrame):
+def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float = 0.015):
     """
-    Main function to run the entire pipeline.
+    Main function to run the entire pipeline with Two-Brain logic.
     """
     try:
         # 1. Load all models and scalers
@@ -216,27 +220,66 @@ def get_model_predictions(raw_df: pd.DataFrame):
 
         # 2. Load new raw data
         if len(raw_df) < MIN_HISTORY_DAYS:
-            logging.error(f"Input data has only {len(raw_df)} rows. Need at least {MIN_HISTORY_DAYS} to calculate features.")
-            return
+            logging.error(f"Input data has only {len(raw_df)} rows. Need at least {MIN_HISTORY_DAYS} to calculate Macro Trend.")
+            return []
 
-        # 3. Generate features for the latest day
-        # This will use the last 60-100 days of data
+        # 3. Macro Filter (Brain 1)
+        # Calculate 200-day SMA of Front Month Price
+        current_price = raw_df['front_month_price'].iloc[-1]
+        sma_200 = raw_df['front_month_price'].rolling(window=200).mean().iloc[-1]
+
+        # If SMA is NaN (insufficient data), we can't determine regime
+        if np.isnan(sma_200):
+            logging.error("200-day SMA is NaN. Cannot determine Macro Regime.")
+            return []
+
+        macro_regime = "BULL" if current_price > sma_200 else "BEAR"
+        logging.info(f"Macro Trend: {macro_regime} (Price: {current_price:.2f}, SMA200: {sma_200:.2f})")
+
+        # 4. Generate features for the latest day
         lstm_input, xgb_input = generate_inference_features(raw_df, assets)
 
-        # 4. Get final blended prediction
+        # 5. Get final blended prediction (Brain 2)
         price_changes = get_hybrid_prediction(lstm_input, xgb_input, assets)
 
-        # 5. Format and log the output
-        output_dict = {
-            "price_changes": price_changes.tolist()
-        }
+        # 6. Apply Two-Brain Logic and Format Output
+        signals = []
+        for i, raw_return in enumerate(price_changes):
+            decision = "NEUTRAL"
+            reason = f"Forecast {raw_return:.2%} vs Threshold {signal_threshold:.2%}"
+
+            if raw_return > signal_threshold:
+                if macro_regime == "BULL":
+                    decision = "LONG"
+                    reason = "AI Buy + Bull Trend"
+                else:
+                    decision = "NEUTRAL"
+                    reason = "AI Buy blocked by Bear Trend"
+
+            elif raw_return < -signal_threshold:
+                if macro_regime == "BEAR":
+                    decision = "SHORT"
+                    reason = "AI Sell + Bear Trend"
+                else:
+                    decision = "NEUTRAL"
+                    reason = "AI Sell blocked by Bull Trend"
+
+            signals.append({
+                'action': decision,
+                'confidence': float(raw_return),
+                'regime': macro_regime,
+                'reason': reason,
+                'price': float(current_price),
+                'sma_200': float(sma_200)
+            })
 
         # Log the final JSON-formatted string
-        logging.info(json.dumps(output_dict, indent=2))
-        return output_dict
+        output_envelope = {"signals": signals}
+        logging.info(json.dumps(output_envelope, indent=2))
+        return signals
 
     except FileNotFoundError as e:
         logging.error(f"FATAL ERROR: A required asset file was not found: {e.filename}")
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}", exc_info=True)
-    return None
+    return []

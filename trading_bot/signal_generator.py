@@ -7,51 +7,56 @@ from trading_bot.model_signals import log_model_signal
 
 setup_logging()
 
-async def generate_signals(ib: IB, api_response: dict, config: dict) -> list:
+async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
     """
-    Generates structured trading signals from raw API price predictions.
-    Maps predictions to active futures contracts chronologically.
+    Generates structured trading signals from the inference engine's output.
+    Maps detailed signals (dicts) to active futures contracts chronologically.
     """
-    price_changes = api_response.get("price_changes")
-    if not price_changes or not isinstance(price_changes, list) or len(price_changes) != 5:
-        logging.error(f"Invalid 'price_changes' in API response: {api_response}")
+    if not signals_list or not isinstance(signals_list, list) or len(signals_list) != 5:
+        logging.error(f"Invalid signals list from inference engine: {signals_list}")
         return []
 
-    logging.info("Generating trading signals from API response...")
+    logging.info("Generating trading signals from Inference Engine output...")
 
     active_futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=5)
-    if len(active_futures) < len(price_changes):
+    if len(active_futures) < len(signals_list):
         logging.error(f"Could not retrieve enough active futures. "
-                      f"Needed {len(price_changes)}, found {len(active_futures)}.")
+                      f"Needed {len(signals_list)}, found {len(active_futures)}.")
         return []
 
     # Sort contracts chronologically to align with prediction order (front_month, second_month, etc.)
     sorted_contracts = sorted(active_futures, key=lambda c: c.lastTradeDateOrContractMonth)
 
-    signals = []
+    generated_signals = []
     for i, contract in enumerate(sorted_contracts):
-        price_change = price_changes[i]
+        signal_data = signals_list[i]
 
-        thresholds = config.get('signal_thresholds', {})
-        bullish_threshold = thresholds.get('bullish', 7)
-        bearish_threshold = thresholds.get('bearish', 0)
+        action = signal_data.get('action', 'NEUTRAL')
+        confidence = signal_data.get('confidence', 0.0)
+        reason = signal_data.get('reason', 'N/A')
+        regime = signal_data.get('regime', 'N/A')
 
+        # Map 'action' to Direction
         direction = "NEUTRAL"
-        if price_change > bullish_threshold:
+        if action == "LONG":
             direction = "BULLISH"
-        elif price_change < bearish_threshold:
+        elif action == "SHORT":
             direction = "BEARISH"
 
         logging.info(f"Contract {contract.localSymbol} ({contract.lastTradeDateOrContractMonth[:6]}): "
-                     f"Price Change = {price_change:.2f} -> {direction}")
+                     f"{action} ({confidence:.2%}) | {reason}")
 
+        # Log the signal regardless of whether we trade it
         log_model_signal(contract.lastTradeDateOrContractMonth[:6], direction)
 
         if direction != "NEUTRAL":
-            signals.append({
+            generated_signals.append({
                 "contract_month": contract.lastTradeDateOrContractMonth[:6],
                 "prediction_type": "DIRECTIONAL",
-                "direction": direction
+                "direction": direction,
+                "reason": reason,
+                "regime": regime,
+                "confidence": confidence
             })
 
-    return signals
+    return generated_signals
