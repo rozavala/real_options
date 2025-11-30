@@ -19,6 +19,9 @@ from config_loader import load_config
 setup_logging()
 logger = logging.getLogger("PerformanceAnalyzer")
 
+# --- Constants ---
+DEFAULT_STARTING_CAPITAL = 250000
+
 
 def get_trade_ledger_df():
     """Reads and consolidates the main and archived trade ledgers for analysis."""
@@ -67,6 +70,7 @@ async def get_live_account_data(config: dict) -> dict | None:
     Connects to IB and fetches all live data needed for the daily report:
     - Open positions from the portfolio.
     - Today's trade executions (fills) and their commission reports.
+    - Net Liquidation Value (Account Summary).
     """
     ib = IB()
     live_data = {}
@@ -80,12 +84,20 @@ async def get_live_account_data(config: dict) -> dict | None:
             timeout=15
         )
 
-        # 1. Fetch open positions (PortfolioItems have P&L data)
+        # 1. Fetch Account Summary (Net Liquidation Value)
+        account_summary = await ib.accountSummaryAsync()
+        net_liquidation = next((float(v.value) for v in account_summary if v.tag == 'NetLiquidation'), None)
+        if net_liquidation:
+             logger.info(f"Fetched Net Liquidation Value: ${net_liquidation:,.2f}")
+        else:
+             logger.warning("Could not fetch Net Liquidation Value.")
+
+        # 2. Fetch open positions (PortfolioItems have P&L data)
         # Wait a moment for portfolio data to stream in after connection.
         await asyncio.sleep(2)
         portfolio_items = ib.portfolio()
 
-        # 2. Fetch today's executions for live realized P&L calculation
+        # 3. Fetch today's executions for live realized P&L calculation
         fills = await ib.reqExecutionsAsync()
         today_date = datetime.now().date()
         todays_fills = [f for f in fills if f.time.date() == today_date]
@@ -94,6 +106,7 @@ async def get_live_account_data(config: dict) -> dict | None:
         live_data = {
             'portfolio': portfolio_items,
             'executions': todays_fills,
+            'net_liquidation': net_liquidation
         }
 
     except asyncio.TimeoutError:
@@ -115,7 +128,8 @@ def generate_executive_summary(
     todays_fills: list,
     total_daily_pnl: float | None,
     realized_daily_pnl: float,
-    unrealized_daily_pnl: float
+    unrealized_daily_pnl: float,
+    ltd_total_pnl: float | None = None
 ) -> tuple[str, float]:
     """Generates Section 1: The Executive Summary, separating Realized and Unrealized P&L."""
 
@@ -158,12 +172,25 @@ def generate_executive_summary(
     today_total_pnl_str = f"${total_daily_pnl:,.2f}" if total_daily_pnl is not None else "N/A"
     today_realized_pnl_str = f"${realized_daily_pnl:,.2f}"
     today_unrealized_pnl_str = f"${unrealized_daily_pnl:,.2f}"
+
+    # Calculate LTD values
+    # If ltd_total_pnl (Equity P&L) is provided, use it. Otherwise fallback to ledger realized.
+    if ltd_total_pnl is not None:
+        ltd_total_pnl_str = f"${ltd_total_pnl:,.2f}"
+        # Derived Unrealized = Total (Equity) - Realized (Ledger)
+        # Note: This might not match live portfolio sum exactly due to fees/timing, but it balances the report.
+        ltd_unrealized_val = ltd_total_pnl - ltd_metrics['pnl']
+        ltd_unrealized_pnl_str = f"${ltd_unrealized_val:,.2f}"
+    else:
+        ltd_total_pnl_str = f"${ltd_metrics['pnl']:,.2f}"
+        ltd_unrealized_pnl_str = "$0.00"
+
     ltd_realized_pnl_str = f"${ltd_metrics['pnl']:,.2f}"
 
     pnl_rows = {
-        "Total P&L": (today_total_pnl_str, ltd_realized_pnl_str),
-        " Realized P&L": (today_realized_pnl_str, ltd_realized_pnl_str), # LTD is always realized
-        " Unrealized P&L": (today_unrealized_pnl_str, "$0.00"), # No unrealized concept for LTD
+        "Total P&L": (today_total_pnl_str, ltd_total_pnl_str),
+        " Realized P&L": (today_realized_pnl_str, ltd_realized_pnl_str),
+        " Unrealized P&L": (today_unrealized_pnl_str, ltd_unrealized_pnl_str),
     }
     for metric, (today_val, ltd_val) in pnl_rows.items():
         report += f"{metric:<18} {today_val:>12} {ltd_val:>12}\n"
@@ -348,6 +375,25 @@ async def analyze_performance(config: dict) -> dict | None:
         live_data = await get_live_account_data(config)
         live_portfolio = live_data.get('portfolio') if live_data else []
         todays_fills = live_data.get('executions') if live_data else []
+        live_net_liq = live_data.get('net_liquidation') if live_data else None
+
+        # Load equity history if available
+        equity_df = pd.DataFrame()
+        equity_file = os.path.join("data", "daily_equity.csv")
+        starting_capital = DEFAULT_STARTING_CAPITAL
+
+        if os.path.exists(equity_file):
+            logger.info("Loading daily_equity.csv for equity curve.")
+            equity_df = pd.read_csv(equity_file)
+            if not equity_df.empty:
+                equity_df['timestamp'] = pd.to_datetime(equity_df['timestamp'])
+                equity_df = equity_df.sort_values('timestamp')
+                starting_capital = equity_df.iloc[0]['total_value_usd']
+                logger.info(f"Dynamic Starting Capital from History: ${starting_capital:,.2f}")
+            else:
+                logger.warning("daily_equity.csv is empty, using default starting capital.")
+        else:
+            logger.warning(f"daily_equity.csv not found, using default starting capital: ${starting_capital:,.2f}")
 
         # --- Generate Report Sections and get P&L values from LIVE data ---
         open_positions_report, unrealized_pnl = generate_open_positions_report(live_portfolio)
@@ -355,7 +401,18 @@ async def analyze_performance(config: dict) -> dict | None:
         morning_signals_report = generate_morning_signals_report(signals_df, today_date)
 
         # Calculate Total P&L as the sum of its parts for consistency
-        total_pnl = realized_pnl + unrealized_pnl
+        total_daily_pnl = realized_pnl + unrealized_pnl
+
+        # Calculate LTD Total P&L from Equity (if available)
+        ltd_total_pnl = None
+        if live_net_liq:
+            ltd_total_pnl = live_net_liq - starting_capital
+            logger.info(f"Calculated LTD Total P&L (Equity): ${ltd_total_pnl:,.2f}")
+        elif not equity_df.empty:
+            # Fallback to last recorded equity
+            last_equity = equity_df['total_value_usd'].iloc[-1]
+            ltd_total_pnl = last_equity - starting_capital
+            logger.warning("Using last recorded equity for LTD P&L (Live NetLiq unavailable).")
 
         # Generate the executive summary with a mix of live daily data and historical ledger data
         exec_summary, pnl_for_title = generate_executive_summary(
@@ -363,16 +420,17 @@ async def analyze_performance(config: dict) -> dict | None:
             signals_df,
             today_date,
             todays_fills,
-            total_pnl,          # Sum of realized and unrealized
+            total_daily_pnl,          # Sum of realized and unrealized
             realized_pnl,       # Live from IB fills
-            unrealized_pnl      # Live from IB portfolio
+            unrealized_pnl,      # Live from IB portfolio
+            ltd_total_pnl       # Equity-based LTD P&L
         )
 
         # --- Generate Charts ---
         # Do not generate charts if the ledger is empty to avoid errors
         chart_paths = []
         if not trade_df.empty:
-            chart_paths = generate_performance_charts(trade_df, signals_df)
+            chart_paths = generate_performance_charts(trade_df, signals_df, equity_df, starting_capital)
         else:
             logger.warning("Trade ledger is empty, skipping chart generation.")
 

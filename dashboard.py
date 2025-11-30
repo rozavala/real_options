@@ -34,7 +34,7 @@ st.set_page_config(
 )
 
 # --- Configuration Constants ---
-STARTING_CAPITAL = 250000  # Adjust this to your actual starting account balance
+DEFAULT_STARTING_CAPITAL = 250000
 
 # --- 4. Caching Data Loading Functions ---
 
@@ -269,6 +269,19 @@ trade_df = load_trade_data()
 config = get_config()
 logs_data = load_log_data()
 
+# Determine Starting Capital
+starting_capital = DEFAULT_STARTING_CAPITAL
+equity_file = os.path.join("data", "daily_equity.csv")
+if os.path.exists(equity_file):
+    try:
+        equity_df_start = pd.read_csv(equity_file)
+        if not equity_df_start.empty:
+             equity_df_start['timestamp'] = pd.to_datetime(equity_df_start['timestamp'])
+             equity_df_start = equity_df_start.sort_values('timestamp')
+             starting_capital = equity_df_start.iloc[0]['total_value_usd']
+    except Exception as e:
+        st.warning(f"Failed to load daily_equity.csv for starting capital: {e}")
+
 # --- Sidebar: Manual Controls ---
 with st.sidebar:
     st.header("Manual Controls")
@@ -314,16 +327,16 @@ if not trade_df.empty:
 
     # Calculate P&L: If we have live data, use it. Else fallback to ledger (which may show dip due to open positions)
     if net_liq > 0:
-        total_pnl = net_liq - STARTING_CAPITAL
+        total_pnl = net_liq - starting_capital
         pnl_label = "Bot P&L (Total Equity)"
-        pnl_help = f"Net Liquidation Value (${net_liq:,.2f}) - Starting Capital (${STARTING_CAPITAL:,.0f})"
+        pnl_help = f"Net Liquidation Value (${net_liq:,.2f}) - Starting Capital (${starting_capital:,.0f})"
     else:
         total_pnl = trade_df['total_value_usd'].sum()
         pnl_label = "Net Cash Flow (Not P&L)"
         pnl_help = "Warning: This is purely cash flow. It ignores the current value of open positions."
         st.warning("⚠️ Disconnected from IB. This metric shows Net Cash Flow only. It treats open Long positions as 100% loss and open Short positions as 100% profit until closed.")
 
-    bot_return_pct = (total_pnl / STARTING_CAPITAL) * 100
+    bot_return_pct = (total_pnl / starting_capital) * 100
     
     # Profit Factor Logic
     if 'combo_id' in trade_df.columns:
@@ -350,7 +363,7 @@ if not trade_df.empty:
                        delta_color="normal")
     
     kpi_cols[1].metric("Bot Return %", f"{bot_return_pct:.2f}%", 
-                       help=f"Based on ${STARTING_CAPITAL:,.0f} starting capital")
+                       help=f"Based on ${starting_capital:,.0f} starting capital")
     
     kpi_cols[2].metric("S&P 500 Benchmark", f"{spy_return:.2f}%", 
                        delta=f"{bot_return_pct - spy_return:.2f}% vs SPY")
@@ -402,18 +415,18 @@ with tab2:
 
         # Prepare Bot Data (Daily Equity)
         # Check for daily_equity.csv first (for accurate Equity Curve)
-        equity_file = os.path.join("data", "daily_equity.csv")
         if os.path.exists(equity_file):
+            # Equity DF already loaded during startup, just reload to be safe if file changed
             equity_df = pd.read_csv(equity_file)
             equity_df['timestamp'] = pd.to_datetime(equity_df['timestamp'])
             daily_vals = equity_df.set_index('timestamp')['total_value_usd']
             # Calculate Return %: (NetLiq / Start) - 1
-            bot_series = ((daily_vals / STARTING_CAPITAL) - 1) * 100
+            bot_series = ((daily_vals / starting_capital) - 1) * 100
         else:
             # Fallback to Cash Flow (The "Dip" / "Spike" chart)
             st.warning("⚠️ daily_equity.csv not found. Showing Cash Flow instead of Equity.")
             daily_bot = trade_df_sorted.set_index('timestamp').resample('D')['total_value_usd'].sum().cumsum().ffill()
-            bot_series = (daily_bot / STARTING_CAPITAL) * 100
+            bot_series = (daily_bot / starting_capital) * 100
 
         bot_series.name = "Bot Strategy"
 
