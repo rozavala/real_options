@@ -34,7 +34,7 @@ st.set_page_config(
 )
 
 # --- Configuration Constants ---
-STARTING_CAPITAL = 50000  # Adjust this to your actual starting account balance
+STARTING_CAPITAL = 250000  # Adjust this to your actual starting account balance
 
 # --- 4. Caching Data Loading Functions ---
 
