@@ -20,7 +20,7 @@ setup_logging()
 logger = logging.getLogger("PerformanceAnalyzer")
 
 # --- Constants ---
-STARTING_CAPITAL = 250000
+DEFAULT_STARTING_CAPITAL = 250000
 
 
 def get_trade_ledger_df():
@@ -380,10 +380,20 @@ async def analyze_performance(config: dict) -> dict | None:
         # Load equity history if available
         equity_df = pd.DataFrame()
         equity_file = os.path.join("data", "daily_equity.csv")
+        starting_capital = DEFAULT_STARTING_CAPITAL
+
         if os.path.exists(equity_file):
             logger.info("Loading daily_equity.csv for equity curve.")
             equity_df = pd.read_csv(equity_file)
-            equity_df['timestamp'] = pd.to_datetime(equity_df['timestamp'])
+            if not equity_df.empty:
+                equity_df['timestamp'] = pd.to_datetime(equity_df['timestamp'])
+                equity_df = equity_df.sort_values('timestamp')
+                starting_capital = equity_df.iloc[0]['total_value_usd']
+                logger.info(f"Dynamic Starting Capital from History: ${starting_capital:,.2f}")
+            else:
+                logger.warning("daily_equity.csv is empty, using default starting capital.")
+        else:
+            logger.warning(f"daily_equity.csv not found, using default starting capital: ${starting_capital:,.2f}")
 
         # --- Generate Report Sections and get P&L values from LIVE data ---
         open_positions_report, unrealized_pnl = generate_open_positions_report(live_portfolio)
@@ -396,12 +406,12 @@ async def analyze_performance(config: dict) -> dict | None:
         # Calculate LTD Total P&L from Equity (if available)
         ltd_total_pnl = None
         if live_net_liq:
-            ltd_total_pnl = live_net_liq - STARTING_CAPITAL
+            ltd_total_pnl = live_net_liq - starting_capital
             logger.info(f"Calculated LTD Total P&L (Equity): ${ltd_total_pnl:,.2f}")
         elif not equity_df.empty:
             # Fallback to last recorded equity
             last_equity = equity_df['total_value_usd'].iloc[-1]
-            ltd_total_pnl = last_equity - STARTING_CAPITAL
+            ltd_total_pnl = last_equity - starting_capital
             logger.warning("Using last recorded equity for LTD P&L (Live NetLiq unavailable).")
 
         # Generate the executive summary with a mix of live daily data and historical ledger data
@@ -420,7 +430,7 @@ async def analyze_performance(config: dict) -> dict | None:
         # Do not generate charts if the ledger is empty to avoid errors
         chart_paths = []
         if not trade_df.empty:
-            chart_paths = generate_performance_charts(trade_df, signals_df, equity_df, STARTING_CAPITAL)
+            chart_paths = generate_performance_charts(trade_df, signals_df, equity_df, starting_capital)
         else:
             logger.warning("Trade ledger is empty, skipping chart generation.")
 
