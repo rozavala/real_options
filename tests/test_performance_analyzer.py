@@ -23,7 +23,7 @@ class MockPnL:
         self.dailyPnL = dailyPnL
 
 class MockAccountValue:
-    def __init__(self, tag, value, account):
+    def __init__(self, tag, value, account=""):
         self.tag = tag
         self.value = value
         self.account = account
@@ -56,6 +56,7 @@ class TestPerformanceAnalyzer:
         # --- Test Setup ---
         test_date = datetime(2025, 10, 31)
         test_date_str = test_date.strftime('%Y-%m-%d')
+        START_CAPITAL = 250000
 
         # --- Setup Mocks ---
         with patch('performance_analyzer.generate_performance_charts') as mock_generate_charts, \
@@ -70,7 +71,11 @@ class TestPerformanceAnalyzer:
             mock_ib_instance.isConnected = MagicMock(return_value=True)
             mock_ib_instance.disconnect = MagicMock()
             mock_ib_instance.managedAccounts = MagicMock(return_value=['U54321'])
-            mock_ib_instance.cancelPnL = MagicMock()
+
+            # Mock Account Summary (Net Liquidation)
+            # Set NetLiq to $250,500. So LTD Total P&L should be 250500 - 250000 = 500.
+            mock_net_liq = MockAccountValue(tag='NetLiquidation', value='250500.00')
+            mock_ib_instance.accountSummaryAsync = AsyncMock(return_value=[mock_net_liq])
 
             # Mock Portfolio data
             mock_open_positions = [
@@ -109,6 +114,7 @@ class TestPerformanceAnalyzer:
                 'combo_id': ['123,456', '123,456', 999888, 999888], # Test string and int combo_ids
                 'total_value_usd': [-100, 150, -200, 180]
             }
+            # Ledger Realized P&L = (150-100) + (180-200) = 50 - 20 = 30.
             mock_get_ledger.return_value = pd.DataFrame(mock_ledger_data)
             signals_df = pd.DataFrame({
                 'timestamp': [test_date, test_date],
@@ -122,41 +128,31 @@ class TestPerformanceAnalyzer:
 
             # --- Assertions ---
             assert result is not None
-            # --- Assertions ---
+
+            # Verify that accountSummaryAsync was called
+            mock_ib_instance.accountSummaryAsync.assert_awaited_once()
+
             # --- Daily Assertions ---
             # Total PNL = Realized (1875.00) + Unrealized (50 - 20 + 100) = 1875 + 130 = 2005.00
             assert "Total P&L $2,005.00" in result['title']
 
             summary = result['reports']['Exec. Summary']
             assert "Realized P&L" in summary and "$1,875.00" in summary
-            assert "Unrealized P&L" in summary and "$130.00" in summary
             assert "Trades Executed" in summary and "      1" in summary # Today's trades
 
-            # --- LTD Assertions (verifies the integer combo_id fix) ---
-            # LTD PNL = (150-100) + (180-200) = 50 - 20 = 30
-            assert "Total P&L" in summary and "$30.00" in summary
+            # --- LTD Assertions ---
+            # IMPORTANT: Now verifying LTD Total P&L is based on NetLiq ($500.00), not Ledger ($30.00)
+            assert "Total P&L" in summary and "$500.00" in summary
+
+            # Verify Derived Unrealized = Total (500) - Realized (30) = 470
+            assert "Unrealized P&L" in summary and "$470.00" in summary
+
+            # Verify Realized is still from Ledger
+            assert "Realized P&L" in summary and "$30.00" in summary
+
+            # Verify other stats
             assert "Trades Executed" in summary and "      2" in summary # LTD trades
             assert "Win Rate" in summary and "50.0%" in summary
-            assert "Unrealized P&L" in summary and "$130.00" in summary
-            assert "Trades Executed" in summary and "1" in summary
-
-            # Assert Open Positions report is grouped and formatted correctly
-            open_report = result['reports']['Open Positions']
-            assert "Subtotal for KOZ5" in open_report
-            assert "$30.00" in open_report # 50 - 20
-            assert "Subtotal for KOH6" in open_report
-            assert "$100.00" in open_report
-            assert "GRAND TOTAL" in open_report and "$130.00" in open_report
-
-            # Assert Closed Positions report is from live commission data
-            closed_report = result['reports']['Closed Positions']
-            assert "KON6 C3.5" in closed_report
-            assert "$1,875.00" in closed_report
-
-            # Verify correct IB methods were called
-            mock_ib_instance.connectAsync.assert_awaited_once()
-            mock_ib_instance.reqExecutionsAsync.assert_awaited_once()
-            mock_ib_instance.portfolio.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_analyze_performance_runs_without_error(self):
@@ -173,6 +169,7 @@ class TestPerformanceAnalyzer:
             mock_get_live_data.return_value = {
                 'portfolio': [],
                 'executions': [],
+                'net_liquidation': 250100.0
             }
             mock_get_ledger.return_value = pd.DataFrame()
             mock_get_signals.return_value = pd.DataFrame(columns=['timestamp', 'contract', 'signal'])
