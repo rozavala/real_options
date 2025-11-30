@@ -398,6 +398,8 @@ with tab1:
 with tab2:
     st.subheader("Strategy vs. Benchmarks")
     if not trade_df.empty and not benchmarks.empty:
+        trade_df_sorted = trade_df.sort_values('timestamp')
+
         # Prepare Bot Data (Daily Equity)
         # Check for daily_equity.csv first (for accurate Equity Curve)
         equity_file = os.path.join("data", "daily_equity.csv")
@@ -410,7 +412,6 @@ with tab2:
         else:
             # Fallback to Cash Flow (The "Dip" / "Spike" chart)
             st.warning("⚠️ daily_equity.csv not found. Showing Cash Flow instead of Equity.")
-            trade_df_sorted = trade_df.sort_values('timestamp')
             daily_bot = trade_df_sorted.set_index('timestamp').resample('D')['total_value_usd'].sum().cumsum().ffill()
             bot_series = (daily_bot / STARTING_CAPITAL) * 100
 
