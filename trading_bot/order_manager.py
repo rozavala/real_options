@@ -157,12 +157,13 @@ async def generate_and_queue_orders(config: dict):
                 future_month = signal.get("contract_month", "N/A")
                 if signal['prediction_type'] == 'DIRECTIONAL':
                     direction = signal.get("direction", "N/A")
-                    signal_summary_parts.append(f"  - <b>{future_month}</b>: {direction} signal")
+                    reason = signal.get("reason", "N/A")
+                    signal_summary_parts.append(f"  - <b>{future_month}</b>: {direction} ({reason})")
                 elif signal['prediction_type'] == 'VOLATILITY':
                     vol_level = signal.get("level", "N/A")
                     signal_summary_parts.append(f"  - <b>{future_month}</b>: {vol_level} Volatility signal")
 
-        signal_summary = "<b>Signals from Local Model:</b>\n" + "\n".join(signal_summary_parts)
+        signal_summary = "<b>Signals from Two-Brain Model:</b>\n" + "\n".join(signal_summary_parts)
 
         # 2. Summarize the queued orders
         order_summary_parts = []
