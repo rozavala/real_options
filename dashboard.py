@@ -242,12 +242,18 @@ def fetch_portfolio_data(config, trade_ledger_df):
                         if current_pos_size == 0:
                             current_open_date = trade['timestamp']
 
-                        current_pos_size += trade['quantity']
+                        # Check action to determine sign of quantity
+                        qty = trade['quantity']
+                        if trade['action'] == 'SELL':
+                            qty = -qty
+
+                        current_pos_size += qty
+
+                        # Handle float precision issues
+                        if abs(current_pos_size) < 1e-9:
+                            current_pos_size = 0
 
                         # If position returns to zero, reset the open date
-                        # Note: This logic assumes simple long/short cycles.
-                        # If we flip from Long 1 to Short 1 directly, it might need more complex logic,
-                        # but typically we close to 0 first or validly consider the flip point as new start.
                         if current_pos_size == 0:
                             current_open_date = None
 
