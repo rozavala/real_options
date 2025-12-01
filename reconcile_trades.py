@@ -20,10 +20,169 @@ import pandas as pd
 # Removed ib_insync imports
 
 from config_loader import load_config
+from notifications import send_pushover_notification
 
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("TradeReconciler")
+
+
+def parse_position_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
+    """
+    Parses the raw CSV string from the Active Position Flex Query (ID 1341164)
+    into a DataFrame. Expected columns: Symbol, Quantity, CostBasisPrice, FifoPnlUnrealized, OpenDateTime.
+    """
+    if not csv_data or not csv_data.strip():
+        logger.warning("Received empty CSV data from Position Flex Query.")
+        return pd.DataFrame()
+
+    try:
+        df = pd.read_csv(io.StringIO(csv_data))
+        logger.info(f"Parsed {len(df)} positions from the Flex Query report.")
+    except pd.errors.EmptyDataError:
+        logger.warning("Position Flex Query report was empty.")
+        return pd.DataFrame()
+    except Exception as e:
+        logger.error(f"Failed to read Position CSV data: {e}", exc_info=True)
+        return pd.DataFrame()
+
+    if df.empty:
+        return pd.DataFrame()
+
+    # Normalize columns if needed, though they should match what's requested
+    # The user listed: Symbol, Quantity, CostBasisPrice, FifoPnlUnrealized, OpenDateTime
+    # We might need to handle different column names if IBKR returns them slightly differently
+    # e.g. 'OpenDateTime' vs 'Open Date/Time'. For now, assuming direct mapping or slight variations.
+
+    # Just ensuring we have the key columns
+    required_cols = ['Symbol', 'Quantity']
+    for col in required_cols:
+        if col not in df.columns:
+            logger.error(f"Missing required column '{col}' in Position Flex Query. Available: {df.columns.tolist()}")
+            return pd.DataFrame()
+
+    # Convert Quantity to numeric
+    df['Quantity'] = pd.to_numeric(df['Quantity'], errors='coerce').fillna(0)
+
+    return df
+
+
+def get_local_active_positions(ledger: pd.DataFrame = None) -> pd.DataFrame:
+    """
+    Calculates the system's view of active positions by aggregating the trade ledger.
+    Returns a DataFrame with index 'Symbol' and column 'Quantity'.
+    """
+    if ledger is None:
+        ledger = get_trade_ledger_df()
+
+    if ledger.empty:
+        return pd.DataFrame(columns=['Quantity'])
+
+    # Map 'action' to sign: BUY -> +1, SELL -> -1.
+    # NOTE: The trade ledger 'quantity' is absolute.
+    # Standard convention: Long is +, Short is -.
+    # Opening a Long: BUY (+). Closing a Long: SELL (-).
+    # Opening a Short: SELL (-). Closing a Short: BUY (+).
+    # This implies BUY adds to position (algebraically) and SELL subtracts?
+    # Wait.
+    # If I Buy 1 contract, my position is +1.
+    # If I Sell 1 contract (to close), my position is 0.
+    # If I Sell 1 contract (to open short), my position is -1.
+    # If I Buy 1 contract (to close short), my position is 0.
+    # So: BUY is always +Quantity, SELL is always -Quantity.
+
+    ledger['signed_quantity'] = ledger.apply(
+        lambda row: row['quantity'] if row['action'] == 'BUY' else -row['quantity'], axis=1
+    )
+
+    # Group by Symbol and sum
+    # Note: 'local_symbol' in ledger corresponds to 'Symbol' in Flex Query
+    positions = ledger.groupby('local_symbol')['signed_quantity'].sum().reset_index()
+    positions.rename(columns={'local_symbol': 'Symbol', 'signed_quantity': 'Quantity'}, inplace=True)
+
+    # Filter out closed positions (Quantity == 0)
+    positions = positions[positions['Quantity'] != 0]
+
+    return positions
+
+
+async def reconcile_active_positions(config: dict):
+    """
+    Fetches the active positions Flex Query and compares it with the local ledger.
+    Sends a notification if discrepancies are found.
+    """
+    logger.info("Starting Active Position Reconciliation...")
+
+    query_id = config.get('flex_query', {}).get('active_positions_query_id')
+    token = config.get('flex_query', {}).get('token')
+
+    if not query_id or not token:
+        logger.warning("Missing 'active_positions_query_id' or 'token' in config. Skipping position check.")
+        return
+
+    # 1. Fetch IB Active Positions
+    csv_data = await fetch_flex_query_report(token, query_id)
+    if not csv_data:
+        logger.warning("Failed to fetch Active Position report.")
+        return
+
+    ib_positions = parse_position_flex_csv_to_df(csv_data)
+
+    # 2. Get Local Active Positions
+    # Load full ledger first to check for recent trades
+    full_ledger = get_trade_ledger_df()
+    local_positions = get_local_active_positions(full_ledger)
+
+    # 3. Exclude symbols traded recently (last 24 hours)
+    # Positions with recent activity might not be reflected in the Flex Query yet.
+    skipped_symbols = set()
+    if not full_ledger.empty and 'timestamp' in full_ledger.columns:
+        # Assuming timestamps are timezone-aware (UTC) as per get_trade_ledger_df
+        now_utc = pd.Timestamp.now(tz='UTC')
+        cutoff_time = now_utc - pd.Timedelta(hours=24)
+
+        recent_trades = full_ledger[full_ledger['timestamp'] >= cutoff_time]
+        skipped_symbols = set(recent_trades['local_symbol'].unique())
+
+        if skipped_symbols:
+            logger.info(f"Skipping reconciliation for recently traded symbols: {skipped_symbols}")
+
+    # 4. Compare
+    # Merge on Symbol
+    # We use outer join to catch symbols present in one but not the other
+    merged = pd.merge(ib_positions, local_positions, on='Symbol', how='outer', suffixes=('_ib', '_local'))
+
+    # Filter out skipped symbols
+    merged = merged[~merged['Symbol'].isin(skipped_symbols)]
+
+    merged['Quantity_ib'] = merged['Quantity_ib'].fillna(0)
+    merged['Quantity_local'] = merged['Quantity_local'].fillna(0)
+
+    merged['Diff'] = merged['Quantity_ib'] - merged['Quantity_local']
+
+    # Filter for discrepancies (Diff != 0), handling potential float inaccuracies
+    discrepancies = merged[merged['Diff'].abs() > 0.0001]
+
+    if not discrepancies.empty:
+        logger.warning(f"Found {len(discrepancies)} position discrepancies.")
+
+        message_lines = ["Active Position Discrepancies Found:"]
+        for _, row in discrepancies.iterrows():
+            sym = row['Symbol']
+            ib_qty = row['Quantity_ib']
+            loc_qty = row['Quantity_local']
+            message_lines.append(f"- {sym}: IB={ib_qty}, Local={loc_qty}")
+
+        message = "\n".join(message_lines)
+
+        # Send Notification
+        send_pushover_notification(
+            config.get('notifications', {}),
+            "Position Reconciliation Alert",
+            message
+        )
+    else:
+        logger.info("Active Position Reconciliation complete. No discrepancies found.")
 
 
 def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):

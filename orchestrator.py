@@ -25,7 +25,7 @@ from config_loader import load_config
 from logging_config import setup_logging
 from notifications import send_pushover_notification
 from performance_analyzer import main as run_performance_analysis
-from reconcile_trades import main as run_reconciliation
+from reconcile_trades import main as run_reconciliation, reconcile_active_positions
 from trading_bot.order_manager import (
     generate_and_execute_orders,
     close_positions_after_5_days,
@@ -150,6 +150,7 @@ async def reconcile_and_notify(config: dict):
     """Runs the trade reconciliation and sends a notification if discrepancies are found."""
     logger.info("--- Starting trade reconciliation ---")
     try:
+        # 1. Reconcile Trade Executions (Historical/Today)
         missing_df, superfluous_df = await run_reconciliation()
 
         if not missing_df.empty or not superfluous_df.empty:
@@ -168,6 +169,10 @@ async def reconcile_and_notify(config: dict):
             )
         else:
             logger.info("Trade reconciliation complete. No discrepancies found.")
+
+        # 2. Reconcile Active Positions (Live Snapshot)
+        await reconcile_active_positions(config)
+
     except Exception as e:
         logger.critical(f"An error occurred during trade reconciliation: {e}\n{traceback.format_exc()}")
 
