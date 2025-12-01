@@ -10,6 +10,7 @@ import sys
 import random
 import math
 import yfinance as yf
+from collections import deque
 
 # --- 1. Asyncio Event Loop Fix for Streamlit ---
 # Essential to prevent crashes when using asyncio libraries in Streamlit
@@ -216,7 +217,7 @@ def fetch_portfolio_data(config, trade_ledger_df):
         
         # Prepare ledger for lookup
         if not trade_ledger_df.empty:
-            # Sort by timestamp to find the FIRST trade easily
+            # Sort by timestamp to ensure chronological processing
             sorted_ledger = trade_ledger_df.sort_values('timestamp')
         else:
             sorted_ledger = pd.DataFrame()
@@ -225,42 +226,88 @@ def fetch_portfolio_data(config, trade_ledger_df):
         for item in portfolio:
             symbol = item.contract.localSymbol
             
-            # Logic to find "Days Held"
+            # Logic to find "Days Held" using FIFO Lot Matching
             days_held = 0
             open_date_str = 'N/A'
             
             if not sorted_ledger.empty:
-                # Iterate through sorted trades to find the start of the CURRENT active position cycle
+                # Iterate through sorted trades to reconstruct position inventory
                 symbol_trades = sorted_ledger[sorted_ledger['local_symbol'] == symbol]
 
                 if not symbol_trades.empty:
-                    current_pos_size = 0
-                    current_open_date = None
+                    # Inventory Stack: List of (signed_quantity, timestamp)
+                    inventory = deque()
 
                     for _, trade in symbol_trades.iterrows():
-                        # If position was flat, this trade opens a new cycle
-                        if current_pos_size == 0:
-                            current_open_date = trade['timestamp']
-
-                        # Check action to determine sign of quantity
-                        qty = trade['quantity']
+                        t_qty = trade['quantity']
+                        # Standardize quantity sign: SELL is negative
                         if trade['action'] == 'SELL':
-                            qty = -qty
+                            t_qty = -t_qty
 
-                        current_pos_size += qty
+                        if not inventory:
+                            inventory.append((t_qty, trade['timestamp']))
+                            continue
 
-                        # Handle float precision issues
-                        if abs(current_pos_size) < 1e-9:
-                            current_pos_size = 0
+                        head_qty, head_ts = inventory[0]
 
-                        # If position returns to zero, reset the open date
-                        if current_pos_size == 0:
-                            current_open_date = None
+                        # If trade increases position (Same Sign)
+                        if (t_qty > 0 and head_qty > 0) or (t_qty < 0 and head_qty < 0):
+                            inventory.append((t_qty, trade['timestamp']))
+                        else:
+                            # Trade reduces position (Different Sign) -> Consume oldest lots (FIFO)
+                            remaining_close = abs(t_qty)
 
-                    # If we ended with an open position, calculate days from that cycle's start
-                    if current_open_date is not None and current_pos_size != 0:
-                        days_held = (datetime.now() - current_open_date).days
-                        open_date_str = current_open_date.strftime('%Y-%m-%d')
+                            while remaining_close > 0 and inventory:
+                                lot_qty, lot_ts = inventory[0]
+
+                                # Break if we flipped direction unexpectedly (shouldn't happen with standard FIFO)
+                                if (lot_qty > 0 and t_qty > 0) or (lot_qty < 0 and t_qty < 0):
+                                     break
+
+                                matched = min(abs(lot_qty), remaining_close)
+                                remaining_close -= matched
+
+                                new_lot_qty = abs(lot_qty) - matched
+
+                                if new_lot_qty < 1e-9:
+                                    inventory.popleft() # Fully consumed this lot
+                                else:
+                                    # Partially consumed, update head
+                                    # Preserve original sign
+                                    new_signed_qty = new_lot_qty if lot_qty > 0 else -new_lot_qty
+                                    inventory[0] = (new_signed_qty, lot_ts)
+
+                            # If we over-closed and flipped direction
+                            if remaining_close > 1e-9:
+                                remaining_signed = remaining_close if t_qty > 0 else -remaining_close
+                                inventory.append((remaining_signed, trade['timestamp']))
+
+                    # Now reconcile Inventory with Real Position from IB
+                    # Logic: If Ledger Inventory > Real Position (due to missing trades),
+                    # we assume the OLDEST lots in the inventory were sold/expired.
+                    # So we keep the NEWEST lots that sum up to the Real Position.
+
+                    real_qty = item.position
+                    target_abs = abs(real_qty)
+                    collected = 0
+                    active_lots = []
+
+                    # Iterate BACKWARDS (Newest -> Oldest) to find the active constituents
+                    for qty, ts in reversed(list(inventory)):
+                        if abs(collected - target_abs) < 1e-9:
+                            break
+
+                        needed = target_abs - collected
+                        take = min(abs(qty), needed)
+                        collected += take
+                        active_lots.append(ts)
+
+                    if active_lots:
+                        # The "Open Date" is the oldest of the ACTIVE lots
+                        # active_lots is populated Newest -> Oldest, so the last element is the oldest active
+                        oldest_active_ts = active_lots[-1]
+                        days_held = (datetime.now() - oldest_active_ts).days
+                        open_date_str = oldest_active_ts.strftime('%Y-%m-%d')
 
             position_data.append({
                 "Symbol": symbol,
