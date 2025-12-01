@@ -32,7 +32,7 @@ from trading_bot.order_manager import (
     cancel_all_open_orders,
 )
 from trading_bot.utils import archive_trade_ledger
-from equity_logger import log_equity_snapshot
+from equity_logger import log_equity_snapshot, sync_equity_from_flex
 
 # --- Logging Setup ---
 setup_logging()
@@ -175,6 +175,10 @@ async def reconcile_and_notify(config: dict):
 async def reconcile_and_analyze(config: dict):
     """Runs reconciliation, then analysis and archiving."""
     logger.info("--- Kicking off end-of-day reconciliation and analysis process ---")
+
+    # Run Equity Sync before analysis to ensure reports use the official broker NAV history
+    await sync_equity_from_flex(config)
+
     await reconcile_and_notify(config)
     await analyze_and_archive(config)
     logger.info("--- End-of-day reconciliation and analysis process complete ---")
