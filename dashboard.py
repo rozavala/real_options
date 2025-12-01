@@ -230,15 +230,31 @@ def fetch_portfolio_data(config, trade_ledger_df):
             open_date_str = 'N/A'
             
             if not sorted_ledger.empty:
-                # Find 'Strategy Execution' trades for this symbol
-                relevant_trades = sorted_ledger[
-                    (sorted_ledger['local_symbol'] == symbol) & 
-                    (sorted_ledger['reason'] == 'Strategy Execution')
-                ]
-                if not relevant_trades.empty:
-                    first_trade_date = relevant_trades.iloc[0]['timestamp']
-                    days_held = (datetime.now() - first_trade_date).days
-                    open_date_str = first_trade_date.strftime('%Y-%m-%d')
+                # Iterate through sorted trades to find the start of the CURRENT active position cycle
+                symbol_trades = sorted_ledger[sorted_ledger['local_symbol'] == symbol]
+
+                if not symbol_trades.empty:
+                    current_pos_size = 0
+                    current_open_date = None
+
+                    for _, trade in symbol_trades.iterrows():
+                        # If position was flat, this trade opens a new cycle
+                        if current_pos_size == 0:
+                            current_open_date = trade['timestamp']
+
+                        current_pos_size += trade['quantity']
+
+                        # If position returns to zero, reset the open date
+                        # Note: This logic assumes simple long/short cycles.
+                        # If we flip from Long 1 to Short 1 directly, it might need more complex logic,
+                        # but typically we close to 0 first or validly consider the flip point as new start.
+                        if current_pos_size == 0:
+                            current_open_date = None
+
+                    # If we ended with an open position, calculate days from that cycle's start
+                    if current_open_date is not None and current_pos_size != 0:
+                        days_held = (datetime.now() - current_open_date).days
+                        open_date_str = current_open_date.strftime('%Y-%m-%d')
 
             position_data.append({
                 "Symbol": symbol,
