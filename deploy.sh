@@ -25,7 +25,11 @@ source ~/Desktop/ib_env/bin/activate
 echo "--- 4. Installing/updating dependencies... ---"
 pip install -r requirements.txt
 
-echo "--- 5. Starting the new bot & dashboard... ---"
+echo "--- 5. Syncing Equity Data... ---"
+# Ensure local data is in sync with IBKR before starting
+python ~/real_options/equity_logger.py --sync || true
+
+echo "--- 6. Starting the new bot & dashboard... ---"
 # Start Orchestrator
 nohup python -u ~/real_options/orchestrator.py >> ~/real_options/logs/orchestrator.log 2>&1 &
 

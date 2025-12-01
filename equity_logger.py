@@ -2,12 +2,125 @@ import asyncio
 import logging
 import os
 import random
-from datetime import datetime, timedelta
+import sys
+from datetime import datetime, timedelta, time
 import pandas as pd
 from ib_insync import IB
+import httpx
+
+# Use absolute imports if running as a script within the package
+if __name__ == "__main__":
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
+    from config_loader import load_config
+    from logging_config import setup_logging
+    # We can't easily import from reconcile_trades if it's a script in the same dir
+    # unless we treat the dir as a package or add it to path.
+    # We already added '.' to path.
+    from reconcile_trades import fetch_flex_query_report, parse_flex_csv_to_df
+else:
+    from config_loader import load_config
+    from reconcile_trades import fetch_flex_query_report, parse_flex_csv_to_df
 
 # Setup logging
 logger = logging.getLogger("EquityLogger")
+
+async def sync_equity_from_flex(config: dict):
+    """
+    Fetches the last 365 days of Net Asset Value from IBKR Flex Query (ID 1341111)
+    and updates `data/daily_equity.csv`.
+
+    The Flex Query returns 'ReportDate' and 'Total'.
+    This function normalizes the date to closing time (17:00 NY Time) and saves
+    the file to ensure the local equity history matches the broker's official record.
+    """
+    logger.info("--- Starting Equity Synchronization from Flex Query ---")
+
+    query_id = "1341111"
+    try:
+        token = config['flex_query']['token']
+    except KeyError:
+        logger.error("Config missing 'flex_query' token. Cannot sync equity.")
+        return
+
+    # 1. Fetch Report
+    csv_data = await fetch_flex_query_report(token, query_id)
+    if not csv_data:
+        logger.error("Failed to fetch Equity Flex Query report.")
+        return
+
+    # 2. Parse CSV from Flex Query
+    try:
+        # Use fallback for StringIO
+        import io
+        flex_df = pd.read_csv(io.StringIO(csv_data))
+    except Exception as e:
+        logger.error(f"Error reading CSV data: {e}")
+        return
+
+    if flex_df.empty:
+        logger.warning("Equity Flex Query report is empty.")
+        return
+
+    # 3. Process Flex Query Data
+    if 'ReportDate' not in flex_df.columns or 'Total' not in flex_df.columns:
+        logger.error(f"Equity report missing expected columns. Found: {flex_df.columns.tolist()}")
+        return
+
+    try:
+        # Normalize Date from 'YYYYMMDD' (e.g. 20250602)
+        flex_df['ReportDate'] = pd.to_datetime(flex_df['ReportDate'].astype(str), format='%Y%m%d')
+
+        # Set time to 17:00:00 to represent "closing" value consistent with snapshot
+        flex_df['timestamp'] = flex_df['ReportDate'] + pd.Timedelta(hours=17)
+
+        # Normalize Total
+        flex_df['total_value_usd'] = pd.to_numeric(flex_df['Total'], errors='coerce')
+
+        # Select and clean
+        flex_df = flex_df[['timestamp', 'total_value_usd']].dropna()
+
+    except Exception as e:
+        logger.error(f"Error processing Equity Flex Query data: {e}", exc_info=True)
+        return
+
+    # 4. Merge with Local Data (Preserving extra local data)
+    file_path = os.path.join("data", "daily_equity.csv")
+
+    final_df = flex_df.copy() # Start with Flex data as base (Source of Truth)
+
+    if os.path.exists(file_path):
+        try:
+            local_df = pd.read_csv(file_path)
+            if not local_df.empty and 'timestamp' in local_df.columns:
+                local_df['timestamp'] = pd.to_datetime(local_df['timestamp'])
+
+                # Find timestamps in local that are NOT in Flex
+                # We use timestamp as the key.
+                # Since we standardized Flex timestamps to 17:00, ensure local ones match or handled correctly.
+                # If local has data for a day not in Flex, we keep it.
+
+                # Identify rows in local_df where timestamp is NOT in flex_df['timestamp']
+                unique_local = local_df[~local_df['timestamp'].isin(flex_df['timestamp'])]
+
+                if not unique_local.empty:
+                    logger.info(f"Preserving {len(unique_local)} local equity records not present in Flex Query.")
+                    final_df = pd.concat([final_df, unique_local], ignore_index=True)
+        except Exception as e:
+            logger.warning(f"Could not read existing local equity file for merging: {e}")
+
+    # 5. Save to CSV
+    try:
+        # Sort by timestamp
+        final_df = final_df.sort_values('timestamp')
+
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+        final_df.to_csv(file_path, index=False)
+        logger.info(f"Successfully synced {len(final_df)} equity records to {file_path}.")
+    except Exception as e:
+         logger.error(f"Failed to write to {file_path}: {e}")
+
 
 async def log_equity_snapshot(config: dict):
     """
@@ -29,25 +142,6 @@ async def log_equity_snapshot(config: dict):
         await ib.connectAsync(host, port, clientId=client_id)
 
         # 2. Fetch Net Liquidation
-        # accountSummary returns a list of AccountValue objects
-        # Note: accountSummary() is synchronous, but reqAccountSummaryAsync is async.
-        # ib_insync's accountSummary() returns cached values if subscribed, or fetches if not?
-        # Actually accountSummary() is a blocking call in sync mode. In async mode, we should use:
-        # await ib.reqAccountSummaryAsync() might not be available or returns subscription.
-        # correct way in async:
-        # await ib.connectAsync(...)
-        # values = await ib.accountSummaryAsync() (if available) or:
-        # In newer ib_insync, accountSummary() fetches if not subscribed.
-        # However, to be safe, we can run it in executor or check docs.
-        # Standard usage:
-        # summary = await ib.accountSummaryAsync()
-        # But wait, looking at ib_insync source/docs, accountSummary() is often synchronous blocking call?
-        # No, let's use the one that definitely works.
-        # We can use ib.accountSummary() but inside a loop it might block.
-        # But since we are connected via connectAsync, we should use non-blocking calls.
-        # Actually, let's stick to the method that retrieves data.
-
-        # Use the async method to avoid blocking the event loop or causing runtime errors
         summary = await ib.accountSummaryAsync()
 
         net_liq = 0.0
@@ -66,9 +160,11 @@ async def log_equity_snapshot(config: dict):
             return
 
         # 3. Prepare Data
-        # We use today's date (normalized to midnight for daily series)
+        # Use today's date at 17:00 to match the sync format (closing time)
         today = datetime.now().date()
-        new_row = {'timestamp': pd.Timestamp(today), 'total_value_usd': net_liq}
+        timestamp = datetime.combine(today, time(17, 0, 0))
+
+        new_row = {'timestamp': timestamp, 'total_value_usd': net_liq}
 
         # 4. Load or Create CSV
         if os.path.exists(file_path):
@@ -76,13 +172,14 @@ async def log_equity_snapshot(config: dict):
             df['timestamp'] = pd.to_datetime(df['timestamp'])
         else:
             logger.info(f"{file_path} not found. Creating new file with backfill.")
-            # Backfill logic: Assume $50k start if file is new
-            start_date = pd.Timestamp(today - timedelta(days=1))
+            start_date = timestamp - timedelta(days=1)
             df = pd.DataFrame([
-                {'timestamp': start_date, 'total_value_usd': 50000.0}
+                {'timestamp': start_date, 'total_value_usd': 50000.0} # Arbitrary fallback
             ])
 
         # 5. Append and Save
+        # Remove existing entry for today if any (to update it)
+        # Note: We compare dates only
         df = df[df['timestamp'].dt.date != today]
 
         new_df = pd.DataFrame([new_row])
@@ -101,14 +198,18 @@ async def log_equity_snapshot(config: dict):
 
 if __name__ == "__main__":
     # Standalone execution
-    import sys
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
-    from config_loader import load_config
-    from logging_config import setup_logging
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sync', action='store_true', help='Sync equity from Flex Query')
+    args = parser.parse_args()
 
     setup_logging()
     cfg = load_config()
+
     if cfg:
-        asyncio.run(log_equity_snapshot(cfg))
+        if args.sync:
+            asyncio.run(sync_equity_from_flex(cfg))
+        else:
+            asyncio.run(log_equity_snapshot(cfg))
     else:
         print("Could not load config.")
