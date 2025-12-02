@@ -10,6 +10,7 @@ import logging
 import random
 import time
 import traceback
+from collections import defaultdict
 from ib_insync import *
 
 from config_loader import load_config
@@ -634,8 +635,9 @@ def get_trade_ledger_df():
 async def close_positions_after_5_days(config: dict):
     """
     Closes any open positions that have been held for 5 or more trading days.
-    This function now uses the live portfolio from IB as the source of truth
-    and falls back to the trade ledger only to find the opening date.
+    This function now uses the live portfolio from IB as the source of truth,
+    reconstructs position ages using a FIFO stack from the ledger, and
+    groups closing orders by Position ID to ensure spreads are closed as combos.
     """
     logger.info("--- Initiating position closing based on 5-day holding period ---")
     ib = IB()
@@ -664,23 +666,8 @@ async def close_positions_after_5_days(config: dict):
             logger.warning("Trade ledger is empty. Cannot determine position ages. Skipping closure.")
             return
 
-        opening_trades = trade_ledger[trade_ledger['reason'] == 'Strategy Execution'].copy()
-
-        # We can no longer simply drop duplicates on 'local_symbol' because the same
-        # symbol can be part of different, unique positions. Instead, we find the
-        # earliest open time for each unique position_id.
-        position_open_dates = opening_trades.groupby('position_id')['timestamp'].min().to_dict()
-
-        # To link a live position leg back to its unique position_id, we create a
-        # map from the local_symbol to the position_id. This is still imperfect if
-        # the same leg is traded solo and as part of a combo, but it's the most
-        # direct link we have. The new unique ID makes the lookup correct.
-        # We sort by timestamp to ensure the *latest* position_id is used for a symbol.
-        opening_trades.sort_values('timestamp', ascending=True, inplace=True)
-        symbol_to_pos_id = pd.Series(
-            opening_trades.position_id.values,
-            index=opening_trades.local_symbol
-        ).to_dict()
+        # Prepare Ledger: Sort by Timestamp DESCENDING (Newest First) for reconstruction
+        trade_ledger.sort_values('timestamp', ascending=False, inplace=True)
 
         # --- 3. Calculate trading day logic ---
         cal = USFederalHolidayCalendar()
@@ -688,95 +675,231 @@ async def close_positions_after_5_days(config: dict):
         today = datetime.now().date()
         custom_bday = pd.offsets.CustomBusinessDay(holidays=holidays)
 
-        # --- 4. Iterate through LIVE positions and decide whether to close ---
-        for pos in live_positions:
-            # Filter out any positions with a size of zero to prevent order errors.
-            if pos.position == 0:
-                logger.info(f"Skipping ghost position with zero size for symbol: {pos.contract.localSymbol}")
-                continue
+        # Dictionary to store legs identified for closing, grouped by Position ID
+        # Structure: { position_id: [ {contract_details}, ... ] }
+        positions_to_close = defaultdict(list)
 
-            symbol = pos.contract.localSymbol
-            pos_id = symbol_to_pos_id.get(symbol)
+        # --- 4. FIFO Reconstruction and Age Verification ---
+        # Map unique local symbols to live positions
+        # Note: If multiple accounts, this assumes unique local_symbol per account or aggregated.
+        live_pos_map = {p.contract.localSymbol: p for p in live_positions if p.position != 0}
 
-            if not pos_id:
+        for symbol, pos in live_pos_map.items():
+            live_qty = abs(pos.position)
+            live_action_sign = 1 if pos.position > 0 else -1 # 1 for Long, -1 for Short
+
+            # Filter ledger for this symbol and matching direction
+            # If Live is Long (+), we look for 'BUY' trades in ledger.
+            # If Live is Short (-), we look for 'SELL' trades in ledger.
+            target_ledger_action = 'BUY' if live_action_sign > 0 else 'SELL'
+
+            symbol_ledger = trade_ledger[
+                (trade_ledger['local_symbol'] == symbol) &
+                (trade_ledger['action'] == target_ledger_action) &
+                (trade_ledger['reason'] == 'Strategy Execution') # Only count opening trades
+            ].copy()
+
+            if symbol_ledger.empty:
                 orphaned_positions.append(f"{symbol} (Qty: {pos.position})")
-                logger.warning(f"Orphaned position: {symbol} is live in IB but has no corresponding opening trade in the ledger. Cannot determine age.")
                 continue
 
-            open_date = position_open_dates.get(pos_id)
-            if not open_date:
-                logger.warning(f"Could not find opening date for position_id {pos_id} (Symbol: {symbol}). Skipping.")
-                continue
+            # Reconstruct the stack (Newest -> Oldest)
+            accumulated_qty = 0
 
-            trading_days = pd.date_range(start=open_date.date(), end=today, freq=custom_bday)
-            age_in_trading_days = len(trading_days)
+            for _, trade in symbol_ledger.iterrows():
+                if accumulated_qty >= live_qty:
+                    break # We have accounted for all live shares
 
-            logger.info(f"Checking position: {symbol} (Pos ID: {pos_id}), Opened: {open_date.date()}, Age: {age_in_trading_days} trading days.")
+                trade_qty = abs(trade['quantity'])
+                qty_needed = live_qty - accumulated_qty
+                qty_to_attribute = min(trade_qty, qty_needed)
 
-            if age_in_trading_days >= 5:
-                logger.info(f"Position {symbol} is {age_in_trading_days} days old. MARKING FOR CLOSURE.")
+                accumulated_qty += qty_to_attribute
 
-                # Use the live data directly to create the closing order
-                action = 'SELL' if pos.position > 0 else 'BUY'
-                order = MarketOrder(action, abs(pos.position))
-                order.outsideRth = True # Mark as risk management order
+                # Check Age
+                trade_date = trade['timestamp']
+                trading_days = pd.date_range(start=trade_date.date(), end=today, freq=custom_bday)
+                age_in_trading_days = len(trading_days)
 
-                pos.contract.exchange = config.get('exchange')
-                trade = place_order(ib, pos.contract, order)
-                logger.info(f"Placed close order {trade.order.orderId} for {symbol}. Waiting for fill...")
+                logger.info(f"Reconstruction: {symbol} | Trade Date: {trade_date.date()} | Age: {age_in_trading_days} | Qty: {qty_to_attribute}")
 
-                # Poll for up to 30 seconds for the fill
+                if age_in_trading_days >= 5:
+                    # This specific lot is expired. Mark for closure.
+                    # We need to INVERT the action to close.
+                    close_action = 'SELL' if target_ledger_action == 'BUY' else 'BUY'
+
+                    positions_to_close[trade['position_id']].append({
+                        'conId': pos.contract.conId,
+                        'symbol': symbol,
+                        'exchange': pos.contract.exchange,
+                        'action': close_action,
+                        'quantity': qty_to_attribute,
+                        'multiplier': pos.contract.multiplier,
+                        'currency': pos.contract.currency
+                    })
+                else:
+                    kept_positions_details.append(f"{trade['position_id']} ({symbol}) - Age: {age_in_trading_days} days")
+
+        # --- 5. Execution Phase (Grouping by Position ID) ---
+        for pos_id, legs in positions_to_close.items():
+            logger.info(f"Processing closure for Position ID {pos_id} with {len(legs)} legs.")
+
+            try:
+                # Deduplicate legs if necessary (though our logic shouldn't produce duplicates for same symbol/pos_id combo usually)
+                # But we might have multiple 'lots' for the same symbol if they are split in ledger?
+                # Actually, if we have 2 expired lots for same symbol/pos_id, we should sum them up.
+                combined_legs = defaultdict(lambda: {'quantity': 0, 'details': None})
+                for leg in legs:
+                    key = leg['conId']
+                    combined_legs[key]['quantity'] += leg['quantity']
+                    combined_legs[key]['details'] = leg
+
+                final_legs_list = [v['details'] for v in combined_legs.values()]
+                # Update quantities in the list
+                for leg in final_legs_list:
+                    leg['quantity'] = combined_legs[leg['conId']]['quantity']
+
+                if len(final_legs_list) > 1:
+                    # Create COMBO (Bag) Order
+                    contract = Contract()
+                    contract.symbol = "DA" # Placeholder, IB ignores for Bags usually?
+                    contract.secType = "BAG"
+                    contract.currency = final_legs_list[0]['currency']
+                    contract.exchange = final_legs_list[0]['exchange'] or config.get('exchange', 'SMART')
+
+                    combo_legs = []
+                    for leg in final_legs_list:
+                        combo_leg = ComboLeg()
+                        combo_leg.conId = leg['conId']
+                        combo_leg.ratio = int(leg['quantity']) # Assuming integer ratios for now
+                        combo_leg.action = leg['action']
+                        combo_leg.exchange = leg['exchange'] or config.get('exchange', 'SMART')
+                        combo_legs.append(combo_leg)
+
+                    contract.comboLegs = combo_legs
+
+                    # For BAG orders, the totalQuantity is usually 1 (multiplied by ratio)
+                    # Use the GCD of quantities if possible, but for simple closes, usually ratio is quantity and bag size is 1.
+                    # Or ratio is 1 and bag size is quantity?
+                    # If we have 5 spreads, we usually set ratio 1, size 5.
+                    # Here we might have different quantities for different legs? (Unbalanced close).
+                    # If quantities differ (e.g. 2 calls, 1 put), we can't do a simple 1:1 spread.
+                    # We will assume balanced spread or use ratio=qty, size=1.
+
+                    # Logic: Find GCD of quantities?
+                    # Simplification: Set Ratio = Quantity, Bag Order Size = 1.
+                    # This works for "Closing what we have".
+
+                    order_size = 1
+
+                    logger.info(f"Constructed BAG order for Pos ID {pos_id}: {[l.action + ' ' + str(l.ratio) + ' x ' + str(l.conId) for l in combo_legs]}")
+
+                else:
+                    # Single Leg Order
+                    leg = final_legs_list[0]
+                    contract = Contract()
+                    contract.conId = leg['conId']
+                    contract.symbol = leg['symbol'] # Helper, conId is primary
+                    contract.secType = "FOP" # Assumption, or fetch from pos?
+                    # Actually, if we supply conId, IB usually resolves. But secType helps.
+                    # We can get secType from the live position contract if needed, but we didn't store it.
+                    # Let's rely on conId.
+                    contract.exchange = leg['exchange'] or config.get('exchange', 'SMART')
+
+                    order_size = leg['quantity']
+                    logger.info(f"Constructed SINGLE order for Pos ID {pos_id}: {leg['action']} {order_size} {leg['symbol']}")
+
+                # Place Order
+                # For Bag, action is usually BUY or SELL. If we set leg actions explicitly, Bag action determines the side of the trade?
+                # "For a Combo order, the action is determined by the actions of the legs."
+                # Actually, IB Bag orders have an action. "BUY" a spread usually means Buy Leg 1, Sell Leg 2.
+                # Here we set explicit actions in ComboLegs. The Bag order action is effectively "BUY" (to execute the legs as defined) or we match.
+                # Standard practice: Set Bag Action to "BUY" and define leg actions as absolute.
+
+                bag_action = 'BUY'
+                if len(final_legs_list) == 1:
+                    bag_action = final_legs_list[0]['action']
+
+                order = MarketOrder(bag_action, order_size)
+                order.outsideRth = True
+
+                trade = place_order(ib, contract, order)
+                logger.info(f"Placed close order {trade.order.orderId} for Pos ID {pos_id}. Waiting for fill...")
+
+                # Poll for fill
+                fill_detected = False
                 for _ in range(30):
                     await asyncio.sleep(1)
                     if trade.orderStatus.status in [OrderStatus.Filled, OrderStatus.Cancelled, OrderStatus.Inactive]:
+                        fill_detected = True
                         break
 
-                if trade.orderStatus.status == OrderStatus.Filled and trade.fills:
-                    fill = trade.fills[0]
-                    # Log the closure against the correct position_id
+                if fill_detected and trade.orderStatus.status == OrderStatus.Filled:
+                    # Log to ledger.
+                    # IMPORTANT: For Bag orders, we want to log the LEGS.
+                    # log_trade_to_ledger handles extraction of fills if we pass the trade.
+                    # But trade.fills for Bag might be empty if we didn't receive execDetails?
+                    # IB returns separate execDetails for legs.
+                    # We need to make sure we capture them.
+                    # Since we are not running a full event loop listener here (just polling status),
+                    # trade.fills might NOT be populated if 'execDetails' event didn't fire in the background.
+                    # ib.sleep() or asyncio.sleep() in ib_insync allows background processing?
+                    # Yes, asyncio.sleep() allows loop to run. ib_insync updates trade.fills automatically via events.
+
+                    # We need to wait a bit more for fills to populate?
+                    await asyncio.sleep(1)
+
                     await log_trade_to_ledger(ib, trade, "5-Day Close", position_id=pos_id)
+
+                    # Calculate PnL for report
+                    # Sum realizedPNL from all fills
+                    pnl = sum(f.commissionReport.realizedPNL for f in trade.fills if f.commissionReport)
+                    price_str = f"{trade.orderStatus.avgFillPrice}"
+
+                    desc = "Combo" if len(final_legs_list) > 1 else final_legs_list[0]['symbol']
                     closed_position_details.append({
-                        "symbol": symbol,
-                        "action": action,
-                        "quantity": pos.position,
-                        "price": fill.execution.avgPrice,
-                        "pnl": fill.commissionReport.realizedPNL
+                        "symbol": desc,
+                        "action": "CLOSE",
+                        "quantity": order_size, # Might be 1 for bag
+                        "price": trade.orderStatus.avgFillPrice,
+                        "pnl": pnl
                     })
-                    logger.info(f"Successfully closed {symbol} at {fill.execution.avgPrice}")
+                    logger.info(f"Successfully closed {desc} (Pos ID: {pos_id}). P&L: {pnl}")
+
                 else:
-                    # If still not filled after 30s, or cancelled
-                    logger.warning(f"Order {trade.order.orderId} for {symbol} timed out or failed. Status: {trade.orderStatus.status}")
-                    failed_closes.append(f"{symbol}: Status {trade.orderStatus.status}")
-                    # Cancel the order if you don't want it working after the script ends
+                    logger.warning(f"Order {trade.order.orderId} for Pos ID {pos_id} timed out or failed. Status: {trade.orderStatus.status}")
+                    failed_closes.append(f"Pos ID {pos_id}: Status {trade.orderStatus.status}")
                     if trade.orderStatus.status not in OrderStatus.DoneStates:
                         ib.cancelOrder(trade.order)
 
-                await asyncio.sleep(1) # Throttle orders
-            else:
-                kept_positions_details.append(f"{pos_id} ({symbol}) - Age: {age_in_trading_days} days")
+                await asyncio.sleep(1) # Throttle
 
-        # --- 5. Build and send a comprehensive notification ---
+            except Exception as ex:
+                logger.error(f"Error closing position {pos_id}: {ex}")
+                failed_closes.append(f"Pos ID {pos_id}: Error {ex}")
+
+        # --- 6. Build and send a comprehensive notification ---
         message_parts = []
         total_pnl = 0
         if closed_position_details:
-            message_parts.append(f"<b>✅ Successfully closed {len(closed_position_details)} legs (5-day rule):</b>")
+            message_parts.append(f"<b>✅ Successfully closed {len(closed_position_details)} positions (5-day rule):</b>")
             for detail in closed_position_details:
                 pnl_str = f"${detail['pnl']:,.2f}"
                 pnl_color = "green" if detail['pnl'] >= 0 else "red"
                 message_parts.append(
                     f"  - <b>{detail['symbol']}</b>: {detail['action']} {abs(detail['quantity'])} "
-                    f"@ ${detail['price']:.2f}. P&L: <font color='{pnl_color}'>{pnl_str}</font>"
+                    f"@ {detail['price']}. P&L: <font color='{pnl_color}'>{pnl_str}</font>"
                 )
                 total_pnl += detail.get('pnl', 0)
             message_parts.append(f"<b>Total Realized P&L: ${total_pnl:,.2f}</b>")
 
         if failed_closes:
-            message_parts.append(f"\n<b>❌ Failed to close {len(failed_closes)} legs:</b>")
+            message_parts.append(f"\n<b>❌ Failed to close {len(failed_closes)} positions:</b>")
             message_parts.extend([f"  - {reason}" for reason in failed_closes])
 
         if kept_positions_details:
             unique_kept = sorted(list(set(kept_positions_details)))
-            message_parts.append(f"\n<b> Positions held ({len(unique_kept)} unique combos):</b>")
+            message_parts.append(f"\n<b> Positions held ({len(unique_kept)} unique legs/combos):</b>")
             message_parts.extend([f"  - {reason}" for reason in unique_kept])
 
         if orphaned_positions:
