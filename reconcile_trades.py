@@ -649,7 +649,7 @@ async def main():
     ib_trades_df = pd.concat(all_ib_trades, ignore_index=True)
 
     # Deduplicate based on a composite key of trade properties
-    cols_to_check = ['timestamp', 'local_symbol', 'action', 'quantity', 'avg_fill_price']
+    cols_to_check = ['timestamp', 'local_symbol', 'action', 'quantity', 'avg_fill_price', 'combo_id']
     ib_trades_df.drop_duplicates(subset=cols_to_check, keep='first', inplace=True)
 
     logger.info(f"Consolidated to {len(ib_trades_df)} unique trades from all reports.")
