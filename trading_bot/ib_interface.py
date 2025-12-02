@@ -27,15 +27,16 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
     logging.info(f"Fetching market data for option: {contract.localSymbol}")
     # Generic tick list 106 provides model-based option greeks
     # Generic tick list 104 provides bid, ask, and last prices
-    ticker = ib.reqMktData(contract, '104,106', True, False)
-    await asyncio.sleep(2)  # Allow time for data to arrive
+    ticker = ib.reqMktData(contract, '104,106', False, False)
+    try:
+        await asyncio.sleep(2)  # Allow time for data to arrive
 
-    # Extract data from the ticker
-    bid = ticker.bid if not util.isNan(ticker.bid) else None
-    ask = ticker.ask if not util.isNan(ticker.ask) else None
-    iv = ticker.modelGreeks.impliedVol if ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol) else None
-
-    ib.cancelMktData(contract) # Clean up the market data subscription
+        # Extract data from the ticker
+        bid = ticker.bid if not util.isNan(ticker.bid) else None
+        ask = ticker.ask if not util.isNan(ticker.ask) else None
+        iv = ticker.modelGreeks.impliedVol if ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol) else None
+    finally:
+        ib.cancelMktData(contract) # Clean up the market data subscription
 
     # If live IV is not available, calculate historical volatility as a fallback
     if iv is None:
