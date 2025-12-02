@@ -97,10 +97,11 @@ async def generate_and_queue_orders(config: dict):
                     logger.warning(f"No active future for signal month {signal.get('contract_month')}."); continue
 
                 logger.info(f"Requesting market price for {future.localSymbol}...")
-                ticker = ib.reqMktData(future, '', True, False)
+                ticker = ib.reqMktData(future, '', False, False)
 
                 price = float('nan')
                 try:
+                    await asyncio.sleep(2) # Give it a moment to populate
                     # Wait for the ticker to update with a valid bid/ask spread
                     start_time = time.time()
                     while ticker.bid <= 0 or ticker.ask <= 0 or util.isNan(ticker.bid) or util.isNan(ticker.ask):
@@ -207,25 +208,27 @@ async def _get_market_data_for_leg(ib: IB, leg: ComboLeg) -> str:
             logger.warning(f"Could not resolve contract for leg conId {leg.conId}")
             return f"Leg conId {leg.conId}: N/A"
 
-        ticker = ib.reqMktData(contract[0].contract, '', True, False)
+        ticker = ib.reqMktData(contract[0].contract, '', False, False)
+        try:
+            await asyncio.sleep(2) # Give it a moment to populate
 
-        # Wait for the ticker to update with a valid price, with a timeout
-        start_time = time.time()
-        while util.isNan(ticker.bid) and util.isNan(ticker.ask) and util.isNan(ticker.last):
-            await asyncio.sleep(0.1)
-            if (time.time() - start_time) > 15: # 15-second timeout
-                logger.error(f"Timeout waiting for market data for {contract[0].contract.localSymbol}.")
-                ib.cancelMktData(ticker.contract)
-                return f"Leg {contract[0].contract.localSymbol}: Timeout"
+            # Wait for the ticker to update with a valid price, with a timeout
+            start_time = time.time()
+            while util.isNan(ticker.bid) and util.isNan(ticker.ask) and util.isNan(ticker.last):
+                await asyncio.sleep(0.1)
+                if (time.time() - start_time) > 15: # 15-second timeout
+                    logger.error(f"Timeout waiting for market data for {contract[0].contract.localSymbol}.")
+                    # ib.cancelMktData(ticker.contract) # Handled in finally
+                    return f"Leg {contract[0].contract.localSymbol}: Timeout"
 
-        # Fetch all data points
-        leg_symbol = contract[0].contract.localSymbol
-        leg_bid = ticker.bid if not util.isNan(ticker.bid) else "N/A"
-        leg_ask = ticker.ask if not util.isNan(ticker.ask) else "N/A"
-        leg_vol = ticker.volume if not util.isNan(ticker.volume) else "N/A"
-        leg_last = ticker.last if not util.isNan(ticker.last) else "N/A"
-        
-        ib.cancelMktData(ticker.contract)
+            # Fetch all data points
+            leg_symbol = contract[0].contract.localSymbol
+            leg_bid = ticker.bid if not util.isNan(ticker.bid) else "N/A"
+            leg_ask = ticker.ask if not util.isNan(ticker.ask) else "N/A"
+            leg_vol = ticker.volume if not util.isNan(ticker.volume) else "N/A"
+            leg_last = ticker.last if not util.isNan(ticker.last) else "N/A"
+        finally:
+            ib.cancelMktData(ticker.contract)
         
         # Return a formatted string
         return f"Leg {leg_symbol}: {leg_bid}x{leg_ask}, V:{leg_vol}, L:{leg_last}"
@@ -342,21 +345,23 @@ async def place_queued_orders(config: dict):
         for contract, order in ORDER_QUEUE:
             
             # --- 1. Get BAG (Spread) Market Data with a robust polling loop ---
-            bag_ticker = ib.reqMktData(contract, '', True, False)
-            start_time = time.time()
-            while util.isNan(bag_ticker.bid) and util.isNan(bag_ticker.ask) and util.isNan(bag_ticker.last):
-                await asyncio.sleep(0.1)
-                if (time.time() - start_time) > 15: # 15-second timeout
-                    logger.error(f"Timeout waiting for market data for BAG {contract.localSymbol}.")
-                    break
-            
-            bag_bid = bag_ticker.bid if not util.isNan(bag_ticker.bid) else "N/A"
-            bag_ask = bag_ticker.ask if not util.isNan(bag_ticker.ask) else "N/A"
-            bag_vol = bag_ticker.volume if not util.isNan(bag_ticker.volume) else "N/A"
-            bag_last = bag_ticker.last if not util.isNan(bag_ticker.last) else "N/A"
-            bag_last_time = bag_ticker.time.strftime('%H:%M:%S') if bag_ticker.time else "N/A"
-            
-            ib.cancelMktData(contract) # Cleanup
+            bag_ticker = ib.reqMktData(contract, '', False, False)
+            try:
+                await asyncio.sleep(2) # Give it a moment to populate
+                start_time = time.time()
+                while util.isNan(bag_ticker.bid) and util.isNan(bag_ticker.ask) and util.isNan(bag_ticker.last):
+                    await asyncio.sleep(0.1)
+                    if (time.time() - start_time) > 15: # 15-second timeout
+                        logger.error(f"Timeout waiting for market data for BAG {contract.localSymbol}.")
+                        break
+
+                bag_bid = bag_ticker.bid if not util.isNan(bag_ticker.bid) else "N/A"
+                bag_ask = bag_ticker.ask if not util.isNan(bag_ticker.ask) else "N/A"
+                bag_vol = bag_ticker.volume if not util.isNan(bag_ticker.volume) else "N/A"
+                bag_last = bag_ticker.last if not util.isNan(bag_ticker.last) else "N/A"
+                bag_last_time = bag_ticker.time.strftime('%H:%M:%S') if bag_ticker.time else "N/A"
+            finally:
+                ib.cancelMktData(contract) # Cleanup
             
             bag_state_str = f"BAG: {bag_bid}x{bag_ask}, V:{bag_vol}, L:{bag_last}@{bag_last_time}"
 
@@ -491,20 +496,23 @@ async def place_queued_orders(config: dict):
             elif details['status'] not in OrderStatus.DoneStates:
                 
                 # --- 1. Get FINAL BAG (Spread) Market Data with a robust polling loop ---
-                final_bag_ticker = ib.reqMktData(trade.contract, '', True, False)
-                start_time = time.time()
-                while util.isNan(final_bag_ticker.bid) and util.isNan(final_bag_ticker.ask) and util.isNan(final_bag_ticker.last):
-                    await asyncio.sleep(0.1)
-                    if (time.time() - start_time) > 15: # 15-second timeout
-                        logger.error(f"Timeout waiting for final market data for BAG {trade.contract.localSymbol}.")
-                        break
+                final_bag_ticker = ib.reqMktData(trade.contract, '', False, False)
+                try:
+                    await asyncio.sleep(2) # Give it a moment to populate
+                    start_time = time.time()
+                    while util.isNan(final_bag_ticker.bid) and util.isNan(final_bag_ticker.ask) and util.isNan(final_bag_ticker.last):
+                        await asyncio.sleep(0.1)
+                        if (time.time() - start_time) > 15: # 15-second timeout
+                            logger.error(f"Timeout waiting for final market data for BAG {trade.contract.localSymbol}.")
+                            break
 
-                final_bag_bid = final_bag_ticker.bid if not util.isNan(final_bag_ticker.bid) else "N/A"
-                final_bag_ask = final_bag_ticker.ask if not util.isNan(final_bag_ticker.ask) else "N/A"
-                final_bag_vol = final_bag_ticker.volume if not util.isNan(final_bag_ticker.volume) else "N/A"
-                final_bag_last = final_bag_ticker.last if not util.isNan(final_bag_ticker.last) else "N/A"
-                final_bag_last_time = final_bag_ticker.time.strftime('%H:%M:%S') if final_bag_ticker.time else "N/A"
-                ib.cancelMktData(trade.contract)
+                    final_bag_bid = final_bag_ticker.bid if not util.isNan(final_bag_ticker.bid) else "N/A"
+                    final_bag_ask = final_bag_ticker.ask if not util.isNan(final_bag_ticker.ask) else "N/A"
+                    final_bag_vol = final_bag_ticker.volume if not util.isNan(final_bag_ticker.volume) else "N/A"
+                    final_bag_last = final_bag_ticker.last if not util.isNan(final_bag_ticker.last) else "N/A"
+                    final_bag_last_time = final_bag_ticker.time.strftime('%H:%M:%S') if final_bag_ticker.time else "N/A"
+                finally:
+                    ib.cancelMktData(trade.contract)
                 
                 final_bag_state = (
                     f"BAG: {final_bag_bid}x{final_bag_ask}, V:{final_bag_vol}, L:{final_bag_last}@{final_bag_last_time}"
