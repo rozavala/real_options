@@ -715,7 +715,13 @@ async def close_positions_after_5_days(config: dict):
 
                 pos.contract.exchange = config.get('exchange')
                 trade = place_order(ib, pos.contract, order)
-                await asyncio.sleep(2) # Allow time for order processing and fill event
+                logger.info(f"Placed close order {trade.order.orderId} for {symbol}. Waiting for fill...")
+
+                # Poll for up to 30 seconds for the fill
+                for _ in range(30):
+                    await asyncio.sleep(1)
+                    if trade.orderStatus.status in [OrderStatus.Filled, OrderStatus.Cancelled, OrderStatus.Inactive]:
+                        break
 
                 if trade.orderStatus.status == OrderStatus.Filled and trade.fills:
                     fill = trade.fills[0]
@@ -728,8 +734,15 @@ async def close_positions_after_5_days(config: dict):
                         "price": fill.execution.avgPrice,
                         "pnl": fill.commissionReport.realizedPNL
                     })
+                    logger.info(f"Successfully closed {symbol} at {fill.execution.avgPrice}")
                 else:
-                    failed_closes.append(f"{symbol}: Failed with status {trade.orderStatus.status}")
+                    # If still not filled after 30s, or cancelled
+                    logger.warning(f"Order {trade.order.orderId} for {symbol} timed out or failed. Status: {trade.orderStatus.status}")
+                    failed_closes.append(f"{symbol}: Status {trade.orderStatus.status}")
+                    # Cancel the order if you don't want it working after the script ends
+                    if trade.orderStatus.status not in OrderStatus.DoneStates:
+                        ib.cancelOrder(trade.order)
+
                 await asyncio.sleep(1) # Throttle orders
             else:
                 kept_positions_details.append(f"{pos_id} ({symbol}) - Age: {age_in_trading_days} days")
