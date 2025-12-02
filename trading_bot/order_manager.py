@@ -762,7 +762,7 @@ async def close_positions_after_5_days(config: dict):
                 if len(final_legs_list) > 1:
                     # Create COMBO (Bag) Order
                     contract = Contract()
-                    contract.symbol = "DA" # Placeholder, IB ignores for Bags usually?
+                    contract.symbol = config.get('symbol', 'KC')
                     contract.secType = "BAG"
                     contract.currency = final_legs_list[0]['currency']
                     contract.exchange = final_legs_list[0]['exchange'] or config.get('exchange', 'SMART')
@@ -799,7 +799,7 @@ async def close_positions_after_5_days(config: dict):
                     leg = final_legs_list[0]
                     contract = Contract()
                     contract.conId = leg['conId']
-                    contract.symbol = leg['symbol'] # Helper, conId is primary
+                    contract.symbol = config.get('symbol', 'KC')
                     contract.secType = "FOP" # Assumption, or fetch from pos?
                     # Actually, if we supply conId, IB usually resolves. But secType helps.
                     # We can get secType from the live position contract if needed, but we didn't store it.
@@ -820,7 +820,43 @@ async def close_positions_after_5_days(config: dict):
                 if len(final_legs_list) == 1:
                     bag_action = final_legs_list[0]['action']
 
-                order = MarketOrder(bag_action, order_size)
+                # Fetch Market Data for Limit Order
+                ticker = ib.reqMktData(contract, '', False, False)
+                try:
+                    await asyncio.sleep(2) # Give it a moment to populate
+                    start_time = time.time()
+                    # Wait for valid bid/ask
+                    while util.isNan(ticker.bid) and util.isNan(ticker.ask):
+                        await asyncio.sleep(0.1)
+                        if (time.time() - start_time) > 10: # 10s timeout
+                            break
+
+                    # Determine Price
+                    lmt_price = 0.0
+                    if bag_action == 'BUY':
+                        if not util.isNan(ticker.ask) and ticker.ask > 0:
+                            lmt_price = ticker.ask
+                        elif not util.isNan(ticker.last) and ticker.last > 0:
+                            lmt_price = ticker.last
+                        else:
+                            lmt_price = ticker.close if not util.isNan(ticker.close) else 0.0
+                    else: # SELL
+                        if not util.isNan(ticker.bid) and ticker.bid > 0:
+                            lmt_price = ticker.bid
+                        elif not util.isNan(ticker.last) and ticker.last > 0:
+                            lmt_price = ticker.last
+                        else:
+                            lmt_price = ticker.close if not util.isNan(ticker.close) else 0.0
+                finally:
+                    ib.cancelMktData(contract)
+
+                if util.isNan(lmt_price) or lmt_price == 0.0:
+                    logger.warning(f"Could not determine limit price for {contract.symbol}. Using Market Order.")
+                    order = MarketOrder(bag_action, order_size)
+                else:
+                    logger.info(f"Placing LIMIT order for {contract.symbol}. Price: {lmt_price}")
+                    order = LimitOrder(bag_action, order_size, lmt_price)
+
                 order.outsideRth = True
 
                 trade = place_order(ib, contract, order)
