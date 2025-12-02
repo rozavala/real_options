@@ -659,20 +659,20 @@ async def main():
     if local_trades_df.empty:
         logger.warning("Local trade ledger is empty. All fetched IB trades will be considered missing.")
 
-    # --- 5. Filter trades to the last 31 days for comparison ---
-    cutoff_date = pd.Timestamp.utcnow() - pd.Timedelta(days=31)
+    # --- 5. Filter trades to the last 33 days for comparison ---
+    cutoff_date = pd.Timestamp.utcnow() - pd.Timedelta(days=33)
 
     # Ensure timestamp column is timezone-aware for comparison
     ib_trades_df['timestamp'] = pd.to_datetime(ib_trades_df['timestamp']).dt.tz_convert('UTC')
 
     initial_ib_count = len(ib_trades_df)
     ib_trades_df = ib_trades_df[ib_trades_df['timestamp'] >= cutoff_date]
-    logger.info(f"Filtered IB trades from {initial_ib_count} to {len(ib_trades_df)} records within the last 31 days.")
+    logger.info(f"Filtered IB trades from {initial_ib_count} to {len(ib_trades_df)} records within the last 33 days.")
 
     if not local_trades_df.empty:
         initial_local_count = len(local_trades_df)
         local_trades_df = local_trades_df[local_trades_df['timestamp'] >= cutoff_date]
-        logger.info(f"Filtered local ledger from {initial_local_count} to {len(local_trades_df)} records within the last 31 days.")
+        logger.info(f"Filtered local ledger from {initial_local_count} to {len(local_trades_df)} records within the last 33 days.")
 
     # --- 6. Reconcile Trades ---
     missing_trades_df, superfluous_trades_df = reconcile_trades(ib_trades_df, local_trades_df)
