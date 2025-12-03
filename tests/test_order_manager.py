@@ -76,6 +76,19 @@ class TestPositionClosing(unittest.TestCase):
         data['total_value_usd'].append(100)
         data['reason'].append('Strategy Execution')
 
+        # Add a position with RECONCILIATION_MISSING reason that should be closed
+        data['timestamp'].append(ten_days_ago.strftime('%Y-%m-%d %H:%M:%S'))
+        data['position_id'].append('RECON_POSITION')
+        data['combo_id'].append(111)
+        data['local_symbol'].append('KC 26JUL24 200 C')
+        data['action'].append('BUY')
+        data['quantity'].append(1)
+        data['avg_fill_price'].append(1.0)
+        data['strike'].append(200)
+        data['right'].append('C')
+        data['total_value_usd'].append(-100)
+        data['reason'].append('RECONCILIATION_MISSING')
+
         df = pd.DataFrame(data)
         df.to_csv(self.ledger_path, index=False)
 
@@ -110,7 +123,8 @@ class TestPositionClosing(unittest.TestCase):
                 Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 250 C', symbol='KC', conId=1, exchange='NYBOT'), position=1, avgCost=1.0),
                 Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 260 C', symbol='KC', conId=2, exchange='NYBOT'), position=1, avgCost=1.0),
                 Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 300 P', symbol='KC', conId=3, exchange='NYBOT'), position=1, avgCost=1.0),
-                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 310 P', symbol='KC', conId=4, exchange='NYBOT'), position=-1, avgCost=1.0)
+                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 310 P', symbol='KC', conId=4, exchange='NYBOT'), position=-1, avgCost=1.0),
+                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 200 C', symbol='KC', conId=5, exchange='NYBOT'), position=1, avgCost=1.0),
             ]
             mock_ib_instance.reqPositionsAsync.return_value = mock_positions
 
@@ -126,10 +140,10 @@ class TestPositionClosing(unittest.TestCase):
             config = {'symbol': 'KC', 'exchange': 'NYBOT'}
             await close_positions_after_5_days(config)
 
-            # We expect 2 calls to place_order: 1 for OLD_POSITION (Single), 1 for COMBO_POSITION (Bag)
-            self.assertEqual(mock_place_order.call_count, 2)
+            # We expect 3 calls to place_order: 1 for OLD_POSITION, 1 for COMBO_POSITION, 1 for RECON_POSITION
+            self.assertEqual(mock_place_order.call_count, 3)
 
-            single_order_call = None
+            single_order_calls = []
             bag_order_call = None
 
             for call in mock_place_order.call_args_list:
@@ -138,24 +152,37 @@ class TestPositionClosing(unittest.TestCase):
                 if contract.secType == 'BAG':
                     bag_order_call = call
                 else:
-                    single_order_call = call
+                    single_order_calls.append(call)
 
-            # VERIFY SINGLE ORDER
-            self.assertIsNotNone(single_order_call)
-            args, _ = single_order_call
-            single_contract = args[1]
-            single_order = args[2]
+            # VERIFY SINGLE ORDERS
+            self.assertEqual(len(single_order_calls), 2)
 
-            self.assertEqual(single_contract.conId, 1)
-            self.assertEqual(single_contract.symbol, 'KC')
-            self.assertEqual(single_contract.secType, 'FOP')
+            # Sort calls by conId to make assertions deterministic
+            single_order_calls.sort(key=lambda call: call[0][1].conId)
 
-            # Verify Limit Order Logic
-            # Single OLD_POSITION: KC 250 C (Buy) -> Close Action: SELL
-            # We are selling, so limit price should be BID (5.0)
-            self.assertEqual(single_order.orderType, 'LMT')
-            self.assertEqual(single_order.lmtPrice, 5.0)
-            self.assertEqual(single_order.action, 'SELL')
+            # 1. OLD_POSITION (conId 1)
+            args, _ = single_order_calls[0]
+            single_contract_1 = args[1]
+            single_order_1 = args[2]
+
+            self.assertEqual(single_contract_1.conId, 1)
+            self.assertEqual(single_contract_1.symbol, 'KC')
+            self.assertEqual(single_contract_1.secType, 'FOP')
+            self.assertEqual(single_order_1.orderType, 'LMT')
+            self.assertEqual(single_order_1.lmtPrice, 5.0)
+            self.assertEqual(single_order_1.action, 'SELL')
+
+            # 2. RECON_POSITION (conId 5)
+            args, _ = single_order_calls[1]
+            single_contract_2 = args[1]
+            single_order_2 = args[2]
+
+            self.assertEqual(single_contract_2.conId, 5)
+            self.assertEqual(single_contract_2.symbol, 'KC')
+            self.assertEqual(single_contract_2.secType, 'FOP')
+            self.assertEqual(single_order_2.orderType, 'LMT')
+            self.assertEqual(single_order_2.lmtPrice, 5.0)
+            self.assertEqual(single_order_2.action, 'SELL')
 
             # VERIFY BAG ORDER
             self.assertIsNotNone(bag_order_call)
