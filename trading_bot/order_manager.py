@@ -695,8 +695,7 @@ async def close_positions_after_5_days(config: dict):
 
             symbol_ledger = trade_ledger[
                 (trade_ledger['local_symbol'] == symbol) &
-                (trade_ledger['action'] == target_ledger_action) &
-                (trade_ledger['reason'] == 'Strategy Execution') # Only count opening trades
+                (trade_ledger['action'] == target_ledger_action)
             ].copy()
 
             if symbol_ledger.empty:
