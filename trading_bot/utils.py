@@ -287,7 +287,26 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
 
     for fill in fills_to_log:
         if not fill: continue
+
+        # --- FIX 1: Do not log BAG contracts to ledger ---
+        # IBKR Flex Queries only report the individual legs, not the combo container.
+        if isinstance(fill.contract, Bag):
+            logging.info(f"Skipping ledger entry for BAG contract {fill.contract.localSymbol} (legs will be logged individually).")
+            continue
+
         contract = fill.contract
+
+        # --- FIX 2: Force Qualification for Missing Symbols ---
+        # If localSymbol is missing (common in single-leg closes), fetch it.
+        if not contract.localSymbol or not hasattr(contract, 'right'):
+            try:
+                details = await ib.qualifyContractsAsync(contract)
+                if details:
+                    contract = details[0]
+            except Exception as e:
+                logging.warning(f"Could not qualify contract {contract.conId}: {e}")
+
+        # Fallback to cache or simple check if qualification failed or wasn't needed
         if not hasattr(contract, 'right') or not hasattr(contract, 'strike'):
             cached_contract = ib.contracts.get(contract.conId)
             if cached_contract:
