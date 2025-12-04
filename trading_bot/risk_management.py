@@ -267,19 +267,45 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
             )
             send_pushover_notification(config.get('notifications', {}), "Risk Alert", initial_message)
 
-            # Close all legs
-            for leg_pos_to_close in combo_legs:
-                try:
-                    leg_pos_to_close.contract.exchange = config.get('exchange', 'NYBOT')
-                    # Closing order: Inverse of current position
-                    action = 'BUY' if leg_pos_to_close.position < 0 else 'SELL'
-                    order = MarketOrder(action, abs(leg_pos_to_close.position))
-                    order.outsideRth = True
+            # Close as a single atomic BAG (Combo) order
+            try:
+                # 1. Define the BAG Contract
+                contract = Contract()
+                contract.symbol = config.get('symbol', 'KC')
+                contract.secType = "BAG"
+                contract.currency = "USD"
+                contract.exchange = config.get('exchange', 'NYBOT')
 
-                    place_order(ib, leg_pos_to_close.contract, order)
-                    closed_ids.add(leg_pos_to_close.contract.conId)
-                except Exception as e:
-                    logging.error(f"Failed to close leg {leg_pos_to_close.contract.localSymbol}: {e}")
+                combo_legs_list = []
+                for leg_pos in combo_legs:
+                    # Closing action: Inverse of current position
+                    # If Long (pos > 0), we SELL. If Short (pos < 0), we BUY.
+                    action = 'SELL' if leg_pos.position > 0 else 'BUY'
+
+                    combo_legs_list.append(ComboLeg(
+                        conId=leg_pos.contract.conId,
+                        ratio=1, # Assuming 1:1 ratio for simplicity of closing what we have
+                        action=action,
+                        exchange=config.get('exchange', 'NYBOT')
+                    ))
+                    # Mark as closed in our local set immediately to prevent double-action
+                    closed_ids.add(leg_pos.contract.conId)
+
+                contract.comboLegs = combo_legs_list
+
+                # 2. Place the Order
+                # We "BUY" the BAG because we defined the legs with their specific closing actions (BUY/SELL).
+                # The quantity is the absolute size of the position (assuming equal size for all legs for now).
+                qty = abs(combo_legs[0].position)
+
+                order = MarketOrder("BUY", qty)
+                order.outsideRth = True
+
+                logging.info(f"Placing BAG Market Order to close {combo_desc} (Qty: {qty})")
+                place_order(ib, contract, order)
+
+            except Exception as e:
+                logging.error(f"Failed to close combo {combo_desc} as BAG: {e}")
 
             # Clean up PnL subs
             for leg_pos in combo_legs: ib.cancelPnLSingle(account, '', leg_pos.contract.conId)

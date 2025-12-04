@@ -25,16 +25,36 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
     and implied volatility.
     """
     logging.info(f"Fetching market data for option: {contract.localSymbol}")
-    # Generic tick list 106 provides model-based option greeks
+    # Generic tick list 106 provides model-based option greeks (modelOptionImpliedVol)
+    # Generic tick list 24 provides option implied volatility (optionImpliedVol)
     # Generic tick list 104 provides bid, ask, and last prices
-    ticker = ib.reqMktData(contract, '104,106', False, False)
+    ticker = ib.reqMktData(contract, '104,106,24', False, False)
     try:
         await asyncio.sleep(2)  # Allow time for data to arrive
 
         # Extract data from the ticker
         bid = ticker.bid if not util.isNan(ticker.bid) else None
         ask = ticker.ask if not util.isNan(ticker.ask) else None
-        iv = ticker.modelGreeks.impliedVol if ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol) else None
+
+        # Priority for IV: Model Option IV > Option IV > Historical (Fallback later)
+        iv = None
+        # 1. Try User-specified 'modelOptionImpliedVol' (Generic 106)
+        if hasattr(ticker, 'modelOptionImpliedVol') and not util.isNan(ticker.modelOptionImpliedVol):
+            iv = ticker.modelOptionImpliedVol
+            logging.info(f"Using IBKR Model Option IV: {iv:.2%}")
+        # 2. Try User-specified 'optionImpliedVol' (Generic 24)
+        elif hasattr(ticker, 'optionImpliedVol') and not util.isNan(ticker.optionImpliedVol):
+            iv = ticker.optionImpliedVol
+            logging.info(f"Using IBKR Option IV: {iv:.2%}")
+        # 3. Try standard ib_insync 'modelGreeks.impliedVol' (Generic 106 standard mapping)
+        elif ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol):
+            iv = ticker.modelGreeks.impliedVol
+            logging.info(f"Using IBKR Model Greeks IV: {iv:.2%}")
+        # 4. Try standard ib_insync 'impliedVolatility' (Generic 24 standard mapping)
+        elif not util.isNan(ticker.impliedVolatility):
+             iv = ticker.impliedVolatility
+             logging.info(f"Using IBKR Implied Volatility: {iv:.2%}")
+
     finally:
         ib.cancelMktData(contract) # Clean up the market data subscription
 
