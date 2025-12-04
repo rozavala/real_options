@@ -3,6 +3,7 @@ import asyncio
 from unittest.mock import MagicMock, patch, AsyncMock
 
 from ib_insync import Contract, Future, FuturesOption, Bag, ComboLeg, Trade, Order, OrderStatus, LimitOrder
+from datetime import datetime
 
 # This is a bit of a hack to make sure the custom module can be found
 # when running tests from the root directory.
@@ -20,8 +21,12 @@ from trading_bot.ib_interface import (
 
 class TestIbInterface(unittest.TestCase):
 
-    def test_get_active_futures(self):
+    @patch('trading_bot.ib_interface.datetime')
+    def test_get_active_futures(self, mock_datetime):
         async def run_test():
+            # Mock current time to be mid-2025 so 202512 is in the future
+            mock_datetime.now.return_value = datetime(2025, 6, 15)
+
             ib = MagicMock()
             mock_cd1 = MagicMock(contract=Future(conId=1, symbol='KC', lastTradeDateOrContractMonth='202512'))
             mock_cd2 = MagicMock(contract=Future(conId=2, symbol='KC', lastTradeDateOrContractMonth='202603'))
@@ -150,10 +155,10 @@ class TestIbInterface(unittest.TestCase):
             # Ceiling Price (BUY) = Theoretical Price + Fixed Slippage = 0.5 + 0.2 = 0.7
 
             # Combo Bid (Synthetic) = Leg1_Bid (0.9) - Leg2_Ask (0.6) = 0.3
-            # Initial Price (BUY) = Combo Bid + Fixed Slippage = 0.3 + 0.2 = 0.5
-            # Ensure Initial Price <= Ceiling Price (0.5 <= 0.7) -> True
+            # Initial Price (BUY) = Combo Bid + 0.05 = 0.3 + 0.05 = 0.35
+            # Ensure Initial Price <= Ceiling Price (0.35 <= 0.7) -> True
 
-            expected_price = 0.50
+            expected_price = 0.35
             self.assertAlmostEqual(limit_order.lmtPrice, expected_price, places=2)
 
         asyncio.run(run_test())

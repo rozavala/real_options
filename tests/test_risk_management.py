@@ -80,7 +80,16 @@ class TestRiskManagement(unittest.TestCase):
             ib = AsyncMock(spec=IB)
             ib.isConnected.return_value = True
             ib.managedAccounts.return_value = ['DU12345']
-            ib.placeOrder.return_value = self.mock_trade
+
+            # Setup mock trade with order attribute to avoid AttributeError in logging
+            mock_trade = MagicMock(spec=Trade)
+            mock_trade.order = MagicMock()
+            mock_trade.order.orderId = 12345
+            mock_trade.order.orderRef = "test-ref"
+            mock_trade.isDone.return_value = True
+            mock_trade.orderStatus = MagicMock(spec=OrderStatus)
+            mock_trade.orderStatus.status = OrderStatus.Filled
+            ib.placeOrder.return_value = mock_trade
 
             config = {
                 'notifications': {},
@@ -135,7 +144,22 @@ class TestRiskManagement(unittest.TestCase):
             await _check_risk_once(ib, config, set(), 0.20, 3.00)
 
             # Assert
-            self.assertEqual(ib.placeOrder.call_count, 2)
+            # Should be called once with a BAG order now, instead of twice (once per leg)
+            self.assertEqual(ib.placeOrder.call_count, 1)
+
+            # Verify the argument was a BAG contract
+            args, _ = ib.placeOrder.call_args
+            contract_arg = args[0]
+            self.assertEqual(contract_arg.secType, 'BAG')
+            self.assertEqual(len(contract_arg.comboLegs), 2)
+
+            # Verify legs actions are inverted
+            # leg1 was Position 1 (Long) -> Action should be SELL
+            # leg2 was Position -1 (Short) -> Action should be BUY
+            leg1_action = next(l.action for l in contract_arg.comboLegs if l.conId == 123)
+            leg2_action = next(l.action for l in contract_arg.comboLegs if l.conId == 124)
+            self.assertEqual(leg1_action, 'SELL')
+            self.assertEqual(leg2_action, 'BUY')
 
         # We need pandas for this test
         import pandas as pd
