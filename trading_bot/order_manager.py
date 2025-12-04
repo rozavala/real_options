@@ -333,6 +333,45 @@ async def place_queued_orders(config: dict):
         await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
         logger.info("Connected to IB for order placement and monitoring.")
 
+        # --- NEW: Sort by Expiration (Nearest First) ---
+        # Prioritize contracts closing soonest to manage risk/margin effectively
+        ORDER_QUEUE.sort(key=lambda x: x[0].lastTradeDateOrContractMonth if hasattr(x[0], 'lastTradeDateOrContractMonth') else '99999999')
+        logger.info("Sorted orders by expiration proximity.")
+
+        # --- NEW: Margin & Funds Check ---
+        # Fetch current Available Funds (USD)
+        account_summary = await ib.accountSummaryAsync()
+        avail_funds_tag = next((v for v in account_summary if v.tag == 'AvailableFunds' and v.currency == 'USD'), None)
+
+        if not avail_funds_tag:
+            logger.warning("Could not fetch AvailableFunds. Proceeding without pre-check (Risky).")
+            current_available_funds = float('inf')
+        else:
+            current_available_funds = float(avail_funds_tag.value)
+            logger.info(f"Current Available Funds: ${current_available_funds:,.2f}")
+
+        # Filter Queue based on Margin Impact
+        orders_to_place = []
+        for contract, order in ORDER_QUEUE:
+            try:
+                # Check margin impact without placing the trade
+                what_if = await ib.whatIfOrderAsync(contract, order)
+                margin_impact = float(what_if.initMarginChange)
+
+                if margin_impact < current_available_funds:
+                    orders_to_place.append((contract, order))
+                    current_available_funds -= margin_impact  # Deduct from local tracker
+                    logger.info(f"Approved {contract.localSymbol}: Margin ${margin_impact:,.2f} | Remaining: ${current_available_funds:,.2f}")
+                else:
+                    logger.warning(f"Skipping {contract.localSymbol}: Margin ${margin_impact:,.2f} exceeds Available Funds.")
+
+            except Exception as e:
+                logger.error(f"Margin check failed for {contract.localSymbol}: {e}. Skipping safely.")
+
+        if not orders_to_place:
+            logger.warning("No orders fit within available funds. Aborting placement.")
+            return
+
         # Attach event handlers
         ib.orderStatusEvent += on_order_status
         ib.execDetailsEvent += on_exec_details
@@ -343,7 +382,7 @@ async def place_queued_orders(config: dict):
         adaptive_pct = tuning.get('adaptive_step_percentage', 0.05)
         
         # --- PLACEMENT LOOP (ENHANCED LOGGING & NOTIFICATIONS) ---
-        for contract, order in ORDER_QUEUE:
+        for contract, order in orders_to_place:
             
             # --- 1. Get BAG (Spread) Market Data with a robust polling loop ---
             bag_ticker = ib.reqMktData(contract, '', False, False)
@@ -424,6 +463,11 @@ async def place_queued_orders(config: dict):
                 trade = details['trade']
                 # Use the live status from the trade object to ensure accuracy
                 status = trade.orderStatus.status
+
+                # --- FIX: Strict Status Check ---
+                # Stop processing if the order is already done or dead
+                if status in OrderStatus.DoneStates or status in ['Cancelled', 'Inactive', 'ApiCancelled']:
+                    continue
 
                 if status in OrderStatus.DoneStates:
                     continue
