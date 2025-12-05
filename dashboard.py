@@ -203,7 +203,10 @@ def fetch_market_data(config):
         return pd.DataFrame()
 
 def fetch_portfolio_data(config, trade_ledger_df):
-    """Fetches live portfolio from IB and merges with ledger to find 'Days Held'."""
+    """
+    Fetches live portfolio from IB and breaks it down into individual spread legs
+    using the local ledger to recover Strategy/Combo IDs and Entry Prices.
+    """
     ib = IB()
     try:
         ib.connect(
@@ -217,111 +220,158 @@ def fetch_portfolio_data(config, trade_ledger_df):
         
         # Prepare ledger for lookup
         if not trade_ledger_df.empty:
-            # Sort by timestamp to ensure chronological processing
             sorted_ledger = trade_ledger_df.sort_values('timestamp')
         else:
             sorted_ledger = pd.DataFrame()
 
-        position_data = []
+        detailed_position_data = []
+
         for item in portfolio:
             symbol = item.contract.localSymbol
+            real_qty = item.position
             
-            # Logic to find "Days Held" using FIFO Lot Matching
-            days_held = 0
-            open_date_str = 'N/A'
+            # --- Inventory Reconstruction with Detailed Attributes ---
+            # We want to know exactly WHICH ledger entries correspond to the current open position
+            # to recover the Combo ID and Original Entry Price.
             
+            active_constituents = [] # List of dicts: {qty, price, combo_id, timestamp}
+
             if not sorted_ledger.empty:
-                # Iterate through sorted trades to reconstruct position inventory
                 symbol_trades = sorted_ledger[sorted_ledger['local_symbol'] == symbol]
 
                 if not symbol_trades.empty:
-                    # Inventory Stack: List of (signed_quantity, timestamp)
+                    # Inventory Stack: List of dicts
                     inventory = deque()
 
                     for _, trade in symbol_trades.iterrows():
                         t_qty = trade['quantity']
-                        # Standardize quantity sign: SELL is negative
                         if trade['action'] == 'SELL':
                             t_qty = -t_qty
 
+                        entry_price = trade['avg_fill_price'] if 'avg_fill_price' in trade else 0.0
+                        combo_id = trade['combo_id'] if 'combo_id' in trade else 'Unknown'
+
+                        trade_details = {
+                            'qty': t_qty,
+                            'price': entry_price,
+                            'combo_id': combo_id,
+                            'timestamp': trade['timestamp']
+                        }
+
                         if not inventory:
-                            inventory.append((t_qty, trade['timestamp']))
+                            inventory.append(trade_details)
                             continue
 
-                        head_qty, head_ts = inventory[0]
+                        head = inventory[0]
 
-                        # If trade increases position (Same Sign)
+                        # Check Direction Match
+                        head_qty = head['qty']
+
+                        # Same Direction -> Add to stack
                         if (t_qty > 0 and head_qty > 0) or (t_qty < 0 and head_qty < 0):
-                            inventory.append((t_qty, trade['timestamp']))
+                            inventory.append(trade_details)
                         else:
-                            # Trade reduces position (Different Sign) -> Consume oldest lots (FIFO)
+                            # Opposite Direction -> Reduce (FIFO)
                             remaining_close = abs(t_qty)
 
                             while remaining_close > 0 and inventory:
-                                lot_qty, lot_ts = inventory[0]
+                                lot = inventory[0]
+                                lot_qty = lot['qty']
 
-                                # Break if we flipped direction unexpectedly (shouldn't happen with standard FIFO)
+                                # Safety: Break if direction flipped in stack (unlikely)
                                 if (lot_qty > 0 and t_qty > 0) or (lot_qty < 0 and t_qty < 0):
                                      break
 
                                 matched = min(abs(lot_qty), remaining_close)
                                 remaining_close -= matched
 
-                                new_lot_qty = abs(lot_qty) - matched
+                                # Update lot remaining quantity
+                                new_lot_abs = abs(lot_qty) - matched
 
-                                if new_lot_qty < 1e-9:
-                                    inventory.popleft() # Fully consumed this lot
+                                if new_lot_abs < 1e-9:
+                                    inventory.popleft() # Fully consumed
                                 else:
-                                    # Partially consumed, update head
-                                    # Preserve original sign
-                                    new_signed_qty = new_lot_qty if lot_qty > 0 else -new_lot_qty
-                                    inventory[0] = (new_signed_qty, lot_ts)
+                                    # Update head with reduced quantity
+                                    new_signed_qty = new_lot_abs if lot_qty > 0 else -new_lot_abs
+                                    lot['qty'] = new_signed_qty
+                                    inventory[0] = lot # Update deque
 
-                            # If we over-closed and flipped direction
+                            # If we flipped direction (Net Position Change)
                             if remaining_close > 1e-9:
                                 remaining_signed = remaining_close if t_qty > 0 else -remaining_close
-                                inventory.append((remaining_signed, trade['timestamp']))
+                                trade_details['qty'] = remaining_signed
+                                inventory.append(trade_details)
 
-                    # Now reconcile Inventory with Real Position from IB
-                    # Logic: If Ledger Inventory > Real Position (due to missing trades),
-                    # we assume the OLDEST lots in the inventory were sold/expired.
-                    # So we keep the NEWEST lots that sum up to the Real Position.
-
-                    real_qty = item.position
+                    # --- Reconciliation ---
+                    # Match Inventory to Actual IB Position (Newest -> Oldest)
                     target_abs = abs(real_qty)
                     collected = 0
-                    active_lots = []
 
-                    # Iterate BACKWARDS (Newest -> Oldest) to find the active constituents
-                    for qty, ts in reversed(list(inventory)):
+                    # Iterate backwards to find the specific lots that make up the current position
+                    for lot in reversed(list(inventory)):
                         if abs(collected - target_abs) < 1e-9:
                             break
 
+                        lot_qty = lot['qty']
                         needed = target_abs - collected
-                        take = min(abs(qty), needed)
+                        take = min(abs(lot_qty), needed)
+
+                        # Add a record for this "slice" of the position
+                        # Determine sign based on lot direction
+                        take_signed = take if lot_qty > 0 else -take
+
+                        active_constituents.append({
+                            'qty': take_signed,
+                            'price': lot['price'],
+                            'combo_id': lot['combo_id'],
+                            'timestamp': lot['timestamp']
+                        })
+
                         collected += take
-                        active_lots.append(ts)
 
-                    if active_lots:
-                        # The "Open Date" is the oldest of the ACTIVE lots
-                        # active_lots is populated Newest -> Oldest, so the last element is the oldest active
-                        oldest_active_ts = active_lots[-1]
-                        days_held = (datetime.now() - oldest_active_ts).days
-                        open_date_str = oldest_active_ts.strftime('%Y-%m-%d')
+            # If we couldn't match with ledger (or ledger empty), create a dummy constituent
+            # derived from IB data.
+            if not active_constituents and abs(real_qty) > 0:
+                active_constituents.append({
+                    'qty': real_qty,
+                    'price': item.averageCost, # Fallback to Avg Cost
+                    'combo_id': 'Unmatched',
+                    'timestamp': datetime.now() # Unknown age
+                })
 
-            position_data.append({
-                "Symbol": symbol,
-                "Quantity": item.position,
-                "Mkt Price": item.marketPrice,
-                "Mkt Value": item.marketValue,
-                "Avg Cost": item.averageCost,
-                "Unrealized P&L": item.unrealizedPNL,
-                "Days Held": days_held,
-                "Open Date": open_date_str
-            })
+            # --- Build DataFrame Rows ---
+            for constituent in active_constituents:
+                # Calculate P&L for this specific constituent
+                qty = constituent['qty']
+                entry_price = constituent['price']
+                mkt_price = item.marketPrice
+
+                # Multiplier
+                try:
+                    mult = float(item.contract.multiplier)
+                except (ValueError, TypeError):
+                    mult = 37500.0 if 'KC' in symbol or 'KO' in symbol else 1.0
+
+                # P&L: (Mark - Entry) * Qty * Multiplier
+                unrealized_pnl = (mkt_price - entry_price) * qty * mult
+                mkt_value = mkt_price * qty * mult
+
+                days_held = (datetime.now() - constituent['timestamp']).days
+
+                detailed_position_data.append({
+                    "Combo ID": str(constituent['combo_id']),
+                    "Symbol": symbol,
+                    "Quantity": qty,
+                    "Entry Price": entry_price,
+                    "Mark Price": mkt_price,
+                    "Mkt Value": mkt_value,
+                    "Unrealized P&L": unrealized_pnl,
+                    "Days Held": days_held,
+                    "Open Date": constituent['timestamp'].strftime('%Y-%m-%d')
+                })
 
         ib.disconnect()
-        return pd.DataFrame(position_data)
+        return pd.DataFrame(detailed_position_data)
 
     except Exception as e:
         st.error(f"Failed to fetch portfolio data: {e}")
@@ -456,24 +506,52 @@ with tab1:
             st.session_state.portfolio_data = fetch_portfolio_data(config, trade_df)
 
     if not st.session_state.portfolio_data.empty:
-        # Highlight aged positions
-        def highlight_rows(row):
-            if isinstance(row['Days Held'], int) and row['Days Held'] >= 4:
-                return ['background-color: #ffcccc'] * len(row)
-            return [''] * len(row)
+        df = st.session_state.portfolio_data
 
-        st.dataframe(
-            st.session_state.portfolio_data.style.apply(highlight_rows, axis=1).format({
-                "Mkt Price": "${:.2f}", 
-                "Avg Cost": "${:.2f}",
-                "Unrealized P&L": "${:.2f}"
-            }),
-            width='stretch'
-        )
+        # Group by Combo ID
+        combo_groups = df.groupby("Combo ID")
+
+        total_pnl_all = df["Unrealized P&L"].sum()
+        st.metric("Total Portfolio Unrealized P&L", f"${total_pnl_all:,.2f}")
         
-        # Unreaized Summary
-        unrealized = st.session_state.portfolio_data['Unrealized P&L'].sum()
-        st.metric("Total Unrealized P&L", f"${unrealized:,.2f}")
+        st.divider()
+
+        for combo_id, group in combo_groups:
+            # Calculate Spread Stats
+            spread_pnl = group["Unrealized P&L"].sum()
+            max_days = group["Days Held"].max()
+
+            # Create a label for the expander
+            label = f"Spread: {combo_id} | P&L: ${spread_pnl:,.2f} | Max Days Held: {max_days}"
+
+            # Determine color/icon based on P&L or Age
+            icon = "🟢" if spread_pnl >= 0 else "🔴"
+            if max_days >= 4:
+                icon = "⚠️" # Risk Warning
+                label += " (Review Age)"
+
+            with st.expander(f"{icon} {label}", expanded=True):
+                 # Format and Display the Legs
+                 display_df = group[[
+                     "Symbol", "Quantity", "Entry Price", "Mark Price",
+                     "Unrealized P&L", "Days Held", "Open Date"
+                 ]].copy()
+
+                 def highlight_age(row):
+                     if row['Days Held'] >= 4:
+                         return ['background-color: #ffcccc'] * len(row)
+                     return [''] * len(row)
+
+                 st.dataframe(
+                     display_df.style.apply(highlight_age, axis=1).format({
+                         "Entry Price": "${:.4f}",
+                         "Mark Price": "${:.4f}",
+                         "Unrealized P&L": "${:.2f}"
+                     }),
+                     width='stretch',
+                     hide_index=True
+                 )
+
     else:
         st.info("Portfolio empty or not fetched.")
 
