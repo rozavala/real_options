@@ -26,9 +26,8 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
     """
     logging.info(f"Fetching market data for option: {contract.localSymbol}")
     # Generic tick list 106 provides model-based option greeks (modelOptionImpliedVol)
-    # Generic tick list 24 provides option implied volatility (optionImpliedVol)
-    # Generic tick list 104 provides bid, ask, and last prices
-    ticker = ib.reqMktData(contract, '104,106,24', False, False)
+    # FIX: Remove invalid generic ticks 104 and 24. Use only 106 (Implied Vol).
+    ticker = ib.reqMktData(contract, '106', False, False)
     try:
         await asyncio.sleep(2)  # Allow time for data to arrive
 
@@ -36,54 +35,25 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
         bid = ticker.bid if not util.isNan(ticker.bid) else None
         ask = ticker.ask if not util.isNan(ticker.ask) else None
 
-        # Priority for IV: Model Option IV > Option IV > Historical (Fallback later)
+        # Priority for IV: Model Option IV > Model Greeks IV
         iv = None
         # 1. Try User-specified 'modelOptionImpliedVol' (Generic 106)
         if hasattr(ticker, 'modelOptionImpliedVol') and not util.isNan(ticker.modelOptionImpliedVol):
             iv = ticker.modelOptionImpliedVol
             logging.info(f"Using IBKR Model Option IV: {iv:.2%}")
-        # 2. Try User-specified 'optionImpliedVol' (Generic 24)
-        elif hasattr(ticker, 'optionImpliedVol') and not util.isNan(ticker.optionImpliedVol):
-            iv = ticker.optionImpliedVol
-            logging.info(f"Using IBKR Option IV: {iv:.2%}")
-        # 3. Try standard ib_insync 'modelGreeks.impliedVol' (Generic 106 standard mapping)
+        # 2. Try standard ib_insync 'modelGreeks.impliedVol' (Generic 106 standard mapping)
         elif ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol):
             iv = ticker.modelGreeks.impliedVol
             logging.info(f"Using IBKR Model Greeks IV: {iv:.2%}")
-        # 4. Try standard ib_insync 'impliedVolatility' (Generic 24 standard mapping)
-        elif not util.isNan(ticker.impliedVolatility):
-             iv = ticker.impliedVolatility
-             logging.info(f"Using IBKR Implied Volatility: {iv:.2%}")
 
     finally:
         ib.cancelMktData(contract) # Clean up the market data subscription
 
-    # If live IV is not available, calculate historical volatility as a fallback
-    if iv is None:
-        logging.info(f"Live IV not available for {contract.localSymbol}. Calculating historical volatility.")
-        bars = await ib.reqHistoricalDataAsync(
-            underlying_future,
-            endDateTime="",
-            durationStr='30 D',
-            barSizeSetting='1 day',
-            whatToShow='HISTORICAL_VOLATILITY',
-            useRTH=True
-        )
-        if bars:
-            iv = bars[-1].close / 100  # Use the most recent historical value
-            logging.info(f"Using historical volatility: {iv:.4f}")
-        else:
-            logging.warning(f"Could not get historical volatility for {contract.localSymbol}. Using fallback.")
-            iv = 0.3  # Fallback IV
-
-    # Ensure we have valid bid/ask prices, otherwise we cannot price the spread
-    if bid is None or ask is None:
-        logging.error(f"Failed to get valid bid/ask prices for {contract.localSymbol}. Bid: {bid}, Ask: {ask}")
-        # Still return IV if available, as theoretical price might still be useful
-        if iv is None:
-             return None # Can't do anything without any data
-        bid = 0 # Default to 0 if not available
-        ask = 0
+    # FIX: Strict Safety Check.
+    # Do not return 0 or fallback to Historical Volatility if live data is missing.
+    if bid is None or ask is None or iv is None:
+        logging.error(f"Insufficient live market data for {contract.localSymbol}. Bid: {bid}, Ask: {ask}, IV: {iv}")
+        return None # Abort signal
 
     return {
         'bid': bid,
