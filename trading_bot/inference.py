@@ -31,21 +31,28 @@ PREDICTION_HORIZON_DAYS = 5 # T+5
 NUM_CONTRACTS = 5
 MIN_HISTORY_DAYS = 200 # Needed for 200-day SMA
 
-# Define all 10 production assets we need to load
+# This gets the directory where inference.py lives (trading_bot/)
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+# This goes one level up to the project root
+BASE_DIR = os.path.dirname(CURRENT_DIR)
+# This points to the models folder in the root
+MODELS_DIR = os.path.join(BASE_DIR, 'models')
+
+# Define all 10 production assets we need to load using absolute paths
 PRODUCTION_ASSET_FILES = {
     # Scalers (3)
-    "x_scaler_seq": "models/x_scaler_sequential.joblib",
-    "x_scaler_agg": "models/x_scaler_aggregated.joblib",
-    "y_scaler": "models/y_scaler_t5.joblib",
+    "x_scaler_seq": os.path.join(MODELS_DIR, "x_scaler_sequential.joblib"),
+    "x_scaler_agg": os.path.join(MODELS_DIR, "x_scaler_aggregated.joblib"),
+    "y_scaler": os.path.join(MODELS_DIR, "y_scaler_t5.joblib"),
 
     # Models (7)
-    "transformer": "models/transformer_model.keras",
-    "xgb_0": "models/xgboost_tuned_component_0.ubj",
-    "xgb_1": "models/xgboost_tuned_component_1.ubj",
-    "xgb_2": "models/xgboost_tuned_component_2.ubj",
-    "xgb_3": "models/xgboost_tuned_component_3.ubj",
-    "xgb_4": "models/xgboost_tuned_component_4.ubj",
-    "blender": "models/hybrid_blender.joblib"
+    "transformer": os.path.join(MODELS_DIR, "transformer_model.keras"),
+    "xgb_0": os.path.join(MODELS_DIR, "xgboost_tuned_component_0.ubj"),
+    "xgb_1": os.path.join(MODELS_DIR, "xgboost_tuned_component_1.ubj"),
+    "xgb_2": os.path.join(MODELS_DIR, "xgboost_tuned_component_2.ubj"),
+    "xgb_3": os.path.join(MODELS_DIR, "xgboost_tuned_component_3.ubj"),
+    "xgb_4": os.path.join(MODELS_DIR, "xgboost_tuned_component_4.ubj"),
+    "blender": os.path.join(MODELS_DIR, "hybrid_blender.joblib")
 }
 
 # --- 3. Helper Functions for Feature Engineering ---
