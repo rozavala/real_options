@@ -23,6 +23,7 @@ except RuntimeError:
 # --- 2. Path Setup & Local Imports ---
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 from performance_analyzer import get_trade_ledger_df
+from trading_bot.model_signals import get_model_signals_df
 from config_loader import load_config
 from trading_bot.ib_interface import get_active_futures
 from ib_insync import IB, util
@@ -494,7 +495,7 @@ else:
     st.info("No trade history found. KPIs unavailable.")
 
 # --- Tabs ---
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["💼 Portfolio", "📊 Analytics", "📈 Trade Ledger", "📋 System Health", "💹 Market"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["💼 Portfolio", "📊 Analytics", "📈 Trade Ledger", "📋 System Health", "💹 Market", "🤖 Model Signals"])
 
 with tab1:
     st.subheader("Active Portfolio")
@@ -676,3 +677,75 @@ with tab5:
         )
     else:
         st.info("Click button to fetch data.")
+
+with tab6:
+    st.subheader("Model Signals Log")
+    signals_df = get_model_signals_df()
+
+    if not signals_df.empty:
+        # Display the raw table
+        st.dataframe(
+            signals_df.sort_values('timestamp', ascending=False),
+            width='stretch',
+            height=300,
+            column_config={
+                "price": st.column_config.NumberColumn("Price", format="$%.2f"),
+                "sma_200": st.column_config.NumberColumn("SMA 200", format="$%.2f"),
+                "expected_price": st.column_config.NumberColumn("Exp Price", format="$%.2f"),
+                "confidence": st.column_config.NumberColumn("Conf", format="%.2%"),
+            }
+        )
+
+        st.divider()
+        st.subheader("Price vs. Prediction Analysis")
+
+        # Visualization
+        # Filter for only rows that have price data (backward compatibility)
+        viz_df = signals_df.dropna(subset=['price', 'sma_200']).copy()
+
+        if not viz_df.empty:
+            # Dropdown to select contract
+            contracts = viz_df['contract'].unique()
+            selected_contract = st.selectbox("Select Contract to Visualize", contracts)
+
+            contract_df = viz_df[viz_df['contract'] == selected_contract].sort_values('timestamp')
+
+            if not contract_df.empty:
+                fig = go.Figure()
+
+                # Actual Price
+                fig.add_trace(go.Scatter(
+                    x=contract_df['timestamp'],
+                    y=contract_df['price'],
+                    mode='lines+markers',
+                    name='Price'
+                ))
+
+                # SMA 200
+                fig.add_trace(go.Scatter(
+                    x=contract_df['timestamp'],
+                    y=contract_df['sma_200'],
+                    mode='lines',
+                    name='SMA 200',
+                    line=dict(dash='dash', color='orange')
+                ))
+
+                # Expected Price
+                if 'expected_price' in contract_df.columns:
+                     fig.add_trace(go.Scatter(
+                        x=contract_df['timestamp'],
+                        y=contract_df['expected_price'],
+                        mode='markers',
+                        name='Expected Price',
+                        marker=dict(symbol='x', size=10, color='green')
+                    ))
+
+                fig.update_layout(title=f"Model Signals: {selected_contract}", xaxis_title="Timestamp", yaxis_title="Price")
+                st.plotly_chart(fig, width='stretch')
+            else:
+                st.info(f"No data for {selected_contract}")
+        else:
+             st.info("No signal data with price information available yet.")
+
+    else:
+        st.info("No model signals logged yet.")

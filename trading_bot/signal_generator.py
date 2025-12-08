@@ -47,7 +47,14 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                      f"{action} ({confidence:.2%}) | {reason}")
 
         # Log the signal regardless of whether we trade it
-        log_model_signal(contract.lastTradeDateOrContractMonth[:6], direction)
+        log_model_signal(
+            contract.lastTradeDateOrContractMonth[:6],
+            direction,
+            price=signal_data.get('price'),
+            sma_200=signal_data.get('sma_200'),
+            expected_price=signal_data.get('expected_price'),
+            confidence=signal_data.get('confidence')
+        )
 
         if direction != "NEUTRAL":
             generated_signals.append({

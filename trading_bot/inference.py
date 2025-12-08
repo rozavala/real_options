@@ -267,6 +267,7 @@ def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float = 0.015)
             signals.append({
                 'action': decision,
                 'confidence': float(raw_return),
+                'expected_price': float(current_price * (1 + raw_return)),
                 'regime': macro_regime,
                 'reason': reason,
                 'price': float(current_price),
