@@ -244,7 +244,10 @@ def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float = 0.015)
             logging.error("200-day SMA is NaN. Cannot determine Macro Regime.")
             return []
 
-        logging.info(f"Global Macro Trend Indicator (Front Month): Price: {front_month_current_price:.2f}, SMA200: {sma_200:.2f}")
+        # 1. Define the Global "Master Switch"
+        # If Front Month is Bullish, the whole curve is tradable for LONGs
+        macro_regime = "BULL" if front_month_current_price > sma_200 else "BEAR"
+        logging.info(f"Macro Trend: {macro_regime} (Front Month: {front_month_current_price:.2f}, SMA200: {sma_200:.2f})")
 
         # 4. Generate features for the latest day
         lstm_input, xgb_input = generate_inference_features(raw_df, assets)
@@ -264,17 +267,13 @@ def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float = 0.015)
             col_name = price_cols[i] if i < len(price_cols) else 'front_month_price' # Safety fallback
             current_price = raw_df[col_name].iloc[-1]
 
-            # Determine Regime for this specific contract
-            # We compare the contract's specific price to the Global Front Month SMA.
-            # While the SMA is global, the price level of back months determines if they are
-            # relatively overbought/oversold compared to that trend line.
-            contract_regime = "BULL" if current_price > sma_200 else "BEAR"
-
             decision = "NEUTRAL"
             reason = f"Forecast {raw_return:.2%} vs Threshold {signal_threshold:.2%}"
 
+            # 2. Use the Global Regime for decision making
             if raw_return > signal_threshold:
-                if contract_regime == "BULL":
+                # FIX: Check 'macro_regime' directly. Do NOT check 'contract_price > sma_200'.
+                if macro_regime == "BULL":
                     decision = "LONG"
                     reason = "AI Buy + Bull Trend"
                 else:
@@ -282,7 +281,7 @@ def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float = 0.015)
                     reason = "AI Buy blocked by Bear Trend"
 
             elif raw_return < -signal_threshold:
-                if contract_regime == "BEAR":
+                if macro_regime == "BEAR":
                     decision = "SHORT"
                     reason = "AI Sell + Bear Trend"
                 else:
@@ -293,7 +292,7 @@ def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float = 0.015)
                 'action': decision,
                 'confidence': float(raw_return),
                 'expected_price': float(current_price * (1 + raw_return)),
-                'regime': contract_regime,
+                'regime': macro_regime,
                 'reason': reason,
                 'price': float(current_price),
                 'sma_200': float(sma_200)
