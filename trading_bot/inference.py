@@ -205,7 +205,10 @@ def get_hybrid_prediction(lstm_input, xgb_input, assets):
     # 4. Inverse-Transform to get log-returns
     final_preds_unscaled = assets['y_scaler'].inverse_transform(final_preds_scaled)
 
-    return final_preds_unscaled[0] # Return the 1D array of 5 predictions
+    # FIX: Issue 2 - Model Scaling Error
+    # The model output is a percentage (e.g., 0.50 for 0.5%), so we divide by 100
+    # to convert it to a decimal return (e.g., 0.005).
+    return final_preds_unscaled[0] / 100 # Return the 1D array of 5 predictions
 
 
 # --- 5. Main Execution ---
@@ -225,7 +228,8 @@ def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float = 0.015)
 
         # 3. Macro Filter (Brain 1)
         # Calculate 200-day SMA of Front Month Price
-        current_price = raw_df['front_month_price'].iloc[-1]
+        # Note: We calculate the SMA based on the Front Month, which serves as a global market trend indicator.
+        front_month_current_price = raw_df['front_month_price'].iloc[-1]
         sma_200 = raw_df['front_month_price'].rolling(window=200).mean().iloc[-1]
 
         # If SMA is NaN (insufficient data), we can't determine regime
@@ -233,8 +237,7 @@ def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float = 0.015)
             logging.error("200-day SMA is NaN. Cannot determine Macro Regime.")
             return []
 
-        macro_regime = "BULL" if current_price > sma_200 else "BEAR"
-        logging.info(f"Macro Trend: {macro_regime} (Price: {current_price:.2f}, SMA200: {sma_200:.2f})")
+        logging.info(f"Global Macro Trend Indicator (Front Month): Price: {front_month_current_price:.2f}, SMA200: {sma_200:.2f}")
 
         # 4. Generate features for the latest day
         lstm_input, xgb_input = generate_inference_features(raw_df, assets)
@@ -244,12 +247,27 @@ def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float = 0.015)
 
         # 6. Apply Two-Brain Logic and Format Output
         signals = []
+
+        # FIX: Issue 1 - Price Hallucination
+        # We must fetch the specific price for each contract month to compare against the SMA.
+        price_cols = ['front_month_price', 'second_month_price', 'third_month_price', 'fourth_month_price', 'fifth_month_price']
+
         for i, raw_return in enumerate(price_changes):
+            # Fetch the specific price for this contract month
+            col_name = price_cols[i] if i < len(price_cols) else 'front_month_price' # Safety fallback
+            current_price = raw_df[col_name].iloc[-1]
+
+            # Determine Regime for this specific contract
+            # We compare the contract's specific price to the Global Front Month SMA.
+            # While the SMA is global, the price level of back months determines if they are
+            # relatively overbought/oversold compared to that trend line.
+            contract_regime = "BULL" if current_price > sma_200 else "BEAR"
+
             decision = "NEUTRAL"
             reason = f"Forecast {raw_return:.2%} vs Threshold {signal_threshold:.2%}"
 
             if raw_return > signal_threshold:
-                if macro_regime == "BULL":
+                if contract_regime == "BULL":
                     decision = "LONG"
                     reason = "AI Buy + Bull Trend"
                 else:
@@ -257,7 +275,7 @@ def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float = 0.015)
                     reason = "AI Buy blocked by Bear Trend"
 
             elif raw_return < -signal_threshold:
-                if macro_regime == "BEAR":
+                if contract_regime == "BEAR":
                     decision = "SHORT"
                     reason = "AI Sell + Bear Trend"
                 else:
@@ -268,7 +286,7 @@ def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float = 0.015)
                 'action': decision,
                 'confidence': float(raw_return),
                 'expected_price': float(current_price * (1 + raw_return)),
-                'regime': macro_regime,
+                'regime': contract_regime,
                 'reason': reason,
                 'price': float(current_price),
                 'sma_200': float(sma_200)
