@@ -94,7 +94,8 @@ def get_active_coffee_tickers(num_contracts: int = 5) -> list[str]:
         for code in contract_months.keys():
             try:
                 expiration_date = get_kc_expiration_date(year, code)
-                if expiration_date.date() >= now.date():
+                # Filter out contracts expiring in less than 45 days (to account for early Option expiration)
+                if expiration_date.date() >= (now.date() + timedelta(days=45)):
                     potential_tickers.append((f"KC{code}{str(year)[-2:]}.NYB", expiration_date))
             except ValueError:
                 continue
