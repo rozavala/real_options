@@ -353,6 +353,11 @@ def fetch_portfolio_data(config, trade_ledger_df):
                 except (ValueError, TypeError):
                     mult = 37500.0 if 'KC' in symbol or 'KO' in symbol else 1.0
 
+                # Adjustment for Cents (KC quotes in cents)
+                # If multiplier is 37500, we assume it's Coffee and price is in cents, so we divide by 100.
+                if mult == 37500.0:
+                    mult = mult / 100.0
+
                 # P&L: (Mark - Entry) * Qty * Multiplier
                 unrealized_pnl = (mkt_price - entry_price) * qty * mult
                 mkt_value = mkt_price * qty * mult
