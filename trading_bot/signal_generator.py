@@ -56,14 +56,17 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
             confidence=signal_data.get('confidence')
         )
 
-        if direction != "NEUTRAL":
-            generated_signals.append({
-                "contract_month": contract.lastTradeDateOrContractMonth[:6],
-                "prediction_type": "DIRECTIONAL",
-                "direction": direction,
-                "reason": reason,
-                "regime": regime,
-                "confidence": confidence
-            })
+        # Always append signal, but include all data for notification purposes
+        generated_signals.append({
+            "contract_month": contract.lastTradeDateOrContractMonth[:6],
+            "prediction_type": "DIRECTIONAL",
+            "direction": direction,
+            "reason": reason,
+            "regime": regime,
+            "confidence": confidence,
+            "price": signal_data.get('price'),
+            "sma_200": signal_data.get('sma_200'),
+            "expected_price": signal_data.get('expected_price')
+        })
 
     return generated_signals
