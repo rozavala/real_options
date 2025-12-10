@@ -84,15 +84,17 @@ async def generate_and_queue_orders(config: dict):
             logger.info("Step 2.5: Generating structured signals from predictions...")
             signals = await generate_signals(ib, predictions, config)
             logger.info(f"Generated {len(signals)} signals: {signals}")
-            if not signals:
-                logger.info("No actionable trading signals were generated. Concluding.")
-                return
+            # removed early return check 'if not signals' here to allow notification of neutral signals
 
             active_futures = await get_active_futures(ib, config['symbol'], config['exchange'])
             if not active_futures:
                 raise ConnectionError("Could not find any active futures contracts.")
 
             for signal in signals:
+                # Skip order generation for NEUTRAL signals
+                if signal.get('direction') == 'NEUTRAL':
+                    continue
+
                 future = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal.get("contract_month", ""))), None)
                 if not future:
                     logger.warning(f"No active future for signal month {signal.get('contract_month')}."); continue
@@ -157,10 +159,34 @@ async def generate_and_queue_orders(config: dict):
         if signals:
             for signal in signals:
                 future_month = signal.get("contract_month", "N/A")
+                confidence_val = signal.get("confidence", 0.0)
+                price = signal.get("price", "N/A")
+                sma_200 = signal.get("sma_200", "N/A")
+
+                # Format numbers if they are floats
+                if isinstance(confidence_val, (int, float)):
+                    conf_str = f"{confidence_val:.2%}"
+                else:
+                    conf_str = str(confidence_val)
+
+                if isinstance(price, (int, float)):
+                    price_str = f"${price:.2f}"
+                else:
+                    price_str = str(price)
+
+                if isinstance(sma_200, (int, float)):
+                    sma_str = f"${sma_200:.2f}"
+                else:
+                    sma_str = str(sma_200)
+
                 if signal['prediction_type'] == 'DIRECTIONAL':
                     direction = signal.get("direction", "N/A")
                     reason = signal.get("reason", "N/A")
-                    signal_summary_parts.append(f"  - <b>{future_month}</b>: {direction} ({reason})")
+                    signal_summary_parts.append(
+                        f"  - <b>{future_month}</b>: {direction} ({conf_str})<br>"
+                        f"    Reason: {reason}<br>"
+                        f"    Price: {price_str} | SMA200: {sma_str}"
+                    )
                 elif signal['prediction_type'] == 'VOLATILITY':
                     vol_level = signal.get("level", "N/A")
                     signal_summary_parts.append(f"  - <b>{future_month}</b>: {vol_level} Volatility signal")
