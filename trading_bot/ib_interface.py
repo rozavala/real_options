@@ -244,11 +244,6 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
             order.adaptive_limit_price = floor_price
         logging.info(f"Creating Limit Order for {action} {config['strategy']['quantity']} @ {initial_price:.2f} (Adaptive Cap: {order.adaptive_limit_price:.2f}).")
 
-    # Switch to IBKR Adaptive Algo (Still keeping this as user didn't say to remove it, but said "IBKR Adaptive Algo doesn't apply... need to build it".
-    # User said "It seems that Adaptive Algo strategy from IBKR doesn't apply to this type of trading so we'll probably need to build it in our bot."
-    # So I should REMOVE the IBKR Adaptive Algo settings.)
-    # order.algoStrategy = 'Adaptive'
-    # order.algoParams = [TagValue('adaptivePriority', 'Normal')]
     logging.info("Using Custom Adaptive Logic (IBKR Algo Disabled).")
 
     # Assign a unique reference ID to the parent order.
