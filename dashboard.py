@@ -91,6 +91,51 @@ def load_log_data():
         st.error(f"Error accessing logs directory: {e}")
         return {}
 
+@st.cache_data(ttl=300)
+def fetch_todays_benchmark_data():
+    """Fetches today's performance for SPY and KC=F."""
+    try:
+        tickers = ['SPY', 'KC=F']
+        # Fetch 5 days to ensure we have previous close
+        data = yf.download(tickers, period="5d", progress=False, auto_adjust=True)['Close']
+
+        if data.empty:
+            return {}
+
+        changes = {}
+        for ticker in tickers:
+            try:
+                # Get the series for the ticker
+                if isinstance(data, pd.DataFrame) and ticker in data.columns:
+                    series = data[ticker].dropna()
+                elif isinstance(data, pd.Series) and data.name == ticker:
+                    series = data.dropna()
+                else:
+                    # Handle multi-index or single column edge cases
+                    # If data is single column, yf might return Series or DataFrame with that col
+                    if len(tickers) == 1:
+                        series = data.dropna()
+                    else:
+                        continue
+
+                if len(series) >= 2:
+                    prev_close = series.iloc[-2]
+                    current = series.iloc[-1]
+                    if prev_close != 0:
+                        pct_change = ((current - prev_close) / prev_close) * 100
+                        changes[ticker] = pct_change
+                    else:
+                        changes[ticker] = 0.0
+                else:
+                    changes[ticker] = 0.0
+            except Exception:
+                changes[ticker] = 0.0
+
+        return changes
+    except Exception as e:
+        # Fail silently
+        return {}
+
 @st.cache_data(ttl=3600)  # Cache benchmarks for 1 hour
 def fetch_benchmark_data(start_date, end_date):
     """Fetches S&P 500 (SPY) and Coffee Futures (KC=F) from Yahoo Finance."""
@@ -116,7 +161,13 @@ def fetch_benchmark_data(start_date, end_date):
 def fetch_account_summary_data(_config):
     """Fetches account summary (Net Liquidation Value) from IB."""
     ib = IB()
-    summary_data = {"NetLiquidation": 0.0, "UnrealizedPnL": 0.0, "RealizedPnL": 0.0}
+    # Initialize with all required keys
+    required_tags = [
+        "NetLiquidation", "UnrealizedPnL", "RealizedPnL",
+        "MaintMarginReq", "EquityWithLoanValue", "PreviousDayEquityWithLoanValue"
+    ]
+    summary_data = {tag: 0.0 for tag in required_tags}
+
     try:
         ib.connect(
             _config['connection']['host'],
@@ -458,13 +509,73 @@ with st.sidebar:
         else:
             st.error("Config not loaded.")
 
-# --- Header: KPIs & Benchmarks ---
+# --- Live Today's Section ---
+st.header("Live Today's Market")
+
+# Fetch Account Data
+account_data = fetch_account_summary_data(config)
+net_liq = account_data.get("NetLiquidation", 0.0)
+maint_margin = account_data.get("MaintMarginReq", 0.0)
+equity_with_loan = account_data.get("EquityWithLoanValue", 0.0)
+prev_day_equity = account_data.get("PreviousDayEquityWithLoanValue", 0.0)
+
+# Fetch Benchmarks
+todays_benchmarks = fetch_todays_benchmark_data()
+spy_daily_change = todays_benchmarks.get('SPY', 0.0)
+kc_daily_change = todays_benchmarks.get('KC=F', 0.0)
+
+# Calculate Daily P&L
+if equity_with_loan > 0 and prev_day_equity > 0:
+    daily_pnl = equity_with_loan - prev_day_equity
+    daily_pnl_pct = (daily_pnl / prev_day_equity) * 100
+else:
+    daily_pnl = 0.0
+    daily_pnl_pct = 0.0
+
+# Calculate Margin Utilization
+if net_liq > 0:
+    margin_util_pct = (maint_margin / net_liq) * 100
+    margin_cushion_pct = 100 - margin_util_pct
+else:
+    margin_util_pct = 0.0
+    margin_cushion_pct = 100.0
+
+# Display Metrics
+live_cols = st.columns(4)
+
+# 1. Net Liquidation & Daily P&L
+live_cols[0].metric(
+    "Net Liquidation",
+    f"${net_liq:,.2f}",
+    delta=f"${daily_pnl:,.2f} ({daily_pnl_pct:+.2f}%) Today",
+    help="Net Liquidation Value. Delta shows Daily P&L (EquityWithLoan - PrevDayEquity)."
+)
+
+# 2. Margin Utilization
+margin_label = "Margin Utilization"
+if margin_cushion_pct < 10:
+    margin_label += " ⚠️ (CRITICAL)"
+
+live_cols[1].metric(
+    margin_label,
+    f"{margin_util_pct:.1f}%",
+    delta=f"{margin_cushion_pct:.1f}% Cushion",
+    delta_color="normal",
+    help=f"Maintenance Margin: ${maint_margin:,.2f}"
+)
+
+# 3. Benchmarks
+live_cols[2].metric("S&P 500 (Daily)", f"{spy_daily_change:+.2f}%")
+live_cols[3].metric("Coffee (Daily)", f"{kc_daily_change:+.2f}%")
+
+st.divider()
+
+# --- Header: Performance Dashboard ---
 st.header("Performance Dashboard")
 
 if not trade_df.empty:
     # 1. Fetch Account Summary for Accurate P&L
-    account_data = fetch_account_summary_data(config)
-    net_liq = account_data.get("NetLiquidation", 0.0)
+    # Reuse account_data fetched above
 
     # Calculate P&L: If we have live data, use it. Else fallback to ledger (which may show dip due to open positions)
     if net_liq > 0:
