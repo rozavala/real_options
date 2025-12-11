@@ -333,9 +333,22 @@ def fetch_portfolio_data(config, trade_ledger_df):
             # If we couldn't match with ledger (or ledger empty), create a dummy constituent
             # derived from IB data.
             if not active_constituents and abs(real_qty) > 0:
+                # Fallback Price Logic:
+                # If KC/KO, item.averageCost from IB is typically Total Cost ($) per contract.
+                # We need to convert this to Price per Unit in Cents to match our system convention.
+                fallback_price = item.averageCost
+                try:
+                    f_mult = float(item.contract.multiplier)
+                except (ValueError, TypeError):
+                    f_mult = 37500.0 if 'KC' in symbol or 'KO' in symbol else 1.0
+
+                if f_mult == 37500.0:
+                     # Convert Total Cost ($) to Price in Cents: (Cost / 37500) * 100
+                     fallback_price = (item.averageCost / f_mult) * 100.0
+
                 active_constituents.append({
                     'qty': real_qty,
-                    'price': item.averageCost, # Fallback to Avg Cost
+                    'price': fallback_price,
                     'combo_id': 'Unmatched',
                     'timestamp': datetime.now() # Unknown age
                 })
@@ -354,9 +367,12 @@ def fetch_portfolio_data(config, trade_ledger_df):
                     mult = 37500.0 if 'KC' in symbol or 'KO' in symbol else 1.0
 
                 # Adjustment for Cents (KC quotes in cents)
-                # If multiplier is 37500, we assume it's Coffee and price is in cents, so we divide by 100.
+                # If multiplier is 37500, we assume it's Coffee.
                 if mult == 37500.0:
                     mult = mult / 100.0
+                    # IB returns marketPrice in Dollars (e.g. 0.1911), but Entry Price (from Ledger) is in Cents (e.g. 19.11).
+                    # We must convert marketPrice to Cents to calculate P&L correctly.
+                    mkt_price = mkt_price * 100.0
 
                 # P&L: (Mark - Entry) * Qty * Multiplier
                 unrealized_pnl = (mkt_price - entry_price) * qty * mult
