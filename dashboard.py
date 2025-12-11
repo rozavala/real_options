@@ -815,16 +815,21 @@ with tab6:
     signals_df = get_model_signals_df()
 
     if not signals_df.empty:
+        # Create a display copy to avoid modifying the original data
+        display_df = signals_df.copy()
+        if 'confidence' in display_df.columns:
+            display_df['confidence'] = display_df['confidence'] * 100
+
         # Display the raw table
         st.dataframe(
-            signals_df.sort_values('timestamp', ascending=False),
+            display_df.sort_values('timestamp', ascending=False),
             width='stretch',
             height=300,
             column_config={
                 "price": st.column_config.NumberColumn("Price", format="$%.2f"),
                 "sma_200": st.column_config.NumberColumn("SMA 200", format="$%.2f"),
                 "expected_price": st.column_config.NumberColumn("Exp Price", format="$%.2f"),
-                "confidence": st.column_config.NumberColumn("Conf", format="%.2%"),
+                "confidence": st.column_config.NumberColumn("Confidence", format="%.2f%%"),
             }
         )
 
