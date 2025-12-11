@@ -421,9 +421,11 @@ def fetch_portfolio_data(config, trade_ledger_df):
                 # If multiplier is 37500, we assume it's Coffee.
                 if mult == 37500.0:
                     mult = mult / 100.0
-                    # IB returns marketPrice in Dollars (e.g. 0.1911), but Entry Price (from Ledger) is in Cents (e.g. 19.11).
-                    # We must convert marketPrice to Cents to calculate P&L correctly.
-                    mkt_price = mkt_price * 100.0
+                    # Fix: Check if marketPrice is already in Cents.
+                    # KC prices are typically > 100.0 (e.g. 250.0).
+                    # If IB returns Dollars (e.g. 2.50), we convert. If Cents, we keep it.
+                    if mkt_price < 50.0:
+                        mkt_price = mkt_price * 100.0
 
                 # P&L: (Mark - Entry) * Qty * Multiplier
                 unrealized_pnl = (mkt_price - entry_price) * qty * mult
@@ -552,11 +554,16 @@ live_cols[0].metric(
 
 # 2. Daily P&L
 if prev_day_equity > 0:
+    pnl_help_text = "Change from Previous Day Equity"
+    # Anomaly Detection: If Daily P&L is > 50% of account, warn user
+    if abs(daily_pnl_pct) > 50.0:
+        pnl_help_text += " ⚠️ Large variance detected. 'Previous Day Equity' from IB might be incomplete or reset."
+
     live_cols[1].metric(
         "Daily P&L",
         f"${daily_pnl:,.2f}",
         delta=f"{daily_pnl_pct:+.2f}%",
-        help="Change from Previous Day Equity"
+        help=pnl_help_text
     )
 else:
     live_cols[1].metric("Daily P&L", "N/A", help="Previous Day Equity data unavailable from IB")
