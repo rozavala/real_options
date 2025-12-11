@@ -4,10 +4,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from ib_insync import Bag, ComboLeg, Contract, Order, Trade, Position
 import pandas as pd
 from datetime import datetime, timedelta
-
-import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from trading_bot.order_manager import generate_and_queue_orders, place_queued_orders, close_positions_after_5_days, ORDER_QUEUE
 from ib_insync import util

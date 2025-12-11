@@ -7,10 +7,6 @@ from datetime import datetime, timedelta
 
 from ib_insync import IB, Contract, Future, Bag, ComboLeg, Position, OrderStatus, Trade, FuturesOption, PnL, PnLSingle
 
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from trading_bot.risk_management import manage_existing_positions, _check_risk_once, _on_order_status
 from trading_bot.risk_management import _filled_order_ids as filled_set_module
 
@@ -22,6 +18,10 @@ class TestRiskManagementNewLogic(unittest.TestCase):
         self.mock_trade.isDone.return_value = True
         self.mock_trade.orderStatus = MagicMock(spec=OrderStatus)
         self.mock_trade.orderStatus.status = OrderStatus.Filled
+        # The code accesses trade.order.orderId/orderRef for logging
+        self.mock_trade.order = MagicMock()
+        self.mock_trade.order.orderId = 12345
+        self.mock_trade.order.orderRef = "test-ref"
         # Reset the global set of filled orders before each test
         filled_set_module.clear()
 
@@ -100,24 +100,25 @@ class TestRiskManagementNewLogic(unittest.TestCase):
             await _check_risk_once(ib, config, set(), 0, 0)
 
             # Assert
-            # Should trigger stop loss and place closing orders for both legs
-            self.assertEqual(ib.placeOrder.call_count, 2)
+            # Should trigger stop loss and place closing order for the BAG
+            self.assertEqual(ib.placeOrder.call_count, 1)
 
             # Verify arguments of placeOrder
-            # Leg 1 was Position 1 (Long), so Closing Order should be SELL 1
-            args1, _ = ib.placeOrder.call_args_list[0]
-            contract1, order1 = args1
-            self.assertEqual(contract1.conId, 123)
-            self.assertEqual(order1.action, 'SELL')
-            self.assertEqual(order1.totalQuantity, 1)
-            self.assertTrue(order1.outsideRth)
+            args, _ = ib.placeOrder.call_args_list[0]
+            contract, order = args
 
-            # Leg 2 was Position -1 (Short), so Closing Order should be BUY 1
-            args2, _ = ib.placeOrder.call_args_list[1]
-            contract2, order2 = args2
-            self.assertEqual(contract2.conId, 124)
-            self.assertEqual(order2.action, 'BUY')
-            self.assertEqual(order2.totalQuantity, 1)
+            # Should be a BAG contract
+            self.assertEqual(contract.secType, 'BAG')
+            self.assertEqual(contract.symbol, 'KC')
+
+            # Legs verification
+            self.assertEqual(len(contract.comboLegs), 2)
+
+            # Order verification
+            # The logic places a "BUY" Market Order for the Bag
+            self.assertEqual(order.action, 'BUY')
+            self.assertEqual(order.totalQuantity, 1)
+            self.assertTrue(order.outsideRth)
 
         asyncio.run(run_test())
 
@@ -186,7 +187,7 @@ class TestRiskManagementNewLogic(unittest.TestCase):
             await _check_risk_once(ib, config, set(), 0, 0)
 
             # Assert
-            self.assertEqual(ib.placeOrder.call_count, 2) # Should trigger take profit
+            self.assertEqual(ib.placeOrder.call_count, 1) # Should trigger take profit
 
         asyncio.run(run_test())
 

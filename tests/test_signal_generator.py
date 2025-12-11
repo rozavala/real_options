@@ -35,13 +35,13 @@ async def test_generate_signals():
 
     signals = await generate_signals(ib, signals_input, config)
 
-    # We expect 4 signals (2 BULLISH, 2 BEARISH) because one is NEUTRAL
-    assert len(signals) == 4
+    # We expect 5 signals because NEUTRAL ones are now included
+    assert len(signals) == 5
 
     # The contracts are sorted chronologically. The predictions should map to them in order.
     # 1. Z25 (202512) -> LONG -> BULLISH
     # 2. H26 (202603) -> SHORT -> BEARISH
-    # 3. K26 (202605) -> NEUTRAL -> No signal
+    # 3. K26 (202605) -> NEUTRAL -> NEUTRAL
     # 4. N26 (202607) -> LONG -> BULLISH
     # 5. U26 (202609) -> SHORT -> BEARISH
 
@@ -52,9 +52,12 @@ async def test_generate_signals():
     assert signals[1]['direction'] == 'BEARISH'
     assert signals[1]['contract_month'] == '202603'
 
-    assert signals[2]['direction'] == 'BULLISH'
-    assert signals[2]['contract_month'] == '202607'
+    assert signals[2]['direction'] == 'NEUTRAL'
+    assert signals[2]['contract_month'] == '202605'
 
-    assert signals[3]['direction'] == 'BEARISH'
-    assert signals[3]['contract_month'] == '202609'
+    assert signals[3]['direction'] == 'BULLISH'
+    assert signals[3]['contract_month'] == '202607'
+
+    assert signals[4]['direction'] == 'BEARISH'
+    assert signals[4]['contract_month'] == '202609'
 
