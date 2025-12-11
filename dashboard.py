@@ -158,15 +158,21 @@ def fetch_benchmark_data(start_date, end_date):
 # --- 5. Live Data Functions (IB Connection) ---
 
 @st.cache_data(ttl=60)
-def fetch_account_summary_data(_config):
-    """Fetches account summary (Net Liquidation Value) from IB."""
+def fetch_live_dashboard_data(_config):
+    """
+    Consolidated fetcher for Account Summary, Daily P&L, and Active Futures Data.
+    Uses reqPnL for accurate Daily P&L and live futures data for Coffee benchmark.
+    """
     ib = IB()
-    # Initialize with all required keys
-    required_tags = [
-        "NetLiquidation", "UnrealizedPnL", "RealizedPnL",
-        "MaintMarginReq", "EquityWithLoanValue", "PreviousDayEquityWithLoanValue"
-    ]
-    summary_data = {tag: 0.0 for tag in required_tags}
+    data = {
+        "NetLiquidation": 0.0,
+        "MaintMarginReq": 0.0,
+        "DailyPnL": 0.0,
+        "DailyPnLPct": 0.0,
+        "KC_DailyChange": 0.0,
+        "KC_Price": 0.0,
+        "MarketData": pd.DataFrame()
+    }
 
     try:
         ib.connect(
@@ -175,84 +181,100 @@ def fetch_account_summary_data(_config):
             clientId=random.randint(1000, 9999)
         )
 
-        # accountSummary() returns a list of AccountValue objects
-        # We fetch all tags to be safe as tags arg can be problematic in some versions
+        # 1. Account Summary (Net Liq, Margin)
+        # Note: We rely on reqPnL for the daily profit metrics, not PreviousDayEquity
         summary = ib.accountSummary()
-
         for item in summary:
-            if item.tag in summary_data:
+            if item.tag == "NetLiquidation":
                 try:
-                    summary_data[item.tag] = float(item.value)
-                except ValueError:
-                    pass
+                    data["NetLiquidation"] = float(item.value)
+                except ValueError: pass
+            elif item.tag == "MaintMarginReq":
+                try:
+                    data["MaintMarginReq"] = float(item.value)
+                except ValueError: pass
+
+        # 2. Accurate Daily P&L via reqPnL
+        accounts = ib.managedAccounts()
+        if accounts:
+            acct = accounts[0]
+            pnl_stream = ib.reqPnL(acct)
+
+            # Wait briefly for P&L stream to populate
+            start_pnl = datetime.now()
+            while (datetime.now() - start_pnl).seconds < 2:
+                ib.sleep(0.1)
+                if pnl_stream.dailyPnL != 0.0 and not util.isNan(pnl_stream.dailyPnL):
+                    break
+
+            # Capture Daily P&L
+            if not util.isNan(pnl_stream.dailyPnL):
+                data["DailyPnL"] = pnl_stream.dailyPnL
+                # Calculate Pct Change relative to Start-of-Day Equity
+                # Start Equity = Current NetLiq - Daily P&L
+                start_equity = data["NetLiquidation"] - data["DailyPnL"]
+                if start_equity > 0:
+                    data["DailyPnLPct"] = (data["DailyPnL"] / start_equity) * 100
+
+            ib.cancelPnL(acct)
+
+        # 3. Active Futures (Market Data & Coffee Benchmark)
+        active_futures = ib.run(get_active_futures(ib, _config['symbol'], _config['exchange']))
+        
+        if active_futures:
+            # Subscribe to data
+            tickers = [ib.reqMktData(c, '', False, False) for c in active_futures]
+
+            # Wait for data
+            start_mkt = datetime.now()
+            while (datetime.now() - start_mkt).seconds < 4:
+                ib.sleep(0.2)
+                if all(not util.isNan(t.last) or not util.isNan(t.close) for t in tickers):
+                    break
+
+            # Process Market Data Table
+            market_rows = []
+            for contract, ticker in zip(active_futures, tickers):
+                # Fallback Logic: If Last is NaN (Market Closed), use Close
+                if not util.isNan(ticker.last):
+                    price = ticker.last
+                    source = "Live"
+                elif not util.isNan(ticker.close):
+                    price = ticker.close
+                    source = "Close (Prev)"
+                else:
+                    price = 0.0
+                    source = "N/A"
+
+                market_rows.append({
+                    "Contract": contract.localSymbol,
+                    "Price": price,
+                    "Source": source,
+                    "Bid": ticker.bid if not util.isNan(ticker.bid) else 0.0,
+                    "Ask": ticker.ask if not util.isNan(ticker.ask) else 0.0,
+                    "Time": ticker.time.strftime('%H:%M:%S') if ticker.time else "N/A"
+                })
+
+            data["MarketData"] = pd.DataFrame(market_rows)
+
+            # Calculate Coffee Benchmark from Front Month (First Contract)
+            if len(tickers) > 0:
+                front_ticker = tickers[0]
+                last_price = front_ticker.last if not util.isNan(front_ticker.last) else front_ticker.close
+                prev_close = front_ticker.close if not util.isNan(front_ticker.close) else 0.0
+
+                data["KC_Price"] = last_price
+                if prev_close > 0 and last_price > 0:
+                    data["KC_DailyChange"] = ((last_price - prev_close) / prev_close) * 100
 
         ib.disconnect()
-        return summary_data
+        return data
 
-    except Exception:
+    except Exception as e:
         # Fail silently to avoid disrupting dashboard if IB is offline
         if ib.isConnected():
             ib.disconnect()
-        return {}
-
-def fetch_market_data(config):
-    """Connects to IB, fetches future prices, handles closed markets, and disconnects."""
-    ib = IB()
-    try:
-        ib.connect(
-            config['connection']['host'],
-            config['connection']['port'],
-            clientId=random.randint(100, 1000)
-        )
-        st.toast("Connected to IB Gateway...", icon="🔗")
-
-        # Use ib.run() to execute async function on the correct loop
-        active_futures = ib.run(get_active_futures(ib, config['symbol'], config['exchange']))
-        
-        if not active_futures:
-            st.warning("No active futures contracts found.")
-            ib.disconnect()
-            return pd.DataFrame()
-
-        tickers = [ib.reqMktData(c, '', False, False) for c in active_futures]
-
-        # Wait up to 4 seconds for data to populate
-        start_time = datetime.now()
-        while (datetime.now() - start_time).seconds < 4:
-            ib.sleep(0.2)
-            if all(not util.isNan(t.last) or not util.isNan(t.close) for t in tickers):
-                break
-        
-        market_data = []
-        for contract, ticker in zip(active_futures, tickers):
-            # Fallback Logic: If Last is NaN (Market Closed), use Close
-            if not util.isNan(ticker.last):
-                price = ticker.last
-                source = "Live"
-            elif not util.isNan(ticker.close):
-                price = ticker.close
-                source = "Close (Prev)"
-            else:
-                price = 0.0
-                source = "N/A"
-
-            market_data.append({
-                "Contract": contract.localSymbol,
-                "Price": price,
-                "Source": source,
-                "Bid": ticker.bid if not util.isNan(ticker.bid) else 0.0,
-                "Ask": ticker.ask if not util.isNan(ticker.ask) else 0.0,
-                "Time": ticker.time.strftime('%H:%M:%S') if ticker.time else "N/A"
-            })
-
-        ib.disconnect()
-        return pd.DataFrame(market_data)
-
-    except Exception as e:
-        st.error(f"Failed to fetch market data: {e}")
-        if ib.isConnected():
-            ib.disconnect()
-        return pd.DataFrame()
+        return data
 
 def fetch_portfolio_data(config, trade_ledger_df):
     """
@@ -514,25 +536,18 @@ with st.sidebar:
 # --- Live Today's Section ---
 st.header("Live Today's Market")
 
-# Fetch Account Data
-account_data = fetch_account_summary_data(config)
-net_liq = account_data.get("NetLiquidation", 0.0)
-maint_margin = account_data.get("MaintMarginReq", 0.0)
-equity_with_loan = account_data.get("EquityWithLoanValue", 0.0)
-prev_day_equity = account_data.get("PreviousDayEquityWithLoanValue", 0.0)
+# Fetch Unified Live Data
+live_data = fetch_live_dashboard_data(config)
+net_liq = live_data.get("NetLiquidation", 0.0)
+maint_margin = live_data.get("MaintMarginReq", 0.0)
+daily_pnl = live_data.get("DailyPnL", 0.0)
+daily_pnl_pct = live_data.get("DailyPnLPct", 0.0)
 
-# Fetch Benchmarks
+# Fetch SPY Benchmark (keep yfinance for SPY as it's reliable enough for stocks)
 todays_benchmarks = fetch_todays_benchmark_data()
 spy_daily_change = todays_benchmarks.get('SPY', 0.0)
-kc_daily_change = todays_benchmarks.get('KC=F', 0.0)
-
-# Calculate Daily P&L
-if equity_with_loan > 0 and prev_day_equity > 0:
-    daily_pnl = equity_with_loan - prev_day_equity
-    daily_pnl_pct = (daily_pnl / prev_day_equity) * 100
-else:
-    daily_pnl = 0.0
-    daily_pnl_pct = 0.0
+# Use IBKR data for Coffee
+kc_daily_change = live_data.get("KC_DailyChange", 0.0)
 
 # Calculate Margin Utilization
 if net_liq > 0:
@@ -549,24 +564,16 @@ live_cols = st.columns(5)
 live_cols[0].metric(
     "Net Liquidation",
     f"${net_liq:,.2f}",
-    help="Net Liquidation Value (EquityWithLoanValue)"
+    help="Net Liquidation Value from IBKR Account Summary"
 )
 
 # 2. Daily P&L
-if prev_day_equity > 0:
-    pnl_help_text = "Change from Previous Day Equity"
-    # Anomaly Detection: If Daily P&L is > 50% of account, warn user
-    if abs(daily_pnl_pct) > 50.0:
-        pnl_help_text += " ⚠️ Large variance detected. 'Previous Day Equity' from IB might be incomplete or reset."
-
-    live_cols[1].metric(
-        "Daily P&L",
-        f"${daily_pnl:,.2f}",
-        delta=f"{daily_pnl_pct:+.2f}%",
-        help=pnl_help_text
-    )
-else:
-    live_cols[1].metric("Daily P&L", "N/A", help="Previous Day Equity data unavailable from IB")
+live_cols[1].metric(
+    "Daily P&L",
+    f"${daily_pnl:,.2f}",
+    delta=f"{daily_pnl_pct:+.2f}%",
+    help="Real-time Daily P&L from IBKR (reqPnL). Excludes deposits/withdrawals."
+)
 
 # 3. Margin Utilization
 margin_label = "Margin Utilization"
@@ -581,7 +588,7 @@ live_cols[2].metric(
 
 # 4. Benchmarks
 live_cols[3].metric("S&P 500 (Daily)", f"{spy_daily_change:+.2f}%")
-live_cols[4].metric("Coffee (Daily)", f"{kc_daily_change:+.2f}%")
+live_cols[4].metric("Coffee (Daily)", f"{kc_daily_change:+.2f}%", help="Derived from active Front Month Future on IBKR")
 
 st.divider()
 
@@ -813,7 +820,9 @@ with tab5:
 
     if st.button("📈 Fetch Market Snapshot", width='stretch'):
         with st.spinner("Connecting to IB..."):
-            st.session_state.market_data = fetch_market_data(config)
+            # Re-use the consolidated fetcher but extract just the market data part
+            snapshot = fetch_live_dashboard_data(config)
+            st.session_state.market_data = snapshot.get("MarketData", pd.DataFrame())
 
     if not st.session_state.market_data.empty:
         st.dataframe(
