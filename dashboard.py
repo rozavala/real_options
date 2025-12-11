@@ -541,32 +541,40 @@ else:
     margin_cushion_pct = 100.0
 
 # Display Metrics
-live_cols = st.columns(4)
+live_cols = st.columns(5)
 
-# 1. Net Liquidation & Daily P&L
+# 1. Net Liquidation
 live_cols[0].metric(
     "Net Liquidation",
     f"${net_liq:,.2f}",
-    delta=f"${daily_pnl:,.2f} ({daily_pnl_pct:+.2f}%) Today",
-    help="Net Liquidation Value. Delta shows Daily P&L (EquityWithLoan - PrevDayEquity)."
+    help="Net Liquidation Value (EquityWithLoanValue)"
 )
 
-# 2. Margin Utilization
+# 2. Daily P&L
+if prev_day_equity > 0:
+    live_cols[1].metric(
+        "Daily P&L",
+        f"${daily_pnl:,.2f}",
+        delta=f"{daily_pnl_pct:+.2f}%",
+        help="Change from Previous Day Equity"
+    )
+else:
+    live_cols[1].metric("Daily P&L", "N/A", help="Previous Day Equity data unavailable from IB")
+
+# 3. Margin Utilization
 margin_label = "Margin Utilization"
 if margin_cushion_pct < 10:
-    margin_label += " ⚠️ (CRITICAL)"
+    margin_label = ":red[Margin Utilization ⚠️]"
 
-live_cols[1].metric(
+live_cols[2].metric(
     margin_label,
     f"{margin_util_pct:.1f}%",
-    delta=f"{margin_cushion_pct:.1f}% Cushion",
-    delta_color="normal",
-    help=f"Maintenance Margin: ${maint_margin:,.2f}"
+    help=f"Maintenance Margin: ${maint_margin:,.2f} | Cushion: {margin_cushion_pct:.1f}%"
 )
 
-# 3. Benchmarks
-live_cols[2].metric("S&P 500 (Daily)", f"{spy_daily_change:+.2f}%")
-live_cols[3].metric("Coffee (Daily)", f"{kc_daily_change:+.2f}%")
+# 4. Benchmarks
+live_cols[3].metric("S&P 500 (Daily)", f"{spy_daily_change:+.2f}%")
+live_cols[4].metric("Coffee (Daily)", f"{kc_daily_change:+.2f}%")
 
 st.divider()
 
