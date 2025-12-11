@@ -10,7 +10,7 @@ import logging
 import numpy as np
 from ib_insync import *
 
-from logging_config import setup_logging
+from trading_bot.logging_config import setup_logging
 from trading_bot.utils import get_expiration_details
 
 # --- Logging Setup ---

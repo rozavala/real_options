@@ -1,7 +1,7 @@
 
 import logging
 from ib_insync import IB, Contract, Future
-from logging_config import setup_logging
+from trading_bot.logging_config import setup_logging
 from trading_bot.ib_interface import get_active_futures
 from trading_bot.model_signals import log_model_signal
 

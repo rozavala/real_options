@@ -16,7 +16,7 @@ import traceback
 from ib_insync import IB
 
 from config_loader import load_config
-from logging_config import setup_logging
+from trading_bot.logging_config import setup_logging
 from notifications import send_pushover_notification
 from trading_bot.risk_management import monitor_positions_for_risk
 

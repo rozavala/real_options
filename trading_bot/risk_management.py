@@ -19,7 +19,7 @@ import pytz
 from ib_insync import *
 from ib_insync import util
 
-from logging_config import setup_logging
+from trading_bot.logging_config import setup_logging
 from trading_bot.utils import get_position_details, log_trade_to_ledger
 from trading_bot.order_manager import get_trade_ledger_df
 from trading_bot.ib_interface import place_order

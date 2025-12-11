@@ -105,7 +105,7 @@ The orchestrator will then handle starting and stopping the position monitor and
 
 -   **`orchestrator.py`**: Main entry point. Schedules all tasks.
 -   **`config_loader.py`**: Loads the `config.json` file.
--   **`logging_config.py`**: Sets up centralized logging.
+-   **`trading_bot/logging_config.py`**: Sets up centralized logging.
 -   **`notifications.py`**: Handles sending Pushover notifications.
 -   **`coffee_factors_data_pull_new.py`**: Fetches and validates all external data.
 -   **`trading_bot/`**: The core trading logic package.

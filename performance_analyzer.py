@@ -9,7 +9,7 @@ import random
 import math
 from ib_insync import IB, PortfolioItem
 
-from logging_config import setup_logging
+from trading_bot.logging_config import setup_logging
 from notifications import send_pushover_notification
 from trading_bot.model_signals import get_model_signals_df
 from trading_bot.performance_graphs import generate_performance_charts
