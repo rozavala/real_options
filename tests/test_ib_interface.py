@@ -5,12 +5,6 @@ from unittest.mock import MagicMock, patch, AsyncMock
 from ib_insync import Contract, Future, FuturesOption, Bag, ComboLeg, Trade, Order, OrderStatus, LimitOrder
 from datetime import datetime
 
-# This is a bit of a hack to make sure the custom module can be found
-# when running tests from the root directory.
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from trading_bot.ib_interface import (
     get_active_futures,
     build_option_chain,

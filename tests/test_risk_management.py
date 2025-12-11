@@ -4,10 +4,6 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 from ib_insync import IB, Contract, Future, Bag, ComboLeg, Position, OrderStatus, Trade, FuturesOption, PnL, PnLSingle
 
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from trading_bot.risk_management import manage_existing_positions, _check_risk_once, _on_order_status
 from trading_bot.risk_management import _filled_order_ids as filled_set_module
 
