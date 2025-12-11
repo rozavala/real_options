@@ -442,19 +442,6 @@ async def fetch_flex_query_report(token: str, query_id: str) -> str | None:
                 if not resp.text.strip().startswith('<?xml'):
                     logger.info("Successfully downloaded Flex Query report.")
                     
-                    # --- DEBUG: Write raw report to a specific file path ---
-                    try:
-                        # Get the directory where this script is located
-                        script_dir = os.path.dirname(os.path.abspath(__file__))
-                        # Name the debug file path to be unique for each query
-                        debug_path = os.path.join(script_dir, f'debug_report_{query_id}.csv')
-
-                        with open(debug_path, 'w', encoding='utf-8') as f:
-                            f.write(resp.text)
-                        logger.info(f"Wrote raw downloaded report to '{debug_path}' for debugging.")
-                    except Exception as e:
-                        logger.error(f"Failed to write debug report to '{debug_path}': {e}")
-                    # --- END DEBUG ---
 
                     return resp.text
                 
