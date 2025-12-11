@@ -17,7 +17,7 @@ from ib_insync import *
 import numpy as np
 from scipy.stats import norm
 
-from logging_config import setup_logging
+from trading_bot.logging_config import setup_logging
 
 # --- Logging Setup ---
 setup_logging()

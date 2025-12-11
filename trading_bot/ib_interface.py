@@ -12,7 +12,7 @@ from datetime import datetime
 
 from ib_insync import *
 
-from logging_config import setup_logging
+from trading_bot.logging_config import setup_logging
 from trading_bot.utils import price_option_black_scholes, log_trade_to_ledger
 
 # --- Logging Setup ---

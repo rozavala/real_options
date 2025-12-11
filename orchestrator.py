@@ -22,7 +22,7 @@ from datetime import datetime, time, timedelta
 import pytz
 
 from config_loader import load_config
-from logging_config import setup_logging
+from trading_bot.logging_config import setup_logging
 from notifications import send_pushover_notification
 from performance_analyzer import main as run_performance_analysis
 from reconcile_trades import main as run_reconciliation, reconcile_active_positions

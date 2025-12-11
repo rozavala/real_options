@@ -12,7 +12,7 @@ import httpx
 if __name__ == "__main__":
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
     from config_loader import load_config
-    from logging_config import setup_logging
+    from trading_bot.logging_config import setup_logging
     # We can't easily import from reconcile_trades if it's a script in the same dir
     # unless we treat the dir as a package or add it to path.
     # We already added '.' to path.

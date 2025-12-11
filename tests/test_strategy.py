@@ -1,12 +1,6 @@
 import unittest
 from ib_insync import Future
 
-# This is a bit of a hack to make sure the custom module can be found
-# when running tests from the root directory.
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from trading_bot.strategy import define_directional_strategy, define_volatility_strategy
 
 
