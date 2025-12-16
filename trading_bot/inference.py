@@ -220,7 +220,7 @@ def get_hybrid_prediction(lstm_input, xgb_input, assets):
 
 # --- 5. Main Execution ---
 
-def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float = 0.015):
+def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float):
     """
     Main function to run the entire pipeline with Two-Brain logic.
     """
