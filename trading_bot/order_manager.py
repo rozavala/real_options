@@ -69,7 +69,8 @@ async def generate_and_queue_orders(config: dict):
         logger.info("Data pull complete.")
 
         logger.info("Step 2: Running local model inference...")
-        predictions = get_model_predictions(data_df)
+        signal_threshold = config.get('strategy', {}).get('signal_threshold', 0.015)
+        predictions = get_model_predictions(data_df, signal_threshold=signal_threshold)
         if not predictions:
             send_pushover_notification(config.get('notifications', {}), "Order Generation Failure", "Failed to get predictions from local model.")
             return
