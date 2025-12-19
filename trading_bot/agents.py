@@ -41,8 +41,8 @@ class CoffeeCouncil:
         genai.configure(api_key=api_key)
 
         # 2. Initialize Models
-        agent_model_name = self.config.get('agent_model', 'gemini-1.5-flash')
-        master_model_name = self.config.get('master_model', 'gemini-1.5-pro')
+        agent_model_name = self.config.get('agent_model', 'gemini-3.0-flash')
+        master_model_name = self.config.get('master_model', 'gemini-2.5-pro')
 
         # Safety settings (block few)
         safety_settings = {

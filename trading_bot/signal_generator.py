@@ -91,6 +91,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         research_reports[key] = "Agent failed to report."
                     else:
                         research_reports[key] = result
+                        logger.info(f"Agent Report [{key}]: {result}")
 
                 # 2. Master Strategist Decision
                 decision = await council.decide(contract_name, ml_signal, research_reports)
