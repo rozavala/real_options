@@ -30,14 +30,13 @@ class CoffeeCouncil:
 
         # 1. Setup API Key
         api_key = self.config.get('api_key')
-        env_var_name = self.config.get('api_key_env_var', 'GEMINI_API_KEY')
 
-        # If config key is placeholder or empty, try env var
+        # If config key is placeholder or empty, try standard env var
         if not api_key or api_key == "YOUR_API_KEY_HERE":
-            api_key = os.environ.get(env_var_name)
+            api_key = os.environ.get('GEMINI_API_KEY')
 
         if not api_key:
-            raise ValueError(f"Gemini API Key not found. Please set {env_var_name} env var or update config.json.")
+            raise ValueError("Gemini API Key not found. Please set GEMINI_API_KEY env var or update config.json.")
 
         genai.configure(api_key=api_key)
 

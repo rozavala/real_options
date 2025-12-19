@@ -49,6 +49,21 @@ async def test_council_initialization(mock_genai, mock_config):
     assert mock_model_cls.call_count == 2 # 1 for agent, 1 for master
 
 @pytest.mark.asyncio
+async def test_council_init_fallback(mock_genai):
+    mock_configure, _, _ = mock_genai
+
+    # Config with placeholder
+    config = {
+        "gemini": {
+            "api_key": "YOUR_API_KEY_HERE"
+        }
+    }
+
+    with patch.dict(os.environ, {"GEMINI_API_KEY": "ENV_KEY_123"}):
+        CoffeeCouncil(config)
+        mock_configure.assert_called_with(api_key="ENV_KEY_123")
+
+@pytest.mark.asyncio
 async def test_research_topic(mock_genai, mock_config):
     _, _, mock_agent_instance = mock_genai
 
