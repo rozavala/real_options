@@ -3,138 +3,155 @@ import logging
 import asyncio
 import traceback
 from ib_insync import IB
-from trading_bot.logging_config import setup_logging
-from trading_bot.ib_interface import get_active_futures
-from trading_bot.model_signals import log_model_signal
 from trading_bot.agents import CoffeeCouncil
-from notifications import send_pushover_notification
+from trading_bot.ib_interface import get_active_futures # CORRECTED IMPORT
+from trading_bot.model_signals import log_model_signal # Keep existing logging
 
-setup_logging()
 logger = logging.getLogger(__name__)
 
 async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
     """
-    Generates structured trading signals from the inference engine's output
-    and the Gemini Coffee Council's analysis.
-
-    Maps detailed signals (dicts) to active futures contracts chronologically.
+    Generates trading signals by combining the existing ML signals (signals_list)
+    with the Gemini Coffee Council's qualitative analysis.
     """
+    # 1. Validation
     if not signals_list or not isinstance(signals_list, list) or len(signals_list) != 5:
         logger.error(f"Invalid signals list from inference engine: {signals_list}")
         return []
 
-    logger.info("Generating trading signals from Inference Engine + Coffee Council...")
+    logger.info("--- Starting Multi-Agent Signal Generation (Council) ---")
 
-    # Initialize Council
+    # 2. Initialize Council
     council = None
     try:
         council = CoffeeCouncil(config)
     except Exception as e:
         logger.error(f"Failed to initialize Coffee Council: {e}. Falling back to raw ML signals.")
-        send_pushover_notification(
-            config.get('notifications', {}),
-            "Coffee Council Startup Failed",
-            f"Error: {e}. Bot will use raw ML signals."
-        )
+        # We proceed; logic below handles council=None by skipping agent calls
 
+    # 3. Get Active Futures (using passed-in IB instance)
     active_futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=5)
-    if len(active_futures) < len(signals_list):
-        logger.error(f"Could not retrieve enough active futures. "
-                      f"Needed {len(signals_list)}, found {len(active_futures)}.")
-        return []
 
-    # Sort contracts chronologically
+    # Sort chronologically to match the assumed order of signals_list
     sorted_contracts = sorted(active_futures, key=lambda c: c.lastTradeDateOrContractMonth)
 
-    generated_signals = []
+    if len(sorted_contracts) < len(signals_list):
+        logger.warning(f"Mismatch: {len(signals_list)} signals but only {len(sorted_contracts)} active contracts found.")
 
-    # Process each contract
-    for i, contract in enumerate(sorted_contracts):
-        ml_signal = signals_list[i]
+    final_signals = []
+
+    # Semaphore to prevent hitting Gemini rate limits (max 3 concurrent contract analysis groups)
+    sem = asyncio.Semaphore(3)
+
+    # 4. Define the async processor for a single contract
+    async def process_contract(contract, ml_signal):
         contract_name = f"{contract.localSymbol} ({contract.lastTradeDateOrContractMonth[:6]})"
 
-        # Default to ML signal values
-        final_direction = "NEUTRAL"
+        # Default values (Fallback to ML)
+        final_data = {
+            "action": "NEUTRAL",
+            "confidence": ml_signal.get('confidence', 0.0),
+            "expected_price": ml_signal.get('expected_price'),
+            "reason": ml_signal.get('reason', 'N/A')
+        }
+
+        # Map ML 'LONG'/'SHORT' to Council's 'BULLISH'/'BEARISH'
         raw_action = ml_signal.get('action', 'NEUTRAL')
-        if raw_action == "LONG": final_direction = "BULLISH"
-        elif raw_action == "SHORT": final_direction = "BEARISH"
+        if raw_action == "LONG": final_data["action"] = "BULLISH"
+        elif raw_action == "SHORT": final_data["action"] = "BEARISH"
 
-        final_confidence = ml_signal.get('confidence', 0.0)
-        final_reason = ml_signal.get('reason', 'N/A')
-        final_expected_price = ml_signal.get('expected_price')
+        # If Council is offline, return ML defaults immediately
+        if not council:
+            return {
+                **ml_signal,
+                **final_data,
+                "contract_month": contract.lastTradeDateOrContractMonth[:6],
+                "direction": final_data["action"]  # Ensure 'direction' key exists for logging
+            }
 
-        # --- COUNCIL EXECUTION ---
-        if council:
+        async with sem:
             try:
-                logger.info(f"Convening Coffee Council for {contract_name}...")
+                logger.info(f"Convening Council for {contract_name}...")
 
-                # 1. Parallel Research Tasks
-                research_tasks = {
+                # A. Define Research Tasks
+                # Note: We use specific keywords to guide the Flash model search
+                tasks = {
                     "meteorologist": council.research_topic("meteorologist",
-                        "Search for 'current 10-day weather forecast Minas Gerais coffee zone' and 'NOAA Brazil precipitation anomaly'. Analyze if recent rains are beneficial for flowering or excessive."),
+                        f"Search for 'current 10-day weather forecast Minas Gerais coffee zone' and 'NOAA Brazil precipitation anomaly'. Analyze if recent rains are beneficial for flowering or excessive."),
                     "macro": council.research_topic("macro",
-                        "Search for 'USD BRL exchange rate forecast' and 'Brazil Central Bank Selic rate outlook'. Determine if the BRL is trending to encourage farmer selling."),
+                        f"Search for 'USD BRL exchange rate forecast' and 'Brazil Central Bank Selic rate outlook'. Determine if the BRL is trending to encourage farmer selling."),
                     "geopolitical": council.research_topic("geopolitical",
-                        "Search for 'Red Sea shipping coffee delays', 'Brazil port of Santos wait times', and 'EUDR regulation delay latest news'. Determine if there are logistical bottlenecks forming."),
+                        f"Search for 'Red Sea shipping coffee delays', 'Brazil port of Santos wait times', and 'EUDR regulation delay latest news'. Determine if there are logistical bottlenecks."),
                     "sentiment": council.research_topic("sentiment",
-                        "Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought.")
+                        f"Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought.")
                 }
 
-                # Execute all research in parallel
-                results = await asyncio.gather(*research_tasks.values(), return_exceptions=True)
+                # B. Execute Research (Parallel) with Rate Limit Protection
+                # Add slight stagger to avoid instantaneous burst
+                await asyncio.sleep(0.5)
+                research_results = await asyncio.gather(*tasks.values(), return_exceptions=True)
 
-                # Unpack results into a dictionary, handling exceptions
-                research_reports = {}
-                for key, result in zip(research_tasks.keys(), results):
-                    if isinstance(result, Exception):
-                        logger.error(f"Agent {key} failed: {result}")
-                        research_reports[key] = "Agent failed to report."
+                # C. Format Reports
+                reports = {}
+                for key, res in zip(tasks.keys(), research_results):
+                    if isinstance(res, Exception):
+                        logger.error(f"Agent {key} failed for {contract_name}: {res}")
+                        reports[key] = "Data Unavailable"
                     else:
-                        research_reports[key] = result
-                        logger.info(f"Agent Report [{key}]: {result}")
+                        reports[key] = res
 
-                # 2. Master Strategist Decision
-                decision = await council.decide(contract_name, ml_signal, research_reports)
+                # D. Master Decision
+                decision = await council.decide(contract_name, ml_signal, reports)
 
-                # 3. Update Final Signal
-                final_direction = decision.get('direction', final_direction)
-                final_confidence = decision.get('confidence', final_confidence)
-                final_reason = decision.get('reasoning', f"Master Decision (Fallback Reason). {decision}")
-                final_expected_price = decision.get('projected_price_5_day', final_expected_price)
+                # E. Update Final Data
+                # Robust key extraction for 'projected' vs 'projection'
+                price = decision.get('projected_price_5_day') or decision.get('projection_price_5_day')
 
-                logger.info(f"Council Decision for {contract_name}: {final_direction} ({final_confidence:.2%}) due to: {final_reason}")
+                final_data["action"] = decision.get('direction', final_data["action"])
+                final_data["confidence"] = decision.get('confidence', final_data["confidence"])
+                final_data["reason"] = decision.get('reasoning', final_data["reason"])
+                if price:
+                    final_data["expected_price"] = price
+
+                logger.info(f"Council Decision {contract_name}: {final_data['action']} ({final_data['confidence']})")
 
             except Exception as e:
-                logger.error(f"Council execution failed for {contract_name}: {e}\n{traceback.format_exc()}")
-                # Fallback is already set to ML defaults
-                send_pushover_notification(
-                    config.get('notifications', {}),
-                    "Coffee Council Error",
-                    f"Council failed for {contract_name}. Using ML fallback. Error: {e}"
-                )
+                logger.error(f"Council execution failed for {contract_name}: {e}")
+                # We silently fall back to the ML defaults set at start of function
 
-        # Log the final signal (whether from Council or ML)
-        log_model_signal(
-            contract.lastTradeDateOrContractMonth[:6],
-            final_direction,
-            price=ml_signal.get('price'),
-            sma_200=ml_signal.get('sma_200'),
-            expected_price=final_expected_price,
-            confidence=final_confidence
-        )
-
-        logger.info(f"Final Signal {contract_name}: {final_direction} ({final_confidence:.2%}) | {final_reason}")
-
-        generated_signals.append({
+        # Construct final signal object
+        return {
             "contract_month": contract.lastTradeDateOrContractMonth[:6],
             "prediction_type": "DIRECTIONAL",
-            "direction": final_direction,
-            "reason": final_reason,
-            "regime": ml_signal.get('regime', 'N/A'), # Keep regime from ML/Trend
-            "confidence": final_confidence,
+            "direction": final_data["action"],
+            "reason": final_data["reason"],
+            "regime": ml_signal.get('regime', 'N/A'),
+            "confidence": final_data["confidence"],
             "price": ml_signal.get('price'),
             "sma_200": ml_signal.get('sma_200'),
-            "expected_price": final_expected_price
-        })
+            "expected_price": final_data["expected_price"]
+        }
 
-    return generated_signals
+    # 5. Execute for all contracts
+    tasks = []
+    for i, contract in enumerate(sorted_contracts):
+        # Match contract to the corresponding ML signal by index
+        # (Assuming signals_list is sorted chronologically like active_futures)
+        ml_signal = signals_list[i] if i < len(signals_list) else {}
+        tasks.append(process_contract(contract, ml_signal))
+
+    final_signals_list = await asyncio.gather(*tasks)
+
+    # 6. Logging & Return
+    for sig in final_signals_list:
+        # Log to CSV/File using existing utility
+        log_model_signal(
+            sig['contract_month'],
+            sig['direction'],
+            price=sig.get('price'),
+            sma_200=sig.get('sma_200'),
+            expected_price=sig.get('expected_price'),
+            confidence=sig.get('confidence')
+        )
+
+    return final_signals_list
