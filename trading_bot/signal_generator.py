@@ -6,6 +6,7 @@ from ib_insync import IB
 from trading_bot.agents import CoffeeCouncil
 from trading_bot.ib_interface import get_active_futures # CORRECTED IMPORT
 from trading_bot.model_signals import log_model_signal # Keep existing logging
+from notifications import send_pushover_notification
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,11 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
         council = CoffeeCouncil(config)
     except Exception as e:
         logger.error(f"Failed to initialize Coffee Council: {e}. Falling back to raw ML signals.")
+        send_pushover_notification(
+            config.get('notifications', {}),
+            "Coffee Council Startup Failed",
+            f"Error: {e}. Bot will use raw ML signals."
+        )
         # We proceed; logic below handles council=None by skipping agent calls
 
     # 3. Get Active Futures (using passed-in IB instance)
@@ -117,6 +123,11 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
 
             except Exception as e:
                 logger.error(f"Council execution failed for {contract_name}: {e}")
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    "Coffee Council Error",
+                    f"Council failed for {contract_name}. Using ML fallback. Error: {e}"
+                )
                 # We silently fall back to the ML defaults set at start of function
 
         # Construct final signal object
