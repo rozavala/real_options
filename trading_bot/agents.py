@@ -1,4 +1,4 @@
-"""The Coffee Council Module.
+"""The Coffee Council Module (Updated for google-genai SDK).
 
 This module implements the '5-headed beast' agent system using Google Gemini models.
 It includes specialized research agents (Meteorologist, Macro, Geopolitical, Sentiment)
@@ -10,13 +10,13 @@ import os
 import json
 import logging
 import asyncio
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from google import genai
+from google.genai import types
 
 logger = logging.getLogger(__name__)
 
 class CoffeeCouncil:
-    """Manages the tiered Gemini agent system."""
+    """Manages the tiered Gemini agent system using the new google-genai SDK."""
 
     def __init__(self, config: dict):
         """
@@ -30,7 +30,6 @@ class CoffeeCouncil:
 
         # 1. Setup API Key
         api_key = self.config.get('api_key')
-
         # If config key is placeholder or empty, try standard env var
         if not api_key or api_key == "YOUR_API_KEY_HERE":
             api_key = os.environ.get('GEMINI_API_KEY')
@@ -38,34 +37,34 @@ class CoffeeCouncil:
         if not api_key:
             raise ValueError("Gemini API Key not found. Please set GEMINI_API_KEY env var or update config.json.")
 
-        genai.configure(api_key=api_key)
+        # 2. Initialize the New Client
+        self.client = genai.Client(api_key=api_key)
 
-        # 2. Initialize Models
-        agent_model_name = self.config.get('agent_model', 'gemini-3.0-flash')
-        master_model_name = self.config.get('master_model', 'gemini-2.5-pro')
+        # 3. Model Names
+        self.agent_model_name = self.config.get('agent_model', 'gemini-3.0-flash')
+        self.master_model_name = self.config.get('master_model', 'gemini-2.5-pro')
 
-        # Safety settings (block few)
-        safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        }
+        # 4. Safety Settings (Block Only High)
+        self.safety_settings = [
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold=types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold=types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold=types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+            ),
+        ]
 
-        # Agent Model (Flash with Search Tools)
-        self.agent_model = genai.GenerativeModel(
-            agent_model_name,
-            tools=[{'google_search': {}}],
-            safety_settings=safety_settings
-        )
-
-        # Master Model (Pro, no tools)
-        self.master_model = genai.GenerativeModel(
-            master_model_name,
-            safety_settings=safety_settings
-        )
-
-        logger.info(f"Coffee Council initialized. Agents: {agent_model_name}, Master: {master_model_name}")
+        logger.info(f"Coffee Council initialized. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
 
     async def research_topic(self, persona_key: str, search_instruction: str) -> str:
         """
@@ -89,12 +88,16 @@ class CoffeeCouncil:
         )
 
         try:
-            # We use generate_content_async.
-            # Note: In real-world async usage with 'tools', ensure the library supports it properly.
-            # The synchronous call is robust; async support is in newer versions.
-            response = await self.agent_model.generate_content_async(full_prompt)
-
-            # Extract text. If search was used, the response handles the grounding.
+            # NEW SDK SYNTAX for Tools
+            response = await self.client.aio.models.generate_content(
+                model=self.agent_model_name,
+                contents=full_prompt,
+                config=types.GenerateContentConfig(
+                    tools=[types.Tool(google_search=types.GoogleSearch())],
+                    temperature=0.3,
+                    safety_settings=self.safety_settings
+                )
+            )
             return response.text
         except Exception as e:
             logger.error(f"Agent '{persona_key}' failed: {e}")
@@ -114,7 +117,6 @@ class CoffeeCouncil:
         """
         master_persona = self.personas.get('master', "You are the Chief Strategist.")
 
-        # Format the reports for the prompt
         reports_text = ""
         for agent, report in research_reports.items():
             reports_text += f"\n--- {agent.upper()} REPORT ---\n{report}\n"
@@ -136,32 +138,26 @@ class CoffeeCouncil:
         )
 
         try:
-            # Enforce JSON if supported by the model version, otherwise prompt engineering handles it.
-            # generation_config = genai.GenerationConfig(response_mime_type="application/json")
-            # For compatibility, we'll rely on the prompt but stripping code blocks is wise.
+            # NEW SDK SYNTAX (No tools for Master)
+            response = await self.client.aio.models.generate_content(
+                model=self.master_model_name,
+                contents=full_prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json", # Native JSON Enforcement
+                    temperature=0.1,
+                    safety_settings=self.safety_settings
+                )
+            )
 
-            response = await self.master_model.generate_content_async(full_prompt)
-            text_response = response.text.strip()
+            # The new SDK handles JSON parsing cleaner if mime_type is set
+            return json.loads(response.text)
 
-            # Clean up markdown code blocks if present
-            if text_response.startswith("```json"):
-                text_response = text_response[7:]
-            if text_response.startswith("```"):
-                text_response = text_response[3:]
-            if text_response.endswith("```"):
-                text_response = text_response[:-3]
-
-            return json.loads(text_response.strip())
-
-        except json.JSONDecodeError:
-            logger.error(f"Master Strategist failed to output valid JSON. Raw: {response.text}")
-            # Fallback to ML signal if Master fails to format correctly
-            return {
-                "projected_price_5_day": ml_signal.get('expected_price', 0.0),
-                "direction": "NEUTRAL", # Safe default on parse error
-                "confidence": 0.0,
-                "reasoning": f"Master Strategist JSON Error. Fallback to ML."
-            }
         except Exception as e:
             logger.error(f"Master Strategist failed: {e}")
-            raise e
+            # Fallback
+            return {
+                "projected_price_5_day": ml_signal.get('expected_price', 0.0),
+                "direction": "NEUTRAL",
+                "confidence": 0.0,
+                "reasoning": f"Master Error: {str(e)}"
+            }
