@@ -24,12 +24,14 @@ async def test_generate_signals():
 
     # Mock the active futures contracts, ensuring they have the necessary attributes
     # The sorting logic depends on lastTradeDateOrContractMonth
+    # NOTE: Contracts must be > 45 days out from "now" (simulated as current date) to be considered active.
+    # Assuming test runs around Dec 2025, we push these out to 2026 to ensure they are valid.
     mock_futures = [
-        Future(conId=1, symbol='KC', lastTradeDateOrContractMonth='20251212'), # Z25
-        Future(conId=2, symbol='KC', lastTradeDateOrContractMonth='20260312'), # H26
-        Future(conId=3, symbol='KC', lastTradeDateOrContractMonth='20260512'), # K26
-        Future(conId=4, symbol='KC', lastTradeDateOrContractMonth='20260712'), # N26
-        Future(conId=5, symbol='KC', lastTradeDateOrContractMonth='20260912'), # U26
+        Future(conId=1, symbol='KC', lastTradeDateOrContractMonth='20260312'), # H26
+        Future(conId=2, symbol='KC', lastTradeDateOrContractMonth='20260512'), # K26
+        Future(conId=3, symbol='KC', lastTradeDateOrContractMonth='20260712'), # N26
+        Future(conId=4, symbol='KC', lastTradeDateOrContractMonth='20260912'), # U26
+        Future(conId=5, symbol='KC', lastTradeDateOrContractMonth='20261212'), # Z26
     ]
     ib.reqContractDetailsAsync.return_value = [MagicMock(contract=f) for f in mock_futures]
 
@@ -39,25 +41,25 @@ async def test_generate_signals():
     assert len(signals) == 5
 
     # The contracts are sorted chronologically. The predictions should map to them in order.
-    # 1. Z25 (202512) -> LONG -> BULLISH
-    # 2. H26 (202603) -> SHORT -> BEARISH
-    # 3. K26 (202605) -> NEUTRAL -> NEUTRAL
-    # 4. N26 (202607) -> LONG -> BULLISH
-    # 5. U26 (202609) -> SHORT -> BEARISH
+    # 1. H26 (202603) -> LONG -> BULLISH
+    # 2. K26 (202605) -> SHORT -> BEARISH
+    # 3. N26 (202607) -> NEUTRAL -> NEUTRAL
+    # 4. U26 (202609) -> LONG -> BULLISH
+    # 5. Z26 (202612) -> SHORT -> BEARISH
 
     # The final signals list should be ordered chronologically:
     assert signals[0]['direction'] == 'BULLISH'
-    assert signals[0]['contract_month'] == '202512'
+    assert signals[0]['contract_month'] == '202603'
 
     assert signals[1]['direction'] == 'BEARISH'
-    assert signals[1]['contract_month'] == '202603'
+    assert signals[1]['contract_month'] == '202605'
 
     assert signals[2]['direction'] == 'NEUTRAL'
-    assert signals[2]['contract_month'] == '202605'
+    assert signals[2]['contract_month'] == '202607'
 
     assert signals[3]['direction'] == 'BULLISH'
-    assert signals[3]['contract_month'] == '202607'
+    assert signals[3]['contract_month'] == '202609'
 
     assert signals[4]['direction'] == 'BEARISH'
-    assert signals[4]['contract_month'] == '202609'
+    assert signals[4]['contract_month'] == '202612'
 
