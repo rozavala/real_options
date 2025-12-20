@@ -8,7 +8,7 @@ placing complex combo orders, and managing the order lifecycle.
 import asyncio
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ib_insync import *
 
@@ -63,12 +63,47 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
     }
 
 async def get_active_futures(ib: IB, symbol: str, exchange: str, count: int = 5) -> list[Contract]:
-    """Fetches the next N active futures contracts for a given symbol."""
+    """
+    Fetches the next N active futures contracts for a given symbol.
+    Excludes contracts expiring within 45 days.
+    """
     logging.info(f"Fetching {count} active futures contracts for {symbol} on {exchange}...")
     try:
         cds = await ib.reqContractDetailsAsync(Future(symbol, exchange=exchange))
-        active = sorted([cd.contract for cd in cds if cd.contract.lastTradeDateOrContractMonth > datetime.now().strftime('%Y%m')], key=lambda c: c.lastTradeDateOrContractMonth)
-        logging.info(f"Found {len(active)} active contracts. Returning the first {count}.")
+        now = datetime.now()
+        filtered_contracts = []
+
+        for cd in cds:
+            contract = cd.contract
+            # Check basic future expiration (must be in future)
+            if contract.lastTradeDateOrContractMonth > now.strftime('%Y%m'):
+                # Apply 45-day rule
+                # Parse expiration date. Typically YYYYMMDD for specific contracts.
+                try:
+                    exp_str = contract.lastTradeDateOrContractMonth
+                    # Handle YYYYMMDD format
+                    if len(exp_str) == 8:
+                        exp_date = datetime.strptime(exp_str, '%Y%m%d')
+                    # Handle YYYYMM format (less precise, assume end of month?)
+                    # Usually reqContractDetails returns specific contracts with full dates.
+                    elif len(exp_str) == 6:
+                        # Assume roughly 15th for safety or just pass if YYYYMM > current
+                        # But user wants 45-day rule. Let's skip imprecise ones or parse as 1st?
+                        # Better to be strict.
+                        exp_date = datetime.strptime(exp_str + "01", '%Y%m%d')
+                    else:
+                        continue # Invalid format
+
+                    if exp_date >= (now + timedelta(days=45)):
+                        filtered_contracts.append(contract)
+                    else:
+                        logging.info(f"Skipping contract {contract.localSymbol} (Exp: {exp_str}): Expires < 45 days.")
+                except ValueError:
+                    logging.warning(f"Could not parse expiration for {contract.localSymbol}: {contract.lastTradeDateOrContractMonth}")
+                    continue
+
+        active = sorted(filtered_contracts, key=lambda c: c.lastTradeDateOrContractMonth)
+        logging.info(f"Found {len(active)} active tradeable contracts (>=45d exp). Returning the first {count}.")
         return active[:count]
     except Exception as e:
         logging.error(f"Error fetching active futures: {e}"); return []

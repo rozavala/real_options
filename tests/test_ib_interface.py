@@ -20,6 +20,8 @@ class TestIbInterface(unittest.TestCase):
         async def run_test():
             # Mock current time to be mid-2025 so 202512 is in the future
             mock_datetime.now.return_value = datetime(2025, 6, 15)
+            # Ensure strptime returns real datetime objects for comparison
+            mock_datetime.strptime.side_effect = lambda *args, **kwargs: datetime.strptime(*args, **kwargs)
 
             ib = MagicMock()
             mock_cd1 = MagicMock(contract=Future(conId=1, symbol='KC', lastTradeDateOrContractMonth='202512'))
@@ -201,6 +203,57 @@ class TestIbInterface(unittest.TestCase):
 
         place_order(ib, mock_contract, mock_order)
         ib.placeOrder.assert_called_once_with(mock_contract, mock_order)
+
+    @patch('trading_bot.ib_interface.datetime')
+    def test_get_active_futures_filters_45_days(self, mock_datetime):
+        """
+        Verifies that contracts expiring within 45 days are excluded.
+        """
+        async def run_test():
+            # Mock current time to a fixed date
+            # Today: Jan 1, 2024
+            fixed_now = datetime(2024, 1, 1)
+            mock_datetime.now.return_value = fixed_now
+            mock_datetime.strptime.side_effect = lambda *args, **kwargs: datetime.strptime(*args, **kwargs)
+
+            ib = MagicMock()
+
+            # Setup Contracts
+            # 1. Expiring in 10 days (Exclude) -> Jan 11, 2024
+            c1 = Future(conId=1, symbol='KC', lastTradeDateOrContractMonth='20240111', localSymbol='KC_TooSoon')
+
+            # 2. Expiring in 44 days (Exclude) -> Feb 14, 2024 (Jan 1 + 44d = Feb 14)
+            c2 = Future(conId=2, symbol='KC', lastTradeDateOrContractMonth='20240214', localSymbol='KC_JustTooSoon')
+
+            # 3. Expiring in 46 days (Include) -> Feb 16, 2024 (Jan 1 + 46d = Feb 16)
+            c3 = Future(conId=3, symbol='KC', lastTradeDateOrContractMonth='20240216', localSymbol='KC_JustRight')
+
+            # 4. Expiring next year (Include)
+            c4 = Future(conId=4, symbol='KC', lastTradeDateOrContractMonth='20250315', localSymbol='KC_NextYear')
+
+            # 5. Invalid Date Format (Skip gracefully)
+            c5 = Future(conId=5, symbol='KC', lastTradeDateOrContractMonth='INVALID', localSymbol='KC_BadDate')
+
+            mock_details = [
+                MagicMock(contract=c1),
+                MagicMock(contract=c2),
+                MagicMock(contract=c3),
+                MagicMock(contract=c4),
+                MagicMock(contract=c5)
+            ]
+
+            ib.reqContractDetailsAsync = AsyncMock(return_value=mock_details)
+
+            # Execute
+            futures = await get_active_futures(ib, 'KC', 'NYBOT', count=10)
+
+            # Assertions
+            # Should only contain c3 and c4
+            self.assertEqual(len(futures), 2)
+            self.assertEqual(futures[0].localSymbol, 'KC_JustRight')
+            self.assertEqual(futures[1].localSymbol, 'KC_NextYear')
+
+        asyncio.run(run_test())
 
 
 if __name__ == '__main__':
