@@ -110,7 +110,37 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         reports[key] = res
 
                 # D. Master Decision
-                decision = await council.decide(contract_name, ml_signal, reports)
+                # --- NEW: GET MARKET CONTEXT (The "Reality Check") ---
+                market_context_str = "MARKET CONTEXT: Data unavailable."
+                try:
+                    # End time = now, Duration = 1 week, Bar size = 1 day
+                    bars = await ib.reqHistoricalDataAsync(
+                        contract,
+                        endDateTime='',
+                        durationStr='1 W',
+                        barSizeSetting='1 day',
+                        whatToShow='TRADES',
+                        useRTH=True
+                    )
+
+                    if bars and len(bars) >= 2:
+                        current_close = bars[-1].close
+                        prev_close = bars[-2].close
+                        price_5d_ago = bars[0].close
+
+                        pct_1d = (current_close - prev_close) / prev_close
+                        pct_5d = (current_close - price_5d_ago) / price_5d_ago
+
+                        market_context_str = (
+                            f"MARKET REALITY CHECK:\n"
+                            f"- Current Price: {current_close}\n"
+                            f"- 24h Change: {pct_1d:+.2%} (Did the market already react?)\n"
+                            f"- 5-Day Trend: {pct_5d:+.2%} (Is the move extended?)"
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to fetch history for context: {e}")
+
+                decision = await council.decide(contract_name, ml_signal, reports, market_context_str)
 
                 # --- E.1: THE COMPLIANCE AUDIT (New Step) ---
                 audit = await council.audit_decision(contract_name, reports, decision)

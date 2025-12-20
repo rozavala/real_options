@@ -109,7 +109,7 @@ class CoffeeCouncil:
             logger.error(f"Agent '{persona_key}' failed: {e}")
             return f"Error conducting research: {str(e)}"
 
-    async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict) -> dict:
+    async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict, market_context: str) -> dict:
         """
         Synthesizes research reports and ML signals to make a final trading decision.
 
@@ -117,6 +117,7 @@ class CoffeeCouncil:
             contract_name: Name of the contract (e.g. "KC H25")
             ml_signal: The raw signal dictionary from the ML model.
             research_reports: A dictionary of report strings from the agents.
+            market_context: A string containing recent price history context.
 
         Returns:
             A dictionary containing the final decision (JSON parsed).
@@ -129,12 +130,13 @@ class CoffeeCouncil:
 
         full_prompt = (
             f"{master_persona}\n\n"
-            f"You have received reports from your 4 specialized desks and a Quantitative ML model "
-            f"regarding contract {contract_name}.\n\n"
-            f"QUANT MODEL SIGNAL:\n{json.dumps(ml_signal, indent=2)}\n"
-            f"{reports_text}\n\n"
-            f"TASK: Synthesize these inputs. Weigh them based on current market narratives "
-            f"(e.g., weather trumps macro during flowering season).\n"
+            f"You have received structured reports regarding {contract_name}.\n"
+            f"{market_context}\n\n"
+            f"QUANT MODEL SIGNAL:\n{json.dumps(ml_signal, indent=2)}\n\n"
+            f"--- DESK REPORTS ---\n{reports_text}\n\n"
+            f"TASK: Synthesize the evidence. Apply 'Second-Level Thinking':\n"
+            f"1. If news is Bullish but '24h Change' is already UP, is it priced in?\n"
+            f"2. If news is Bullish but '24h Change' is DOWN, is the market ignoring it (Divergence)?\n"
             f"OUTPUT FORMAT: You must output a valid JSON object ONLY, with no markdown formatting. "
             f"The JSON must have these keys:\n"
             f"- 'projected_price_5_day': (float) Your price target.\n"

@@ -111,8 +111,9 @@ async def test_decide_success(mock_genai_client, mock_config):
 
     ml_signal = {"action": "LONG", "confidence": 0.6}
     reports = {"meteorologist": "Rainy"}
+    market_context = "Market is up 5%"
 
-    decision = await council.decide("KC H25", ml_signal, reports)
+    decision = await council.decide("KC H25", ml_signal, reports, market_context)
 
     assert decision['direction'] == "BULLISH"
     assert decision['confidence'] == 0.85
@@ -143,9 +144,10 @@ async def test_decide_json_failure(mock_genai_client, mock_config):
 
     ml_signal = {"action": "LONG", "confidence": 0.6, "expected_price": 100.0}
     reports = {"meteorologist": "Rainy"}
+    market_context = "Market is up 5%"
 
     # Should not raise, but return fallback
-    decision = await council.decide("KC H25", ml_signal, reports)
+    decision = await council.decide("KC H25", ml_signal, reports, market_context)
 
     assert decision['direction'] == "NEUTRAL"
     assert "Master Error" in decision['reasoning']
