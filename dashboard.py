@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import sys
 import random
 import math
+import textwrap
 import yfinance as yf
 from collections import deque
 
@@ -1007,12 +1008,16 @@ with tab7:
                     if sentiment not in ['BULLISH', 'BEARISH', 'NEUTRAL']:
                         sentiment = 'NEUTRAL' # Default for chart
 
+                    # Wrap text for tooltip (50 chars per line) to prevent popup cutoff
+                    raw_summary = str(row.get(f'{agent}_summary', ''))
+                    wrapped_summary = "<br>".join(textwrap.wrap(raw_summary, width=50))
+
                     melted_data.append({
                         'Timestamp': ts,
                         'Agent': agent.capitalize(),
                         'Sentiment': sentiment,
                         'Contract': contract,
-                        'Summary': row.get(f'{agent}_summary', '')
+                        'Summary': wrapped_summary
                     })
 
             if melted_data:

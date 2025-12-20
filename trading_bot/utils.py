@@ -390,25 +390,42 @@ def archive_trade_ledger():
 
 def log_council_decision(decision_data):
     """
-    Appends a row to 'data/council_history.csv'.
-    decision_data: dict containing keys like 'meteorologist_summary', 'master_decision', etc.
+    Appends a row to 'data/council_history.csv' with the FULL details of the decision.
+    Handles schema migration by archiving old files if headers mismatch.
     """
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    file_path = os.path.join(base_dir, "data", "council_history.csv")
+    data_dir = os.path.join(base_dir, 'data')
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
 
-    # Ensure data directory exists
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    file_path = os.path.join(data_dir, "council_history.csv")
 
+    # Schema: Capture Sentiment (for stats) AND Summary (for reading) + entry_price
     fieldnames = [
-        'timestamp', 'contract', 'entry_price',
-        'ml_signal', 'ml_confidence',
-        'meteorologist_sentiment', 'meteorologist_summary',
-        'macro_sentiment', 'macro_summary',
-        'geopolitical_sentiment', 'geopolitical_summary',
-        'sentiment_sentiment', 'sentiment_summary',
-        'master_decision', 'master_confidence', 'master_reasoning',
-        'compliance_approved'
+        "timestamp", "contract", "entry_price",
+        "ml_signal", "ml_confidence",
+        "meteorologist_sentiment", "meteorologist_summary",
+        "macro_sentiment", "macro_summary",
+        "geopolitical_sentiment", "geopolitical_summary",
+        "sentiment_sentiment", "sentiment_summary",
+        "master_decision", "master_confidence", "master_reasoning",
+        "compliance_approved"
     ]
+
+    # Check for schema mismatch and migrate if necessary
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                header = next(reader, None)
+
+            if header != fieldnames:
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                legacy_path = os.path.join(data_dir, f"council_history_legacy_{timestamp}.csv")
+                shutil.move(file_path, legacy_path)
+                logging.info(f"Schema mismatch detected. Archived old history to {legacy_path}")
+        except Exception as e:
+            logging.error(f"Error checking CSV schema: {e}")
 
     file_exists = os.path.isfile(file_path)
 
@@ -418,14 +435,13 @@ def log_council_decision(decision_data):
             if not file_exists:
                 writer.writeheader()
 
-            # Filter decision_data to only include keys in fieldnames
+            # Filter data to match fieldnames and ensure timestamp is string
             row = {k: decision_data.get(k, '') for k in fieldnames}
-
-            # Ensure timestamp is string format if it's a datetime object
-            if isinstance(row['timestamp'], datetime):
+            if isinstance(row.get('timestamp'), datetime):
                 row['timestamp'] = row['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
 
             writer.writerow(row)
             logging.info(f"Logged Council decision for {decision_data.get('contract')}")
+
     except Exception as e:
-        logging.error(f"Failed to log Council decision: {e}")
+        logging.error(f"Failed to log council decision: {e}")

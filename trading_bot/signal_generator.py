@@ -162,29 +162,33 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         match = re.search(r'\[SENTIMENT: (\w+)\]', text)
                         return match.group(1) if match else "N/A"
 
+                    # Store structured data for logging
+                    agent_data = {}
+                    for key, report in reports.items():
+                        agent_data[f"{key}_sentiment"] = extract_sentiment(report)
+                        agent_data[f"{key}_summary"] = str(report) if report else "N/A"  # SAVE FULL TEXT
+
                     council_log_entry = {
                         "timestamp": datetime.now(),
                         "contract": contract_name,
-                        "entry_price": ml_signal.get('price', 0.0),
+                        "entry_price": ml_signal.get('price'),
                         "ml_signal": raw_action,
-                        "ml_confidence": ml_signal.get('confidence', 0.0),
+                        "ml_confidence": ml_signal.get('confidence'),
 
-                        "meteorologist_sentiment": extract_sentiment(reports.get('meteorologist')),
-                        "meteorologist_summary": str(reports.get('meteorologist', 'N/A'))[:100],
+                        # Unpack agent data (FULL TEXT, NO TRUNCATION)
+                        "meteorologist_sentiment": agent_data.get('meteorologist_sentiment'),
+                        "meteorologist_summary": agent_data.get('meteorologist_summary'),
+                        "macro_sentiment": agent_data.get('macro_sentiment'),
+                        "macro_summary": agent_data.get('macro_summary'),
+                        "geopolitical_sentiment": agent_data.get('geopolitical_sentiment'),
+                        "geopolitical_summary": agent_data.get('geopolitical_summary'),
+                        "sentiment_sentiment": agent_data.get('sentiment_sentiment'),
+                        "sentiment_summary": agent_data.get('sentiment_summary'),
 
-                        "macro_sentiment": extract_sentiment(reports.get('macro')),
-                        "macro_summary": str(reports.get('macro', 'N/A'))[:100],
-
-                        "geopolitical_sentiment": extract_sentiment(reports.get('geopolitical')),
-                        "geopolitical_summary": str(reports.get('geopolitical', 'N/A'))[:100],
-
-                        "sentiment_sentiment": extract_sentiment(reports.get('sentiment')),
-                        "sentiment_summary": str(reports.get('sentiment', 'N/A'))[:100],
-
-                        "master_decision": decision.get('direction', 'NEUTRAL'),
-                        "master_confidence": decision.get('confidence', 0.0),
-                        "master_reasoning": decision.get('reasoning', '')[:100],
-                        "compliance_approved": audit.get('approved', False)
+                        "master_decision": decision.get('direction'),
+                        "master_confidence": decision.get('confidence'),
+                        "master_reasoning": decision.get('reasoning'),
+                        "compliance_approved": audit.get('approved', True)
                     }
                     log_council_decision(council_log_entry)
                 except Exception as log_e:

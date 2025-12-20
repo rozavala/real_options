@@ -79,23 +79,28 @@ class CoffeeCouncil:
         """
         persona_prompt = self.personas.get(persona_key, "You are a helpful research assistant.")
 
+        # CHAIN-OF-THOUGHT PROMPT
         full_prompt = (
             f"{persona_prompt}\n\n"
             f"TASK: {search_instruction}\n"
-            f"IMPORTANT: Use your Google Search tool to find the absolute latest "
-            f"news and data from the last 24-48 hours. Do not rely on internal knowledge. "
-            f"Summarize your findings with a focus on market impact.\n"
-            f"End your report with exactly one of these tags: [SENTIMENT: BULLISH], [SENTIMENT: BEARISH], or [SENTIMENT: NEUTRAL]."
+            f"INSTRUCTIONS:\n"
+            f"1. USE YOUR TOOLS: Use Google Search to find data from the last 24-48 hours.\n"
+            f"2. NO CHIT-CHAT: Do not say 'Okay', 'I will'. Start directly with the data.\n"
+            f"3. FORMAT YOUR RESPONSE EXACTLY AS FOLLOWS:\n"
+            f"   [EVIDENCE]: List 3-5 specific data points found (dates, numbers, quotes).\n"
+            f"   [ANALYSIS]: Explain what this data implies for Coffee supply/demand.\n"
+            f"   [SENTIMENT TAG]: End with exactly one: [SENTIMENT: BULLISH], [SENTIMENT: BEARISH], or [SENTIMENT: NEUTRAL].\n"
         )
 
         try:
             # NEW SDK SYNTAX for Tools
+            # TEMPERATURE 0.0 = DETERMINISTIC (Removes "Saturday Randomness")
             response = await self.client.aio.models.generate_content(
                 model=self.agent_model_name,
                 contents=full_prompt,
                 config=types.GenerateContentConfig(
                     tools=[types.Tool(google_search=types.GoogleSearch())],
-                    temperature=0.3,
+                    temperature=0.0,
                     safety_settings=self.safety_settings
                 )
             )
