@@ -84,7 +84,8 @@ class CoffeeCouncil:
             f"TASK: {search_instruction}\n"
             f"IMPORTANT: Use your Google Search tool to find the absolute latest "
             f"news and data from the last 24-48 hours. Do not rely on internal knowledge. "
-            f"Summarize your findings with a focus on market impact."
+            f"Summarize your findings with a focus on market impact.\n"
+            f"End your report with exactly one of these tags: [SENTIMENT: BULLISH], [SENTIMENT: BEARISH], or [SENTIMENT: NEUTRAL]."
         )
 
         try:

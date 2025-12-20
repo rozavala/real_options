@@ -2,10 +2,13 @@
 import logging
 import asyncio
 import traceback
+import re
+from datetime import datetime
 from ib_insync import IB
 from trading_bot.agents import CoffeeCouncil
 from trading_bot.ib_interface import get_active_futures # CORRECTED IMPORT
 from trading_bot.model_signals import log_model_signal # Keep existing logging
+from trading_bot.utils import log_council_decision
 from notifications import send_pushover_notification
 
 logger = logging.getLogger(__name__)
@@ -151,6 +154,41 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                     final_data["expected_price"] = price
 
                 logger.info(f"Council Decision {contract_name}: {final_data['action']} ({final_data['confidence']})")
+
+                # F. Council Logging (Structured)
+                try:
+                    def extract_sentiment(text):
+                        if not text or not isinstance(text, str): return "N/A"
+                        match = re.search(r'\[SENTIMENT: (\w+)\]', text)
+                        return match.group(1) if match else "N/A"
+
+                    council_log_entry = {
+                        "timestamp": datetime.now(),
+                        "contract": contract_name,
+                        "entry_price": ml_signal.get('price', 0.0),
+                        "ml_signal": raw_action,
+                        "ml_confidence": ml_signal.get('confidence', 0.0),
+
+                        "meteorologist_sentiment": extract_sentiment(reports.get('meteorologist')),
+                        "meteorologist_summary": str(reports.get('meteorologist', 'N/A'))[:100],
+
+                        "macro_sentiment": extract_sentiment(reports.get('macro')),
+                        "macro_summary": str(reports.get('macro', 'N/A'))[:100],
+
+                        "geopolitical_sentiment": extract_sentiment(reports.get('geopolitical')),
+                        "geopolitical_summary": str(reports.get('geopolitical', 'N/A'))[:100],
+
+                        "sentiment_sentiment": extract_sentiment(reports.get('sentiment')),
+                        "sentiment_summary": str(reports.get('sentiment', 'N/A'))[:100],
+
+                        "master_decision": decision.get('direction', 'NEUTRAL'),
+                        "master_confidence": decision.get('confidence', 0.0),
+                        "master_reasoning": decision.get('reasoning', '')[:100],
+                        "compliance_approved": audit.get('approved', False)
+                    }
+                    log_council_decision(council_log_entry)
+                except Exception as log_e:
+                    logger.error(f"Failed to log council decision for {contract_name}: {log_e}")
 
             except Exception as e:
                 logger.error(f"Council execution failed for {contract_name}: {e}")

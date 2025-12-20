@@ -649,7 +649,7 @@ else:
     st.info("No trade history found. KPIs unavailable.")
 
 # --- Tabs ---
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["💼 Portfolio", "📊 Analytics", "📈 Trade Ledger", "📋 System Health", "💹 Market", "🤖 Model Signals"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["💼 Portfolio", "📊 Analytics", "📈 Trade Ledger", "📋 System Health", "💹 Market", "🤖 Model Signals", "🧠 Council Scorecard"])
 
 with tab1:
     st.subheader("Active Portfolio")
@@ -910,3 +910,145 @@ with tab6:
 
     else:
         st.info("No model signals logged yet.")
+
+with tab7:
+    st.header("🧠 Council Scorecard")
+    st.caption("Detailed breakdown of Multi-Agent decision making and accuracy.")
+
+    council_file = os.path.join("data", "council_history.csv")
+    if os.path.exists(council_file):
+        try:
+            council_df = pd.read_csv(council_file)
+            council_df['timestamp'] = pd.to_datetime(council_df['timestamp'])
+
+            # --- 1. Saved by the Bell ---
+            # Instances where ML wanted to trade (NOT NEUTRAL) but Master blocked it (NEUTRAL)
+            saved_mask = (council_df['ml_signal'] != 'NEUTRAL') & (council_df['master_decision'] == 'NEUTRAL')
+            saved_count = saved_mask.sum()
+
+            # Instances where Compliance blocked the Master
+            hallucination_mask = council_df['compliance_approved'] == False
+            hallucination_count = hallucination_mask.sum()
+
+            score_cols = st.columns(3)
+            score_cols[0].metric("🛡️ Trades Blocked by Council", f"{saved_count}", help="ML Signal was Active, but Council Vetoed.")
+            score_cols[1].metric("🚨 Compliance Blocks", f"{hallucination_count}", help="Master Decision rejected by Compliance Officer.")
+
+            # --- 2. Master Accuracy Attribution ---
+            # Compare Master Direction vs Current Price Change
+            # We need current prices for the contracts in the history
+            if not council_df.empty:
+                # Reuse live data fetcher for current prices
+                live_snapshot = fetch_live_dashboard_data(config)
+                market_df = live_snapshot.get("MarketData", pd.DataFrame())
+
+                # Helper to get current price from market_df
+                def get_current_price(contract_name):
+                    # Try to match localSymbol or parse it
+                    # contract_name in log might be "KC H25 (202503)" or similar
+                    # market_df Contract column is localSymbol e.g. "KCH5"
+                    # Simplistic matching: try to find common substring or exact match
+                    if market_df.empty: return None
+
+                    # Clean the logged name (e.g. remove parenthesis)
+                    clean_name = contract_name.split('(')[0].strip().replace(' ', '')
+
+                    # Look for match in MarketData
+                    match = market_df[market_df['Contract'].str.contains(clean_name, case=False, regex=False)]
+                    if not match.empty:
+                        return match.iloc[0]['Price']
+                    return None
+
+                # Calculate Accuracy
+                correct_calls = 0
+                total_calls = 0
+
+                # Filter for Directional Decisions only
+                directional_df = council_df[council_df['master_decision'].isin(['BULLISH', 'BEARISH'])].copy()
+
+                if not directional_df.empty:
+                    for idx, row in directional_df.iterrows():
+                        current_price = get_current_price(row['contract'])
+                        entry_price = row.get('entry_price', 0.0)
+
+                        if current_price and entry_price > 0:
+                            pct_change = (current_price - entry_price) / entry_price
+                            direction = row['master_decision']
+
+                            is_correct = False
+                            if direction == 'BULLISH' and pct_change > 0: is_correct = True
+                            elif direction == 'BEARISH' and pct_change < 0: is_correct = True
+
+                            if is_correct:
+                                correct_calls += 1
+                            total_calls += 1
+
+                    win_rate = (correct_calls / total_calls * 100) if total_calls > 0 else 0.0
+                    score_cols[2].metric("Master Strategist Win Rate", f"{win_rate:.1f}%", help=f"Based on {total_calls} directional calls vs Current Market Price")
+                else:
+                    score_cols[2].metric("Master Strategist Win Rate", "N/A", help="No directional calls made yet.")
+
+            st.divider()
+
+            # --- 3. Agent Consensus Meter (Stacked Bar) ---
+            st.subheader("Agent Consensus Meter")
+
+            # Prepare data for plotting
+            # We want to melt the sentiment columns
+            agents = ['meteorologist', 'macro', 'geopolitical', 'sentiment']
+            melted_data = []
+
+            for idx, row in council_df.iterrows():
+                ts = row['timestamp']
+                contract = row['contract']
+                for agent in agents:
+                    sentiment = row.get(f'{agent}_sentiment', 'N/A')
+                    # Normalize N/A
+                    if sentiment not in ['BULLISH', 'BEARISH', 'NEUTRAL']:
+                        sentiment = 'NEUTRAL' # Default for chart
+
+                    melted_data.append({
+                        'Timestamp': ts,
+                        'Agent': agent.capitalize(),
+                        'Sentiment': sentiment,
+                        'Contract': contract,
+                        'Summary': row.get(f'{agent}_summary', '')
+                    })
+
+            if melted_data:
+                chart_df = pd.DataFrame(melted_data)
+
+                # Color map
+                color_map = {
+                    'BULLISH': '#00CC96', # Green
+                    'BEARISH': '#EF553B', # Red
+                    'NEUTRAL': '#636EFA'  # Blue
+                }
+
+                fig = px.histogram(
+                    chart_df,
+                    x="Timestamp",
+                    color="Sentiment",
+                    hover_data=["Agent", "Summary", "Contract"],
+                    color_discrete_map=color_map,
+                    title="Council Sentiment Distribution Over Time",
+                    barmode='stack'
+                )
+                st.plotly_chart(fig, width='stretch')
+
+            # --- 4. Recent Hallucinations Table ---
+            if hallucination_count > 0:
+                st.subheader("🚨 Compliance Blocks (Hallucination Audit)")
+                st.dataframe(
+                    council_df[hallucination_mask][['timestamp', 'contract', 'master_reasoning', 'master_decision']],
+                    use_container_width=True
+                )
+
+            # --- 5. Raw Data ---
+            with st.expander("View Raw Council Logs"):
+                st.dataframe(council_df.sort_values('timestamp', ascending=False), use_container_width=True)
+
+        except Exception as e:
+            st.error(f"Error loading Council history: {e}")
+    else:
+        st.info("No Council history found yet.")

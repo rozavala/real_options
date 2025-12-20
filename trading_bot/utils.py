@@ -387,3 +387,45 @@ def archive_trade_ledger():
         logging.info(f"Successfully archived '{ledger_filename}' to '{archive_path}'")
     except Exception as e:
         logging.error(f"Failed to archive '{ledger_filename}': {e}")
+
+def log_council_decision(decision_data):
+    """
+    Appends a row to 'data/council_history.csv'.
+    decision_data: dict containing keys like 'meteorologist_summary', 'master_decision', etc.
+    """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.join(base_dir, "data", "council_history.csv")
+
+    # Ensure data directory exists
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+    fieldnames = [
+        'timestamp', 'contract', 'entry_price',
+        'ml_signal', 'ml_confidence',
+        'meteorologist_sentiment', 'meteorologist_summary',
+        'macro_sentiment', 'macro_summary',
+        'geopolitical_sentiment', 'geopolitical_summary',
+        'sentiment_sentiment', 'sentiment_summary',
+        'master_decision', 'master_confidence', 'master_reasoning',
+        'compliance_approved'
+    ]
+
+    file_exists = os.path.isfile(file_path)
+
+    try:
+        with open(file_path, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            if not file_exists:
+                writer.writeheader()
+
+            # Filter decision_data to only include keys in fieldnames
+            row = {k: decision_data.get(k, '') for k in fieldnames}
+
+            # Ensure timestamp is string format if it's a datetime object
+            if isinstance(row['timestamp'], datetime):
+                row['timestamp'] = row['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+
+            writer.writerow(row)
+            logging.info(f"Logged Council decision for {decision_data.get('contract')}")
+    except Exception as e:
+        logging.error(f"Failed to log Council decision: {e}")
