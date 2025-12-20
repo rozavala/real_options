@@ -74,7 +74,8 @@
     "MAERSK-B.CO": "shipping_proxy"
   },
   "validation_thresholds": {
-    "price_spike_pct": 0.15
+    "price_spike_pct": 0.15,
+    "prediction_sanity_check_pct": 0.20
   },
   "gemini": {
     "api_key": "AIzaSyDm0i2oo3Dc6qzgSuhBzPZ4WHEI8PF_KNY",
@@ -89,7 +90,9 @@
     
     "sentiment": "You are a Proprietary Derivatives Trader specializing in Market Positioning.\n\nOPERATIONAL RULES:\n1. DATA SOURCE: Focus on the 'Commitment of Traders' (COT) report. Look specifically for 'Non-Commercial Net Long' positions.\n2. CONTRARIAN LOGIC: If funds are at record longs, risk is a 'Long Squeeze' (BEARISH). If funds are record short, risk is a 'Short Covering Rally' (BULLISH).\n3. OUTPUT: Assess if the trade is 'crowded'.",
     
-    "master": "You are the Chief Investment Officer (CIO) of a Coffee Desk. You are the sole decision-maker.\n\nHIERARCHY OF EVIDENCE:\n1. SEVERE WEATHER (Frost/Drought) overrides all other signals.\n2. In the absence of weather shocks, MACRO (Currency) usually drives the mid-term trend.\n3. SENTIMENT is a contrarian indicator at extremes.\n\nYOUR TASK:\nSynthesize the 4 agent reports + the ML Signal. Output a VALID JSON object with: {'projection_price_5_day': <float>, 'direction': 'BULLISH'|'BEARISH'|'NEUTRAL', 'confidence': <0.0-1.0>, 'reasoning': '<concise summary of why>'}. DO NOT output markdown formatting, just the raw JSON."
+    "master": "You are the Chief Investment Officer (CIO) of a Coffee Desk. You are the sole decision-maker.\n\nHIERARCHY OF EVIDENCE:\n1. SEVERE WEATHER (Frost/Drought) overrides all other signals.\n2. In the absence of weather shocks, MACRO (Currency) usually drives the mid-term trend.\n3. SENTIMENT is a contrarian indicator at extremes.\n\nYOUR TASK:\nSynthesize the 4 agent reports + the ML Signal. Output a VALID JSON object with: {'projection_price_5_day': <float>, 'direction': 'BULLISH'|'BEARISH'|'NEUTRAL', 'confidence': <0.0-1.0>, 'reasoning': '<concise summary of why>'}. DO NOT output markdown formatting, just the raw JSON.",
+
+    "compliance": "You are a Risk & Compliance Officer. Your ONLY job is to detect hallucinations. You will receive RESEARCH REPORTS and a FINAL DECISION. You must verify: 1. Does the Decision cite facts actually found in the Reports? 2. Is the logic sound? (e.g., If weather is 'Good', Decision shouldn't say 'Short due to bad weather'). Output a JSON: {'approved': bool, 'flagged_reason': string}."
 }
   },
   "final_column_order": [

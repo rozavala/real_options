@@ -161,3 +161,42 @@ class CoffeeCouncil:
                 "confidence": 0.0,
                 "reasoning": f"Master Error: {str(e)}"
             }
+
+    async def audit_decision(self, contract_name: str, research_reports: dict, decision: dict) -> dict:
+        """
+        Uses a separate 'Compliance' agent to verify the Master's decision is supported by the evidence.
+        """
+        compliance_persona = self.personas.get('compliance', "You are a Compliance Officer.")
+
+        # Format the evidence
+        evidence_text = ""
+        for agent, report in research_reports.items():
+            evidence_text += f"[{agent.upper()} REPORT]: {report}\n"
+
+        full_prompt = (
+            f"{compliance_persona}\n"
+            f"--- EVIDENCE ---\n{evidence_text}\n"
+            f"--- DECISION TO AUDIT ---\n{json.dumps(decision)}\n\n"
+            f"TASK: Verify that the 'reasoning' in the decision is strictly supported by the EVIDENCE. "
+            f"Check for hallucinations (claims not in evidence). "
+            f"OUTPUT: JSON {{'approved': true/false, 'flagged_reason': '...'}}"
+        )
+
+        try:
+            # Use the Agent Model (Flash) for speed/cost - it's good at verification
+            response = await self.client.aio.models.generate_content(
+                model=self.agent_model_name,
+                contents=full_prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.0
+                )
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            logger.error(f"Compliance Audit failed: {e}")
+            # FAIL CLOSED: Block the trade if the auditor fails
+            return {
+                "approved": False,
+                "flagged_reason": f"AUDIT SYSTEM FAILURE: {str(e)}"
+            }

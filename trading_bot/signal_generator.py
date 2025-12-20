@@ -109,9 +109,40 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 # D. Master Decision
                 decision = await council.decide(contract_name, ml_signal, reports)
 
+                # --- E.1: THE COMPLIANCE AUDIT (New Step) ---
+                audit = await council.audit_decision(contract_name, reports, decision)
+
+                if not audit.get('approved', True):
+                    logger.warning(f"🚨 COMPLIANCE BLOCKED {contract_name}: {audit.get('flagged_reason')}")
+                    # Downgrade to NEUTRAL if the AI was hallucinating facts
+                    decision['direction'] = "NEUTRAL"
+                    decision['reasoning'] = f"BLOCKED BY AUDIT: {audit.get('flagged_reason')}"
+                    decision['confidence'] = 0.0
+
+                # --- E.2: PRICE SANITY CHECK (The "Fat Finger" Guardrail) ---
+                # Robust extraction of price
+                proj_price = decision.get('projected_price_5_day') or decision.get('projection_price_5_day')
+                current_price = ml_signal.get('price')
+
+                if proj_price and current_price:
+                    # Calculate percent change
+                    pct_change = abs((proj_price - current_price) / current_price)
+
+                    # Sanity Check Threshold from Config
+                    sanity_threshold = config.get('validation_thresholds', {}).get('prediction_sanity_check_pct', 0.20)
+
+                    # RULE: If price moves > X% in 5 days, it's highly suspicious for Coffee futures
+                    if pct_change > sanity_threshold:
+                        logger.warning(f"⚠️ PRICE SANITY CHECK FAILED: {contract_name} predicted {pct_change:.1%} move.")
+                        # Clamp the price or invalidate the signal
+                        decision['direction'] = "NEUTRAL"
+                        decision['reasoning'] = "Price projection exceeded volatility safety limits (Hallucination Risk)."
+                        decision['confidence'] = 0.0
+                        proj_price = current_price # Reset to current
+
                 # E. Update Final Data
                 # Robust key extraction for 'projected' vs 'projection'
-                price = decision.get('projected_price_5_day') or decision.get('projection_price_5_day')
+                price = proj_price
 
                 final_data["action"] = decision.get('direction', final_data["action"])
                 final_data["confidence"] = decision.get('confidence', final_data["confidence"])
