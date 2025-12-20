@@ -193,19 +193,20 @@ async def reconcile_and_analyze(config: dict):
 # 9 AM EST is 14:00 GMT (Standard Time) or 13:00 GMT (Daylight Time).
 # Using 14:00 GMT as a baseline for 9 AM EST.
 schedule = {
-#    time(8, 30): start_monitoring,
-#    time(14, 0): generate_and_execute_orders,
-#    time(17, 20): close_positions_after_5_days,
-#    time(17, 22): cancel_and_stop_monitoring,
-#    time(17, 25): log_equity_snapshot,
-#    time(17, 35): reconcile_and_analyze
-
+    time(8, 30): start_monitoring,
+    time(14, 0): generate_and_execute_orders,
+    time(17, 20): close_positions_after_5_days,
+    time(17, 22): cancel_and_stop_monitoring,
+    time(17, 25): log_equity_snapshot,
+    time(17, 35): reconcile_and_analyze
+"""
     time(18, 25): start_monitoring,
     time(18, 26): generate_and_execute_orders,
     time(18, 35): close_positions_after_5_days,
     time(18, 36): cancel_and_stop_monitoring,
     time(18, 37): log_equity_snapshot,
     time(18, 38): reconcile_and_analyze
+    """
 }
 
 async def main():
