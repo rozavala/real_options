@@ -200,12 +200,14 @@ schedule = {
     # time(17, 25): log_equity_snapshot,
     # time(17, 35): reconcile_and_analyze
     
-    time(20, 47): start_monitoring,
-    time(20, 48): generate_and_execute_orders,
-    time(20, 57): close_positions_after_5_days,
-    time(20, 58): cancel_and_stop_monitoring,
-    time(20, 59): log_equity_snapshot,
-    time(21, 0): reconcile_and_analyze
+    # time(20, 47): start_monitoring,
+    time(21, 20): generate_and_execute_orders,
+    time(21, 30): generate_and_execute_orders,
+    time(21, 40): generate_and_execute_orders
+    # time(20, 57): close_positions_after_5_days,
+    # time(20, 58): cancel_and_stop_monitoring,
+    # time(20, 59): log_equity_snapshot,
+    # time(21, 0): reconcile_and_analyze
 }
 
 async def main():
