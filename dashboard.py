@@ -593,8 +593,8 @@ with tabs[6]:
 
             st.divider()
             st.subheader("🏆 Sub-Agent Accuracy")
-            l_cols = st.columns(4)
             sub_agents = [a for a in agents if a != 'master_decision']
+            l_cols = st.columns(len(sub_agents))
             for idx, agent_key in enumerate(sub_agents):
                 stats = scores[agent_key]
                 rate = (stats['correct'] / stats['total'] * 100) if stats['total'] > 0 else 0.0
