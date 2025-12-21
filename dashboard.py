@@ -524,6 +524,16 @@ with tabs[6]:
             council_df['timestamp'] = pd.to_datetime(council_df['timestamp'])
             council_df = council_df.sort_values('timestamp', ascending=False) # Latest top
 
+            # --- NORMALIZE ML SIGNAL FOR COMPARISON ---
+            if 'ml_signal' in council_df.columns:
+                council_df['ml_sentiment'] = council_df['ml_signal'].map({
+                    'LONG': 'BULLISH',
+                    'SHORT': 'BEARISH',
+                    'NEUTRAL': 'NEUTRAL'
+                }).fillna('NEUTRAL')
+            else:
+                council_df['ml_sentiment'] = 'NEUTRAL'
+
             # --- 1. HEADLINE DEFENSIVE STATS (Restored) ---
             # Saved by the Bell: ML != NEUTRAL but Master == NEUTRAL
             saved_mask = (council_df['ml_signal'] != 'NEUTRAL') & (council_df['master_decision'] == 'NEUTRAL')
@@ -547,7 +557,7 @@ with tabs[6]:
                 return None
 
             # Calculate Scores
-            agents = ['master_decision', 'meteorologist_sentiment', 'macro_sentiment', 'geopolitical_sentiment', 'sentiment_sentiment']
+            agents = ['master_decision', 'ml_sentiment', 'meteorologist_sentiment', 'macro_sentiment', 'geopolitical_sentiment', 'sentiment_sentiment']
             scores = {a: {'correct': 0, 'total': 0} for a in agents}
 
             for _, row in council_df.iterrows():
@@ -569,6 +579,7 @@ with tabs[6]:
             # Display Leaderboard
             pretty_names = {
                 'master_decision': '👑 Master',
+                'ml_sentiment': '🤖 ML Model',
                 'meteorologist_sentiment': '🌦️ Meteo',
                 'macro_sentiment': '💵 Macro',
                 'geopolitical_sentiment': '🌍 Geo',
@@ -595,12 +606,12 @@ with tabs[6]:
             st.subheader("📊 Agent Consensus Matrix")
             st.caption("Compare agent votes side-by-side. Green=Bullish, Red=Bearish.")
 
-            display_cols = ['timestamp', 'contract', 'master_decision',
+            display_cols = ['timestamp', 'contract', 'master_decision', 'ml_sentiment',
                             'meteorologist_sentiment', 'macro_sentiment',
                             'geopolitical_sentiment', 'sentiment_sentiment']
 
             matrix_df = council_df[display_cols].copy()
-            matrix_df.columns = ['Time', 'Contract', 'MASTER', 'Meteo', 'Macro', 'Geo', 'Sentiment']
+            matrix_df.columns = ['Time', 'Contract', 'MASTER', 'ML Model', 'Meteo', 'Macro', 'Geo', 'Sentiment']
 
             def color_sentiment(val):
                 if val == 'BULLISH': return 'color: #00CC96; font-weight: bold'
@@ -609,7 +620,7 @@ with tabs[6]:
                 return ''
 
             st.dataframe(
-                matrix_df.style.map(color_sentiment, subset=['MASTER', 'Meteo', 'Macro', 'Geo', 'Sentiment'])
+                matrix_df.style.map(color_sentiment, subset=['MASTER', 'ML Model', 'Meteo', 'Macro', 'Geo', 'Sentiment'])
                          .format({"Time": lambda t: t.strftime("%m-%d %H:%M")}),
                 width="stretch",
                 height=400
@@ -647,6 +658,10 @@ with tabs[6]:
                             st.markdown(f"**Vote:** {sentiment}")
                             with st.expander("Full Report", expanded=True):
                                 st.write(summary if isinstance(summary, str) else "No report.")
+
+                # Added ML Model card at the top of the left column
+                render_agent(q1, "🤖 ML Model", row.get('ml_sentiment'),
+                             f"**Raw Signal:** {row.get('ml_signal')}\n\n**Confidence:** {row.get('ml_confidence', 0):.2%}")
 
                 render_agent(q1, "Meteorologist", row.get('meteorologist_sentiment'), row.get('meteorologist_summary'))
                 render_agent(q1, "Macro Economist", row.get('macro_sentiment'), row.get('macro_summary'))
