@@ -360,10 +360,14 @@ logs_data = load_log_data()
 # Starting Capital Logic
 starting_capital = DEFAULT_STARTING_CAPITAL
 equity_file = os.path.join("data", "daily_equity.csv")
+# Load equity data for charts
+equity_df = pd.DataFrame()
 if os.path.exists(equity_file):
     try:
         e_df = pd.read_csv(equity_file)
-        if not e_df.empty: starting_capital = e_df.sort_values('timestamp').iloc[0]['total_value_usd']
+        if not e_df.empty:
+            starting_capital = e_df.sort_values('timestamp').iloc[0]['total_value_usd']
+            equity_df = e_df
     except: pass
 
 # Sidebar
@@ -401,6 +405,40 @@ col5.metric("Coffee", f"{live_data.get('KC_DailyChange',0):+.2f}%")
 
 st.divider()
 
+# --- Performance Dashboard (Restored) ---
+# Display Life-to-Date (LTD) Return vs Benchmarks
+st.subheader("📈 Performance Dashboard (Life-to-Date)")
+
+# Calculate Bot Return
+bot_return_pct = 0.0
+if live_data["NetLiquidation"] > 0 and starting_capital > 0:
+    bot_return_pct = ((live_data["NetLiquidation"] - starting_capital) / starting_capital) * 100
+
+# Fetch Benchmark Data (Using default range for LTD)
+# Assuming a start date of approx 2024-01-01 for context or using dynamic range if equity_df exists
+start_date = datetime(2024, 1, 1)
+if not equity_df.empty:
+    equity_df['timestamp'] = pd.to_datetime(equity_df['timestamp'])
+    start_date = equity_df['timestamp'].min()
+
+benchmark_df = fetch_benchmark_data(start_date, datetime.now())
+
+# Calculate Benchmark Returns
+spy_return_pct = 0.0
+kc_return_pct = 0.0
+if not benchmark_df.empty:
+    if 'SPY' in benchmark_df.columns:
+        spy_return_pct = benchmark_df['SPY'].iloc[-1]
+    if 'KC=F' in benchmark_df.columns:
+        kc_return_pct = benchmark_df['KC=F'].iloc[-1]
+
+perf_cols = st.columns(3)
+perf_cols[0].metric("🤖 Bot Return (LTD)", f"{bot_return_pct:+.2f}%")
+perf_cols[1].metric("🇺🇸 S&P 500 (LTD)", f"{spy_return_pct:+.2f}%", delta_color="off")
+perf_cols[2].metric("☕ Coffee Futures (LTD)", f"{kc_return_pct:+.2f}%", delta_color="off")
+
+st.divider()
+
 # Tabs
 tabs = st.tabs(["💼 Portfolio", "📊 Analytics", "📈 Trade Ledger", "📋 System Health", "💹 Market", "🤖 Model Signals", "🧠 Council Scorecard"])
 
@@ -420,7 +458,34 @@ with tabs[0]: # Portfolio
 
 with tabs[1]: # Analytics
     if not trade_df.empty:
-        st.metric("Total P&L", f"${trade_df['total_value_usd'].sum():,.2f}")
+        # Metric Row
+        st.metric("Total P&L (Realized + Unrealized)", f"${trade_df['total_value_usd'].sum():,.2f}")
+        
+        # --- Restore Charts ---
+        # We need to construct a basic Equity Curve if possible
+        if not equity_df.empty:
+             equity_df['timestamp'] = pd.to_datetime(equity_df['timestamp'])
+             equity_df = equity_df.sort_values('timestamp')
+
+             # Chart 1: Equity Curve
+             fig_equity = px.line(equity_df, x='timestamp', y='total_value_usd', title='Equity Curve (Net Liquidation)')
+             st.plotly_chart(fig_equity, use_container_width=True)
+
+             # Chart 2: Daily Drawdown
+             # Calculate drawdown
+             equity_df['peak'] = equity_df['total_value_usd'].cummax()
+             equity_df['drawdown'] = (equity_df['total_value_usd'] - equity_df['peak']) / equity_df['peak']
+
+             fig_dd = px.area(equity_df, x='timestamp', y='drawdown', title='Drawdown (%)', color_discrete_sequence=['red'])
+             st.plotly_chart(fig_dd, use_container_width=True)
+
+        else:
+             st.warning("Daily Equity data not found. Showing Cash Flow only.")
+             # Fallback: Cumulative Cash Flow
+             trade_df['timestamp'] = pd.to_datetime(trade_df['timestamp'])
+             cf = trade_df.set_index('timestamp').sort_index()['total_value_usd'].cumsum()
+             st.line_chart(cf)
+
     else: st.info("No trade history.")
 
 with tabs[2]: # Ledger
