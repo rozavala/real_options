@@ -459,7 +459,11 @@ with tabs[0]: # Portfolio
 with tabs[1]: # Analytics
     if not trade_df.empty:
         # Metric Row
-        st.metric("Total P&L (Realized + Unrealized)", f"${trade_df['total_value_usd'].sum():,.2f}")
+        if live_data.get('NetLiquidation', 0) > 0:
+            total_pnl = live_data['NetLiquidation'] - starting_capital
+            st.metric("Total P&L (Realized + Unrealized)", f"${total_pnl:,.2f}")
+        else:
+            st.metric("Total P&L (Realized + Unrealized)", "Offline")
         
         # --- Restore Charts ---
         # We need to construct a basic Equity Curve if possible
