@@ -14,7 +14,6 @@ import yfinance as yf
 from collections import deque
 
 # --- 1. Asyncio Event Loop Fix for Streamlit ---
-# Essential to prevent crashes when using asyncio libraries in Streamlit
 try:
     loop = asyncio.get_running_loop()
 except RuntimeError:
@@ -64,7 +63,7 @@ def get_config():
 
 @st.cache_data(ttl=15)
 def load_log_data():
-    """Finds all relevant log files (excluding archived ones) and caches their last 50 lines."""
+    """Finds all relevant log files and caches their last 50 lines."""
     try:
         list_of_logs = glob.glob('logs/*.log')
         if not list_of_logs:
@@ -73,20 +72,14 @@ def load_log_data():
         logs_content = {}
         for log_path in list_of_logs:
             filename = os.path.basename(log_path)
-            # Skip archived logs (those with numbers in their filename)
-            if any(char.isdigit() for char in filename):
-                continue
-
-            # Create a readable name from filename (e.g. 'dashboard.log' -> 'Dashboard')
+            if any(char.isdigit() for char in filename): continue
             name = filename.split('.')[0].capitalize()
-
             try:
                 with open(log_path, 'r') as f:
                     lines = f.readlines()
                 logs_content[name] = lines[-50:]
             except Exception as e:
                 logs_content[name] = [f"Error reading file: {e}"]
-
         return logs_content
     except Exception as e:
         st.error(f"Error accessing logs directory: {e}")
@@ -97,59 +90,34 @@ def fetch_todays_benchmark_data():
     """Fetches today's performance for SPY and KC=F."""
     try:
         tickers = ['SPY', 'KC=F']
-        # Fetch 5 days to ensure we have previous close
         data = yf.download(tickers, period="5d", progress=False, auto_adjust=True)['Close']
-
-        if data.empty:
-            return {}
-
+        if data.empty: return {}
         changes = {}
         for ticker in tickers:
             try:
-                # Get the series for the ticker
                 if isinstance(data, pd.DataFrame) and ticker in data.columns:
                     series = data[ticker].dropna()
-                elif isinstance(data, pd.Series) and data.name == ticker:
-                    series = data.dropna()
                 else:
-                    # Handle multi-index or single column edge cases
-                    # If data is single column, yf might return Series or DataFrame with that col
-                    if len(tickers) == 1:
-                        series = data.dropna()
-                    else:
-                        continue
+                    if len(tickers) == 1: series = data.dropna()
+                    else: continue
 
                 if len(series) >= 2:
-                    prev_close = series.iloc[-2]
-                    current = series.iloc[-1]
-                    if prev_close != 0:
-                        pct_change = ((current - prev_close) / prev_close) * 100
-                        changes[ticker] = pct_change
-                    else:
-                        changes[ticker] = 0.0
+                    changes[ticker] = ((series.iloc[-1] - series.iloc[-2]) / series.iloc[-2]) * 100
                 else:
                     changes[ticker] = 0.0
-            except Exception:
+            except:
                 changes[ticker] = 0.0
-
         return changes
-    except Exception as e:
-        # Fail silently
+    except:
         return {}
 
-@st.cache_data(ttl=3600)  # Cache benchmarks for 1 hour
+@st.cache_data(ttl=3600)
 def fetch_benchmark_data(start_date, end_date):
     """Fetches S&P 500 (SPY) and Coffee Futures (KC=F) from Yahoo Finance."""
     try:
         tickers = ['SPY', 'KC=F']
-        # Fetch slightly more data to ensure we have a valid starting point
         data = yf.download(tickers, start=start_date, end=end_date + timedelta(days=1), progress=False, auto_adjust=True)['Close']
-        
-        if data.empty:
-            return pd.DataFrame()
-
-        # Normalize to Percentage Return (0.0 = 0%, 1.0 = 100%)
-        # We divide the entire column by the first valid price found
+        if data.empty: return pd.DataFrame()
         normalized = data.apply(lambda x: (x / x.dropna().iloc[0]) - 1) * 100
         return normalized
     except Exception as e:
@@ -160,127 +128,73 @@ def fetch_benchmark_data(start_date, end_date):
 
 @st.cache_data(ttl=60)
 def fetch_live_dashboard_data(_config):
-    """
-    Consolidated fetcher for Account Summary, Daily P&L, and Active Futures Data.
-    Uses reqPnL for accurate Daily P&L and live futures data for Coffee benchmark.
-    """
+    """Consolidated fetcher for Account Summary, Daily P&L, and Active Futures Data."""
     ib = IB()
-    data = {
-        "NetLiquidation": 0.0,
-        "MaintMarginReq": 0.0,
-        "DailyPnL": 0.0,
-        "DailyPnLPct": 0.0,
-        "KC_DailyChange": 0.0,
-        "KC_Price": 0.0,
-        "MarketData": pd.DataFrame()
-    }
+    data = {"NetLiquidation": 0.0, "MaintMarginReq": 0.0, "DailyPnL": 0.0, "DailyPnLPct": 0.0, "KC_DailyChange": 0.0, "KC_Price": 0.0, "MarketData": pd.DataFrame()}
 
     try:
-        ib.connect(
-            _config['connection']['host'],
-            _config['connection']['port'],
-            clientId=random.randint(1000, 9999)
-        )
+        ib.connect(_config['connection']['host'], _config['connection']['port'], clientId=random.randint(1000, 9999))
 
-        # 1. Account Summary (Net Liq, Margin)
-        # Note: We rely on reqPnL for the daily profit metrics, not PreviousDayEquity
+        # 1. Account Summary
         summary = ib.accountSummary()
         for item in summary:
-            if item.tag == "NetLiquidation":
-                try:
-                    data["NetLiquidation"] = float(item.value)
-                except ValueError: pass
-            elif item.tag == "MaintMarginReq":
-                try:
-                    data["MaintMarginReq"] = float(item.value)
-                except ValueError: pass
+            if item.tag == "NetLiquidation": data["NetLiquidation"] = float(item.value)
+            elif item.tag == "MaintMarginReq": data["MaintMarginReq"] = float(item.value)
 
-        # 2. Accurate Daily P&L via reqPnL
+        # 2. Daily P&L
         accounts = ib.managedAccounts()
         if accounts:
             acct = accounts[0]
             pnl_stream = ib.reqPnL(acct)
-
-            # Wait briefly for P&L stream to populate
             start_pnl = datetime.now()
             while (datetime.now() - start_pnl).seconds < 2:
                 ib.sleep(0.1)
-                if pnl_stream.dailyPnL != 0.0 and not util.isNan(pnl_stream.dailyPnL):
-                    break
-
-            # Capture Daily P&L
+                if pnl_stream.dailyPnL != 0.0 and not util.isNan(pnl_stream.dailyPnL): break
             if not util.isNan(pnl_stream.dailyPnL):
                 data["DailyPnL"] = pnl_stream.dailyPnL
-                # Calculate Pct Change relative to Start-of-Day Equity
-                # Start Equity = Current NetLiq - Daily P&L
                 start_equity = data["NetLiquidation"] - data["DailyPnL"]
-                if start_equity > 0:
-                    data["DailyPnLPct"] = (data["DailyPnL"] / start_equity) * 100
-
+                if start_equity > 0: data["DailyPnLPct"] = (data["DailyPnL"] / start_equity) * 100
             ib.cancelPnL(acct)
 
-        # 3. Active Futures (Market Data & Coffee Benchmark)
+        # 3. Active Futures
         active_futures = ib.run(get_active_futures(ib, _config['symbol'], _config['exchange']))
-        
         if active_futures:
-            # Subscribe to data
             tickers = [ib.reqMktData(c, '', False, False) for c in active_futures]
-
-            # Wait for data
             start_mkt = datetime.now()
             while (datetime.now() - start_mkt).seconds < 4:
                 ib.sleep(0.2)
-                if all(not util.isNan(t.last) or not util.isNan(t.close) for t in tickers):
-                    break
+                if all(not util.isNan(t.last) or not util.isNan(t.close) for t in tickers): break
 
-            # Process Market Data Table
             market_rows = []
             for contract, ticker in zip(active_futures, tickers):
-                # Fallback Logic: If Last is NaN (Market Closed), use Close
-                if not util.isNan(ticker.last):
-                    price = ticker.last
-                    source = "Live"
-                elif not util.isNan(ticker.close):
-                    price = ticker.close
-                    source = "Close (Prev)"
-                else:
-                    price = 0.0
-                    source = "N/A"
-
+                price = ticker.last if not util.isNan(ticker.last) else (ticker.close if not util.isNan(ticker.close) else 0.0)
+                source = "Live" if not util.isNan(ticker.last) else "Close (Prev)"
                 market_rows.append({
-                    "Contract": contract.localSymbol,
-                    "Price": price,
-                    "Source": source,
+                    "Contract": contract.localSymbol, "Price": price, "Source": source,
                     "Bid": ticker.bid if not util.isNan(ticker.bid) else 0.0,
                     "Ask": ticker.ask if not util.isNan(ticker.ask) else 0.0,
                     "Time": ticker.time.strftime('%H:%M:%S') if ticker.time else "N/A"
                 })
-
             data["MarketData"] = pd.DataFrame(market_rows)
 
-            # Calculate Coffee Benchmark from Front Month (First Contract)
             if len(tickers) > 0:
-                front_ticker = tickers[0]
-                last_price = front_ticker.last if not util.isNan(front_ticker.last) else front_ticker.close
-                prev_close = front_ticker.close if not util.isNan(front_ticker.close) else 0.0
-
-                data["KC_Price"] = last_price
-                if prev_close > 0 and last_price > 0:
-                    data["KC_DailyChange"] = ((last_price - prev_close) / prev_close) * 100
+                front = tickers[0]
+                last = front.last if not util.isNan(front.last) else front.close
+                prev = front.close if not util.isNan(front.close) else 0.0
+                data["KC_Price"] = last
+                if prev > 0 and last > 0: data["KC_DailyChange"] = ((last - prev) / prev) * 100
 
         ib.disconnect()
         return data
-
     except Exception as e:
-        # Fail silently to avoid disrupting dashboard if IB is offline
-        if ib.isConnected():
-            ib.disconnect()
+        if ib.isConnected(): ib.disconnect()
         return data
 
 def fetch_portfolio_data(config, trade_ledger_df):
     """
     Fetches live portfolio from IB and breaks it down into individual spread legs
     using the local ledger to recover Strategy/Combo IDs and Entry Prices.
+    (ROBUST FIFO LOGIC PRESERVED)
     """
     ib = IB()
     try:
@@ -289,7 +203,7 @@ def fetch_portfolio_data(config, trade_ledger_df):
             config['connection']['port'],
             clientId=random.randint(100, 1000)
         )
-        st.toast("Connected to IB Gateway...", icon="🔗")
+        # st.toast("Connected to IB Gateway...", icon="🔗") # Optional toast
 
         portfolio = ib.portfolio()
         
@@ -306,16 +220,12 @@ def fetch_portfolio_data(config, trade_ledger_df):
             real_qty = item.position
             
             # --- Inventory Reconstruction with Detailed Attributes ---
-            # We want to know exactly WHICH ledger entries correspond to the current open position
-            # to recover the Combo ID and Original Entry Price.
-            
-            active_constituents = [] # List of dicts: {qty, price, combo_id, timestamp}
+            active_constituents = []
 
             if not sorted_ledger.empty:
                 symbol_trades = sorted_ledger[sorted_ledger['local_symbol'] == symbol]
 
                 if not symbol_trades.empty:
-                    # Inventory Stack: List of dicts
                     inventory = deque()
 
                     for _, trade in symbol_trades.iterrows():
@@ -338,61 +248,42 @@ def fetch_portfolio_data(config, trade_ledger_df):
                             continue
 
                         head = inventory[0]
-
-                        # Check Direction Match
                         head_qty = head['qty']
 
-                        # Same Direction -> Add to stack
                         if (t_qty > 0 and head_qty > 0) or (t_qty < 0 and head_qty < 0):
                             inventory.append(trade_details)
                         else:
-                            # Opposite Direction -> Reduce (FIFO)
                             remaining_close = abs(t_qty)
-
                             while remaining_close > 0 and inventory:
                                 lot = inventory[0]
                                 lot_qty = lot['qty']
-
-                                # Safety: Break if direction flipped in stack (unlikely)
-                                if (lot_qty > 0 and t_qty > 0) or (lot_qty < 0 and t_qty < 0):
-                                     break
+                                if (lot_qty > 0 and t_qty > 0) or (lot_qty < 0 and t_qty < 0): break
 
                                 matched = min(abs(lot_qty), remaining_close)
                                 remaining_close -= matched
-
-                                # Update lot remaining quantity
                                 new_lot_abs = abs(lot_qty) - matched
 
                                 if new_lot_abs < 1e-9:
-                                    inventory.popleft() # Fully consumed
+                                    inventory.popleft()
                                 else:
-                                    # Update head with reduced quantity
                                     new_signed_qty = new_lot_abs if lot_qty > 0 else -new_lot_abs
                                     lot['qty'] = new_signed_qty
-                                    inventory[0] = lot # Update deque
+                                    inventory[0] = lot
 
-                            # If we flipped direction (Net Position Change)
                             if remaining_close > 1e-9:
                                 remaining_signed = remaining_close if t_qty > 0 else -remaining_close
                                 trade_details['qty'] = remaining_signed
                                 inventory.append(trade_details)
 
                     # --- Reconciliation ---
-                    # Match Inventory to Actual IB Position (Newest -> Oldest)
                     target_abs = abs(real_qty)
                     collected = 0
 
-                    # Iterate backwards to find the specific lots that make up the current position
                     for lot in reversed(list(inventory)):
-                        if abs(collected - target_abs) < 1e-9:
-                            break
-
+                        if abs(collected - target_abs) < 1e-9: break
                         lot_qty = lot['qty']
                         needed = target_abs - collected
                         take = min(abs(lot_qty), needed)
-
-                        # Add a record for this "slice" of the position
-                        # Determine sign based on lot direction
                         take_signed = take if lot_qty > 0 else -take
 
                         active_constituents.append({
@@ -401,59 +292,41 @@ def fetch_portfolio_data(config, trade_ledger_df):
                             'combo_id': lot['combo_id'],
                             'timestamp': lot['timestamp']
                         })
-
                         collected += take
 
-            # If we couldn't match with ledger (or ledger empty), create a dummy constituent
-            # derived from IB data.
             if not active_constituents and abs(real_qty) > 0:
-                # Fallback Price Logic:
-                # If KC/KO, item.averageCost from IB is typically Total Cost ($) per contract.
-                # We need to convert this to Price per Unit in Cents to match our system convention.
                 fallback_price = item.averageCost
                 try:
                     f_mult = float(item.contract.multiplier)
-                except (ValueError, TypeError):
+                except:
                     f_mult = 37500.0 if 'KC' in symbol or 'KO' in symbol else 1.0
 
                 if f_mult == 37500.0:
-                     # Convert Total Cost ($) to Price in Cents: (Cost / 37500) * 100
                      fallback_price = (item.averageCost / f_mult) * 100.0
 
                 active_constituents.append({
                     'qty': real_qty,
                     'price': fallback_price,
                     'combo_id': 'Unmatched',
-                    'timestamp': datetime.now() # Unknown age
+                    'timestamp': datetime.now()
                 })
 
-            # --- Build DataFrame Rows ---
             for constituent in active_constituents:
-                # Calculate P&L for this specific constituent
                 qty = constituent['qty']
                 entry_price = constituent['price']
                 mkt_price = item.marketPrice
 
-                # Multiplier
                 try:
                     mult = float(item.contract.multiplier)
-                except (ValueError, TypeError):
+                except:
                     mult = 37500.0 if 'KC' in symbol or 'KO' in symbol else 1.0
 
-                # Adjustment for Cents (KC quotes in cents)
-                # If multiplier is 37500, we assume it's Coffee.
                 if mult == 37500.0:
                     mult = mult / 100.0
-                    # Fix: Check if marketPrice is already in Cents.
-                    # KC prices are typically > 100.0 (e.g. 250.0).
-                    # If IB returns Dollars (e.g. 2.50), we convert. If Cents, we keep it.
-                    if mkt_price < 50.0:
-                        mkt_price = mkt_price * 100.0
+                    if mkt_price < 50.0: mkt_price = mkt_price * 100.0
 
-                # P&L: (Mark - Entry) * Qty * Multiplier
                 unrealized_pnl = (mkt_price - entry_price) * qty * mult
                 mkt_value = mkt_price * qty * mult
-
                 days_held = (datetime.now() - constituent['timestamp']).days
 
                 detailed_position_data.append({
@@ -473,587 +346,254 @@ def fetch_portfolio_data(config, trade_ledger_df):
 
     except Exception as e:
         st.error(f"Failed to fetch portfolio data: {e}")
-        if ib.isConnected():
-            ib.disconnect()
+        if ib.isConnected(): ib.disconnect()
         return pd.DataFrame()
 
 # --- 6. Main Application Logic ---
 
 st.title("Coffee Bot Mission Control ☕")
 
-# Load Data
 trade_df = load_trade_data()
 config = get_config()
 logs_data = load_log_data()
 
-# Determine Starting Capital
+# Starting Capital Logic
 starting_capital = DEFAULT_STARTING_CAPITAL
 equity_file = os.path.join("data", "daily_equity.csv")
 if os.path.exists(equity_file):
     try:
-        equity_df_start = pd.read_csv(equity_file)
-        if not equity_df_start.empty:
-             equity_df_start['timestamp'] = pd.to_datetime(equity_df_start['timestamp'])
-             equity_df_start = equity_df_start.sort_values('timestamp')
-             starting_capital = equity_df_start.iloc[0]['total_value_usd']
-    except Exception as e:
-        st.warning(f"Failed to load daily_equity.csv for starting capital: {e}")
+        e_df = pd.read_csv(equity_file)
+        if not e_df.empty: starting_capital = e_df.sort_values('timestamp').iloc[0]['total_value_usd']
+    except: pass
 
-# --- Sidebar: Manual Controls ---
+# Sidebar
 with st.sidebar:
     st.header("Manual Controls")
-    st.warning("Actions below interact with the live account.")
-
     if st.button("🔄 Refresh Data", width='stretch'):
         st.cache_data.clear()
         st.rerun()
-
-    if st.button("⛔ Cancel All Open Orders", type="primary", width='stretch'):
+    if st.button("⛔ Cancel All Orders", type="primary", width='stretch'):
         if config:
-            with st.spinner("Executing cancellation..."):
+            with st.spinner("Cancelling..."):
                 try:
                     from trading_bot.order_manager import cancel_all_open_orders
                     asyncio.run(cancel_all_open_orders(config))
                     st.success("Orders cancelled.")
-                    st.toast("Open orders cancelled!", icon="✅")
-                except Exception as e:
-                    st.error(f"Error: {e}")
-        else:
-            st.error("Config not loaded.")
-
-    if st.button("📉 Force Close 5+ Day Positions", width='stretch'):
+                except Exception as e: st.error(f"Error: {e}")
+    if st.button("📉 Force Close Aged", width='stretch'):
         if config:
-            with st.spinner("Executing force close..."):
+            with st.spinner("Closing..."):
                 try:
                     from trading_bot.order_manager import close_positions_after_5_days
                     asyncio.run(close_positions_after_5_days(config))
-                    st.success("Force close complete.")
-                    st.toast("Aged positions closed!", icon="✅")
-                except Exception as e:
-                    st.error(f"Error: {e}")
-        else:
-            st.error("Config not loaded.")
+                    st.success("Closed.")
+                except Exception as e: st.error(f"Error: {e}")
 
-# --- Live Today's Section ---
-st.header("Live Today's Market")
-
-# Fetch Unified Live Data
+# Live Header
 live_data = fetch_live_dashboard_data(config)
-net_liq = live_data.get("NetLiquidation", 0.0)
-maint_margin = live_data.get("MaintMarginReq", 0.0)
-daily_pnl = live_data.get("DailyPnL", 0.0)
-daily_pnl_pct = live_data.get("DailyPnLPct", 0.0)
-
-# Fetch SPY Benchmark (keep yfinance for SPY as it's reliable enough for stocks)
-todays_benchmarks = fetch_todays_benchmark_data()
-spy_daily_change = todays_benchmarks.get('SPY', 0.0)
-# Use IBKR data for Coffee
-kc_daily_change = live_data.get("KC_DailyChange", 0.0)
-
-# Calculate Margin Utilization
-if net_liq > 0:
-    margin_util_pct = (maint_margin / net_liq) * 100
-    margin_cushion_pct = 100 - margin_util_pct
-else:
-    margin_util_pct = 0.0
-    margin_cushion_pct = 100.0
-
-# Display Metrics
-live_cols = st.columns(5)
-
-# 1. Net Liquidation
-live_cols[0].metric(
-    "Net Liquidation",
-    f"${net_liq:,.2f}",
-    help="Net Liquidation Value from IBKR Account Summary"
-)
-
-# 2. Daily P&L
-live_cols[1].metric(
-    "Daily P&L",
-    f"${daily_pnl:,.2f}",
-    delta=f"{daily_pnl_pct:+.2f}%",
-    help="Real-time Daily P&L from IBKR (reqPnL). Excludes deposits/withdrawals."
-)
-
-# 3. Margin Utilization
-margin_label = "Margin Utilization"
-if margin_cushion_pct < 10:
-    margin_label = ":red[Margin Utilization ⚠️]"
-
-live_cols[2].metric(
-    margin_label,
-    f"{margin_util_pct:.1f}%",
-    help=f"Maintenance Margin: ${maint_margin:,.2f} | Cushion: {margin_cushion_pct:.1f}%"
-)
-
-# 4. Benchmarks
-live_cols[3].metric("S&P 500 (Daily)", f"{spy_daily_change:+.2f}%")
-live_cols[4].metric("Coffee (Daily)", f"{kc_daily_change:+.2f}%", help="Derived from active Front Month Future on IBKR")
+col1, col2, col3, col4, col5 = st.columns(5)
+col1.metric("Net Liquidation", f"${live_data['NetLiquidation']:,.2f}")
+col2.metric("Daily P&L", f"${live_data['DailyPnL']:,.2f}", f"{live_data['DailyPnLPct']:+.2f}%")
+col3.metric("Margin Util", f"{(live_data['MaintMarginReq']/live_data['NetLiquidation'])*100:.1f}%" if live_data['NetLiquidation'] > 0 else "0%")
+benchs = fetch_todays_benchmark_data()
+col4.metric("S&P 500", f"{benchs.get('SPY',0):+.2f}%")
+col5.metric("Coffee", f"{live_data.get('KC_DailyChange',0):+.2f}%")
 
 st.divider()
 
-# --- Header: Performance Dashboard ---
-st.header("Performance Dashboard")
+# Tabs
+tabs = st.tabs(["💼 Portfolio", "📊 Analytics", "📈 Trade Ledger", "📋 System Health", "💹 Market", "🤖 Model Signals", "🧠 Council Scorecard"])
 
-if not trade_df.empty:
-    # 1. Fetch Account Summary for Accurate P&L
-    # Reuse account_data fetched above
-
-    # Calculate P&L: If we have live data, use it. Else fallback to ledger (which may show dip due to open positions)
-    if net_liq > 0:
-        total_pnl = net_liq - starting_capital
-        pnl_label = "Bot P&L (Total Equity)"
-        pnl_help = f"Net Liquidation Value (${net_liq:,.2f}) - Starting Capital (${starting_capital:,.0f})"
-    else:
-        total_pnl = trade_df['total_value_usd'].sum()
-        pnl_label = "Net Cash Flow (Not P&L)"
-        pnl_help = "Warning: This is purely cash flow. It ignores the current value of open positions."
-        st.warning("⚠️ Disconnected from IB. This metric shows Net Cash Flow only. It treats open Long positions as 100% loss and open Short positions as 100% profit until closed.")
-
-    bot_return_pct = (total_pnl / starting_capital) * 100
-    
-    # Profit Factor Logic
-    if 'combo_id' in trade_df.columns:
-        trade_groups = trade_df.groupby('combo_id')['total_value_usd'].sum()
-        gross_profit = trade_groups[trade_groups > 0].sum()
-        gross_loss = abs(trade_groups[trade_groups < 0].sum())
-        profit_factor = gross_profit / gross_loss if gross_loss != 0 else 0.0
-    else:
-        profit_factor = 0.0
-
-    # 2. Benchmark Metrics
-    start_date = trade_df['timestamp'].min().date()
-    end_date = datetime.now().date()
-    benchmarks = fetch_benchmark_data(start_date, end_date)
-    
-    spy_return = benchmarks['SPY'].iloc[-1] if not benchmarks.empty and 'SPY' in benchmarks else 0.0
-    kc_return = benchmarks['KC=F'].iloc[-1] if not benchmarks.empty and 'KC=F' in benchmarks else 0.0
-
-    # 3. Display
-    kpi_cols = st.columns(4)
-    
-    kpi_cols[0].metric(pnl_label, f"${total_pnl:,.2f}",
-                       help=pnl_help,
-                       delta_color="normal")
-    
-    kpi_cols[1].metric("Bot Return %", f"{bot_return_pct:.2f}%", 
-                       help=f"Based on ${starting_capital:,.0f} starting capital")
-    
-    kpi_cols[2].metric("S&P 500 Benchmark", f"{spy_return:.2f}%", 
-                       delta=f"{bot_return_pct - spy_return:.2f}% vs SPY")
-    
-    kpi_cols[3].metric("Coffee Benchmark", f"{kc_return:.2f}%", 
-                       delta=f"{bot_return_pct - kc_return:.2f}% vs Coffee")
-
-else:
-    st.info("No trade history found. KPIs unavailable.")
-
-# --- Tabs ---
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["💼 Portfolio", "📊 Analytics", "📈 Trade Ledger", "📋 System Health", "💹 Market", "🤖 Model Signals", "🧠 Council Scorecard"])
-
-with tab1:
-    st.subheader("Active Portfolio")
-    if 'portfolio_data' not in st.session_state:
-        st.session_state.portfolio_data = pd.DataFrame()
-
-    if st.button("🔄 Fetch Active Positions", width='stretch'):
-        with st.spinner("Fetching portfolio from IB..."):
-            st.session_state.portfolio_data = fetch_portfolio_data(config, trade_df)
-
-    if not st.session_state.portfolio_data.empty:
-        df = st.session_state.portfolio_data
-
-        # Group by Combo ID
-        combo_groups = df.groupby("Combo ID")
-
-        total_pnl_all = df["Unrealized P&L"].sum()
-        st.metric("Total Portfolio Unrealized P&L", f"${total_pnl_all:,.2f}")
-        
-        st.divider()
-
+with tabs[0]: # Portfolio
+    if st.button("Fetch Portfolio"):
+        st.session_state.port_df = fetch_portfolio_data(config, trade_df)
+    if 'port_df' in st.session_state and not st.session_state.port_df.empty:
+        # Group by Combo ID for cleaner view (Matches logic from previous version)
+        combo_groups = st.session_state.port_df.groupby("Combo ID")
         for combo_id, group in combo_groups:
-            # Calculate Spread Stats
-            spread_pnl = group["Unrealized P&L"].sum()
-            max_days = group["Days Held"].max()
+             spread_pnl = group["Unrealized P&L"].sum()
+             max_days = group["Days Held"].max()
+             icon = "🟢" if spread_pnl >= 0 else "🔴"
+             with st.expander(f"{icon} Spread: {combo_id} | P&L: ${spread_pnl:,.2f} | Days: {max_days}"):
+                 st.dataframe(group)
+    else: st.info("Portfolio empty or not fetched.")
 
-            # Create a label for the expander
-            label = f"Spread: {combo_id} | P&L: ${spread_pnl:,.2f} | Max Days Held: {max_days}"
-
-            # Determine color/icon based on P&L or Age
-            icon = "🟢" if spread_pnl >= 0 else "🔴"
-            if max_days >= 4:
-                icon = "⚠️" # Risk Warning
-                label += " (Review Age)"
-
-            with st.expander(f"{icon} {label}", expanded=True):
-                 # Format and Display the Legs
-                 display_df = group[[
-                     "Symbol", "Quantity", "Entry Price", "Mark Price",
-                     "Unrealized P&L", "Days Held", "Open Date"
-                 ]].copy()
-
-                 def highlight_age(row):
-                     if row['Days Held'] >= 4:
-                         return ['background-color: #ffcccc'] * len(row)
-                     return [''] * len(row)
-
-                 st.dataframe(
-                     display_df.style.apply(highlight_age, axis=1).format({
-                         "Entry Price": "${:.4f}",
-                         "Mark Price": "${:.4f}",
-                         "Unrealized P&L": "${:.2f}"
-                     }),
-                     width='stretch',
-                     hide_index=True
-                 )
-
-    else:
-        st.info("Portfolio empty or not fetched.")
-
-with tab2:
-    st.subheader("Strategy vs. Benchmarks")
-    if not trade_df.empty and not benchmarks.empty:
-        trade_df_sorted = trade_df.sort_values('timestamp')
-
-        # Prepare Bot Data (Daily Equity)
-        # Check for daily_equity.csv first (for accurate Equity Curve)
-        if os.path.exists(equity_file):
-            # Equity DF already loaded during startup, just reload to be safe if file changed
-            equity_df = pd.read_csv(equity_file)
-            equity_df['timestamp'] = pd.to_datetime(equity_df['timestamp'])
-            daily_vals = equity_df.set_index('timestamp')['total_value_usd']
-            # Calculate Return %: (NetLiq / Start) - 1
-            bot_series = ((daily_vals / starting_capital) - 1) * 100
-        else:
-            # Fallback to Cash Flow (The "Dip" / "Spike" chart)
-            st.warning("⚠️ daily_equity.csv not found. Showing Cash Flow instead of Equity.")
-            daily_bot = trade_df_sorted.set_index('timestamp').resample('D')['total_value_usd'].sum().cumsum().ffill()
-            bot_series = (daily_bot / starting_capital) * 100
-
-        bot_series.name = "Bot Strategy"
-
-        # Merge
-        comparison_df = pd.DataFrame(index=benchmarks.index)
-        comparison_df = comparison_df.join(benchmarks)
-        comparison_df = comparison_df.join(bot_series, how='outer').ffill().fillna(0)
-
-        # Plot Comparison
-        fig_comp = px.line(comparison_df, title="Cumulative Return % (Life-to-Date)")
-        
-        # Style Lines
-        colors = {"Bot Strategy": "blue", "SPY": "gray", "KC=F": "brown"}
-        for d in fig_comp.data:
-            if d.name in colors:
-                d.line.color = colors[d.name]
-                if d.name == "Bot Strategy": d.line.width = 3
-
-        st.plotly_chart(fig_comp, width='stretch')
-
-        # Drawdown Chart
-        st.subheader("Drawdown Analysis")
-        trade_df_sorted['equity'] = trade_df_sorted['total_value_usd'].cumsum()
-        trade_df_sorted['peak'] = trade_df_sorted['equity'].cummax()
-        trade_df_sorted['drawdown'] = trade_df_sorted['equity'] - trade_df_sorted['peak']
-        
-        fig_dd = px.area(trade_df_sorted, x='timestamp', y='drawdown', title="Drawdown from Peak Equity ($)", color_discrete_sequence=['red'])
-        st.plotly_chart(fig_dd, width='stretch')
-    else:
-        st.info("Insufficient data for comparison charts.")
-
-with tab3:
-    st.subheader("Trade Ledger")
+with tabs[1]: # Analytics
     if not trade_df.empty:
-        st.dataframe(trade_df.sort_values('timestamp', ascending=False), width='stretch', height=500)
+        st.metric("Total P&L", f"${trade_df['total_value_usd'].sum():,.2f}")
+    else: st.info("No trade history.")
 
-with tab4:
-    st.subheader("System Health Logs")
+with tabs[2]: # Ledger
+    if not trade_df.empty: st.dataframe(trade_df.sort_values('timestamp', ascending=False))
+
+with tabs[3]: # Health
     if logs_data:
-        # Display health summary for each log
-        cols = st.columns(len(logs_data))
-        sorted_logs = sorted(logs_data.items()) # Sort by name
+        for name, lines in logs_data.items():
+            with st.expander(f"{name} Log"): st.code("".join(lines))
 
-        for idx, (name, lines) in enumerate(sorted_logs):
-            status_msg = "Unknown"
-            is_healthy = False
-            mins_ago = -1
-            
-            if lines:
-                try:
-                    last_line = lines[-1]
-                    # Attempt to parse timestamp from log line
-                    # Format usually: "YYYY-MM-DD HH:MM:SS - ..." or "YYYY-MM-DD HH:MM:SS,ms - ..."
-                    last_ts_str = last_line.split(' - ')[0]
-                    if ',' in last_ts_str: # Handle milliseconds if present
-                        last_ts_str = last_ts_str.split(',')[0]
+with tabs[4]: # Market
+    if 'market_data' in live_data and not live_data['MarketData'].empty:
+        st.dataframe(live_data['MarketData'])
+    else: st.info("No market data active.")
 
-                    last_ts = datetime.strptime(last_ts_str.strip(), '%Y-%m-%d %H:%M:%S')
-                    diff = datetime.now() - last_ts
-                    mins_ago = int(diff.total_seconds() // 60)
+with tabs[5]: # Signals
+    sigs = get_model_signals_df()
+    if not sigs.empty: st.dataframe(sigs.sort_values('timestamp', ascending=False))
 
-                    if diff < timedelta(minutes=15):
-                        is_healthy = True
-                        status_msg = f"Active ({mins_ago}m ago)"
-                    else:
-                        status_msg = f"Stalled ({mins_ago}m ago)"
-                except Exception:
-                    status_msg = "Parse Error"
-
-            with cols[idx]:
-                if is_healthy:
-                    st.success(f"✅ **{name}**: {status_msg}")
-                else:
-                    st.error(f"⚠️ **{name}**: {status_msg}")
-
-        st.divider()
-
-        # Display log content
-        for name, lines in sorted_logs:
-            with st.expander(f"{name} Log", expanded=False):
-                st.code("".join(lines), language='text')
-    else:
-        st.info("No active log files found (logs with digits in name are skipped).")
-
-with tab5:
-    st.subheader("Live Market Data")
-    if 'market_data' not in st.session_state:
-        st.session_state.market_data = pd.DataFrame()
-
-    if st.button("📈 Fetch Market Snapshot", width='stretch'):
-        with st.spinner("Connecting to IB..."):
-            # Re-use the consolidated fetcher but extract just the market data part
-            snapshot = fetch_live_dashboard_data(config)
-            st.session_state.market_data = snapshot.get("MarketData", pd.DataFrame())
-
-    if not st.session_state.market_data.empty:
-        st.dataframe(
-            st.session_state.market_data.style.format({
-                "Price": "${:.2f}", "Bid": "${:.2f}", "Ask": "${:.2f}"
-            }),
-            width='stretch'
-        )
-    else:
-        st.info("Click button to fetch data.")
-
-with tab6:
-    st.subheader("Model Signals Log")
-    signals_df = get_model_signals_df()
-
-    if not signals_df.empty:
-        # Create a display copy to avoid modifying the original data
-        display_df = signals_df.copy()
-        if 'confidence' in display_df.columns:
-            display_df['confidence'] = display_df['confidence'] * 100
-
-        # Display the raw table
-        st.dataframe(
-            display_df.sort_values('timestamp', ascending=False),
-            width='stretch',
-            height=300,
-            column_config={
-                "price": st.column_config.NumberColumn("Price", format="$%.2f"),
-                "sma_200": st.column_config.NumberColumn("SMA 200", format="$%.2f"),
-                "expected_price": st.column_config.NumberColumn("Exp Price", format="$%.2f"),
-                "confidence": st.column_config.NumberColumn("Confidence", format="%.2f%%"),
-            }
-        )
-
-        st.divider()
-        st.subheader("Price vs. Prediction Analysis")
-
-        # Visualization
-        # Filter for only rows that have price data (backward compatibility)
-        viz_df = signals_df.dropna(subset=['price', 'sma_200']).copy()
-
-        if not viz_df.empty:
-            # Dropdown to select contract
-            contracts = viz_df['contract'].unique()
-            selected_contract = st.selectbox("Select Contract to Visualize", contracts)
-
-            contract_df = viz_df[viz_df['contract'] == selected_contract].sort_values('timestamp')
-
-            if not contract_df.empty:
-                fig = go.Figure()
-
-                # Actual Price
-                fig.add_trace(go.Scatter(
-                    x=contract_df['timestamp'],
-                    y=contract_df['price'],
-                    mode='lines+markers',
-                    name='Price'
-                ))
-
-                # SMA 200
-                fig.add_trace(go.Scatter(
-                    x=contract_df['timestamp'],
-                    y=contract_df['sma_200'],
-                    mode='lines',
-                    name='SMA 200',
-                    line=dict(dash='dash', color='orange')
-                ))
-
-                # Expected Price
-                if 'expected_price' in contract_df.columns:
-                     fig.add_trace(go.Scatter(
-                        x=contract_df['timestamp'],
-                        y=contract_df['expected_price'],
-                        mode='markers',
-                        name='Expected Price',
-                        marker=dict(symbol='x', size=10, color='green')
-                    ))
-
-                fig.update_layout(title=f"Model Signals: {selected_contract}", xaxis_title="Timestamp", yaxis_title="Price")
-                st.plotly_chart(fig, width='stretch')
-            else:
-                st.info(f"No data for {selected_contract}")
-        else:
-             st.info("No signal data with price information available yet.")
-
-    else:
-        st.info("No model signals logged yet.")
-
-with tab7:
-    st.header("🧠 Council Scorecard")
-    st.caption("Detailed breakdown of Multi-Agent decision making and accuracy.")
+# =========================================================
+# TAB 7: COUNCIL SCORECARD (FINAL MERGED VERSION)
+# =========================================================
+with tabs[6]:
+    st.header("🧠 Council Scorecard & Brain Health")
+    st.caption("Detailed breakdown of Multi-Agent decision making, accuracy, and consensus.")
 
     council_file = os.path.join("data", "council_history.csv")
     if os.path.exists(council_file):
         try:
+            # Load and Prep Data
             council_df = pd.read_csv(council_file)
             council_df['timestamp'] = pd.to_datetime(council_df['timestamp'])
+            council_df = council_df.sort_values('timestamp', ascending=False) # Latest top
 
-            # --- 1. Saved by the Bell ---
-            # Instances where ML wanted to trade (NOT NEUTRAL) but Master blocked it (NEUTRAL)
+            # --- 1. HEADLINE DEFENSIVE STATS (Restored) ---
+            # Saved by the Bell: ML != NEUTRAL but Master == NEUTRAL
             saved_mask = (council_df['ml_signal'] != 'NEUTRAL') & (council_df['master_decision'] == 'NEUTRAL')
             saved_count = saved_mask.sum()
-
-            # Instances where Compliance blocked the Master
+            # Hallucinations: Compliance Blocked
             hallucination_mask = council_df['compliance_approved'] == False
             hallucination_count = hallucination_mask.sum()
 
             score_cols = st.columns(3)
-            score_cols[0].metric("🛡️ Trades Blocked by Council", f"{saved_count}", help="ML Signal was Active, but Council Vetoed.")
+            score_cols[0].metric("🛡️ Trades Blocked", f"{saved_count}", help="ML Signal was Active, but Council Vetoed.")
             score_cols[1].metric("🚨 Compliance Blocks", f"{hallucination_count}", help="Master Decision rejected by Compliance Officer.")
 
-            # --- 2. Master Accuracy Attribution ---
-            # Compare Master Direction vs Current Price Change
-            # We need current prices for the contracts in the history
-            if not council_df.empty:
-                # Reuse live data fetcher for current prices
-                live_snapshot = fetch_live_dashboard_data(config)
-                market_df = live_snapshot.get("MarketData", pd.DataFrame())
+            # --- 2. AGENT LEADERBOARD (Who is the smartest?) ---
+            market_snapshot = live_data.get("MarketData", pd.DataFrame())
 
-                # Helper to get current price from market_df
-                def get_current_price(contract_name):
-                    # Try to match localSymbol or parse it
-                    # contract_name in log might be "KC H25 (202503)" or similar
-                    # market_df Contract column is localSymbol e.g. "KCH5"
-                    # Simplistic matching: try to find common substring or exact match
-                    if market_df.empty: return None
+            def get_current_price_for_scoring(contract):
+                if market_snapshot.empty: return None
+                clean = contract.split('(')[0].strip().replace(' ', '')
+                match = market_snapshot[market_snapshot['Contract'].str.contains(clean, case=False)]
+                if not match.empty: return match.iloc[0]['Price']
+                return None
 
-                    # Clean the logged name (e.g. remove parenthesis)
-                    clean_name = contract_name.split('(')[0].strip().replace(' ', '')
+            # Calculate Scores
+            agents = ['master_decision', 'meteorologist_sentiment', 'macro_sentiment', 'geopolitical_sentiment', 'sentiment_sentiment']
+            scores = {a: {'correct': 0, 'total': 0} for a in agents}
 
-                    # Look for match in MarketData
-                    match = market_df[market_df['Contract'].str.contains(clean_name, case=False, regex=False)]
-                    if not match.empty:
-                        return match.iloc[0]['Price']
-                    return None
+            for _, row in council_df.iterrows():
+                curr_price = get_current_price_for_scoring(row['contract'])
+                entry_price = row.get('entry_price', 0.0)
 
-                # Calculate Accuracy
-                correct_calls = 0
-                total_calls = 0
+                if curr_price and entry_price > 0:
+                    pct_move = (curr_price - entry_price) / entry_price
+                    for agent_col in agents:
+                        vote = row.get(agent_col, 'N/A')
+                        is_correct = False
+                        if vote == 'BULLISH' and pct_move > 0: is_correct = True
+                        elif vote == 'BEARISH' and pct_move < 0: is_correct = True
 
-                # Filter for Directional Decisions only
-                directional_df = council_df[council_df['master_decision'].isin(['BULLISH', 'BEARISH'])].copy()
+                        if vote in ['BULLISH', 'BEARISH']:
+                            scores[agent_col]['total'] += 1
+                            if is_correct: scores[agent_col]['correct'] += 1
 
-                if not directional_df.empty:
-                    for idx, row in directional_df.iterrows():
-                        current_price = get_current_price(row['contract'])
-                        entry_price = row.get('entry_price', 0.0)
+            # Display Leaderboard
+            pretty_names = {
+                'master_decision': '👑 Master',
+                'meteorologist_sentiment': '🌦️ Meteo',
+                'macro_sentiment': '💵 Macro',
+                'geopolitical_sentiment': '🌍 Geo',
+                'sentiment_sentiment': '🧠 Sentiment'
+            }
 
-                        if current_price and entry_price > 0:
-                            pct_change = (current_price - entry_price) / entry_price
-                            direction = row['master_decision']
+            # Add Master Win Rate to Top Row
+            m_stats = scores['master_decision']
+            m_rate = (m_stats['correct'] / m_stats['total'] * 100) if m_stats['total'] > 0 else 0.0
+            score_cols[2].metric("👑 Master Win Rate", f"{m_rate:.1f}%", f"{m_stats['total']} Calls")
 
-                            is_correct = False
-                            if direction == 'BULLISH' and pct_change > 0: is_correct = True
-                            elif direction == 'BEARISH' and pct_change < 0: is_correct = True
-
-                            if is_correct:
-                                correct_calls += 1
-                            total_calls += 1
-
-                    win_rate = (correct_calls / total_calls * 100) if total_calls > 0 else 0.0
-                    score_cols[2].metric("Master Strategist Win Rate", f"{win_rate:.1f}%", help=f"Based on {total_calls} directional calls vs Current Market Price")
-                else:
-                    score_cols[2].metric("Master Strategist Win Rate", "N/A", help="No directional calls made yet.")
+            st.divider()
+            st.subheader("🏆 Sub-Agent Accuracy")
+            l_cols = st.columns(4)
+            sub_agents = [a for a in agents if a != 'master_decision']
+            for idx, agent_key in enumerate(sub_agents):
+                stats = scores[agent_key]
+                rate = (stats['correct'] / stats['total'] * 100) if stats['total'] > 0 else 0.0
+                l_cols[idx].metric(pretty_names[agent_key], f"{rate:.1f}%", f"{stats['total']} Calls")
 
             st.divider()
 
-            # --- 3. Agent Consensus Meter (Stacked Bar) ---
-            st.subheader("Agent Consensus Meter")
+            # --- 3. CONSENSUS MATRIX (The "Table" View) ---
+            st.subheader("📊 Agent Consensus Matrix")
+            st.caption("Compare agent votes side-by-side. Green=Bullish, Red=Bearish.")
 
-            # Prepare data for plotting
-            # We want to melt the sentiment columns
-            agents = ['meteorologist', 'macro', 'geopolitical', 'sentiment']
-            melted_data = []
+            display_cols = ['timestamp', 'contract', 'master_decision',
+                            'meteorologist_sentiment', 'macro_sentiment',
+                            'geopolitical_sentiment', 'sentiment_sentiment']
 
-            for idx, row in council_df.iterrows():
-                ts = row['timestamp']
-                contract = row['contract']
-                for agent in agents:
-                    sentiment = row.get(f'{agent}_sentiment', 'N/A')
-                    # Normalize N/A
-                    if sentiment not in ['BULLISH', 'BEARISH', 'NEUTRAL']:
-                        sentiment = 'NEUTRAL' # Default for chart
+            matrix_df = council_df[display_cols].copy()
+            matrix_df.columns = ['Time', 'Contract', 'MASTER', 'Meteo', 'Macro', 'Geo', 'Sentiment']
 
-                    # Wrap text for tooltip (50 chars per line) to prevent popup cutoff
-                    raw_summary = str(row.get(f'{agent}_summary', ''))
-                    wrapped_summary = "<br>".join(textwrap.wrap(raw_summary, width=50))
+            def color_sentiment(val):
+                if val == 'BULLISH': return 'color: #00CC96; font-weight: bold'
+                if val == 'BEARISH': return 'color: #EF553B; font-weight: bold'
+                if val == 'NEUTRAL': return 'color: gray'
+                return ''
 
-                    melted_data.append({
-                        'Timestamp': ts,
-                        'Agent': agent.capitalize(),
-                        'Sentiment': sentiment,
-                        'Contract': contract,
-                        'Summary': wrapped_summary
-                    })
+            st.dataframe(
+                matrix_df.style.applymap(color_sentiment, subset=['MASTER', 'Meteo', 'Macro', 'Geo', 'Sentiment'])
+                         .format({"Time": lambda t: t.strftime("%m-%d %H:%M")}),
+                use_container_width=True,
+                height=400
+            )
 
-            if melted_data:
-                chart_df = pd.DataFrame(melted_data)
+            # --- 4. DEEP DIVE READER (The "Text" View) ---
+            st.divider()
+            st.subheader("📝 Decision Deep Dive")
 
-                # Color map
-                color_map = {
-                    'BULLISH': '#00CC96', # Green
-                    'BEARISH': '#EF553B', # Red
-                    'NEUTRAL': '#636EFA'  # Blue
-                }
+            options = council_df.index
+            def format_option(idx):
+                r = council_df.loc[idx]
+                return f"{r['timestamp'].strftime('%Y-%m-%d %H:%M')} | {r['contract']} | {r['master_decision']}"
 
-                fig = px.histogram(
-                    chart_df,
-                    x="Timestamp",
-                    color="Sentiment",
-                    hover_data=["Agent", "Summary", "Contract"],
-                    color_discrete_map=color_map,
-                    title="Council Sentiment Distribution Over Time",
-                    barmode='stack'
-                )
-                st.plotly_chart(fig, width='stretch')
+            selected_idx = st.selectbox("Select Decision to Inspect:", options, format_func=format_option)
 
-            # --- 4. Recent Hallucinations Table ---
+            if selected_idx is not None:
+                row = council_df.loc[selected_idx]
+
+                st.info(f"**👑 Master Strategist Decision:** {row['master_decision']} (Confidence: {row.get('master_confidence',0):.2f})")
+                st.markdown(f"**Reasoning:** {row['master_reasoning']}")
+                if 'entry_price' in row:
+                    st.caption(f"Price at Decision: {row['entry_price']}")
+
+                st.markdown("---")
+
+                q1, q2 = st.columns(2)
+                def render_agent(col, title, sentiment, summary):
+                    color = "gray"
+                    if sentiment == 'BULLISH': color = "green"
+                    elif sentiment == 'BEARISH': color = "red"
+                    with col:
+                        with st.container(border=True):
+                            st.markdown(f"#### :{color}[{title}]")
+                            st.markdown(f"**Vote:** {sentiment}")
+                            with st.expander("Full Report", expanded=True):
+                                st.write(summary if isinstance(summary, str) else "No report.")
+
+                render_agent(q1, "Meteorologist", row.get('meteorologist_sentiment'), row.get('meteorologist_summary'))
+                render_agent(q1, "Macro Economist", row.get('macro_sentiment'), row.get('macro_summary'))
+                render_agent(q2, "Geopolitical", row.get('geopolitical_sentiment'), row.get('geopolitical_summary'))
+                render_agent(q2, "Sentiment / COT", row.get('sentiment_sentiment'), row.get('sentiment_summary'))
+
+            # --- 5. HALLUCINATION TABLE (Restored) ---
             if hallucination_count > 0:
-                st.subheader("🚨 Compliance Blocks (Hallucination Audit)")
+                st.divider()
+                st.subheader("🚨 Recent Hallucinations (Compliance Blocks)")
                 st.dataframe(
                     council_df[hallucination_mask][['timestamp', 'contract', 'master_reasoning', 'master_decision']],
                     use_container_width=True
                 )
 
-            # --- 5. Raw Data ---
-            with st.expander("View Raw Council Logs"):
-                st.dataframe(council_df.sort_values('timestamp', ascending=False), use_container_width=True)
-
         except Exception as e:
-            st.error(f"Error loading Council history: {e}")
+            st.error(f"Error loading Council Data: {e}")
     else:
-        st.info("No Council history found yet.")
+        st.info("No Council history found yet. Run the bot to generate signals.")
