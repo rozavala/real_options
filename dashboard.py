@@ -609,9 +609,9 @@ with tabs[6]:
                 return ''
 
             st.dataframe(
-                matrix_df.style.applymap(color_sentiment, subset=['MASTER', 'Meteo', 'Macro', 'Geo', 'Sentiment'])
+                matrix_df.style.map(color_sentiment, subset=['MASTER', 'Meteo', 'Macro', 'Geo', 'Sentiment'])
                          .format({"Time": lambda t: t.strftime("%m-%d %H:%M")}),
-                use_container_width=True,
+                width="stretch",
                 height=400
             )
 
@@ -659,7 +659,7 @@ with tabs[6]:
                 st.subheader("🚨 Recent Hallucinations (Compliance Blocks)")
                 st.dataframe(
                     council_df[hallucination_mask][['timestamp', 'contract', 'master_reasoning', 'master_decision']],
-                    use_container_width=True
+                    width="stretch"
                 )
 
         except Exception as e:
