@@ -473,7 +473,7 @@ with tabs[1]: # Analytics
 
              # Chart 1: Equity Curve
              fig_equity = px.line(equity_df, x='timestamp', y='total_value_usd', title='Equity Curve (Net Liquidation)')
-             st.plotly_chart(fig_equity, use_container_width=True)
+             st.plotly_chart(fig_equity, width="stretch")
 
              # Chart 2: Daily Drawdown
              # Calculate drawdown
@@ -481,7 +481,7 @@ with tabs[1]: # Analytics
              equity_df['drawdown'] = (equity_df['total_value_usd'] - equity_df['peak']) / equity_df['peak']
 
              fig_dd = px.area(equity_df, x='timestamp', y='drawdown', title='Drawdown (%)', color_discrete_sequence=['red'])
-             st.plotly_chart(fig_dd, use_container_width=True)
+             st.plotly_chart(fig_dd, width="stretch")
 
         else:
              st.warning("Daily Equity data not found. Showing Cash Flow only.")
