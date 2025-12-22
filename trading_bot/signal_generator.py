@@ -143,7 +143,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 decision = await council.decide(contract_name, ml_signal, reports, market_context_str)
 
                 # --- E.1: THE COMPLIANCE AUDIT (New Step) ---
-                audit = await council.audit_decision(contract_name, reports, decision)
+                audit = await council.audit_decision(contract_name, reports, decision, market_context=market_context_str)
 
                 if not audit.get('approved', True):
                     logger.warning(f"🚨 COMPLIANCE BLOCKED {contract_name}: {audit.get('flagged_reason')}")
