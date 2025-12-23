@@ -384,13 +384,13 @@ with st.sidebar:
                     asyncio.run(cancel_all_open_orders(config))
                     st.success("Orders cancelled.")
                 except Exception as e: st.error(f"Error: {e}")
-    if st.button("📉 Force Close Aged", width='stretch'):
+    if st.button("📉 Force Close Aged (Stale)", width='stretch'):
         if config:
-            with st.spinner("Closing..."):
+            with st.spinner("Closing Stale Positions..."):
                 try:
-                    from trading_bot.order_manager import close_positions_after_5_days
-                    asyncio.run(close_positions_after_5_days(config))
-                    st.success("Closed.")
+                    from trading_bot.order_manager import close_stale_positions
+                    asyncio.run(close_stale_positions(config))
+                    st.success("Stale positions closed.")
                 except Exception as e: st.error(f"Error: {e}")
 
 # Live Header
