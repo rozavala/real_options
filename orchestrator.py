@@ -201,7 +201,7 @@ schedule = {
     # time(17, 35): reconcile_and_analyze
     
     # time(16, 22): start_monitoring,
-    time(23, 57): generate_and_execute_orders,
+    time(3, 52): generate_and_execute_orders,
     # time(17, 20): close_positions_after_5_days,
     # time(17, 22): cancel_and_stop_monitoring,
     # time(17, 25): log_equity_snapshot,
