@@ -28,7 +28,7 @@ from performance_analyzer import main as run_performance_analysis
 from reconcile_trades import main as run_reconciliation, reconcile_active_positions
 from trading_bot.order_manager import (
     generate_and_execute_orders,
-    close_positions_after_5_days,
+    close_stale_positions,
     cancel_all_open_orders,
 )
 from trading_bot.utils import archive_trade_ledger
@@ -195,14 +195,14 @@ async def reconcile_and_analyze(config: dict):
 schedule = {
     time(8, 30): start_monitoring,
     time(14, 0): generate_and_execute_orders,
-    time(17, 20): close_positions_after_5_days,
+    time(17, 20): close_stale_positions,
     time(17, 22): cancel_and_stop_monitoring,
     time(17, 25): log_equity_snapshot,
     time(17, 35): reconcile_and_analyze
     
     # time(16, 22): start_monitoring,
     # time(3, 52): generate_and_execute_orders,
-    # time(17, 20): close_positions_after_5_days,
+    # time(17, 20): close_stale_positions,
     # time(17, 22): cancel_and_stop_monitoring,
     # time(17, 25): log_equity_snapshot,
     # time(17, 35): reconcile_and_analyze

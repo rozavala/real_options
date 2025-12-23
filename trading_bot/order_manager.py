@@ -703,14 +703,16 @@ def get_trade_ledger_df():
         return pd.DataFrame()
 
 
-async def close_positions_after_5_days(config: dict):
+async def close_stale_positions(config: dict):
     """
-    Closes any open positions that have been held for 5 or more trading days.
+    Closes any open positions that have been held for more than 'max_holding_days' (Default: 2) trading days.
     This function now uses the live portfolio from IB as the source of truth,
     reconstructs position ages using a FIFO stack from the ledger, and
     groups closing orders by Position ID to ensure spreads are closed as combos.
     """
-    logger.info("--- Initiating position closing based on 5-day holding period ---")
+    max_holding_days = config.get('risk_management', {}).get('max_holding_days', 2)
+    logger.info(f"--- Initiating position closing based on {max_holding_days}-day holding period ---")
+
     ib = IB()
     closed_position_details = []
     failed_closes = []
@@ -793,7 +795,7 @@ async def close_positions_after_5_days(config: dict):
 
                 logger.info(f"Reconstruction: {symbol} | Trade Date: {trade_date.date()} | Age: {age_in_trading_days} | Qty: {qty_to_attribute}")
 
-                if age_in_trading_days >= 5:
+                if age_in_trading_days >= max_holding_days:
                     # This specific lot is expired. Mark for closure.
                     # We need to INVERT the action to close.
                     close_action = 'SELL' if target_ledger_action == 'BUY' else 'BUY'
@@ -955,7 +957,7 @@ async def close_positions_after_5_days(config: dict):
                     # We need to wait a bit more for fills to populate?
                     await asyncio.sleep(1)
 
-                    await log_trade_to_ledger(ib, trade, "5-Day Close", position_id=pos_id)
+                    await log_trade_to_ledger(ib, trade, "Stale Position Close", position_id=pos_id)
 
                     # Calculate PnL for report
                     # Sum realizedPNL from all fills
@@ -988,7 +990,7 @@ async def close_positions_after_5_days(config: dict):
         message_parts = []
         total_pnl = 0
         if closed_position_details:
-            message_parts.append(f"<b>✅ Successfully closed {len(closed_position_details)} positions (5-day rule):</b>")
+            message_parts.append(f"<b>✅ Successfully closed {len(closed_position_details)} positions (Stale > {max_holding_days}d):</b>")
             for detail in closed_position_details:
                 pnl_str = f"${detail['pnl']:,.2f}"
                 pnl_color = "green" if detail['pnl'] >= 0 else "red"
@@ -1013,11 +1015,11 @@ async def close_positions_after_5_days(config: dict):
              message_parts.extend([f"  - {pos}" for pos in orphaned_positions])
 
         if not message_parts:
-            message = "No positions were eligible for closing today based on the 5-day rule."
+            message = f"No positions were eligible for closing today based on the {max_holding_days}-day rule."
         else:
             message = "\n".join(message_parts)
 
-        notification_title = f"Position Close Report: P&L ${total_pnl:,.2f}"
+        notification_title = f"Stale Position Close Report: P&L ${total_pnl:,.2f}"
         send_pushover_notification(config.get('notifications', {}), notification_title, message)
 
     except Exception as e:
