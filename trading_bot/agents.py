@@ -172,30 +172,35 @@ class CoffeeCouncil:
 
     async def audit_decision(self, contract_name: str, research_reports: dict, decision: dict, market_context: str = "") -> dict:
         """
-        Audits the Master's decision, now AWARE of Market Context.
+        Audits the decision, AWARE of both Market Context and Master's Rules.
         """
         compliance_persona = self.personas.get('compliance', "You are a Compliance Officer.")
-
+        
+        # NEW: Fetch the Master's specific instructions to use as the "Rulebook"
+        master_rules = self.personas.get('master', "No specific rules found.")
+        
         reports_text = ""
         for agent, report in research_reports.items():
             reports_text += f"\n--- {agent.upper()} REPORT ---\n{report}\n"
 
-        # UPDATE: Inject market_context so the Auditor knows live prices are real facts
+        # UPDATED PROMPT: Now includes "MASTER STRATEGIST RULES"
         prompt = (
             f"{compliance_persona}\n\n"
             f"AUDIT TARGET: Decision for {contract_name}\n\n"
-            f"--- APPROVED DATA SOURCES ---\n"
+            f"--- APPROVED DATA SOURCES (FACTS) ---\n"
             f"1. MARKET CONTEXT (Live Price Data):\n{market_context}\n\n"
             f"2. RESEARCH REPORTS (Agent Findings):\n{reports_text}\n\n"
+            f"--- VALID LOGIC RULEBOOK ---\n"
+            f"The Master Strategist was given these instructions. Logic derived from them is VALID:\n"
+            f"\"{master_rules}\"\n\n"
             f"--- FINAL DECISION TO AUDIT ---\n{json.dumps(decision, indent=2)}\n\n"
-            f"TASK: Verify that the Decision's logic is supported by the APPROVED DATA SOURCES. "
-            f"Note: The Decision IS allowed to cite price moves found in 'Market Context'. "
+            f"TASK: Verify that the Decision's facts come from the APPROVED DATA SOURCES and its logic follows the RULEBOOK. "
             f"Output JSON: {{'approved': bool, 'flagged_reason': string}}"
         )
 
         try:
             response = await self.client.aio.models.generate_content(
-                model=self.agent_model_name, # Use Flash for speed
+                model=self.agent_model_name,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
