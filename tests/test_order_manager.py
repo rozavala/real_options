@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 
-from trading_bot.order_manager import generate_and_queue_orders, place_queued_orders, close_positions_after_5_days, ORDER_QUEUE
+from trading_bot.order_manager import generate_and_queue_orders, place_queued_orders, close_stale_positions, ORDER_QUEUE
 from ib_insync import util
 
 class TestOrderManager(unittest.TestCase):
@@ -135,7 +135,7 @@ class TestPositionClosing(unittest.TestCase):
             mock_place_order.return_value = mock_trade
 
             config = {'symbol': 'KC', 'exchange': 'NYBOT'}
-            await close_positions_after_5_days(config)
+            await close_stale_positions(config)
 
             # We expect 3 calls to place_order: 1 for OLD_POSITION, 1 for COMBO_POSITION, 1 for RECON_POSITION
             self.assertEqual(mock_place_order.call_count, 3)

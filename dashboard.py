@@ -501,7 +501,11 @@ with tabs[3]: # Health
             with st.expander(f"{name} Log"): st.code("".join(lines))
 
 with tabs[4]: # Market
-    if 'market_data' in live_data and not live_data['MarketData'].empty:
+    if st.button("🔄 Refresh Market Data", key="refresh_market_tab"):
+        st.cache_data.clear()
+        st.rerun()
+
+    if 'MarketData' in live_data and not live_data['MarketData'].empty:
         st.dataframe(live_data['MarketData'])
     else: st.info("No market data active.")
 
