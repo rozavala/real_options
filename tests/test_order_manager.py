@@ -35,17 +35,20 @@ class TestPositionClosing(unittest.TestCase):
     def setUp(self):
         # Use a temporary ledger path for tests to avoid messing with real data
         self.ledger_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'trade_ledger.csv')
-        self.create_mock_ledger()
+        # Fix the date to a Monday to ensure deterministic age calculations
+        # and avoid Weekly Close triggers.
+        # Mon Oct 23 2023. 2 days ago = Sat Oct 21. Age = 1 (Mon). Kept.
+        self.mock_now = datetime(2023, 10, 23, 17, 20) # Monday
+        self.create_mock_ledger(self.mock_now)
 
     def tearDown(self):
         # Clean up the temporary ledger
         if os.path.exists(self.ledger_path):
             os.remove(self.ledger_path)
 
-    def create_mock_ledger(self):
-        today = datetime.now()
-        ten_days_ago = today - timedelta(days=10)
-        two_days_ago = today - timedelta(days=2)
+    def create_mock_ledger(self, base_date):
+        ten_days_ago = base_date - timedelta(days=10)
+        two_days_ago = base_date - timedelta(days=2)
 
         data = {
             'timestamp': [ten_days_ago.strftime('%Y-%m-%d %H:%M:%S'), two_days_ago.strftime('%Y-%m-%d %H:%M:%S'), ten_days_ago.strftime('%Y-%m-%d %H:%M:%S')],
@@ -135,7 +138,13 @@ class TestPositionClosing(unittest.TestCase):
             mock_place_order.return_value = mock_trade
 
             config = {'symbol': 'KC', 'exchange': 'NYBOT'}
-            await close_stale_positions(config)
+
+            # Patch datetime to avoid Weekly Close logic triggering
+            with patch('trading_bot.order_manager.datetime') as mock_datetime:
+                mock_datetime.now.return_value = self.mock_now
+                mock_datetime.date.return_value = self.mock_now.date()
+
+                await close_stale_positions(config)
 
             # We expect 3 calls to place_order: 1 for OLD_POSITION, 1 for COMBO_POSITION, 1 for RECON_POSITION
             self.assertEqual(mock_place_order.call_count, 3)

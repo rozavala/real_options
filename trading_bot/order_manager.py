@@ -652,7 +652,7 @@ async def place_queued_orders(config: dict):
             logger.info("Disconnected from IB.")
 
 import pandas as pd
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import os
 from pandas.tseries.holiday import USFederalHolidayCalendar
 
@@ -712,6 +712,36 @@ async def close_stale_positions(config: dict):
     """
     max_holding_days = config.get('risk_management', {}).get('max_holding_days', 2)
     logger.info(f"--- Initiating position closing based on {max_holding_days}-day holding period ---")
+
+    # --- Weekly Close Logic ---
+    today_dt = datetime.now()
+    today_date = today_dt.date()
+    weekday = today_date.weekday()  # 0=Mon, 4=Fri
+
+    is_weekly_close = False
+    weekly_close_reason = ""
+
+    # Guard: Do not run on weekends
+    if weekday >= 5:  # Saturday(5) or Sunday(6)
+        logger.warning("Today is a weekend. Skipping position closing check.")
+        return
+
+    cal = USFederalHolidayCalendar()
+    # Check if today is Friday
+    if weekday == 4:
+        is_weekly_close = True
+        weekly_close_reason = "Friday Weekly Close"
+
+    # Check if today is Thursday and tomorrow is a holiday
+    elif weekday == 3:
+        tomorrow = today_date + timedelta(days=1)
+        holidays = cal.holidays(start=tomorrow, end=tomorrow)
+        if not holidays.empty:
+            is_weekly_close = True
+            weekly_close_reason = "Holiday Tomorrow (Weekly Close)"
+
+    if is_weekly_close:
+        logger.info(f"--- Weekly Close Triggered: {weekly_close_reason}. Closing ALL positions. ---")
 
     ib = IB()
     closed_position_details = []
@@ -795,8 +825,8 @@ async def close_stale_positions(config: dict):
 
                 logger.info(f"Reconstruction: {symbol} | Trade Date: {trade_date.date()} | Age: {age_in_trading_days} | Qty: {qty_to_attribute}")
 
-                if age_in_trading_days >= max_holding_days:
-                    # This specific lot is expired. Mark for closure.
+                if is_weekly_close or age_in_trading_days >= max_holding_days:
+                    # This specific lot is expired or forced closed. Mark for closure.
                     # We need to INVERT the action to close.
                     close_action = 'SELL' if target_ledger_action == 'BUY' else 'BUY'
 
@@ -1015,11 +1045,18 @@ async def close_stale_positions(config: dict):
              message_parts.extend([f"  - {pos}" for pos in orphaned_positions])
 
         if not message_parts:
-            message = f"No positions were eligible for closing today based on the {max_holding_days}-day rule."
+            if is_weekly_close:
+                message = "Weekly Close triggered, but no open positions were found to close."
+            else:
+                message = f"No positions were eligible for closing today based on the {max_holding_days}-day rule."
         else:
             message = "\n".join(message_parts)
 
-        notification_title = f"Stale Position Close Report: P&L ${total_pnl:,.2f}"
+        if is_weekly_close:
+            notification_title = f"Weekly Market Close Report: P&L ${total_pnl:,.2f}"
+        else:
+            notification_title = f"Stale Position Close Report: P&L ${total_pnl:,.2f}"
+
         send_pushover_notification(config.get('notifications', {}), notification_title, message)
 
     except Exception as e:
