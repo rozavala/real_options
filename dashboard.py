@@ -565,20 +565,29 @@ with tabs[6]:
             scores = {a: {'correct': 0, 'total': 0} for a in agents}
 
             for _, row in council_df.iterrows():
-                curr_price = get_current_price_for_scoring(row['contract'])
-                entry_price = row.get('entry_price', 0.0)
+                # Priority 1: Use Reconciled Result
+                if 'actual_trend_direction' in row and pd.notna(row['actual_trend_direction']) and row['actual_trend_direction'] in ['BULLISH', 'BEARISH', 'NEUTRAL']:
+                    actual_trend = row['actual_trend_direction']
+                else:
+                    # Priority 2: Use Live Price estimate (Fallback)
+                    curr_price = get_current_price_for_scoring(row['contract'])
+                    entry_price = row.get('entry_price', 0.0)
+                    actual_trend = 'NEUTRAL'
+                    if curr_price and entry_price > 0:
+                        if curr_price > entry_price: actual_trend = 'BULLISH'
+                        elif curr_price < entry_price: actual_trend = 'BEARISH'
 
-                if curr_price and entry_price > 0:
-                    pct_move = (curr_price - entry_price) / entry_price
-                    for agent_col in agents:
-                        vote = row.get(agent_col, 'N/A')
-                        is_correct = False
-                        if vote == 'BULLISH' and pct_move > 0: is_correct = True
-                        elif vote == 'BEARISH' and pct_move < 0: is_correct = True
+                # Grading
+                for agent_col in agents:
+                    vote = row.get(agent_col, 'N/A')
+                    is_correct = False
 
-                        if vote in ['BULLISH', 'BEARISH']:
-                            scores[agent_col]['total'] += 1
-                            if is_correct: scores[agent_col]['correct'] += 1
+                    if vote == actual_trend:
+                        is_correct = True
+
+                    if vote in ['BULLISH', 'BEARISH']:
+                        scores[agent_col]['total'] += 1
+                        if is_correct: scores[agent_col]['correct'] += 1
 
             # Display Leaderboard
             pretty_names = {
@@ -596,8 +605,25 @@ with tabs[6]:
             m_rate = (m_stats['correct'] / m_stats['total'] * 100) if m_stats['total'] > 0 else 0.0
             score_cols[2].metric("👑 Master Win Rate", f"{m_rate:.1f}%", f"{m_stats['total']} Calls")
 
+            # --- OVERALL WIN RATE (RECONCILED) ---
+            if 'pnl_realized' in council_df.columns and 'actual_trend_direction' in council_df.columns:
+                reconciled_mask = pd.notna(council_df['pnl_realized'])
+                if reconciled_mask.any():
+                    reconciled_df = council_df[reconciled_mask]
+                    total_rec = len(reconciled_df)
+                    wins = (reconciled_df['pnl_realized'] > 0).sum()
+                    win_rate_rec = (wins / total_rec * 100) if total_rec > 0 else 0.0
+                    st.caption(f"Actual Realized Win Rate (Reconciled): **{win_rate_rec:.1f}%** over {total_rec} graded trades.")
+
             st.divider()
             st.subheader("🏆 Sub-Agent Accuracy")
+
+            # Use 'actual_trend_direction' for grading if available, otherwise fallback to current price
+            # We already computed scores above based on live price. Let's stick to that for simplicity
+            # unless we want to strictly use reconciled history for the leaderboard.
+            # Ideally, we should use reconciled data for past trades and live data for open ones.
+            # For now, keeping the hybrid approach (live price based) for the leaderboard to be responsive.
+
             sub_agents = [a for a in agents if a != 'master_decision']
             l_cols = st.columns(len(sub_agents))
             for idx, agent_key in enumerate(sub_agents):
@@ -615,8 +641,21 @@ with tabs[6]:
                             'meteorologist_sentiment', 'macro_sentiment',
                             'geopolitical_sentiment', 'fundamentalist_sentiment', 'sentiment_sentiment']
 
+            # Add Result columns if they exist
+            if 'actual_trend_direction' in council_df.columns:
+                display_cols.extend(['actual_trend_direction', 'pnl_realized'])
+
             matrix_df = council_df[display_cols].copy()
-            matrix_df.columns = ['Time', 'Contract', 'MASTER', 'ML Model', 'Meteo', 'Macro', 'Geo', 'Stocks', 'Sentiment']
+
+            # Rename for display
+            col_map = {
+                'timestamp': 'Time', 'contract': 'Contract', 'master_decision': 'MASTER',
+                'ml_sentiment': 'ML Model', 'meteorologist_sentiment': 'Meteo',
+                'macro_sentiment': 'Macro', 'geopolitical_sentiment': 'Geo',
+                'fundamentalist_sentiment': 'Stocks', 'sentiment_sentiment': 'Sentiment',
+                'actual_trend_direction': 'Actual Trend', 'pnl_realized': 'P&L (Theo)'
+            }
+            matrix_df = matrix_df.rename(columns=col_map)
 
             def color_sentiment(val):
                 if val == 'BULLISH': return 'color: #00CC96; font-weight: bold'
@@ -624,8 +663,11 @@ with tabs[6]:
                 if val == 'NEUTRAL': return 'color: gray'
                 return ''
 
+            # Define columns to apply coloring to (handle missing columns dynamically)
+            subset_cols = [c for c in ['MASTER', 'ML Model', 'Meteo', 'Macro', 'Geo', 'Stocks', 'Sentiment', 'Actual Trend'] if c in matrix_df.columns]
+
             st.dataframe(
-                matrix_df.style.map(color_sentiment, subset=['MASTER', 'ML Model', 'Meteo', 'Macro', 'Geo', 'Stocks', 'Sentiment'])
+                matrix_df.style.map(color_sentiment, subset=subset_cols)
                          .format({"Time": lambda t: t.strftime("%m-%d %H:%M")}),
                 width="stretch",
                 height=400

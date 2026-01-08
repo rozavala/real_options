@@ -26,6 +26,7 @@ from trading_bot.logging_config import setup_logging
 from notifications import send_pushover_notification
 from performance_analyzer import main as run_performance_analysis
 from reconcile_trades import main as run_reconciliation, reconcile_active_positions
+from trading_bot.reconciliation import reconcile_council_history
 from trading_bot.order_manager import (
     generate_and_execute_orders,
     close_stale_positions,
@@ -172,6 +173,9 @@ async def reconcile_and_notify(config: dict):
 
         # 2. Reconcile Active Positions (Live Snapshot)
         await reconcile_active_positions(config)
+
+        # 3. Reconcile Council History (Brain Performance)
+        await reconcile_council_history(config)
 
     except Exception as e:
         logger.critical(f"An error occurred during trade reconciliation: {e}\n{traceback.format_exc()}")
