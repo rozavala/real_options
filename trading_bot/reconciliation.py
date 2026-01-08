@@ -13,14 +13,14 @@ from ib_insync import IB, Contract, util
 
 logger = logging.getLogger(__name__)
 
-async def reconcile_council_history(ib: IB, config: dict):
+async def reconcile_council_history(config: dict, ib: IB = None):
     """
     Reconciles the Council History CSV by backfilling missing exit prices and outcomes.
 
     Logic:
     1. Loads 'data/council_history.csv'.
     2. Identifies rows where 'exit_price' is missing and enough time has passed (approx 27h).
-    3. Uses the provided IB instance to fetch historical prices for those contracts.
+    3. Connects to IB (if not provided) to fetch historical prices for those contracts.
     4. Calculates realized P&L (theoretical) and actual trend direction.
     5. Updates the CSV.
     """
@@ -42,6 +42,34 @@ async def reconcile_council_history(ib: IB, config: dict):
     if df.empty:
         logger.info("Council history is empty.")
         return
+
+    # --- SELF-MANAGED IB CONNECTION ---
+    managed_connection = False
+    if ib is None:
+        ib = IB()
+        managed_connection = True
+        try:
+             host = config['connection']['host']
+             port = config['connection']['port']
+             # Use random clientId to avoid conflicts
+             client_id = random.randint(5000, 9999)
+             await ib.connectAsync(host, port, clientId=client_id)
+        except Exception as e:
+             logger.error(f"Failed to connect to IB for reconciliation: {e}")
+             return
+
+    try:
+        # Proceed with reconciliation using 'ib'
+        await _process_reconciliation(ib, df, config, file_path)
+    except Exception as e:
+        logger.error(f"Error during reconciliation process: {e}")
+    finally:
+        if managed_connection and ib.isConnected():
+            ib.disconnect()
+
+
+async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_path: str):
+    """Internal helper to process the DataFrame rows using the active IB connection."""
 
     # Ensure columns exist (if migrated recently, they should be there, but good to be safe)
     required_cols = ['exit_price', 'exit_timestamp', 'pnl_realized', 'actual_trend_direction']

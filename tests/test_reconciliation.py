@@ -45,7 +45,7 @@ async def test_reconcile_council_history_success():
          patch('pandas.DataFrame.to_csv') as mock_to_csv, \
          patch('os.path.exists', return_value=True):
 
-        await reconcile_council_history(mock_ib, config)
+        await reconcile_council_history(config, ib=mock_ib)
 
         # Verify call to save
         mock_to_csv.assert_called_once()
@@ -77,7 +77,7 @@ async def test_reconcile_council_history_skip_recent():
          patch('pandas.DataFrame.to_csv') as mock_to_csv, \
          patch('os.path.exists', return_value=True):
 
-        await reconcile_council_history(mock_ib, {})
+        await reconcile_council_history({}, ib=mock_ib)
 
         # Should NOT save because no updates made
         mock_to_csv.assert_not_called()
@@ -109,7 +109,7 @@ async def test_reconcile_council_history_pnl_calc():
          patch('pandas.DataFrame.to_csv') as mock_to_csv, \
          patch('os.path.exists', return_value=True):
 
-        await reconcile_council_history(mock_ib, {'symbol': 'KC'})
+        await reconcile_council_history({'symbol': 'KC'}, ib=mock_ib)
 
         assert mock_csv_data.iloc[0]['exit_price'] == 145.0
         assert mock_csv_data.iloc[0]['pnl_realized'] == 5.0 # (150 - 145) for Short
