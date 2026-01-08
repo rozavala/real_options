@@ -91,6 +91,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         f"Search for 'USD BRL exchange rate forecast' and 'Brazil Central Bank Selic rate outlook'. Determine if the BRL is trending to encourage farmer selling."),
                     "geopolitical": council.research_topic("geopolitical",
                         f"Search for 'Red Sea shipping coffee delays', 'Brazil port of Santos wait times', and 'EUDR regulation delay latest news'. Determine if there are logistical bottlenecks."),
+                    "fundamentalist": council.research_topic("fundamentalist",
+                        f"Search for 'ICE Arabica Certified Stocks level current' and 'GCA Green Coffee stocks report latest'. Look for 'Backwardation' in the forward curve."),
                     "sentiment": council.research_topic("sentiment",
                         f"Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought.")
                 }
@@ -212,6 +214,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         "macro_summary": agent_data.get('macro_summary'),
                         "geopolitical_sentiment": agent_data.get('geopolitical_sentiment'),
                         "geopolitical_summary": agent_data.get('geopolitical_summary'),
+                        "fundamentalist_sentiment": agent_data.get('fundamentalist_sentiment'),
+                        "fundamentalist_summary": agent_data.get('fundamentalist_summary'),
                         "sentiment_sentiment": agent_data.get('sentiment_sentiment'),
                         "sentiment_summary": agent_data.get('sentiment_summary'),
 
