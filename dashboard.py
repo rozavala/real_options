@@ -561,7 +561,7 @@ with tabs[6]:
                 return None
 
             # Calculate Scores
-            agents = ['master_decision', 'ml_sentiment', 'meteorologist_sentiment', 'macro_sentiment', 'geopolitical_sentiment', 'sentiment_sentiment']
+            agents = ['master_decision', 'ml_sentiment', 'meteorologist_sentiment', 'macro_sentiment', 'geopolitical_sentiment', 'fundamentalist_sentiment', 'sentiment_sentiment']
             scores = {a: {'correct': 0, 'total': 0} for a in agents}
 
             for _, row in council_df.iterrows():
@@ -587,6 +587,7 @@ with tabs[6]:
                 'meteorologist_sentiment': '🌦️ Meteo',
                 'macro_sentiment': '💵 Macro',
                 'geopolitical_sentiment': '🌍 Geo',
+                'fundamentalist_sentiment': '📦 Stocks',
                 'sentiment_sentiment': '🧠 Sentiment'
             }
 
@@ -612,10 +613,10 @@ with tabs[6]:
 
             display_cols = ['timestamp', 'contract', 'master_decision', 'ml_sentiment',
                             'meteorologist_sentiment', 'macro_sentiment',
-                            'geopolitical_sentiment', 'sentiment_sentiment']
+                            'geopolitical_sentiment', 'fundamentalist_sentiment', 'sentiment_sentiment']
 
             matrix_df = council_df[display_cols].copy()
-            matrix_df.columns = ['Time', 'Contract', 'MASTER', 'ML Model', 'Meteo', 'Macro', 'Geo', 'Sentiment']
+            matrix_df.columns = ['Time', 'Contract', 'MASTER', 'ML Model', 'Meteo', 'Macro', 'Geo', 'Stocks', 'Sentiment']
 
             def color_sentiment(val):
                 if val == 'BULLISH': return 'color: #00CC96; font-weight: bold'
@@ -624,7 +625,7 @@ with tabs[6]:
                 return ''
 
             st.dataframe(
-                matrix_df.style.map(color_sentiment, subset=['MASTER', 'ML Model', 'Meteo', 'Macro', 'Geo', 'Sentiment'])
+                matrix_df.style.map(color_sentiment, subset=['MASTER', 'ML Model', 'Meteo', 'Macro', 'Geo', 'Stocks', 'Sentiment'])
                          .format({"Time": lambda t: t.strftime("%m-%d %H:%M")}),
                 width="stretch",
                 height=400
@@ -651,7 +652,9 @@ with tabs[6]:
 
                 st.markdown("---")
 
-                q1, q2 = st.columns(2)
+                # 3-Column Grid for 6 Cards
+                c1, c2, c3 = st.columns(3)
+
                 def render_agent(col, title, sentiment, summary):
                     color = "gray"
                     if sentiment == 'BULLISH': color = "green"
@@ -663,14 +666,18 @@ with tabs[6]:
                             with st.expander("Full Report", expanded=True):
                                 st.write(summary if isinstance(summary, str) else "No report.")
 
-                # Added ML Model card at the top of the left column
-                render_agent(q1, "🤖 ML Model", row.get('ml_sentiment'),
+                # Column 1: The "Hard Data"
+                render_agent(c1, "🤖 ML Model", row.get('ml_sentiment'),
                              f"**Raw Signal:** {row.get('ml_signal')}\n\n**Confidence:** {row.get('ml_confidence', 0):.2%}")
+                render_agent(c1, "📦 Inventory/Stocks", row.get('fundamentalist_sentiment'), row.get('fundamentalist_summary'))
 
-                render_agent(q1, "Meteorologist", row.get('meteorologist_sentiment'), row.get('meteorologist_summary'))
-                render_agent(q1, "Macro Economist", row.get('macro_sentiment'), row.get('macro_summary'))
-                render_agent(q2, "Geopolitical", row.get('geopolitical_sentiment'), row.get('geopolitical_summary'))
-                render_agent(q2, "Sentiment / COT", row.get('sentiment_sentiment'), row.get('sentiment_summary'))
+                # Column 2: The "Macro/Geo"
+                render_agent(c2, "💵 Macro Economist", row.get('macro_sentiment'), row.get('macro_summary'))
+                render_agent(c2, "🌍 Geopolitical", row.get('geopolitical_sentiment'), row.get('geopolitical_summary'))
+
+                # Column 3: The "Sentiment/Weather"
+                render_agent(c3, "🌦️ Meteorologist", row.get('meteorologist_sentiment'), row.get('meteorologist_summary'))
+                render_agent(c3, "🧠 Sentiment / COT", row.get('sentiment_sentiment'), row.get('sentiment_summary'))
 
             # --- 5. HALLUCINATION TABLE (Restored) ---
             if hallucination_count > 0:
