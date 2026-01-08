@@ -26,6 +26,7 @@ from trading_bot.logging_config import setup_logging
 from notifications import send_pushover_notification
 from performance_analyzer import main as run_performance_analysis
 from reconcile_trades import main as run_reconciliation, reconcile_active_positions
+from trading_bot.reconciliation import reconcile_council_history
 from trading_bot.order_manager import (
     generate_and_execute_orders,
     close_stale_positions,
@@ -33,6 +34,8 @@ from trading_bot.order_manager import (
 )
 from trading_bot.utils import archive_trade_ledger
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
+from ib_insync import IB
+import random
 
 # --- Logging Setup ---
 setup_logging()
@@ -172,6 +175,22 @@ async def reconcile_and_notify(config: dict):
 
         # 2. Reconcile Active Positions (Live Snapshot)
         await reconcile_active_positions(config)
+
+        # 3. Reconcile Council History (Brain Performance)
+        # This requires a live IB connection
+        ib = IB()
+        try:
+            ib.connect(
+                config['connection']['host'],
+                config['connection']['port'],
+                clientId=random.randint(5000, 9999)
+            )
+            await reconcile_council_history(ib, config)
+        except Exception as e:
+            logger.error(f"Error during Council History reconciliation: {e}")
+        finally:
+            if ib.isConnected():
+                ib.disconnect()
 
     except Exception as e:
         logger.critical(f"An error occurred during trade reconciliation: {e}\n{traceback.format_exc()}")
