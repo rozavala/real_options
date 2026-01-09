@@ -94,7 +94,10 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                     "fundamentalist": council.research_topic("fundamentalist",
                         f"Search for 'ICE Arabica Certified Stocks level current' and 'GCA Green Coffee stocks report latest'. Look for 'Backwardation' in the forward curve."),
                     "sentiment": council.research_topic("sentiment",
-                        f"Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought.")
+                        f"Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought."),
+                    "technical": council.research_topic("technical",
+                        f"Search for 'Coffee futures technical analysis {contract.localSymbol}' and '{contract.localSymbol} support resistance levels'. "
+                        f"Look for 'RSI divergence' or 'Moving Average crossover'.")
                 }
 
                 # B. Execute Research (Parallel) with Rate Limit Protection
@@ -218,6 +221,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         "fundamentalist_summary": agent_data.get('fundamentalist_summary'),
                         "sentiment_sentiment": agent_data.get('sentiment_sentiment'),
                         "sentiment_summary": agent_data.get('sentiment_summary'),
+                        "technical_sentiment": agent_data.get('technical_sentiment'),
+                        "technical_summary": agent_data.get('technical_summary'),
 
                         "master_decision": decision.get('direction'),
                         "master_confidence": decision.get('confidence'),
