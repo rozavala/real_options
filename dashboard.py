@@ -36,7 +36,8 @@ st.set_page_config(
 )
 
 # --- Configuration Constants ---
-DEFAULT_STARTING_CAPITAL = 250000
+# Get initial capital from .env, default to 250000 if missing
+DEFAULT_STARTING_CAPITAL = float(os.getenv("INITIAL_CAPITAL", "250000"))
 
 # --- 4. Caching Data Loading Functions ---
 
