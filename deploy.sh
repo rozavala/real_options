@@ -14,9 +14,13 @@ pkill -f dashboard.py || true
 sleep 2
 
 echo "--- 2. Rotating logs... ---"
+# Ensure the folder exists (prevents errors when saving new logs)
+mkdir -p ~/real_options/logs
+
 # Backup Orchestrator Log
 mv ~/real_options/logs/orchestrator.log ~/real_options/logs/orchestrator-$(date --iso=s).log || true
-# Backup Dashboard Log (New)
+
+# Backup Dashboard Log
 mv ~/real_options/logs/dashboard.log ~/real_options/logs/dashboard-$(date --iso=s).log || true
 
 echo "--- 3. Activating virtual environment... ---"
