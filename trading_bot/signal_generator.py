@@ -97,7 +97,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         f"Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought."),
                     "technical": council.research_topic("technical",
                         f"Search for 'Coffee futures technical analysis {contract.localSymbol}' and '{contract.localSymbol} support resistance levels'. "
-                        f"Look for 'RSI divergence' or 'Moving Average crossover'.")
+                        f"Look for 'RSI divergence' or 'Moving Average crossover'. "
+                        f"IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'."),
                 }
 
                 # B. Execute Research (Parallel) with Rate Limit Protection
@@ -148,8 +149,13 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 decision = await council.decide(contract_name, ml_signal, reports, market_context_str)
 
                 # --- E.1: THE COMPLIANCE AUDIT (New Step) ---
-                audit = await council.audit_decision(contract_name, reports, decision, market_context=market_context_str)
-
+                audit = await council.audit_decision(
+                    contract_name=contract_name,
+                    research_reports=reports,
+                    ml_signal=ml_signal,
+                    decision=decision,
+                    market_context=market_context_str
+                )
                 if not audit.get('approved', True):
                     logger.warning(f"🚨 COMPLIANCE BLOCKED {contract_name}: {audit.get('flagged_reason')}")
                     # Downgrade to NEUTRAL if the AI was hallucinating facts
