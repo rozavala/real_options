@@ -92,22 +92,36 @@ class CoffeeCouncil:
             f"   [SENTIMENT TAG]: End with exactly one: [SENTIMENT: BULLISH], [SENTIMENT: BEARISH], or [SENTIMENT: NEUTRAL].\n"
         )
 
-        try:
-            # NEW SDK SYNTAX for Tools
-            # TEMPERATURE 0.0 = DETERMINISTIC (Removes "Saturday Randomness")
-            response = await self.client.aio.models.generate_content(
-                model=self.agent_model_name,
-                contents=full_prompt,
-                config=types.GenerateContentConfig(
-                    tools=[types.Tool(google_search=types.GoogleSearch())],
-                    temperature=0.0,
-                    safety_settings=self.safety_settings
+        # --- NEW RETRY LOGIC ---
+        retries = 3
+        base_delay = 5  # Start waiting 5 seconds
+
+        for attempt in range(retries):
+            try:
+                # NEW SDK SYNTAX for Tools
+                response = await self.client.aio.models.generate_content(
+                    model=self.agent_model_name,
+                    contents=full_prompt,
+                    config=types.GenerateContentConfig(
+                        tools=[types.Tool(google_search=types.GoogleSearch())],
+                        temperature=0.0,
+                        safety_settings=self.safety_settings
+                    )
                 )
-            )
-            return response.text
-        except Exception as e:
-            logger.error(f"Agent '{persona_key}' failed: {e}")
-            return f"Error conducting research: {str(e)}"
+                return response.text
+
+            except Exception as e:
+                # Check if it's a Rate Limit error (429)
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    if attempt < retries - 1:
+                        wait_time = base_delay * (2 ** attempt)  # 5s, 10s, 20s
+                        logger.warning(f"Rate limit hit for {persona_key}. Retrying in {wait_time}s...")
+                        await asyncio.sleep(wait_time)  # <--- CRITICAL: Use await asyncio.sleep
+                        continue
+                
+                # If it's not a rate limit, or we ran out of retries:
+                logger.error(f"Agent '{persona_key}' failed: {e}")
+                return f"Error conducting research: {str(e)}"
 
     async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict, market_context: str) -> dict:
         """
@@ -145,30 +159,47 @@ class CoffeeCouncil:
             f"- 'reasoning': (string) A concise explanation of your decision (max 2 sentences).\n"
         )
 
-        try:
-            # NEW SDK SYNTAX (No tools for Master)
-            response = await self.client.aio.models.generate_content(
-                model=self.master_model_name,
-                contents=full_prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json", # Native JSON Enforcement
-                    temperature=0.1,
-                    safety_settings=self.safety_settings
+        retries = 3
+        base_delay = 5
+        last_error = None
+
+        for attempt in range(retries):
+            try:
+                # NEW SDK SYNTAX (No tools for Master)
+                response = await self.client.aio.models.generate_content(
+                    model=self.master_model_name,
+                    contents=full_prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.1,
+                        safety_settings=self.safety_settings
+                    )
                 )
-            )
+                return json.loads(response.text)
 
-            # The new SDK handles JSON parsing cleaner if mime_type is set
-            return json.loads(response.text)
-
-        except Exception as e:
-            logger.error(f"Master Strategist failed: {e}")
-            # Fallback
-            return {
-                "projected_price_5_day": ml_signal.get('expected_price', 0.0),
-                "direction": "NEUTRAL",
-                "confidence": 0.0,
-                "reasoning": f"Master Error: {str(e)}"
-            }
+            except Exception as e:
+                last_error = e
+                # Check for Rate Limits (429)
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    if attempt < retries - 1:
+                        wait_time = base_delay * (2 ** attempt)  # 5s, 10s, 20s
+                        logger.warning(f"Master Strategist hit rate limit. Retrying in {wait_time}s...")
+                        await asyncio.sleep(wait_time)
+                        continue
+                
+                # If it's not a rate limit (e.g. JSON error), log it.
+                logger.error(f"Master Strategist attempt {attempt+1} failed: {e}")
+                # We do NOT break here immediately in case it's a transient connection error,
+                # but if it's a logic error, the next retry will likely fail too.
+        
+        # --- FALLBACK (If all retries fail) ---
+        logger.error("Master Strategist failed after all retries.")
+        return {
+            "projected_price_5_day": ml_signal.get('expected_price', 0.0),
+            "direction": "NEUTRAL",
+            "confidence": 0.0,
+            "reasoning": f"Master Error: {str(last_error)}"
+        }
 
     async def audit_decision(self, contract_name: str, research_reports: dict, decision: dict, market_context: str = "") -> dict:
         """
@@ -198,16 +229,38 @@ class CoffeeCouncil:
             f"Output JSON: {{'approved': bool, 'flagged_reason': string}}"
         )
 
-        try:
-            response = await self.client.aio.models.generate_content(
-                model=self.agent_model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.0
+        retries = 3
+        base_delay = 5
+        last_error = None
+
+        for attempt in range(retries):
+            try:
+                # Audit usually uses the Master model or a smart agent model
+                response = await self.client.aio.models.generate_content(
+                    model=self.master_model_name, 
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.1,
+                        safety_settings=self.safety_settings
+                    )
                 )
-            )
-            return json.loads(response.text)
-        except Exception as e:
-            logger.error(f"Compliance Audit failed: {e}")
-            return {"approved": True, "flagged_reason": "Audit System Offline"}
+                return json.loads(response.text)
+
+            except Exception as e:
+                last_error = e
+                # Check for Rate Limits
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    if attempt < retries - 1:
+                        wait_time = base_delay * (2 ** attempt)
+                        logger.warning(f"Compliance Auditor hit rate limit. Retrying in {wait_time}s...")
+                        await asyncio.sleep(wait_time)
+                        continue
+                
+                logger.error(f"Compliance Audit attempt {attempt+1} failed: {e}")
+
+        # --- FALLBACK (Pass the original decision if audit fails) ---
+        logger.error("Compliance Audit failed after retries. Passing decision with warning.")
+        # We append a warning to the reasoning so we know it wasn't audited
+        decision['reasoning'] += " [WARNING: Audit Skipped due to API Error]"
+        return decision
