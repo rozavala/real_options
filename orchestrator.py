@@ -208,8 +208,8 @@ schedule = {
     time(21, 26): generate_and_execute_orders,
     time(21, 35): close_stale_positions,
     time(21, 36): cancel_and_stop_monitoring,
-    # time(17, 25): log_equity_snapshot,
-    # time(17, 35): reconcile_and_analyze
+    time(21, 37): log_equity_snapshot,
+    time(21, 38): reconcile_and_analyze
 }
 
 async def main():
