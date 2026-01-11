@@ -201,26 +201,25 @@ class CoffeeCouncil:
             "reasoning": f"Master Error: {str(last_error)}"
         }
 
-    async def audit_decision(self, contract_name: str, research_reports: dict, decision: dict, market_context: str = "") -> dict:
+    async def audit_decision(self, contract_name: str, research_reports: dict, ml_signal: dict, decision: dict, market_context: str = "") -> dict:
         """
-        Audits the decision, AWARE of both Market Context and Master's Rules.
+        Audits the decision, AWARE of Market Context, Master's Rules, AND QUANT SIGNAL.
         """
         compliance_persona = self.personas.get('compliance', "You are a Compliance Officer.")
-        
-        # NEW: Fetch the Master's specific instructions to use as the "Rulebook"
         master_rules = self.personas.get('master', "No specific rules found.")
         
         reports_text = ""
         for agent, report in research_reports.items():
             reports_text += f"\n--- {agent.upper()} REPORT ---\n{report}\n"
 
-        # UPDATED PROMPT: Now includes "MASTER STRATEGIST RULES"
+        # UPDATE prompt to include ML Signal as Source #3
         prompt = (
             f"{compliance_persona}\n\n"
             f"AUDIT TARGET: Decision for {contract_name}\n\n"
             f"--- APPROVED DATA SOURCES (FACTS) ---\n"
             f"1. MARKET CONTEXT (Live Price Data):\n{market_context}\n\n"
-            f"2. RESEARCH REPORTS (Agent Findings):\n{reports_text}\n\n"
+            f"2. QUANT MODEL SIGNAL (ML Data):\n{json.dumps(ml_signal, indent=2)}\n\n"  # <--- NEW ADDITION
+            f"3. RESEARCH REPORTS (Agent Findings):\n{reports_text}\n\n"
             f"--- VALID LOGIC RULEBOOK ---\n"
             f"The Master Strategist was given these instructions. Logic derived from them is VALID:\n"
             f"\"{master_rules}\"\n\n"
