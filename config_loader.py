@@ -57,4 +57,12 @@ def load_config() -> dict | None:
     if os.getenv("STRATEGY_QTY"):
         config['strategy']['quantity'] = int(os.getenv("STRATEGY_QTY"))
 
+    # 6. GEMINI
+    if config['gemini']['api_key'] == "LOADED_FROM_ENV":
+        config['gemini']['api_key'] = os.getenv("GEMINI_API_KEY")
+        
+    # Safety Check (Optional but recommended)
+    if not config['gemini']['api_key']:
+        print("⚠️ WARNING: GEMINI_API_KEY not found in environment!")
+
     return config
