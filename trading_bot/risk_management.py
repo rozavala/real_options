@@ -14,7 +14,7 @@ import time
 import traceback
 from datetime import datetime, timedelta
 import pytz
-
+import pandas as pd
 
 from ib_insync import *
 from ib_insync import util
@@ -138,7 +138,14 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
     trade_ledger = get_trade_ledger_df()
     utc = pytz.utc
     now_utc = datetime.now(utc)
-    open_positions_from_ledger = trade_ledger.groupby('position_id').filter(lambda x: x['quantity'].sum() != 0)
+    
+    # Handle empty ledger
+    if trade_ledger.empty:
+        open_positions_from_ledger = pd.DataFrame()
+        position_open_dates = {}
+    else:
+        open_positions_from_ledger = trade_ledger.groupby('position_id').filter(lambda x: x['quantity'].sum() != 0)
+        position_open_dates = open_positions_from_ledger.groupby('position_id')['timestamp'].min().dt.tz_localize(utc).to_dict()
     position_open_dates = open_positions_from_ledger.groupby('position_id')['timestamp'].min().dt.tz_localize(utc).to_dict()
 
     # --- 1. Group Positions by Underlying ---
