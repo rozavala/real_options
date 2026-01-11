@@ -41,6 +41,14 @@ def send_pushover_notification(config: dict, title: str, message: str, attachmen
         logger.warning("Pushover credentials missing. Notification not sent.")
         return
 
+    # Load the environment name, defaulting to nothing if not set
+    env_prefix = os.getenv("ENV_NAME", "")
+    
+    # Combine them: "PROD 🚀 - Trading Bot"
+    # Only add the prefix if it exists
+    if env_prefix:
+        title = f"{env_prefix} - {title}"
+    
     # Truncate title if it's too long
     if len(title) > PUSHOVER_TITLE_LIMIT:
         title = title[:PUSHOVER_TITLE_LIMIT - 3] + "..."
