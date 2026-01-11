@@ -50,6 +50,9 @@ def load_config() -> dict | None:
     if os.getenv("FLEX_POSITIONS_ID"):
         config['flex_query']['active_positions_query_id'] = os.getenv("FLEX_POSITIONS_ID")
 
+    if os.getenv("FLEX_EQUITY_ID"):
+        config['flex_query']['equity_query_id'] = os.getenv("FLEX_EQUITY_ID")
+
     # 5. OVERRIDE: Strategy Sizing (Safety)
     if os.getenv("STRATEGY_QTY"):
         config['strategy']['quantity'] = int(os.getenv("STRATEGY_QTY"))
