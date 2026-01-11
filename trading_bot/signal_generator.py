@@ -97,7 +97,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         f"Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought."),
                     "technical": council.research_topic("technical",
                         f"Search for 'Coffee futures technical analysis {contract.localSymbol}' and '{contract.localSymbol} support resistance levels'. "
-                        f"Look for 'RSI divergence' or 'Moving Average crossover'.")
+                        f"Look for 'RSI divergence' or 'Moving Average crossover'. "
+                        f"IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'."),
                 }
 
                 # B. Execute Research (Parallel) with Rate Limit Protection
