@@ -35,7 +35,13 @@ async def sync_equity_from_flex(config: dict):
     """
     logger.info("--- Starting Equity Synchronization from Flex Query ---")
 
-    query_id = "1341111"
+    # Get the ID from the config (loaded from .env), or fallback to os.getenv just in case
+    query_id = config.get('flex_query', {}).get('equity_query_id') or os.getenv('FLEX_EQUITY_ID')
+    
+    if not query_id:
+        logger.error("Missing FLEX_EQUITY_ID in configuration. Cannot sync equity.")
+        return
+
     try:
         token = config['flex_query']['token']
     except KeyError:
