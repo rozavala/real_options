@@ -17,7 +17,7 @@ echo "--- 2. Rotating logs... ---"
 # Ensure the folder exists (prevents errors when saving new logs)
 mkdir -p ~/real_options/logs
 
-# Backup Orchestrator Log
+# Backup Orchestrator Log if it exists
 mv ~/real_options/logs/orchestrator.log ~/real_options/logs/orchestrator-$(date --iso=s).log || true
 
 # Backup Dashboard Log
