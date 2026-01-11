@@ -20,7 +20,9 @@ mv ~/real_options/logs/orchestrator.log ~/real_options/logs/orchestrator-$(date 
 mv ~/real_options/logs/dashboard.log ~/real_options/logs/dashboard-$(date --iso=s).log || true
 
 echo "--- 3. Activating virtual environment... ---"
-source ~/Desktop/ib_env/bin/activate
+# OLD: source ~/Desktop/ib_env/bin/activate
+# NEW:
+source ~/real_options/venv/bin/activate
 
 echo "--- 4. Installing/updating dependencies... ---"
 pip install -r requirements.txt
