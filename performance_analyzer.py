@@ -53,7 +53,7 @@ def get_trade_ledger_df():
 
     if not dataframes:
         logger.warning("No trade ledger data found to consolidate.")
-        return pd.DataFrame()
+        return pd.DataFrame(columns=['timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity', 'reason'])
 
     full_ledger = pd.concat(dataframes, ignore_index=True)
     full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
