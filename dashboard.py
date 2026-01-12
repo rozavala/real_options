@@ -716,8 +716,8 @@ with tabs[6]:
 
                 with c1:
                     st.caption("🤖 Models & Technicals")
-                    # [RENAME] "ML Model" to "AI Price Model" per request
-                    render_agent(c1, "🤖 AI Price Model", row.get('ml_sentiment'), f"**Raw Signal:** {row.get('ml_signal')}\n\n**Confidence:** {row.get('ml_confidence', 0):.2%}")
+                    # Keep "ML Model" name as requested
+                    render_agent(c1, "🤖 ML Model", row.get('ml_sentiment'), f"**Raw Signal:** {row.get('ml_signal')}\n\n**Confidence:** {row.get('ml_confidence', 0):.2%}")
                     render_agent(c1, "📉 Technical Analyst", row.get('technical_sentiment'), row.get('technical_summary'))
 
                 with c2:
