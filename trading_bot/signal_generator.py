@@ -103,7 +103,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                     # [NEW] Volatility Agent Task
                     "volatility": council.research_topic("volatility",
                         f"Search for 'Coffee Futures Implied Volatility Rank current' and '{contract.localSymbol} option volatility skew'. "
-                        f"Determine if option premiums are cheap or expensive relative to historical volatility.")
+                        f"Determine if option premiums are cheap (Bullish for buying) or expensive (Bearish for buying) relative to historical volatility.")
                 }
 
                 # B. Execute Research (Parallel) with Rate Limit Protection
