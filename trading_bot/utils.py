@@ -410,6 +410,7 @@ def log_council_decision(decision_data):
         "fundamentalist_sentiment", "fundamentalist_summary",
         "sentiment_sentiment", "sentiment_summary",
         "technical_sentiment", "technical_summary",
+        "volatility_sentiment", "volatility_summary",
         "master_decision", "master_confidence", "master_reasoning",
         "compliance_approved",
         "exit_price", "exit_timestamp", "pnl_realized", "actual_trend_direction"

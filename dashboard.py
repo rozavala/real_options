@@ -563,7 +563,7 @@ with tabs[6]:
 
             # Calculate Scores
             agents = ['master_decision', 'ml_sentiment', 'meteorologist_sentiment', 'macro_sentiment',
-                      'geopolitical_sentiment', 'fundamentalist_sentiment', 'sentiment_sentiment', 'technical_sentiment']
+                      'geopolitical_sentiment', 'fundamentalist_sentiment', 'sentiment_sentiment', 'technical_sentiment', 'volatility_sentiment'] # <--- NEW
             scores = {a: {'correct': 0, 'total': 0} for a in agents}
 
             for _, row in council_df.iterrows():
@@ -600,7 +600,8 @@ with tabs[6]:
                 'geopolitical_sentiment': '🌍 Geo',
                 'fundamentalist_sentiment': '📦 Stocks',
                 'sentiment_sentiment': '🧠 Sentiment',
-                'technical_sentiment': '📉 Techs'
+                'technical_sentiment': '📉 Techs',
+                'volatility_sentiment': 'Vol Agent' # <--- NEW
             }
 
             # Add Master Win Rate to Top Row
@@ -643,7 +644,7 @@ with tabs[6]:
             display_cols = ['timestamp', 'contract', 'master_decision', 'ml_sentiment',
                             'meteorologist_sentiment', 'macro_sentiment',
                             'geopolitical_sentiment', 'fundamentalist_sentiment',
-                            'sentiment_sentiment', 'technical_sentiment']
+                            'sentiment_sentiment', 'technical_sentiment', 'volatility_sentiment'] # <--- NEW
 
             # Add Result columns if they exist
             if 'actual_trend_direction' in council_df.columns:
@@ -657,7 +658,7 @@ with tabs[6]:
                 'ml_sentiment': 'ML Model', 'meteorologist_sentiment': 'Meteo',
                 'macro_sentiment': 'Macro', 'geopolitical_sentiment': 'Geo',
                 'fundamentalist_sentiment': 'Stocks', 'sentiment_sentiment': 'Sentiment',
-                'technical_sentiment': 'Technicals',
+                'technical_sentiment': 'Technicals', 'volatility_sentiment': 'Vol Agent',
                 'actual_trend_direction': 'Actual Trend', 'pnl_realized': 'P&L (Theo)'
             }
             matrix_df = matrix_df.rename(columns=col_map)
@@ -669,7 +670,7 @@ with tabs[6]:
                 return ''
 
             # Define columns to apply coloring to (handle missing columns dynamically)
-            subset_cols = [c for c in ['MASTER', 'ML Model', 'Meteo', 'Macro', 'Geo', 'Stocks', 'Sentiment', 'Technicals', 'Actual Trend'] if c in matrix_df.columns]
+            subset_cols = [c for c in ['MASTER', 'ML Model', 'Meteo', 'Macro', 'Geo', 'Stocks', 'Sentiment', 'Technicals', 'Vol Agent', 'Actual Trend'] if c in matrix_df.columns]
 
             st.dataframe(
                 matrix_df.style.map(color_sentiment, subset=subset_cols)
@@ -699,8 +700,8 @@ with tabs[6]:
 
                 st.markdown("---")
 
-                # 3-Column Grid for 6 Cards
-                c1, c2, c3 = st.columns(3)
+                # 4-Column Layout (2 cards per column)
+                c1, c2, c3, c4 = st.columns(4)
 
                 def render_agent(col, title, sentiment, summary):
                     color = "gray"
@@ -713,22 +714,27 @@ with tabs[6]:
                             with st.expander("Full Report", expanded=True):
                                 st.write(summary if isinstance(summary, str) else "No report.")
 
-                # Column 1: The "Hard Data"
-                st.caption("📉 Technicals & Models")
-                render_agent(c1, "🤖 ML Model", row.get('ml_sentiment'),
-                             f"**Raw Signal:** {row.get('ml_signal')}\n\n**Confidence:** {row.get('ml_confidence', 0):.2%}")
-                render_agent(c1, "📈 Technical Analyst", row.get('technical_sentiment'), row.get('technical_summary'))
+                with c1:
+                    st.caption("🤖 Models & Technicals")
+                    # Keep "ML Model" name as requested
+                    render_agent(c1, "🤖 ML Model", row.get('ml_sentiment'), f"**Raw Signal:** {row.get('ml_signal')}\n\n**Confidence:** {row.get('ml_confidence', 0):.2%}")
+                    render_agent(c1, "📉 Technical Analyst", row.get('technical_sentiment'), row.get('technical_summary'))
 
-                # Column 2: The "Macro/Geo"
-                st.caption("🌱 Physical Market")
-                render_agent(c2, "🌦️ Meteorologist", row.get('meteorologist_sentiment'), row.get('meteorologist_summary'))
-                render_agent(c2, "📦 Inventory/Stocks", row.get('fundamentalist_sentiment'), row.get('fundamentalist_summary'))
+                with c2:
+                    st.caption("🌱 Physical Market")
+                    render_agent(c2, "🌦️ Meteorologist", row.get('meteorologist_sentiment'), row.get('meteorologist_summary'))
+                    render_agent(c2, "📦 Inventory/Stocks", row.get('fundamentalist_sentiment'), row.get('fundamentalist_summary'))
 
-                # Column 3: The "Sentiment/Weather"
-                st.caption("🌍 Macro & Sentiment")
-                render_agent(c3, "💵 Macro Economist", row.get('macro_sentiment'), row.get('macro_summary'))
-                render_agent(c3, "🌍 Geopolitical", row.get('geopolitical_sentiment'), row.get('geopolitical_summary'))
-                render_agent(c3, "🧠 Sentiment / COT", row.get('sentiment_sentiment'), row.get('sentiment_summary'))
+                with c3:
+                    st.caption("🌍 Macro & Geo")
+                    render_agent(c3, "💵 Macro Economist", row.get('macro_sentiment'), row.get('macro_summary'))
+                    render_agent(c3, "🌍 Geopolitical", row.get('geopolitical_sentiment'), row.get('geopolitical_summary'))
+
+                with c4:
+                    st.caption("🧠 Sentiment & Risk")
+                    render_agent(c4, "🧠 Sentiment/COT", row.get('sentiment_sentiment'), row.get('sentiment_summary'))
+                    # [NEW] Volatility Agent
+                    render_agent(c4, "⚡ Volatility Agent", row.get('volatility_sentiment'), row.get('volatility_summary'))
 
             # --- 5. HALLUCINATION TABLE (Restored) ---
             if hallucination_count > 0:
