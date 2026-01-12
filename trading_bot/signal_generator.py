@@ -99,6 +99,11 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         f"Search for 'Coffee futures technical analysis {contract.localSymbol}' and '{contract.localSymbol} support resistance levels'. "
                         f"Look for 'RSI divergence' or 'Moving Average crossover'. "
                         f"IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'."),
+
+                    # [NEW] Volatility Agent Task
+                    "volatility": council.research_topic("volatility",
+                        f"Search for 'Coffee Futures Implied Volatility Rank current' and '{contract.localSymbol} option volatility skew'. "
+                        f"Determine if option premiums are cheap (Bullish for buying) or expensive (Bearish for buying) relative to historical volatility.")
                 }
 
                 # B. Execute Research (Parallel) with Rate Limit Protection
@@ -229,6 +234,10 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         "sentiment_summary": agent_data.get('sentiment_summary'),
                         "technical_sentiment": agent_data.get('technical_sentiment'),
                         "technical_summary": agent_data.get('technical_summary'),
+
+                        # [NEW] Volatility Logging
+                        "volatility_sentiment": agent_data.get('volatility_sentiment'),
+                        "volatility_summary": agent_data.get('volatility_summary'),
 
                         "master_decision": decision.get('direction'),
                         "master_confidence": decision.get('confidence'),
