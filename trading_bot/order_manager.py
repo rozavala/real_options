@@ -100,35 +100,45 @@ async def generate_and_queue_orders(config: dict):
                 if not future:
                     logger.warning(f"No active future for signal month {signal.get('contract_month')}."); continue
 
-                logger.info(f"Requesting market price for {future.localSymbol}...")
-                ticker = ib.reqMktData(future, '', False, False)
+                logger.info(f"Requesting snapshot market price for {future.localSymbol}...")
 
                 price = float('nan')
                 try:
-                    await asyncio.sleep(2) # Give it a moment to populate
-                    # Wait for the ticker to update with a valid bid/ask spread
-                    start_time = time.time()
-                    while ticker.bid <= 0 or ticker.ask <= 0 or util.isNan(ticker.bid) or util.isNan(ticker.ask):
-                        await asyncio.sleep(0.1)
-                        if (time.time() - start_time) > 30:
-                            logger.error(f"Timeout waiting for valid bid/ask for {future.localSymbol}.")
-                            logger.error(f"Ticker data received: {ticker}")
+                    # Retry loop for snapshot data
+                    for attempt in range(3):
+                        tickers = await ib.reqTickersAsync(future)
+                        if not tickers:
+                            logger.warning(f"No ticker returned for {future.localSymbol} (Attempt {attempt+1}/3)")
+                            await asyncio.sleep(2)
+                            continue
+
+                        ticker = tickers[0]
+
+                        # Priority A: Bid/Ask Midpoint
+                        if ticker.bid > 0 and ticker.ask > 0:
+                            price = (ticker.bid + ticker.ask) / 2
+                            logger.info(f"Using bid/ask midpoint for {future.localSymbol}: {price}")
                             break
 
-                    # Fallback Price Discovery Logic
-                    if ticker.bid > 0 and ticker.ask > 0:
-                        price = (ticker.bid + ticker.ask) / 2
-                        logger.info(f"Using bid/ask midpoint for {future.localSymbol}: {price}")
-                    elif not util.isNan(ticker.last):
-                        price = ticker.last
-                        logger.info(f"Using last price for {future.localSymbol}: {price}")
-                    elif not util.isNan(ticker.close):
-                        price = ticker.close
-                        logger.info(f"Using close price for {future.localSymbol}: {price}")
+                        # Priority B: Last Price (with recency check if possible, but taking valid last for now)
+                        if not util.isNan(ticker.last) and ticker.last > 0:
+                             price = ticker.last
+                             logger.info(f"Using last price for {future.localSymbol}: {price}")
+                             break
+
+                        # Priority C: Close Price (Fallback)
+                        if not util.isNan(ticker.close) and ticker.close > 0:
+                            price = ticker.close
+                            logger.info(f"Using close price for {future.localSymbol}: {price}")
+                            break
+
+                        logger.warning(f"Ticker data incomplete for {future.localSymbol} (Attempt {attempt+1}/3): {ticker}")
+                        await asyncio.sleep(2)
                     else:
-                        logger.error(f"Could not determine a valid price for {future.localSymbol}. Ticker: {ticker}")
-                finally:
-                    ib.cancelMktData(future)
+                        logger.error(f"Failed to get valid price for {future.localSymbol} after retries.")
+
+                except Exception as e:
+                    logger.error(f"Error fetching snapshot price for {future.localSymbol}: {e}")
 
                 if util.isNan(price):
                     logger.warning(f"Skipping strategy for {future.localSymbol} due to missing price.")
@@ -690,7 +700,7 @@ def get_trade_ledger_df():
             dataframes.append(load_and_prepare_ledger(file))
 
     if not dataframes:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=['timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity', 'reason'])
 
     full_ledger = pd.concat(dataframes, ignore_index=True)
 
@@ -700,7 +710,7 @@ def get_trade_ledger_df():
         return full_ledger.sort_values(by='timestamp').reset_index(drop=True)
     else:
         logger.error("Consolidated ledger is missing the 'timestamp' column.")
-        return pd.DataFrame()
+        return pd.DataFrame(columns=['timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity', 'reason'])
 
 
 async def close_stale_positions(config: dict):

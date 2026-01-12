@@ -151,6 +151,7 @@ class CoffeeCouncil:
             f"TASK: Synthesize the evidence. Apply 'Second-Level Thinking':\n"
             f"1. If news is Bullish but '24h Change' is already UP, is it priced in?\n"
             f"2. If news is Bullish but '24h Change' is DOWN, is the market ignoring it (Divergence)?\n"
+            f"NEGATIVE CONSTRAINT: DO NOT output specific numerical price projections (e.g., 'projected_price_5_day') unless that exact number was explicitly provided in a Research Report. Do not calculate or estimate targets yourself. Adhere strictly to the JSON schema.\n"
             f"OUTPUT FORMAT: You must output a valid JSON object ONLY, with no markdown formatting. "
             f"The JSON must have these keys:\n"
             f"- 'projected_price_5_day': (float) Your price target.\n"

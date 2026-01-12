@@ -146,7 +146,6 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
     else:
         open_positions_from_ledger = trade_ledger.groupby('position_id').filter(lambda x: x['quantity'].sum() != 0)
         position_open_dates = open_positions_from_ledger.groupby('position_id')['timestamp'].min().dt.tz_localize(utc).to_dict()
-    position_open_dates = open_positions_from_ledger.groupby('position_id')['timestamp'].min().dt.tz_localize(utc).to_dict()
 
     # --- 1. Group Positions by Underlying ---
     all_positions = [p for p in await ib.reqPositionsAsync() if p.position != 0 and p.contract.conId not in closed_ids]

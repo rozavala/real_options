@@ -76,7 +76,7 @@ def get_local_active_positions(ledger: pd.DataFrame = None) -> pd.DataFrame:
         ledger = get_trade_ledger_df()
 
     if ledger.empty:
-        return pd.DataFrame(columns=['Quantity'])
+        return pd.DataFrame(columns=['Symbol', 'Quantity'])
 
     # Map 'action' to sign: BUY -> +1, SELL -> -1.
     # NOTE: The trade ledger 'quantity' is absolute.
@@ -389,7 +389,7 @@ def get_trade_ledger_df() -> pd.DataFrame:
 
     if not dataframes:
         logger.warning("No trade ledger data found.")
-        return pd.DataFrame()
+        return pd.DataFrame(columns=['timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity', 'reason'])
 
     # --- Consolidate and Process ---
     full_ledger = pd.concat(dataframes, ignore_index=True)
@@ -398,7 +398,7 @@ def get_trade_ledger_df() -> pd.DataFrame:
         full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp']).dt.tz_localize('UTC')
     else:
         logger.error("Consolidated ledger is missing the 'timestamp' column.")
-        return pd.DataFrame()
+        return pd.DataFrame(columns=['timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity', 'reason'])
 
     logger.info(f"Consolidated a total of {len(full_ledger)} trades from all ledgers.")
     return full_ledger
