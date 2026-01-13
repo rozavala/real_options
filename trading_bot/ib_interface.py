@@ -114,7 +114,9 @@ async def build_option_chain(ib: IB, future_contract: Contract) -> dict | None:
     logging.info(f"Fetching option chain for future {future_contract.localSymbol}...")
     try:
         chains = await ib.reqSecDefOptParamsAsync(future_contract.symbol, future_contract.exchange, 'FUT', future_contract.conId)
-        if not chains: return None
+        if not chains:
+            logging.warning(f"No option chains found for future {future_contract.localSymbol} (conId: {future_contract.conId})")
+            return None
         chain = next((c for c in chains if c.exchange == future_contract.exchange), chains[0])
         return {
             'exchange': chain.exchange,
