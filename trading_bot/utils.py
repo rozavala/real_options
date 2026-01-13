@@ -131,6 +131,7 @@ def price_option_black_scholes(S: float, K: float, T: float, r: float, sigma: fl
         price = K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
         delta = -norm.cdf(-d1)
     else:
+        logging.warning(f"Invalid option type for B-S model: {option_type}")
         return None
 
     gamma = norm.pdf(d1) / (S * sigma * np.sqrt(T))

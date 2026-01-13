@@ -71,7 +71,9 @@ def define_directional_strategy(config: dict, signal: dict, chain: dict, underly
         long_leg_strike = atm_strike
         target_short_leg_strike = long_leg_strike + spread_width_points
         short_leg_strike = find_closest_strike(target_short_leg_strike, [s for s in strikes if s > long_leg_strike])
-        if short_leg_strike is None: return None
+        if short_leg_strike is None:
+            logging.warning(f"Strategy definition failed: Could not find suitable short strike near {target_short_leg_strike} for {future_contract.localSymbol}")
+            return None
         legs_def, order_action = [('C', 'BUY', long_leg_strike), ('C', 'SELL', short_leg_strike)], 'BUY'
         logging.info(f"Defined Bull Call Spread legs: BUY {long_leg_strike}C, SELL {short_leg_strike}C")
 
@@ -79,7 +81,9 @@ def define_directional_strategy(config: dict, signal: dict, chain: dict, underly
         long_leg_strike = atm_strike
         target_short_leg_strike = long_leg_strike - spread_width_points
         short_leg_strike = find_closest_strike(target_short_leg_strike, [s for s in strikes if s < long_leg_strike])
-        if short_leg_strike is None: return None
+        if short_leg_strike is None:
+            logging.warning(f"Strategy definition failed: Could not find suitable short strike near {target_short_leg_strike} for {future_contract.localSymbol}")
+            return None
         legs_def, order_action = [('P', 'BUY', long_leg_strike), ('P', 'SELL', short_leg_strike)], 'BUY'
         logging.info(f"Defined Bear Put Spread legs: BUY {long_leg_strike}P, SELL {short_leg_strike}P")
 
@@ -116,7 +120,9 @@ def define_volatility_strategy(config: dict, signal: dict, chain: dict, underlyi
 
     strikes = exp_details['strikes']
     atm_strike = find_closest_strike(underlying_price, strikes)
-    if atm_strike is None: return None
+    if atm_strike is None:
+        logging.warning(f"Strategy definition failed: Could not find ATM strike for {future_contract.localSymbol} near {underlying_price}")
+        return None
 
     legs_def, order_action = [], ''
     if signal['level'] == 'HIGH':  # Long Straddle
@@ -126,10 +132,14 @@ def define_volatility_strategy(config: dict, signal: dict, chain: dict, underlyi
         wing_width = tuning.get('iron_condor_wing_strikes_apart', 2)
         try:
             atm_idx = strikes.index(atm_strike)
-            if not (atm_idx - short_dist - wing_width >= 0 and atm_idx + short_dist + wing_width < len(strikes)): return None
+            if not (atm_idx - short_dist - wing_width >= 0 and atm_idx + short_dist + wing_width < len(strikes)):
+                logging.warning(f"Strategy definition failed: Iron Condor wings out of bounds for {future_contract.localSymbol}")
+                return None
             s = {'lp': strikes[atm_idx - short_dist - wing_width], 'sp': strikes[atm_idx - short_dist], 'sc': strikes[atm_idx + short_dist], 'lc': strikes[atm_idx + short_dist + wing_width]}
             legs_def, order_action = [('P', 'BUY', s['lp']), ('P', 'SELL', s['sp']), ('C', 'SELL', s['sc']), ('C', 'BUY', s['lc'])], 'SELL'
-        except ValueError: return None
+        except ValueError:
+            logging.warning(f"Strategy definition failed: ValueError in Iron Condor setup for {future_contract.localSymbol}")
+            return None
 
     return {
         "action": order_action,
