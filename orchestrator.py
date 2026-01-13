@@ -18,6 +18,7 @@ import asyncio
 import logging
 import sys
 import traceback
+import os
 from datetime import datetime, time, timedelta
 import pytz
 
@@ -212,6 +213,24 @@ schedule = {
     # time(22, 33): reconcile_and_analyze
 }
 
+def apply_schedule_offset(original_schedule: dict, offset_minutes: int) -> dict:
+    """
+    Shifts all scheduled times by a given number of minutes.
+    Handles date rollovers automatically (e.g., crossing midnight).
+    """
+    new_schedule = {}
+    today = datetime.now().date()
+    
+    for run_time, task_func in original_schedule.items():
+        # Combine with today's date to perform arithmetic
+        dt_original = datetime.combine(today, run_time)
+        dt_shifted = dt_original + timedelta(minutes=offset_minutes)
+        
+        # Extract the new time
+        new_schedule[dt_shifted.time()] = task_func
+        
+    return new_schedule
+
 async def main():
     """The main long-running orchestrator process."""
     logger.info("=============================================")
@@ -221,14 +240,29 @@ async def main():
     config = load_config()
     if not config:
         logger.critical("Orchestrator cannot start without a valid configuration."); return
+    
+    # 1. Detect Environment
+    # Defaults to 'DEV' if the variable is missing
+    env_name = os.getenv("ENV_NAME", "DEV") 
+    is_prod = env_name == "PROD 🚀"
 
+    # 2. Adjust Schedule Based on Environment
+    current_schedule = schedule # Start with the standard schedule
+    
+    if not is_prod:
+        logger.info(f"Environment: {env_name}. Applying -5 minute 'Civil War' avoidance offset.")
+        # Shift Dev to run 10 minutes BEFORE Prod
+        # Prod Trades: 14:00 | Dev Trades: 13:50
+        current_schedule = apply_schedule_offset(schedule, offset_minutes=-10)
+    else:
+        logger.info("Environment: PROD 🚀. Using standard master schedule.")
 
     try:
         while True:
             try:
                 gmt = pytz.timezone('GMT')
                 now_gmt = datetime.now(gmt)
-                next_run_time, next_task_func = get_next_task(now_gmt, schedule)
+                next_run_time, next_task_func = get_next_task(now_gmt, current_schedule)
                 wait_seconds = (next_run_time - now_gmt).total_seconds()
 
                 task_name = next_task_func.__name__
