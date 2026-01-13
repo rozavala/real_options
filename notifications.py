@@ -44,7 +44,6 @@ def send_pushover_notification(config: dict, title: str, message: str, attachmen
     # Load the environment name, defaulting to nothing if not set
     env_prefix = os.getenv("ENV_NAME", "")
     
-    # Combine them: "PROD 🚀 - Trading Bot"
     # Only add the prefix if it exists
     if env_prefix:
         title = f"{env_prefix} - {title}"
