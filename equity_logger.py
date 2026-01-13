@@ -13,6 +13,7 @@ if __name__ == "__main__":
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
     from config_loader import load_config
     from trading_bot.logging_config import setup_logging
+    from trading_bot.utils import configure_market_data_type
     # We can't easily import from reconcile_trades if it's a script in the same dir
     # unless we treat the dir as a package or add it to path.
     # We already added '.' to path.
@@ -20,6 +21,7 @@ if __name__ == "__main__":
 else:
     from config_loader import load_config
     from reconcile_trades import fetch_flex_query_report, parse_flex_csv_to_df
+    from trading_bot.utils import configure_market_data_type
 
 # Setup logging
 logger = logging.getLogger("EquityLogger")
@@ -146,6 +148,10 @@ async def log_equity_snapshot(config: dict):
 
         logger.info(f"Connecting to IB at {host}:{port} with clientId {client_id}...")
         await ib.connectAsync(host, port, clientId=client_id)
+
+        # --- FIX: Configure Market Data Type based on Environment ---
+        configure_market_data_type(ib)
+        # ------------------------------------------------------------
 
         # 2. Fetch Net Liquidation
         summary = await ib.accountSummaryAsync()

@@ -26,6 +26,7 @@ from performance_analyzer import get_trade_ledger_df
 from trading_bot.model_signals import get_model_signals_df
 from config_loader import load_config
 from trading_bot.ib_interface import get_active_futures
+from trading_bot.utils import configure_market_data_type
 from ib_insync import IB, util
 
 # --- 3. Page Configuration ---
@@ -135,6 +136,10 @@ def fetch_live_dashboard_data(_config):
 
     try:
         ib.connect(_config['connection']['host'], _config['connection']['port'], clientId=random.randint(1000, 9999))
+
+        # --- FIX: Configure Market Data Type based on Environment ---
+        configure_market_data_type(ib)
+        # ------------------------------------------------------------
 
         # 1. Account Summary
         summary = ib.accountSummary()
