@@ -19,6 +19,7 @@ from config_loader import load_config
 from trading_bot.logging_config import setup_logging
 from notifications import send_pushover_notification
 from trading_bot.risk_management import monitor_positions_for_risk
+from trading_bot.utils import configure_market_data_type
 
 # --- Logging Setup ---
 setup_logging()
@@ -77,6 +78,11 @@ async def main():
 
         logger.info(f"Connecting to {host}:{port} with client ID {client_id} for monitoring...")
         await ib.connectAsync(host, port, clientId=client_id)
+
+        # --- FIX: Configure Market Data Type based on Environment ---
+        configure_market_data_type(ib)
+        # ------------------------------------------------------------
+
         send_pushover_notification(
             config.get('notifications', {}),
             "Position Monitor Started",

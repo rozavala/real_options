@@ -23,7 +23,7 @@ from trading_bot.ib_interface import (
 )
 from trading_bot.signal_generator import generate_signals
 from trading_bot.strategy import define_directional_strategy, define_volatility_strategy
-from trading_bot.utils import log_trade_to_ledger, log_order_event
+from trading_bot.utils import log_trade_to_ledger, log_order_event, configure_market_data_type
 
 # --- Module-level storage for orders ---
 ORDER_QUEUE = []
@@ -80,6 +80,11 @@ async def generate_and_queue_orders(config: dict):
         try:
             conn_settings = config.get('connection', {})
             await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
+
+            # --- FIX: Configure Market Data Type based on Environment ---
+            configure_market_data_type(ib)
+            # ------------------------------------------------------------
+
             logger.info("Connected to IB for signal generation.")
 
             logger.info("Step 2.5: Generating structured signals from predictions...")
@@ -368,6 +373,11 @@ async def place_queued_orders(config: dict):
     try:
         conn_settings = config.get('connection', {})
         await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
+
+        # --- FIX: Configure Market Data Type based on Environment ---
+        configure_market_data_type(ib)
+        # ------------------------------------------------------------
+
         logger.info("Connected to IB for order placement and monitoring.")
 
         # --- NEW: Sort by Expiration (Nearest First) ---
@@ -763,6 +773,11 @@ async def close_stale_positions(config: dict):
         # --- 1. Connect to IB and get the ground truth of current positions ---
         conn_settings = config.get('connection', {})
         await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
+
+        # --- FIX: Configure Market Data Type based on Environment ---
+        configure_market_data_type(ib)
+        # ------------------------------------------------------------
+
         logger.info("Connected to IB for closing positions.")
 
         live_positions = await ib.reqPositionsAsync()
@@ -1086,6 +1101,11 @@ async def cancel_all_open_orders(config: dict):
     try:
         conn_settings = config.get('connection', {})
         await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
+
+        # --- FIX: Configure Market Data Type based on Environment ---
+        configure_market_data_type(ib)
+        # ------------------------------------------------------------
+
         logger.info("Connected to IB for canceling open orders.")
 
         # Use ib.reqAllOpenOrdersAsync() to get all open orders from the broker
