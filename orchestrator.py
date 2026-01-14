@@ -30,7 +30,7 @@ from trading_bot.order_manager import (
     place_queued_orders,
     ORDER_QUEUE
 )
-from trading_bot.utils import archive_trade_ledger
+from trading_bot.utils import archive_trade_ledger, configure_market_data_type
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, SentinelTrigger
 from trading_bot.agents import CoffeeCouncil
@@ -289,13 +289,21 @@ async def run_sentinels(config: dict):
 
     # Connect separate IB instance for Sentinels (using different client ID)
     try:
+        # Avoid default port 7497 to force config compliance
+        ib_port = conn_settings.get('port')
+        if not ib_port:
+            raise ValueError("IB Connection Port missing in config")
+
         await sentinel_ib.connectAsync(
             host=conn_settings.get('host', '127.0.0.1'),
-            port=conn_settings.get('port', 7497),
+            port=ib_port,
             clientId=random.randint(3000, 4000),
             timeout=30
         )
-        sentinel_ib.reqMarketDataType(3) # Delayed if live not allowed, but Sentinels prefer Live
+
+        # Use helper for Market Data Type (Live/Delayed based on ENV)
+        configure_market_data_type(sentinel_ib)
+
     except Exception as e:
         logger.error(f"Sentinel IB Connection Failed: {e}")
         # Proceed with non-IB sentinels? Yes.

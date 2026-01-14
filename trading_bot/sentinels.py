@@ -46,11 +46,10 @@ class PriceSentinel(Sentinel):
         self.exchange = config.get('exchange', 'NYBOT')
 
     async def check(self) -> Optional[SentinelTrigger]:
-        # Market Hours Check: 9:00 - 17:00 EST
+        # Market Hours Check: 9:00 - 17:00 EST, Mon-Fri
         est = pytz.timezone('US/Eastern')
         now_est = datetime.now(est)
 
-        # Simple check: Mon-Fri
         if now_est.weekday() >= 5: # Sat(5) or Sun(6)
             return None
 
@@ -61,16 +60,6 @@ class PriceSentinel(Sentinel):
             return None
 
         try:
-            # 1. Get Active Future
-            # Note: We need a contract. We can reuse 'get_active_futures' logic or cache it.
-            # For efficiency, let's assume orchestrator passes the contract or we find it quickly.
-            # Simplified: Use a continuous contract request for speed if not exact.
-            # Better: Find the front month.
-
-            # Since we can't easily import 'get_active_futures' without circular deps or event loop issues,
-            # we will search for the contract if not cached.
-            # For this implementation, we will perform a quick lookup.
-
             from trading_bot.ib_interface import get_active_futures
             active_futures = await get_active_futures(self.ib, self.symbol, self.exchange, count=1)
 
@@ -79,25 +68,26 @@ class PriceSentinel(Sentinel):
 
             contract = active_futures[0]
 
-            # 2. Fetch Snapshot
-            ticker = self.ib.reqMktData(contract, '', True, False) # Snapshot
-            await asyncio.sleep(2) # Wait for data
+            # Detect Price Shock within the current session (Last 1 Hour)
+            # Request 1-hour bar to see intraday move
+            bars = await self.ib.reqHistoricalDataAsync(
+                contract,
+                endDateTime='',
+                durationStr='3600 S', # Last 1 hour
+                barSizeSetting='1 hour',
+                whatToShow='TRADES',
+                useRTH=True
+            )
 
-            if ticker.last != 0 and ticker.close != 0:
-                # 3. Calculate Change
-                # If market is open, 'close' might be yesterday's close? Yes.
-                prev_close = ticker.close
-                current_price = ticker.last
+            if bars:
+                last_bar = bars[-1]
+                if last_bar.open > 0:
+                    pct_change = ((last_bar.close - last_bar.open) / last_bar.open) * 100
 
-                pct_change = abs((current_price - prev_close) / prev_close) * 100
-
-                # Check Threshold
-                if pct_change > self.pct_change_threshold:
-                    msg = f"Price moved {pct_change:.2f}% (Threshold: {self.pct_change_threshold}%)"
-                    logger.warning(f"PRICE SENTINEL TRIGGERED: {msg}")
-                    return SentinelTrigger("PriceSentinel", msg, {"contract": contract.localSymbol, "change": pct_change})
-
-            # Volume Check logic could go here if historical volume is available
+                    if abs(pct_change) > self.pct_change_threshold:
+                        msg = f"Price moved {pct_change:.2f}% in last hour (Threshold: {self.pct_change_threshold}%)"
+                        logger.warning(f"PRICE SENTINEL TRIGGERED: {msg}")
+                        return SentinelTrigger("PriceSentinel", msg, {"contract": contract.localSymbol, "change": pct_change})
 
         except Exception as e:
             logger.error(f"Price Sentinel check failed: {e}")
@@ -112,6 +102,7 @@ class WeatherSentinel(Sentinel):
     def __init__(self, config: dict):
         super().__init__(config)
         self.sentinel_config = config.get('sentinels', {}).get('weather', {})
+        self.api_url = self.sentinel_config.get('api_url', "https://api.open-meteo.com/v1/forecast")
         self.locations = self.sentinel_config.get('locations', [])
         self.triggers = self.sentinel_config.get('triggers', {})
 
@@ -121,10 +112,9 @@ class WeatherSentinel(Sentinel):
                 lat, lon = loc['lat'], loc['lon']
                 name = loc['name']
 
-                # OpenMeteo API
-                url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_min,precipitation_sum&timezone=auto&forecast_days=10"
+                # Construct URL from config base
+                url = f"{self.api_url}?latitude={lat}&longitude={lon}&daily=temperature_2m_min,precipitation_sum&timezone=auto&forecast_days=10"
 
-                # Use run_in_executor for synchronous requests
                 loop = asyncio.get_running_loop()
                 response = await loop.run_in_executor(None, requests.get, url)
                 data = response.json()
@@ -147,7 +137,6 @@ class WeatherSentinel(Sentinel):
                 drought_days_limit = self.triggers.get('drought_days', 10)
                 rain_limit = self.triggers.get('drought_rain_mm', 5.0)
 
-                # Count consecutive days with low rain in the 10-day forecast
                 low_rain_days = sum(1 for p in precip if p < rain_limit)
 
                 if low_rain_days >= drought_days_limit:
@@ -170,10 +159,9 @@ class LogisticsSentinel(Sentinel):
         self.sentinel_config = config.get('sentinels', {}).get('logistics', {})
         self.urls = self.sentinel_config.get('rss_urls', [])
 
-        # Init Gemini Flash
         api_key = config.get('gemini', {}).get('api_key')
         self.client = genai.Client(api_key=api_key)
-        self.model = "gemini-1.5-flash"
+        self.model = self.sentinel_config.get('model', "gemini-1.5-flash")
 
     async def check(self) -> Optional[SentinelTrigger]:
         headlines = []
@@ -181,7 +169,7 @@ class LogisticsSentinel(Sentinel):
             try:
                 loop = asyncio.get_running_loop()
                 feed = await loop.run_in_executor(None, feedparser.parse, url)
-                for entry in feed.entries[:5]: # Top 5 per feed
+                for entry in feed.entries[:5]:
                     headlines.append(entry.title)
             except Exception as e:
                 logger.error(f"Logistics RSS failed for {url}: {e}")
@@ -189,7 +177,6 @@ class LogisticsSentinel(Sentinel):
         if not headlines:
             return None
 
-        # Batch analyze with Flash
         prompt = (
             "Analyze these headlines for Critical Coffee Supply Chain Bottlenecks (Strikes, Port Closures, Blockades).\n"
             "Headlines:\n" + "\n".join(f"- {h}" for h in headlines) + "\n\n"
@@ -224,10 +211,9 @@ class NewsSentinel(Sentinel):
         self.urls = self.sentinel_config.get('rss_urls', [])
         self.threshold = self.sentinel_config.get('sentiment_magnitude_threshold', 8)
 
-        # Init Gemini Flash
         api_key = config.get('gemini', {}).get('api_key')
         self.client = genai.Client(api_key=api_key)
-        self.model = "gemini-1.5-flash"
+        self.model = self.sentinel_config.get('model', "gemini-1.5-flash")
 
     async def check(self) -> Optional[SentinelTrigger]:
         headlines = []

@@ -8,14 +8,16 @@ from datetime import datetime
 @pytest.mark.asyncio
 async def test_price_sentinel_trigger():
     mock_ib = MagicMock()
-    mock_ib.reqMktData = MagicMock()
-    mock_ticker = MagicMock()
-    mock_ticker.close = 100.0
-    mock_ticker.last = 102.0 # 2% change
-    mock_ib.reqMktData.return_value = mock_ticker
+    # Mock reqHistoricalDataAsync instead of reqMktData
+    mock_ib.reqHistoricalDataAsync = AsyncMock()
+
+    # Create mock bars
+    mock_bar = MagicMock()
+    mock_bar.open = 100.0
+    mock_bar.close = 102.0 # 2% change
+    mock_ib.reqHistoricalDataAsync.return_value = [mock_bar]
 
     # Mock datetime to be Mon 10 AM EST
-    # We patch the datetime class in the module where it is used (trading_bot.sentinels)
     with patch('trading_bot.sentinels.datetime') as mock_datetime:
         mock_now = datetime(2023, 10, 23, 10, 0, 0) # Monday
         mock_datetime.now.return_value = mock_now
@@ -39,10 +41,12 @@ async def test_price_sentinel_trigger():
 @pytest.mark.asyncio
 async def test_price_sentinel_no_trigger():
     mock_ib = MagicMock()
-    mock_ticker = MagicMock()
-    mock_ticker.close = 100.0
-    mock_ticker.last = 100.5 # 0.5% change
-    mock_ib.reqMktData.return_value = mock_ticker
+    mock_ib.reqHistoricalDataAsync = AsyncMock()
+
+    mock_bar = MagicMock()
+    mock_bar.open = 100.0
+    mock_bar.close = 100.5 # 0.5% change
+    mock_ib.reqHistoricalDataAsync.return_value = [mock_bar]
 
     with patch('trading_bot.sentinels.datetime') as mock_datetime:
         mock_now = datetime(2023, 10, 23, 10, 0, 0) # Monday 10 AM
@@ -79,6 +83,7 @@ async def test_weather_sentinel_frost():
     config = {
         'sentinels': {
             'weather': {
+                'api_url': 'http://test-weather.com',
                 'locations': [{'name': 'TestLoc', 'lat': 0, 'lon': 0}],
                 'triggers': {'min_temp_c': 4.0}
             }
@@ -104,12 +109,19 @@ async def test_weather_sentinel_frost():
         assert trigger.source == "WeatherSentinel"
         assert trigger.payload['type'] == "FROST"
         assert trigger.payload['value'] == 3.0
+        # Check if URL was used
+        assert 'http://test-weather.com' in mock_get.call_args[0][0]
 
 # --- Logistics Sentinel Tests ---
 @pytest.mark.asyncio
 async def test_logistics_sentinel_trigger():
     config = {
-        'sentinels': {'logistics': {'rss_urls': ['http://test.rss']}},
+        'sentinels': {
+            'logistics': {
+                'rss_urls': ['http://test.rss'],
+                'model': 'test-model'
+            }
+        },
         'gemini': {'api_key': 'TEST'}
     }
 
@@ -131,12 +143,20 @@ async def test_logistics_sentinel_trigger():
             assert trigger is not None
             assert trigger.source == "LogisticsSentinel"
             assert "Strike at Port of Santos" in trigger.payload['headlines']
+            # Check if model config was used (would be passed to generate_content, but we can check sentinel.model)
+            assert sentinel.model == 'test-model'
 
 # --- News Sentinel Tests ---
 @pytest.mark.asyncio
 async def test_news_sentinel_trigger():
     config = {
-        'sentinels': {'news': {'rss_urls': ['http://test.rss'], 'sentiment_magnitude_threshold': 8}},
+        'sentinels': {
+            'news': {
+                'rss_urls': ['http://test.rss'],
+                'sentiment_magnitude_threshold': 8,
+                'model': 'test-model'
+            }
+        },
         'gemini': {'api_key': 'TEST'}
     }
 
@@ -159,3 +179,4 @@ async def test_news_sentinel_trigger():
             assert trigger is not None
             assert trigger.source == "NewsSentinel"
             assert trigger.payload['score'] == 9
+            assert sentinel.model == 'test-model'
