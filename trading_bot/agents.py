@@ -67,6 +67,17 @@ class CoffeeCouncil:
 
         logger.info(f"Coffee Council initialized. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
 
+    def _clean_json_text(self, text: str) -> str:
+        """Helper to strip markdown code blocks from JSON strings."""
+        text = text.strip()
+        if text.startswith("```json"):
+            text = text[7:]
+        if text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+        return text.strip()
+
     async def _call_model(self, model_name: str, prompt: str, use_tools: bool = False, response_json: bool = False) -> str:
         """Helper to call Gemini with retries."""
         retries = 3
@@ -173,7 +184,8 @@ class CoffeeCouncil:
 
         try:
             response_text = await self._call_model(self.master_model_name, full_prompt, response_json=True)
-            return json.loads(response_text)
+            cleaned_text = self._clean_json_text(response_text)
+            return json.loads(cleaned_text)
         except Exception as e:
             logger.error(f"Master Strategist failed: {e}")
             return {
@@ -221,6 +233,16 @@ class CoffeeCouncil:
         # Update Reports (Fresh + Cached)
         final_reports = cached_reports.copy()
         final_reports[active_agent_key] = fresh_report # Overwrite with fresh data
+
+        # --- Handle "Empty Brain" (Cold Start) ---
+        expected_agents = [
+            "agronomist", "macro", "geopolitical", "supply_chain",
+            "inventory", "sentiment", "technical", "volatility"
+        ]
+
+        for agent in expected_agents:
+            if agent not in final_reports:
+                final_reports[agent] = "Data Unavailable (Cold Start)"
 
         # Note: We should probably update the state file with this fresh report too,
         # so subsequent runs have the latest info.

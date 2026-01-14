@@ -103,6 +103,7 @@ class WeatherSentinel(Sentinel):
         super().__init__(config)
         self.sentinel_config = config.get('sentinels', {}).get('weather', {})
         self.api_url = self.sentinel_config.get('api_url', "https://api.open-meteo.com/v1/forecast")
+        self.params = self.sentinel_config.get('params', "daily=temperature_2m_min,precipitation_sum&timezone=auto&forecast_days=10")
         self.locations = self.sentinel_config.get('locations', [])
         self.triggers = self.sentinel_config.get('triggers', {})
 
@@ -112,8 +113,8 @@ class WeatherSentinel(Sentinel):
                 lat, lon = loc['lat'], loc['lon']
                 name = loc['name']
 
-                # Construct URL from config base
-                url = f"{self.api_url}?latitude={lat}&longitude={lon}&daily=temperature_2m_min,precipitation_sum&timezone=auto&forecast_days=10"
+                # Construct URL from config params
+                url = f"{self.api_url}?latitude={lat}&longitude={lon}&{self.params}"
 
                 loop = asyncio.get_running_loop()
                 response = await loop.run_in_executor(None, requests.get, url)
@@ -163,14 +164,20 @@ class LogisticsSentinel(Sentinel):
         self.client = genai.Client(api_key=api_key)
         self.model = self.sentinel_config.get('model', "gemini-1.5-flash")
 
+        # Deduplication Cache (In-memory)
+        self.seen_links = set()
+
     async def check(self) -> Optional[SentinelTrigger]:
         headlines = []
         for url in self.urls:
             try:
                 loop = asyncio.get_running_loop()
                 feed = await loop.run_in_executor(None, feedparser.parse, url)
+                # Filter seen links
                 for entry in feed.entries[:5]:
-                    headlines.append(entry.title)
+                    if entry.link not in self.seen_links:
+                        headlines.append(entry.title)
+                        self.seen_links.add(entry.link)
             except Exception as e:
                 logger.error(f"Logistics RSS failed for {url}: {e}")
 
@@ -215,14 +222,20 @@ class NewsSentinel(Sentinel):
         self.client = genai.Client(api_key=api_key)
         self.model = self.sentinel_config.get('model', "gemini-1.5-flash")
 
+        # Deduplication Cache (In-memory)
+        self.seen_links = set()
+
     async def check(self) -> Optional[SentinelTrigger]:
         headlines = []
         for url in self.urls:
             try:
                 loop = asyncio.get_running_loop()
                 feed = await loop.run_in_executor(None, feedparser.parse, url)
+                # Filter seen links
                 for entry in feed.entries[:5]:
-                    headlines.append(entry.title)
+                    if entry.link not in self.seen_links:
+                        headlines.append(entry.title)
+                        self.seen_links.add(entry.link)
             except Exception as e:
                 logger.error(f"News RSS failed for {url}: {e}")
 
@@ -243,7 +256,12 @@ class NewsSentinel(Sentinel):
                 config=types.GenerateContentConfig(response_mime_type="application/json")
             )
             import json
-            data = json.loads(response.text)
+            # Need cleaning? agents.py has it, but this is simple JSON.
+            # Let's apply basic strip here just in case, but robust cleaning is in agents.py
+            text = response.text.strip()
+            if text.startswith("```json"): text = text[7:]
+            if text.endswith("```"): text = text[:-3]
+            data = json.loads(text)
 
             score = data.get('score', 0)
             if score >= self.threshold:

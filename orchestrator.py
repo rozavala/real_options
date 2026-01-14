@@ -322,14 +322,28 @@ async def run_sentinels(config: dict):
         try:
             now = time.time()
 
+            # --- Auto-Reconnect for Zombie Sentinel Risk ---
+            if not sentinel_ib.isConnected():
+                try:
+                    logger.warning("Sentinel IB connection lost. Attempting reconnect...")
+                    ib_port = conn_settings.get('port')
+                    await sentinel_ib.connectAsync(
+                        host=conn_settings.get('host', '127.0.0.1'),
+                        port=ib_port,
+                        clientId=random.randint(3000, 4000),
+                        timeout=30
+                    )
+                    configure_market_data_type(sentinel_ib)
+                    logger.info("Sentinel IB reconnected successfully.")
+                except Exception as e:
+                    logger.error(f"Sentinel IB Reconnect Failed: {e}")
+                    # Continue loop to allow other sentinels to run
+
             # 1. Price Sentinel (Every 1 min) - Only if Connected
             if sentinel_ib.isConnected():
                 trigger = await price_sentinel.check()
                 if trigger:
                     await run_emergency_cycle(trigger, config, sentinel_ib)
-            else:
-                # Try reconnecting occasionally?
-                pass
 
             # 2. Weather Sentinel (Every 4 hours = 14400s)
             if now - last_weather > 14400:
