@@ -3,6 +3,7 @@ import asyncio
 from unittest.mock import MagicMock, patch, AsyncMock
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, SentinelTrigger
 from datetime import datetime
+import time
 
 # --- Price Sentinel Tests ---
 @pytest.mark.asyncio
@@ -32,11 +33,15 @@ async def test_price_sentinel_trigger():
             config = {'sentinels': {'price': {'pct_change_threshold': 1.5}}, 'symbol': 'KC', 'exchange': 'NYBOT'}
             sentinel = PriceSentinel(config, mock_ib)
 
+            # First trigger
             trigger = await sentinel.check()
-
             assert trigger is not None
             assert trigger.source == "PriceSentinel"
             assert trigger.payload['change'] == 2.0
+
+            # Cooldown check: Immediate second call should return None
+            trigger_cooldown = await sentinel.check()
+            assert trigger_cooldown is None
 
 @pytest.mark.asyncio
 async def test_price_sentinel_no_trigger():

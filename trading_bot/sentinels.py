@@ -27,6 +27,7 @@ class Sentinel:
     def __init__(self, config: dict):
         self.config = config
         self.enabled = True
+        self.last_triggered = 0 # Timestamp of last trigger
 
     async def check(self) -> Optional[SentinelTrigger]:
         """Performs the sentinel check. Returns a SentinelTrigger if fired, else None."""
@@ -46,6 +47,13 @@ class PriceSentinel(Sentinel):
         self.exchange = config.get('exchange', 'NYBOT')
 
     async def check(self) -> Optional[SentinelTrigger]:
+        import time as time_module
+        now = time_module.time()
+
+        # Cooldown Check (1 hour = 3600s)
+        if (now - self.last_triggered) < 3600:
+            return None
+
         # Market Hours Check: 9:00 - 17:00 EST, Mon-Fri
         est = pytz.timezone('US/Eastern')
         now_est = datetime.now(est)
@@ -87,6 +95,9 @@ class PriceSentinel(Sentinel):
                     if abs(pct_change) > self.pct_change_threshold:
                         msg = f"Price moved {pct_change:.2f}% in last hour (Threshold: {self.pct_change_threshold}%)"
                         logger.warning(f"PRICE SENTINEL TRIGGERED: {msg}")
+
+                        # Update Trigger Timestamp
+                        self.last_triggered = now
                         return SentinelTrigger("PriceSentinel", msg, {"contract": contract.localSymbol, "change": pct_change})
 
         except Exception as e:

@@ -9,6 +9,7 @@ import os
 import json
 import logging
 import asyncio
+from datetime import datetime, timedelta
 from google import genai
 from google.genai import types
 from trading_bot.state_manager import StateManager
@@ -147,14 +148,34 @@ class CoffeeCouncil:
         except Exception as e:
             return f"Error: {str(e)}"
 
-    async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict, market_context: str) -> dict:
+    async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict, market_context: str, trigger_reason: str = None) -> dict:
         """
         The Hegelian Loop: Thesis (Reports) -> Antithesis (Bear/Bull) -> Synthesis (Master).
         """
         # 1. Thesis: Format Research Reports
+        # Handle dictionary reports with timestamps (from StateManager) vs strings (legacy/fresh)
         reports_text = ""
-        for agent, report in research_reports.items():
-            reports_text += f"\n--- {agent.upper()} REPORT ---\n{report}\n"
+        for agent, report_obj in research_reports.items():
+            report_content = "N/A"
+            timestamp_str = ""
+
+            if isinstance(report_obj, dict):
+                report_content = report_obj.get('data', 'N/A')
+                timestamp_str = report_obj.get('timestamp', '')
+            else:
+                report_content = str(report_obj)
+
+            # Check for Staleness if timestamp exists
+            stale_warning = ""
+            if timestamp_str:
+                try:
+                    ts = datetime.fromisoformat(timestamp_str)
+                    if (datetime.now() - ts) > timedelta(hours=24):
+                        stale_warning = "[WARNING: DATA IS STALE] "
+                except:
+                    pass
+
+            reports_text += f"\n--- {agent.upper()} REPORT ---\n{stale_warning}{report_content}\n"
 
         # 2. Antithesis: The Dialectical Debate
         # Run in parallel
@@ -165,8 +186,15 @@ class CoffeeCouncil:
 
         # 3. Synthesis: Master Strategist
         master_persona = self.personas.get('master', "You are the Chief Strategist.")
+
+        # Context Injection
+        urgent_context = ""
+        if trigger_reason:
+            urgent_context = f"*** URGENT TRIGGER: {trigger_reason} ***\n\n"
+
         full_prompt = (
             f"{master_persona}\n\n"
+            f"{urgent_context}"
             f"You have received structured reports regarding {contract_name}.\n"
             f"{market_context}\n\n"
             f"QUANT MODEL SIGNAL:\n{json.dumps(ml_signal, indent=2)}\n\n"
@@ -221,8 +249,7 @@ class CoffeeCouncil:
             active_agent_key = "technical"
             search_instruction = f"Investigate price shock: {trigger.reason}. Search for 'coffee futures news last hour'. Identify the catalyst (Algo liquidation? News leak?)."
         else:
-            # Fallback for NewsSentinel or others -> maybe wake up everyone?
-            # For now, let's just default to Master reviewing existing info + maybe Macro?
+            # Fallback
             active_agent_key = "macro"
             search_instruction = f"Investigate market sentiment shift: {trigger.reason}."
 
@@ -232,7 +259,10 @@ class CoffeeCouncil:
 
         # Update Reports (Fresh + Cached)
         final_reports = cached_reports.copy()
-        final_reports[active_agent_key] = fresh_report # Overwrite with fresh data
+
+        # Inject Fresh Report (as string, StateManager will timestamp it on save)
+        # Note: We need to ensure we don't double-nest if we save it back
+        final_reports[active_agent_key] = fresh_report
 
         # --- Handle "Empty Brain" (Cold Start) ---
         expected_agents = [
@@ -244,9 +274,8 @@ class CoffeeCouncil:
             if agent not in final_reports:
                 final_reports[agent] = "Data Unavailable (Cold Start)"
 
-        # Note: We should probably update the state file with this fresh report too,
-        # so subsequent runs have the latest info.
+        # Save updated state
         StateManager.save_state(final_reports)
 
-        # Run Decision Loop
-        return await self.decide(contract_name, ml_signal, final_reports, market_context)
+        # Run Decision Loop with Context Injection
+        return await self.decide(contract_name, ml_signal, final_reports, market_context, trigger_reason=trigger.reason)
