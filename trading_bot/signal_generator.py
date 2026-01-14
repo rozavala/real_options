@@ -129,6 +129,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 # D. Master Decision
                 # --- NEW: GET MARKET CONTEXT (The "Reality Check") ---
                 market_context_str = "MARKET CONTEXT: Data unavailable."
+                live_price_val = None # Capture live price for Sanity Check
+
                 try:
                     # End time = now, Duration = 1 week, Bar size = 1 day
                     bars = await ib.reqHistoricalDataAsync(
@@ -142,6 +144,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
 
                     if bars and len(bars) >= 2:
                         current_close = bars[-1].close
+                        live_price_val = current_close # Update live price
+
                         prev_close = bars[-2].close
                         price_5d_ago = bars[0].close
 
@@ -168,7 +172,9 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 # --- E.2: PRICE SANITY CHECK (The "Fat Finger" Guardrail) ---
                 # Robust extraction of price
                 proj_price = decision.get('projected_price_5_day') or decision.get('projection_price_5_day')
-                current_price = ml_signal.get('price')
+
+                # Use Live Price if available, else ML signal price (stale fallback)
+                current_price = live_price_val if live_price_val is not None else ml_signal.get('price')
 
                 if proj_price and current_price:
                     # Calculate percent change

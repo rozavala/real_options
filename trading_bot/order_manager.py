@@ -104,7 +104,7 @@ async def generate_and_queue_orders(config: dict):
 
                 future = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal.get("contract_month", ""))), None)
                 if not future:
-                    logger.warning(f"No active future for signal month {signal.get('contract_month')}."); continue
+                    logger.warning(f"No active future for signal month {signal.get("contract_month")}."); continue
 
                 logger.info(f"Requesting snapshot market price for {future.localSymbol}...")
 
@@ -407,12 +407,25 @@ async def place_queued_orders(config: dict):
 
         # Filter Queue based on Margin Impact AND Compliance Review
         orders_to_place = []
+        orders_checked_count = 0
+
         for contract, order, decision_data in ORDER_QUEUE:
+            orders_checked_count += 1
+
+            # --- Margin Safety Update: Force Refresh Every 3 Trades ---
+            if orders_checked_count % 3 == 0:
+                try:
+                    logger.info("Refreshing account summary for margin safety...")
+                    account_summary = await ib.accountSummaryAsync()
+                    avail_funds_tag = next((v for v in account_summary if v.tag == 'AvailableFunds' and v.currency == 'USD'), None)
+                    if avail_funds_tag:
+                        current_available_funds = float(avail_funds_tag.value)
+                        logger.info(f"Refreshed Available Funds: ${current_available_funds:,.2f}")
+                except Exception as e:
+                    logger.error(f"Failed to refresh margin info: {e}")
+
             try:
                 # 1. Fetch Market Context (Spread & Trend)
-                # Need the underlying future for trend, but contract might be a BAG
-                # For simplicity, if BAG, use the first leg or symbol.
-                # Actually, decision_data likely has 'contract_month'.
 
                 # Fetch spread
                 ticker = ib.reqMktData(contract, '', True, False)
@@ -424,37 +437,44 @@ async def place_queued_orders(config: dict):
                 else:
                     spread_width = 0.0 # Unknown
 
-                # Fetch Trend (using 2-day history of underlying)
-                # Note: This is expensive if done for every order.
-                # Assuming 'symbol' in config.
+                # Fetch Trend (Fix Trend Blindness)
                 trend_pct = 0.0
                 try:
-                    # Find active future for trend check
-                    # Simplification: use the price from the signal if available, or just skip trend check if expensive.
-                    # Compliance Officer specifically asks for it.
-                    # Let's use a quick history request for the specific contract if it's a future, or symbol if bag.
-
-                    target_contract = contract
+                    # Identify underlying contract
+                    target_contract = None
                     if isinstance(contract, Bag):
-                        # Use the first leg to find the underlying future
-                        # This is complex. Let's assume the signal's price and expected price gave us some hint,
-                        # but compliance wants "Market Trend (24h)".
-                        # Let's use the percent change from the signal if available?
-                        # No, let's try to get it live.
-                        pass
+                        # Extract first leg
+                        if contract.comboLegs:
+                            first_leg_conid = contract.comboLegs[0].conId
+                            details = await ib.reqContractDetailsAsync(Contract(conId=first_leg_conid))
+                            if details:
+                                target_contract = details[0].contract
+                    else:
+                        target_contract = contract
 
-                    # For now, pass 0.0 if not easily available to avoid blocking.
-                    # Or better: Use the 'price' from the signal vs 'sma_200'? No.
-                    pass
-                except:
-                    pass
+                    if target_contract:
+                        # Fetch 2 days of daily bars
+                        bars = await ib.reqHistoricalDataAsync(
+                            target_contract,
+                            endDateTime='',
+                            durationStr='2 D',
+                            barSizeSetting='1 day',
+                            whatToShow='TRADES',
+                            useRTH=True
+                        )
+                        if bars and len(bars) >= 2:
+                            close_curr = bars[-1].close
+                            close_prev = bars[-2].close
+                            if close_prev > 0:
+                                trend_pct = (close_curr - close_prev) / close_prev
+                except Exception as e:
+                    logger.error(f"Failed to calculate trend for {contract.localSymbol}: {e}")
 
                 order_context = {
                     'symbol': contract.localSymbol,
-                    'bid_ask_spread': spread_width * 100 if contract.secType == 'BAG' else spread_width, # Normalize?
-                    # Note: KC spread is in cents.
+                    'bid_ask_spread': spread_width * 100 if contract.secType == 'BAG' else spread_width,
                     'total_position_count': current_position_count,
-                    'market_trend_pct': trend_pct # Placeholder for now
+                    'market_trend_pct': trend_pct
                 }
 
                 # 2. Compliance Review
