@@ -29,37 +29,35 @@ logger = logging.getLogger("TradeReconciler")
 
 def parse_position_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     """
-    Parses the raw CSV string from the Active Position Flex Query (ID 1341164)
+    Parses the raw CSV string from the Active Position Flex Query (ID 1341164 in dev and  ID 1370923 in prod)
     into a DataFrame. Expected columns: Symbol, Quantity, CostBasisPrice, FifoPnlUnrealized, OpenDateTime.
     """
+    # Define the standard empty return with columns to prevent Merge crashes
+    empty_df = pd.DataFrame(columns=['Symbol', 'Quantity'])
+
     if not csv_data or not csv_data.strip():
         logger.warning("Received empty CSV data from Position Flex Query.")
-        return pd.DataFrame()
+        return empty_df
 
     try:
         df = pd.read_csv(io.StringIO(csv_data))
         logger.info(f"Parsed {len(df)} positions from the Flex Query report.")
     except pd.errors.EmptyDataError:
         logger.warning("Position Flex Query report was empty.")
-        return pd.DataFrame()
+        return empty_df
     except Exception as e:
         logger.error(f"Failed to read Position CSV data: {e}", exc_info=True)
-        return pd.DataFrame()
+        return empty_df
 
     if df.empty:
-        return pd.DataFrame()
+        return empty_df
 
-    # Normalize columns if needed, though they should match what's requested
-    # The user listed: Symbol, Quantity, CostBasisPrice, FifoPnlUnrealized, OpenDateTime
-    # We might need to handle different column names if IBKR returns them slightly differently
-    # e.g. 'OpenDateTime' vs 'Open Date/Time'. For now, assuming direct mapping or slight variations.
-
-    # Just ensuring we have the key columns
+    # Normalize columns if needed
     required_cols = ['Symbol', 'Quantity']
     for col in required_cols:
         if col not in df.columns:
             logger.error(f"Missing required column '{col}' in Position Flex Query. Available: {df.columns.tolist()}")
-            return pd.DataFrame()
+            return empty_df
 
     # Convert Quantity to numeric
     df['Quantity'] = pd.to_numeric(df['Quantity'], errors='coerce').fillna(0)
