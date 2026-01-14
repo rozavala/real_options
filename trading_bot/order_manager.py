@@ -72,7 +72,11 @@ async def generate_and_queue_orders(config: dict):
 
         logger.info("Step 2: Running local model inference...")
         signal_threshold = config.get('strategy', {}).get('signal_threshold', 0.015)
-        predictions = get_model_predictions(data_df, signal_threshold=signal_threshold)
+
+        # Run heavy ML inference in a separate thread to avoid blocking the Event Loop
+        loop = asyncio.get_running_loop()
+        predictions = await loop.run_in_executor(None, get_model_predictions, data_df, signal_threshold)
+
         if not predictions:
             send_pushover_notification(config.get('notifications', {}), "Order Generation Failure", "Failed to get predictions from local model.")
             return
@@ -104,7 +108,7 @@ async def generate_and_queue_orders(config: dict):
 
                 future = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal.get("contract_month", ""))), None)
                 if not future:
-                    logger.warning(f"No active future for signal month {signal.get("contract_month")}."); continue
+                    logger.warning(f"No active future for signal month {signal.get('contract_month')}."); continue
 
                 logger.info(f"Requesting snapshot market price for {future.localSymbol}...")
 
@@ -320,13 +324,16 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
         logger.error(f"Error processing and logging fill for order {trade.order.orderId}: {e}\n{traceback.format_exc()}")
 
 
-async def place_queued_orders(config: dict):
+async def place_queued_orders(config: dict, orders_list: list = None):
     """
-    Connects to IB, places all queued orders, and monitors them until they
-    are filled or reach a terminal state, ensuring all fills are logged.
+    Connects to IB, places orders, and monitors them.
+    If 'orders_list' is provided, it processes those orders instead of the global ORDER_QUEUE.
     """
-    logger.info(f"--- Placing and monitoring {len(ORDER_QUEUE)} queued orders ---")
-    if not ORDER_QUEUE:
+    # Use provided list or fall back to global queue
+    target_queue = orders_list if orders_list is not None else ORDER_QUEUE
+
+    logger.info(f"--- Placing and monitoring {len(target_queue)} orders ---")
+    if not target_queue:
         logger.info("Order queue is empty. Nothing to place.")
         return
 
@@ -387,7 +394,7 @@ async def place_queued_orders(config: dict):
         logger.info("Connected to IB for order placement and monitoring.")
 
         # --- NEW: Sort by Expiration (Nearest First) ---
-        ORDER_QUEUE.sort(key=lambda x: x[0].lastTradeDateOrContractMonth if hasattr(x[0], 'lastTradeDateOrContractMonth') else '99999999')
+        target_queue.sort(key=lambda x: x[0].lastTradeDateOrContractMonth if hasattr(x[0], 'lastTradeDateOrContractMonth') else '99999999')
         logger.info("Sorted orders by expiration proximity.")
 
         # --- NEW: Margin & Funds Check ---
@@ -409,7 +416,7 @@ async def place_queued_orders(config: dict):
         orders_to_place = []
         orders_checked_count = 0
 
-        for contract, order, decision_data in ORDER_QUEUE:
+        for contract, order, decision_data in target_queue:
             orders_checked_count += 1
 
             # --- Margin Safety Update: Force Refresh Every 3 Trades ---
@@ -740,7 +747,10 @@ async def place_queued_orders(config: dict):
 
         send_pushover_notification(config.get('notifications', {}), "Order Monitoring Complete", summary_message)
 
-        ORDER_QUEUE.clear()
+        # Only clear queue if we are processing the global one
+        if orders_list is None:
+            ORDER_QUEUE.clear()
+
         logger.info("--- Finished monitoring and cleanup. ---")
 
     except Exception as e:

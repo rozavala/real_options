@@ -124,6 +124,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         reports[key] = res
 
                 # --- SAVE STATE (For Sentinel Context) ---
+                # NOTE: StateManager merges updates, so this is safe.
                 StateManager.save_state(reports)
 
                 # D. Master Decision
@@ -290,6 +291,15 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
         tasks.append(process_contract(contract, ml_signal))
 
     final_signals_list = await asyncio.gather(*tasks)
+
+    # --- Persist Latest ML Signals to State ---
+    # Store with a specific key "latest_ml_signals" to avoid conflict with agents
+    # StateManager merges updates, so this works nicely.
+    try:
+        StateManager.save_state({"latest_ml_signals": final_signals_list})
+        logger.info("Persisted latest ML signals to state.")
+    except Exception as e:
+        logger.error(f"Failed to persist ML signals: {e}")
 
     # 6. Logging & Return
     for sig in final_signals_list:

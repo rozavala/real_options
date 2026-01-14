@@ -18,53 +18,63 @@ class StateManager:
         """
         Saves the provided agent reports to the state file using atomic writes.
         Stores each report with a timestamp.
+        Merges new reports with existing state.
 
         Args:
-            reports (dict): A dictionary where keys are agent names and values are their report strings.
+            reports (dict): A dictionary where keys are agent names (or special keys like 'latest_ml_signals')
+                            and values are their contents.
         """
         try:
             # Ensure data directory exists
             os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
 
-            # Format data with timestamps for each agent
+            # Load existing state first to merge
+            current_state = {}
+            if os.path.exists(STATE_FILE):
+                try:
+                    with open(STATE_FILE, 'r') as f:
+                        data = json.load(f)
+                        if 'reports' in data:
+                            current_state = data['reports']
+                except Exception:
+                    logger.warning("Could not load existing state for merge. Starting fresh.")
+
             current_time = datetime.now().isoformat()
 
-            # If we are updating partial state, we should probably load existing first?
-            # The current architecture passes "final_reports" which is Cached + Fresh.
-            # So overwriting is fine as long as "final_reports" is complete.
-            # But wait, run_specialized_cycle loads cached, updates one, and saves back.
-            # So 'reports' here is the FULL state.
-
-            formatted_reports = {}
-            for agent, content in reports.items():
-                # Handle if content is already a dict (from previous load) or string (fresh)
-                if isinstance(content, dict) and 'data' in content:
-                    formatted_reports[agent] = content # Preserve existing timestamp if not updated?
-                    # Wait, if we pass it back from run_specialized_cycle, we might want to update timestamp only for FRESH.
-                    # This method receives a dict of STRINGS or DICTS?
-                    # In run_specialized_cycle: final_reports[active] = fresh_string. Others are dicts (from load).
-                    # We need to standardize.
-                    pass
+            # Merge new reports into current state
+            for key, content in reports.items():
+                if key == "latest_ml_signals":
+                    # Special handling for ML signals: Just store the list directly with timestamp wrapper?
+                    # Or just as a raw object? Let's wrap it to match the schema 'data', 'timestamp'
+                    # But content is a list of dicts.
+                    # Let's verify if we need it serialized. json.dump handles list of dicts fine.
+                    current_state[key] = {
+                        "data": content, # List of dicts
+                        "timestamp": current_time
+                    }
+                elif isinstance(content, dict) and 'data' in content:
+                    # Already formatted (e.g., loading from previous state and passing back)
+                    current_state[key] = content
                 else:
                     # New or string content -> Stamp with NOW
-                    formatted_reports[agent] = {
-                        "data": str(content), # Ensure serialization
+                    current_state[key] = {
+                        "data": str(content), # Ensure serialization for text reports
                         "timestamp": current_time
                     }
 
-            data = {
+            final_data = {
                 "last_update_global": current_time,
-                "reports": formatted_reports
+                "reports": current_state
             }
 
             # Atomic Write
             temp_file = STATE_FILE + ".tmp"
             with open(temp_file, 'w') as f:
-                json.dump(data, f, indent=2)
+                json.dump(final_data, f, indent=2, default=str) # default=str handles objects like datetime inside ML signals
 
             os.replace(temp_file, STATE_FILE)
 
-            logger.info("Agent state successfully saved (Atomic).")
+            logger.info("Agent state successfully saved (Atomic Merge).")
         except Exception as e:
             logger.error(f"Failed to save agent state: {e}")
 

@@ -36,6 +36,7 @@ from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSenti
 from trading_bot.agents import CoffeeCouncil
 from trading_bot.ib_interface import get_active_futures, build_option_chain, create_combo_order_object
 from trading_bot.strategy import define_directional_strategy
+from trading_bot.state_manager import StateManager
 
 # --- Logging Setup ---
 setup_logging()
@@ -192,6 +193,14 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
     logger.info(f"🚨 EMERGENCY CYCLE TRIGGERED by {trigger.source}: {trigger.reason}")
     send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", trigger.reason)
 
+    # --- DEFCON 1: Crash Protection ---
+    # If price drops > 5% instantly, do NOT open new trades. Liquidation logic is complex, so we just Halt.
+    if trigger.source == "PriceSentinel" and abs(trigger.payload.get('change', 0)) > 5.0:
+        logger.critical("📉 FLASH CRASH DETECTED (>5%). Skipping Council. HALTING TRADING.")
+        send_pushover_notification(config.get('notifications', {}), "FLASH CRASH ALERT", "Price moved >5%. Emergency Halt Triggered. No new orders.")
+        # Future: await close_stale_positions(config, force=True)
+        return
+
     try:
         # 1. Initialize Council
         council = CoffeeCouncil(config)
@@ -222,12 +231,10 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
         await asyncio.sleep(2)
         market_context_str = f"Live Price: {ticker.last if ticker.last else 'N/A'}"
 
-        # 4. Run Specialized Cycle
-        # Note: We need a dummy ML signal or fetch the last one?
-        # The Master needs an ML signal for the Debate.
-        # Let's create a NEUTRAL placeholder or try to fetch recent?
-        # Ideally, we should have cached the last ML signal too.
-        # For now, pass a neutral signal with a note.
+        # 4. Load Cached ML Signal (Fix Dummy Signal Blindness)
+        cached_state = StateManager.load_state()
+        cached_ml_signals = cached_state.get('latest_ml_signals', {}).get('data', [])
+
         ml_signal = {
             "action": "NEUTRAL",
             "confidence": 0.5,
@@ -236,11 +243,20 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
             "regime": "UNKNOWN"
         }
 
+        if cached_ml_signals:
+            # Try to find signal for this contract month
+            target_month = target_contract.lastTradeDateOrContractMonth[:6]
+            found_signal = next((s for s in cached_ml_signals if s.get('contract_month') == target_month), None)
+            if found_signal:
+                ml_signal = found_signal
+                logger.info(f"Loaded cached ML signal for {target_month}: {ml_signal.get('direction')}")
+
+        # 5. Run Specialized Cycle
         decision = await council.run_specialized_cycle(trigger, contract_name, ml_signal, market_context_str)
 
         logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
 
-        # 5. Execute if Actionable
+        # 6. Execute if Actionable
         if decision.get('direction') in ['BULLISH', 'BEARISH'] and decision.get('confidence', 0) > config.get('strategy', {}).get('signal_threshold', 0.5):
             logger.info("Decision is actionable. Generating order...")
 
@@ -265,10 +281,11 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 order_objects = await create_combo_order_object(ib, config, strategy_def)
                 if order_objects:
                     contract, order = order_objects
-                    # Queue and Execute
-                    ORDER_QUEUE.clear() # Clear any old stuff
-                    ORDER_QUEUE.append((contract, order, decision)) # Pass decision for compliance
-                    await place_queued_orders(config)
+
+                    # Queue and Execute (Fix Global Queue Collision)
+                    # Pass specific list to place_queued_orders so we don't wipe the global queue
+                    emergency_order_list = [(contract, order, decision)]
+                    await place_queued_orders(config, orders_list=emergency_order_list)
                     logger.info("Emergency Order Placed.")
         else:
             logger.info("Emergency Cycle concluded with no action.")
@@ -339,31 +356,33 @@ async def run_sentinels(config: dict):
                     logger.error(f"Sentinel IB Reconnect Failed: {e}")
                     # Continue loop to allow other sentinels to run
 
+            # Use asyncio.create_task for non-blocking execution (Fix Blocking Sentinel)
+
             # 1. Price Sentinel (Every 1 min) - Only if Connected
             if sentinel_ib.isConnected():
                 trigger = await price_sentinel.check()
                 if trigger:
-                    await run_emergency_cycle(trigger, config, sentinel_ib)
+                    asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
 
             # 2. Weather Sentinel (Every 4 hours = 14400s)
             if now - last_weather > 14400:
                 trigger = await weather_sentinel.check()
                 if trigger:
-                    await run_emergency_cycle(trigger, config, sentinel_ib)
+                    asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
                 last_weather = now
 
             # 3. Logistics Sentinel (Every 6 hours = 21600s)
             if now - last_logistics > 21600:
                 trigger = await logistics_sentinel.check()
                 if trigger:
-                    await run_emergency_cycle(trigger, config, sentinel_ib)
+                    asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
                 last_logistics = now
 
             # 4. News Sentinel (Every 1 hour = 3600s)
             if now - last_news > 3600:
                 trigger = await news_sentinel.check()
                 if trigger:
-                    await run_emergency_cycle(trigger, config, sentinel_ib)
+                    asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
                 last_news = now
 
             await asyncio.sleep(60) # Loop tick
