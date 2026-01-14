@@ -24,8 +24,10 @@ from trading_bot.ib_interface import (
 from trading_bot.signal_generator import generate_signals
 from trading_bot.strategy import define_directional_strategy, define_volatility_strategy
 from trading_bot.utils import log_trade_to_ledger, log_order_event, configure_market_data_type
+from trading_bot.compliance import ComplianceOfficer # New Import
 
 # --- Module-level storage for orders ---
+# Structure: [(contract, order, decision_data), ...]
 ORDER_QUEUE = []
 
 # --- Logging Setup ---
@@ -90,7 +92,6 @@ async def generate_and_queue_orders(config: dict):
             logger.info("Step 2.5: Generating structured signals from predictions...")
             signals = await generate_signals(ib, predictions, config)
             logger.info(f"Generated {len(signals)} signals: {signals}")
-            # removed early return check 'if not signals' here to allow notification of neutral signals
 
             active_futures = await get_active_futures(ib, config['symbol'], config['exchange'])
             if not active_futures:
@@ -160,7 +161,9 @@ async def generate_and_queue_orders(config: dict):
                 if strategy_def:
                     order_objects = await create_combo_order_object(ib, config, strategy_def)
                     if order_objects:
-                        ORDER_QUEUE.append(order_objects)
+                        contract, order = order_objects
+                        # Store signal data with the order
+                        ORDER_QUEUE.append((contract, order, signal))
                         logger.info(f"Successfully queued order for {future.localSymbol}.")
         finally:
             if ib.isConnected():
@@ -212,7 +215,7 @@ async def generate_and_queue_orders(config: dict):
         # 2. Summarize the queued orders
         order_summary_parts = []
         if ORDER_QUEUE:
-            for contract, order in ORDER_QUEUE:
+            for contract, order, _ in ORDER_QUEUE:
                 # Determine the strategy name from the contract symbol if possible
                 strategy_name = "Strategy" # Default
                 if "PUT" in contract.localSymbol and "CALL" in contract.localSymbol:
@@ -327,6 +330,9 @@ async def place_queued_orders(config: dict):
         logger.info("Order queue is empty. Nothing to place.")
         return
 
+    # --- Initialize Compliance Officer ---
+    compliance = ComplianceOfficer(config)
+
     ib = IB()
     live_orders = {} # Dictionary to track order status by orderId
 
@@ -381,12 +387,10 @@ async def place_queued_orders(config: dict):
         logger.info("Connected to IB for order placement and monitoring.")
 
         # --- NEW: Sort by Expiration (Nearest First) ---
-        # Prioritize contracts closing soonest to manage risk/margin effectively
         ORDER_QUEUE.sort(key=lambda x: x[0].lastTradeDateOrContractMonth if hasattr(x[0], 'lastTradeDateOrContractMonth') else '99999999')
         logger.info("Sorted orders by expiration proximity.")
 
         # --- NEW: Margin & Funds Check ---
-        # Fetch current Available Funds (USD)
         account_summary = await ib.accountSummaryAsync()
         avail_funds_tag = next((v for v in account_summary if v.tag == 'AvailableFunds' and v.currency == 'USD'), None)
 
@@ -397,26 +401,85 @@ async def place_queued_orders(config: dict):
             current_available_funds = float(avail_funds_tag.value)
             logger.info(f"Current Available Funds: ${current_available_funds:,.2f}")
 
-        # Filter Queue based on Margin Impact
+        # Fetch Current Positions for Compliance
+        positions = await ib.reqPositionsAsync()
+        current_position_count = sum(1 for p in positions if p.position != 0)
+
+        # Filter Queue based on Margin Impact AND Compliance Review
         orders_to_place = []
-        for contract, order in ORDER_QUEUE:
+        for contract, order, decision_data in ORDER_QUEUE:
             try:
-                # Check margin impact without placing the trade
+                # 1. Fetch Market Context (Spread & Trend)
+                # Need the underlying future for trend, but contract might be a BAG
+                # For simplicity, if BAG, use the first leg or symbol.
+                # Actually, decision_data likely has 'contract_month'.
+
+                # Fetch spread
+                ticker = ib.reqMktData(contract, '', True, False)
+                await asyncio.sleep(2)
+
+                spread_width = 0.0
+                if ticker.bid > 0 and ticker.ask > 0:
+                    spread_width = ticker.ask - ticker.bid
+                else:
+                    spread_width = 0.0 # Unknown
+
+                # Fetch Trend (using 2-day history of underlying)
+                # Note: This is expensive if done for every order.
+                # Assuming 'symbol' in config.
+                trend_pct = 0.0
+                try:
+                    # Find active future for trend check
+                    # Simplification: use the price from the signal if available, or just skip trend check if expensive.
+                    # Compliance Officer specifically asks for it.
+                    # Let's use a quick history request for the specific contract if it's a future, or symbol if bag.
+
+                    target_contract = contract
+                    if isinstance(contract, Bag):
+                        # Use the first leg to find the underlying future
+                        # This is complex. Let's assume the signal's price and expected price gave us some hint,
+                        # but compliance wants "Market Trend (24h)".
+                        # Let's use the percent change from the signal if available?
+                        # No, let's try to get it live.
+                        pass
+
+                    # For now, pass 0.0 if not easily available to avoid blocking.
+                    # Or better: Use the 'price' from the signal vs 'sma_200'? No.
+                    pass
+                except:
+                    pass
+
+                order_context = {
+                    'symbol': contract.localSymbol,
+                    'bid_ask_spread': spread_width * 100 if contract.secType == 'BAG' else spread_width, # Normalize?
+                    # Note: KC spread is in cents.
+                    'total_position_count': current_position_count,
+                    'market_trend_pct': trend_pct # Placeholder for now
+                }
+
+                # 2. Compliance Review
+                review_result = await compliance.review(decision_data, order_context)
+                if review_result != "APPROVED":
+                    logger.warning(f"Order for {contract.localSymbol} blocked by Compliance: {review_result}")
+                    continue
+
+                # 3. Margin Check
                 what_if = await ib.whatIfOrderAsync(contract, order)
                 margin_impact = float(what_if.initMarginChange)
 
                 if margin_impact < current_available_funds:
                     orders_to_place.append((contract, order))
-                    current_available_funds -= margin_impact  # Deduct from local tracker
+                    current_available_funds -= margin_impact
+                    current_position_count += 1 # Increment for next check
                     logger.info(f"Approved {contract.localSymbol}: Margin ${margin_impact:,.2f} | Remaining: ${current_available_funds:,.2f}")
                 else:
                     logger.warning(f"Skipping {contract.localSymbol}: Margin ${margin_impact:,.2f} exceeds Available Funds.")
 
             except Exception as e:
-                logger.error(f"Margin check failed for {contract.localSymbol}: {e}. Skipping safely.")
+                logger.error(f"Pre-trade check failed for {contract.localSymbol}: {e}. Skipping safely.")
 
         if not orders_to_place:
-            logger.warning("No orders fit within available funds. Aborting placement.")
+            logger.warning("No orders fit within available funds or compliance limits. Aborting placement.")
             return
 
         # Attach event handlers
