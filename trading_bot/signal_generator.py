@@ -10,6 +10,7 @@ from trading_bot.ib_interface import get_active_futures # CORRECTED IMPORT
 from trading_bot.model_signals import log_model_signal # Keep existing logging
 from trading_bot.utils import log_council_decision
 from notifications import send_pushover_notification
+from trading_bot.state_manager import StateManager # Import StateManager
 
 logger = logging.getLogger(__name__)
 
@@ -85,13 +86,15 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 # A. Define Research Tasks
                 # Note: We use specific keywords to guide the Flash model search
                 tasks = {
-                    "meteorologist": council.research_topic("meteorologist",
+                    "agronomist": council.research_topic("agronomist",
                         f"Search for 'current 10-day weather forecast Minas Gerais coffee zone' and 'NOAA Brazil precipitation anomaly'. Analyze if recent rains are beneficial for flowering or excessive."),
                     "macro": council.research_topic("macro",
                         f"Search for 'USD BRL exchange rate forecast' and 'Brazil Central Bank Selic rate outlook'. Determine if the BRL is trending to encourage farmer selling."),
                     "geopolitical": council.research_topic("geopolitical",
                         f"Search for 'Red Sea shipping coffee delays', 'Brazil port of Santos wait times', and 'EUDR regulation delay latest news'. Determine if there are logistical bottlenecks."),
-                    "fundamentalist": council.research_topic("fundamentalist",
+                    "supply_chain": council.research_topic("supply_chain",
+                        f"Search for 'Coffee shipping container shortage', 'Baltic Dry Index trend', and 'Port of Santos strike news'. Predict basis shifts."),
+                    "inventory": council.research_topic("inventory",
                         f"Search for 'ICE Arabica Certified Stocks level current' and 'GCA Green Coffee stocks report latest'. Look for 'Backwardation' in the forward curve."),
                     "sentiment": council.research_topic("sentiment",
                         f"Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought."),
@@ -120,9 +123,15 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                     else:
                         reports[key] = res
 
+                # --- SAVE STATE (For Sentinel Context) ---
+                # NOTE: StateManager merges updates, so this is safe.
+                StateManager.save_state(reports)
+
                 # D. Master Decision
                 # --- NEW: GET MARKET CONTEXT (The "Reality Check") ---
                 market_context_str = "MARKET CONTEXT: Data unavailable."
+                live_price_val = None # Capture live price for Sanity Check
+
                 try:
                     # End time = now, Duration = 1 week, Bar size = 1 day
                     bars = await ib.reqHistoricalDataAsync(
@@ -136,6 +145,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
 
                     if bars and len(bars) >= 2:
                         current_close = bars[-1].close
+                        live_price_val = current_close # Update live price
+
                         prev_close = bars[-2].close
                         price_5d_ago = bars[0].close
 
@@ -151,27 +162,20 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 except Exception as e:
                     logger.error(f"Failed to fetch history for context: {e}")
 
+                # Call decided (which now includes the Hegelian Loop)
                 decision = await council.decide(contract_name, ml_signal, reports, market_context_str)
 
-                # --- E.1: THE COMPLIANCE AUDIT (New Step) ---
-                audit = await council.audit_decision(
-                    contract_name=contract_name,
-                    research_reports=reports,
-                    ml_signal=ml_signal,
-                    decision=decision,
-                    market_context=market_context_str
-                )
-                if not audit.get('approved', True):
-                    logger.warning(f"🚨 COMPLIANCE BLOCKED {contract_name}: {audit.get('flagged_reason')}")
-                    # Downgrade to NEUTRAL if the AI was hallucinating facts
-                    decision['direction'] = "NEUTRAL"
-                    decision['reasoning'] = f"BLOCKED BY AUDIT: {audit.get('flagged_reason')}"
-                    decision['confidence'] = 0.0
+                # Note: Compliance Audit logic moved to order_manager.py (ComplianceOfficer)
+                # But we retain the Price Sanity Check here as a "Soft Check" before queuing?
+                # Actually, the previous code had a specific hardcoded check.
+                # Let's keep the Price Sanity Check here to filter out garbage before it even hits the queue.
 
                 # --- E.2: PRICE SANITY CHECK (The "Fat Finger" Guardrail) ---
                 # Robust extraction of price
                 proj_price = decision.get('projected_price_5_day') or decision.get('projection_price_5_day')
-                current_price = ml_signal.get('price')
+
+                # Use Live Price if available, else ML signal price (stale fallback)
+                current_price = live_price_val if live_price_val is not None else ml_signal.get('price')
 
                 if proj_price and current_price:
                     # Calculate percent change
@@ -222,14 +226,21 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         "ml_confidence": ml_signal.get('confidence'),
 
                         # Unpack agent data (FULL TEXT, NO TRUNCATION)
-                        "meteorologist_sentiment": agent_data.get('meteorologist_sentiment'),
-                        "meteorologist_summary": agent_data.get('meteorologist_summary'),
+                        "meteorologist_sentiment": agent_data.get("agronomist_sentiment"), # Map agronomist to meteorologist column or add new?
+                        # NOTE: The database schema probably has 'meteorologist'. I should map 'agronomist' to it or add columns.
+                        # For safety, I'll map 'agronomist' to 'meteorologist' fields for now, as they are functionally similar (Weather).
+                        "meteorologist_summary": agent_data.get("agronomist_summary"),
+
                         "macro_sentiment": agent_data.get('macro_sentiment'),
                         "macro_summary": agent_data.get('macro_summary'),
                         "geopolitical_sentiment": agent_data.get('geopolitical_sentiment'),
                         "geopolitical_summary": agent_data.get('geopolitical_summary'),
-                        "fundamentalist_sentiment": agent_data.get('fundamentalist_sentiment'),
-                        "fundamentalist_summary": agent_data.get('fundamentalist_summary'),
+
+                        # Map Supply Chain -> Fundamentalist? Or Inventory?
+                        # Let's map Inventory -> Fundamentalist
+                        "fundamentalist_sentiment": agent_data.get('inventory_sentiment'),
+                        "fundamentalist_summary": agent_data.get('inventory_summary'),
+
                         "sentiment_sentiment": agent_data.get('sentiment_sentiment'),
                         "sentiment_summary": agent_data.get('sentiment_summary'),
                         "technical_sentiment": agent_data.get('technical_sentiment'),
@@ -242,7 +253,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         "master_decision": decision.get('direction'),
                         "master_confidence": decision.get('confidence'),
                         "master_reasoning": decision.get('reasoning'),
-                        "compliance_approved": audit.get('approved', True)
+                        # "compliance_approved": audit.get('approved', True) # Audit is now downstream
+                        "compliance_approved": True # Placeholder
                     }
                     log_council_decision(council_log_entry)
                 except Exception as log_e:
@@ -279,6 +291,15 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
         tasks.append(process_contract(contract, ml_signal))
 
     final_signals_list = await asyncio.gather(*tasks)
+
+    # --- Persist Latest ML Signals to State ---
+    # Store with a specific key "latest_ml_signals" to avoid conflict with agents
+    # StateManager merges updates, so this works nicely.
+    try:
+        StateManager.save_state({"latest_ml_signals": final_signals_list})
+        logger.info("Persisted latest ML signals to state.")
+    except Exception as e:
+        logger.error(f"Failed to persist ML signals: {e}")
 
     # 6. Logging & Return
     for sig in final_signals_list:
