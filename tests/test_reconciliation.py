@@ -33,7 +33,7 @@ async def test_reconcile_council_history_success():
 
     mock_ib.reqHistoricalDataAsync = AsyncMock()
     mock_bar = MagicMock()
-    mock_bar.date = (entry_time + timedelta(hours=27)).strftime('%Y%m%d')
+    mock_bar.date = (entry_time + timedelta(hours=27)).date()
     mock_bar.close = 155.0 # Price went UP
     mock_ib.reqHistoricalDataAsync.return_value = [mock_bar]
 
@@ -101,7 +101,7 @@ async def test_reconcile_council_history_pnl_calc():
 
     # Price went DOWN (Win for Short)
     mock_bar = MagicMock()
-    mock_bar.date = (entry_time + timedelta(hours=27)).strftime('%Y%m%d')
+    mock_bar.date = (entry_time + timedelta(hours=27)).date()
     mock_bar.close = 145.0
     mock_ib.reqHistoricalDataAsync = AsyncMock(return_value=[mock_bar])
 
