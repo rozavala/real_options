@@ -186,12 +186,12 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
 
             # Find the bar that corresponds to the "Exit Day"
             # The exit day is the day of target_exit_time.
-            target_date_str = target_exit_time.strftime('%Y%m%d')
+            target_date = target_exit_time.date()
 
             matched_bar = None
             for bar in bars:
-                # bar.date is usually YYYYMMDD string for daily bars
-                if bar.date == target_date_str:
+                # bar.date is usually datetime.date for daily bars
+                if bar.date == target_date:
                     matched_bar = bar
                     break
 
@@ -199,8 +199,8 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             # Or just take the bar immediately after entry_time?
             if not matched_bar:
                  # Find first bar after entry_time
-                 entry_date_str = entry_time.strftime('%Y%m%d')
-                 post_entry_bars = [b for b in bars if b.date > entry_date_str]
+                 entry_date = entry_time.date()
+                 post_entry_bars = [b for b in bars if b.date > entry_date]
                  if post_entry_bars:
                      matched_bar = post_entry_bars[0] # The next trading day
 
