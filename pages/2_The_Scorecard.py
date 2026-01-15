@@ -81,7 +81,7 @@ with matrix_cols[0]:
         margin=dict(l=0, r=0, t=40, b=0)
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 with matrix_cols[1]:
     # Metrics
@@ -135,7 +135,7 @@ if 'master_confidence' in graded_df.columns and 'pnl' in graded_df.columns:
             height=400
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         # Quadrant Analysis
         high_conf = plot_df[plot_df['master_confidence'] >= 0.75]
@@ -205,7 +205,7 @@ if sorted_agents:
         showlegend=False
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # Detailed table
     with st.expander("📋 Detailed Scores"):

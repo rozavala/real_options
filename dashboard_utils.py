@@ -362,7 +362,8 @@ def calculate_confusion_matrix(graded_df: pd.DataFrame) -> dict:
         return {
             'true_positive': 0, 'false_positive': 0,
             'true_negative': 0, 'false_negative': 0,
-            'precision': 0.0, 'recall': 0.0, 'accuracy': 0.0
+            'precision': 0.0, 'recall': 0.0, 'accuracy': 0.0,
+            'total': 0
         }
 
     # Filter to only graded decisions (not PENDING)
@@ -372,7 +373,8 @@ def calculate_confusion_matrix(graded_df: pd.DataFrame) -> dict:
         return {
             'true_positive': 0, 'false_positive': 0,
             'true_negative': 0, 'false_negative': 0,
-            'precision': 0.0, 'recall': 0.0, 'accuracy': 0.0
+            'precision': 0.0, 'recall': 0.0, 'accuracy': 0.0,
+            'total': 0
         }
 
     # Calculate matrix values

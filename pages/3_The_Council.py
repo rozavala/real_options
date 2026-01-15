@@ -97,7 +97,7 @@ fig.update_layout(
 radar_cols = st.columns([2, 1])
 
 with radar_cols[0]:
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 with radar_cols[1]:
     st.markdown("**Agent Votes:**")
@@ -148,7 +148,7 @@ fig.update_layout(
     margin=dict(l=0, r=0, t=20, b=0)
 )
 
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 st.markdown("---")
 
