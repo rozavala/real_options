@@ -268,18 +268,21 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
 
     order_type = config.get('strategy_tuning', {}).get('order_type', 'LMT').upper()
 
+    # Determine Quantity (Use override from strategy_def if available, else config)
+    quantity = strategy_def.get('quantity', config['strategy']['quantity'])
+
     if order_type == 'MKT':
-        order = MarketOrder(action, config['strategy']['quantity'], tif="DAY")
-        logging.info(f"Creating Market Order for {action} {config['strategy']['quantity']}.")
+        order = MarketOrder(action, quantity, tif="DAY")
+        logging.info(f"Creating Market Order for {action} {quantity}.")
     else: # Default to Limit Order
         # We set the initial price as the limit price
-        order = LimitOrder(action, config['strategy']['quantity'], initial_price, tif="DAY")
+        order = LimitOrder(action, quantity, initial_price, tif="DAY")
         # Store the ceiling/floor in the order object for the manager to use
         if action == 'BUY':
             order.adaptive_limit_price = ceiling_price
         else:
             order.adaptive_limit_price = floor_price
-        logging.info(f"Creating Limit Order for {action} {config['strategy']['quantity']} @ {initial_price:.2f} (Adaptive Cap: {order.adaptive_limit_price:.2f}).")
+        logging.info(f"Creating Limit Order for {action} {quantity} @ {initial_price:.2f} (Adaptive Cap: {order.adaptive_limit_price:.2f}).")
 
     logging.info("Using Custom Adaptive Logic (IBKR Algo Disabled).")
 

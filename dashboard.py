@@ -581,8 +581,10 @@ with tabs[6]:
                     entry_price = row.get('entry_price', 0.0)
                     actual_trend = 'NEUTRAL'
                     if curr_price and entry_price > 0:
-                        if curr_price > entry_price: actual_trend = 'BULLISH'
-                        elif curr_price < entry_price: actual_trend = 'BEARISH'
+                        pct_change = (curr_price - entry_price) / entry_price
+                        # Priority 3: Directional Proxy with Threshold
+                        if pct_change > 0.01: actual_trend = 'BULLISH'
+                        elif pct_change < -0.01: actual_trend = 'BEARISH'
 
                 # Grading
                 for agent_col in agents:

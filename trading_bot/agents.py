@@ -14,8 +14,22 @@ from google import genai
 from google.genai import types
 from trading_bot.state_manager import StateManager
 from trading_bot.sentinels import SentinelTrigger
+from trading_bot.semantic_router import SemanticRouter
 
 logger = logging.getLogger(__name__)
+
+DEBATE_OUTPUT_SCHEMA = """
+Output JSON with this structure:
+{
+    "position": "BULLISH|BEARISH",
+    "key_arguments": [
+        {"claim": "...", "evidence": "...", "confidence": 0.0-1.0}
+    ],
+    "acknowledged_risks": ["..."],
+    "ml_alignment": "AGREES|DISAGREES|NEUTRAL",
+    "ml_confidence_used": 0.0
+}
+"""
 
 class CoffeeCouncil:
     """Manages the tiered Gemini agent system using the new google-genai SDK."""
@@ -29,6 +43,7 @@ class CoffeeCouncil:
         """
         self.config = config.get('gemini', {})
         self.personas = self.config.get('personas', {})
+        self.router = SemanticRouter(config)
 
         # 1. Setup API Key
         api_key = self.config.get('api_key')
@@ -141,12 +156,14 @@ class CoffeeCouncil:
             f"{persona_prompt}\n\n"
             f"--- DESK REPORTS ---\n{reports_text}\n\n"
             f"--- ML SIGNAL ---\n{json.dumps(ml_signal, indent=2)}\n\n"
-            f"Generate your response following the specified format."
+            f"Generate your response following the specified format:\n"
+            f"{DEBATE_OUTPUT_SCHEMA}"
         )
         try:
-            return await self._call_model(self.agent_model_name, prompt)
+            # Enforce JSON output for structured debate
+            return await self._call_model(self.agent_model_name, prompt, response_json=True)
         except Exception as e:
-            return f"Error: {str(e)}"
+            return json.dumps({"error": str(e), "position": "NEUTRAL", "key_arguments": []})
 
     async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict, market_context: str, trigger_reason: str = None) -> dict:
         """
@@ -167,12 +184,15 @@ class CoffeeCouncil:
 
             # Check for Staleness if timestamp exists
             stale_warning = ""
-            if timestamp_str:
-                try:
-                    ts = datetime.fromisoformat(timestamp_str)
+            # Note: StateManager.load_state() now adds "STALE (...)" prefix directly to data string if using the new method
+            # But here we handle the case where we might be reading raw dicts or mixed
+            # If report_content already has "STALE", we don't need to add it again.
+            if "STALE" not in str(report_content) and timestamp_str:
+                 try:
+                    ts = datetime.fromisoformat(timestamp_str) if isinstance(timestamp_str, str) else datetime.fromtimestamp(timestamp_str)
                     if (datetime.now() - ts) > timedelta(hours=24):
                         stale_warning = "[WARNING: DATA IS STALE] "
-                except:
+                 except:
                     pass
 
             reports_text += f"\n--- {agent.upper()} REPORT ---\n{stale_warning}{report_content}\n"
@@ -182,7 +202,7 @@ class CoffeeCouncil:
         bear_task = self._get_red_team_analysis("permabear", reports_text, ml_signal)
         bull_task = self._get_red_team_analysis("permabull", reports_text, ml_signal)
 
-        critique, defense = await asyncio.gather(bear_task, bull_task)
+        bear_json, bull_json = await asyncio.gather(bear_task, bull_task)
 
         # 3. Synthesis: Master Strategist
         master_persona = self.personas.get('master', "You are the Chief Strategist.")
@@ -199,8 +219,12 @@ class CoffeeCouncil:
             f"{market_context}\n\n"
             f"QUANT MODEL SIGNAL:\n{json.dumps(ml_signal, indent=2)}\n\n"
             f"--- DESK REPORTS (THESIS) ---\n{reports_text}\n\n"
-            f"--- PERMABEAR CRITIQUE (ANTITHESIS) ---\n{critique}\n\n"
-            f"--- PERMABULL DEFENSE (ANTITHESIS) ---\n{defense}\n\n"
+            f"--- PERMABEAR CRITIQUE (ANTITHESIS) ---\n{bear_json}\n\n"
+            f"--- PERMABULL DEFENSE (ANTITHESIS) ---\n{bull_json}\n\n"
+            f"SYNTHESIS RULES:\n"
+            f"1. If Bear and Bull BOTH acknowledge a risk -> Weight it 2x\n"
+            f"2. If ML confidence > 0.75 and both debaters cite it -> Follow ML\n"
+            f"3. If ML confidence < 0.5 -> Require unanimous agent agreement for action\n\n"
             f"TASK: Synthesize the evidence. Judge the debate. Render a verdict.\n"
             f"NEGATIVE CONSTRAINT: DO NOT output specific numerical price projections unless explicitly provided in reports.\n"
             f"OUTPUT FORMAT: Valid JSON object ONLY.\n"
@@ -226,42 +250,32 @@ class CoffeeCouncil:
     async def run_specialized_cycle(self, trigger: SentinelTrigger, contract_name: str, ml_signal: dict, market_context: str) -> dict:
         """
         Runs a Triggered Cycle (Hybrid Decision Model).
-        1. Wake up the RELEVANT agent based on trigger source.
+        1. Wake up the RELEVANT agent based on Semantic Router.
         2. Load cached state for other agents.
         3. Run the Debate and Master.
         """
         logger.info(f"Running Specialized Cycle triggered by {trigger.source}...")
         
-        # Load Cached State
+        # Load Cached State (Sync call)
+        # Note: load_state returns dict of key->data (str), potentially with "STALE" prefix
         cached_reports = StateManager.load_state()
 
-        # Determine relevant agent
-        active_agent_key = None
-        search_instruction = ""
+        # Semantic Routing
+        route = self.router.route(trigger)
+        active_agent_key = route.primary_agent
+        logger.info(f"Routing to {active_agent_key} (Reason: {route.reasoning})")
 
-        if trigger.source == "WeatherSentinel":
-            active_agent_key = "agronomist"
-            search_instruction = f"Investigate recent weather alert: {trigger.reason}. Search for 'coffee crop impact {trigger.payload.get('location')}'. Analyze if this is a yield-destroying event."
-        elif trigger.source == "LogisticsSentinel":
-            active_agent_key = "supply_chain"
-            search_instruction = f"Investigate supply chain alert: {trigger.reason}. Search for specific details on '{trigger.payload.get('headlines', [])}'. Estimate impact on export flow."
-        elif trigger.source == "PriceSentinel":
-            active_agent_key = "technical"
-            search_instruction = f"Investigate price shock: {trigger.reason}. Search for 'coffee futures news last hour'. Identify the catalyst (Algo liquidation? News leak?)."
-        else:
-            # Fallback
-            active_agent_key = "macro"
-            search_instruction = f"Investigate market sentiment shift: {trigger.reason}."
+        # Construct specific search instruction based on trigger content
+        search_instruction = f"Investigate alert from {trigger.source}: {trigger.reason}. Details: {trigger.payload}. Analyze impact on Coffee prices."
 
         # Run the Active Agent
         logger.info(f"Waking up {active_agent_key}...")
         fresh_report = await self.research_topic(active_agent_key, search_instruction)
 
-        # Update Reports (Fresh + Cached)
+        # Create combined reports for Decision context
         final_reports = cached_reports.copy()
 
-        # Inject Fresh Report (as string, StateManager will timestamp it on save)
-        # Note: We need to ensure we don't double-nest if we save it back
+        # Overwrite/Add the fresh report
         final_reports[active_agent_key] = fresh_report
 
         # --- Handle "Empty Brain" (Cold Start) ---
@@ -274,8 +288,9 @@ class CoffeeCouncil:
             if agent not in final_reports:
                 final_reports[agent] = "Data Unavailable (Cold Start)"
 
-        # Save updated state
-        StateManager.save_state(final_reports)
+        # Save ONLY the fresh update to StateManager
+        # StateManager will handle the merge and timestamping
+        StateManager.save_state({active_agent_key: fresh_report})
 
         # Run Decision Loop with Context Injection
         return await self.decide(contract_name, ml_signal, final_reports, market_context, trigger_reason=trigger.reason)

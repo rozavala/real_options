@@ -45,8 +45,8 @@ async def test_council_initialization(mock_genai_client, mock_config):
 
     mock_client_cls.assert_called_with(api_key="TEST_KEY")
     assert council.personas['meteorologist'] == "You are a weather expert."
-    assert council.agent_model_name == 'gemini-3.0-flash'
-    assert council.master_model_name == 'gemini-2.5-pro'
+    assert council.agent_model_name == 'gemini-1.5-flash'
+    assert council.master_model_name == 'gemini-1.5-pro'
 
 @pytest.mark.asyncio
 async def test_council_init_fallback(mock_genai_client):
@@ -83,7 +83,7 @@ async def test_research_topic(mock_genai_client, mock_config):
     assert call_args is not None
     kwargs = call_args.kwargs
 
-    assert kwargs['model'] == 'gemini-3.0-flash'
+    assert kwargs['model'] == 'gemini-1.5-flash'
     assert "You are a weather expert." in kwargs['contents']
     assert "Check rain" in kwargs['contents']
 
@@ -123,7 +123,7 @@ async def test_decide_success(mock_genai_client, mock_config):
     call_args = mock_generate_content.call_args
     kwargs = call_args.kwargs
 
-    assert kwargs['model'] == 'gemini-2.5-pro'
+    assert kwargs['model'] == 'gemini-1.5-pro'
 
     # Verify JSON enforcement
     config_arg = kwargs.get('config')

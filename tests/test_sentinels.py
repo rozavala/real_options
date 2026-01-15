@@ -130,10 +130,9 @@ async def test_logistics_sentinel_trigger():
         'gemini': {'api_key': 'TEST'}
     }
 
-    with patch('feedparser.parse') as mock_feed:
-        entry = MagicMock()
-        entry.title = "Strike at Port of Santos"
-        mock_feed.return_value.entries = [entry]
+    # Mock _fetch_rss_safe instead of feedparser directly to bypass network/aiohttp
+    with patch.object(LogisticsSentinel, '_fetch_rss_safe', new_callable=AsyncMock) as mock_rss:
+        mock_rss.return_value = ["Strike at Port of Santos"]
 
         with patch('google.genai.Client') as MockClient:
             mock_client_instance = MockClient.return_value
@@ -148,7 +147,6 @@ async def test_logistics_sentinel_trigger():
             assert trigger is not None
             assert trigger.source == "LogisticsSentinel"
             assert "Strike at Port of Santos" in trigger.payload['headlines']
-            # Check if model config was used (would be passed to generate_content, but we can check sentinel.model)
             assert sentinel.model == 'test-model'
 
 # --- News Sentinel Tests ---
@@ -165,10 +163,8 @@ async def test_news_sentinel_trigger():
         'gemini': {'api_key': 'TEST'}
     }
 
-    with patch('feedparser.parse') as mock_feed:
-        entry = MagicMock()
-        entry.title = "Coffee Market Crash"
-        mock_feed.return_value.entries = [entry]
+    with patch.object(NewsSentinel, '_fetch_rss_safe', new_callable=AsyncMock) as mock_rss:
+        mock_rss.return_value = ["Coffee Market Crash"]
 
         with patch('google.genai.Client') as MockClient:
             mock_client_instance = MockClient.return_value
