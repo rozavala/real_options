@@ -8,7 +8,7 @@ Monitors:
 
 import logging
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from typing import Optional
 from collections import deque
@@ -119,7 +119,9 @@ class MicrostructureSentinel:
             # Check if ticker data is stale (no updates in 5 minutes)
             if hasattr(ticker, 'time') and ticker.time:
                 last_update = ticker.time
-                if (datetime.now() - last_update).seconds > 300:
+                # Ensure we use timezone-aware datetime if ticker.time is aware
+                now = datetime.now(timezone.utc) if last_update.tzinfo else datetime.now()
+                if (now - last_update).seconds > 300:
                     logger.warning(f"Stale ticker data for {con_id}, skipping")
                     continue
 
