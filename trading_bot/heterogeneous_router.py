@@ -114,11 +114,11 @@ def with_retry(max_retries=3, backoff_factor=2):
 # Optimal model assignment based on cognitive profiles
 MODEL_ASSIGNMENTS = {
     # Tier 1: Cost-efficient sentinels (Gemini Flash)
-    AgentRole.WEATHER_SENTINEL: (ModelProvider.GEMINI, "gemini-1.5-flash"),
-    AgentRole.LOGISTICS_SENTINEL: (ModelProvider.GEMINI, "gemini-1.5-flash"),
-    AgentRole.NEWS_SENTINEL: (ModelProvider.GEMINI, "gemini-1.5-flash"),
-    AgentRole.PRICE_SENTINEL: (ModelProvider.GEMINI, "gemini-1.5-flash"),
-    AgentRole.MICROSTRUCTURE_SENTINEL: (ModelProvider.GEMINI, "gemini-1.5-flash"),
+    AgentRole.WEATHER_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash"),
+    AgentRole.LOGISTICS_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash"),
+    AgentRole.NEWS_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash"),
+    AgentRole.PRICE_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash"),
+    AgentRole.MICROSTRUCTURE_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash"),
 
     # Tier 2: Domain experts
     AgentRole.AGRONOMIST: (ModelProvider.GEMINI, "gemini-1.5-pro"),
@@ -131,7 +131,7 @@ MODEL_ASSIGNMENTS = {
 
     # Tier 3: Strategic decision makers
     AgentRole.PERMABEAR: (ModelProvider.ANTHROPIC, "claude-3-5-sonnet-20241022"),
-    AgentRole.PERMABULL: (ModelProvider.OPENAI, "gpt-4o"),
+    AgentRole.PERMABULL: (ModelProvider.XAI, "grok-2"),
     AgentRole.MASTER_STRATEGIST: (ModelProvider.OPENAI, "gpt-4o"),
     AgentRole.COMPLIANCE_OFFICER: (ModelProvider.ANTHROPIC, "claude-3-5-sonnet-20241022"),
 }
@@ -316,7 +316,7 @@ class HeterogeneousRouter:
     def _get_fallback(self, role: AgentRole) -> tuple[ModelProvider, str]:
         """Get fallback when preferred provider unavailable."""
         fallbacks = [
-            (ModelProvider.GEMINI, "gemini-1.5-flash"),
+            (ModelProvider.GEMINI, "gemini-3-flash"),
             (ModelProvider.OPENAI, "gpt-4o-mini"),
             (ModelProvider.ANTHROPIC, "claude-3-5-sonnet-20241022"),
         ]

@@ -48,12 +48,35 @@ class MicrostructureSentinel:
         logger.info(f"MicrostructureSentinel initialized")
 
     async def subscribe_contract(self, contract):
-        """Subscribe to market data for contract."""
+        """Subscribe to market data for contract with conflict handling."""
         if contract.conId in self.tickers:
             return
-        ticker = self.ib.reqMktData(contract, '', False, False)
-        self.tickers[contract.conId] = {'contract': contract, 'ticker': ticker}
-        logger.info(f"Subscribed to microstructure for {contract.localSymbol}")
+
+        try:
+            ticker = self.ib.reqMktData(contract, '', False, False)
+            await asyncio.sleep(2)
+
+            # Check if we got data (live data should have bid/ask/last)
+            # Note: For microstructure we mostly need bid/ask.
+            if ticker.last is None and ticker.bid is None and ticker.ask is None:
+                raise Exception("No data received - possible competing session")
+
+            self.tickers[contract.conId] = {'contract': contract, 'ticker': ticker}
+            logger.info(f"Subscribed to microstructure for {contract.localSymbol}")
+
+        except Exception as e:
+            if "10197" in str(e) or "competing" in str(e).lower() or "No data received" in str(e):
+                logger.warning(f"Competing session detected for {contract.localSymbol}. Switching to delayed data.")
+
+                # Switch to delayed and retry
+                self.ib.reqMarketDataType(3)
+                await asyncio.sleep(0.5)
+
+                ticker = self.ib.reqMktData(contract, '', False, False)
+                self.tickers[contract.conId] = {'contract': contract, 'ticker': ticker}
+                logger.info(f"Subscribed to microstructure (Delayed) for {contract.localSymbol}")
+            else:
+                logger.error(f"Failed to subscribe to {contract.localSymbol}: {e}")
 
     def _calculate_spread_stats(self) -> tuple[float, float]:
         """Calculate mean and std of historical spreads."""

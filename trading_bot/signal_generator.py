@@ -11,7 +11,7 @@ from trading_bot.model_signals import log_model_signal # Keep existing logging
 from trading_bot.utils import log_council_decision
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager # Import StateManager
-from trading_bot.compliance import ComplianceOfficer
+from trading_bot.compliance import ComplianceGuardian
 from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type, TriggerType
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
     compliance = None
     try:
         council = CoffeeCouncil(config)
-        compliance = ComplianceOfficer(config)
+        compliance = ComplianceGuardian(config)
     except Exception as e:
         logger.error(f"Failed to initialize Coffee Council: {e}. Falling back to raw ML signals.")
         send_pushover_notification(
@@ -83,6 +83,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 "direction": final_data["action"]  # Ensure 'direction' key exists for logging
             }
 
+        agent_data = {} # Initialize outside try/except to avoid UnboundLocalError
         async with sem:
             try:
                 logger.info(f"Convening Council for {contract_name}...")

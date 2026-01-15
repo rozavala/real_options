@@ -16,8 +16,8 @@ MOCK_CONFIG = {
 
 @pytest.fixture
 def mock_ib():
-    with patch('trading_bot.order_manager.IB') as MockIB:
-        ib_instance = MockIB.return_value
+    with patch('trading_bot.order_manager.IBConnectionPool') as MockPool:
+        ib_instance = MagicMock()
         ib_instance.connectAsync = AsyncMock()
         ib_instance.disconnect = MagicMock()
         ib_instance.reqPositionsAsync = AsyncMock()
@@ -25,6 +25,7 @@ def mock_ib():
         ib_instance.cancelMktData = MagicMock()
         ib_instance.placeOrder = MagicMock()
         ib_instance.sleep = AsyncMock() # Use asyncio.sleep in code, but IB object might have sleep mocked just in case
+        ib_instance.isConnected.return_value = True
 
         # Mock ticker for price discovery
         mock_ticker = MagicMock()
@@ -33,6 +34,8 @@ def mock_ib():
         mock_ticker.last = 100.5
         mock_ticker.close = 100.0
         ib_instance.reqMktData.return_value = mock_ticker
+
+        MockPool.get_connection = AsyncMock(return_value=ib_instance)
 
         yield ib_instance
 

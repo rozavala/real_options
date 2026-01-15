@@ -24,7 +24,7 @@ from trading_bot.ib_interface import (
 from trading_bot.signal_generator import generate_signals
 from trading_bot.strategy import define_directional_strategy, define_volatility_strategy
 from trading_bot.utils import log_trade_to_ledger, log_order_event, configure_market_data_type
-from trading_bot.compliance import ComplianceOfficer # New Import
+from trading_bot.compliance import ComplianceGuardian
 from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.position_sizer import DynamicPositionSizer
 
@@ -349,8 +349,8 @@ async def place_queued_orders(config: dict, orders_list: list = None):
         logger.info("Order queue is empty. Nothing to place.")
         return
 
-    # --- Initialize Compliance Officer ---
-    compliance = ComplianceOfficer(config)
+    # --- Initialize Compliance Guardian ---
+    compliance = ComplianceGuardian(config)
 
     # Use Connection Pool
     ib = await IBConnectionPool.get_connection("order_manager", config)
@@ -503,9 +503,12 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                 }
 
                 # 2. Compliance Review
-                review_result = await compliance.review(decision_data, order_context)
-                if review_result != "APPROVED":
-                    logger.warning(f"Order for {contract.localSymbol} blocked by Compliance: {review_result}")
+                # Pass 'price' (limit price) to order_context if possible for Notional calculation
+                order_context['price'] = order.lmtPrice if order.orderType == 'LMT' else ticker.last if ticker.last else 0.0
+
+                approved, reason = await compliance.review_order(order_context)
+                if not approved:
+                    logger.warning(f"Order for {contract.localSymbol} blocked by Compliance: {reason}")
                     continue
 
                 # 3. Margin Check

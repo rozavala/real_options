@@ -308,7 +308,13 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 
         # 4. Load Cached ML Signal (Fix Dummy Signal Blindness)
         cached_state = StateManager.load_state()
-        cached_ml_signals = cached_state.get('latest_ml_signals', {}).get('data', [])
+        cached_ml_signals_raw = cached_state.get('latest_ml_signals', {})
+        if isinstance(cached_ml_signals_raw, dict):
+            cached_ml_signals = cached_ml_signals_raw.get('data', [])
+        elif isinstance(cached_ml_signals_raw, list):
+            cached_ml_signals = cached_ml_signals_raw
+        else:
+            cached_ml_signals = []
 
         ml_signal = {
             "action": "NEUTRAL",
