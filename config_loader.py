@@ -57,9 +57,18 @@ def load_config() -> dict | None:
     if os.getenv("STRATEGY_QTY"):
         config['strategy']['quantity'] = int(os.getenv("STRATEGY_QTY"))
 
-    # 6. GEMINI
+    # 6. Models
     if config['gemini']['api_key'] == "LOADED_FROM_ENV":
         config['gemini']['api_key'] = os.getenv("GEMINI_API_KEY")
+
+    if config['anthropic']['api_key'] == "LOADED_FROM_ENV":
+        config['anthropic']['api_key'] = os.getenv("ANTHROPIC_API_KEY")
+
+    if config['openai']['api_key'] == "LOADED_FROM_ENV":
+        config['openai']['api_key'] = os.getenv("OPENAI_API_KEY")
+
+    if config['xai']['api_key'] == "LOADED_FROM_ENV":
+        config['xai']['api_key'] = os.getenv("XAI_API_KEY")
         
     # Safety Check (Optional but recommended)
     if not config['gemini']['api_key']:
