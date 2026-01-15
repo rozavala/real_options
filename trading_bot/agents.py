@@ -193,6 +193,7 @@ class CoffeeCouncil:
             'technical': AgentRole.TECHNICAL_ANALYST,
             'volatility': AgentRole.VOLATILITY_ANALYST,
             'inventory': AgentRole.INVENTORY_ANALYST,
+            'supply_chain': AgentRole.SUPPLY_CHAIN_ANALYST,
         }
         role = role_map.get(persona_key, AgentRole.AGRONOMIST) # Default to Agronomist if unknown
 
@@ -265,6 +266,7 @@ Keep the same format: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG]
             'technical': AgentRole.TECHNICAL_ANALYST,
             'volatility': AgentRole.VOLATILITY_ANALYST,
             'inventory': AgentRole.INVENTORY_ANALYST,
+            'supply_chain': AgentRole.SUPPLY_CHAIN_ANALYST,
         }
         role = role_map.get(persona_key, AgentRole.AGRONOMIST)
 

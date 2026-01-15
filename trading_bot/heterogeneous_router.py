@@ -49,6 +49,7 @@ class AgentRole(Enum):
     TECHNICAL_ANALYST = "technical"
     VOLATILITY_ANALYST = "volatility"
     INVENTORY_ANALYST = "inventory"
+    SUPPLY_CHAIN_ANALYST = "supply_chain"
 
     # Tier 3 - Decision Makers
     PERMABEAR = "permabear"
@@ -245,7 +246,6 @@ class HeterogeneousRouter:
     def __init__(self, config: dict):
         self.config = config
         self.clients: dict[str, LLMClient] = {}
-        self.fallback_provider = ModelProvider.GEMINI
         self.registry = config.get('model_registry', {})
 
         # Extract API keys
@@ -266,41 +266,45 @@ class HeterogeneousRouter:
         cache_ttl = config.get('cache_ttl', 300)
         self.cache = ResponseCache(ttl_seconds=cache_ttl)
 
-        # Dynamic Assignment Logic
-        # 1. TIER 1 SENTINELS (Use "Flash" equivalents)
-        flash_gemini = self.registry.get('gemini', {}).get('flash', 'gemini-3-flash-preview')
+        # 1. LOAD MODEL KEYS (With Defaults)
+        gem_flash = self.registry.get('gemini', {}).get('flash', 'gemini-3-flash-preview')
+        gem_pro = self.registry.get('gemini', {}).get('pro', 'gemini-3-pro-preview')
 
-        # 2. TIER 2 ANALYSTS (Use "Pro" equivalents)
-        pro_gemini = self.registry.get('gemini', {}).get('pro', 'gemini-3-pro-preview')
-        pro_openai = self.registry.get('openai', {}).get('pro', 'gpt-5')
-        pro_xai = self.registry.get('xai', {}).get('pro', 'grok-2')
-        pro_anthropic = self.registry.get('anthropic', {}).get('pro', 'claude-sonnet-4-5-20250929')
+        anth_pro = self.registry.get('anthropic', {}).get('pro', 'claude-opus-4-5-20251101')
 
+        oai_pro = self.registry.get('openai', {}).get('pro', 'gpt-5.2-pro-2025-12-11')
+        oai_reasoning = self.registry.get('openai', {}).get('reasoning', 'o3-2025-04-16')
+
+        xai_pro = self.registry.get('xai', {}).get('pro', 'grok-4-1-fast-reasoning')
+        xai_flash = self.registry.get('xai', {}).get('flash', 'grok-4-fast-non-reasoning')
+
+        # 2. ASSIGN ROLES
         self.assignments = {
-            # Sentinels (Speed is key)
-            AgentRole.WEATHER_SENTINEL: (ModelProvider.GEMINI, flash_gemini),
-            AgentRole.LOGISTICS_SENTINEL: (ModelProvider.GEMINI, flash_gemini),
-            AgentRole.NEWS_SENTINEL: (ModelProvider.GEMINI, flash_gemini),
-            AgentRole.PRICE_SENTINEL: (ModelProvider.GEMINI, flash_gemini),
-            AgentRole.MICROSTRUCTURE_SENTINEL: (ModelProvider.GEMINI, flash_gemini),
+            # --- TIER 1: SENTINELS (Speed is Priority) ---
+            AgentRole.WEATHER_SENTINEL: (ModelProvider.GEMINI, gem_flash),
+            AgentRole.LOGISTICS_SENTINEL: (ModelProvider.GEMINI, gem_flash),
+            AgentRole.NEWS_SENTINEL: (ModelProvider.GEMINI, gem_flash),
+            AgentRole.PRICE_SENTINEL: (ModelProvider.GEMINI, gem_flash),
+            AgentRole.MICROSTRUCTURE_SENTINEL: (ModelProvider.GEMINI, gem_flash),
 
-            # Analysts (Depth is key)
-            AgentRole.AGRONOMIST: (ModelProvider.GEMINI, pro_gemini),
-            AgentRole.VOLATILITY_ANALYST: (ModelProvider.GEMINI, pro_gemini),
-            AgentRole.INVENTORY_ANALYST: (ModelProvider.GEMINI, pro_gemini),
+            # --- TIER 2: ANALYSTS (Depth & Data are Priority) ---
+            AgentRole.AGRONOMIST: (ModelProvider.GEMINI, gem_pro),
+            AgentRole.INVENTORY_ANALYST: (ModelProvider.GEMINI, gem_pro),
+            AgentRole.VOLATILITY_ANALYST: (ModelProvider.GEMINI, gem_pro),
+            AgentRole.SUPPLY_CHAIN_ANALYST: (ModelProvider.GEMINI, gem_pro), # NEW ROLE
 
-            AgentRole.MACRO_ANALYST: (ModelProvider.OPENAI, pro_openai),
-            AgentRole.GEOPOLITICAL_ANALYST: (ModelProvider.OPENAI, pro_openai),
-            AgentRole.TECHNICAL_ANALYST: (ModelProvider.OPENAI, pro_openai),
+            AgentRole.MACRO_ANALYST: (ModelProvider.OPENAI, oai_pro),
+            AgentRole.GEOPOLITICAL_ANALYST: (ModelProvider.OPENAI, oai_pro),
 
-            AgentRole.SENTIMENT_ANALYST: (ModelProvider.XAI, pro_xai), # Grok excels at real-time Twitter/X data
+            AgentRole.TECHNICAL_ANALYST: (ModelProvider.OPENAI, oai_reasoning), # Math/Logic
+            AgentRole.SENTIMENT_ANALYST: (ModelProvider.XAI, xai_flash),
 
-            # Risk & Strategy (Reasoning is key)
-            AgentRole.PERMABEAR: (ModelProvider.ANTHROPIC, pro_anthropic),
-            AgentRole.COMPLIANCE_OFFICER: (ModelProvider.ANTHROPIC, pro_anthropic),
+            # --- TIER 3: DECISION MAKERS (Safety & Debate) ---
+            AgentRole.PERMABULL: (ModelProvider.XAI, xai_pro),             # Contrarian
+            AgentRole.PERMABEAR: (ModelProvider.ANTHROPIC, anth_pro),      # Safety (Opus)
+            AgentRole.COMPLIANCE_OFFICER: (ModelProvider.ANTHROPIC, anth_pro), # Veto (Opus)
 
-            AgentRole.PERMABULL: (ModelProvider.XAI, pro_xai),
-            AgentRole.MASTER_STRATEGIST: (ModelProvider.OPENAI, pro_openai),
+            AgentRole.MASTER_STRATEGIST: (ModelProvider.OPENAI, oai_pro),  # Synthesis
         }
 
         logger.info(f"HeterogeneousRouter initialized. Available: {[p.value for p in self.available_providers]}")
@@ -329,10 +333,11 @@ class HeterogeneousRouter:
 
     def _get_fallback(self, role: AgentRole) -> tuple[ModelProvider, str]:
         """Get fallback when preferred provider unavailable."""
+        # Update fallbacks to match available keys/defaults if needed, or keep simple defaults
         fallbacks = [
             (ModelProvider.GEMINI, "gemini-3-flash-preview"),
-            (ModelProvider.OPENAI, "gpt-5-mini"),
-            (ModelProvider.ANTHROPIC, "claude-3-5-sonnet-20241022"),
+            (ModelProvider.OPENAI, "gpt-5-mini-2025-08-07"), # Updated to one of the keys or similar
+            (ModelProvider.ANTHROPIC, "claude-sonnet-4-5-20250929"), # Just a fallback
         ]
 
         for provider, model in fallbacks:
