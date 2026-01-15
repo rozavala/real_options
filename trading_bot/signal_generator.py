@@ -99,7 +99,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                     "geopolitical": council.research_topic("geopolitical",
                         f"Search for 'Red Sea shipping coffee delays', 'Brazil port of Santos wait times', and 'EUDR regulation delay latest news'. Determine if there are logistical bottlenecks."),
                     "supply_chain": council.research_topic("supply_chain",
-                        f"Search for 'Coffee shipping container shortage', 'Baltic Dry Index trend', and 'Port of Santos strike news'. Predict basis shifts."),
+                        f"Search for 'Cecafé Brazil coffee export report latest', 'Global container freight index rates', and 'Green coffee shipping manifest trends'. Analyze flow volume vs port capacity."),
                     "inventory": council.research_topic("inventory",
                         f"Search for 'ICE Arabica Certified Stocks level current' and 'GCA Green Coffee stocks report latest'. Look for 'Backwardation' in the forward curve."),
                     "sentiment": council.research_topic("sentiment",
