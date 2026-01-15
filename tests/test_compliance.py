@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 from unittest.mock import MagicMock, patch, AsyncMock
-from trading_bot.compliance import ComplianceOfficer
+from trading_bot.compliance import ComplianceGuardian, AgentRole
 
 @pytest.fixture
 def mock_config():
@@ -11,61 +11,48 @@ def mock_config():
     }
 
 @pytest.mark.asyncio
-async def test_compliance_position_limit(mock_config):
-    with patch('google.genai.Client'):
-        officer = ComplianceOfficer(mock_config)
+async def test_compliance_veto(mock_config):
+    # Mock router
+    with patch('trading_bot.compliance.HeterogeneousRouter') as MockRouter:
+        mock_router_instance = MockRouter.return_value
+        mock_router_instance.route = AsyncMock()
+        mock_router_instance.route.return_value = '{"approved": false, "reason": "Vetoed: Position Limit"}'
 
-        decision = {'direction': 'BULLISH', 'reasoning': 'Test'}
-        # Simulate 5 existing positions
-        context = {'total_position_count': 5, 'bid_ask_spread': 0.01}
+        guardian = ComplianceGuardian(mock_config)
 
-        result = await officer.review(decision, context)
-        assert "VETOED: Position Limit Exceeded" in result
+        context = {'symbol': 'KC', 'order_quantity': 1}
+        approved, reason = await guardian.review_order(context)
 
-@pytest.mark.asyncio
-async def test_compliance_liquidity_check(mock_config):
-    with patch('google.genai.Client'):
-        officer = ComplianceOfficer(mock_config)
-
-        decision = {'direction': 'BULLISH', 'reasoning': 'Test'}
-        # Spread > 5 ticks (0.25). Let's say 0.30
-        context = {'total_position_count': 0, 'bid_ask_spread': 0.30}
-
-        result = await officer.review(decision, context)
-        assert "VETOED: Liquidity Gap" in result
-
-@pytest.mark.asyncio
-async def test_compliance_sanity_check_veto(mock_config):
-    with patch('google.genai.Client') as MockClient:
-        # Mock LLM to Veto
-        mock_instance = MockClient.return_value
-        mock_instance.aio.models.generate_content = AsyncMock()
-        mock_response = MagicMock()
-        mock_response.text = '{"approved": false, "flagged_reason": "Fighting the trend"}'
-        mock_instance.aio.models.generate_content.return_value = mock_response
-
-        officer = ComplianceOfficer(mock_config)
-
-        decision = {'direction': 'BULLISH', 'reasoning': 'Buying the dip'}
-        context = {'total_position_count': 0, 'bid_ask_spread': 0.05, 'market_trend_pct': -0.02} # -2% trend
-
-        result = await officer.review(decision, context)
-        assert "VETOED: Sanity Check Failed" in result
+        assert approved is False
+        assert "Vetoed: Position Limit" in reason
 
 @pytest.mark.asyncio
 async def test_compliance_approval(mock_config):
-    with patch('google.genai.Client') as MockClient:
-        # Mock LLM to Approve
-        mock_instance = MockClient.return_value
-        mock_instance.aio.models.generate_content = AsyncMock()
-        mock_response = MagicMock()
-        mock_response.text = '{"approved": true, "flagged_reason": ""}'
-        mock_instance.aio.models.generate_content.return_value = mock_response
+    with patch('trading_bot.compliance.HeterogeneousRouter') as MockRouter:
+        mock_router_instance = MockRouter.return_value
+        mock_router_instance.route = AsyncMock()
+        mock_router_instance.route.return_value = '{"approved": true, "reason": "Approved"}'
 
-        officer = ComplianceOfficer(mock_config)
+        guardian = ComplianceGuardian(mock_config)
+        context = {'symbol': 'KC', 'order_quantity': 1}
 
-        decision = {'direction': 'BULLISH', 'reasoning': 'Solid setup'}
-        context = {'total_position_count': 0, 'bid_ask_spread': 0.05, 'market_trend_pct': 0.01}
+        approved, reason = await guardian.review_order(context)
+        assert approved is True
+        assert "Approved" in reason
 
-        result = await officer.review(decision, context)
-        assert result == "APPROVED"
+@pytest.mark.asyncio
+async def test_audit_decision(mock_config):
+    with patch('trading_bot.compliance.HeterogeneousRouter') as MockRouter:
+        mock_router_instance = MockRouter.return_value
+        mock_router_instance.route = AsyncMock()
+        mock_router_instance.route.return_value = '{"approved": false, "flagged_reason": "Hallucination"}'
+
+        guardian = ComplianceGuardian(mock_config)
+
+        reports = {'agent1': 'report'}
+        market_context = 'context'
+        decision = {'direction': 'BULLISH', 'reasoning': 'Because'}
+
+        result = await guardian.audit_decision(reports, market_context, decision, "")
+        assert result['approved'] is False
+        assert "Hallucination" in result['flagged_reason']

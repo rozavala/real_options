@@ -10,8 +10,31 @@ from google.genai import types
 import pytz
 import aiohttp
 import json
+from functools import wraps
+from notifications import send_pushover_notification
 
 logger = logging.getLogger(__name__)
+
+def with_retry(max_attempts: int = 3, backoff: float = 2.0):
+    """Decorator for retrying failed async operations."""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            last_error = None
+            for attempt in range(max_attempts):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    last_error = e
+                    wait_time = backoff ** attempt
+                    logger.warning(f"{func.__name__} failed (attempt {attempt+1}/{max_attempts}): {e}")
+                    await asyncio.sleep(wait_time)
+
+            # All retries exhausted
+            logger.error(f"{func.__name__} failed after {max_attempts} attempts: {last_error}")
+            return None
+        return wrapper
+    return decorator
 
 class SentinelTrigger:
     """Represents an event triggered by a sentinel."""
@@ -206,10 +229,19 @@ class LogisticsSentinel(Sentinel):
 
         api_key = config.get('gemini', {}).get('api_key')
         self.client = genai.Client(api_key=api_key)
-        self.model = self.sentinel_config.get('model', "gemini-1.5-flash")
+        self.model = self.sentinel_config.get('model', "gemini-3-flash")
 
         # Deduplication Cache (In-memory)
         self.seen_links = set()
+
+    @with_retry(max_attempts=3)
+    async def _analyze_with_ai(self, prompt: str) -> Optional[str]:
+        """AI analysis with retry logic."""
+        response = await self.client.aio.models.generate_content(
+            model=self.model,
+            contents=prompt
+        )
+        return response.text.strip().upper()
 
     async def check(self) -> Optional[SentinelTrigger]:
         headlines = []
@@ -226,20 +258,21 @@ class LogisticsSentinel(Sentinel):
             "Question: Is there a CRITICAL disruption mentioned? Answer only 'YES' or 'NO'."
         )
 
-        try:
-            response = await self.client.aio.models.generate_content(
-                model=self.model,
-                contents=prompt
+        answer = await self._analyze_with_ai(prompt)
+
+        if answer is None:
+            # AI failed even after retries
+            send_pushover_notification(
+                self.config.get('notifications', {}),
+                "Sentinel Degraded",
+                f"LogisticsSentinel AI analysis failed. Manual monitoring recommended."
             )
-            answer = response.text.strip().upper()
+            return None
 
-            if "YES" in answer:
-                msg = "Potential Supply Chain Disruption detected in headlines."
-                logger.warning(f"LOGISTICS SENTINEL TRIGGERED: {msg}")
-                return SentinelTrigger("LogisticsSentinel", msg, {"headlines": headlines[:3]})
-
-        except Exception as e:
-            logger.error(f"Logistics AI analysis failed: {e}")
+        if "YES" in answer:
+            msg = "Potential Supply Chain Disruption detected in headlines."
+            logger.warning(f"LOGISTICS SENTINEL TRIGGERED: {msg}")
+            return SentinelTrigger("LogisticsSentinel", msg, {"headlines": headlines[:3]})
 
         return None
 
@@ -256,10 +289,24 @@ class NewsSentinel(Sentinel):
 
         api_key = config.get('gemini', {}).get('api_key')
         self.client = genai.Client(api_key=api_key)
-        self.model = self.sentinel_config.get('model', "gemini-1.5-flash")
+        self.model = self.sentinel_config.get('model', "gemini-3-flash")
 
         # Deduplication Cache (In-memory)
         self.seen_links = set()
+
+    @with_retry(max_attempts=3)
+    async def _analyze_with_ai(self, prompt: str) -> Optional[dict]:
+        """AI analysis with retry logic."""
+        response = await self.client.aio.models.generate_content(
+            model=self.model,
+            contents=prompt,
+            config=types.GenerateContentConfig(response_mime_type="application/json")
+        )
+        text = response.text.strip()
+        if text.startswith("```json"): text = text[7:]
+        if text.startswith("```"): text = text[:-3]
+        if text.endswith("```"): text = text[:-3]
+        return json.loads(text)
 
     async def check(self) -> Optional[SentinelTrigger]:
         headlines = []
@@ -277,24 +324,21 @@ class NewsSentinel(Sentinel):
             "Output JSON: {'score': int, 'summary': string}"
         )
 
-        try:
-            response = await self.client.aio.models.generate_content(
-                model=self.model,
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json")
+        data = await self._analyze_with_ai(prompt)
+
+        if data is None:
+            # AI failed even after retries
+            send_pushover_notification(
+                self.config.get('notifications', {}),
+                "Sentinel Degraded",
+                f"NewsSentinel AI analysis failed. Manual monitoring recommended."
             )
-            text = response.text.strip()
-            if text.startswith("```json"): text = text[7:]
-            if text.endswith("```"): text = text[:-3]
-            data = json.loads(text)
+            return None
 
-            score = data.get('score', 0)
-            if score >= self.threshold:
-                msg = f"Extreme Sentiment Detected (Score: {score}/10): {data.get('summary')}"
-                logger.warning(f"NEWS SENTINEL TRIGGERED: {msg}")
-                return SentinelTrigger("NewsSentinel", msg, {"score": score, "summary": data.get('summary')})
-
-        except Exception as e:
-            logger.error(f"News AI analysis failed: {e}")
+        score = data.get('score', 0)
+        if score >= self.threshold:
+            msg = f"Extreme Sentiment Detected (Score: {score}/10): {data.get('summary')}"
+            logger.warning(f"NEWS SENTINEL TRIGGERED: {msg}")
+            return SentinelTrigger("NewsSentinel", msg, {"score": score, "summary": data.get('summary')})
 
         return None

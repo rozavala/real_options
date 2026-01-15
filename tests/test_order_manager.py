@@ -13,20 +13,20 @@ class TestOrderManager(unittest.TestCase):
 
     @patch('trading_bot.order_manager.run_data_pull')
     @patch('trading_bot.order_manager.get_model_predictions')
-    @patch('trading_bot.order_manager.IB')
-    def test_generate_orders_aborts_on_data_pull_failure(self, mock_ib, mock_get_predictions, mock_run_data_pull):
+    @patch('trading_bot.order_manager.IBConnectionPool')
+    def test_generate_orders_aborts_on_data_pull_failure(self, mock_pool, mock_get_predictions, mock_run_data_pull):
         async def run_test():
             mock_run_data_pull.return_value = None
             mock_get_predictions.return_value = {'price_changes': [1.0]}
             mock_ib_instance = AsyncMock()
-            mock_ib.return_value = mock_ib_instance
+            mock_pool.get_connection = AsyncMock(return_value=mock_ib_instance)
 
             config = {}
             await generate_and_queue_orders(config)
 
             mock_run_data_pull.assert_called_once()
             mock_get_predictions.assert_not_called()
-            mock_ib_instance.connectAsync.assert_not_called()
+            mock_pool.get_connection.assert_not_called()
 
         asyncio.run(run_test())
 
@@ -95,11 +95,11 @@ class TestPositionClosing(unittest.TestCase):
     # Use MagicMock for place_order because it is a synchronous function in the codebase
     @patch('trading_bot.order_manager.place_order', new_callable=MagicMock)
     @patch('trading_bot.order_manager.log_trade_to_ledger', new_callable=AsyncMock)
-    @patch('trading_bot.order_manager.IB')
-    def test_closes_only_old_positions_and_correct_symbols(self, mock_ib, mock_log_trade, mock_place_order):
+    @patch('trading_bot.order_manager.IBConnectionPool')
+    def test_closes_only_old_positions_and_correct_symbols(self, mock_pool, mock_log_trade, mock_place_order):
         async def run_test():
             mock_ib_instance = AsyncMock()
-            mock_ib.return_value = mock_ib_instance
+            mock_pool.get_connection = AsyncMock(return_value=mock_ib_instance)
             mock_ib_instance.connectAsync = AsyncMock()
             mock_ib_instance.reqPositionsAsync = AsyncMock()
             mock_ib_instance.isConnected = MagicMock(return_value=True)

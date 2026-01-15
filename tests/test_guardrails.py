@@ -45,23 +45,33 @@ def mocks(ib_mock):
     MockCoffeeCouncil = council_patcher.start()
     council_instance = MockCoffeeCouncil.return_value
 
+    # Patch ComplianceGuardian
+    compliance_patcher = patch('trading_bot.signal_generator.ComplianceGuardian')
+    MockCompliance = compliance_patcher.start()
+    compliance_instance = MockCompliance.return_value
+
     # Setup common mocks
     council_instance.research_topic = AsyncMock(return_value="Report Content")
     council_instance.decide = AsyncMock()
-    council_instance.audit_decision = AsyncMock()
+
+    # Audit is on Compliance, not Council
+    compliance_instance.audit_decision = AsyncMock()
 
     yield {
         "council": council_instance,
+        "compliance": compliance_instance,
         "get_active_futures": mock_get_active_futures
     }
 
     # Cleanup
     active_futures_patcher.stop()
     council_patcher.stop()
+    compliance_patcher.stop()
 
 @pytest.mark.asyncio
 async def test_compliance_audit_rejects(config, ib_mock, mocks):
     council_instance = mocks["council"]
+    compliance_instance = mocks["compliance"]
 
     # Setup ML Signal - Need 5 signals
     base_signal = {'confidence': 0.8, 'action': 'LONG', 'expected_price': 105.0, 'price': 100.0}
@@ -76,7 +86,7 @@ async def test_compliance_audit_rejects(config, ib_mock, mocks):
     }
 
     # Setup Audit Rejection
-    council_instance.audit_decision.return_value = {
+    compliance_instance.audit_decision.return_value = {
         'approved': False,
         'flagged_reason': 'Hallucination detected'
     }
@@ -88,11 +98,12 @@ async def test_compliance_audit_rejects(config, ib_mock, mocks):
     result = results[0]
     assert result['direction'] == 'NEUTRAL'
     assert result['confidence'] == 0.0
-    assert 'BLOCKED BY AUDIT' in result['reason']
+    assert 'BLOCKED BY COMPLIANCE' in result['reason']
 
 @pytest.mark.asyncio
 async def test_compliance_audit_fail_closed(config, ib_mock, mocks):
     council_instance = mocks["council"]
+    compliance_instance = mocks["compliance"]
 
     base_signal = {'confidence': 0.8, 'action': 'LONG', 'expected_price': 105.0, 'price': 100.0}
     signals_list = [base_signal.copy() for _ in range(5)]
@@ -105,7 +116,7 @@ async def test_compliance_audit_fail_closed(config, ib_mock, mocks):
     }
 
     # Simulate the agents.py method returning False due to exception
-    council_instance.audit_decision.return_value = {
+    compliance_instance.audit_decision.return_value = {
         'approved': False,
         'flagged_reason': 'AUDIT SYSTEM FAILURE: Timeout'
     }
@@ -115,11 +126,12 @@ async def test_compliance_audit_fail_closed(config, ib_mock, mocks):
     result = results[0]
     assert result['direction'] == 'NEUTRAL'
     assert result['confidence'] == 0.0
-    assert 'BLOCKED BY AUDIT' in result['reason']
+    assert 'BLOCKED BY COMPLIANCE' in result['reason']
 
 @pytest.mark.asyncio
 async def test_price_sanity_check_fails(config, ib_mock, mocks):
     council_instance = mocks["council"]
+    compliance_instance = mocks["compliance"]
 
     # 30% increase (Threshold is 20%)
     current_price = 100.0
@@ -135,7 +147,7 @@ async def test_price_sanity_check_fails(config, ib_mock, mocks):
         'projected_price_5_day': projected_price
     }
 
-    council_instance.audit_decision.return_value = {'approved': True}
+    compliance_instance.audit_decision.return_value = {'approved': True}
 
     results = await generate_signals(ib_mock, signals_list, config)
 
@@ -149,6 +161,7 @@ async def test_price_sanity_check_fails(config, ib_mock, mocks):
 @pytest.mark.asyncio
 async def test_both_checks_pass(config, ib_mock, mocks):
     council_instance = mocks["council"]
+    compliance_instance = mocks["compliance"]
 
     # 10% increase (Safe)
     current_price = 100.0
@@ -164,7 +177,7 @@ async def test_both_checks_pass(config, ib_mock, mocks):
         'projected_price_5_day': projected_price
     }
 
-    council_instance.audit_decision.return_value = {'approved': True}
+    compliance_instance.audit_decision.return_value = {'approved': True}
 
     results = await generate_signals(ib_mock, signals_list, config)
 

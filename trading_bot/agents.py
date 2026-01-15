@@ -16,6 +16,8 @@ from trading_bot.state_manager import StateManager
 from trading_bot.sentinels import SentinelTrigger
 from trading_bot.semantic_router import SemanticRouter
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole, get_router
+from trading_bot.tms import TransactiveMemory
+from trading_bot.reliability_scorer import ReliabilityScorer
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +95,10 @@ class CoffeeCouncil:
             ),
         ]
 
+        # 6. Initialize Cognitive Infrastructure
+        self.tms = TransactiveMemory()
+        self.scorer = ReliabilityScorer()
+
         logger.info(f"Coffee Council initialized. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
 
     def _clean_json_text(self, text: str) -> str:
@@ -158,9 +164,15 @@ class CoffeeCouncil:
 
     async def research_topic(self, persona_key: str, search_instruction: str) -> str:
         """Conducts deep-dive research using a specialized agent persona and Google Search."""
+
+        # Retrieve relevant context from TMS
+        relevant_context = self.tms.retrieve(search_instruction, n_results=2)
+        context_str = "\n".join(relevant_context) if relevant_context else "No prior context."
+
         persona_prompt = self.personas.get(persona_key, "You are a helpful research assistant.")
         full_prompt = (
             f"{persona_prompt}\n\n"
+            f"RELEVANT PRIOR INSIGHTS:\n{context_str}\n\n"
             f"TASK: {search_instruction}\n"
             f"INSTRUCTIONS:\n"
             f"1. USE YOUR TOOLS: Use Google Search to find data from the last 24-48 hours.\n"
@@ -213,9 +225,15 @@ class CoffeeCouncil:
                 # Let's proceed with routing, but maybe we should fall back to _call_model if tool usage is strictly required and router doesn't support it?
                 # The Gap Analysis says "The router creates clients lazily... Issue: The research_topic method still uses self._call_model".
                 # So we must use route().
-                return await self._route_call(role, full_prompt)
+                result = await self._route_call(role, full_prompt)
             else:
-                return await self._call_model(self.agent_model_name, full_prompt, use_tools=True)
+                result = await self._call_model(self.agent_model_name, full_prompt, use_tools=True)
+
+            # Store new insight in TMS
+            if result and len(result) > 50:
+                self.tms.encode(persona_key, result, {"task": search_instruction})
+
+            return result
         except Exception as e:
             return f"Error conducting research: {str(e)}"
 
