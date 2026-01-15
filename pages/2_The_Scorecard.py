@@ -1,0 +1,242 @@
+"""
+Page 2: The Scorecard (Decision Quality)
+
+Purpose: Most critical addition - audits the intelligence of the AI.
+Bridges council_history.csv with market data to evaluate signal-to-outcome.
+"""
+
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from dashboard_utils import (
+    load_council_history,
+    grade_decision_quality,
+    calculate_confusion_matrix,
+    calculate_agent_scores,
+    fetch_live_dashboard_data,
+    get_config
+)
+
+st.set_page_config(layout="wide", page_title="Scorecard | Coffee Bot")
+
+st.title("⚖️ The Scorecard")
+st.caption("Decision Quality Analysis - Is the Master Strategist generating alpha or just noise?")
+
+# --- Load Data ---
+council_df = load_council_history()
+config = get_config()
+
+if council_df.empty:
+    st.warning("No council history data available. Run the bot to generate decisions.")
+    st.stop()
+
+# Get live price for grading recent decisions
+live_price = None
+if config:
+    live_data = fetch_live_dashboard_data(config)
+    live_price = live_data.get('KC_Price')
+
+# Grade decisions
+graded_df = grade_decision_quality(council_df)
+
+st.markdown("---")
+
+# === SECTION 1: The "Truth" Matrix (Confusion Matrix) ===
+st.subheader("🎯 The Truth Matrix")
+st.caption("Classification of every Master Decision against actual market outcome")
+
+confusion = calculate_confusion_matrix(graded_df)
+
+matrix_cols = st.columns([2, 3])
+
+with matrix_cols[0]:
+    # Visual Confusion Matrix
+    matrix_data = [
+        [confusion['true_positive'], confusion['false_negative']],
+        [confusion['false_positive'], confusion['true_negative']]
+    ]
+
+    fig = go.Figure(data=go.Heatmap(
+        z=matrix_data,
+        x=['Market UP', 'Market DOWN'],
+        y=['AI: BULLISH', 'AI: BEARISH'],
+        text=[
+            [f"TP: {confusion['true_positive']}", f"FN: {confusion['false_negative']}"],
+            [f"FP: {confusion['false_positive']}", f"TN: {confusion['true_negative']}"]
+        ],
+        texttemplate="%{text}",
+        colorscale='RdYlGn',
+        showscale=False
+    ))
+
+    fig.update_layout(
+        title="Confusion Matrix",
+        height=300,
+        margin=dict(l=0, r=0, t=40, b=0)
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+with matrix_cols[1]:
+    # Metrics
+    metric_cols = st.columns(4)
+
+    with metric_cols[0]:
+        st.metric("Precision", f"{confusion['precision']:.1%}")
+        st.caption("TP / (TP + FP)")
+
+    with metric_cols[1]:
+        st.metric("Recall", f"{confusion['recall']:.1%}")
+        st.caption("TP / (TP + FN)")
+
+    with metric_cols[2]:
+        st.metric("Accuracy", f"{confusion['accuracy']:.1%}")
+        st.caption("(TP + TN) / Total")
+
+    with metric_cols[3]:
+        st.metric("Total Graded", confusion['total'])
+        st.caption("Decisions evaluated")
+
+st.markdown("---")
+
+# === SECTION 2: The "Liar's Plot" (Confidence vs. P&L) ===
+st.subheader("📊 The Liar's Plot")
+st.caption("High confidence should correlate with profits. Bottom-right clustering indicates overconfidence.")
+
+if 'master_confidence' in graded_df.columns and 'pnl' in graded_df.columns:
+    plot_df = graded_df[graded_df['outcome'].isin(['WIN', 'LOSS'])].copy()
+
+    if not plot_df.empty:
+        plot_df['pnl'] = plot_df.get('pnl', 0).fillna(0)
+
+        fig = px.scatter(
+            plot_df,
+            x='master_confidence',
+            y='pnl',
+            color='outcome',
+            color_discrete_map={'WIN': '#00CC96', 'LOSS': '#EF553B'},
+            hover_data=['timestamp', 'contract', 'master_decision'],
+            title="Confidence vs. Realized P&L"
+        )
+
+        fig.add_hline(y=0, line_dash="dash", line_color="gray")
+        fig.add_vline(x=0.75, line_dash="dash", line_color="gray", annotation_text="High Confidence Zone")
+
+        fig.update_layout(
+            xaxis_title="Master Confidence Score",
+            yaxis_title="Realized P&L ($)",
+            xaxis_range=[0.5, 1.0],
+            height=400
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Quadrant Analysis
+        high_conf = plot_df[plot_df['master_confidence'] >= 0.75]
+        if not high_conf.empty:
+            high_conf_wins = (high_conf['outcome'] == 'WIN').sum()
+            high_conf_total = len(high_conf)
+            st.info(f"High Confidence Zone (≥75%): **{high_conf_wins}/{high_conf_total}** wins ({high_conf_wins/high_conf_total:.1%} accuracy)")
+    else:
+        st.info("Not enough graded decisions with P&L data for this chart.")
+else:
+    st.info("P&L data not available in graded decisions.")
+
+st.markdown("---")
+
+# === SECTION 3: Agent Leaderboard (Brier Score / Accuracy) ===
+st.subheader("🏆 Agent Leaderboard")
+st.caption("Ranking sub-agents by prediction accuracy - helps identify which agents to trust")
+
+scores = calculate_agent_scores(council_df, live_price)
+
+# Pretty names for display
+pretty_names = {
+    'meteorologist_sentiment': '🌦️ Meteorologist',
+    'macro_sentiment': '💵 Macro Economist',
+    'geopolitical_sentiment': '🌍 Geopolitical',
+    'fundamentalist_sentiment': '📦 Fundamentalist',
+    'sentiment_sentiment': '🧠 Sentiment/COT',
+    'technical_sentiment': '📉 Technical',
+    'volatility_sentiment': '⚡ Volatility',
+    'master_decision': '👑 Master Strategist'
+}
+
+# Sort by accuracy
+sorted_agents = sorted(
+    [(k, v) for k, v in scores.items() if v['total'] > 0],
+    key=lambda x: x[1]['accuracy'],
+    reverse=True
+)
+
+if sorted_agents:
+    # Create leaderboard chart
+    chart_data = pd.DataFrame([
+        {
+            'Agent': pretty_names.get(agent, agent),
+            'Accuracy': score['accuracy'] * 100,
+            'Correct': score['correct'],
+            'Total': score['total']
+        }
+        for agent, score in sorted_agents
+    ])
+
+    fig = px.bar(
+        chart_data,
+        x='Agent',
+        y='Accuracy',
+        color='Accuracy',
+        color_continuous_scale='RdYlGn',
+        text='Accuracy',
+        hover_data=['Correct', 'Total']
+    )
+
+    fig.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+    fig.update_layout(
+        yaxis_title="Accuracy %",
+        yaxis_range=[0, 100],
+        height=400,
+        showlegend=False
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Detailed table
+    with st.expander("📋 Detailed Scores"):
+        st.dataframe(chart_data, use_container_width=True)
+else:
+    st.info("Not enough data to calculate agent scores.")
+
+st.markdown("---")
+
+# === SECTION 4: Decision History Table ===
+st.subheader("📜 Recent Decisions")
+
+if not graded_df.empty:
+    display_df = graded_df[[
+        'timestamp', 'contract', 'master_decision', 'master_confidence', 'outcome'
+    ]].copy()
+    display_df['master_confidence'] = display_df['master_confidence'].apply(lambda x: f"{x:.1%}")
+
+    # Color code outcomes
+    def style_outcome(val):
+        if val == 'WIN':
+            return 'background-color: #00CC96; color: white'
+        elif val == 'LOSS':
+            return 'background-color: #EF553B; color: white'
+        return 'background-color: gray; color: white'
+
+    st.dataframe(
+        display_df.sort_values('timestamp', ascending=False).head(20).style.applymap(
+            style_outcome, subset=['outcome']
+        ),
+        use_container_width=True
+    )
+else:
+    st.info("No decisions to display.")
