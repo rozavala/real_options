@@ -111,30 +111,6 @@ def with_retry(max_retries=3, backoff_factor=2):
     return decorator
 
 
-# Optimal model assignment based on cognitive profiles
-MODEL_ASSIGNMENTS = {
-    # Tier 1: Cost-efficient sentinels (Gemini Flash)
-    AgentRole.WEATHER_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash-preview"),
-    AgentRole.LOGISTICS_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash-preview"),
-    AgentRole.NEWS_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash-preview"),
-    AgentRole.PRICE_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash-preview"),
-    AgentRole.MICROSTRUCTURE_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash-preview"),
-
-    # Tier 2: Domain experts
-    AgentRole.AGRONOMIST: (ModelProvider.GEMINI, "gemini-1.5-pro"),
-    AgentRole.MACRO_ANALYST: (ModelProvider.OPENAI, "gpt-4o"),
-    AgentRole.GEOPOLITICAL_ANALYST: (ModelProvider.OPENAI, "gpt-4o"),
-    AgentRole.SENTIMENT_ANALYST: (ModelProvider.XAI, "grok-beta"),
-    AgentRole.TECHNICAL_ANALYST: (ModelProvider.OPENAI, "gpt-4o"),
-    AgentRole.VOLATILITY_ANALYST: (ModelProvider.GEMINI, "gemini-1.5-pro"),
-    AgentRole.INVENTORY_ANALYST: (ModelProvider.GEMINI, "gemini-1.5-pro"),
-
-    # Tier 3: Strategic decision makers
-    AgentRole.PERMABEAR: (ModelProvider.ANTHROPIC, "claude-3-5-sonnet-20241022"),
-    AgentRole.PERMABULL: (ModelProvider.XAI, "grok-2"),
-    AgentRole.MASTER_STRATEGIST: (ModelProvider.OPENAI, "gpt-4o"),
-    AgentRole.COMPLIANCE_OFFICER: (ModelProvider.ANTHROPIC, "claude-3-5-sonnet-20241022"),
-}
 
 
 class LLMClient(ABC):
@@ -270,6 +246,7 @@ class HeterogeneousRouter:
         self.config = config
         self.clients: dict[str, LLMClient] = {}
         self.fallback_provider = ModelProvider.GEMINI
+        self.registry = config.get('model_registry', {})
 
         # Extract API keys
         self.api_keys = {
@@ -288,6 +265,43 @@ class HeterogeneousRouter:
         # Initialize Cache
         cache_ttl = config.get('cache_ttl', 300)
         self.cache = ResponseCache(ttl_seconds=cache_ttl)
+
+        # Dynamic Assignment Logic
+        # 1. TIER 1 SENTINELS (Use "Flash" equivalents)
+        flash_gemini = self.registry.get('gemini', {}).get('flash', 'gemini-3-flash-preview')
+
+        # 2. TIER 2 ANALYSTS (Use "Pro" equivalents)
+        pro_gemini = self.registry.get('gemini', {}).get('pro', 'gemini-3-pro-preview')
+        pro_openai = self.registry.get('openai', {}).get('pro', 'gpt-5')
+        pro_xai = self.registry.get('xai', {}).get('pro', 'grok-2')
+        pro_anthropic = self.registry.get('anthropic', {}).get('pro', 'claude-sonnet-4-5-20250929')
+
+        self.assignments = {
+            # Sentinels (Speed is key)
+            AgentRole.WEATHER_SENTINEL: (ModelProvider.GEMINI, flash_gemini),
+            AgentRole.LOGISTICS_SENTINEL: (ModelProvider.GEMINI, flash_gemini),
+            AgentRole.NEWS_SENTINEL: (ModelProvider.GEMINI, flash_gemini),
+            AgentRole.PRICE_SENTINEL: (ModelProvider.GEMINI, flash_gemini),
+            AgentRole.MICROSTRUCTURE_SENTINEL: (ModelProvider.GEMINI, flash_gemini),
+
+            # Analysts (Depth is key)
+            AgentRole.AGRONOMIST: (ModelProvider.GEMINI, pro_gemini),
+            AgentRole.VOLATILITY_ANALYST: (ModelProvider.GEMINI, pro_gemini),
+            AgentRole.INVENTORY_ANALYST: (ModelProvider.GEMINI, pro_gemini),
+
+            AgentRole.MACRO_ANALYST: (ModelProvider.OPENAI, pro_openai),
+            AgentRole.GEOPOLITICAL_ANALYST: (ModelProvider.OPENAI, pro_openai),
+            AgentRole.TECHNICAL_ANALYST: (ModelProvider.OPENAI, pro_openai),
+
+            AgentRole.SENTIMENT_ANALYST: (ModelProvider.XAI, pro_xai), # Grok excels at real-time Twitter/X data
+
+            # Risk & Strategy (Reasoning is key)
+            AgentRole.PERMABEAR: (ModelProvider.ANTHROPIC, pro_anthropic),
+            AgentRole.COMPLIANCE_OFFICER: (ModelProvider.ANTHROPIC, pro_anthropic),
+
+            AgentRole.PERMABULL: (ModelProvider.XAI, pro_xai),
+            AgentRole.MASTER_STRATEGIST: (ModelProvider.OPENAI, pro_openai),
+        }
 
         logger.info(f"HeterogeneousRouter initialized. Available: {[p.value for p in self.available_providers]}")
 
@@ -344,9 +358,9 @@ class HeterogeneousRouter:
             logger.debug(f"Cache hit for {role.value}")
             return cached_response
 
-        provider, model_name = MODEL_ASSIGNMENTS.get(
+        provider, model_name = self.assignments.get(
             role,
-            (ModelProvider.GEMINI, "gemini-1.5-flash")
+            (ModelProvider.GEMINI, "gemini-3-flash-preview")
         )
 
         if provider not in self.available_providers:
