@@ -13,6 +13,9 @@ import os
 import json
 import logging
 import asyncio
+import hashlib
+from datetime import datetime, timedelta
+from functools import wraps
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Optional, Any
@@ -64,6 +67,50 @@ class ModelConfig:
     max_tokens: int = 4096
 
 
+class ResponseCache:
+    """Simple in-memory cache for LLM responses."""
+
+    def __init__(self, ttl_seconds: int = 300):
+        self.cache = {}
+        self.ttl = ttl_seconds
+
+    def _hash_key(self, prompt: str, role: str) -> str:
+        return hashlib.md5(f"{role}:{prompt}".encode()).hexdigest()
+
+    def get(self, prompt: str, role: str) -> Optional[str]:
+        key = self._hash_key(prompt, role)
+        if key in self.cache:
+            entry = self.cache[key]
+            if datetime.now() - entry['timestamp'] < timedelta(seconds=self.ttl):
+                return entry['response']
+            del self.cache[key]
+        return None
+
+    def set(self, prompt: str, role: str, response: str):
+        key = self._hash_key(prompt, role)
+        self.cache[key] = {'response': response, 'timestamp': datetime.now()}
+
+
+def with_retry(max_retries=3, backoff_factor=2):
+    """Decorator to retry async methods with exponential backoff."""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            last_exception = None
+            for attempt in range(max_retries):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    if attempt < max_retries - 1:
+                        wait_time = backoff_factor ** attempt
+                        logger.warning(f"Attempt {attempt+1} failed for {func.__name__}, retrying in {wait_time}s: {e}")
+                        await asyncio.sleep(wait_time)
+            raise last_exception
+        return wrapper
+    return decorator
+
+
 # Optimal model assignment based on cognitive profiles
 MODEL_ASSIGNMENTS = {
     # Tier 1: Cost-efficient sentinels (Gemini Flash)
@@ -111,6 +158,7 @@ class GeminiClient(LLMClient):
         self.client = genai.Client(api_key=api_key)
         self.types = types
 
+    @with_retry()
     async def generate(self, prompt: str, system_prompt: Optional[str] = None,
                       response_json: bool = False) -> str:
         full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
@@ -139,6 +187,7 @@ class OpenAIClient(LLMClient):
         self.client = AsyncOpenAI(api_key=api_key)
         self.config = config
 
+    @with_retry()
     async def generate(self, prompt: str, system_prompt: Optional[str] = None,
                       response_json: bool = False) -> str:
         messages = []
@@ -169,6 +218,7 @@ class AnthropicClient(LLMClient):
         self.client = AsyncAnthropic(api_key=api_key)
         self.config = config
 
+    @with_retry()
     async def generate(self, prompt: str, system_prompt: Optional[str] = None,
                       response_json: bool = False) -> str:
         kwargs = {
@@ -196,6 +246,7 @@ class XAIClient(LLMClient):
         )
         self.config = config
 
+    @with_retry()
     async def generate(self, prompt: str, system_prompt: Optional[str] = None,
                       response_json: bool = False) -> str:
         messages = []
@@ -233,6 +284,10 @@ class HeterogeneousRouter:
         for provider, key in self.api_keys.items():
             if key and key != "YOUR_API_KEY_HERE":
                 self.available_providers.add(provider)
+
+        # Initialize Cache
+        cache_ttl = config.get('cache_ttl', 300)
+        self.cache = ResponseCache(ttl_seconds=cache_ttl)
 
         logger.info(f"HeterogeneousRouter initialized. Available: {[p.value for p in self.available_providers]}")
 
@@ -281,6 +336,14 @@ class HeterogeneousRouter:
         response_json: bool = False
     ) -> str:
         """Route request to appropriate model."""
+
+        # Check Cache
+        full_key_prompt = f"{system_prompt or ''}:{prompt}"
+        cached_response = self.cache.get(full_key_prompt, role.value)
+        if cached_response:
+            logger.debug(f"Cache hit for {role.value}")
+            return cached_response
+
         provider, model_name = MODEL_ASSIGNMENTS.get(
             role,
             (ModelProvider.GEMINI, "gemini-1.5-flash")
@@ -291,16 +354,24 @@ class HeterogeneousRouter:
 
         logger.debug(f"Routing {role.value} to {provider.value}/{model_name}")
 
+        response = None
         try:
             client = self._get_client(provider, model_name)
-            return await client.generate(prompt, system_prompt, response_json)
+            response = await client.generate(prompt, system_prompt, response_json)
         except Exception as e:
             logger.error(f"{provider.value}/{model_name} failed: {e}")
             fallback_provider, fallback_model = self._get_fallback(role)
             if fallback_provider != provider:
                 client = self._get_client(fallback_provider, fallback_model)
-                return await client.generate(prompt, system_prompt, response_json)
-            raise
+                response = await client.generate(prompt, system_prompt, response_json)
+            else:
+                raise e
+
+        # Cache response if successful
+        if response:
+            self.cache.set(full_key_prompt, role.value, response)
+
+        return response
 
     def get_diversity_report(self) -> dict:
         """Report on model diversity."""

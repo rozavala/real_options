@@ -79,12 +79,26 @@ class MicrostructureSentinel:
 
     async def check(self) -> Optional[SentinelTrigger]:
         """Check for microstructure anomalies."""
-        if not self.ib.isConnected() or self._is_in_cooldown() or not self.tickers:
+        if not self.ib.isConnected():
+            # Clear stale data on disconnect
+            self.spread_history.clear()
+            self.volume_history.clear()
             return None
 
-        for con_id, data in self.tickers.items():
+        if self._is_in_cooldown() or not self.tickers:
+            return None
+
+        # Add staleness check - copy items to avoid mutation issues if dict changes
+        for con_id, data in list(self.tickers.items()):
             ticker = data['ticker']
             contract = data['contract']
+
+            # Check if ticker data is stale (no updates in 5 minutes)
+            if hasattr(ticker, 'time') and ticker.time:
+                last_update = ticker.time
+                if (datetime.now() - last_update).seconds > 300:
+                    logger.warning(f"Stale ticker data for {con_id}, skipping")
+                    continue
 
             if not ticker.bid or not ticker.ask or ticker.bid <= 0 or ticker.ask <= 0:
                 continue

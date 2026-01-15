@@ -89,8 +89,9 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
 
                 # A. Define Research Tasks
                 # Note: We use specific keywords to guide the Flash model search
+                # We use 'research_topic_with_reflexion' for critical analysts to reduce hallucinations
                 tasks = {
-                    "agronomist": council.research_topic("agronomist",
+                    "agronomist": council.research_topic_with_reflexion("agronomist",
                         f"Search for 'current 10-day weather forecast Minas Gerais coffee zone' and 'NOAA Brazil precipitation anomaly'. Analyze if recent rains are beneficial for flowering or excessive."),
                     "macro": council.research_topic("macro",
                         f"Search for 'USD BRL exchange rate forecast' and 'Brazil Central Bank Selic rate outlook'. Determine if the BRL is trending to encourage farmer selling."),
@@ -102,7 +103,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         f"Search for 'ICE Arabica Certified Stocks level current' and 'GCA Green Coffee stocks report latest'. Look for 'Backwardation' in the forward curve."),
                     "sentiment": council.research_topic("sentiment",
                         f"Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought."),
-                    "technical": council.research_topic("technical",
+                    "technical": council.research_topic_with_reflexion("technical",
                         f"Search for 'Coffee futures technical analysis {contract.localSymbol}' and '{contract.localSymbol} support resistance levels'. "
                         f"Look for 'RSI divergence' or 'Moving Average crossover'. "
                         f"IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'."),
@@ -193,6 +194,40 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
 
                 # Call decided (which now includes the Hegelian Loop)
                 decision = await council.decide(contract_name, ml_signal, reports, market_context_str)
+
+                # --- WEIGHTED VOTE CONFLICT RESOLUTION ---
+                # Check for strong disagreement between Master and Weighted Vote
+                if weighted_result['confidence'] > 0.7:
+                    # Map weighted result to simpler direction for comparison
+                    vote_dir = weighted_result['direction'] # BULLISH, BEARISH, NEUTRAL
+                    master_dir = decision.get('direction', 'NEUTRAL')
+
+                    if vote_dir != master_dir and vote_dir != 'NEUTRAL':
+                        logger.warning(f"CONFLICT: Master={master_dir} vs Weighted={vote_dir} (Conf: {weighted_result['confidence']:.2f})")
+
+                        # Override Master if weighted confidence is very high (> 0.85) or Master is just wrong?
+                        # Let's be conservative: If Weighted is > 0.85 and contradicts, OVERRIDE.
+                        if weighted_result['confidence'] > 0.85:
+                            decision['direction'] = vote_dir
+                            decision['confidence'] = weighted_result['confidence']
+                            decision['reasoning'] += f" [OVERRIDE: Strong agent consensus ({vote_dir})]"
+                            logger.info(f"Overriding Master decision with Weighted Vote: {vote_dir}")
+
+                        # If Master says trade but Vote says NEUTRAL/OPPOSITE with > 0.7 confidence?
+                        elif master_dir != 'NEUTRAL':
+                             # Force Neutral if strong dissension
+                             decision['direction'] = 'NEUTRAL'
+                             decision['reasoning'] += f" [VETO: Agents disagree ({vote_dir})]"
+                             logger.info("Vetoing Master decision due to agent dissension.")
+
+                # --- DEVIL'S ADVOCATE (Pre-Mortem) ---
+                if decision.get('direction') != 'NEUTRAL' and decision.get('confidence', 0) > 0.5:
+                    devils_review = await council.run_devils_advocate(decision, str(reports), market_context_str)
+
+                    if not devils_review.get('proceed', True):
+                        logger.warning(f"Devil's Advocate VETOED trade: {devils_review.get('recommendation')}")
+                        decision['direction'] = 'NEUTRAL'
+                        decision['reasoning'] += f" [DA VETO: {devils_review.get('risks', ['Unknown'])[0]}]"
 
                 # --- E.1: EARLY COMPLIANCE AUDIT (Hallucination Check) ---
                 compliance_approved = True

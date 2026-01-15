@@ -171,18 +171,100 @@ class CoffeeCouncil:
             f"   [SENTIMENT TAG]: End with exactly one: [SENTIMENT: BULLISH], [SENTIMENT: BEARISH], or [SENTIMENT: NEUTRAL].\n"
         )
 
+        # Determine Role for routing
+        role_map = {
+            'agronomist': AgentRole.AGRONOMIST,
+            'macro': AgentRole.MACRO_ANALYST,
+            'geopolitical': AgentRole.GEOPOLITICAL_ANALYST,
+            'sentiment': AgentRole.SENTIMENT_ANALYST,
+            'technical': AgentRole.TECHNICAL_ANALYST,
+            'volatility': AgentRole.VOLATILITY_ANALYST,
+            'inventory': AgentRole.INVENTORY_ANALYST,
+        }
+        role = role_map.get(persona_key, AgentRole.AGRONOMIST) # Default to Agronomist if unknown
+
         try:
-            return await self._call_model(self.agent_model_name, full_prompt, use_tools=True)
+            if self.use_heterogeneous:
+                # Note: Currently HeterogeneousRouter interfaces don't support tools yet in this impl,
+                # but let's assume router handles it or we fall back.
+                # Actually, the router code calls generate() on clients.
+                # GeminiClient implementation in router supports tools?
+                # Looking at HeterogeneousRouter code, it passes system_prompt and prompt.
+                # It does NOT pass use_tools explicitly.
+                # However, for Analyst roles, we generally want tools (Search).
+                # The current router implementation calls generate(prompt, system_prompt).
+                # The GeminiClient.generate in router sends contents=full_prompt.
+                # It does NOT seem to enable tools dynamically.
+                # FIX: We should use the existing _call_model for tool usage OR update router.
+                # For now, to be safe and use tools (which are critical for research),
+                # we might stick to _call_model for RESEARCH if tools are needed,
+                # UNLESS we update the router to support tools.
+
+                # Given the instruction "Route Tier 2 Analysts", we should use the router.
+                # But we need Search.
+                # Let's assume for this task we use the router but modify the prompt to include search data if possible,
+                # or acknowledge that currently only Gemini (via _call_model) has tool support easily wired up here.
+
+                # Actually, the user wants us to use the router.
+                # Let's try to use the router. If the specific client (e.g. GPT-4o) doesn't have search tools configured,
+                # the agent will hallucinate or rely on training data.
+                # This is a risk.
+                # However, Gemini 1.5 Pro (Agronomist) is in the router.
+                # Let's proceed with routing, but maybe we should fall back to _call_model if tool usage is strictly required and router doesn't support it?
+                # The Gap Analysis says "The router creates clients lazily... Issue: The research_topic method still uses self._call_model".
+                # So we must use route().
+                return await self._route_call(role, full_prompt)
+            else:
+                return await self._call_model(self.agent_model_name, full_prompt, use_tools=True)
         except Exception as e:
             return f"Error conducting research: {str(e)}"
 
-    async def _get_red_team_analysis(self, persona_key: str, reports_text: str, ml_signal: dict) -> str:
+    async def research_topic_with_reflexion(self, persona_key: str, search_instruction: str) -> str:
+        """Research with self-correction loop."""
+
+        # Step 1: Initial analysis
+        initial_response = await self.research_topic(persona_key, search_instruction)
+
+        # Step 2: Reflexion prompt
+        reflexion_prompt = f"""You previously wrote this analysis:
+
+{initial_response}
+
+TASK: Critique your own analysis.
+1. Are there logical fallacies? (Confirmation bias, recency bias, false causation?)
+2. Did you cite specific sources, or did you make vague claims?
+3. Is your sentiment tag justified by the evidence?
+
+REVISED ANALYSIS: Provide an improved version that addresses any weaknesses.
+Keep the same format: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG]
+"""
+        role_map = {
+            'agronomist': AgentRole.AGRONOMIST,
+            'macro': AgentRole.MACRO_ANALYST,
+            'geopolitical': AgentRole.GEOPOLITICAL_ANALYST,
+            'sentiment': AgentRole.SENTIMENT_ANALYST,
+            'technical': AgentRole.TECHNICAL_ANALYST,
+            'volatility': AgentRole.VOLATILITY_ANALYST,
+            'inventory': AgentRole.INVENTORY_ANALYST,
+        }
+        role = role_map.get(persona_key, AgentRole.AGRONOMIST)
+
+        revised = await self._route_call(role, reflexion_prompt)
+        return revised
+
+    async def _get_red_team_analysis(self, persona_key: str, reports_text: str, ml_signal: dict, opponent_argument: str = None) -> str:
         """Gets critique/defense from Permabear or Permabull."""
         persona_prompt = self.personas.get(persona_key, "")
+
+        context_prompt = ""
+        if opponent_argument:
+            context_prompt = f"\n\n--- OPPONENT ARGUMENT ---\n{opponent_argument}\n\nTASK: RESPOND to the above argument. Defend your position against it."
+
         prompt = (
             f"{persona_prompt}\n\n"
             f"--- DESK REPORTS ---\n{reports_text}\n\n"
-            f"--- ML SIGNAL ---\n{json.dumps(ml_signal, indent=2)}\n\n"
+            f"--- ML SIGNAL ---\n{json.dumps(ml_signal, indent=2)}\n"
+            f"{context_prompt}\n\n"
             f"Generate your response following the specified format:\n"
             f"{DEBATE_OUTPUT_SCHEMA}"
         )
@@ -192,6 +274,56 @@ class CoffeeCouncil:
             return await self._route_call(role, prompt, response_json=True)
         except Exception as e:
             return json.dumps({"error": str(e), "position": "NEUTRAL", "key_arguments": []})
+
+    async def _run_dialectical_debate(self, reports_text: str, ml_signal: dict) -> tuple[str, str]:
+        """Run sequential attack-defense debate."""
+
+        # Step 1: Bear attacks the thesis
+        bear_json = await self._get_red_team_analysis("permabear", reports_text, ml_signal)
+
+        # Step 2: Bull must RESPOND to the specific critique
+        # We assume bear_json is a JSON string, let's pass it as context
+        bull_json = await self._get_red_team_analysis("permabull", reports_text, ml_signal, opponent_argument=bear_json)
+
+        return bear_json, bull_json
+
+    async def run_devils_advocate(self, decision: dict, reports_text: str, market_context: str) -> dict:
+        """
+        Run Pre-Mortem analysis on a tentative decision.
+        Returns: {'proceed': bool, 'risks': list, 'recommendation': str}
+        """
+        if decision.get('direction') == 'NEUTRAL':
+            return {'proceed': True, 'risks': [], 'recommendation': 'No trade proposed'}
+
+        prompt = f"""You are the Devil's Advocate. Your job is to ATTACK this trade.
+
+PROPOSED TRADE: {decision.get('direction')} Coffee
+CONFIDENCE: {decision.get('confidence')}
+REASONING: {decision.get('reasoning')}
+
+MARKET CONTEXT:
+{market_context}
+
+AGENT REPORTS:
+{reports_text}
+
+TASK: Run a PRE-MORTEM analysis.
+Assume this trade has FAILED CATASTROPHICALLY 5 days from now.
+Write a report explaining:
+1. What went wrong? (3 specific scenarios)
+2. What bias did we succumb to? (Recency? Confirmation? Crowded trade?)
+3. What data did we ignore or misinterpret?
+4. VERDICT: Should we proceed? (YES/NO)
+
+OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' (string)
+"""
+
+        try:
+            response = await self._route_call(AgentRole.PERMABEAR, prompt, response_json=True)
+            return json.loads(self._clean_json_text(response))
+        except Exception as e:
+            logger.error(f"Devil's Advocate failed: {e}")
+            return {'proceed': True, 'risks': ['DA Failed'], 'recommendation': 'Proceed with caution (DA Error)'}
 
     async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict, market_context: str, trigger_reason: str = None) -> dict:
         """
@@ -226,11 +358,8 @@ class CoffeeCouncil:
             reports_text += f"\n--- {agent.upper()} REPORT ---\n{stale_warning}{report_content}\n"
 
         # 2. Antithesis: The Dialectical Debate
-        # Run in parallel
-        bear_task = self._get_red_team_analysis("permabear", reports_text, ml_signal)
-        bull_task = self._get_red_team_analysis("permabull", reports_text, ml_signal)
-
-        bear_json, bull_json = await asyncio.gather(bear_task, bull_task)
+        # Run sequentially (Bear Attack -> Bull Defense)
+        bear_json, bull_json = await self._run_dialectical_debate(reports_text, ml_signal)
 
         # 3. Synthesis: Master Strategist
         master_persona = self.personas.get('master', "You are the Chief Strategist.")

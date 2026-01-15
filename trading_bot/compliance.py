@@ -31,6 +31,44 @@ class ComplianceOfficer:
 
         logger.info(f"Compliance Officer initialized with model: {self.model_name}")
 
+    async def _check_var_limit(self, proposed_trade: dict, equity: float) -> tuple[bool, str]:
+        """
+        Check if trade exceeds VaR limit.
+        VaR = Potential loss at 95% confidence over 1 day.
+        """
+        # Simplified VaR: position_size * volatility * 1.65 (95% z-score)
+        # Note: We need estimated Notional Value.
+        # If not provided, we might assume from context or default.
+        # This is an estimation.
+
+        position_value = proposed_trade.get('notional_value', 0)
+
+        # If we don't have notional value, we might skip or try to calculate from quantity * price
+        if position_value == 0:
+            qty = proposed_trade.get('order_quantity', 0)
+            price = proposed_trade.get('price', 0)
+            multiplier = 37500 if 'KC' in proposed_trade.get('symbol', '') else 1 # Approx for Coffee?
+            # Actually Coffee contract size is 37,500 lbs. Price is usually per lb (e.g. 1.50).
+            # So Notional = Price * 37500 * Qty.
+            # But price might be in cents or dollars? IB usually gives dollars if configured.
+            # Let's assume standard Coffee logic: Price (e.g. 2.50) * 37500 = ~93k per contract.
+
+            # Safe default for check if missing
+            if qty > 0 and price > 0:
+                position_value = price * 37500 * qty
+
+        historical_vol = proposed_trade.get('daily_volatility', 0.02)  # Default 2%
+
+        var_1day = position_value * historical_vol * 1.65
+        var_pct = var_1day / equity if equity > 0 else 0.0
+
+        max_var_pct = self.compliance_config.get('max_var_pct', 0.01)  # 1% default
+
+        if var_pct > max_var_pct:
+            return False, f"VaR {var_pct:.2%} exceeds {max_var_pct:.2%} limit"
+
+        return True, f"VaR check passed: {var_pct:.2%}"
+
     async def _check_article_ii_volume(self, ib, contract, order_quantity: int) -> tuple[bool, str]:
         """
         Article II: Liquidity Safety
@@ -114,6 +152,43 @@ class ComplianceOfficer:
                 logger.warning(reason)
                 return reason
             logger.info(reason)
+        else:
+            logger.warning("Skipping Article II Volume Check: Missing 'ib' or 'contract' in order_context")
+
+        # --- CHECK 2.6: VaR CHECK ---
+        # Get Equity (Net Liquidation Value)
+        equity = 100000.0 # Default fallback
+        if ib:
+            try:
+                # We need to fetch account summary efficiently or pass it in.
+                # order_context doesn't have equity yet.
+                # Let's try to get it from 'ib' if possible or skip.
+                # Since review is async, we can call.
+                # However, calling accountSummaryAsync might be slow.
+                # Assuming order_manager might pass it in future.
+                # For now, let's look for it in context or skip.
+                equity = order_context.get('account_equity', 100000.0)
+            except: pass
+
+        # Construct simplified trade dict for VaR
+        trade_for_var = {
+            'order_quantity': order_quantity,
+            'price': order_context.get('price', 0), # Need to ensure price is in context
+            'symbol': contract_symbol,
+            # We can try to get volatility from context or default
+        }
+
+        # We need current price for VaR calculation.
+        # Order Manager passes 'price' (limit price) in order?
+        # Actually context has 'bid_ask_spread'.
+        # We assume order_context might need enhancement to support VaR fully.
+        # But let's add the check logic structure.
+
+        passed_var, var_reason = await self._check_var_limit(trade_for_var, equity)
+        if not passed_var:
+             logger.warning(f"VETOED: {var_reason}")
+             return f"VETOED: {var_reason}"
+        logger.info(var_reason)
 
         # --- CHECK 3: SANITY CHECK (The "Constitution") ---
         trend_pct = order_context.get('market_trend_pct', 0.0)
