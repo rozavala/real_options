@@ -114,11 +114,11 @@ def with_retry(max_retries=3, backoff_factor=2):
 # Optimal model assignment based on cognitive profiles
 MODEL_ASSIGNMENTS = {
     # Tier 1: Cost-efficient sentinels (Gemini Flash)
-    AgentRole.WEATHER_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash"),
-    AgentRole.LOGISTICS_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash"),
-    AgentRole.NEWS_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash"),
-    AgentRole.PRICE_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash"),
-    AgentRole.MICROSTRUCTURE_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash"),
+    AgentRole.WEATHER_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash-preview"),
+    AgentRole.LOGISTICS_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash-preview"),
+    AgentRole.NEWS_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash-preview"),
+    AgentRole.PRICE_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash-preview"),
+    AgentRole.MICROSTRUCTURE_SENTINEL: (ModelProvider.GEMINI, "gemini-3-flash-preview"),
 
     # Tier 2: Domain experts
     AgentRole.AGRONOMIST: (ModelProvider.GEMINI, "gemini-1.5-pro"),
