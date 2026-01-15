@@ -37,6 +37,7 @@ from trading_bot.order_manager import (
 from trading_bot.utils import archive_trade_ledger, configure_market_data_type
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, SentinelTrigger
+from trading_bot.microstructure_sentinel import MicrostructureSentinel
 from trading_bot.agents import CoffeeCouncil
 from trading_bot.ib_interface import get_active_futures, build_option_chain, create_combo_order_object
 from trading_bot.strategy import define_directional_strategy
@@ -386,6 +387,15 @@ async def run_sentinels(config: dict):
     weather_sentinel = WeatherSentinel(config)
     logistics_sentinel = LogisticsSentinel(config)
     news_sentinel = NewsSentinel(config)
+    microstructure_sentinel = MicrostructureSentinel(config, sentinel_ib)
+
+    # Subscribe microstructure sentinel to front-month contract
+    try:
+        active_futures = await get_active_futures(sentinel_ib, config['symbol'], config['exchange'])
+        if active_futures:
+            await microstructure_sentinel.subscribe_contract(active_futures[0])
+    except Exception as e:
+        logger.error(f"Failed to subscribe microstructure sentinel: {e}")
 
     # Timing state
     last_weather = 0
@@ -438,6 +448,21 @@ async def run_sentinels(config: dict):
                     asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
                     GLOBAL_DEDUPLICATOR.set_global_cooldown(900)
                 last_news = now
+
+            # 5. Microstructure Sentinel (Every 1 min with Price Sentinel)
+            if sentinel_ib.isConnected():
+                micro_trigger = await microstructure_sentinel.check()
+                if micro_trigger:
+                    logger.warning(f"MICROSTRUCTURE ALERT: {micro_trigger.reason}")
+                    if micro_trigger.severity >= 7:
+                        asyncio.create_task(run_emergency_cycle(micro_trigger, config, sentinel_ib))
+                    else:
+                        # Log warning but don't trigger full cycle
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "Microstructure Warning",
+                            f"{micro_trigger.reason} (Severity: {micro_trigger.severity:.1f})"
+                        )
 
             await asyncio.sleep(60) # Loop tick
 

@@ -15,6 +15,7 @@ from google.genai import types
 from trading_bot.state_manager import StateManager
 from trading_bot.sentinels import SentinelTrigger
 from trading_bot.semantic_router import SemanticRouter
+from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole, get_router
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,17 @@ class CoffeeCouncil:
         self.agent_model_name = self.config.get('agent_model', 'gemini-1.5-flash')
         self.master_model_name = self.config.get('master_model', 'gemini-1.5-pro')
 
+        # 5. Initialize Heterogeneous Router (for multi-model support)
+        try:
+            self.router = HeterogeneousRouter(config)
+            self.use_heterogeneous = len(self.router.available_providers) > 1
+            if self.use_heterogeneous:
+                logger.info(f"Heterogeneous routing enabled. Diversity: {self.router.get_diversity_report()}")
+        except Exception as e:
+            logger.warning(f"Heterogeneous router init failed, using Gemini only: {e}")
+            self.router = None
+            self.use_heterogeneous = False
+
         # 4. Safety Settings (Block Only High)
         self.safety_settings = [
             types.SafetySetting(
@@ -93,6 +105,21 @@ class CoffeeCouncil:
         if text.endswith("```"):
             text = text[:-3]
         return text.strip()
+
+    async def _route_call(self, role: AgentRole, prompt: str, system_prompt: str = None, response_json: bool = False) -> str:
+        """
+        Route call to appropriate model based on role.
+        Falls back to Gemini if router unavailable.
+        """
+        if self.use_heterogeneous and self.router:
+            try:
+                return await self.router.route(role, prompt, system_prompt, response_json)
+            except Exception as e:
+                logger.warning(f"Router failed for {role.value}, falling back to Gemini: {e}")
+
+        # Fallback to existing Gemini implementation
+        model_to_use = self.master_model_name if role == AgentRole.MASTER_STRATEGIST else self.agent_model_name
+        return await self._call_model(model_to_use, prompt, response_json=response_json)
 
     async def _call_model(self, model_name: str, prompt: str, use_tools: bool = False, response_json: bool = False) -> str:
         """Helper to call Gemini with retries."""
@@ -161,7 +188,8 @@ class CoffeeCouncil:
         )
         try:
             # Enforce JSON output for structured debate
-            return await self._call_model(self.agent_model_name, prompt, response_json=True)
+            role = AgentRole.PERMABEAR if persona_key == 'permabear' else AgentRole.PERMABULL
+            return await self._route_call(role, prompt, response_json=True)
         except Exception as e:
             return json.dumps({"error": str(e), "position": "NEUTRAL", "key_arguments": []})
 
@@ -235,7 +263,7 @@ class CoffeeCouncil:
         )
 
         try:
-            response_text = await self._call_model(self.master_model_name, full_prompt, response_json=True)
+            response_text = await self._route_call(AgentRole.MASTER_STRATEGIST, full_prompt, response_json=True)
             cleaned_text = self._clean_json_text(response_text)
             return json.loads(cleaned_text)
         except Exception as e:

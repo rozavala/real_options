@@ -31,6 +31,43 @@ class ComplianceOfficer:
 
         logger.info(f"Compliance Officer initialized with model: {self.model_name}")
 
+    async def _check_article_ii_volume(self, ib, contract, order_quantity: int) -> tuple[bool, str]:
+        """
+        Article II: Liquidity Safety
+        No order shall exceed 10% of the average volume of the last 15 minutes.
+
+        Returns:
+            tuple: (passed: bool, reason: str)
+        """
+        try:
+            # Request 15 minutes of 1-minute bars
+            bars = await ib.reqHistoricalDataAsync(
+                contract,
+                endDateTime='',
+                durationStr='900 S',
+                barSizeSetting='1 min',
+                whatToShow='TRADES',
+                useRTH=False
+            )
+
+            if not bars or len(bars) < 5:
+                logger.warning("Insufficient volume data for Article II check")
+                # Fail open with warning if no data
+                return True, "Article II: Volume data unavailable (check skipped)"
+
+            total_volume = sum(bar.volume for bar in bars)
+            max_pct = self.compliance_config.get('max_volume_pct', 0.10)
+            max_order_volume = total_volume * max_pct
+
+            if order_quantity > max_order_volume:
+                return False, f"Article II VIOLATION: Order qty {order_quantity} exceeds {max_pct:.0%} of 15-min volume ({max_order_volume:.0f})"
+
+            return True, f"Article II: Order within volume limits ({order_quantity}/{max_order_volume:.0f})"
+
+        except Exception as e:
+            logger.error(f"Article II check failed: {e}")
+            return True, f"Article II: Check failed ({e}), proceeding with caution"
+
     async def review(self, decision: dict, order_context: dict) -> str:
         """
         Reviews a proposed trade against the Veto Checklist (Order Placement Stage).
@@ -64,6 +101,19 @@ class ComplianceOfficer:
             msg = f"VETOED: Liquidity Gap. Spread {spread_width:.2f} > {max_spread_val:.2f} (5 ticks)."
             logger.warning(msg)
             return msg
+
+        # --- CHECK 2.5: ARTICLE II - VOLUME CHECK ---
+        # Only run if we have IB connection and contract info
+        ib = order_context.get('ib')
+        contract = order_context.get('contract')
+        order_quantity = order_context.get('order_quantity', 1)
+
+        if ib and contract:
+            passed, reason = await self._check_article_ii_volume(ib, contract, order_quantity)
+            if not passed:
+                logger.warning(reason)
+                return reason
+            logger.info(reason)
 
         # --- CHECK 3: SANITY CHECK (The "Constitution") ---
         trend_pct = order_context.get('market_trend_pct', 0.0)
