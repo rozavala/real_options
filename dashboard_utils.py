@@ -10,8 +10,18 @@ import glob
 import random
 from datetime import datetime, timedelta
 import yfinance as yf
-from ib_insync import IB
 import sys
+import asyncio
+
+# --- FIX: Ensure Event Loop Exists BEFORE importing IB ---
+# Streamlit runs scripts in a separate thread which may not have an event loop.
+# ib_insync (via eventkit) requires one at import time.
+try:
+    asyncio.get_event_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
+from ib_insync import IB
 
 # Path setup for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
