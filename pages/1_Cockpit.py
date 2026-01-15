@@ -149,7 +149,7 @@ if config:
                 yaxis_title="Win Rate %",
                 yaxis_range=[0, 100]
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("Not enough graded decisions for sparkline.")
     else:

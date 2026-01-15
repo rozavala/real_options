@@ -182,7 +182,7 @@ if not equity_df.empty:
     fig.update_yaxes(title_text="Equity ($)", row=1, col=1)
     fig.update_yaxes(title_text="Drawdown (%)", row=2, col=1)
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # Max Drawdown stat
     max_dd = equity_df['drawdown'].min()
@@ -223,7 +223,7 @@ if not trade_df.empty and 'position_id' in trade_df.columns:
             height=400
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 else:
     st.info("Trade ledger empty or missing position_id column.")
 
@@ -266,7 +266,7 @@ if not equity_df.empty:
 
         fig.update_layout(height=300)
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     else:
         st.info("Not enough monthly data for heatmap.")
 else:
@@ -321,7 +321,7 @@ if not equity_df.empty:
             hovermode='x unified'
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     else:
         st.info("Could not fetch benchmark data.")
 else:
