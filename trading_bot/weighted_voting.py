@@ -9,9 +9,11 @@ Domain experts get higher weights on relevant events:
 
 import logging
 import re
+import json
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
+from trading_bot.brier_scoring import get_brier_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -124,13 +126,42 @@ def parse_sentiment_to_direction(sentiment_tag: str) -> Direction:
 
 
 def extract_sentiment_from_report(report_text: str) -> tuple[str, float]:
-    """Extract sentiment and estimate confidence from report."""
-    sentiment_match = re.search(r'\[SENTIMENT[:\s]+(\w+)\]', report_text, re.IGNORECASE)
-    sentiment_tag = sentiment_match.group(1) if sentiment_match else "NEUTRAL"
+    """Extract sentiment with multiple fallback patterns."""
+    if not report_text or not isinstance(report_text, str):
+        return "NEUTRAL", 0.3
 
+    # Try multiple patterns
+    patterns = [
+        r'\[SENTIMENT[:\s]+(\w+)\]',           # Standard format
+        r'"sentiment"[:\s]*"?(\w+)"?',          # JSON format
+        r'SENTIMENT:\s*(\w+)',                  # Plain text
+        r'\*\*Sentiment\*\*[:\s]*(\w+)',        # Markdown bold
+    ]
+
+    sentiment_tag = "NEUTRAL"
+    for pattern in patterns:
+        match = re.search(pattern, report_text, re.IGNORECASE)
+        if match:
+            sentiment_tag = match.group(1).upper()
+            break
+
+    # Fallback: scan for keywords if NEUTRAL and no pattern matched (or matched neutral)
+    if sentiment_tag == "NEUTRAL":
+        text_lower = report_text.lower()
+        bullish_words = ['bullish', 'buy', 'long', 'positive', 'upside', 'support']
+        bearish_words = ['bearish', 'sell', 'short', 'negative', 'downside', 'resistance']
+
+        bull_count = sum(1 for w in bullish_words if w in text_lower)
+        bear_count = sum(1 for w in bearish_words if w in text_lower)
+
+        if bull_count > bear_count:
+            sentiment_tag = "BULLISH"
+        elif bear_count > bull_count:
+            sentiment_tag = "BEARISH"
+
+    # Confidence estimation
     confidence = 0.5
     report_lower = report_text.lower()
-
     strong_signals = ["strong", "extremely", "high conviction", "overwhelming"]
     weak_signals = ["uncertain", "mixed", "unclear", "conflicting"]
 
@@ -146,6 +177,40 @@ def extract_sentiment_from_report(report_text: str) -> tuple[str, float]:
     return sentiment_tag, confidence
 
 
+def detect_market_regime(volatility_report: str, price_change_pct: float) -> str:
+    """Detect current market regime for weight adjustment."""
+
+    # Check volatility agent's report
+    if volatility_report and ("HIGH" in volatility_report.upper() or "ELEVATED" in volatility_report.upper()):
+        return "HIGH_VOLATILITY"
+
+    # Check price action
+    if abs(price_change_pct) > 0.03:  # >3% move
+        return "HIGH_VOLATILITY"
+
+    return "RANGE_BOUND"
+
+
+def get_regime_adjusted_weights(trigger_type: TriggerType, regime: str) -> dict:
+    base_weights = DOMAIN_WEIGHTS.get(trigger_type, DOMAIN_WEIGHTS[TriggerType.SCHEDULED])
+
+    regime_multipliers = {
+        "HIGH_VOLATILITY": {
+            "agronomist": 1.5,
+            "volatility": 1.5,
+            "technical": 0.7,
+        },
+        "RANGE_BOUND": {
+            "technical": 1.5,
+            "volatility": 0.7,
+        }
+    }
+
+    multipliers = regime_multipliers.get(regime, {})
+    # Apply multipliers to base weights
+    return {k: v * multipliers.get(k, 1.0) for k, v in base_weights.items()}
+
+
 def calculate_weighted_decision(
     agent_reports: dict[str, str],
     trigger_type: TriggerType,
@@ -158,7 +223,23 @@ def calculate_weighted_decision(
         dict with 'direction', 'confidence', 'weighted_score',
         'vote_breakdown', 'dominant_agent'
     """
-    weights = DOMAIN_WEIGHTS.get(trigger_type, DOMAIN_WEIGHTS[TriggerType.SCHEDULED])
+    # Detect Regime (using Volatility report and ML Signal price/pct if available)
+    vol_report = agent_reports.get('volatility', '')
+    if isinstance(vol_report, dict): vol_report = vol_report.get('data', '')
+
+    # Estimate price change from ML signal if available
+    price_change = 0.0
+    if ml_signal and 'price' in ml_signal and 'expected_price' in ml_signal:
+        try:
+            curr = ml_signal['price']
+            exp = ml_signal['expected_price']
+            if curr: price_change = (exp - curr) / curr
+        except: pass
+
+    regime = detect_market_regime(str(vol_report), price_change)
+    logger.info(f"Market Regime Detected: {regime}")
+
+    weights = get_regime_adjusted_weights(trigger_type, regime)
     votes: list[AgentVote] = []
 
     for agent_name, report in agent_reports.items():
@@ -191,18 +272,28 @@ def calculate_weighted_decision(
     max_contribution = 0.0
     dominant_agent = None
 
+    # Brier Score Integration
+    tracker = get_brier_tracker()
+
     for vote in votes:
-        domain_weight = weights.get(vote.agent_name, 1.0)
-        contribution = vote.direction.value * vote.confidence * domain_weight
+        base_domain_weight = weights.get(vote.agent_name, 1.0)
+
+        # Apply Brier Score Multiplier
+        reliability_multiplier = tracker.get_agent_weight_multiplier(vote.agent_name)
+        final_weight = base_domain_weight * reliability_multiplier
+
+        contribution = vote.direction.value * vote.confidence * final_weight
         total_weighted_score += contribution
-        total_weight += domain_weight
+        total_weight += final_weight
 
         vote_breakdown.append({
             'agent': vote.agent_name,
             'direction': vote.direction.name,
             'confidence': vote.confidence,
-            'domain_weight': domain_weight,
-            'contribution': contribution,
+            'domain_weight': base_domain_weight,
+            'reliability_mult': round(reliability_multiplier, 2),
+            'final_weight': round(final_weight, 2),
+            'contribution': round(contribution, 3),
         })
 
         if abs(contribution) > max_contribution:
@@ -233,6 +324,7 @@ def calculate_weighted_decision(
     final_confidence = (unanimity * 0.4) + (avg_conf * 0.6)
 
     logger.info(f"Weighted Vote: {final_direction} (score={normalized_score:.3f}, dominant={dominant_agent})")
+    logger.info(f"Vote Breakdown: {json.dumps(vote_breakdown, indent=2)}")
 
     return {
         'direction': final_direction,

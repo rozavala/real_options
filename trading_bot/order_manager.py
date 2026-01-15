@@ -409,13 +409,18 @@ async def place_queued_orders(config: dict, orders_list: list = None):
         # --- NEW: Margin & Funds Check ---
         account_summary = await ib.accountSummaryAsync()
         avail_funds_tag = next((v for v in account_summary if v.tag == 'AvailableFunds' and v.currency == 'USD'), None)
+        net_liq_tag = next((v for v in account_summary if v.tag == 'NetLiquidation' and v.currency == 'USD'), None)
+
+        current_equity = 100000.0 # Default fallback
+        if net_liq_tag:
+            current_equity = float(net_liq_tag.value)
 
         if not avail_funds_tag:
             logger.warning("Could not fetch AvailableFunds. Proceeding without pre-check (Risky).")
             current_available_funds = float('inf')
         else:
             current_available_funds = float(avail_funds_tag.value)
-            logger.info(f"Current Available Funds: ${current_available_funds:,.2f}")
+            logger.info(f"Current Available Funds: ${current_available_funds:,.2f} | Equity: ${current_equity:,.2f}")
 
         # Fetch Current Positions for Compliance
         positions = await ib.reqPositionsAsync()
@@ -490,7 +495,11 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                     'symbol': contract.localSymbol,
                     'bid_ask_spread': spread_width * 100 if contract.secType == 'BAG' else spread_width,
                     'total_position_count': current_position_count,
-                    'market_trend_pct': trend_pct
+                    'market_trend_pct': trend_pct,
+                    'ib': ib,
+                    'contract': contract,
+                    'order_quantity': order.totalQuantity,
+                    'account_equity': current_equity
                 }
 
                 # 2. Compliance Review
