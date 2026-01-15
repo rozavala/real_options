@@ -46,7 +46,7 @@ class CoffeeCouncil:
         """
         self.config = config.get('gemini', {})
         self.personas = self.config.get('personas', {})
-        self.router = SemanticRouter(config)
+        self.semantic_router = SemanticRouter(config)
 
         # 1. Setup API Key
         api_key = self.config.get('api_key')
@@ -65,14 +65,15 @@ class CoffeeCouncil:
         self.master_model_name = self.config.get('master_model', 'gemini-1.5-pro')
 
         # 5. Initialize Heterogeneous Router (for multi-model support)
+        self.heterogeneous_router = None
         try:
-            self.router = HeterogeneousRouter(config)
-            self.use_heterogeneous = len(self.router.available_providers) > 1
+            self.heterogeneous_router = HeterogeneousRouter(config)
+            self.use_heterogeneous = len(self.heterogeneous_router.available_providers) > 1
             if self.use_heterogeneous:
-                logger.info(f"Heterogeneous routing enabled. Diversity: {self.router.get_diversity_report()}")
+                logger.info(f"Heterogeneous routing enabled. Diversity: {self.heterogeneous_router.get_diversity_report()}")
         except Exception as e:
             logger.warning(f"Heterogeneous router init failed, using Gemini only: {e}")
-            self.router = None
+            self.heterogeneous_router = None
             self.use_heterogeneous = False
 
         # 4. Safety Settings (Block Only High)
@@ -117,9 +118,9 @@ class CoffeeCouncil:
         Route call to appropriate model based on role.
         Falls back to Gemini if router unavailable.
         """
-        if self.use_heterogeneous and self.router:
+        if self.use_heterogeneous and self.heterogeneous_router:
             try:
-                return await self.router.route(role, prompt, system_prompt, response_json)
+                return await self.heterogeneous_router.route(role, prompt, system_prompt, response_json)
             except Exception as e:
                 logger.warning(f"Router failed for {role.value}, falling back to Gemini: {e}")
 
@@ -436,7 +437,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         cached_reports = StateManager.load_state()
 
         # Semantic Routing
-        route = self.router.route(trigger)
+        route = self.semantic_router.route(trigger)
         active_agent_key = route.primary_agent
         logger.info(f"Routing to {active_agent_key} (Reason: {route.reasoning})")
 

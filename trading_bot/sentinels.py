@@ -229,7 +229,7 @@ class LogisticsSentinel(Sentinel):
 
         api_key = config.get('gemini', {}).get('api_key')
         self.client = genai.Client(api_key=api_key)
-        self.model = self.sentinel_config.get('model', "gemini-3-flash")
+        self.model = self.sentinel_config.get('model', "gemini-3-flash-preview")
 
         # Deduplication Cache (In-memory)
         self.seen_links = set()
@@ -289,7 +289,7 @@ class NewsSentinel(Sentinel):
 
         api_key = config.get('gemini', {}).get('api_key')
         self.client = genai.Client(api_key=api_key)
-        self.model = self.sentinel_config.get('model', "gemini-3-flash")
+        self.model = self.sentinel_config.get('model', "gemini-3-flash-preview")
 
         # Deduplication Cache (In-memory)
         self.seen_links = set()
