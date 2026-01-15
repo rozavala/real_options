@@ -11,6 +11,7 @@ from trading_bot.model_signals import log_model_signal # Keep existing logging
 from trading_bot.utils import log_council_decision
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager # Import StateManager
+from trading_bot.compliance import ComplianceOfficer
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +27,12 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
 
     logger.info("--- Starting Multi-Agent Signal Generation (Council) ---")
 
-    # 2. Initialize Council
+    # 2. Initialize Council & Compliance
     council = None
+    compliance = None
     try:
         council = CoffeeCouncil(config)
+        compliance = ComplianceOfficer(config)
     except Exception as e:
         logger.error(f"Failed to initialize Coffee Council: {e}. Falling back to raw ML signals.")
         send_pushover_notification(
@@ -165,10 +168,34 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 # Call decided (which now includes the Hegelian Loop)
                 decision = await council.decide(contract_name, ml_signal, reports, market_context_str)
 
-                # Note: Compliance Audit logic moved to order_manager.py (ComplianceOfficer)
-                # But we retain the Price Sanity Check here as a "Soft Check" before queuing?
-                # Actually, the previous code had a specific hardcoded check.
-                # Let's keep the Price Sanity Check here to filter out garbage before it even hits the queue.
+                # --- E.1: EARLY COMPLIANCE AUDIT (Hallucination Check) ---
+                compliance_approved = True
+                compliance_reason = "N/A"
+
+                if decision.get('direction') != 'NEUTRAL' and compliance:
+                    audit = await compliance.audit_decision(
+                        reports,
+                        market_context_str,
+                        decision,
+                        council.personas.get('master', '')
+                    )
+
+                    if not audit.get('approved', True):
+                        logger.warning(f"COMPLIANCE BLOCKED {contract_name}: {audit.get('flagged_reason')}")
+                        compliance_approved = False
+                        compliance_reason = audit.get('flagged_reason', 'N/A')
+
+                        # Override Decision
+                        decision['direction'] = "NEUTRAL"
+                        decision['confidence'] = 0.0
+                        decision['reasoning'] = f"BLOCKED BY COMPLIANCE: {compliance_reason}"
+
+                        # Notify
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "Compliance Veto Triggered",
+                            f"Trade for {contract_name} blocked.\nReason: {compliance_reason}"
+                        )
 
                 # --- E.2: PRICE SANITY CHECK (The "Fat Finger" Guardrail) ---
                 # Robust extraction of price
@@ -253,8 +280,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         "master_decision": decision.get('direction'),
                         "master_confidence": decision.get('confidence'),
                         "master_reasoning": decision.get('reasoning'),
-                        # "compliance_approved": audit.get('approved', True) # Audit is now downstream
-                        "compliance_approved": True # Placeholder
+                        "compliance_approved": compliance_approved,
+                        "compliance_reason": compliance_reason if not compliance_approved else "N/A"
                     }
                     log_council_decision(council_log_entry)
                 except Exception as log_e:
@@ -276,6 +303,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
             "direction": final_data["action"],
             "reason": final_data["reason"],
             "regime": ml_signal.get('regime', 'N/A'),
+            "volatility_sentiment": agent_data.get('volatility_sentiment', 'NEUTRAL'),
             "confidence": final_data["confidence"],
             "price": ml_signal.get('price'),
             "sma_200": ml_signal.get('sma_200'),

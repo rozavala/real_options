@@ -8,6 +8,8 @@ from typing import Optional, List, Dict, Any
 from google import genai
 from google.genai import types
 import pytz
+import aiohttp
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,37 @@ class Sentinel:
     async def check(self) -> Optional[SentinelTrigger]:
         """Performs the sentinel check. Returns a SentinelTrigger if fired, else None."""
         raise NotImplementedError
+
+    async def _fetch_rss_safe(self, url: str, seen_cache: set, timeout: int = 10) -> List[str]:
+        """Fetch RSS with timeout and validation using aiohttp."""
+        headlines = []
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
+                async with session.get(url) as response:
+                    if response.status != 200:
+                        logger.warning(f"RSS {url} returned {response.status}")
+                        return []
+                    content = await response.text()
+
+            loop = asyncio.get_running_loop()
+            feed = await loop.run_in_executor(None, feedparser.parse, content)
+
+            if feed.bozo:
+                logger.warning(f"Malformed RSS from {url}: {feed.bozo_exception}")
+                return []
+
+            for entry in feed.entries[:5]:
+                # Use link as unique ID
+                if entry.link not in seen_cache:
+                    headlines.append(entry.title)
+                    seen_cache.add(entry.link)
+
+        except asyncio.TimeoutError:
+            logger.error(f"RSS timeout for {url}")
+        except Exception as e:
+            logger.error(f"RSS fetch failed for {url}: {e}")
+
+        return headlines
 
 class PriceSentinel(Sentinel):
     """
@@ -181,16 +214,8 @@ class LogisticsSentinel(Sentinel):
     async def check(self) -> Optional[SentinelTrigger]:
         headlines = []
         for url in self.urls:
-            try:
-                loop = asyncio.get_running_loop()
-                feed = await loop.run_in_executor(None, feedparser.parse, url)
-                # Filter seen links
-                for entry in feed.entries[:5]:
-                    if entry.link not in self.seen_links:
-                        headlines.append(entry.title)
-                        self.seen_links.add(entry.link)
-            except Exception as e:
-                logger.error(f"Logistics RSS failed for {url}: {e}")
+            new_titles = await self._fetch_rss_safe(url, self.seen_links)
+            headlines.extend(new_titles)
 
         if not headlines:
             return None
@@ -239,16 +264,8 @@ class NewsSentinel(Sentinel):
     async def check(self) -> Optional[SentinelTrigger]:
         headlines = []
         for url in self.urls:
-            try:
-                loop = asyncio.get_running_loop()
-                feed = await loop.run_in_executor(None, feedparser.parse, url)
-                # Filter seen links
-                for entry in feed.entries[:5]:
-                    if entry.link not in self.seen_links:
-                        headlines.append(entry.title)
-                        self.seen_links.add(entry.link)
-            except Exception as e:
-                logger.error(f"News RSS failed for {url}: {e}")
+            new_titles = await self._fetch_rss_safe(url, self.seen_links)
+            headlines.extend(new_titles)
 
         if not headlines:
             return None
@@ -266,9 +283,6 @@ class NewsSentinel(Sentinel):
                 contents=prompt,
                 config=types.GenerateContentConfig(response_mime_type="application/json")
             )
-            import json
-            # Need cleaning? agents.py has it, but this is simple JSON.
-            # Let's apply basic strip here just in case, but robust cleaning is in agents.py
             text = response.text.strip()
             if text.startswith("```json"): text = text[7:]
             if text.endswith("```"): text = text[:-3]

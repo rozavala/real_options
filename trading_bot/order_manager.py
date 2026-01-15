@@ -25,6 +25,8 @@ from trading_bot.signal_generator import generate_signals
 from trading_bot.strategy import define_directional_strategy, define_volatility_strategy
 from trading_bot.utils import log_trade_to_ledger, log_order_event, configure_market_data_type
 from trading_bot.compliance import ComplianceOfficer # New Import
+from trading_bot.connection_pool import IBConnectionPool
+from trading_bot.position_sizer import DynamicPositionSizer
 
 # --- Module-level storage for orders ---
 # Structure: [(contract, order, decision_data), ...]
@@ -82,15 +84,10 @@ async def generate_and_queue_orders(config: dict):
             return
         logger.info(f"Successfully received predictions from local model: {predictions}")
 
-        ib = IB()
+        # Use Connection Pool
         try:
-            conn_settings = config.get('connection', {})
-            await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
-
-            # --- FIX: Configure Market Data Type based on Environment ---
+            ib = await IBConnectionPool.get_connection("order_manager", config)
             configure_market_data_type(ib)
-            # ------------------------------------------------------------
-
             logger.info("Connected to IB for signal generation.")
 
             logger.info("Step 2.5: Generating structured signals from predictions...")
@@ -100,6 +97,15 @@ async def generate_and_queue_orders(config: dict):
             active_futures = await get_active_futures(ib, config['symbol'], config['exchange'])
             if not active_futures:
                 raise ConnectionError("Could not find any active futures contracts.")
+
+            # Initialize Sizer
+            sizer = DynamicPositionSizer(config)
+
+            # Fetch Account Value
+            account_summary = await ib.accountSummaryAsync()
+            net_liq_tag = next((v for v in account_summary if v.tag == 'NetLiquidation' and v.currency == 'USD'), None)
+            account_value = float(net_liq_tag.value) if net_liq_tag else 0.0
+            logger.info(f"Account Value for Sizing: ${account_value:,.2f}")
 
             for signal in signals:
                 # Skip order generation for NEUTRAL signals
@@ -163,16 +169,22 @@ async def generate_and_queue_orders(config: dict):
                 strategy_def = define_func(config, signal, chain, price, future)
 
                 if strategy_def:
+                    # Calculate Dynamic Quantity
+                    vol_sent = signal.get('volatility_sentiment', 'NEUTRAL')
+                    qty = await sizer.calculate_size(ib, signal, vol_sent, account_value)
+                    strategy_def['quantity'] = qty
+
                     order_objects = await create_combo_order_object(ib, config, strategy_def)
                     if order_objects:
                         contract, order = order_objects
                         # Store signal data with the order
                         ORDER_QUEUE.append((contract, order, signal))
                         logger.info(f"Successfully queued order for {future.localSymbol}.")
-        finally:
-            if ib.isConnected():
-                ib.disconnect()
+        except Exception as e:
+            logger.error(f"Error in order generation block: {e}")
+            raise e
 
+        # NOTE: We do NOT disconnect here, as the pool manages connections.
         logger.info(f"--- Order generation complete. {len(ORDER_QUEUE)} orders queued. ---")
 
         # --- Create a detailed notification message ---
@@ -340,7 +352,10 @@ async def place_queued_orders(config: dict, orders_list: list = None):
     # --- Initialize Compliance Officer ---
     compliance = ComplianceOfficer(config)
 
-    ib = IB()
+    # Use Connection Pool
+    ib = await IBConnectionPool.get_connection("order_manager", config)
+    configure_market_data_type(ib)
+
     live_orders = {} # Dictionary to track order status by orderId
 
     # --- Event Handlers ---
@@ -384,14 +399,8 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                 order_details['is_filled'] = True # Mark the entire order as filled
 
     try:
-        conn_settings = config.get('connection', {})
-        await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
-
-        # --- FIX: Configure Market Data Type based on Environment ---
-        configure_market_data_type(ib)
-        # ------------------------------------------------------------
-
-        logger.info("Connected to IB for order placement and monitoring.")
+        # Note: Connection already established above via Pool
+        logger.info("Using pooled IB connection for order placement.")
 
         # --- NEW: Sort by Expiration (Nearest First) ---
         target_queue.sort(key=lambda x: x[0].lastTradeDateOrContractMonth if hasattr(x[0], 'lastTradeDateOrContractMonth') else '99999999')
@@ -761,8 +770,8 @@ async def place_queued_orders(config: dict, orders_list: list = None):
         if ib.isConnected():
             ib.orderStatusEvent -= on_order_status
             ib.execDetailsEvent -= on_exec_details
-            ib.disconnect()
-            logger.info("Disconnected from IB.")
+            # Do NOT disconnect pooled connection
+            logger.info("Order placement complete. Releasing event handlers.")
 
 import pandas as pd
 from datetime import datetime, date, timedelta
@@ -856,7 +865,6 @@ async def close_stale_positions(config: dict):
     if is_weekly_close:
         logger.info(f"--- Weekly Close Triggered: {weekly_close_reason}. Closing ALL positions. ---")
 
-    ib = IB()
     closed_position_details = []
     failed_closes = []
     kept_positions_details = []
@@ -864,12 +872,8 @@ async def close_stale_positions(config: dict):
 
     try:
         # --- 1. Connect to IB and get the ground truth of current positions ---
-        conn_settings = config.get('connection', {})
-        await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
-
-        # --- FIX: Configure Market Data Type based on Environment ---
+        ib = await IBConnectionPool.get_connection("order_manager", config)
         configure_market_data_type(ib)
-        # ------------------------------------------------------------
 
         logger.info("Connected to IB for closing positions.")
 
@@ -1182,22 +1186,17 @@ async def close_stale_positions(config: dict):
         logger.critical(msg)
         send_pushover_notification(config.get('notifications', {}), "Position Closing CRITICAL", msg)
     finally:
-        if ib.isConnected():
-            ib.disconnect()
+        # Do not disconnect pool
+        pass
 
 async def cancel_all_open_orders(config: dict):
     """
     Fetches and cancels all open (non-filled) orders.
     """
     logger.info("--- Canceling any remaining open DAY orders ---")
-    ib = IB()
     try:
-        conn_settings = config.get('connection', {})
-        await ib.connectAsync(host=conn_settings.get('host', '127.0.0.1'), port=conn_settings.get('port', 7497), clientId=random.randint(200, 2000), timeout=30)
-
-        # --- FIX: Configure Market Data Type based on Environment ---
+        ib = await IBConnectionPool.get_connection("order_manager", config)
         configure_market_data_type(ib)
-        # ------------------------------------------------------------
 
         logger.info("Connected to IB for canceling open orders.")
 
@@ -1228,5 +1227,5 @@ async def cancel_all_open_orders(config: dict):
         logger.critical(msg)
         send_pushover_notification(config.get('notifications', {}), "Order Cancellation CRITICAL", msg)
     finally:
-        if ib.isConnected():
-            ib.disconnect()
+        # Do not disconnect pool
+        pass

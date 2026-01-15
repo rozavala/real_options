@@ -13,6 +13,10 @@ import sys
 import traceback
 import os
 import random
+import json
+import hashlib
+from collections import deque
+import time as time_module
 from datetime import datetime, time, timedelta
 import pytz
 from ib_insync import IB, util
@@ -37,6 +41,7 @@ from trading_bot.agents import CoffeeCouncil
 from trading_bot.ib_interface import get_active_futures, build_option_chain, create_combo_order_object
 from trading_bot.strategy import define_directional_strategy
 from trading_bot.state_manager import StateManager
+from trading_bot.connection_pool import IBConnectionPool
 
 # --- Logging Setup ---
 setup_logging()
@@ -44,6 +49,75 @@ logger = logging.getLogger("Orchestrator")
 
 # --- Global Process Handle for the monitor ---
 monitor_process = None
+
+class TriggerDeduplicator:
+    def __init__(self, window_seconds: int = 1800, state_file="data/deduplicator_state.json"):
+        self.state_file = state_file
+        self.window = window_seconds
+        self.global_cooldown_until = 0
+        self.recent_triggers = deque(maxlen=50)
+        self._load_state()
+
+    def _load_state(self):
+        if os.path.exists(self.state_file):
+            try:
+                with open(self.state_file, 'r') as f:
+                    data = json.load(f)
+                    self.global_cooldown_until = data.get('global_cooldown_until', 0)
+                    for t in data.get('recent_triggers', []):
+                         self.recent_triggers.append(tuple(t)) # (hash, timestamp)
+            except Exception as e:
+                logger.warning(f"Failed to load deduplicator state: {e}")
+
+    def _save_state(self):
+        try:
+            # Create data dir if not exists
+            os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
+            data = {
+                'global_cooldown_until': self.global_cooldown_until,
+                'recent_triggers': list(self.recent_triggers)
+            }
+            with open(self.state_file, 'w') as f:
+                json.dump(data, f)
+        except Exception as e:
+             logger.warning(f"Failed to save deduplicator state: {e}")
+
+    def should_process(self, trigger: SentinelTrigger) -> bool:
+        now = time_module.time()
+
+        # Global cooldown check
+        if now < self.global_cooldown_until:
+            logger.info(f"Global cooldown active. Skipping {trigger.source}")
+            return False
+
+        # Content-based deduplication
+        trigger_hash = hashlib.md5(
+            f"{trigger.reason[:50]}{trigger.payload}".encode()
+        ).hexdigest()[:8]
+
+        # Prune old triggers
+        cutoff = now - self.window
+        while self.recent_triggers and self.recent_triggers[0][1] < cutoff:
+             self.recent_triggers.popleft()
+
+        if any(t[0] == trigger_hash for t in self.recent_triggers):
+            logger.info(f"Duplicate trigger detected: {trigger_hash}")
+            return False
+
+        self.recent_triggers.append((trigger_hash, now))
+        self._save_state()
+        return True
+
+    def set_global_cooldown(self, seconds: int = 900):
+        self.global_cooldown_until = time_module.time() + seconds
+        self._save_state()
+
+    def clear_global_cooldown(self):
+        self.global_cooldown_until = 0
+        self._save_state()
+
+# Global Deduplicator Instance
+GLOBAL_DEDUPLICATOR = TriggerDeduplicator()
 
 
 async def log_stream(stream, logger_func):
@@ -301,29 +375,12 @@ async def run_sentinels(config: dict):
     logger.info("--- Starting Sentinel Array ---")
 
     # Sentinel Config
-    sentinel_ib = IB()
-    conn_settings = config.get('connection', {})
-
-    # Connect separate IB instance for Sentinels (using different client ID)
     try:
-        # Avoid default port 7497 to force config compliance
-        ib_port = conn_settings.get('port')
-        if not ib_port:
-            raise ValueError("IB Connection Port missing in config")
-
-        await sentinel_ib.connectAsync(
-            host=conn_settings.get('host', '127.0.0.1'),
-            port=ib_port,
-            clientId=random.randint(3000, 4000),
-            timeout=30
-        )
-
-        # Use helper for Market Data Type (Live/Delayed based on ENV)
+        sentinel_ib = await IBConnectionPool.get_connection("sentinel", config)
         configure_market_data_type(sentinel_ib)
-
     except Exception as e:
         logger.error(f"Sentinel IB Connection Failed: {e}")
-        # Proceed with non-IB sentinels? Yes.
+        sentinel_ib = IB() # Fallback
 
     price_sentinel = PriceSentinel(config, sentinel_ib)
     weather_sentinel = WeatherSentinel(config)
@@ -337,52 +394,49 @@ async def run_sentinels(config: dict):
 
     while True:
         try:
-            now = time.time()
+            now = time_module.time()
 
             # --- Auto-Reconnect for Zombie Sentinel Risk ---
             if not sentinel_ib.isConnected():
                 try:
                     logger.warning("Sentinel IB connection lost. Attempting reconnect...")
-                    ib_port = conn_settings.get('port')
-                    await sentinel_ib.connectAsync(
-                        host=conn_settings.get('host', '127.0.0.1'),
-                        port=ib_port,
-                        clientId=random.randint(3000, 4000),
-                        timeout=30
-                    )
+                    sentinel_ib = await IBConnectionPool.get_connection("sentinel", config)
                     configure_market_data_type(sentinel_ib)
                     logger.info("Sentinel IB reconnected successfully.")
                 except Exception as e:
                     logger.error(f"Sentinel IB Reconnect Failed: {e}")
-                    # Continue loop to allow other sentinels to run
 
             # Use asyncio.create_task for non-blocking execution (Fix Blocking Sentinel)
 
             # 1. Price Sentinel (Every 1 min) - Only if Connected
             if sentinel_ib.isConnected():
                 trigger = await price_sentinel.check()
-                if trigger:
+                if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                     asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                    GLOBAL_DEDUPLICATOR.set_global_cooldown(900)
 
             # 2. Weather Sentinel (Every 4 hours = 14400s)
             if now - last_weather > 14400:
                 trigger = await weather_sentinel.check()
-                if trigger:
+                if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                     asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                    GLOBAL_DEDUPLICATOR.set_global_cooldown(900)
                 last_weather = now
 
             # 3. Logistics Sentinel (Every 6 hours = 21600s)
             if now - last_logistics > 21600:
                 trigger = await logistics_sentinel.check()
-                if trigger:
+                if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                     asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                    GLOBAL_DEDUPLICATOR.set_global_cooldown(900)
                 last_logistics = now
 
             # 4. News Sentinel (Every 1 hour = 3600s)
             if now - last_news > 3600:
                 trigger = await news_sentinel.check()
-                if trigger:
+                if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                     asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                    GLOBAL_DEDUPLICATOR.set_global_cooldown(900)
                 last_news = now
 
             await asyncio.sleep(60) # Loop tick
@@ -394,8 +448,10 @@ async def run_sentinels(config: dict):
             logger.error(f"Error in Sentinel Loop: {e}")
             await asyncio.sleep(60)
 
-    if sentinel_ib.isConnected():
-        sentinel_ib.disconnect()
+    # IBConnectionPool manages disconnects, so explicit disconnect is not strictly needed,
+    # but good practice if task is cancelled.
+    # However, pool is shared (conceptually not shared here but...)
+    # We leave it connected.
 
 
 # --- Main Schedule ---
@@ -456,7 +512,16 @@ async def main():
                 await asyncio.sleep(wait_seconds)
 
                 logger.info(f"--- Running scheduled task: {task_name} ---")
-                await next_task_func(config)
+
+                # Set global cooldown during scheduled cycle (e.g. 10 mins)
+                # This prevents Sentinels from firing Emergency Cycles while we are busy
+                GLOBAL_DEDUPLICATOR.set_global_cooldown(600)
+
+                try:
+                    await next_task_func(config)
+                finally:
+                    # Clear cooldown immediately after task finishes
+                    GLOBAL_DEDUPLICATOR.clear_global_cooldown()
 
             except asyncio.CancelledError:
                 logger.info("Orchestrator main loop cancelled."); break
@@ -469,6 +534,7 @@ async def main():
         sentinel_task.cancel()
         if monitor_process and monitor_process.returncode is None:
             await stop_monitoring(config)
+        await IBConnectionPool.release_all()
 
 
 async def sequential_main():

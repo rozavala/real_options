@@ -1,7 +1,18 @@
 import json
 import os
 import logging
+import asyncio
+import time
 from datetime import datetime
+from typing import Dict, Any, Optional
+
+try:
+    import fcntl
+    HAS_FCNTL = True
+except ImportError:
+    HAS_FCNTL = False
+    import threading
+    _fallback_lock = threading.Lock()
 
 logger = logging.getLogger(__name__)
 
@@ -9,102 +20,110 @@ STATE_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 's
 
 class StateManager:
     """
-    Manages the persistence of agent reports to ensure the 'Hybrid Decision Model'
-    can access the 'Last Known Opinion' of sleeping agents during triggered cycles.
+    Manages the persistence of agent reports and system state.
+    Uses file locking (fcntl on Unix, threading fallback on Windows) for safety.
+    Supports TTL-based staleness checks.
     """
+    _async_lock = asyncio.Lock()
+    REPORT_TTL_SECONDS = 3600  # 1 hour staleness threshold
 
-    @staticmethod
-    def save_state(reports: dict):
-        """
-        Saves the provided agent reports to the state file using atomic writes.
-        Stores each report with a timestamp.
-        Merges new reports with existing state.
+    @classmethod
+    def _save_raw_sync(cls, data: dict):
+        """Internal sync save with file locking."""
+        temp_file = STATE_FILE + ".tmp"
 
-        Args:
-            reports (dict): A dictionary where keys are agent names (or special keys like 'latest_ml_signals')
-                            and values are their contents.
-        """
-        try:
-            # Ensure data directory exists
-            os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+        # Ensure dir exists
+        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
 
-            # Load existing state first to merge
-            current_state = {}
-            if os.path.exists(STATE_FILE):
-                try:
-                    with open(STATE_FILE, 'r') as f:
-                        data = json.load(f)
-                        if 'reports' in data:
-                            current_state = data['reports']
-                except Exception:
-                    logger.warning("Could not load existing state for merge. Starting fresh.")
+        with open(temp_file, 'w') as f:
+            if HAS_FCNTL:
+                fcntl.flock(f, fcntl.LOCK_EX)
+            elif '_fallback_lock' in globals():
+                _fallback_lock.acquire()
 
-            current_time = datetime.now().isoformat()
+            try:
+                json.dump(data, f, indent=2, default=str)
+                f.flush()
+                os.fsync(f.fileno())
+            finally:
+                if HAS_FCNTL:
+                    fcntl.flock(f, fcntl.LOCK_UN)
+                elif '_fallback_lock' in globals():
+                    _fallback_lock.release()
 
-            # Merge new reports into current state
-            for key, content in reports.items():
-                if key == "latest_ml_signals":
-                    # Special handling for ML signals: Just store the list directly with timestamp wrapper?
-                    # Or just as a raw object? Let's wrap it to match the schema 'data', 'timestamp'
-                    # But content is a list of dicts.
-                    # Let's verify if we need it serialized. json.dump handles list of dicts fine.
-                    current_state[key] = {
-                        "data": content, # List of dicts
-                        "timestamp": current_time
-                    }
-                elif isinstance(content, dict) and 'data' in content:
-                    # Already formatted (e.g., loading from previous state and passing back)
-                    current_state[key] = content
-                else:
-                    # New or string content -> Stamp with NOW
-                    current_state[key] = {
-                        "data": str(content), # Ensure serialization for text reports
-                        "timestamp": current_time
-                    }
+        os.replace(temp_file, STATE_FILE)
 
-            final_data = {
-                "last_update_global": current_time,
-                "reports": current_state
-            }
-
-            # Atomic Write
-            temp_file = STATE_FILE + ".tmp"
-            with open(temp_file, 'w') as f:
-                json.dump(final_data, f, indent=2, default=str) # default=str handles objects like datetime inside ML signals
-
-            os.replace(temp_file, STATE_FILE)
-
-            logger.info("Agent state successfully saved (Atomic Merge).")
-        except Exception as e:
-            logger.error(f"Failed to save agent state: {e}")
-
-    @staticmethod
-    def load_state() -> dict:
-        """
-        Loads the last known agent reports from the state file.
-
-        Returns:
-            dict: A dictionary of agent reports (dicts with 'data' and 'timestamp').
-                  Returns an empty dict if no state exists.
-        """
+    @classmethod
+    def _load_raw_sync(cls) -> dict:
+        """Internal sync load."""
         if not os.path.exists(STATE_FILE):
-            logger.warning("No previous state file found. Returning empty state.")
             return {}
 
         try:
             with open(STATE_FILE, 'r') as f:
-                data = json.load(f)
-
-            if 'reports' in data:
-                logger.info(f"Agent state loaded (Last Global Update: {data.get('last_update_global')}).")
-                return data['reports']
-            else:
-                logger.warning("State file found but missing 'reports' key.")
-                return {}
-
-        except json.JSONDecodeError:
-            logger.error("State file corrupted. Returning empty state.")
-            return {}
+                if HAS_FCNTL:
+                    fcntl.flock(f, fcntl.LOCK_SH)
+                try:
+                    return json.load(f)
+                finally:
+                    if HAS_FCNTL:
+                        fcntl.flock(f, fcntl.LOCK_UN)
         except Exception as e:
-            logger.error(f"Failed to load agent state: {e}")
+            logger.error(f"Failed to load state: {e}")
             return {}
+
+    @classmethod
+    def save_state(cls, updates: Dict[str, Any], namespace: str = "reports"):
+        """
+        Synchronous save (merges updates).
+        """
+        current = cls._load_raw_sync()
+        if namespace not in current:
+            current[namespace] = {}
+
+        for key, value in updates.items():
+            current[namespace][key] = {
+                "data": value,
+                "timestamp": time.time()
+            }
+
+        cls._save_raw_sync(current)
+
+    @classmethod
+    async def save_state_async(cls, updates: Dict[str, Any], namespace: str = "reports"):
+        """Async save wrapper."""
+        async with cls._async_lock:
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, cls.save_state, updates, namespace)
+
+    @classmethod
+    def load_state(cls, namespace: str = "reports", max_age: int = None) -> Dict:
+        """
+        Synchronous load. Returns dict of key -> data.
+        Appends warning string if data is stale.
+        """
+        state = cls._load_raw_sync().get(namespace, {})
+        max_age = max_age or cls.REPORT_TTL_SECONDS
+
+        result = {}
+        for key, entry in state.items():
+            if not isinstance(entry, dict) or 'timestamp' not in entry:
+                 # Attempt to handle legacy format if strictly necessary, but assuming clean slate/overwrite
+                 continue
+
+            age = time.time() - entry.get("timestamp", 0)
+            if age < max_age:
+                result[key] = entry["data"]
+            else:
+                # Format stale data with warning
+                data_str = str(entry['data'])
+                preview = data_str[:100] + "..." if len(data_str) > 100 else data_str
+                result[key] = f"STALE ({int(age/60)}min old) - {preview}"
+        return result
+
+    @classmethod
+    async def load_state_async(cls, namespace: str = "reports", max_age: int = None) -> Dict:
+        """Async load wrapper."""
+        async with cls._async_lock:
+             loop = asyncio.get_running_loop()
+             return await loop.run_in_executor(None, cls.load_state, namespace, max_age)
