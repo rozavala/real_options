@@ -119,6 +119,18 @@ def load_log_data():
         return {}
 
 
+# === ASYNC HELPERS ===
+
+def _ensure_event_loop():
+    """Ensures there is a valid asyncio event loop in the current thread."""
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop
+
+
 # === SYSTEM HEALTH FUNCTIONS ===
 
 def get_system_heartbeat():
@@ -201,11 +213,14 @@ def fetch_live_dashboard_data(_config):
     }
 
     try:
-        ib.connect(
+        loop = _ensure_event_loop()
+
+        # Use run_until_complete with connectAsync to ensure proper awaiting
+        loop.run_until_complete(ib.connectAsync(
             _config['connection']['host'],
             _config['connection']['port'],
             clientId=random.randint(1000, 9999)
-        )
+        ))
         configure_market_data_type(ib)
 
         # Account Summary
@@ -504,11 +519,14 @@ def fetch_portfolio_data(_config, trade_df: pd.DataFrame) -> pd.DataFrame:
     portfolio_data = []
 
     try:
-        ib.connect(
+        loop = _ensure_event_loop()
+
+        # Use run_until_complete with connectAsync to ensure proper awaiting
+        loop.run_until_complete(ib.connectAsync(
             _config['connection']['host'],
             _config['connection']['port'],
             clientId=random.randint(1000, 9999)
-        )
+        ))
         configure_market_data_type(ib)
 
         positions = ib.portfolio()
