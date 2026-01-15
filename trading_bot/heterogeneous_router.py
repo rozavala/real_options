@@ -330,8 +330,8 @@ class HeterogeneousRouter:
     def _get_fallback(self, role: AgentRole) -> tuple[ModelProvider, str]:
         """Get fallback when preferred provider unavailable."""
         fallbacks = [
-            (ModelProvider.GEMINI, "gemini-3-flash"),
-            (ModelProvider.OPENAI, "gpt-4o-mini"),
+            (ModelProvider.GEMINI, "gemini-3-flash-preview"),
+            (ModelProvider.OPENAI, "gpt-5-mini"),
             (ModelProvider.ANTHROPIC, "claude-3-5-sonnet-20241022"),
         ]
 
