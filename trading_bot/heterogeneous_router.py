@@ -176,7 +176,7 @@ class OpenAIClient(LLMClient):
             "model": self.config.model_name,
             "messages": messages,
             "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
+            "max_completion_tokens": self.config.max_tokens,
         }
 
         if response_json:
