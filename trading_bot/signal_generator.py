@@ -12,6 +12,7 @@ from trading_bot.utils import log_council_decision
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager # Import StateManager
 from trading_bot.compliance import ComplianceOfficer
+from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type, TriggerType
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,28 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 # NOTE: StateManager merges updates, so this is safe.
                 StateManager.save_state(reports)
 
+                # --- WEIGHTED VOTING (New) ---
+                # Determine trigger type from context
+                trigger_source = locals().get('trigger_reason', None)  # From sentinel if triggered
+                trigger_type = determine_trigger_type(trigger_source)
+
+                # Calculate weighted consensus
+                weighted_result = calculate_weighted_decision(
+                    agent_reports=reports,
+                    trigger_type=trigger_type,
+                    ml_signal=ml_signal
+                )
+
+                # Inject weighted result into market context for Master
+                weighted_context = (
+                    f"\n\n--- WEIGHTED VOTING RESULT ---\n"
+                    f"Consensus Direction: {weighted_result['direction']}\n"
+                    f"Consensus Confidence: {weighted_result['confidence']:.2f}\n"
+                    f"Weighted Score: {weighted_result['weighted_score']:.3f}\n"
+                    f"Dominant Agent: {weighted_result['dominant_agent']}\n"
+                    f"Trigger Type: {weighted_result['trigger_type']}\n"
+                )
+
                 # D. Master Decision
                 # --- NEW: GET MARKET CONTEXT (The "Reality Check") ---
                 market_context_str = "MARKET CONTEXT: Data unavailable."
@@ -164,6 +187,9 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         )
                 except Exception as e:
                     logger.error(f"Failed to fetch history for context: {e}")
+
+                # Append weighted voting result to context
+                market_context_str += weighted_context
 
                 # Call decided (which now includes the Hegelian Loop)
                 decision = await council.decide(contract_name, ml_signal, reports, market_context_str)

@@ -111,9 +111,18 @@
         "https://news.google.com/rss/search?q=coffee+futures+market+sentiment"
       ],
       "sentiment_magnitude_threshold": 8
+    },
+    "microstructure": {
+      "spread_std_threshold": 3.0,
+      "volume_spike_pct": 5.0,
+      "depth_drop_pct": 0.5,
+      "cooldown_seconds": 300
     }
   },
   "compliance": {
+    "max_position_pct": 0.05,
+    "max_positions": 5,
+    "max_volume_pct": 0.10,
     "model": "gemini-1.5-pro",
     "temperature": 0.0
   },
@@ -146,6 +155,15 @@
  
       "compliance": "You are a Risk & Compliance Officer. Your ONLY job is to detect hallucinations. You will receive RESEARCH REPORTS, MARKET CONTEXT, and the MASTER STRATEGIST RULES. \n\nVERIFICATION PROTOCOL:\n1. FACT CHECK: Verify all data points (price, rainfall, percentages) appear in the 'RESEARCH REPORTS' or 'MARKET CONTEXT'.\n2. RULE CHECK: Verify the decision follows the 'MASTER STRATEGIST RULES' provided in the context.\n3. CITATION CHECK: Ensure facts have valid [Source: X] tags.\n4. MASTER EXCEPTION: The Master Strategist does NOT need to use [Source: X] tags in the final 'Reasoning' field, AS LONG AS the facts cited can be found in the provided Reports/Context.\n\nOutput a JSON: {'approved': bool, 'flagged_reason': string}."
     }
+  },
+  "openai": {
+    "api_key": "YOUR_OPENAI_API_KEY"
+  },
+  "anthropic": {
+    "api_key": "YOUR_ANTHROPIC_API_KEY"
+  },
+  "xai": {
+    "api_key": "YOUR_XAI_API_KEY"
   },
   "final_column_order": [
     "date",
