@@ -328,7 +328,60 @@ async def reconcile_and_analyze(config: dict):
     logger.info("--- End-of-day reconciliation and analysis process complete ---")
 
 
+async def process_deferred_triggers(config: dict):
+    """Process deferred triggers from overnight, but ONLY if market is open."""
+    if not is_market_open():
+        logger.info("Market is closed. Skipping deferred trigger processing (will retry at scheduled time).")
+        return
+
+    logger.info("--- Processing Deferred Triggers ---")
+    try:
+        deferred = StateManager.get_deferred_triggers()
+        if deferred:
+            logger.info(f"Processing {len(deferred)} deferred triggers from overnight")
+            ib_conn = await IBConnectionPool.get_connection("deferred", config)
+            for t in deferred:
+                trigger = SentinelTrigger(t['source'], t['reason'], t['payload'])
+                await run_emergency_cycle(trigger, config, ib_conn)
+            await IBConnectionPool.release_connection("deferred")
+        else:
+            logger.info("No deferred triggers to process.")
+    except Exception as e:
+        logger.error(f"Failed to process deferred triggers: {e}")
+
+
 # --- SENTINEL LOGIC ---
+
+async def _is_signal_priced_in(trigger: SentinelTrigger, ml_signal: dict, ib: IB, contract) -> tuple[bool, str]:
+    """Check if the signal has already been priced into the market."""
+    try:
+        # Get 24h price change
+        bars = await ib.reqHistoricalDataAsync(
+            contract,
+            endDateTime='',
+            durationStr='2 D',
+            barSizeSetting='1 day',
+            whatToShow='TRADES',
+            useRTH=True
+        )
+        if len(bars) >= 2:
+            prev_close = bars[-2].close
+            current_close = bars[-1].close
+            change_pct = ((current_close - prev_close) / prev_close) * 100
+
+            # PRICED IN: If bullish trigger + price already up >3%
+            if trigger.source in ['WeatherSentinel', 'NewsSentinel']:
+                if change_pct > 3.0:
+                    return True, f"Price already +{change_pct:.1f}% - signal likely priced in"
+                elif change_pct < -3.0:
+                    # Note: Original requirement said "If '24h Change' is UP >3% and agents report Bullish news"
+                    # We implement a symmetric check for now (extreme moves).
+                    return True, f"Price already {change_pct:.1f}% - signal likely priced in"
+        return False, ""
+    except Exception as e:
+        logger.warning(f"Priced-in check failed: {e}")
+        return False, ""  # Fail open
+
 
 async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
     """
@@ -385,6 +438,13 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 
                 contract_name = f"{target_contract.localSymbol} ({target_contract.lastTradeDateOrContractMonth[:6]})"
                 logger.info(f"Targeting contract: {contract_name}")
+
+                # === NEW: PRICED IN CHECK ===
+                priced_in, reason = await _is_signal_priced_in(trigger, {}, ib, target_contract)
+                if priced_in:
+                    logger.warning(f"PRICED IN CHECK FAILED: {reason}. Skipping emergency cycle.")
+                    send_pushover_notification(config.get('notifications', {}), "Signal Priced In", reason)
+                    return
 
                 # 3. Get Market Context (Snapshot)
                 ticker = ib.reqMktData(target_contract, '', True, False)
@@ -455,7 +515,8 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         current_reports,
                         market_context_str,
                         decision,
-                        council.personas.get('master', '')
+                        council.personas.get('master', ''),
+                        ib=ib
                     )
 
                     if not audit.get('approved', True):
@@ -523,17 +584,31 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 final_reports_for_scoring = StateManager.load_state()
 
                 for agent_name, report in final_reports_for_scoring.items():
-                    sentiment = 'NEUTRAL'
-                    report_str = str(report)
+                    # Default
+                    direction = 'NEUTRAL'
+                    confidence = 0.5
+
                     if isinstance(report, dict):
-                        report_str = str(report.get('data', ''))
+                        # Structured report from new research_topic
+                        direction = report.get('sentiment', 'NEUTRAL')
+                        confidence = report.get('confidence', 0.5)
+                        # Fallback parsing if sentiment missing or raw string
+                        if 'data' in report and 'STALE' not in str(report['data']):
+                             # If sentiment is not in top level dict (legacy), try parsing text
+                             if not report.get('sentiment'):
+                                 report_str = str(report.get('data', '')).upper()
+                                 if 'BULLISH' in report_str: direction = 'BULLISH'
+                                 elif 'BEARISH' in report_str: direction = 'BEARISH'
+                    else:
+                        # Legacy string report
+                        report_str = str(report).upper()
+                        if 'BULLISH' in report_str: direction = 'BULLISH'
+                        elif 'BEARISH' in report_str: direction = 'BEARISH'
 
-                    if 'BULLISH' in report_str.upper(): sentiment = 'BULLISH'
-                    elif 'BEARISH' in report_str.upper(): sentiment = 'BEARISH'
-
-                    tracker.record_prediction(
+                    tracker.record_prediction_structured(
                         agent=agent_name,
-                        predicted=sentiment,
+                        predicted_direction=direction,
+                        predicted_confidence=float(confidence),
                         actual='PENDING',
                         timestamp=datetime.now(timezone.utc)
                     )
@@ -682,6 +757,7 @@ async def run_sentinels(config: dict):
 
 schedule = {
     time(3, 30): start_monitoring,           # Market Open
+    time(3, 31): process_deferred_triggers,  # 1 min after Open (Retry deferred)
     time(9, 0): generate_and_execute_orders, # Morning Trading
     time(13, 30): close_stale_positions,     # 30 mins before Close
     time(13, 45): cancel_and_stop_monitoring,# 15 mins before Close
@@ -708,20 +784,8 @@ async def main():
     if not config:
         logger.critical("Orchestrator cannot start without a valid configuration."); return
     
-    # Process deferred triggers from overnight
-    try:
-        deferred = StateManager.get_deferred_triggers()
-        if deferred:
-            logger.info(f"Processing {len(deferred)} deferred triggers from overnight")
-            ib_conn = await IBConnectionPool.get_connection("deferred", config)
-            for t in deferred:
-                # We call run_emergency_cycle unconditionally.
-                # It has an internal market hours check that will re-queue the trigger if closed.
-                trigger = SentinelTrigger(t['source'], t['reason'], t['payload'])
-                await run_emergency_cycle(trigger, config, ib_conn)
-            await IBConnectionPool.release_connection("deferred")
-    except Exception as e:
-        logger.error(f"Failed to process deferred triggers: {e}")
+    # Process deferred triggers from overnight - ONLY if market is open
+    await process_deferred_triggers(config)
 
     env_name = os.getenv("ENV_NAME", "DEV") 
     is_prod = env_name == "PROD 🚀"

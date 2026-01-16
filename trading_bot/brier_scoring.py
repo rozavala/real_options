@@ -44,7 +44,7 @@ class BrierScoreTracker:
             return {}
 
     def record_prediction(self, agent: str, predicted: str, actual: str, timestamp: Optional[datetime] = None):
-        """Record a prediction for later scoring."""
+        """Record a prediction for later scoring (Legacy Method)."""
         if timestamp is None:
             timestamp = datetime.now(timezone.utc)
 
@@ -61,12 +61,65 @@ class BrierScoreTracker:
                 if not exists:
                     f.write("timestamp,agent,predicted,actual,correct\n")
                 f.write(f"{timestamp},{agent},{predicted},{actual},{correct}\n")
-
-            # Update local cache logic (simplified)
-            # In a real system, we might re-calculate full rolling score here
-            # For now, we rely on _load_history being called on init or periodic refresh
         except Exception as e:
             logger.error(f"Failed to record prediction for {agent}: {e}")
+
+    def record_prediction_structured(
+        self,
+        agent: str,
+        predicted_direction: str,
+        predicted_confidence: float,
+        actual: str = 'PENDING',
+        timestamp: Optional[datetime] = None
+    ):
+        """Record a prediction with full probability for proper Brier scoring."""
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+
+        # Normalize
+        predicted_direction = predicted_direction.upper()
+
+        # Convert to probability based on direction
+        # BULLISH with 0.8 conf -> prob_bullish = 0.8
+        # BEARISH with 0.8 conf -> prob_bullish = 0.2 (Assuming binary for now, or just recording raw)
+        # We record the raw confidence and direction to calculate Brier later properly.
+        # Brier = (prob - outcome)^2.
+        # We store enough data to calc it.
+
+        prob_bullish = predicted_confidence if predicted_direction == 'BULLISH' else (1.0 - predicted_confidence)
+        if predicted_direction == 'NEUTRAL':
+            prob_bullish = 0.5 # Center
+
+        try:
+            exists = os.path.exists(self.history_file)
+            with open(self.history_file, 'a') as f:
+                if not exists:
+                    # Extended header if creating new, or append to existing (might cause schema drift if mixed, but CSV tolerates extra cols if ignored)
+                    # Ideally we use a new file or handle migration. For now we append to same file but with extra cols?
+                    # The legacy method wrote 5 cols. We need to be careful.
+                    # Let's check if we can add columns safely.
+                    # If we write extra commas, old readers might break.
+                    # We will use a NEW file for structured history to be safe.
+                    f.write("timestamp,agent,predicted,confidence,prob_bullish,actual,correct\n")
+
+                # Check if we are writing to the legacy file format?
+                # The issue description suggested one file.
+                # "f.write(f"{timestamp},{agent},{predicted_direction},{predicted_confidence},{prob_bullish},{actual},\n")"
+                # If we share the file, we must respect the header.
+                # Legacy header: timestamp,agent,predicted,actual,correct
+                # If we want to add confidence, we should probably add it to the end or use a new file.
+                # I will use a separate file for structured scoring to avoid breaking legacy tools.
+                pass
+
+            structured_file = self.history_file.replace(".csv", "_structured.csv")
+            exists_struct = os.path.exists(structured_file)
+            with open(structured_file, 'a') as f:
+                if not exists_struct:
+                    f.write("timestamp,agent,direction,confidence,prob_bullish,actual\n")
+                f.write(f"{timestamp},{agent},{predicted_direction},{predicted_confidence},{prob_bullish},{actual}\n")
+
+        except Exception as e:
+            logger.error(f"Failed to record structured prediction: {e}")
 
     def get_agent_weight_multiplier(self, agent: str, base_weight: float = 1.0) -> float:
         """Get accuracy-adjusted weight multiplier for agent."""

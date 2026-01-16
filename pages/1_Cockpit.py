@@ -287,6 +287,27 @@ try:
                 for chain in metrics['top_fallback_chains'][:5]:
                     st.write(f"**{chain['role']}**: {chain['chain']} ({chain['count']} times)")
 
+        # Recent Fallback Errors (New)
+        router_instance = get_router(config)
+        # Access internal metrics directly if get_metrics_summary doesn't expose it yet
+        # But get_router_metrics() is singleton.
+        from trading_bot.router_metrics import get_router_metrics
+        rm = get_router_metrics()
+
+        if 'recent_errors' in rm._metrics and rm._metrics['recent_errors']:
+            with st.expander("⚠️ Recent Fallback Events"):
+                recent_errors = rm._metrics['recent_errors']
+                # Sort newest first
+                recent_errors = sorted(recent_errors, key=lambda x: x['timestamp'], reverse=True)
+
+                # Convert to DF
+                err_df = pd.DataFrame(recent_errors)
+                if not err_df.empty:
+                    st.dataframe(
+                        err_df[['timestamp', 'role', 'primary', 'fallback', 'error']],
+                        width="stretch"
+                    )
+
 except ImportError:
     st.info("Router metrics not available")
 except Exception as e:

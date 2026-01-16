@@ -78,31 +78,52 @@ class ModelConfig:
 class ResponseCache:
     """In-memory cache for LLM responses with role-based TTL."""
 
-    # Role-based TTL configuration (in seconds)
-    ROLE_TTL = {
-        # Tier 1 - Sentinels: BYPASS CACHE (handled separately, not cached)
-
-        # Tier 2 - Analysts: Data changes slowly, cache longer
-        AgentRole.AGRONOMIST.value: 1800,           # 30 min
-        AgentRole.MACRO_ANALYST.value: 1800,        # 30 min
-        AgentRole.GEOPOLITICAL_ANALYST.value: 1800, # 30 min
-        AgentRole.INVENTORY_ANALYST.value: 1800,    # 30 min
-        AgentRole.SUPPLY_CHAIN_ANALYST.value: 1800, # 30 min
-        AgentRole.VOLATILITY_ANALYST.value: 900,    # 15 min (more dynamic)
-        AgentRole.TECHNICAL_ANALYST.value: 900,     # 15 min (price-dependent)
-        AgentRole.SENTIMENT_ANALYST.value: 600,     # 10 min (social moves fast)
-
-        # Tier 3 - Decision Makers: Need fresh synthesis
-        AgentRole.PERMABEAR.value: 300,             # 5 min
-        AgentRole.PERMABULL.value: 300,             # 5 min
-        AgentRole.MASTER_STRATEGIST.value: 300,     # 5 min
-        AgentRole.COMPLIANCE_OFFICER.value: 300,    # 5 min
+    # Default TTLs (can be overridden by config)
+    DEFAULT_ROLE_TTL = {
+        AgentRole.AGRONOMIST.value: 1800,
+        AgentRole.MACRO_ANALYST.value: 1800,
+        AgentRole.GEOPOLITICAL_ANALYST.value: 1800,
+        AgentRole.INVENTORY_ANALYST.value: 1800,
+        AgentRole.SUPPLY_CHAIN_ANALYST.value: 1800,
+        AgentRole.VOLATILITY_ANALYST.value: 900,
+        AgentRole.TECHNICAL_ANALYST.value: 900,
+        AgentRole.SENTIMENT_ANALYST.value: 600,
+        AgentRole.PERMABEAR.value: 300,
+        AgentRole.PERMABULL.value: 300,
+        AgentRole.MASTER_STRATEGIST.value: 300,
+        AgentRole.COMPLIANCE_OFFICER.value: 300,
     }
 
     DEFAULT_TTL = 300  # 5 minutes fallback
 
-    def __init__(self):
+    def __init__(self, config: dict = None):
         self.cache = {}
+        self.config = config or {}
+
+        # Load environment-specific TTL overrides
+        env_name = os.getenv("ENV_NAME", "DEV")
+        ttl_config = self.config.get('cache_ttl', {})
+
+        # Environment multiplier (DEV = 0.25x, PROD = 1.0x)
+        # Note: 'DEV' usually implies testing, so shorter TTLs are better for iteration.
+        # But if 'DEV' means "Deployment", maybe cost saving?
+        # Requirement said: "DEV environments can use shorter TTLs for testing and PROD uses longer TTLs for cost efficiency."
+        # Actually usually PROD caches longer for cost efficiency. DEV might want NO cache for testing?
+        # Or DEV wants shorter cache to see changes?
+        # The prompt said: "DEV environments can use shorter TTLs for testing and PROD uses longer TTLs for cost efficiency."
+        # Wait, if DEV uses shorter TTL, it refreshes MORE often -> Higher Cost.
+        # Maybe "PROD uses longer TTLs for cost efficiency" implies DEV uses shorter?
+        # Ah, if I am testing, I want to see results of code changes immediately, so I want SHORT cache or NO cache.
+        # So DEV = Short TTL makes sense for dev experience (not cost).
+
+        env_multiplier = ttl_config.get('env_multipliers', {}).get(env_name, 1.0)
+
+        self.ROLE_TTL = {}
+        for role, default_ttl in self.DEFAULT_ROLE_TTL.items():
+            override = ttl_config.get('roles', {}).get(role, default_ttl)
+            self.ROLE_TTL[role] = int(override * env_multiplier)
+
+        logger.info(f"ResponseCache initialized with env={env_name}, multiplier={env_multiplier}")
 
     def _hash_key(self, prompt: str, role: str) -> str:
         return hashlib.md5(f"{role}:{prompt}".encode()).hexdigest()
@@ -329,7 +350,7 @@ class HeterogeneousRouter:
                 self.available_providers.add(provider)
 
         # Initialize Cache
-        self.cache = ResponseCache()  # Now uses role-based TTL internally
+        self.cache = ResponseCache(config)  # Now uses role-based TTL internally
 
         # 1. LOAD MODEL KEYS (With Defaults)
         gem_flash = self.registry.get('gemini', {}).get('flash', 'gemini-3-flash-preview')

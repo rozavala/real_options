@@ -164,6 +164,21 @@ class RouterMetrics:
             self._metrics['fallbacks'][role][fallback_key] = 0
 
         self._metrics['fallbacks'][role][fallback_key] += 1
+
+        # Store recent error details
+        if 'recent_errors' not in self._metrics:
+            self._metrics['recent_errors'] = []
+
+        self._metrics['recent_errors'].append({
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'role': role,
+            'primary': primary_provider,
+            'fallback': fallback_provider,
+            'error': str(error)[:200]  # Truncate for storage
+        })
+        # Keep last 50
+        self._metrics['recent_errors'] = self._metrics['recent_errors'][-50:]
+
         logger.warning(f"Fallback event: {role} {primary_provider} -> {fallback_provider}. Reason: {error}")
 
     def get_summary(self) -> dict:

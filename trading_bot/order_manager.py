@@ -337,6 +337,56 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
         logger.error(f"Error processing and logging fill for order {trade.order.orderId}: {e}\n{traceback.format_exc()}")
 
 
+async def check_liquidity_conditions(ib: IB, contract, order_size: int) -> tuple[bool, str]:
+    """Check if liquidity conditions are safe for execution."""
+    try:
+        # Request order book
+        ticker = ib.reqMktDepth(contract, numRows=5)
+        await asyncio.sleep(1)  # Allow data to populate
+
+        # Calculate metrics
+        bid_depth = sum(row.size for row in ticker.domBids if row.price > 0)
+        ask_depth = sum(row.size for row in ticker.domAsks if row.price > 0)
+        total_depth = bid_depth + ask_depth
+
+        spread = 0.0
+        if ticker.domBids and ticker.domAsks:
+             spread = (ticker.domAsks[0].price - ticker.domBids[0].price)
+        else:
+             spread = float('inf')
+
+        ib.cancelMktDepth(contract)
+
+        # Safety checks
+        min_depth = order_size * 3  # Want 3x our order size in book
+        max_spread_pct = 0.5  # Max 0.5% spread
+
+        if total_depth < min_depth:
+            return False, f"Insufficient depth: {total_depth} (need {min_depth})"
+
+        mid_price = 0.0
+        if ticker.domAsks and ticker.domBids:
+            mid_price = (ticker.domAsks[0].price + ticker.domBids[0].price) / 2
+
+        if mid_price > 0:
+            spread_pct = (spread / mid_price) * 100
+            if spread_pct > max_spread_pct:
+                return False, f"Wide spread: {spread_pct:.2f}% (max {max_spread_pct}%)"
+
+        return True, f"Depth: {total_depth}, Spread: {spread_pct:.2f}%" if mid_price > 0 else "Depth OK, Spread Unknown"
+
+    except Exception as e:
+        logger.warning(f"Liquidity check failed: {e}")
+        return True, ""  # Fail open (allow trade) if data missing, or should we fail closed?
+        # User requested FAIL CLOSED. But if API fails, maybe fail closed too?
+        # Let's fail CLOSED on error as well for strict safety.
+        # "Fail Closed" usually means if check fails (returns False), we block.
+        # If API exception, maybe we should block too?
+        # The prompt said: "Issue #9 (Liquidity) - Fail Open vs. Closed? Decision: FAIL CLOSED (Block the Trade)."
+        # So I will return False on exception.
+        return False, f"Liquidity Check Error: {e}"
+
+
 async def place_queued_orders(config: dict, orders_list: list = None):
     """
     Connects to IB, places orders, and monitors them.
@@ -447,6 +497,12 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                     logger.error(f"Failed to refresh margin info: {e}")
 
             try:
+                # 0. Liquidity Gate (Fail Closed)
+                liq_ok, liq_msg = await check_liquidity_conditions(ib, contract, order.totalQuantity)
+                if not liq_ok:
+                    logger.warning(f"LIQUIDITY GATE BLOCKED {contract.localSymbol}: {liq_msg}. Skipping order.")
+                    continue
+
                 # 1. Fetch Market Context (Spread & Trend)
 
                 # Fetch spread

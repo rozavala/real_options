@@ -67,16 +67,21 @@ async def test_council_init_fallback(mock_genai_client):
 async def test_research_topic(mock_genai_client, mock_config):
     _, _, mock_generate_content = mock_genai_client
 
-    # Setup mock response
+    # Setup mock response (JSON)
     mock_response = MagicMock()
-    mock_response.text = "Rain is expected in Brazil."
+    # The agent now expects JSON
+    mock_response.text = '{"evidence": "Radar shows clouds.", "analysis": "Rain is expected in Brazil.", "confidence": 0.9, "sentiment": "BEARISH"}'
     mock_generate_content.return_value = mock_response
 
     council = CoffeeCouncil(mock_config)
 
     result = await council.research_topic("meteorologist", "Check rain")
 
-    assert result == "Rain is expected in Brazil."
+    # Result is now a dict
+    assert isinstance(result, dict)
+    assert result['confidence'] == 0.9
+    assert result['sentiment'] == "BEARISH"
+    assert "Rain is expected in Brazil." in result['data']
 
     # Verify call arguments
     call_args = mock_generate_content.call_args
@@ -90,10 +95,9 @@ async def test_research_topic(mock_genai_client, mock_config):
     # Verify config (Tools and Safety Settings)
     config_arg = kwargs.get('config')
     assert config_arg is not None
-    assert config_arg.tools is not None
-    # Check if google_search is present in tools
-    # The structure depends on how the SDK constructs it, but we can check the repr or attribute
-    assert str(config_arg.tools[0].google_search) is not None
+
+    # Phase 2 (Analysis) should NOT use tools
+    assert config_arg.tools is None
 
     assert config_arg.safety_settings is not None
     assert len(config_arg.safety_settings) == 4
