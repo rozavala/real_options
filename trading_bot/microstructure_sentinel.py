@@ -8,7 +8,8 @@ Monitors:
 
 import logging
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timezone, time
+import pytz
 from dataclasses import dataclass, field
 from typing import Optional
 from collections import deque
@@ -100,8 +101,27 @@ class MicrostructureSentinel:
         elapsed = (datetime.now() - self.last_trigger_time).total_seconds()
         return elapsed < self.cooldown_seconds
 
+    def is_core_market_hours(self) -> bool:
+        """Check if current time is within core US trading hours (09:00 - 13:30 ET)."""
+        tz = pytz.timezone('US/Eastern')
+        now = datetime.now(tz)
+
+        # Check for weekends
+        if now.weekday() >= 5:  # 5=Sat, 6=Sun
+            return False
+
+        # Core hours: 09:00 - 13:30
+        market_open = time(9, 0)
+        market_close = time(13, 30)
+
+        return market_open <= now.time() <= market_close
+
     async def check(self) -> Optional[SentinelTrigger]:
         """Check for microstructure anomalies."""
+        if not self.is_core_market_hours():
+            logger.info("Market Closed (Outside 09:00-13:30 ET), skipping microstructure check.")
+            return None
+
         if not self.ib.isConnected():
             # Clear stale data on disconnect
             self.spread_history.clear()

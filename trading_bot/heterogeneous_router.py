@@ -331,21 +331,75 @@ class HeterogeneousRouter:
 
         return self.clients[cache_key]
 
-    def _get_fallback(self, role: AgentRole) -> tuple[ModelProvider, str]:
-        """Get fallback when preferred provider unavailable."""
-        # Update fallbacks to match available keys/defaults if needed, or keep simple defaults
-        fallbacks = [
-            (ModelProvider.GEMINI, "gemini-3-flash-preview"),
-            (ModelProvider.OPENAI, "gpt-5-mini-2025-08-07"), # Updated to one of the keys or similar
-            (ModelProvider.ANTHROPIC, "claude-sonnet-4-5-20250929"), # Just a fallback
-        ]
+    def _get_fallback_models(self, role: AgentRole, primary_provider: ModelProvider) -> list[tuple[ModelProvider, str]]:
+        """
+        Returns a list of (Provider, ModelID) tuples for fallback.
+        Logic: Tier 3 roles NEVER fall back to 'Flash' models.
+        """
 
-        for provider, model in fallbacks:
-            if provider in self.available_providers:
-                logger.warning(f"Using fallback {provider.value}/{model} for {role.value}")
-                return provider, model
+        # Helper to safely get model ID from registry or return a default
+        def get_model(prov_key, tier_key, default):
+            return self.registry.get(prov_key, {}).get(tier_key, default)
 
-        raise RuntimeError("No LLM providers available!")
+        # TIER 3: DECISION MAKERS (High IQ Required)
+        if role in [AgentRole.MASTER_STRATEGIST, AgentRole.COMPLIANCE_OFFICER, AgentRole.PERMABEAR, AgentRole.PERMABULL]:
+            # If OpenAI Pro fails, try Anthropic Opus, then Gemini Pro.
+            # If Anthropic Pro fails (Primary), try OpenAI Pro, then Gemini Pro.
+            fallbacks = []
+
+            # Note: We hardcode the Pro models here to ensure quality
+            anth_pro = get_model('anthropic', 'pro', 'claude-3-opus-20240229')
+            oai_pro = get_model('openai', 'pro', 'gpt-4o')
+            gem_pro = get_model('gemini', 'pro', 'gemini-1.5-pro-preview-0409')
+
+            if primary_provider == ModelProvider.OPENAI:
+                fallbacks.append((ModelProvider.ANTHROPIC, anth_pro))
+                fallbacks.append((ModelProvider.GEMINI, gem_pro))
+            elif primary_provider == ModelProvider.ANTHROPIC:
+                fallbacks.append((ModelProvider.OPENAI, oai_pro))
+                fallbacks.append((ModelProvider.GEMINI, gem_pro))
+            elif primary_provider == ModelProvider.XAI:
+                fallbacks.append((ModelProvider.OPENAI, oai_pro))
+                fallbacks.append((ModelProvider.ANTHROPIC, anth_pro))
+            else:
+                 fallbacks.append((ModelProvider.ANTHROPIC, anth_pro))
+                 fallbacks.append((ModelProvider.OPENAI, oai_pro))
+
+            return fallbacks
+
+        # TIER 2: DEEP ANALYSTS
+        elif role in [AgentRole.AGRONOMIST, AgentRole.MACRO_ANALYST, AgentRole.SUPPLY_CHAIN_ANALYST, AgentRole.GEOPOLITICAL_ANALYST, AgentRole.INVENTORY_ANALYST, AgentRole.VOLATILITY_ANALYST]:
+            gem_pro = get_model('gemini', 'pro', 'gemini-1.5-pro-preview-0409')
+            oai_pro = get_model('openai', 'pro', 'gpt-4o')
+            anth_pro = get_model('anthropic', 'pro', 'claude-3-opus-20240229')
+
+            if primary_provider == ModelProvider.GEMINI:
+                return [
+                    (ModelProvider.OPENAI, oai_pro),
+                    (ModelProvider.ANTHROPIC, anth_pro)
+                ]
+            else:
+                return [
+                    (ModelProvider.GEMINI, gem_pro),
+                    (ModelProvider.ANTHROPIC, anth_pro)
+                ]
+
+        # TIER 1: SENTINELS (Speed Required)
+        else:
+            # If Gemini Flash fails, try OpenAI Mini/Flash, then xAI.
+            oai_flash = get_model('openai', 'flash', 'gpt-4o-mini')
+            xai_flash = get_model('xai', 'flash', 'grok-beta')
+            gem_flash = get_model('gemini', 'flash', 'gemini-1.5-flash-preview-0514')
+
+            fallbacks = []
+            if primary_provider != ModelProvider.OPENAI:
+                 fallbacks.append((ModelProvider.OPENAI, oai_flash))
+            if primary_provider != ModelProvider.XAI:
+                 fallbacks.append((ModelProvider.XAI, xai_flash))
+            if primary_provider != ModelProvider.GEMINI:
+                 fallbacks.append((ModelProvider.GEMINI, gem_flash))
+
+            return fallbacks
 
     async def route(
         self,
@@ -354,7 +408,7 @@ class HeterogeneousRouter:
         system_prompt: Optional[str] = None,
         response_json: bool = False
     ) -> str:
-        """Route request to appropriate model."""
+        """Route request to appropriate model with robust fallback."""
 
         # Check Cache
         full_key_prompt = f"{system_prompt or ''}:{prompt}"
@@ -363,34 +417,49 @@ class HeterogeneousRouter:
             logger.debug(f"Cache hit for {role.value}")
             return cached_response
 
-        provider, model_name = self.assignments.get(
+        # 1. Determine Execution Chain (Primary + Fallbacks)
+        primary_provider, primary_model = self.assignments.get(
             role,
             (ModelProvider.GEMINI, "gemini-3-flash-preview")
         )
 
-        if provider not in self.available_providers:
-            provider, model_name = self._get_fallback(role)
+        execution_chain = [(primary_provider, primary_model)]
 
-        logger.debug(f"Routing {role.value} to {provider.value}/{model_name}")
+        # Add fallbacks
+        fallbacks = self._get_fallback_models(role, primary_provider)
+        execution_chain.extend(fallbacks)
 
-        response = None
-        try:
-            client = self._get_client(provider, model_name)
-            response = await client.generate(prompt, system_prompt, response_json)
-        except Exception as e:
-            logger.error(f"{provider.value}/{model_name} failed: {e}")
-            fallback_provider, fallback_model = self._get_fallback(role)
-            if fallback_provider != provider:
-                client = self._get_client(fallback_provider, fallback_model)
+        last_exception = None
+
+        for provider, model_name in execution_chain:
+            # Skip if provider strictly unavailable (no API key)
+            if provider not in self.available_providers:
+                logger.warning(f"Skipping {provider.value} (unavailable) for {role.value}")
+                continue
+
+            logger.debug(f"Routing {role.value} to {provider.value}/{model_name}")
+
+            try:
+                client = self._get_client(provider, model_name)
                 response = await client.generate(prompt, system_prompt, response_json)
-            else:
-                raise e
 
-        # Cache response if successful
-        if response:
-            self.cache.set(full_key_prompt, role.value, response)
+                # Success! Cache and return
+                self.cache.set(full_key_prompt, role.value, response)
 
-        return response
+                if provider != primary_provider:
+                    logger.warning(f"FALLBACK SUCCESS: Used {provider.value}/{model_name} for {role.value} after primary failure.")
+
+                return response
+
+            except Exception as e:
+                logger.warning(f"{provider.value}/{model_name} failed for {role.value}: {e}")
+                last_exception = e
+                # Continue to next model in chain
+
+        # If we get here, all models in the chain failed or were unavailable
+        error_msg = f"ALL models failed for {role.value}. Last error: {last_exception}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg) from last_exception
 
     def get_diversity_report(self) -> dict:
         """Report on model diversity."""

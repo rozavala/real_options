@@ -55,7 +55,7 @@ class TriggerDeduplicator:
     def __init__(self, window_seconds: int = 1800, state_file="data/deduplicator_state.json"):
         self.state_file = state_file
         self.window = window_seconds
-        self.global_cooldown_until = 0
+        self.cooldowns = {} # Dictionary of cooldowns {source: until_timestamp}
         self.recent_triggers = deque(maxlen=50)
         self._load_state()
 
@@ -64,7 +64,12 @@ class TriggerDeduplicator:
             try:
                 with open(self.state_file, 'r') as f:
                     data = json.load(f)
-                    self.global_cooldown_until = data.get('global_cooldown_until', 0)
+                    # Migrate old state if necessary or just load dict
+                    if 'global_cooldown_until' in data:
+                        self.cooldowns['GLOBAL'] = data['global_cooldown_until']
+                    else:
+                        self.cooldowns = data.get('cooldowns', {})
+
                     for t in data.get('recent_triggers', []):
                          self.recent_triggers.append(tuple(t)) # (hash, timestamp)
             except Exception as e:
@@ -75,7 +80,7 @@ class TriggerDeduplicator:
             # Create data dir if not exists
             os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
             data = {
-                'global_cooldown_until': self.global_cooldown_until,
+                'cooldowns': self.cooldowns,
                 'recent_triggers': list(self.recent_triggers)
             }
             with open(self.state_file, 'w') as f:
@@ -86,9 +91,16 @@ class TriggerDeduplicator:
     def should_process(self, trigger: SentinelTrigger) -> bool:
         now = time_module.time()
 
-        # Global cooldown check
-        if now < self.global_cooldown_until:
-            logger.info(f"Global cooldown active. Skipping {trigger.source}")
+        # 1. Check Global Lock (Set by Scheduled Tasks)
+        global_until = self.cooldowns.get('GLOBAL', 0)
+        if now < global_until:
+            logger.info(f"GLOBAL cooldown active until {datetime.fromtimestamp(global_until)}. Skipping {trigger.source}")
+            return False
+
+        # 2. Check Per-Source Lock (Set by Sentinel Self-Triggers)
+        source_until = self.cooldowns.get(trigger.source, 0)
+        if now < source_until:
+            logger.info(f"{trigger.source} cooldown active until {datetime.fromtimestamp(source_until)}. Skipping.")
             return False
 
         # Content-based deduplication
@@ -109,13 +121,16 @@ class TriggerDeduplicator:
         self._save_state()
         return True
 
-    def set_global_cooldown(self, seconds: int = 900):
-        self.global_cooldown_until = time_module.time() + seconds
+    def set_cooldown(self, source: str, seconds: int = 900):
+        """Sets a cooldown for a specific source (or 'GLOBAL')."""
+        self.cooldowns[source] = time_module.time() + seconds
         self._save_state()
 
-    def clear_global_cooldown(self):
-        self.global_cooldown_until = 0
-        self._save_state()
+    def clear_cooldown(self, source: str):
+        """Clears the cooldown for a specific source."""
+        if source in self.cooldowns:
+            del self.cooldowns[source]
+            self._save_state()
 
 # Global Deduplicator Instance
 GLOBAL_DEDUPLICATOR = TriggerDeduplicator()
@@ -429,14 +444,14 @@ async def run_sentinels(config: dict):
                 trigger = await price_sentinel.check()
                 if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                     asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                    GLOBAL_DEDUPLICATOR.set_global_cooldown(900)
+                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
 
             # 2. Weather Sentinel (Every 4 hours = 14400s)
             if now - last_weather > 14400:
                 trigger = await weather_sentinel.check()
                 if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                     asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                    GLOBAL_DEDUPLICATOR.set_global_cooldown(900)
+                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
                 last_weather = now
 
             # 3. Logistics Sentinel (Every 6 hours = 21600s)
@@ -444,7 +459,7 @@ async def run_sentinels(config: dict):
                 trigger = await logistics_sentinel.check()
                 if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                     asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                    GLOBAL_DEDUPLICATOR.set_global_cooldown(900)
+                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
                 last_logistics = now
 
             # 4. News Sentinel (Every 1 hour = 3600s)
@@ -452,7 +467,7 @@ async def run_sentinels(config: dict):
                 trigger = await news_sentinel.check()
                 if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                     asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                    GLOBAL_DEDUPLICATOR.set_global_cooldown(900)
+                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
                 last_news = now
 
             # 5. Microstructure Sentinel (Every 1 min with Price Sentinel)
@@ -546,13 +561,13 @@ async def main():
 
                 # Set global cooldown during scheduled cycle (e.g. 10 mins)
                 # This prevents Sentinels from firing Emergency Cycles while we are busy
-                GLOBAL_DEDUPLICATOR.set_global_cooldown(600)
+                GLOBAL_DEDUPLICATOR.set_cooldown("GLOBAL", 600)
 
                 try:
                     await next_task_func(config)
                 finally:
                     # Clear cooldown immediately after task finishes
-                    GLOBAL_DEDUPLICATOR.clear_global_cooldown()
+                    GLOBAL_DEDUPLICATOR.clear_cooldown("GLOBAL")
 
             except asyncio.CancelledError:
                 logger.info("Orchestrator main loop cancelled."); break
