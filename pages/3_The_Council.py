@@ -214,7 +214,7 @@ if not vetoed_df.empty:
     st.warning(f"Found {len(vetoed_df)} vetoed decisions")
     st.dataframe(
         vetoed_df[['timestamp', 'contract', 'master_decision', 'master_reasoning']].head(20),
-        use_container_width=True
+        width="stretch"
     )
 else:
     st.success("No compliance vetoes recorded - all decisions passed compliance checks.")

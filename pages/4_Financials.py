@@ -335,7 +335,7 @@ st.subheader("📋 Trade Ledger")
 if not trade_df.empty:
     st.dataframe(
         trade_df.sort_values('timestamp', ascending=False),
-        use_container_width=True
+        width="stretch"
     )
 else:
     st.info("No trades recorded.")

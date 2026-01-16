@@ -224,7 +224,7 @@ if sorted_agents:
 
     # Detailed table
     with st.expander("📋 Detailed Scores"):
-        st.dataframe(chart_data, use_container_width=True)
+        st.dataframe(chart_data, width="stretch")
 else:
     st.info("Not enough data to calculate agent scores.")
 
@@ -248,10 +248,10 @@ if not graded_df.empty:
         return 'background-color: gray; color: white'
 
     st.dataframe(
-        display_df.sort_values('timestamp', ascending=False).head(20).style.applymap(
+        display_df.sort_values('timestamp', ascending=False).head(20).style.map(
             style_outcome, subset=['outcome']
         ),
-        use_container_width=True
+        width="stretch"
     )
 else:
     st.info("No decisions to display.")
