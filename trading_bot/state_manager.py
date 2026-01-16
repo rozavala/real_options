@@ -3,7 +3,7 @@ import os
 import logging
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 try:
@@ -49,6 +49,7 @@ class StateManager:
     """
     _async_lock = asyncio.Lock()
     REPORT_TTL_SECONDS = 3600  # 1 hour staleness threshold
+    DEFERRED_TRIGGERS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'deferred_triggers.json')
 
     @classmethod
     def _save_raw_sync(cls, data: dict):
@@ -158,3 +159,50 @@ class StateManager:
         async with cls._async_lock:
              loop = asyncio.get_running_loop()
              return await loop.run_in_executor(None, cls.load_state, namespace, max_age)
+
+    @classmethod
+    def queue_deferred_trigger(cls, trigger: Any):
+        """Queue a trigger for processing when market opens."""
+        triggers = cls._load_deferred_triggers()
+        triggers.append({
+            'source': trigger.source,
+            'reason': trigger.reason,
+            'payload': trigger.payload,
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        })
+
+        try:
+            os.makedirs(os.path.dirname(cls.DEFERRED_TRIGGERS_FILE), exist_ok=True)
+            with open(cls.DEFERRED_TRIGGERS_FILE, 'w') as f:
+                json.dump(triggers, f, indent=2)
+            logger.info(f"Queued deferred trigger from {trigger.source}")
+        except Exception as e:
+            logger.error(f"Failed to queue deferred trigger: {e}")
+
+    @classmethod
+    def get_deferred_triggers(cls) -> list:
+        """Get and clear deferred triggers."""
+        triggers = cls._load_deferred_triggers()
+
+        if not triggers:
+            return []
+
+        # Clear file
+        try:
+            with open(cls.DEFERRED_TRIGGERS_FILE, 'w') as f:
+                json.dump([], f)
+        except Exception as e:
+            logger.error(f"Failed to clear deferred triggers: {e}")
+
+        return triggers
+
+    @classmethod
+    def _load_deferred_triggers(cls) -> list:
+        if not os.path.exists(cls.DEFERRED_TRIGGERS_FILE):
+            return []
+        try:
+            with open(cls.DEFERRED_TRIGGERS_FILE, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Failed to load deferred triggers: {e}")
+            return []

@@ -105,13 +105,18 @@
       "api_url": "https://api.open-meteo.com/v1/forecast",
       "params": "daily=temperature_2m_min,precipitation_sum&timezone=auto&forecast_days=10",
       "locations": [
-        {"name": "Minas Gerais (Brazil)", "lat": -18.51, "lon": -44.55},
-        {"name": "Dak Lak (Vietnam)", "lat": 12.66, "lon": 108.03}
+        {"name": "Minas Gerais", "lat": -18.5, "lon": -44.0, "importance": "primary"},
+        {"name": "São Paulo", "lat": -23.5, "lon": -46.6, "importance": "secondary"},
+        {"name": "Dak Lak (Vietnam)", "lat": 12.7, "lon": 108.0, "importance": "primary"},
+        {"name": "Central Highlands (Vietnam)", "lat": 14.3, "lon": 108.2, "importance": "secondary"},
+        {"name": "Colombia Huila", "lat": 2.5, "lon": -75.5, "importance": "secondary"},
+        {"name": "Honduras Copan", "lat": 14.8, "lon": -89.1, "importance": "tertiary"}
       ],
       "triggers": {
-        "min_temp_c": 4.0,
+        "frost_temp_c": 4.0,
         "drought_days": 10,
-        "drought_rain_mm": 5.0
+        "drought_rain_mm": 5.0,
+        "excessive_rain_mm": 100.0
       }
     },
     "logistics": {

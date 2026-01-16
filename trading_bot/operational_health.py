@@ -1,60 +1,72 @@
+"""Operational Health Monitoring for Agent System."""
+
 import logging
+from typing import Dict, List
+from datetime import datetime, timezone
 import re
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-class OperationalHealthMonitor:
-    """Monitors agent outputs for hallucination and quality degradation."""
 
-    HALLUCINATION_INDICATORS = [
-        r"USDA report \d{4}",  # Check if cited reports exist
-        r"according to.*(\d{4})",  # Date references
-        r"price of \$[\d,]+",  # Price claims
-    ]
+class OperationalHealthMonitor:
+    """Monitors agent system health and detects anomalies."""
 
     def __init__(self, config: dict):
         self.config = config
-        self.alerts = []
+        self.agent_response_history: Dict[str, List[dict]] = {}
+        self.hallucination_patterns = [
+            r'USDA report from \d{4}',  # Fake report citations
+            r'according to.*internal data',  # No internal data exists
+            r'price of \$\d+\.\d{4}',  # Overly precise prices
+        ]
 
-    async def validate_output(self, agent: str, output: str) -> tuple[bool, list]:
-        """
-        Validate agent output for potential hallucinations.
-        Returns: (is_valid, warnings)
-        """
-        warnings = []
+    def check_response_consistency(self, agent: str, response: str) -> dict:
+        """Check for hallucination patterns and inconsistencies."""
 
-        # Check 1: Output length (context saturation indicator)
-        if len(output) < 50:
-            warnings.append(f"{agent}: Suspiciously short output (possible truncation)")
+        issues = []
 
-        # Check 2: Repetition (hallucination indicator)
-        sentences = output.split('.')
-        # Filter empty
-        sentences = [s.strip() for s in sentences if s.strip()]
-        if sentences:
-            unique_ratio = len(set(sentences)) / max(len(sentences), 1)
-            if unique_ratio < 0.7:
-                warnings.append(f"{agent}: High repetition detected (possible loop)")
+        # Pattern matching for common hallucinations
+        for pattern in self.hallucination_patterns:
+            if re.search(pattern, response, re.IGNORECASE):
+                issues.append(f"Possible hallucination: pattern '{pattern}' detected")
 
-        # Check 3: Confidence calibration
-        if "100% certain" in output.lower() or "guaranteed" in output.lower():
-            warnings.append(f"{agent}: Overconfident language detected")
+        # Check for response length anomalies
+        history = self.agent_response_history.get(agent, [])
+        if history:
+            avg_len = sum(h['length'] for h in history[-10:]) / min(10, len(history))
+            if avg_len > 0 and len(response) > avg_len * 3:
+                issues.append(f"Response length anomaly: {len(response)} vs avg {avg_len:.0f}")
 
-        # Check 4: Citation validation (would need external API, placeholder)
+        # Store response metrics
+        if agent not in self.agent_response_history:
+            self.agent_response_history[agent] = []
 
-        is_valid = len(warnings) == 0
-
-        if not is_valid:
-            logger.warning(f"Health check failed for {agent}: {warnings}")
-
-        return is_valid, warnings
-
-    def quarantine_agent(self, agent: str, reason: str):
-        """Mark an agent as unreliable for this cycle."""
-        self.alerts.append({
-            "agent": agent,
-            "reason": reason,
-            "timestamp": datetime.now().isoformat()
+        self.agent_response_history[agent].append({
+            'timestamp': datetime.now(timezone.utc),
+            'length': len(response),
+            'issues': issues
         })
-        logger.error(f"AGENT QUARANTINED: {agent} - {reason}")
+
+        # Keep history bounded
+        if len(self.agent_response_history[agent]) > 50:
+            self.agent_response_history[agent].pop(0)
+
+        return {
+            'healthy': len(issues) == 0,
+            'issues': issues,
+            'quarantine': len(issues) > 2
+        }
+
+    def get_system_health_report(self) -> dict:
+        """Generate overall system health report."""
+        total_issues = sum(
+            len(h['issues'])
+            for history in self.agent_response_history.values()
+            for h in history[-10:]
+        )
+
+        return {
+            'status': 'HEALTHY' if total_issues < 5 else 'DEGRADED' if total_issues < 10 else 'CRITICAL',
+            'total_recent_issues': total_issues,
+            'agents_monitored': len(self.agent_response_history)
+        }

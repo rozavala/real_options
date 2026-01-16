@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ def log_model_signal(contract: str, signal: str, price: float = None, sma_200: f
              confidence = max(0.0, min(1.0, float(confidence)))
 
         new_signal = pd.DataFrame({
-            'timestamp': [datetime.now()],
+            'timestamp': [datetime.now(timezone.utc)],
             'contract': [contract],
             'signal': [signal],
             'price': [price],

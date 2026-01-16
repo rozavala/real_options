@@ -9,7 +9,9 @@ import os
 import json
 import logging
 import asyncio
-from datetime import datetime, timedelta
+import time
+from typing import Dict, List
+from datetime import datetime, timedelta, timezone
 from google import genai
 from google.genai import types
 from trading_bot.state_manager import StateManager
@@ -18,6 +20,7 @@ from trading_bot.semantic_router import SemanticRouter
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole, get_router
 from trading_bot.tms import TransactiveMemory
 from trading_bot.reliability_scorer import ReliabilityScorer
+from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +36,22 @@ Output JSON with this structure:
     "ml_confidence_used": 0.0
 }
 """
+
+class ResponseTimeTracker:
+    def __init__(self):
+        self.latencies: Dict[str, List[float]] = {}
+
+    def record(self, provider: str, latency: float):
+        if provider not in self.latencies:
+            self.latencies[provider] = []
+        self.latencies[provider].append(latency)
+        # Keep last 100
+        self.latencies[provider] = self.latencies[provider][-100:]
+
+    def get_avg_latency(self, provider: str) -> float:
+        if provider not in self.latencies or not self.latencies[provider]:
+            return 0.0
+        return sum(self.latencies[provider]) / len(self.latencies[provider])
 
 class CoffeeCouncil:
     """Manages the tiered Gemini agent system using the new google-genai SDK."""
@@ -99,6 +118,7 @@ class CoffeeCouncil:
         # 6. Initialize Cognitive Infrastructure
         self.tms = TransactiveMemory()
         self.scorer = ReliabilityScorer()
+        self.response_tracker = ResponseTimeTracker()
 
         logger.info(f"Coffee Council initialized. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
 
@@ -118,15 +138,21 @@ class CoffeeCouncil:
         Route call to appropriate model based on role.
         Falls back to Gemini if router unavailable.
         """
-        if self.use_heterogeneous and self.heterogeneous_router:
-            try:
-                return await self.heterogeneous_router.route(role, prompt, system_prompt, response_json)
-            except Exception as e:
-                logger.warning(f"Router failed for {role.value}, falling back to Gemini: {e}")
+        start_time = time.time()
+        try:
+            if self.use_heterogeneous and self.heterogeneous_router:
+                try:
+                    result = await self.heterogeneous_router.route(role, prompt, system_prompt, response_json)
+                    return result
+                except Exception as e:
+                    logger.warning(f"Router failed for {role.value}, falling back to Gemini: {e}")
 
-        # Fallback to existing Gemini implementation
-        model_to_use = self.master_model_name if role == AgentRole.MASTER_STRATEGIST else self.agent_model_name
-        return await self._call_model(model_to_use, prompt, response_json=response_json)
+            # Fallback to existing Gemini implementation
+            model_to_use = self.master_model_name if role == AgentRole.MASTER_STRATEGIST else self.agent_model_name
+            return await self._call_model(model_to_use, prompt, response_json=response_json)
+        finally:
+            latency = time.time() - start_time
+            self.response_tracker.record(role.value, latency)
 
     async def _call_model(self, model_name: str, prompt: str, use_tools: bool = False, response_json: bool = False) -> str:
         """Helper to call Gemini with retries."""
@@ -378,7 +404,9 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
             if "STALE" not in str(report_content) and timestamp_str:
                  try:
                     ts = datetime.fromisoformat(timestamp_str) if isinstance(timestamp_str, str) else datetime.fromtimestamp(timestamp_str)
-                    if (datetime.now() - ts) > timedelta(hours=24):
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=timezone.utc)
+                    if (datetime.now(timezone.utc) - ts) > timedelta(hours=24):
                         stale_warning = "[WARNING: DATA IS STALE] "
                  except:
                     pass
@@ -432,7 +460,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                 "reasoning": f"Master Error: {str(e)}"
             }
 
-    async def run_specialized_cycle(self, trigger: SentinelTrigger, contract_name: str, ml_signal: dict, market_context: str) -> dict:
+    async def run_specialized_cycle(self, trigger: SentinelTrigger, contract_name: str, ml_signal: dict, market_context: str, ib=None, target_contract=None) -> dict:
         """
         Runs a Triggered Cycle (Hybrid Decision Model).
         1. Wake up the RELEVANT agent based on Semantic Router.
@@ -482,5 +510,57 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         # StateManager will handle the merge and timestamping
         StateManager.save_state({active_agent_key: fresh_report})
 
+        # === NEW: Calculate Weighted Vote ===
+        trigger_type = determine_trigger_type(trigger.source)
+        weighted_result = await calculate_weighted_decision(
+            agent_reports=final_reports,
+            trigger_type=trigger_type,
+            ml_signal=ml_signal,
+            ib=ib,
+            contract=target_contract
+        )
+
+        # Inject weighted context for Master
+        weighted_context = (
+            f"\n\n--- WEIGHTED VOTING RESULT ---\n"
+            f"Consensus Direction: {weighted_result['direction']}\n"
+            f"Consensus Confidence: {weighted_result['confidence']:.2f}\n"
+            f"Weighted Score: {weighted_result['weighted_score']:.3f}\n"
+            f"Dominant Agent: {weighted_result['dominant_agent']}\n"
+        )
+
+        # Add to market context
+        enriched_context = market_context + weighted_context
+
         # Run Decision Loop with Context Injection
-        return await self.decide(contract_name, ml_signal, final_reports, market_context, trigger_reason=trigger.reason)
+        decision = await self.decide(contract_name, ml_signal, final_reports, enriched_context, trigger_reason=trigger.reason)
+
+        # === NEW: Weighted Vote Override Logic ===
+        master_dir = decision.get('direction', 'NEUTRAL')
+        vote_dir = weighted_result['direction']
+
+        if master_dir != vote_dir:
+            if weighted_result['confidence'] > 0.85:
+                decision['direction'] = vote_dir
+                decision['reasoning'] += f" [OVERRIDE: Strong agent consensus ({vote_dir})]"
+                logger.info(f"Master override by Weighted Vote: {vote_dir} (Conf: {weighted_result['confidence']})")
+            elif master_dir != 'NEUTRAL':
+                decision['direction'] = 'NEUTRAL'
+                decision['reasoning'] += f" [VETO: Agents disagree ({vote_dir})]"
+                logger.info(f"Master decision vetoed by conflicting Weighted Vote ({vote_dir})")
+
+        # Inject vote breakdown into decision for dashboard visibility
+        decision['vote_breakdown'] = weighted_result.get('vote_breakdown')
+        decision['dominant_agent'] = weighted_result.get('dominant_agent')
+
+        # === NEW: Devil's Advocate Check ===
+        if decision.get('direction') != 'NEUTRAL' and decision.get('confidence', 0) > 0.5:
+            da_review = await self.run_devils_advocate(decision, str(final_reports), enriched_context)
+
+            if not da_review.get('proceed', True):
+                logger.warning(f"Devil's Advocate VETOED emergency trade: {da_review.get('recommendation')}")
+                decision['direction'] = 'NEUTRAL'
+                decision['confidence'] = 0.0
+                decision['reasoning'] += f" [DA VETO: {da_review.get('risks', ['Unknown'])[0]}]"
+
+        return decision

@@ -2,7 +2,7 @@ import asyncio
 import logging
 import feedparser
 import requests
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 import numpy as np
 from typing import Optional, List, Dict, Any
 from google import genai
@@ -42,7 +42,7 @@ class SentinelTrigger:
         self.source = source
         self.reason = reason
         self.payload = payload or {}
-        self.timestamp = datetime.now()
+        self.timestamp = datetime.now(timezone.utc)
 
     def __repr__(self):
         return f"SentinelTrigger(source='{self.source}', reason='{self.reason}')"
@@ -112,15 +112,19 @@ class PriceSentinel(Sentinel):
 
         # Market Hours Check: 9:00 - 17:00 EST, Mon-Fri
         est = pytz.timezone('US/Eastern')
-        now_est = datetime.now(est)
+        now_utc = datetime.now(timezone.utc)
+        now_est = now_utc.astimezone(est)
 
         if now_est.weekday() >= 5: # Sat(5) or Sun(6)
             return None
 
-        market_start = now_est.replace(hour=9, minute=0, second=0, microsecond=0)
-        market_end = now_est.replace(hour=17, minute=0, second=0, microsecond=0)
+        market_start_est = now_est.replace(hour=9, minute=0, second=0, microsecond=0)
+        market_end_est = now_est.replace(hour=17, minute=0, second=0, microsecond=0)
 
-        if not (market_start <= now_est <= market_end):
+        market_start_utc = market_start_est.astimezone(timezone.utc)
+        market_end_utc = market_end_est.astimezone(timezone.utc)
+
+        if not (market_start_utc <= now_utc <= market_end_utc):
             return None
 
         try:
