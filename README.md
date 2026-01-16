@@ -1,120 +1,141 @@
-# Automated Coffee Options Trading Bot
+# ☕ The Automated Coffee Trading System
 
-This repository contains the source code for an automated trading bot designed to trade coffee futures options (Symbol: KC) on the NYBOT exchange. The bot uses a prediction API to generate trading signals and executes complex option strategies based on those signals.
-
-## Table of Contents
-
-- [Architecture Overview](#architecture-overview)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [Configuration](#configuration)
-  - [Anatomy of `config.json`](#anatomy-of-configjson)
-- [How to Run](#how-to-run)
-  - [1. Run the Prediction API](#1-run-the-prediction-api)
-  - [2. Run the Main Orchestrator](#2-run-the-main-orchestrator)
-- [Core Modules](#core-modules)
+An event-driven, multi-agent AI trading system for Coffee Futures Options (KC). This platform combines quantitative machine learning models with a **"Coffee Council"** of specialized AI agents to analyze market microstructure, agronomy, supply chains, and macroeconomics in real-time.
 
 ---
 
-## Architecture Overview
+## 🏗️ System Architecture
 
-The system is designed with a modular architecture, orchestrated by a central scheduling script. The key components are:
+The system operates on a "Two-Brain" architecture:
+1.  **Quantitative Brain**: An ensemble of LSTM and XGBoost models processing 60-day windows of price, spread, and economic data.
+2.  **Qualitative Brain (The Council)**: A debate-driven multi-agent system that performs grounded research, challenges assumptions, and synthesizes a final trading decision.
 
-1.  **Orchestrator (`orchestrator.py`)**: The heart of the application. It runs on a schedule and coordinates all other components, including data pulling, trade execution, and performance analysis.
+```mermaid
+graph TD
+    subgraph Inputs
+        Data[Market Data / APIs] --> |Poll| Orchestrator
+        News[News / RSS] --> |Trigger| Sentinels
+        Price[Price Action] --> |Trigger| Sentinels
+    end
 
-2.  **Data Puller (`coffee_factors_data_pull_new.py`)**: A script that gathers a wide range of data (market prices, economic indicators, weather data) from various APIs (Yahoo Finance, FRED, etc.) and consolidates it into a single CSV file.
+    subgraph "Brain 1: Quantitative"
+        Orchestrator --> |Daily Cycle| ML[Inference Engine]
+        ML --> |Signal: Long/Short/Neutral| Council
+    end
 
-3.  **Prediction API (`prediction_api.py`)**: A FastAPI-based web service that accepts the consolidated data, simulates a prediction job, and returns mock price change predictions.
+    subgraph "Brain 2: The Coffee Council"
+        Sentinels --> |Wake Up| Council
+        ML --> |Context| Council
 
-4.  **Trading Bot (`trading_bot/`)**: The core package containing the logic for trade execution. It includes modules for:
-    - **IB Interface (`ib_interface.py`)**: Interacting with the Interactive Brokers TWS/Gateway.
-    - **Signal Generation (`signal_generator.py`)**: Converting API predictions into actionable trading signals.
-    - **Strategy (`strategy.py`)**: Implementing option strategies like Bull Call Spreads and Bear Put Spreads.
-    - **Risk Management (`risk_management.py`)**: Aligning positions with signals and monitoring open positions for stop-loss or take-profit conditions.
+        Council --> |Research| Agents[Specialized Agents]
+        Agents --> |Debate| BearBull[Permabear vs Permabull]
+        BearBull --> |Synthesis| Master[Master Strategist]
+    end
 
-5.  **Position Monitor (`position_monitor.py`)**: A separate, long-running process managed by the orchestrator. It is responsible for the intraday monitoring of open positions for risk.
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.10+
-- An active Interactive Brokers TWS or Gateway session.
-- API keys for FRED and Nasdaq Data Link (to be placed in `config.json`).
-- A Pushover account for notifications (optional).
-
-### Installation
-
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository-url>
-    cd <repository-directory>
-    ```
-
-2.  **Install dependencies:**
-    The project uses standard Python packaging. It is recommended to use a virtual environment.
-    ```bash
-    python -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
-    ```
-    *(Note: The original project also mentioned `uv`, a fast Python package installer. If you have `uv` installed, you can use `uv pip sync requirements.txt` for a potentially faster installation.)*
-
-3.  **Configure the bot:**
-    Rename the `config.example.json` to `config.json` (or create your own) and fill in the required values, especially your API keys and connection settings. See the [Configuration](#configuration) section for details.
-
-## Configuration
-
-The application's behavior is controlled by the `config.json` file.
-
-### Anatomy of `config.json`
-
--   `connection`: Settings for connecting to IB TWS/Gateway (`host`, `port`, `clientId`).
--   `symbol`, `exchange`: Defines the primary asset to trade (e.g., "KC" on "NYBOT").
--   `strategy`:
-    -   `quantity`: The number of contracts to trade for each order.
--   `signal_thresholds`:
-    -   `bullish`/`bearish`: The numerical thresholds from the API prediction to trigger a signal.
--   `strategy_tuning`:
-    -   Parameters to fine-tune strategy construction, such as `spread_width_usd` and `slippage_usd_per_contract`.
--   `risk_management`:
-    -   `check_interval_seconds`: How often the position monitor checks P&L.
-    -   `stop_loss_pct`/`take_profit_pct`: The P&L percentage thresholds to close a position.
--   `notifications`:
-    -   `enabled`: Set to `true` to enable Pushover notifications.
-    -   `pushover_user_key`/`pushover_api_token`: Your Pushover credentials.
--   `fred_api_key`, `nasdaq_api_key`: Your API keys for data services.
--   `weather_stations`: A dictionary of locations for which to pull weather data.
--   `fred_series`, `yf_series_map`: Mappings of economic and market data series to fetch.
--   `final_column_order`: Specifies the column order for the final consolidated data CSV.
-
-## How to Run
-
-### Run the Main Orchestrator
-
-This is the main entry point for the bot. It will run continuously, executing tasks based on its schedule.
-
-```bash
-python orchestrator.py
+    subgraph Execution
+        Master --> |Decision| Compliance[Compliance Guardian]
+        Compliance --> |Approved?| OrderManager[Order Manager]
+        OrderManager --> |Submit| IB[Interactive Brokers]
+    end
 ```
 
-The orchestrator will then handle starting and stopping the position monitor and executing the daily trading cycle automatically.
+---
 
-## Core Modules
+## 🧠 The Coffee Council (Core AI Engine)
 
--   **`orchestrator.py`**: Main entry point. Schedules all tasks.
--   **`config_loader.py`**: Loads the `config.json` file.
--   **`trading_bot/logging_config.py`**: Sets up centralized logging.
--   **`notifications.py`**: Handles sending Pushover notifications.
--   **`coffee_factors_data_pull_new.py`**: Fetches and validates all external data.
--   **`trading_bot/`**: The core trading logic package.
-    -   `main.py`: Orchestrates a single trading cycle.
-    -   `ib_interface.py`: Low-level interaction with the IB API.
-    -   `signal_generator.py`: Converts API results to trade signals.
-    -   `strategy.py`: Defines option strategies (e.g., Bull Call Spread).
-    -   `risk_management.py`: Manages position alignment and P&L monitoring.
-    -   `utils.py`: Helper functions (e.g., Black-Scholes pricing).
--   **`position_monitor.py`**: Standalone script for intraday risk monitoring.
--   **`performance_analyzer.py`**: Reads the trade ledger and generates a daily performance report.
--   **`trade_ledger.csv`**: A CSV file where all filled trades are logged.
+At the heart of the system lies **The Coffee Council**, a heterogeneous multi-agent system designed to mimic a professional commodities trading desk. Unlike standard "chat" bots, these agents have distinct personas, specific mandates, and a rigorous decision-making process.
+
+### 👥 The Personas
+The Council is composed of specialized agents, each powered by Large Language Models (Gemini, OpenAI, Anthropic) routed based on task complexity:
+
+*   **👨‍🌾 The Agronomist**: Monitors weather patterns in Minas Gerais, flowering reports, and crop disease (Rust/Broca).
+*   **🌍 The Macro Analyst**: Analyzes BRL/USD exchange rates, interest rates (Selic/Fed), and global inflation data.
+*   **🚢 The Supply Chain Analyst**: Tracks shipping container indices, port congestion (Santos/Rotterdam), and export flow reports (Cecafé).
+*   **📊 The Technical Analyst**: Studies chart patterns, RSI divergence, and moving averages on the futures curve.
+*   **📉 The Volatility Analyst**: Examines IV Rank, skew, and option pricing to determine cheap/expensive premiums.
+*   **🐻 The Permabear & 🐂 The Permabull**: Two adversarial agents whose sole job is to attack or defend the investment thesis.
+*   **⚖️ The Master Strategist**: The final decision maker. It reviews all reports, watches the debate, and renders a verdict (Bullish/Bearish/Neutral) with a confidence score.
+
+### 🔄 The Reflexion Loop
+To prevent hallucinations, critical agents (like the Agronomist) utilize a **Reflexion Loop**.
+1.  **Draft**: The agent generates an initial analysis based on gathered data.
+2.  **Critique**: The agent (or a supervisor model) challenges its own findings: *"Did I cite a specific date? Is this source stale?"*
+3.  **Revise**: The final output is rewritten to be strictly evidence-based.
+
+### ⚔️ The Dialectical Debate
+Before any trade is placed, a **Hegelian Dialectic** process occurs:
+1.  **Thesis**: The specialized agents provide their reports.
+2.  **Antithesis**: The **Permabear** attacks the reports, looking for flaws. The **Permabull** defends the thesis with evidence.
+3.  **Synthesis**: The **Master Strategist** weighs the arguments. If the debate reveals significant risks, the confidence score is lowered, potentially vetoing the trade.
+
+---
+
+## 📡 The Sentinel Array
+
+The system is not just time-based; it is **Event-Driven**. A sophisticated array of "Sentinels" runs continuously to monitor the world for specific trigger events.
+
+*   **Price Sentinel**: Watches for sudden >2% moves or microstructure breakdowns.
+*   **News Sentinel**: Scrapes RSS feeds and APIs for keywords like "Frost", "Strike", or "Regulation".
+*   **Weather Sentinel**: Monitors real-time forecasts for critical growing regions.
+*   **Microstructure Sentinel**: Analyzes order book imbalances and liquidity gaps.
+
+When a Sentinel triggers, it initiates an **Emergency Council Session**, bypassing the standard schedule to react immediately to breaking news.
+
+---
+
+## ⚙️ Quantitative Foundation
+
+While the AI Agents provide the reasoning, the **Quantitative Engine** provides the anchor.
+*   **Models**: An ensemble of **LSTM (Long Short-Term Memory)** networks for sequence analysis and **XGBoost** for tabular feature importance.
+*   **Features**: 60-day rolling windows of price, volatility (GARCH), term structure (Spreads), and macro indicators.
+*   **Function**: The ML model provides a "Base Signal" (e.g., *Long with 65% confidence*). The Council then treats this as just another input—they can agree with it, or override it if qualitative factors (like a port strike) aren't in the numerical data yet.
+
+---
+
+## 🛡️ Execution & Risk Management
+
+A trade decision is only as good as its execution.
+
+### Compliance Guardian
+The **Compliance Guardian** acts as the system's "Constitution". Before any order is submitted, it checks:
+*   **Liquidity**: Is the spread too wide?
+*   **Exposure**: Do we already have too much risk in this expiration?
+*   **Sanity**: Is the target price realistic?
+*   **"Fat Finger" Check**: Prevents erroneous large orders.
+
+### Dynamic Order Manager
+The **Order Manager** handles the lifecycle of the trade:
+*   **Adaptive Sizing**: Position sizes are calculated dynamically based on account equity and signal confidence (Kelly Criterion logic).
+*   **Combo Orders**: Executes complex multi-leg strategies (Spreads, Condors) as atomic "BAG" orders on IBKR to ensure no legging risk.
+*   **Stale Position Closer**: Automatically manages inventory, closing positions that have hit time or profit targets.
+
+---
+
+## 🚀 Technical Setup
+
+### Prerequisites
+*   Python 3.10+
+*   Interactive Brokers TWS/Gateway (running and accepting API connections)
+*   API Keys for: Google Gemini, OpenAI, Fred, Pushover (Notifications)
+
+### Configuration
+The system is controlled via `config.json`. Key sections include:
+*   `"model_registry"`: Define which LLM powers which agent (e.g., `gemini-1.5-pro` for Master, `gemini-flash` for Sentinels).
+*   `"risk_management"`: Set hard limits on drawdowns and position sizes.
+*   `"sentinels"`: Configure polling intervals and sensitivity thresholds.
+
+### Running the System
+1.  **Start the Orchestrator**:
+    ```bash
+    python orchestrator.py
+    ```
+    This launches the scheduler and the background event loop.
+
+2.  **View the Dashboard**:
+    ```bash
+    streamlit run dashboard.py
+    ```
+    Provides a real-time view of active agents, debate transcripts, and portfolio performance.
+
+---
+*Built for the Coffee Futures Market (KC).*
