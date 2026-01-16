@@ -444,7 +444,8 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
         'sentiment_sentiment',
         'technical_sentiment',
         'volatility_sentiment',
-        'master_decision'
+        'master_decision',
+        'ml_signal'
     ]
 
     scores = {agent: {'correct': 0, 'total': 0, 'accuracy': 0.0} for agent in agents}
@@ -478,6 +479,8 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
             # Map sentiment to expected direction
             if agent == 'master_decision':
                 expected_up = sentiment == 'BULLISH'
+            elif agent == 'ml_signal':
+                expected_up = sentiment in ['BULLISH', 'Bullish', 'LONG', 'Long', 'long']
             else:
                 expected_up = sentiment in ['BULLISH', 'Bullish', 'bullish']
 

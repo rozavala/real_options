@@ -12,7 +12,7 @@ from trading_bot.utils import log_council_decision
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager # Import StateManager
 from trading_bot.compliance import ComplianceGuardian
-from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type, TriggerType
+from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type, TriggerType, detect_market_regime_simple
 
 logger = logging.getLogger(__name__)
 
@@ -138,13 +138,28 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 trigger_source = locals().get('trigger_reason', None)  # From sentinel if triggered
                 trigger_type = determine_trigger_type(trigger_source)
 
+                # Detect Regime for Voting
+                # Estimate price change from ML signal
+                price_change = 0.0
+                if ml_signal and 'price' in ml_signal and 'expected_price' in ml_signal:
+                    try:
+                        curr = ml_signal['price']
+                        exp = ml_signal['expected_price']
+                        if curr: price_change = (exp - curr) / curr
+                    except: pass
+
+                vol_report = reports.get('volatility', '')
+                vol_report_str = vol_report.get('data', vol_report) if isinstance(vol_report, dict) else str(vol_report)
+                regime_for_voting = detect_market_regime_simple(vol_report_str, price_change)
+
                 # Calculate weighted consensus
                 weighted_result = await calculate_weighted_decision(
                     agent_reports=reports,
                     trigger_type=trigger_type,
                     ml_signal=ml_signal,
                     ib=ib,
-                    contract=contract
+                    contract=contract,
+                    regime=regime_for_voting
                 )
 
                 # Inject weighted result into market context for Master
