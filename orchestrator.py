@@ -324,6 +324,9 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
         StateManager.queue_deferred_trigger(trigger)
         return
 
+    # === NEW: Log Trigger for Fallback ===
+    StateManager.log_sentinel_event(trigger)
+
     # Acquire Lock to prevent race conditions
     if EMERGENCY_LOCK.locked():
         logger.warning(f"Emergency cycle for {trigger.source} queued (Lock active).")

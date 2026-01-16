@@ -12,6 +12,7 @@ import asyncio
 import time
 from typing import Dict, List
 from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass, field
 from google import genai
 from google.genai import types
 from trading_bot.state_manager import StateManager
@@ -23,6 +24,51 @@ from trading_bot.reliability_scorer import ReliabilityScorer
 from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type
 
 logger = logging.getLogger(__name__)
+
+# Setup Provenance Logger
+provenance_logger = logging.getLogger("provenance")
+provenance_logger.setLevel(logging.INFO)
+provenance_logger.propagate = False
+if not provenance_logger.handlers:
+    log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+    os.makedirs(log_dir, exist_ok=True)
+    fh = logging.FileHandler(os.path.join(log_dir, 'research_provenance.log'))
+    fh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    provenance_logger.addHandler(fh)
+
+@dataclass
+class GroundedDataPacket:
+    """Container for grounded research data with provenance."""
+    search_query: str
+    gathered_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    raw_findings: str = ""
+    extracted_facts: List[Dict[str, str]] = field(default_factory=list)  # [{fact, date, source}]
+    source_urls: List[str] = field(default_factory=list)
+    data_freshness_hours: int = 48  # How recent the data claims to be
+
+    def to_context_block(self) -> str:
+        """Format as context block for analyst prompts."""
+        facts_str = "\n".join([
+            f"- [{f.get('date', 'undated')}] {f.get('fact')} (source: {f.get('source', 'unknown')})"
+            for f in self.extracted_facts
+        ]) or "No specific dated facts extracted."
+
+        return f"""
+=== GROUNDED DATA PACKET ===
+Query: {self.search_query}
+Gathered: {self.gathered_at.isoformat()}
+Data Freshness Target: Last {self.data_freshness_hours} hours
+
+EXTRACTED FACTS:
+{facts_str}
+
+RAW RESEARCH FINDINGS:
+{self.raw_findings[:2000]}  # Truncate for context limits
+
+SOURCES CONSULTED:
+{chr(10).join(self.source_urls[:5]) or 'No URLs captured'}
+=== END GROUNDED DATA ===
+"""
 
 DEBATE_OUTPUT_SCHEMA = """
 Output JSON with this structure:
@@ -119,6 +165,7 @@ class CoffeeCouncil:
         self.tms = TransactiveMemory()
         self.scorer = ReliabilityScorer()
         self.response_tracker = ResponseTimeTracker()
+        self._search_cache = {}  # Cache for grounded data
 
         logger.info(f"Coffee Council initialized. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
 
@@ -189,8 +236,106 @@ class CoffeeCouncil:
                 raise e
         return ""
 
+    async def _gather_grounded_data(self, search_instruction: str, persona_key: str) -> GroundedDataPacket:
+        """
+        Phase 1: Use Gemini with Google Search to gather current data.
+        This method ALWAYS uses tools, regardless of heterogeneous routing settings.
+        Includes 10-minute caching and Sentinel fallback.
+        """
+        # 1. Check Cache
+        now = datetime.now(timezone.utc)
+        if search_instruction in self._search_cache:
+            entry = self._search_cache[search_instruction]
+            if (now - entry['timestamp']).total_seconds() < 600:
+                logger.info(f"[{persona_key}] Using cached grounded data.")
+                return entry['packet']
+
+        # 2. Craft Data-Gathering Prompt
+        gathering_prompt = f"""You are a Research Data Gatherer. Your ONLY job is to find CURRENT information.
+
+TASK: {search_instruction}
+
+INSTRUCTIONS:
+1. USE GOOGLE SEARCH to find information from the LAST 24-48 HOURS.
+2. Focus on: dates, numbers, quotes from officials, specific events.
+3. DO NOT ANALYZE OR GIVE OPINIONS. Just report what you find.
+4. IF YOU CANNOT FIND NEWS from the last 72 hours, explicitly state 'NO RECENT NEWS FOUND'.
+
+OUTPUT FORMAT (JSON):
+{{
+    "raw_summary": "Brief summary of what you found (2-3 paragraphs)",
+    "dated_facts": [
+        {{"date": "YYYY-MM-DD or 'today'/'yesterday'", "fact": "specific finding", "source": "publication name"}}
+    ],
+    "search_queries_used": ["query1", "query2"],
+    "data_quality": "HIGH|MEDIUM|LOW",
+    "data_freshness": "Data appears to be from [timeframe]"
+}}
+"""
+
+        try:
+            # Force Gemini with tools - bypass router for data gathering
+            response = await self._call_model(
+                self.master_model_name,
+                gathering_prompt,
+                use_tools=True,
+                response_json=True
+            )
+
+            # Parse response
+            data = json.loads(self._clean_json_text(response))
+
+            packet = GroundedDataPacket(
+                search_query=search_instruction,
+                raw_findings=data.get('raw_summary', ''),
+                extracted_facts=data.get('dated_facts', []),
+                source_urls=data.get('search_queries_used', []),
+                data_freshness_hours=48 if 'today' in str(data.get('data_freshness', '')).lower() else 72
+            )
+
+            # Check for freshness/empty results
+            if "NO RECENT NEWS FOUND" in packet.raw_findings or not packet.extracted_facts:
+                 logger.warning(f"[{persona_key}] Grounded search yielded no recent results.")
+
+            # Update Cache
+            self._search_cache[search_instruction] = {'timestamp': now, 'packet': packet}
+
+            # Log Provenance
+            provenance_logger.info(f"QUERY: {search_instruction} | FACTS: {len(packet.extracted_facts)}")
+
+            return packet
+
+        except Exception as e:
+            logger.error(f"Grounded data gathering failed: {e}")
+
+            # FALLBACK: Inject Sentinel History
+            history = StateManager.load_state("sentinel_history")
+            fallback_events = []
+            if 'events' in history:
+                data = history['events']
+                if isinstance(data, str) and data.startswith("STALE"):
+                     fallback_events = [data]
+                elif isinstance(data, list):
+                    fallback_events = data
+
+            fallback_text = "\n".join([str(evt) for evt in fallback_events])
+
+            packet = GroundedDataPacket(
+                search_query=search_instruction,
+                raw_findings=f"SEARCH FAILED. FALLBACK DATA (SENTINEL ALERTS):\n{fallback_text}",
+                data_freshness_hours=999
+            )
+            provenance_logger.warning(f"QUERY: {search_instruction} | FALLBACK TRIGGERED")
+            return packet
+
     async def research_topic(self, persona_key: str, search_instruction: str) -> str:
-        """Conducts deep-dive research using a specialized agent persona and Google Search."""
+        """
+        Conducts deep-dive research using a specialized agent persona.
+
+        ARCHITECTURE:
+        - Phase 1: Gemini with Google Search gathers GROUNDED current data
+        - Phase 2: Routed model analyzes the grounded data with diverse perspective
+        """
 
         # Retrieve relevant context from TMS
         relevant_context = self.tms.retrieve(search_instruction, n_results=2)
@@ -199,17 +344,28 @@ class CoffeeCouncil:
 
         context_str = "\n".join(relevant_context) if relevant_context else "No prior context."
 
+        # === PHASE 1: GROUNDED DATA GATHERING ===
+        logger.info(f"[{persona_key}] Phase 1: Gathering grounded data...")
+        grounded_data = await self._gather_grounded_data(search_instruction, persona_key)
+
+        if "FAILED" in grounded_data.raw_findings:
+            logger.warning(f"[{persona_key}] Data gathering failed, using fallback data.")
+
+        # === PHASE 2: HETEROGENEOUS ANALYSIS ===
         persona_prompt = self.personas.get(persona_key, "You are a helpful research assistant.")
+
+        # Inject grounded data into prompt
         full_prompt = (
             f"{persona_prompt}\n\n"
-            f"PREVIOUS INSIGHTS (Do not repeat these if still valid):\n{context_str}\n\n"
-            f"TASK: {search_instruction}\n"
-            f"INSTRUCTIONS:\n"
-            f"1. USE YOUR TOOLS: Use Google Search to find data from the last 24-48 hours.\n"
-            f"2. NO CHIT-CHAT: Do not say 'Okay', 'I will'. Start directly with the data.\n"
-            f"3. FORMAT YOUR RESPONSE EXACTLY AS FOLLOWS:\n"
-            f"   [EVIDENCE]: List 3-5 specific data points found (dates, numbers, quotes).\n"
+            f"PREVIOUS INSIGHTS (Do not repeat if still valid):\n{context_str}\n\n"
+            f"{grounded_data.to_context_block()}\n\n"
+            f"YOUR TASK: Analyze the GROUNDED DATA above and provide your expert assessment regarding: {search_instruction}\n"
+            f"CRITICAL: Base your analysis ONLY on the data provided above. Do NOT hallucinate or invent "
+            f"information not present in the Grounded Data Packet. If the data is insufficient, say so.\n\n"
+            f"FORMAT YOUR RESPONSE EXACTLY AS FOLLOWS:\n"
+            f"   [EVIDENCE]: Cite 3-5 specific data points from the Grounded Data Packet above.\n"
             f"   [ANALYSIS]: Explain what this data implies for Coffee supply/demand.\n"
+            f"   [CONFIDENCE]: Rate your confidence (HIGH/MEDIUM/LOW) based on data quality.\n"
             f"   [SENTIMENT TAG]: End with exactly one: [SENTIMENT: BULLISH], [SENTIMENT: BEARISH], or [SENTIMENT: NEUTRAL].\n"
         )
 
@@ -224,45 +380,24 @@ class CoffeeCouncil:
             'inventory': AgentRole.INVENTORY_ANALYST,
             'supply_chain': AgentRole.SUPPLY_CHAIN_ANALYST,
         }
-        role = role_map.get(persona_key, AgentRole.AGRONOMIST) # Default to Agronomist if unknown
+        role = role_map.get(persona_key, AgentRole.AGRONOMIST)
 
         try:
+            # Phase 2 always uses heterogeneous routing for diverse analysis if enabled
             if self.use_heterogeneous:
-                # Note: Currently HeterogeneousRouter interfaces don't support tools yet in this impl,
-                # but let's assume router handles it or we fall back.
-                # Actually, the router code calls generate() on clients.
-                # GeminiClient implementation in router supports tools?
-                # Looking at HeterogeneousRouter code, it passes system_prompt and prompt.
-                # It does NOT pass use_tools explicitly.
-                # However, for Analyst roles, we generally want tools (Search).
-                # The current router implementation calls generate(prompt, system_prompt).
-                # The GeminiClient.generate in router sends contents=full_prompt.
-                # It does NOT seem to enable tools dynamically.
-                # FIX: We should use the existing _call_model for tool usage OR update router.
-                # For now, to be safe and use tools (which are critical for research),
-                # we might stick to _call_model for RESEARCH if tools are needed,
-                # UNLESS we update the router to support tools.
-
-                # Given the instruction "Route Tier 2 Analysts", we should use the router.
-                # But we need Search.
-                # Let's assume for this task we use the router but modify the prompt to include search data if possible,
-                # or acknowledge that currently only Gemini (via _call_model) has tool support easily wired up here.
-
-                # Actually, the user wants us to use the router.
-                # Let's try to use the router. If the specific client (e.g. GPT-4o) doesn't have search tools configured,
-                # the agent will hallucinate or rely on training data.
-                # This is a risk.
-                # However, Gemini 1.5 Pro (Agronomist) is in the router.
-                # Let's proceed with routing, but maybe we should fall back to _call_model if tool usage is strictly required and router doesn't support it?
-                # The Gap Analysis says "The router creates clients lazily... Issue: The research_topic method still uses self._call_model".
-                # So we must use route().
                 result = await self._route_call(role, full_prompt)
             else:
-                result = await self._call_model(self.agent_model_name, full_prompt, use_tools=True)
+                # If no heterogeneous, fallback to agent model (Gemini) without tools
+                # (tools were used in Phase 1, Phase 2 is pure reasoning)
+                result = await self._call_model(self.agent_model_name, full_prompt, use_tools=False)
 
             # Store new insight in TMS
             if result and len(result) > 50:
-                self.tms.encode(persona_key, result, {"task": search_instruction})
+                self.tms.encode(persona_key, result, {
+                    "task": search_instruction,
+                    "grounded": True,
+                    "data_gathered_at": grounded_data.gathered_at.isoformat()
+                })
 
             return result
         except Exception as e:

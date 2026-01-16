@@ -206,3 +206,40 @@ class StateManager:
         except Exception as e:
             logger.error(f"Failed to load deferred triggers: {e}")
             return []
+
+    @classmethod
+    def log_sentinel_event(cls, trigger: Any):
+        """
+        Logs a sentinel trigger to the persistent history (Last 5 events).
+        Used for fallback when grounded research fails.
+        """
+        try:
+            # Load raw to get clean data (bypass staleness formatting of load_state)
+            full_state = cls._load_raw_sync()
+            history_ns = full_state.get("sentinel_history", {})
+            events_entry = history_ns.get("events", {})
+
+            # events_entry is {"data": [...], "timestamp": ...}
+            current_events = events_entry.get("data", []) if isinstance(events_entry, dict) else []
+            if not isinstance(current_events, list):
+                current_events = []
+
+            # Create new event object
+            new_event = {
+                "source": trigger.source,
+                "reason": trigger.reason,
+                "payload": trigger.payload,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+
+            # Append and Trim
+            current_events.append(new_event)
+            if len(current_events) > 5:
+                current_events = current_events[-5:]
+
+            # Save using standard save_state
+            cls.save_state({"events": current_events}, namespace="sentinel_history")
+            logger.info(f"Logged sentinel event from {trigger.source} to history.")
+
+        except Exception as e:
+            logger.error(f"Failed to log sentinel event: {e}")
