@@ -14,12 +14,14 @@ import json
 import logging
 import asyncio
 import hashlib
+import time
 from datetime import datetime, timedelta
 from functools import wraps
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Optional, Any
 from dataclasses import dataclass
+from trading_bot.router_metrics import get_router_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -74,27 +76,87 @@ class ModelConfig:
 
 
 class ResponseCache:
-    """Simple in-memory cache for LLM responses."""
+    """In-memory cache for LLM responses with role-based TTL."""
 
-    def __init__(self, ttl_seconds: int = 300):
+    # Role-based TTL configuration (in seconds)
+    ROLE_TTL = {
+        # Tier 1 - Sentinels: BYPASS CACHE (handled separately, not cached)
+
+        # Tier 2 - Analysts: Data changes slowly, cache longer
+        AgentRole.AGRONOMIST.value: 1800,           # 30 min
+        AgentRole.MACRO_ANALYST.value: 1800,        # 30 min
+        AgentRole.GEOPOLITICAL_ANALYST.value: 1800, # 30 min
+        AgentRole.INVENTORY_ANALYST.value: 1800,    # 30 min
+        AgentRole.SUPPLY_CHAIN_ANALYST.value: 1800, # 30 min
+        AgentRole.VOLATILITY_ANALYST.value: 900,    # 15 min (more dynamic)
+        AgentRole.TECHNICAL_ANALYST.value: 900,     # 15 min (price-dependent)
+        AgentRole.SENTIMENT_ANALYST.value: 600,     # 10 min (social moves fast)
+
+        # Tier 3 - Decision Makers: Need fresh synthesis
+        AgentRole.PERMABEAR.value: 300,             # 5 min
+        AgentRole.PERMABULL.value: 300,             # 5 min
+        AgentRole.MASTER_STRATEGIST.value: 300,     # 5 min
+        AgentRole.COMPLIANCE_OFFICER.value: 300,    # 5 min
+    }
+
+    DEFAULT_TTL = 300  # 5 minutes fallback
+
+    def __init__(self):
         self.cache = {}
-        self.ttl = ttl_seconds
 
     def _hash_key(self, prompt: str, role: str) -> str:
         return hashlib.md5(f"{role}:{prompt}".encode()).hexdigest()
+
+    def _get_ttl(self, role: str) -> int:
+        """Get TTL for a specific role."""
+        return self.ROLE_TTL.get(role, self.DEFAULT_TTL)
 
     def get(self, prompt: str, role: str) -> Optional[str]:
         key = self._hash_key(prompt, role)
         if key in self.cache:
             entry = self.cache[key]
-            if datetime.now() - entry['timestamp'] < timedelta(seconds=self.ttl):
+            ttl = self._get_ttl(role)
+            if datetime.now() - entry['timestamp'] < timedelta(seconds=ttl):
+                logger.debug(f"Cache HIT for {role} (TTL: {ttl}s)")
                 return entry['response']
+            # Expired - remove from cache
             del self.cache[key]
+            logger.debug(f"Cache EXPIRED for {role}")
         return None
 
     def set(self, prompt: str, role: str, response: str):
         key = self._hash_key(prompt, role)
-        self.cache[key] = {'response': response, 'timestamp': datetime.now()}
+        self.cache[key] = {
+            'response': response,
+            'timestamp': datetime.now(),
+            'role': role
+        }
+        logger.debug(f"Cache SET for {role} (TTL: {self._get_ttl(role)}s)")
+
+    def get_stats(self) -> dict:
+        """Return cache statistics for monitoring."""
+        now = datetime.now()
+        stats = {
+            'total_entries': len(self.cache),
+            'entries_by_role': {},
+            'expired_count': 0
+        }
+
+        for key, entry in self.cache.items():
+            role = entry.get('role', 'unknown')
+            ttl = self._get_ttl(role)
+            is_expired = (now - entry['timestamp']) >= timedelta(seconds=ttl)
+
+            if role not in stats['entries_by_role']:
+                stats['entries_by_role'][role] = {'active': 0, 'expired': 0}
+
+            if is_expired:
+                stats['entries_by_role'][role]['expired'] += 1
+                stats['expired_count'] += 1
+            else:
+                stats['entries_by_role'][role]['active'] += 1
+
+        return stats
 
 
 def with_retry(max_retries=3, backoff_factor=2):
@@ -267,8 +329,7 @@ class HeterogeneousRouter:
                 self.available_providers.add(provider)
 
         # Initialize Cache
-        cache_ttl = config.get('cache_ttl', 300)
-        self.cache = ResponseCache(ttl_seconds=cache_ttl)
+        self.cache = ResponseCache()  # Now uses role-based TTL internally
 
         # 1. LOAD MODEL KEYS (With Defaults)
         gem_flash = self.registry.get('gemini', {}).get('flash', 'gemini-3-flash-preview')
@@ -415,6 +476,8 @@ class HeterogeneousRouter:
     ) -> str:
         """Route request to appropriate model with robust fallback."""
 
+        metrics = get_router_metrics()
+
         # Check Cache (Force OFF for Sentinels)
         use_cache = True
         if role in [AgentRole.WEATHER_SENTINEL, AgentRole.LOGISTICS_SENTINEL, AgentRole.NEWS_SENTINEL, AgentRole.PRICE_SENTINEL, AgentRole.MICROSTRUCTURE_SENTINEL]:
@@ -441,6 +504,7 @@ class HeterogeneousRouter:
         execution_chain.extend(fallbacks)
 
         last_exception = None
+        is_first_attempt = True
 
         for provider, model_name in execution_chain:
             # Skip if provider strictly unavailable (no API key)
@@ -450,9 +514,23 @@ class HeterogeneousRouter:
 
             logger.debug(f"Routing {role.value} to {provider.value}/{model_name}")
 
+            start_time = time.time()
+
             try:
                 client = self._get_client(provider, model_name)
                 response = await client.generate(prompt, system_prompt, response_json)
+
+                latency_ms = (time.time() - start_time) * 1000
+
+                # Record success metrics
+                metrics.record_request(
+                    role=role.value,
+                    provider=provider.value,
+                    success=True,
+                    latency_ms=latency_ms,
+                    was_fallback=not is_first_attempt,
+                    primary_provider=primary_provider.value if not is_first_attempt else None
+                )
 
                 # Success! Cache and return
                 self.cache.set(full_key_prompt, role.value, response)
@@ -463,8 +541,21 @@ class HeterogeneousRouter:
                 return response
 
             except Exception as e:
+                latency_ms = (time.time() - start_time) * 1000
+
+                # Record failure metrics
+                metrics.record_request(
+                    role=role.value,
+                    provider=provider.value,
+                    success=False,
+                    latency_ms=latency_ms,
+                    was_fallback=not is_first_attempt,
+                    primary_provider=primary_provider.value if not is_first_attempt else None
+                )
+
                 logger.warning(f"{provider.value}/{model_name} failed for {role.value}: {e}")
                 last_exception = e
+                is_first_attempt = False
                 # Continue to next model in chain
 
         # If we get here, all models in the chain failed or were unavailable
@@ -476,6 +567,11 @@ class HeterogeneousRouter:
              raise CriticalRPCError(error_msg) from last_exception
 
         raise RuntimeError(error_msg) from last_exception
+
+    def get_metrics_summary(self) -> dict:
+        """Get routing metrics summary."""
+        from trading_bot.router_metrics import get_router_metrics
+        return get_router_metrics().get_summary()
 
     def get_diversity_report(self) -> dict:
         """Report on model diversity."""

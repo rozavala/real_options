@@ -248,6 +248,7 @@ def calculate_weighted_decision(
 
         report_text = report.get('data', report) if isinstance(report, dict) else str(report)
         sentiment_tag, confidence = extract_sentiment_from_report(report_text)
+        confidence = max(0.0, min(1.0, float(confidence)))  # Defensive clamp
         direction = parse_sentiment_to_direction(sentiment_tag)
 
         votes.append(AgentVote(

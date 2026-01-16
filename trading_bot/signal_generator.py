@@ -224,6 +224,12 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 # Call decided (which now includes the Hegelian Loop)
                 decision = await council.decide(contract_name, ml_signal, reports, market_context_str)
 
+                # Ensure decision confidence is valid
+                try:
+                    decision['confidence'] = max(0.0, min(1.0, float(decision.get('confidence', 0.0))))
+                except (ValueError, TypeError):
+                    decision['confidence'] = 0.0
+
                 # --- WEIGHTED VOTE CONFLICT RESOLUTION ---
                 # Check for strong disagreement between Master and Weighted Vote
                 if weighted_result['confidence'] > 0.7:
@@ -315,7 +321,20 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 price = proj_price
 
                 final_data["action"] = decision.get('direction', final_data["action"])
-                final_data["confidence"] = decision.get('confidence', final_data["confidence"])
+
+                # Confidence Clamping with Logging
+                raw_conf = decision.get('confidence', final_data["confidence"])
+                try:
+                    conf_val = float(raw_conf)
+                except (ValueError, TypeError):
+                    conf_val = 0.5
+
+                clamped_value = max(0.0, min(1.0, abs(conf_val)))
+
+                if conf_val < 0.0 or conf_val > 1.0:
+                    logger.warning(f"Confidence Clamping Triggered: {conf_val} -> {clamped_value}. Check model outputs.")
+
+                final_data["confidence"] = clamped_value
                 final_data["reason"] = decision.get('reasoning', final_data["reason"])
                 if price:
                     final_data["expected_price"] = price

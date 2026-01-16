@@ -196,3 +196,71 @@ with ctrl_cols[2]:
     if st.button("🔄 Refresh All Data", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
+
+st.markdown("---")
+
+# === SECTION: Router Health Metrics ===
+st.subheader("🔀 Router Health")
+
+try:
+    from trading_bot.heterogeneous_router import get_router
+
+    if config:
+        router = get_router(config)
+        metrics = router.get_metrics_summary()
+
+        router_cols = st.columns(4)
+
+        with router_cols[0]:
+            st.metric(
+                "Total Requests",
+                metrics.get('total_requests', 0)
+            )
+
+        with router_cols[1]:
+            success_rate = metrics.get('overall_success_rate', 1.0) * 100
+            st.metric(
+                "Success Rate",
+                f"{success_rate:.1f}%",
+                delta_color="normal" if success_rate > 95 else "inverse"
+            )
+
+        with router_cols[2]:
+            st.metric(
+                "Fallback Count",
+                metrics.get('fallback_count', 0),
+                delta_color="inverse"  # Lower is better
+            )
+
+        with router_cols[3]:
+            st.metric(
+                "Since Reset",
+                metrics.get('last_reset', 'N/A')[:10] if metrics.get('last_reset') else 'N/A'
+            )
+
+        # Provider breakdown
+        with st.expander("📊 Provider Breakdown"):
+            provider_data = []
+            for provider, counts in metrics.get('by_provider', {}).items():
+                provider_data.append({
+                    'Provider': provider,
+                    'Success': counts.get('success', 0),
+                    'Failure': counts.get('failure', 0),
+                    'Success Rate': f"{counts.get('success_rate', 1.0)*100:.1f}%"
+                })
+
+            if provider_data:
+                st.dataframe(pd.DataFrame(provider_data), width="stretch")
+            else:
+                st.info("No provider data yet")
+
+        # Top fallback chains
+        if metrics.get('top_fallback_chains'):
+            with st.expander("⚠️ Top Fallback Chains"):
+                for chain in metrics['top_fallback_chains'][:5]:
+                    st.write(f"**{chain['role']}**: {chain['chain']} ({chain['count']} times)")
+
+except ImportError:
+    st.info("Router metrics not available")
+except Exception as e:
+    st.warning(f"Could not load router metrics: {e}")

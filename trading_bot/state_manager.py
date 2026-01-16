@@ -18,6 +18,29 @@ logger = logging.getLogger(__name__)
 
 STATE_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'state.json')
 
+def _validate_confidence(value: Any) -> float:
+    """
+    Validates and clamps confidence values to [0.0, 1.0].
+
+    Args:
+        value: Raw confidence value (could be negative, >1, or non-numeric)
+
+    Returns:
+        float: Clamped confidence value between 0.0 and 1.0
+    """
+    try:
+        conf = float(value)
+        if conf < 0.0:
+            logger.warning(f"Negative confidence detected ({conf}), clamping to 0.0")
+            return 0.0
+        if conf > 1.0:
+            logger.warning(f"Confidence > 1.0 detected ({conf}), clamping to 1.0")
+            return 1.0
+        return conf
+    except (TypeError, ValueError):
+        logger.warning(f"Invalid confidence value ({value}), defaulting to 0.5")
+        return 0.5
+
 class StateManager:
     """
     Manages the persistence of agent reports and system state.
@@ -82,6 +105,14 @@ class StateManager:
             current[namespace] = {}
 
         for key, value in updates.items():
+            # Validate confidence if present in the value
+            if isinstance(value, dict) and 'confidence' in value:
+                value['confidence'] = _validate_confidence(value['confidence'])
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict) and 'confidence' in item:
+                        item['confidence'] = _validate_confidence(item['confidence'])
+
             current[namespace][key] = {
                 "data": value,
                 "timestamp": time.time()
