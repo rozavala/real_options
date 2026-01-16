@@ -105,17 +105,20 @@ class MicrostructureSentinel:
         """Check if current time is within core US trading hours (09:00 - 13:30 ET)."""
         tz = pytz.timezone('US/Eastern')
         now_utc = datetime.now(timezone.utc)
-        now = now_utc.astimezone(tz)
+        now_est = now_utc.astimezone(tz)
 
         # Check for weekends
-        if now.weekday() >= 5:  # 5=Sat, 6=Sun
+        if now_est.weekday() >= 5:  # 5=Sat, 6=Sun
             return False
 
         # Core hours: 09:00 - 13:30
-        market_open = time(9, 0)
-        market_close = time(13, 30)
+        market_open_est = now_est.replace(hour=9, minute=0, second=0, microsecond=0)
+        market_close_est = now_est.replace(hour=13, minute=30, second=0, microsecond=0)
 
-        return market_open <= now.time() <= market_close
+        market_open_utc = market_open_est.astimezone(timezone.utc)
+        market_close_utc = market_close_est.astimezone(timezone.utc)
+
+        return market_open_utc <= now_utc <= market_close_utc
 
     async def check(self) -> Optional[SentinelTrigger]:
         """Check for microstructure anomalies."""

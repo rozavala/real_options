@@ -165,10 +165,13 @@ def is_market_open() -> bool:
 
     # For order placement, use core hours (safer)
     # 4:15 AM - 1:30 PM ET
-    market_open = now_est.replace(hour=4, minute=15, second=0, microsecond=0)
-    market_close = now_est.replace(hour=13, minute=30, second=0, microsecond=0)
+    market_open_est = now_est.replace(hour=4, minute=15, second=0, microsecond=0)
+    market_close_est = now_est.replace(hour=13, minute=30, second=0, microsecond=0)
 
-    return market_open <= now_est <= market_close
+    market_open_utc = market_open_est.astimezone(timezone.utc)
+    market_close_utc = market_close_est.astimezone(timezone.utc)
+
+    return market_open_utc <= now_utc <= market_close_utc
 
 
 async def log_stream(stream, logger_func):
