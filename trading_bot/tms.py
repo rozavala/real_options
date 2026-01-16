@@ -57,3 +57,34 @@ class TransactiveMemory:
         except Exception as e:
             logger.error(f"TMS Retrieve failed: {e}")
             return []
+
+    def get_cross_cue_agents(self, source_agent: str, insight: str) -> list:
+        """Determine which agents should be notified based on content."""
+
+        CROSS_CUE_RULES = {
+            'macro': {
+                'currency': ['geopolitical', 'inventory'],
+                'interest_rate': ['volatility'],
+                'inflation': ['supply_chain'],
+            },
+            'agronomist': {
+                'frost': ['volatility', 'supply_chain'],
+                'drought': ['inventory', 'supply_chain'],
+                'harvest': ['inventory', 'macro'],
+            },
+            'logistics': {
+                'port': ['inventory', 'geopolitical'],
+                'shipping': ['supply_chain'],
+                'strike': ['geopolitical', 'macro'],
+            },
+        }
+
+        triggered = []
+        rules = CROSS_CUE_RULES.get(source_agent, {})
+
+        insight_lower = insight.lower()
+        for keyword, agents in rules.items():
+            if keyword in insight_lower:
+                triggered.extend(agents)
+
+        return list(set(triggered))

@@ -139,10 +139,12 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 trigger_type = determine_trigger_type(trigger_source)
 
                 # Calculate weighted consensus
-                weighted_result = calculate_weighted_decision(
+                weighted_result = await calculate_weighted_decision(
                     agent_reports=reports,
                     trigger_type=trigger_type,
-                    ml_signal=ml_signal
+                    ml_signal=ml_signal,
+                    ib=ib,
+                    contract=contract
                 )
 
                 # Inject weighted result into market context for Master

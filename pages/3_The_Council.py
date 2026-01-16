@@ -152,6 +152,39 @@ st.plotly_chart(fig, width="stretch")
 
 st.markdown("---")
 
+# === SECTION 2.5: Weighted Vote Breakdown ===
+st.subheader("⚖️ Weighted Vote Calculation")
+
+import json
+
+if 'vote_breakdown' in row and row['vote_breakdown']:
+    try:
+        vote_data = json.loads(row['vote_breakdown']) if isinstance(row['vote_breakdown'], str) else row['vote_breakdown']
+
+        vote_df = pd.DataFrame(vote_data)
+
+        fig_vote = px.bar(
+            vote_df,
+            x='agent',
+            y='contribution',
+            color='direction',
+            color_discrete_map={'BULLISH': '#00CC96', 'BEARISH': '#EF553B', 'NEUTRAL': '#888'},
+            title='Agent Contribution to Final Decision',
+            text_auto='.3f'
+        )
+        st.plotly_chart(fig_vote, width="stretch")
+
+        # Show dominant agent
+        dominant = row.get('dominant_agent', 'Unknown')
+        st.metric("Dominant Agent", dominant)
+
+    except Exception as e:
+        st.info(f"Vote breakdown data not available for this decision: {e}")
+else:
+    st.info("Weighted voting data not recorded for this decision")
+
+st.markdown("---")
+
 # === SECTION 3: Master Decision Details ===
 st.subheader("👑 Master Decision")
 

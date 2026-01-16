@@ -12,7 +12,7 @@ import re
 import json
 from enum import Enum
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Any
 from trading_bot.brier_scoring import get_brier_tracker
 
 logger = logging.getLogger(__name__)
@@ -177,8 +177,43 @@ def extract_sentiment_from_report(report_text: str) -> tuple[str, float]:
     return sentiment_tag, confidence
 
 
-def detect_market_regime(volatility_report: str, price_change_pct: float) -> str:
-    """Detect current market regime for weight adjustment."""
+class RegimeDetector:
+    """Detects market regime for dynamic weight adjustment."""
+
+    @staticmethod
+    async def detect_regime(ib, contract) -> str:
+        """Returns: 'HIGH_VOL', 'LOW_VOL', 'TRENDING', 'RANGE_BOUND'"""
+        if not ib or not contract:
+            return 'UNKNOWN'
+
+        try:
+            bars = await ib.reqHistoricalDataAsync(
+                contract, '', '5 D', '1 day', 'TRADES', True
+            )
+            if not bars or len(bars) < 2:
+                return 'UNKNOWN'
+
+            # Calculate 5-day volatility
+            returns = [(bars[i].close - bars[i-1].close) / bars[i-1].close
+                      for i in range(1, len(bars))]
+            vol = (sum(r**2 for r in returns) / len(returns)) ** 0.5
+
+            # Detect trend
+            price_change = (bars[-1].close - bars[0].close) / bars[0].close
+
+            if vol > 0.03:  # >3% daily vol
+                return 'HIGH_VOLATILITY'
+            elif abs(price_change) > 0.05:  # >5% 5-day move
+                return 'TRENDING'
+            else:
+                return 'RANGE_BOUND'
+        except Exception as e:
+            logger.error(f"Regime detection failed: {e}")
+            return 'UNKNOWN'
+
+
+def detect_market_regime_simple(volatility_report: str, price_change_pct: float) -> str:
+    """Detect current market regime for weight adjustment (Simple Fallback)."""
 
     # Check volatility agent's report
     if volatility_report and ("HIGH" in volatility_report.upper() or "ELEVATED" in volatility_report.upper()):
@@ -203,6 +238,10 @@ def get_regime_adjusted_weights(trigger_type: TriggerType, regime: str) -> dict:
         "RANGE_BOUND": {
             "technical": 1.5,
             "volatility": 0.7,
+        },
+        "TRENDING": {
+            "macro": 1.5,
+            "geopolitical": 1.5
         }
     }
 
@@ -211,10 +250,12 @@ def get_regime_adjusted_weights(trigger_type: TriggerType, regime: str) -> dict:
     return {k: v * multipliers.get(k, 1.0) for k, v in base_weights.items()}
 
 
-def calculate_weighted_decision(
+async def calculate_weighted_decision(
     agent_reports: dict[str, str],
     trigger_type: TriggerType,
-    ml_signal: Optional[dict] = None
+    ml_signal: Optional[dict] = None,
+    ib: Optional[Any] = None,
+    contract: Optional[Any] = None
 ) -> dict:
     """
     Calculate weighted decision from all agent reports.
@@ -223,20 +264,29 @@ def calculate_weighted_decision(
         dict with 'direction', 'confidence', 'weighted_score',
         'vote_breakdown', 'dominant_agent'
     """
-    # Detect Regime (using Volatility report and ML Signal price/pct if available)
-    vol_report = agent_reports.get('volatility', '')
-    if isinstance(vol_report, dict): vol_report = vol_report.get('data', '')
+    # Detect Regime
+    regime = "UNKNOWN"
 
-    # Estimate price change from ML signal if available
-    price_change = 0.0
-    if ml_signal and 'price' in ml_signal and 'expected_price' in ml_signal:
-        try:
-            curr = ml_signal['price']
-            exp = ml_signal['expected_price']
-            if curr: price_change = (exp - curr) / curr
-        except: pass
+    # 1. Try Advanced Detection first
+    if ib and contract:
+        regime = await RegimeDetector.detect_regime(ib, contract)
 
-    regime = detect_market_regime(str(vol_report), price_change)
+    # 2. Fallback to Simple Detection
+    if regime == "UNKNOWN":
+        vol_report = agent_reports.get('volatility', '')
+        if isinstance(vol_report, dict): vol_report = vol_report.get('data', '')
+
+        # Estimate price change from ML signal if available
+        price_change = 0.0
+        if ml_signal and 'price' in ml_signal and 'expected_price' in ml_signal:
+            try:
+                curr = ml_signal['price']
+                exp = ml_signal['expected_price']
+                if curr: price_change = (exp - curr) / curr
+            except: pass
+
+        regime = detect_market_regime_simple(str(vol_report), price_change)
+
     logger.info(f"Market Regime Detected: {regime}")
 
     weights = get_regime_adjusted_weights(trigger_type, regime)

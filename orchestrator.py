@@ -17,7 +17,7 @@ import json
 import hashlib
 from collections import deque
 import time as time_module
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 import pytz
 from ib_insync import IB, util
 
@@ -43,6 +43,9 @@ from trading_bot.ib_interface import get_active_futures, build_option_chain, cre
 from trading_bot.strategy import define_directional_strategy
 from trading_bot.state_manager import StateManager
 from trading_bot.connection_pool import IBConnectionPool
+from trading_bot.compliance import ComplianceGuardian
+from trading_bot.position_sizer import DynamicPositionSizer
+from trading_bot.brier_scoring import get_brier_tracker
 
 # --- Logging Setup ---
 setup_logging()
@@ -137,6 +140,34 @@ GLOBAL_DEDUPLICATOR = TriggerDeduplicator()
 
 # Concurrent Cycle Lock (Global)
 EMERGENCY_LOCK = asyncio.Lock()
+
+
+def is_market_open() -> bool:
+    """Check if Coffee futures market is currently open.
+
+    ICE Coffee (KC) Trading Hours:
+    - Electronic: Sun 6:00 PM - Fri 5:00 PM ET (with daily break 5:00-6:00 PM)
+    - Core liquidity: 4:15 AM - 1:30 PM ET
+    """
+    est = pytz.timezone('US/Eastern')
+    now_est = datetime.now(est)
+
+    # Weekend check
+    if now_est.weekday() == 5:  # Saturday
+        return False
+    if now_est.weekday() == 6 and now_est.hour < 18:  # Sunday before 6 PM
+        return False
+
+    # Daily maintenance break (5:00 PM - 6:00 PM ET)
+    if now_est.hour == 17:
+        return False
+
+    # For order placement, use core hours (safer)
+    # 4:15 AM - 1:30 PM ET
+    market_open = now_est.replace(hour=4, minute=15, second=0, microsecond=0)
+    market_close = now_est.replace(hour=13, minute=30, second=0, microsecond=0)
+
+    return market_open <= now_est <= market_close
 
 
 async def log_stream(stream, logger_func):
@@ -283,6 +314,12 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
     Runs a specialized cycle triggered by a Sentinel.
     Executes trades if the Council approves.
     """
+    # === NEW: MARKET HOURS GATE ===
+    if not is_market_open():
+        logger.info(f"Market closed. Queuing {trigger.source} alert for next session.")
+        StateManager.queue_deferred_trigger(trigger)
+        return
+
     # Acquire Lock to prevent race conditions
     if EMERGENCY_LOCK.locked():
         logger.warning(f"Emergency cycle for {trigger.source} queued (Lock active).")
@@ -356,13 +393,59 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     logger.info(f"Loaded cached ML signal for {target_month}: {ml_signal.get('direction')}")
 
             # 5. Run Specialized Cycle
-            decision = await council.run_specialized_cycle(trigger, contract_name, ml_signal, market_context_str)
+            decision = await council.run_specialized_cycle(
+                trigger,
+                contract_name,
+                ml_signal,
+                market_context_str,
+                ib=ib,
+                target_contract=target_contract
+            )
 
             logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
 
             # 6. Execute if Actionable
             if decision.get('direction') in ['BULLISH', 'BEARISH'] and decision.get('confidence', 0) > config.get('strategy', {}).get('signal_threshold', 0.5):
+
+                # === NEW: Compliance Audit ===
+                compliance = ComplianceGuardian(config)
+                # Load reports for audit (re-use final_reports from agents logic if possible, but here we only have decision)
+                # Ideally, run_specialized_cycle should return the full packet.
+                # For now, we reload state which is "close enough" as it was just updated.
+                current_reports = StateManager.load_state()
+
+                audit = await compliance.audit_decision(
+                    current_reports,
+                    market_context_str,
+                    decision,
+                    council.personas.get('master', '')
+                )
+
+                if not audit.get('approved', True):
+                    logger.warning(f"COMPLIANCE BLOCKED Emergency Trade: {audit.get('flagged_reason')}")
+                    send_pushover_notification(
+                        config.get('notifications', {}),
+                        "Emergency Trade VETOED by Compliance",
+                        f"Reason: {audit.get('flagged_reason')}"
+                    )
+                    return
+
                 logger.info("Decision is actionable. Generating order...")
+
+                # === NEW: Dynamic Position Sizing ===
+                sizer = DynamicPositionSizer(config)
+
+                # Get account value
+                account_summary = await ib.accountSummaryAsync()
+                net_liq_tag = next((v for v in account_summary if v.tag == 'NetLiquidation' and v.currency == 'USD'), None)
+                account_value = float(net_liq_tag.value) if net_liq_tag else 100000.0
+
+                vol_sentiment = decision.get('volatility_sentiment', 'NEUTRAL')
+                if not vol_sentiment and 'vote_breakdown' in decision:
+                     # Try to extract from vote breakdown
+                     pass # sizer defaults to NEUTRAL if passed string is None
+
+                qty = await sizer.calculate_size(ib, decision, vol_sentiment, account_value)
 
                 # Build Strategy
                 chain = await build_option_chain(ib, target_contract)
@@ -376,12 +459,15 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     "direction": decision['direction'],
                     "confidence": decision['confidence'],
                     "price": ticker.last,
-                    "prediction_type": "DIRECTIONAL"
+                    "prediction_type": "DIRECTIONAL",
+                    "quantity": qty
                 }
 
                 strategy_def = define_directional_strategy(config, signal_obj, chain, ticker.last, target_contract)
 
                 if strategy_def:
+                    strategy_def['quantity'] = qty # Force apply
+
                     order_objects = await create_combo_order_object(ib, config, strategy_def)
                     if order_objects:
                         contract, order = order_objects
@@ -390,8 +476,32 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         # Pass specific list to place_queued_orders so we don't wipe the global queue
                         emergency_order_list = [(contract, order, decision)]
                         await place_queued_orders(config, orders_list=emergency_order_list)
-                        logger.info("Emergency Order Placed.")
-            else:
+                        logger.info(f"Emergency Order Placed (Qty: {qty}).")
+
+            # === NEW: Brier Score Recording ===
+            # Record regardless of action, to track "NEUTRAL" correctness too
+            tracker = get_brier_tracker()
+            # We need the agent reports. Again, we reload state.
+            # Ideally Council returns them.
+            final_reports_for_scoring = StateManager.load_state()
+
+            for agent_name, report in final_reports_for_scoring.items():
+                sentiment = 'NEUTRAL'
+                report_str = str(report)
+                if isinstance(report, dict):
+                    report_str = str(report.get('data', ''))
+
+                if 'BULLISH' in report_str.upper(): sentiment = 'BULLISH'
+                elif 'BEARISH' in report_str.upper(): sentiment = 'BEARISH'
+
+                tracker.record_prediction(
+                    agent=agent_name,
+                    predicted=sentiment,
+                    actual='PENDING',
+                    timestamp=datetime.now(timezone.utc)
+                )
+
+            if decision.get('direction') not in ['BULLISH', 'BEARISH']:
                 logger.info("Emergency Cycle concluded with no action.")
 
         except Exception as e:
@@ -538,6 +648,21 @@ async def main():
     if not config:
         logger.critical("Orchestrator cannot start without a valid configuration."); return
     
+    # Process deferred triggers from overnight
+    try:
+        deferred = StateManager.get_deferred_triggers()
+        if deferred:
+            logger.info(f"Processing {len(deferred)} deferred triggers from overnight")
+            ib_conn = await IBConnectionPool.get_connection("deferred", config)
+            for t in deferred:
+                # We call run_emergency_cycle unconditionally.
+                # It has an internal market hours check that will re-queue the trigger if closed.
+                trigger = SentinelTrigger(t['source'], t['reason'], t['payload'])
+                await run_emergency_cycle(trigger, config, ib_conn)
+            await IBConnectionPool.release_connection("deferred")
+    except Exception as e:
+        logger.error(f"Failed to process deferred triggers: {e}")
+
     env_name = os.getenv("ENV_NAME", "DEV") 
     is_prod = env_name == "PROD 🚀"
 
