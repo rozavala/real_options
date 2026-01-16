@@ -1,5 +1,5 @@
 import chromadb
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import os
 
@@ -33,7 +33,7 @@ class TransactiveMemory:
                 documents=[insight],
                 metadatas=[{
                     "agent": agent,
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     **(metadata or {})
                 }],
                 ids=[doc_id]

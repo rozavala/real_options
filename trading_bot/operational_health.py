@@ -2,7 +2,7 @@
 
 import logging
 from typing import Dict, List
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ class OperationalHealthMonitor:
             self.agent_response_history[agent] = []
 
         self.agent_response_history[agent].append({
-            'timestamp': datetime.now(),
+            'timestamp': datetime.now(timezone.utc),
             'length': len(response),
             'issues': issues
         })

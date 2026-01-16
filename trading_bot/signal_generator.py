@@ -3,7 +3,7 @@ import logging
 import asyncio
 import traceback
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from ib_insync import IB
 from trading_bot.agents import CoffeeCouncil
 from trading_bot.ib_interface import get_active_futures # CORRECTED IMPORT
@@ -357,7 +357,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         agent_data[f"{key}_summary"] = str(report) if report else "N/A"  # SAVE FULL TEXT
 
                     council_log_entry = {
-                        "timestamp": datetime.now(),
+                        "timestamp": datetime.now(timezone.utc),
                         "contract": contract_name,
                         "entry_price": ml_signal.get('price'),
                         "ml_signal": raw_action,
