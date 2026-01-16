@@ -55,11 +55,19 @@ logger = logging.getLogger("Orchestrator")
 monitor_process = None
 
 class TriggerDeduplicator:
-    def __init__(self, window_seconds: int = 1800, state_file="data/deduplicator_state.json"):
+    def __init__(self, window_seconds: int = 7200, state_file="data/deduplicator_state.json"):
         self.state_file = state_file
         self.window = window_seconds
         self.cooldowns = {} # Dictionary of cooldowns {source: until_timestamp}
         self.recent_triggers = deque(maxlen=50)
+        self.metrics = {
+            'total_triggers': 0,
+            'filtered_global_cooldown': 0,
+            'filtered_post_cycle': 0,
+            'filtered_source_cooldown': 0,
+            'filtered_duplicate_content': 0,
+            'processed': 0
+        }
         self._load_state()
 
     def _load_state(self):
@@ -75,6 +83,9 @@ class TriggerDeduplicator:
 
                     for t in data.get('recent_triggers', []):
                          self.recent_triggers.append(tuple(t)) # (hash, timestamp)
+
+                    if 'metrics' in data and isinstance(data['metrics'], dict):
+                        self.metrics.update(data['metrics'])
             except Exception as e:
                 logger.warning(f"Failed to load deduplicator state: {e}")
 
@@ -84,7 +95,8 @@ class TriggerDeduplicator:
             os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
             data = {
                 'cooldowns': self.cooldowns,
-                'recent_triggers': list(self.recent_triggers)
+                'recent_triggers': list(self.recent_triggers),
+                'metrics': self.metrics
             }
             with open(self.state_file, 'w') as f:
                 json.dump(data, f)
@@ -92,23 +104,39 @@ class TriggerDeduplicator:
              logger.warning(f"Failed to save deduplicator state: {e}")
 
     def should_process(self, trigger: SentinelTrigger) -> bool:
+        self.metrics['total_triggers'] += 1
         now = time_module.time()
 
         # 1. Check Global Lock (Set by Scheduled Tasks)
         global_until = self.cooldowns.get('GLOBAL', 0)
         if now < global_until:
             logger.info(f"GLOBAL cooldown active until {datetime.fromtimestamp(global_until)}. Skipping {trigger.source}")
+            self.metrics['filtered_global_cooldown'] += 1
             return False
 
-        # 2. Check Per-Source Lock (Set by Sentinel Self-Triggers)
+        # 2. Check Post-Cycle Debounce (Set after ANY emergency cycle)
+        post_cycle_until = self.cooldowns.get('POST_CYCLE', 0)
+        if now < post_cycle_until:
+            # Exception: Allow CRITICAL severity to bypass
+            critical_threshold = 9
+            if getattr(trigger, 'severity', 0) < critical_threshold:
+                logger.info(f"POST_CYCLE debounce active until {datetime.fromtimestamp(post_cycle_until)}. Skipping {trigger.source}")
+                self.metrics['filtered_post_cycle'] += 1
+                return False
+            else:
+                logger.warning(f"CRITICAL trigger {trigger.source} (Sev: {trigger.severity}) bypassing post-cycle debounce")
+
+        # 3. Check Per-Source Lock (Set by Sentinel Self-Triggers)
         source_until = self.cooldowns.get(trigger.source, 0)
         if now < source_until:
             logger.info(f"{trigger.source} cooldown active until {datetime.fromtimestamp(source_until)}. Skipping.")
+            self.metrics['filtered_source_cooldown'] += 1
             return False
 
         # Content-based deduplication
+        # Sort keys to ensure stable hash
         trigger_hash = hashlib.md5(
-            f"{trigger.reason[:50]}{trigger.payload}".encode()
+            f"{trigger.reason[:50]}{json.dumps(trigger.payload, sort_keys=True)}".encode()
         ).hexdigest()[:8]
 
         # Prune old triggers
@@ -118,10 +146,12 @@ class TriggerDeduplicator:
 
         if any(t[0] == trigger_hash for t in self.recent_triggers):
             logger.info(f"Duplicate trigger detected: {trigger_hash}")
+            self.metrics['filtered_duplicate_content'] += 1
             return False
 
         self.recent_triggers.append((trigger_hash, now))
         self._save_state()
+        self.metrics['processed'] += 1
         return True
 
     def set_cooldown(self, source: str, seconds: int = 900):
@@ -319,199 +349,206 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
         logger.warning(f"Emergency cycle for {trigger.source} queued (Lock active).")
 
     async with EMERGENCY_LOCK:
-        logger.info(f"🚨 EMERGENCY CYCLE TRIGGERED by {trigger.source}: {trigger.reason}")
-        send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", trigger.reason)
-
-        # --- DEFCON 1: Crash Protection ---
-        # If price drops > 5% instantly, do NOT open new trades. Liquidation logic is complex, so we just Halt.
-        if trigger.source == "PriceSentinel" and abs(trigger.payload.get('change', 0)) > 5.0:
-            logger.critical("📉 FLASH CRASH DETECTED (>5%). Skipping Council. HALTING TRADING.")
-            send_pushover_notification(config.get('notifications', {}), "FLASH CRASH ALERT", "Price moved >5%. Emergency Halt Triggered. No new orders.")
-            # Future: await close_stale_positions(config, force=True)
-            return
-
         try:
-            # 1. Initialize Council
-            council = CoffeeCouncil(config)
+            logger.info(f"🚨 EMERGENCY CYCLE TRIGGERED by {trigger.source}: {trigger.reason}")
+            send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", trigger.reason)
 
-            # 2. Get Active Futures (We need a target contract)
-            # For simplicity, target the Front Month or the one from the trigger payload
-            contract_name_hint = trigger.payload.get('contract')
-
-            active_futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=2)
-            if not active_futures:
-                logger.error("No active futures found for emergency cycle.")
+            # --- DEFCON 1: Crash Protection ---
+            # If price drops > 5% instantly, do NOT open new trades. Liquidation logic is complex, so we just Halt.
+            if trigger.source == "PriceSentinel" and abs(trigger.payload.get('change', 0)) > 5.0:
+                logger.critical("📉 FLASH CRASH DETECTED (>5%). Skipping Council. HALTING TRADING.")
+                send_pushover_notification(config.get('notifications', {}), "FLASH CRASH ALERT", "Price moved >5%. Emergency Halt Triggered. No new orders.")
+                # Future: await close_stale_positions(config, force=True)
                 return
 
-            # Select contract
-            target_contract = active_futures[0]
-            if contract_name_hint:
-                # Try to match hint
-                for f in active_futures:
-                    if f.localSymbol == contract_name_hint:
-                        target_contract = f
-                        break
+            try:
+                # 1. Initialize Council
+                council = CoffeeCouncil(config)
 
-            contract_name = f"{target_contract.localSymbol} ({target_contract.lastTradeDateOrContractMonth[:6]})"
-            logger.info(f"Targeting contract: {contract_name}")
+                # 2. Get Active Futures (We need a target contract)
+                # For simplicity, target the Front Month or the one from the trigger payload
+                contract_name_hint = trigger.payload.get('contract')
 
-            # 3. Get Market Context (Snapshot)
-            ticker = ib.reqMktData(target_contract, '', True, False)
-            await asyncio.sleep(2)
+                active_futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=2)
+                if not active_futures:
+                    logger.error("No active futures found for emergency cycle.")
+                    return
 
-            # Fetch IV Metrics
-            iv_metrics = await get_underlying_iv_metrics(ib, target_contract)
+                # Select contract
+                target_contract = active_futures[0]
+                if contract_name_hint:
+                    # Try to match hint
+                    for f in active_futures:
+                        if f.localSymbol == contract_name_hint:
+                            target_contract = f
+                            break
 
-            market_context_str = (
-                f"Contract: {target_contract.localSymbol}\n"
-                f"Current Price: {ticker.last if ticker.last else 'N/A'}\n"
-                f"--- VOLATILITY METRICS (IBKR Live) ---\n"
-                f"Current IV: {iv_metrics['current_iv']}\n"
-                f"IV Rank: {iv_metrics['iv_rank']}\n"
-                f"IV Percentile: {iv_metrics['iv_percentile']}\n"
-                f"Note: If IV data shows N/A, analyst should search Barchart for KC IV Rank.\n"
-            )
+                contract_name = f"{target_contract.localSymbol} ({target_contract.lastTradeDateOrContractMonth[:6]})"
+                logger.info(f"Targeting contract: {contract_name}")
 
-            # 4. Load Cached ML Signal (Fix Dummy Signal Blindness)
-            cached_state = StateManager.load_state()
-            cached_ml_signals_raw = cached_state.get('latest_ml_signals', {})
-            if isinstance(cached_ml_signals_raw, dict):
-                cached_ml_signals = cached_ml_signals_raw.get('data', [])
-            elif isinstance(cached_ml_signals_raw, list):
-                cached_ml_signals = cached_ml_signals_raw
-            else:
-                cached_ml_signals = []
+                # 3. Get Market Context (Snapshot)
+                ticker = ib.reqMktData(target_contract, '', True, False)
+                await asyncio.sleep(2)
 
-            ml_signal = {
-                "action": "NEUTRAL",
-                "confidence": 0.5,
-                "price": ticker.last,
-                "reason": "Emergency Cycle: ML Signal unavailable/stale.",
-                "regime": "UNKNOWN"
-            }
+                # Fetch IV Metrics
+                iv_metrics = await get_underlying_iv_metrics(ib, target_contract)
 
-            if cached_ml_signals:
-                # Try to find signal for this contract month
-                target_month = target_contract.lastTradeDateOrContractMonth[:6]
-                found_signal = next((s for s in cached_ml_signals if s.get('contract_month') == target_month), None)
-                if found_signal:
-                    ml_signal = found_signal
-                    logger.info(f"Loaded cached ML signal for {target_month}: {ml_signal.get('direction')}")
-
-            # 5. Run Specialized Cycle
-            decision = await council.run_specialized_cycle(
-                trigger,
-                contract_name,
-                ml_signal,
-                market_context_str,
-                ib=ib,
-                target_contract=target_contract
-            )
-
-            logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
-
-            # 6. Execute if Actionable
-            if decision.get('direction') in ['BULLISH', 'BEARISH'] and decision.get('confidence', 0) > config.get('strategy', {}).get('signal_threshold', 0.5):
-
-                # === NEW: Compliance Audit ===
-                compliance = ComplianceGuardian(config)
-                # Load reports for audit (re-use final_reports from agents logic if possible, but here we only have decision)
-                # Ideally, run_specialized_cycle should return the full packet.
-                # For now, we reload state which is "close enough" as it was just updated.
-                current_reports = StateManager.load_state()
-
-                audit = await compliance.audit_decision(
-                    current_reports,
-                    market_context_str,
-                    decision,
-                    council.personas.get('master', '')
+                market_context_str = (
+                    f"Contract: {target_contract.localSymbol}\n"
+                    f"Current Price: {ticker.last if ticker.last else 'N/A'}\n"
+                    f"--- VOLATILITY METRICS (IBKR Live) ---\n"
+                    f"Current IV: {iv_metrics['current_iv']}\n"
+                    f"IV Rank: {iv_metrics['iv_rank']}\n"
+                    f"IV Percentile: {iv_metrics['iv_percentile']}\n"
+                    f"Note: If IV data shows N/A, analyst should search Barchart for KC IV Rank.\n"
                 )
 
-                if not audit.get('approved', True):
-                    logger.warning(f"COMPLIANCE BLOCKED Emergency Trade: {audit.get('flagged_reason')}")
-                    send_pushover_notification(
-                        config.get('notifications', {}),
-                        "Emergency Trade VETOED by Compliance",
-                        f"Reason: {audit.get('flagged_reason')}"
-                    )
-                    return
+                # 4. Load Cached ML Signal (Fix Dummy Signal Blindness)
+                cached_state = StateManager.load_state()
+                cached_ml_signals_raw = cached_state.get('latest_ml_signals', {})
+                if isinstance(cached_ml_signals_raw, dict):
+                    cached_ml_signals = cached_ml_signals_raw.get('data', [])
+                elif isinstance(cached_ml_signals_raw, list):
+                    cached_ml_signals = cached_ml_signals_raw
+                else:
+                    cached_ml_signals = []
 
-                logger.info("Decision is actionable. Generating order...")
-
-                # === NEW: Dynamic Position Sizing ===
-                sizer = DynamicPositionSizer(config)
-
-                # Get account value
-                account_summary = await ib.accountSummaryAsync()
-                net_liq_tag = next((v for v in account_summary if v.tag == 'NetLiquidation' and v.currency == 'USD'), None)
-                account_value = float(net_liq_tag.value) if net_liq_tag else 100000.0
-
-                vol_sentiment = decision.get('volatility_sentiment', 'NEUTRAL')
-                if not vol_sentiment and 'vote_breakdown' in decision:
-                     # Try to extract from vote breakdown
-                     pass # sizer defaults to NEUTRAL if passed string is None
-
-                qty = await sizer.calculate_size(ib, decision, vol_sentiment, account_value)
-
-                # Build Strategy
-                chain = await build_option_chain(ib, target_contract)
-                if not chain:
-                    logger.warning("No option chain available.")
-                    return
-
-                # Construct Signal Object for Strategy Definition
-                signal_obj = {
-                    "contract_month": target_contract.lastTradeDateOrContractMonth[:6],
-                    "direction": decision['direction'],
-                    "confidence": decision['confidence'],
+                ml_signal = {
+                    "action": "NEUTRAL",
+                    "confidence": 0.5,
                     "price": ticker.last,
-                    "prediction_type": "DIRECTIONAL",
-                    "quantity": qty
+                    "reason": "Emergency Cycle: ML Signal unavailable/stale.",
+                    "regime": "UNKNOWN"
                 }
 
-                strategy_def = define_directional_strategy(config, signal_obj, chain, ticker.last, target_contract)
+                if cached_ml_signals:
+                    # Try to find signal for this contract month
+                    target_month = target_contract.lastTradeDateOrContractMonth[:6]
+                    found_signal = next((s for s in cached_ml_signals if s.get('contract_month') == target_month), None)
+                    if found_signal:
+                        ml_signal = found_signal
+                        logger.info(f"Loaded cached ML signal for {target_month}: {ml_signal.get('direction')}")
 
-                if strategy_def:
-                    strategy_def['quantity'] = qty # Force apply
-
-                    order_objects = await create_combo_order_object(ib, config, strategy_def)
-                    if order_objects:
-                        contract, order = order_objects
-
-                        # Queue and Execute (Fix Global Queue Collision)
-                        # Pass specific list to place_queued_orders so we don't wipe the global queue
-                        emergency_order_list = [(contract, order, decision)]
-                        await place_queued_orders(config, orders_list=emergency_order_list)
-                        logger.info(f"Emergency Order Placed (Qty: {qty}).")
-
-            # === NEW: Brier Score Recording ===
-            # Record regardless of action, to track "NEUTRAL" correctness too
-            tracker = get_brier_tracker()
-            # We need the agent reports. Again, we reload state.
-            # Ideally Council returns them.
-            final_reports_for_scoring = StateManager.load_state()
-
-            for agent_name, report in final_reports_for_scoring.items():
-                sentiment = 'NEUTRAL'
-                report_str = str(report)
-                if isinstance(report, dict):
-                    report_str = str(report.get('data', ''))
-
-                if 'BULLISH' in report_str.upper(): sentiment = 'BULLISH'
-                elif 'BEARISH' in report_str.upper(): sentiment = 'BEARISH'
-
-                tracker.record_prediction(
-                    agent=agent_name,
-                    predicted=sentiment,
-                    actual='PENDING',
-                    timestamp=datetime.now(timezone.utc)
+                # 5. Run Specialized Cycle
+                decision = await council.run_specialized_cycle(
+                    trigger,
+                    contract_name,
+                    ml_signal,
+                    market_context_str,
+                    ib=ib,
+                    target_contract=target_contract
                 )
 
-            if decision.get('direction') not in ['BULLISH', 'BEARISH']:
-                logger.info("Emergency Cycle concluded with no action.")
+                logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
 
-        except Exception as e:
-            logger.error(f"Emergency Cycle Failed: {e}\n{traceback.format_exc()}")
+                # 6. Execute if Actionable
+                if decision.get('direction') in ['BULLISH', 'BEARISH'] and decision.get('confidence', 0) > config.get('strategy', {}).get('signal_threshold', 0.5):
+
+                    # === NEW: Compliance Audit ===
+                    compliance = ComplianceGuardian(config)
+                    # Load reports for audit (re-use final_reports from agents logic if possible, but here we only have decision)
+                    # Ideally, run_specialized_cycle should return the full packet.
+                    # For now, we reload state which is "close enough" as it was just updated.
+                    current_reports = StateManager.load_state()
+
+                    audit = await compliance.audit_decision(
+                        current_reports,
+                        market_context_str,
+                        decision,
+                        council.personas.get('master', '')
+                    )
+
+                    if not audit.get('approved', True):
+                        logger.warning(f"COMPLIANCE BLOCKED Emergency Trade: {audit.get('flagged_reason')}")
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "Emergency Trade VETOED by Compliance",
+                            f"Reason: {audit.get('flagged_reason')}"
+                        )
+                        return
+
+                    logger.info("Decision is actionable. Generating order...")
+
+                    # === NEW: Dynamic Position Sizing ===
+                    sizer = DynamicPositionSizer(config)
+
+                    # Get account value
+                    account_summary = await ib.accountSummaryAsync()
+                    net_liq_tag = next((v for v in account_summary if v.tag == 'NetLiquidation' and v.currency == 'USD'), None)
+                    account_value = float(net_liq_tag.value) if net_liq_tag else 100000.0
+
+                    vol_sentiment = decision.get('volatility_sentiment', 'NEUTRAL')
+                    if not vol_sentiment and 'vote_breakdown' in decision:
+                        # Try to extract from vote breakdown
+                        pass # sizer defaults to NEUTRAL if passed string is None
+
+                    qty = await sizer.calculate_size(ib, decision, vol_sentiment, account_value)
+
+                    # Build Strategy
+                    chain = await build_option_chain(ib, target_contract)
+                    if not chain:
+                        logger.warning("No option chain available.")
+                        return
+
+                    # Construct Signal Object for Strategy Definition
+                    signal_obj = {
+                        "contract_month": target_contract.lastTradeDateOrContractMonth[:6],
+                        "direction": decision['direction'],
+                        "confidence": decision['confidence'],
+                        "price": ticker.last,
+                        "prediction_type": "DIRECTIONAL",
+                        "quantity": qty
+                    }
+
+                    strategy_def = define_directional_strategy(config, signal_obj, chain, ticker.last, target_contract)
+
+                    if strategy_def:
+                        strategy_def['quantity'] = qty # Force apply
+
+                        order_objects = await create_combo_order_object(ib, config, strategy_def)
+                        if order_objects:
+                            contract, order = order_objects
+
+                            # Queue and Execute (Fix Global Queue Collision)
+                            # Pass specific list to place_queued_orders so we don't wipe the global queue
+                            emergency_order_list = [(contract, order, decision)]
+                            await place_queued_orders(config, orders_list=emergency_order_list)
+                            logger.info(f"Emergency Order Placed (Qty: {qty}).")
+
+                # === NEW: Brier Score Recording ===
+                # Record regardless of action, to track "NEUTRAL" correctness too
+                tracker = get_brier_tracker()
+                # We need the agent reports. Again, we reload state.
+                # Ideally Council returns them.
+                final_reports_for_scoring = StateManager.load_state()
+
+                for agent_name, report in final_reports_for_scoring.items():
+                    sentiment = 'NEUTRAL'
+                    report_str = str(report)
+                    if isinstance(report, dict):
+                        report_str = str(report.get('data', ''))
+
+                    if 'BULLISH' in report_str.upper(): sentiment = 'BULLISH'
+                    elif 'BEARISH' in report_str.upper(): sentiment = 'BEARISH'
+
+                    tracker.record_prediction(
+                        agent=agent_name,
+                        predicted=sentiment,
+                        actual='PENDING',
+                        timestamp=datetime.now(timezone.utc)
+                    )
+
+                if decision.get('direction') not in ['BULLISH', 'BEARISH']:
+                    logger.info("Emergency Cycle concluded with no action.")
+
+            except Exception as e:
+                logger.error(f"Emergency Cycle Failed: {e}\n{traceback.format_exc()}")
+
+        finally:
+            # Global post-cycle debounce (blocks ALL sentinels)
+            debounce_seconds = config.get('sentinels', {}).get('post_cycle_debounce_seconds', 1800)
+            GLOBAL_DEDUPLICATOR.set_cooldown("POST_CYCLE", debounce_seconds)
+            logger.info(f"Post-cycle debounce set for {debounce_seconds}s")
 
 
 async def run_sentinels(config: dict):
@@ -547,6 +584,11 @@ async def run_sentinels(config: dict):
     last_logistics = 0
     last_news = 0
 
+    # Contract Cache
+    cached_contract = None
+    last_contract_refresh = 0
+    CONTRACT_REFRESH_INTERVAL = 14400  # 4 hours
+
     while True:
         try:
             now = time_module.time()
@@ -561,11 +603,21 @@ async def run_sentinels(config: dict):
                 except Exception as e:
                     logger.error(f"Sentinel IB Reconnect Failed: {e}")
 
+            # Refresh contract cache
+            if sentinel_ib.isConnected() and (now - last_contract_refresh > CONTRACT_REFRESH_INTERVAL):
+                try:
+                    active_futures = await get_active_futures(sentinel_ib, config['symbol'], config['exchange'], count=1)
+                    cached_contract = active_futures[0] if active_futures else None
+                    last_contract_refresh = now
+                    logger.info(f"Refreshed contract cache: {cached_contract.localSymbol if cached_contract else 'None'}")
+                except Exception as e:
+                    logger.error(f"Failed to refresh contract cache: {e}")
+
             # Use asyncio.create_task for non-blocking execution (Fix Blocking Sentinel)
 
             # 1. Price Sentinel (Every 1 min) - Only if Connected
             if sentinel_ib.isConnected():
-                trigger = await price_sentinel.check()
+                trigger = await price_sentinel.check(cached_contract=cached_contract)
                 if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                     asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
                     GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)

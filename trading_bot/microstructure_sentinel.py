@@ -13,17 +13,9 @@ import pytz
 from dataclasses import dataclass, field
 from typing import Optional
 from collections import deque
+from trading_bot.sentinels import SentinelTrigger
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class SentinelTrigger:
-    """Trigger from microstructure sentinel."""
-    source: str = "MicrostructureSentinel"
-    reason: str = ""
-    severity: float = 0.0
-    payload: dict = field(default_factory=dict)
 
 
 class MicrostructureSentinel:
@@ -170,15 +162,16 @@ class MicrostructureSentinel:
                 if z_score > self.spread_std_threshold:
                     self.last_trigger_time = datetime.now(timezone.utc)
                     return SentinelTrigger(
-                        reason=f"Flash Crash Risk: Spread {z_score:.1f} std devs above mean",
-                        severity=min(10, z_score * 2),
-                        payload={
+                        "MicrostructureSentinel",
+                        f"Flash Crash Risk: Spread {z_score:.1f} std devs above mean",
+                        {
                             'type': 'SPREAD_ANOMALY',
                             'contract': contract.localSymbol,
                             'z_score': z_score,
                             'bid': ticker.bid,
                             'ask': ticker.ask
-                        }
+                        },
+                        severity=int(min(10, z_score * 2))
                     )
 
             # Check volume spike
@@ -188,13 +181,14 @@ class MicrostructureSentinel:
                 if volume_ratio > self.volume_spike_pct:
                     self.last_trigger_time = datetime.now(timezone.utc)
                     return SentinelTrigger(
-                        reason=f"Volume Spike: {volume_ratio*100:.0f}% of average",
-                        severity=min(10, volume_ratio),
-                        payload={
+                        "MicrostructureSentinel",
+                        f"Volume Spike: {volume_ratio*100:.0f}% of average",
+                        {
                             'type': 'VOLUME_SPIKE',
                             'contract': contract.localSymbol,
                             'volume_ratio': volume_ratio
-                        }
+                        },
+                        severity=int(min(10, volume_ratio))
                     )
 
             # Check depth depletion
@@ -210,13 +204,14 @@ class MicrostructureSentinel:
                             if depth_ratio < self.depth_drop_pct:
                                 self.last_trigger_time = datetime.now(timezone.utc)
                                 return SentinelTrigger(
-                                    reason=f"Liquidity Depletion: {depth_ratio*100:.0f}% of average",
-                                    severity=min(10, (1 - depth_ratio) * 10),
-                                    payload={
+                                    "MicrostructureSentinel",
+                                    f"Liquidity Depletion: {depth_ratio*100:.0f}% of average",
+                                    {
                                         'type': 'LIQUIDITY_DEPLETION',
                                         'contract': contract.localSymbol,
                                         'depth_ratio': depth_ratio
-                                    }
+                                    },
+                                    severity=int(min(10, (1 - depth_ratio) * 10))
                                 )
 
         return None

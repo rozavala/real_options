@@ -1,8 +1,12 @@
 import asyncio
 import logging
+import os
+import hashlib
+from pathlib import Path
 import feedparser
 import requests
-from datetime import datetime, time, timezone
+from email.utils import parsedate_to_datetime
+from datetime import datetime, time, timezone, timedelta
 import numpy as np
 from typing import Optional, List, Dict, Any
 from google import genai
@@ -38,10 +42,11 @@ def with_retry(max_attempts: int = 3, backoff: float = 2.0):
 
 class SentinelTrigger:
     """Represents an event triggered by a sentinel."""
-    def __init__(self, source: str, reason: str, payload: Dict[str, Any] = None):
+    def __init__(self, source: str, reason: str, payload: Dict[str, Any] = None, severity: int = 5):
         self.source = source
         self.reason = reason
         self.payload = payload or {}
+        self.severity = severity
         self.timestamp = datetime.now(timezone.utc)
 
     def __repr__(self):
@@ -49,18 +54,66 @@ class SentinelTrigger:
 
 class Sentinel:
     """Base class for all sentinels."""
+    CACHE_DIR = "data/sentinel_caches"
+
     def __init__(self, config: dict):
         self.config = config
         self.enabled = True
         self.last_triggered = 0 # Timestamp of last trigger
+        self.last_payload_hash = None
+
+        # Persistent seen cache
+        self._cache_file = Path(self.CACHE_DIR) / f"{self.__class__.__name__}_seen.json"
+        self._seen_links = self._load_seen_cache()
+
+    def _load_seen_cache(self) -> set:
+        """Load seen links from disk."""
+        if self._cache_file.exists():
+            try:
+                with open(self._cache_file, 'r') as f:
+                    data = json.load(f)
+                    # Only keep links from last 7 days
+                    import time as time_module
+                    cutoff = time_module.time() - (7 * 24 * 3600)
+                    return {k for k, v in data.items() if v > cutoff}
+            except Exception as e:
+                logger.warning(f"Failed to load seen cache: {e}")
+        return set()
+
+    def _save_seen_cache(self):
+        """Save seen links to disk with timestamps."""
+        try:
+            os.makedirs(self.CACHE_DIR, exist_ok=True)
+            import time as time_module
+            # Store with timestamps for pruning
+            data = {link: time_module.time() for link in self._seen_links}
+            with open(self._cache_file, 'w') as f:
+                json.dump(data, f)
+        except Exception as e:
+            logger.warning(f"Failed to save seen cache: {e}")
+
+    def _is_duplicate_payload(self, payload: dict) -> bool:
+        """Check if payload is semantically similar to last trigger."""
+        # Normalize and hash
+        normalized = json.dumps(payload, sort_keys=True)
+        current_hash = hashlib.md5(normalized.encode()).hexdigest()
+
+        if current_hash == self.last_payload_hash:
+            logger.info(f"{self.__class__.__name__}: Duplicate payload detected")
+            return True
+
+        self.last_payload_hash = current_hash
+        return False
 
     async def check(self) -> Optional[SentinelTrigger]:
         """Performs the sentinel check. Returns a SentinelTrigger if fired, else None."""
         raise NotImplementedError
 
-    async def _fetch_rss_safe(self, url: str, seen_cache: set, timeout: int = 10) -> List[str]:
-        """Fetch RSS with timeout and validation using aiohttp."""
+    async def _fetch_rss_safe(self, url: str, seen_cache: set, timeout: int = 10, max_age_hours: int = 48) -> List[str]:
+        """Fetch RSS with timeout, validation, and DATE FILTERING using aiohttp."""
         headlines = []
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
                 async with session.get(url) as response:
@@ -76,11 +129,47 @@ class Sentinel:
                 logger.warning(f"Malformed RSS from {url}: {feed.bozo_exception}")
                 return []
 
-            for entry in feed.entries[:5]:
+            for entry in feed.entries[:10]:
+                # === DATE FILTERING ===
+                pub_date = None
+
+                # Try multiple date fields (RSS feeds are inconsistent)
+                if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                    try:
+                        pub_date = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+                    except (TypeError, ValueError):
+                        pass
+
+                if not pub_date and hasattr(entry, 'published') and entry.published:
+                    try:
+                        pub_date = parsedate_to_datetime(entry.published)
+                        if pub_date.tzinfo is None:
+                            pub_date = pub_date.replace(tzinfo=timezone.utc)
+                    except (TypeError, ValueError):
+                        pass
+
+                if not pub_date and hasattr(entry, 'updated_parsed') and entry.updated_parsed:
+                    try:
+                        pub_date = datetime(*entry.updated_parsed[:6], tzinfo=timezone.utc)
+                    except (TypeError, ValueError):
+                        pass
+
+                # HARD FILTER: No date or too old = skip
+                if pub_date is None:
+                    logger.debug(f"Skipping headline with no date: {entry.title[:50]}")
+                    continue
+
+                if pub_date < cutoff_time:
+                    logger.debug(f"Skipping stale headline ({pub_date.date()}): {entry.title[:50]}")
+                    continue
+
                 # Use link as unique ID
                 if entry.link not in seen_cache:
                     headlines.append(entry.title)
                     seen_cache.add(entry.link)
+
+                if len(headlines) >= 5:
+                    break
 
         except asyncio.TimeoutError:
             logger.error(f"RSS timeout for {url}")
@@ -102,7 +191,7 @@ class PriceSentinel(Sentinel):
         self.symbol = config.get('symbol', 'KC')
         self.exchange = config.get('exchange', 'NYBOT')
 
-    async def check(self) -> Optional[SentinelTrigger]:
+    async def check(self, cached_contract=None) -> Optional[SentinelTrigger]:
         import time as time_module
         now = time_module.time()
 
@@ -130,13 +219,15 @@ class PriceSentinel(Sentinel):
             return None
 
         try:
-            from trading_bot.ib_interface import get_active_futures
-            active_futures = await get_active_futures(self.ib, self.symbol, self.exchange, count=1)
+            contract = cached_contract
+            if not contract:
+                from trading_bot.ib_interface import get_active_futures
+                active_futures = await get_active_futures(self.ib, self.symbol, self.exchange, count=1)
 
-            if not active_futures:
-                return None
+                if not active_futures:
+                    return None
 
-            contract = active_futures[0]
+                contract = active_futures[0]
 
             # Detect Price Shock within the current session (Last 1 Hour)
             # Request 1-hour bar to see intraday move
@@ -205,7 +296,7 @@ class WeatherSentinel(Sentinel):
                 if min_temp < frost_threshold:
                     msg = f"Frost Risk in {name}: Min Temp {min_temp}°C < {frost_threshold}°C"
                     logger.warning(f"WEATHER SENTINEL TRIGGERED: {msg}")
-                    return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "FROST", "value": min_temp})
+                    return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "FROST", "value": min_temp}, severity=8)
 
                 # Check Drought
                 drought_days_limit = self.triggers.get('drought_days', 10)
@@ -216,7 +307,7 @@ class WeatherSentinel(Sentinel):
                 if low_rain_days >= drought_days_limit:
                     msg = f"Drought Risk in {name}: {low_rain_days} days with < {rain_limit}mm rain"
                     logger.warning(f"WEATHER SENTINEL TRIGGERED: {msg}")
-                    return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "DROUGHT", "days": low_rain_days})
+                    return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "DROUGHT", "days": low_rain_days}, severity=6)
 
             except Exception as e:
                 logger.error(f"Weather Sentinel failed for {loc.get('name')}: {e}")
@@ -237,9 +328,6 @@ class LogisticsSentinel(Sentinel):
         self.client = genai.Client(api_key=api_key)
         self.model = self.sentinel_config.get('model', "gemini-3-flash-preview")
 
-        # Deduplication Cache (In-memory)
-        self.seen_links = set()
-
     @with_retry(max_attempts=3)
     async def _analyze_with_ai(self, prompt: str) -> Optional[str]:
         """AI analysis with retry logic."""
@@ -252,10 +340,18 @@ class LogisticsSentinel(Sentinel):
     async def check(self) -> Optional[SentinelTrigger]:
         headlines = []
         for url in self.urls:
-            new_titles = await self._fetch_rss_safe(url, self.seen_links)
+            new_titles = await self._fetch_rss_safe(url, self._seen_links, max_age_hours=48)
             headlines.extend(new_titles)
 
+        # Save cache
+        self._save_seen_cache()
+
         if not headlines:
+            return None
+
+        # === PAYLOAD DEDUPLICATION ===
+        payload = {"headlines": headlines[:3]}
+        if self._is_duplicate_payload(payload):
             return None
 
         prompt = (
@@ -278,7 +374,7 @@ class LogisticsSentinel(Sentinel):
         if "YES" in answer:
             msg = "Potential Supply Chain Disruption detected in headlines."
             logger.warning(f"LOGISTICS SENTINEL TRIGGERED: {msg}")
-            return SentinelTrigger("LogisticsSentinel", msg, {"headlines": headlines[:3]})
+            return SentinelTrigger("LogisticsSentinel", msg, {"headlines": headlines[:3]}, severity=6)
 
         return None
 
@@ -297,9 +393,6 @@ class NewsSentinel(Sentinel):
         self.client = genai.Client(api_key=api_key)
         self.model = self.sentinel_config.get('model', "gemini-3-flash-preview")
 
-        # Deduplication Cache (In-memory)
-        self.seen_links = set()
-
     @with_retry(max_attempts=3)
     async def _analyze_with_ai(self, prompt: str) -> Optional[dict]:
         """AI analysis with retry logic."""
@@ -317,8 +410,11 @@ class NewsSentinel(Sentinel):
     async def check(self) -> Optional[SentinelTrigger]:
         headlines = []
         for url in self.urls:
-            new_titles = await self._fetch_rss_safe(url, self.seen_links)
+            new_titles = await self._fetch_rss_safe(url, self._seen_links, max_age_hours=48)
             headlines.extend(new_titles)
+
+        # Save cache
+        self._save_seen_cache()
 
         if not headlines:
             return None
@@ -345,6 +441,6 @@ class NewsSentinel(Sentinel):
         if score >= self.threshold:
             msg = f"Extreme Sentiment Detected (Score: {score}/10): {data.get('summary')}"
             logger.warning(f"NEWS SENTINEL TRIGGERED: {msg}")
-            return SentinelTrigger("NewsSentinel", msg, {"score": score, "summary": data.get('summary')})
+            return SentinelTrigger("NewsSentinel", msg, {"score": score, "summary": data.get('summary')}, severity=int(score))
 
         return None
