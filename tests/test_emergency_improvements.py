@@ -15,7 +15,7 @@ from trading_bot.state_manager import StateManager
 
 def test_is_market_open_weekend():
     # Saturday
-    with patch('orchestrator.datetime') as mock_date:
+    with patch('trading_bot.utils.datetime') as mock_date:
         # 2026-01-17 is a Saturday. UTC 5 PM = 12 PM EST.
         mock_date.now.return_value = datetime(2026, 1, 17, 17, 0, 0, tzinfo=timezone.utc)
         mock_date.side_effect = datetime
@@ -23,14 +23,14 @@ def test_is_market_open_weekend():
 
 def test_is_market_open_sunday_closed():
     # Sunday before 6 PM
-    with patch('orchestrator.datetime') as mock_date:
+    with patch('trading_bot.utils.datetime') as mock_date:
         # 2026-01-18 is a Sunday. UTC 22:59 = 5:59 PM EST.
         mock_date.now.return_value = datetime(2026, 1, 18, 22, 59, 0, tzinfo=timezone.utc)
         assert is_market_open() == False
 
 def test_is_market_open_sunday_open():
     # Sunday after 6 PM
-    with patch('orchestrator.datetime') as mock_date:
+    with patch('trading_bot.utils.datetime') as mock_date:
         # 2026-01-18 is a Sunday. UTC 23:01 = 6:01 PM EST.
         mock_date.now.return_value = datetime(2026, 1, 18, 23, 1, 0, tzinfo=timezone.utc)
         # Still false because we check core hours (04:15 - 13:30)
@@ -38,21 +38,21 @@ def test_is_market_open_sunday_open():
 
 def test_is_market_open_core_hours():
     # Wednesday 10 AM EST = 3 PM UTC
-    with patch('orchestrator.datetime') as mock_date:
+    with patch('trading_bot.utils.datetime') as mock_date:
         # 2026-01-14 is a Wednesday
         mock_date.now.return_value = datetime(2026, 1, 14, 15, 0, 0, tzinfo=timezone.utc)
         assert is_market_open() == True
 
 def test_is_market_open_daily_break():
     # Wednesday 5:30 PM EST = 10:30 PM UTC
-    with patch('orchestrator.datetime') as mock_date:
+    with patch('trading_bot.utils.datetime') as mock_date:
         # 2026-01-14 is a Wednesday
         mock_date.now.return_value = datetime(2026, 1, 14, 22, 30, 0, tzinfo=timezone.utc)
         assert is_market_open() == False
 
 def test_is_market_open_after_hours():
     # Wednesday 3 PM EST = 8 PM UTC (After 1:30 PM close)
-    with patch('orchestrator.datetime') as mock_date:
+    with patch('trading_bot.utils.datetime') as mock_date:
         # 2026-01-14 is a Wednesday
         mock_date.now.return_value = datetime(2026, 1, 14, 20, 0, 0, tzinfo=timezone.utc)
         assert is_market_open() == False
