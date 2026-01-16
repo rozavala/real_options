@@ -7,6 +7,7 @@ volatility-based strategies.
 """
 
 import logging
+import math
 import numpy as np
 from ib_insync import *
 
@@ -49,6 +50,14 @@ def define_directional_strategy(config: dict, signal: dict, chain: dict, underly
     Returns:
         A dictionary defining the strategy, or None if it cannot be constructed.
     """
+    # === CRITICAL: NaN Price Guard ===
+    if underlying_price is None or math.isnan(underlying_price) or underlying_price <= 0:
+        logging.error(
+            f"ABORT: Invalid underlying_price={underlying_price} for {future_contract.localSymbol}. "
+            f"Cannot calculate strikes. Market may be closed or data unavailable."
+        )
+        return None
+
     logging.info(f"--- Defining {signal['direction']} Spread for {future_contract.localSymbol} ---")
     tuning = config.get('strategy_tuning', {})
     spread_width_pct = tuning.get('spread_width_percentage', 0.15)
@@ -113,6 +122,14 @@ def define_volatility_strategy(config: dict, signal: dict, chain: dict, underlyi
     Returns:
         A dictionary defining the strategy, or None if it cannot be constructed.
     """
+    # === CRITICAL: NaN Price Guard ===
+    if underlying_price is None or math.isnan(underlying_price) or underlying_price <= 0:
+        logging.error(
+            f"ABORT: Invalid underlying_price={underlying_price} for {future_contract.localSymbol}. "
+            f"Cannot calculate strikes. Market may be closed or data unavailable."
+        )
+        return None
+
     logging.info(f"--- Defining {signal['level']} Volatility Strategy for {future_contract.localSymbol} ---")
     tuning = config.get('strategy_tuning', {})
     exp_details = get_expiration_details(chain, future_contract.lastTradeDateOrContractMonth)

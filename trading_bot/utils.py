@@ -11,7 +11,7 @@ import csv
 import logging
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, time
 import pytz
 from ib_insync import *
 import numpy as np
@@ -462,3 +462,24 @@ def log_council_decision(decision_data):
 
     except Exception as e:
         logging.error(f"Failed to log council decision: {e}")
+
+def is_market_open() -> bool:
+    """Check if ICE coffee futures market is currently open.
+
+    Based on ICE Coffee (KC) Trading Hours:
+    - Electronic: Sun 6:00 PM - Fri 5:00 PM ET
+    - Core Validation/Trading Hours: 03:30 AM - 02:00 PM ET
+    """
+    et = pytz.timezone('America/New_York')
+    now = datetime.now(et)
+
+    # ICE Coffee: ~3:30 AM to 2:00 PM ET
+    market_open = time(3, 30)
+    market_close = time(14, 0)
+
+    # Skip weekends
+    if now.weekday() >= 5:  # Saturday=5, Sunday=6
+        return False
+
+    current_time = now.time()
+    return market_open <= current_time <= market_close

@@ -12,6 +12,10 @@ from datetime import datetime, timedelta
 import yfinance as yf
 import sys
 import asyncio
+import warnings
+
+# Suppress "coroutine was never awaited" warnings from Streamlit's execution model
+warnings.filterwarnings("ignore", message="coroutine.*was never awaited")
 
 # --- FIX: Ensure Event Loop Exists BEFORE importing IB ---
 # Streamlit runs scripts in a separate thread which may not have an event loop.

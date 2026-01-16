@@ -34,12 +34,12 @@ from trading_bot.order_manager import (
     place_queued_orders,
     ORDER_QUEUE
 )
-from trading_bot.utils import archive_trade_ledger, configure_market_data_type
+from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, SentinelTrigger
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
 from trading_bot.agents import CoffeeCouncil
-from trading_bot.ib_interface import get_active_futures, build_option_chain, create_combo_order_object
+from trading_bot.ib_interface import get_active_futures, build_option_chain, create_combo_order_object, get_underlying_iv_metrics
 from trading_bot.strategy import define_directional_strategy
 from trading_bot.state_manager import StateManager
 from trading_bot.connection_pool import IBConnectionPool
@@ -140,38 +140,6 @@ GLOBAL_DEDUPLICATOR = TriggerDeduplicator()
 
 # Concurrent Cycle Lock (Global)
 EMERGENCY_LOCK = asyncio.Lock()
-
-
-def is_market_open() -> bool:
-    """Check if Coffee futures market is currently open.
-
-    ICE Coffee (KC) Trading Hours:
-    - Electronic: Sun 6:00 PM - Fri 5:00 PM ET (with daily break 5:00-6:00 PM)
-    - Core liquidity: 4:15 AM - 1:30 PM ET
-    """
-    est = pytz.timezone('US/Eastern')
-    now_utc = datetime.now(timezone.utc)
-    now_est = now_utc.astimezone(est)
-
-    # Weekend check
-    if now_est.weekday() == 5:  # Saturday
-        return False
-    if now_est.weekday() == 6 and now_est.hour < 18:  # Sunday before 6 PM
-        return False
-
-    # Daily maintenance break (5:00 PM - 6:00 PM ET)
-    if now_est.hour == 17:
-        return False
-
-    # For order placement, use core hours (safer)
-    # 4:15 AM - 1:30 PM ET
-    market_open_est = now_est.replace(hour=4, minute=15, second=0, microsecond=0)
-    market_close_est = now_est.replace(hour=13, minute=30, second=0, microsecond=0)
-
-    market_open_utc = market_open_est.astimezone(timezone.utc)
-    market_close_utc = market_close_est.astimezone(timezone.utc)
-
-    return market_open_utc <= now_utc <= market_close_utc
 
 
 async def log_stream(stream, logger_func):
@@ -371,7 +339,19 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
             # 3. Get Market Context (Snapshot)
             ticker = ib.reqMktData(target_contract, '', True, False)
             await asyncio.sleep(2)
-            market_context_str = f"Live Price: {ticker.last if ticker.last else 'N/A'}"
+
+            # Fetch IV Metrics
+            iv_metrics = await get_underlying_iv_metrics(ib, target_contract)
+
+            market_context_str = (
+                f"Contract: {target_contract.localSymbol}\n"
+                f"Current Price: {ticker.last if ticker.last else 'N/A'}\n"
+                f"--- VOLATILITY METRICS (IBKR Live) ---\n"
+                f"Current IV: {iv_metrics['current_iv']}\n"
+                f"IV Rank: {iv_metrics['iv_rank']}\n"
+                f"IV Percentile: {iv_metrics['iv_percentile']}\n"
+                f"Note: If IV data shows N/A, analyst should search Barchart for KC IV Rank.\n"
+            )
 
             # 4. Load Cached ML Signal (Fix Dummy Signal Blindness)
             cached_state = StateManager.load_state()
