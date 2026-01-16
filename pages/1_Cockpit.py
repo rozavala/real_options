@@ -30,9 +30,36 @@ st.set_page_config(layout="wide", page_title="Cockpit | Coffee Bot")
 st.title("🦅 The Cockpit")
 st.caption("Situational Awareness - System health, capital safety, and emergency controls")
 
+# --- Global Time Settings ---
+st.markdown("### 🕒 **All times displayed in UTC**")
+
 # --- Load Data ---
 config = get_config()
 heartbeat = get_system_heartbeat()
+
+# --- Market Clock Widget ---
+import pytz
+from datetime import timezone
+
+utc_now = datetime.now(timezone.utc)
+ny_tz = pytz.timezone('America/New_York')
+ny_now = utc_now.astimezone(ny_tz)
+
+# Determine Market Status (using same logic as Utils but for display)
+market_open_ny = ny_now.replace(hour=3, minute=30, second=0, microsecond=0)
+market_close_ny = ny_now.replace(hour=14, minute=0, second=0, microsecond=0)
+is_open = market_open_ny <= ny_now <= market_close_ny and ny_now.weekday() < 5
+
+status_color = "🟢" if is_open else "🔴"
+status_text = "OPEN" if is_open else "CLOSED"
+
+clock_cols = st.columns(3)
+with clock_cols[0]:
+    st.metric("UTC Time", utc_now.strftime("%H:%M:%S"))
+with clock_cols[1]:
+    st.metric("New York Time (Market)", ny_now.strftime("%H:%M:%S"))
+with clock_cols[2]:
+    st.metric("Market Status", f"{status_color} {status_text}")
 
 st.markdown("---")
 

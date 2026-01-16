@@ -206,25 +206,44 @@ async def cancel_and_stop_monitoring(config: dict):
     logger.info("--- End-of-day shutdown sequence complete ---")
 
 
-def get_next_task(now_gmt: datetime, schedule: dict) -> tuple[datetime, callable]:
-    """Calculates the next scheduled task and its run time based on a schedule."""
-    next_run_time, next_task = None, None
+def get_next_task(now_utc: datetime, schedule: dict) -> tuple[datetime, callable]:
+    """Calculates the next scheduled task.
+
+    The schedule keys are in NY Local Time.
+    We calculate the corresponding UTC run time dynamically to handle DST.
+    """
+    ny_tz = pytz.timezone('America/New_York')
+    utc = pytz.UTC
+    now_ny = now_utc.astimezone(ny_tz)
+
+    next_run_utc, next_task = None, None
+
+    # Sort by time
     sorted_times = sorted(schedule.keys(), key=lambda t: (t.hour, t.minute))
 
     for rt in sorted_times:
-        run_datetime = now_gmt.replace(hour=rt.hour, minute=rt.minute, second=0, microsecond=0)
-        if run_datetime > now_gmt:
-            if next_run_time is None or run_datetime < next_run_time:
-                next_run_time, next_task = run_datetime, schedule[rt]
-                break
+        # Construct run time in NY for today
+        try:
+            candidate_ny = now_ny.replace(hour=rt.hour, minute=rt.minute, second=0, microsecond=0)
+        except ValueError:
+            # Handle rare edge cases like 2:30 AM on DST change day (doesn't exist)
+            # by normalizing via adding 0 timedelta (or just skip)
+            # But simple replace usually works or raises.
+            # Ideally we use localize, but replace is robust enough for standard trading hours.
+            continue
 
-    if next_run_time is None:
-        first_run_time_tomorrow = now_gmt.replace(
-            hour=sorted_times[0].hour, minute=sorted_times[0].minute, second=0, microsecond=0
-        ) + timedelta(days=1)
-        next_run_time, next_task = first_run_time_tomorrow, schedule[sorted_times[0]]
+        # If this time has passed in NY, move to tomorrow
+        if candidate_ny <= now_ny:
+             candidate_ny += timedelta(days=1)
 
-    return next_run_time, next_task
+        # Convert to UTC
+        candidate_utc = candidate_ny.astimezone(utc)
+
+        if next_run_utc is None or candidate_utc < next_run_utc:
+            next_run_utc = candidate_utc
+            next_task = schedule[rt]
+
+    return next_run_utc, next_task
 
 
 async def analyze_and_archive(config: dict):
@@ -606,14 +625,16 @@ async def run_sentinels(config: dict):
 
 
 # --- Main Schedule ---
+# IMPORTANT: Keys are New York Local Time.
+# The orchestrator dynamically converts these to UTC based on DST.
 
 schedule = {
-    time(8, 30): start_monitoring,
-    time(14, 0): generate_and_execute_orders,
-    time(17, 20): close_stale_positions,
-    time(17, 22): cancel_and_stop_monitoring,
-    time(17, 25): log_equity_snapshot,
-    time(17, 35): reconcile_and_analyze
+    time(3, 30): start_monitoring,           # Market Open
+    time(9, 0): generate_and_execute_orders, # Morning Trading
+    time(13, 30): close_stale_positions,     # 30 mins before Close
+    time(13, 45): cancel_and_stop_monitoring,# 15 mins before Close
+    time(14, 5): log_equity_snapshot,        # After Close
+    time(14, 15): reconcile_and_analyze      # After Close
 }
 
 def apply_schedule_offset(original_schedule: dict, offset_minutes: int) -> dict:
@@ -666,13 +687,12 @@ async def main():
     try:
         while True:
             try:
-                gmt = pytz.timezone('GMT')
-                now_gmt = datetime.now(gmt)
-                next_run_time, next_task_func = get_next_task(now_gmt, current_schedule)
-                wait_seconds = (next_run_time - now_gmt).total_seconds()
+                now_utc = datetime.now(pytz.UTC)
+                next_run_time, next_task_func = get_next_task(now_utc, current_schedule)
+                wait_seconds = (next_run_time - now_utc).total_seconds()
 
                 task_name = next_task_func.__name__
-                logger.info(f"Next task '{task_name}' scheduled for {next_run_time.strftime('%Y-%m-%d %H:%M:%S GMT')}. "
+                logger.info(f"Next task '{task_name}' scheduled for {next_run_time.strftime('%Y-%m-%d %H:%M:%S UTC')}. "
                             f"Waiting for {wait_seconds / 3600:.2f} hours.")
 
                 await asyncio.sleep(wait_seconds)

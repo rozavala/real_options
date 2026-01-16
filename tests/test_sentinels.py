@@ -2,7 +2,7 @@ import pytest
 import asyncio
 from unittest.mock import MagicMock, patch, AsyncMock
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, SentinelTrigger
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 
 # --- Price Sentinel Tests ---
@@ -18,9 +18,9 @@ async def test_price_sentinel_trigger():
     mock_bar.close = 102.0 # 2% change
     mock_ib.reqHistoricalDataAsync.return_value = [mock_bar]
 
-    # Mock datetime to be Mon 10 AM EST
+    # Mock datetime to be Mon 10 AM NY (14:00 UTC during EDST)
     with patch('trading_bot.sentinels.datetime') as mock_datetime:
-        mock_now = datetime(2023, 10, 23, 10, 0, 0) # Monday
+        mock_now = datetime(2023, 10, 23, 14, 0, 0, tzinfo=timezone.utc) # Monday
         mock_datetime.now.return_value = mock_now
         mock_datetime.side_effect = lambda *args, **kw: datetime(*args, **kw)
 
@@ -54,7 +54,8 @@ async def test_price_sentinel_no_trigger():
     mock_ib.reqHistoricalDataAsync.return_value = [mock_bar]
 
     with patch('trading_bot.sentinels.datetime') as mock_datetime:
-        mock_now = datetime(2023, 10, 23, 10, 0, 0) # Monday 10 AM
+        # Mon 10 AM NY (14:00 UTC)
+        mock_now = datetime(2023, 10, 23, 14, 0, 0, tzinfo=timezone.utc)
         mock_datetime.now.return_value = mock_now
 
         with patch('trading_bot.ib_interface.get_active_futures', new_callable=AsyncMock) as mock_futures:
@@ -73,7 +74,7 @@ async def test_price_sentinel_market_closed():
 
     # Mock datetime to be Sunday
     with patch('trading_bot.sentinels.datetime') as mock_datetime:
-        mock_now = datetime(2023, 10, 22, 10, 0, 0) # Sunday
+        mock_now = datetime(2023, 10, 22, 14, 0, 0, tzinfo=timezone.utc) # Sunday
         mock_datetime.now.return_value = mock_now
 
         config = {'sentinels': {'price': {'pct_change_threshold': 1.5}}}

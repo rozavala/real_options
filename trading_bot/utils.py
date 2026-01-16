@@ -233,7 +233,7 @@ def get_expiration_details(chain: dict, future_exp: str) -> dict | None:
     else:
         chosen_exp = valid_exp[-1]
 
-    days = (datetime.strptime(chosen_exp, '%Y%m%d').date() - datetime.now().date()).days
+    days = (datetime.strptime(chosen_exp, '%Y%m%d').date() - datetime.now(pytz.utc).date()).days
     return {'exp_date': chosen_exp, 'days_to_exp': days, 'strikes': chain['strikes_by_expiration'][chosen_exp]}
 
 async def _generate_position_id_from_trade(ib: IB, trade: Trade) -> str:
@@ -469,17 +469,32 @@ def is_market_open() -> bool:
     Based on ICE Coffee (KC) Trading Hours:
     - Electronic: Sun 6:00 PM - Fri 5:00 PM ET
     - Core Validation/Trading Hours: 03:30 AM - 02:00 PM ET
+
+    Logic: Calculates open/close times in NY timezone (to respect DST),
+    then converts to UTC for comparison against current UTC time.
     """
-    et = pytz.timezone('America/New_York')
-    now = datetime.now(et)
+    utc = pytz.UTC
+    ny_tz = pytz.timezone('America/New_York')
 
-    # ICE Coffee: ~3:30 AM to 2:00 PM ET
-    market_open = time(3, 30)
-    market_close = time(14, 0)
+    # Get current UTC time
+    now_utc = datetime.now(utc)
 
-    # Skip weekends
-    if now.weekday() >= 5:  # Saturday=5, Sunday=6
+    # Convert to NY time to determine the current "trading day" date
+    now_ny = now_utc.astimezone(ny_tz)
+
+    # Skip weekends (Saturday=5, Sunday=6 in NY)
+    if now_ny.weekday() >= 5:
         return False
 
-    current_time = now.time()
-    return market_open <= current_time <= market_close
+    # Define Market Open/Close in NY Time
+    # 03:30 AM NY
+    market_open_ny = now_ny.replace(hour=3, minute=30, second=0, microsecond=0)
+    # 02:00 PM NY
+    market_close_ny = now_ny.replace(hour=14, minute=0, second=0, microsecond=0)
+
+    # Convert thresholds back to UTC
+    market_open_utc = market_open_ny.astimezone(utc)
+    market_close_utc = market_close_ny.astimezone(utc)
+
+    # Compare in UTC
+    return market_open_utc <= now_utc <= market_close_utc

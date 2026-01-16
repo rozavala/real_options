@@ -102,21 +102,23 @@ class MicrostructureSentinel:
         return elapsed < self.cooldown_seconds
 
     def is_core_market_hours(self) -> bool:
-        """Check if current time is within core US trading hours (09:00 - 13:30 ET)."""
-        tz = pytz.timezone('US/Eastern')
-        now_utc = datetime.now(timezone.utc)
-        now_est = now_utc.astimezone(tz)
+        """Check if current time is within core US trading hours (09:00 - 13:30 NY)."""
+        # Logic: Calculate local NY times then convert to UTC for comparison
+        utc = timezone.utc
+        ny_tz = pytz.timezone('America/New_York')
+        now_utc = datetime.now(utc)
+        now_ny = now_utc.astimezone(ny_tz)
 
         # Check for weekends
-        if now_est.weekday() >= 5:  # 5=Sat, 6=Sun
+        if now_ny.weekday() >= 5:  # 5=Sat, 6=Sun
             return False
 
-        # Core hours: 09:00 - 13:30
-        market_open_est = now_est.replace(hour=9, minute=0, second=0, microsecond=0)
-        market_close_est = now_est.replace(hour=13, minute=30, second=0, microsecond=0)
+        # Core hours: 09:00 - 13:30 NY
+        market_open_ny = now_ny.replace(hour=9, minute=0, second=0, microsecond=0)
+        market_close_ny = now_ny.replace(hour=13, minute=30, second=0, microsecond=0)
 
-        market_open_utc = market_open_est.astimezone(timezone.utc)
-        market_close_utc = market_close_est.astimezone(timezone.utc)
+        market_open_utc = market_open_ny.astimezone(utc)
+        market_close_utc = market_close_ny.astimezone(utc)
 
         return market_open_utc <= now_utc <= market_close_utc
 
