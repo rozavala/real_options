@@ -28,7 +28,7 @@ class TransactiveMemory:
         if not self.collection: return
 
         try:
-            doc_id = f"{agent}_{datetime.now().isoformat()}"
+            doc_id = f"{agent}_{datetime.now(timezone.utc).isoformat()}"
             self.collection.add(
                 documents=[insight],
                 metadatas=[{

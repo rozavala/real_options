@@ -631,7 +631,7 @@ schedule = {
 
 def apply_schedule_offset(original_schedule: dict, offset_minutes: int) -> dict:
     new_schedule = {}
-    today = datetime.now().date()
+    today = datetime.now(timezone.utc).date()
     for run_time, task_func in original_schedule.items():
         dt_original = datetime.combine(today, run_time)
         dt_shifted = dt_original + timedelta(minutes=offset_minutes)

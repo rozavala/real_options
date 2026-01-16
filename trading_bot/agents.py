@@ -11,7 +11,7 @@ import logging
 import asyncio
 import time
 from typing import Dict, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from google import genai
 from google.genai import types
 from trading_bot.state_manager import StateManager
@@ -404,7 +404,9 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
             if "STALE" not in str(report_content) and timestamp_str:
                  try:
                     ts = datetime.fromisoformat(timestamp_str) if isinstance(timestamp_str, str) else datetime.fromtimestamp(timestamp_str)
-                    if (datetime.now() - ts) > timedelta(hours=24):
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=timezone.utc)
+                    if (datetime.now(timezone.utc) - ts) > timedelta(hours=24):
                         stale_warning = "[WARNING: DATA IS STALE] "
                  except:
                     pass

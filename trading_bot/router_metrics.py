@@ -11,7 +11,7 @@ import json
 import os
 import logging
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 from typing import Optional
 from threading import Lock
@@ -60,7 +60,7 @@ class RouterMetrics:
             'requests': defaultdict(lambda: {'success': 0, 'failure': 0}),
             'fallbacks': defaultdict(lambda: defaultdict(int)),
             'latencies': defaultdict(list),
-            'last_reset': datetime.now().isoformat()
+            'last_reset': datetime.now(timezone.utc).isoformat()
         }
 
     def _save_to_disk(self, data):
@@ -80,7 +80,7 @@ class RouterMetrics:
             'requests': dict(self._metrics.get('requests', {})),
             'fallbacks': {k: dict(v) for k, v in self._metrics.get('fallbacks', {}).items()},
             'latencies': dict(self._metrics.get('latencies', {})),
-            'last_reset': self._metrics.get('last_reset', datetime.now().isoformat())
+            'last_reset': self._metrics.get('last_reset', datetime.now(timezone.utc).isoformat())
         }
 
         # Fire and forget thread
@@ -137,7 +137,7 @@ class RouterMetrics:
                 self._metrics['latencies'][key] = []
             self._metrics['latencies'][key].append({
                 'ms': latency_ms,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             })
             # Keep only last 100
             self._metrics['latencies'][key] = self._metrics['latencies'][key][-100:]
@@ -221,7 +221,7 @@ class RouterMetrics:
             'requests': {},
             'fallbacks': {},
             'latencies': {},
-            'last_reset': datetime.now().isoformat()
+            'last_reset': datetime.now(timezone.utc).isoformat()
         }
         self._save_metrics()
         logger.info("Router metrics reset")

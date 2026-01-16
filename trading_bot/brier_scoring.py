@@ -7,7 +7,7 @@ Used to dynamically adjust voting weights based on historical performance.
 import pandas as pd
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class BrierScoreTracker:
     def record_prediction(self, agent: str, predicted: str, actual: str, timestamp: Optional[datetime] = None):
         """Record a prediction for later scoring."""
         if timestamp is None:
-            timestamp = datetime.now()
+            timestamp = datetime.now(timezone.utc)
 
         # Normalize directions
         predicted = predicted.upper()

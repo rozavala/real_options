@@ -2,7 +2,7 @@ import asyncio
 import logging
 import feedparser
 import requests
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 import numpy as np
 from typing import Optional, List, Dict, Any
 from google import genai
@@ -42,7 +42,7 @@ class SentinelTrigger:
         self.source = source
         self.reason = reason
         self.payload = payload or {}
-        self.timestamp = datetime.now()
+        self.timestamp = datetime.now(timezone.utc)
 
     def __repr__(self):
         return f"SentinelTrigger(source='{self.source}', reason='{self.reason}')"

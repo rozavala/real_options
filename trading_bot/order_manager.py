@@ -12,6 +12,7 @@ import time
 import traceback
 from collections import defaultdict
 from ib_insync import *
+from datetime import timezone
 
 from config_loader import load_config
 from coffee_factors_data_pull_new import main as run_data_pull
@@ -848,7 +849,7 @@ async def close_stale_positions(config: dict):
     logger.info(f"--- Initiating position closing based on {max_holding_days}-day holding period ---")
 
     # --- Weekly Close Logic ---
-    today_dt = datetime.now()
+    today_dt = datetime.now(timezone.utc)
     today_date = today_dt.date()
     weekday = today_date.weekday()  # 0=Mon, 4=Fri
 
@@ -909,7 +910,7 @@ async def close_stale_positions(config: dict):
         # --- 3. Calculate trading day logic ---
         cal = USFederalHolidayCalendar()
         holidays = cal.holidays(start=date(date.today().year - 1, 1, 1), end=date.today()).to_pydatetime().tolist()
-        today = datetime.now().date()
+        today = datetime.now(timezone.utc).date()
         custom_bday = pd.offsets.CustomBusinessDay(holidays=holidays)
 
         # Dictionary to store legs identified for closing, grouped by Position ID
