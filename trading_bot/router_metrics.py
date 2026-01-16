@@ -150,6 +150,22 @@ class RouterMetrics:
         if total_requests % 10 == 0:
             self._save_metrics()
 
+    def record_fallback(self, role: str, primary_provider: str, fallback_provider: str, error: str):
+        """
+        Explicitly records a fallback event.
+        """
+        fallback_key = f"{primary_provider}->{fallback_provider}"
+
+        if 'fallbacks' not in self._metrics:
+            self._metrics['fallbacks'] = {}
+        if role not in self._metrics['fallbacks']:
+            self._metrics['fallbacks'][role] = {}
+        if fallback_key not in self._metrics['fallbacks'][role]:
+            self._metrics['fallbacks'][role][fallback_key] = 0
+
+        self._metrics['fallbacks'][role][fallback_key] += 1
+        logger.warning(f"Fallback event: {role} {primary_provider} -> {fallback_provider}. Reason: {error}")
+
     def get_summary(self) -> dict:
         """Get a summary of routing metrics."""
         summary = {

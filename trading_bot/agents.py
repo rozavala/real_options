@@ -585,7 +585,16 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         try:
             response_text = await self._route_call(AgentRole.MASTER_STRATEGIST, full_prompt, response_json=True)
             cleaned_text = self._clean_json_text(response_text)
-            return json.loads(cleaned_text)
+            decision = json.loads(cleaned_text)
+
+            # === Confidence Validation Layer ===
+            raw_conf = decision.get('confidence', 0.5)
+            if not isinstance(raw_conf, (int, float)):
+                logger.warning(f"Non-numeric confidence received: {raw_conf}. Defaulting to 0.5")
+                raw_conf = 0.5
+
+            decision['confidence'] = max(0.0, min(1.0, float(raw_conf)))
+            return decision
         except Exception as e:
             logger.error(f"Master Strategist failed: {e}")
             return {

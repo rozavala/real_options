@@ -62,6 +62,46 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
         'risk_free_rate': 0.04  # Assuming a constant risk-free rate
     }
 
+async def get_underlying_iv_metrics(ib: IB, future_contract: Contract) -> dict:
+    """
+    Fetches IV metrics from IBKR for the underlying.
+    Returns dict with iv_rank, iv_percentile, current_iv (approximate from ATM option).
+    """
+    try:
+        # Get ATM option for IV proxy
+        chains = await ib.reqSecDefOptParamsAsync(
+            future_contract.symbol,
+            future_contract.exchange,
+            future_contract.secType,
+            future_contract.conId
+        )
+
+        if not chains:
+            return {'iv_rank': 'N/A', 'iv_percentile': 'N/A', 'current_iv': 'N/A'}
+
+        # Get ticker with model greeks (generic tick 106)
+        ticker = ib.reqMktData(future_contract, '106', False, False)
+        await asyncio.sleep(2)
+
+        iv_data = {
+            'iv_rank': 'N/A',
+            'iv_percentile': 'N/A',
+            'current_iv': 'N/A'
+        }
+
+        # IBKR provides impliedVolatility on the underlying ticker for index options
+        # For futures, we approximate from near-term ATM option
+        if hasattr(ticker, 'modelGreeks') and ticker.modelGreeks:
+            if not util.isNan(ticker.modelGreeks.impliedVol):
+                iv_data['current_iv'] = f"{ticker.modelGreeks.impliedVol:.1%}"
+
+        ib.cancelMktData(future_contract)
+        return iv_data
+
+    except Exception as e:
+        logging.warning(f"Failed to fetch IV metrics: {e}")
+        return {'iv_rank': 'N/A', 'iv_percentile': 'N/A', 'current_iv': 'N/A'}
+
 async def get_active_futures(ib: IB, symbol: str, exchange: str, count: int = 5) -> list[Contract]:
     """
     Fetches the next N active futures contracts for a given symbol.

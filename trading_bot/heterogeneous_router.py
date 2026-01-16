@@ -337,7 +337,7 @@ class HeterogeneousRouter:
 
         anth_pro = self.registry.get('anthropic', {}).get('pro', 'claude-opus-4-5-20251101')
 
-        oai_pro = self.registry.get('openai', {}).get('pro', 'gpt-5.2-pro-2025-12-11')
+        oai_pro = self.registry.get('openai', {}).get('pro', 'gpt-4o')
         oai_reasoning = self.registry.get('openai', {}).get('reasoning', 'o3-2025-04-16')
 
         xai_pro = self.registry.get('xai', {}).get('pro', 'grok-4-1-fast-reasoning')
@@ -537,6 +537,7 @@ class HeterogeneousRouter:
 
                 if provider != primary_provider:
                     logger.warning(f"FALLBACK SUCCESS: Used {provider.value}/{model_name} for {role.value} after primary failure.")
+                    metrics.record_fallback(role.value, primary_provider.value, provider.value, str(last_exception))
 
                 return response
 
