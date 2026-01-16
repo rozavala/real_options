@@ -3,7 +3,7 @@ import logging
 import os
 import random
 import sys
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, timezone
 import pandas as pd
 from ib_insync import IB
 import httpx
@@ -173,7 +173,7 @@ async def log_equity_snapshot(config: dict):
 
         # 3. Prepare Data
         # Use today's date at 17:00 to match the sync format (closing time)
-        today = datetime.now().date()
+        today = datetime.now(timezone.utc).date()
         timestamp = datetime.combine(today, time(17, 0, 0))
 
         new_row = {'timestamp': timestamp, 'total_value_usd': net_liq}

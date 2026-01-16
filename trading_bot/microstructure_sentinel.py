@@ -98,13 +98,14 @@ class MicrostructureSentinel:
         """Check cooldown period."""
         if self.last_trigger_time is None:
             return False
-        elapsed = (datetime.now() - self.last_trigger_time).total_seconds()
+        elapsed = (datetime.now(timezone.utc) - self.last_trigger_time).total_seconds()
         return elapsed < self.cooldown_seconds
 
     def is_core_market_hours(self) -> bool:
         """Check if current time is within core US trading hours (09:00 - 13:30 ET)."""
         tz = pytz.timezone('US/Eastern')
-        now = datetime.now(tz)
+        now_utc = datetime.now(timezone.utc)
+        now = now_utc.astimezone(tz)
 
         # Check for weekends
         if now.weekday() >= 5:  # 5=Sat, 6=Sun
@@ -140,7 +141,7 @@ class MicrostructureSentinel:
             if hasattr(ticker, 'time') and ticker.time:
                 last_update = ticker.time
                 # Ensure we use timezone-aware datetime if ticker.time is aware
-                now = datetime.now(timezone.utc) if last_update.tzinfo else datetime.now()
+                now = datetime.now(timezone.utc) if last_update.tzinfo else datetime.now(timezone.utc)
                 if (now - last_update).seconds > 300:
                     logger.warning(f"Stale ticker data for {con_id}, skipping")
                     continue
@@ -162,7 +163,7 @@ class MicrostructureSentinel:
             if std_spread > 0 and std_spread != float('inf'):
                 z_score = (spread_pct - mean_spread) / std_spread
                 if z_score > self.spread_std_threshold:
-                    self.last_trigger_time = datetime.now()
+                    self.last_trigger_time = datetime.now(timezone.utc)
                     return SentinelTrigger(
                         reason=f"Flash Crash Risk: Spread {z_score:.1f} std devs above mean",
                         severity=min(10, z_score * 2),
@@ -180,7 +181,7 @@ class MicrostructureSentinel:
             if baseline_volume > 0 and hasattr(ticker, 'volume') and ticker.volume:
                 volume_ratio = ticker.volume / baseline_volume
                 if volume_ratio > self.volume_spike_pct:
-                    self.last_trigger_time = datetime.now()
+                    self.last_trigger_time = datetime.now(timezone.utc)
                     return SentinelTrigger(
                         reason=f"Volume Spike: {volume_ratio*100:.0f}% of average",
                         severity=min(10, volume_ratio),
@@ -202,7 +203,7 @@ class MicrostructureSentinel:
                         if avg_depth > 0:
                             depth_ratio = current_depth / avg_depth
                             if depth_ratio < self.depth_drop_pct:
-                                self.last_trigger_time = datetime.now()
+                                self.last_trigger_time = datetime.now(timezone.utc)
                                 return SentinelTrigger(
                                     reason=f"Liquidity Depletion: {depth_ratio*100:.0f}% of average",
                                     severity=min(10, (1 - depth_ratio) * 10),

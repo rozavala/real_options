@@ -112,7 +112,8 @@ class PriceSentinel(Sentinel):
 
         # Market Hours Check: 9:00 - 17:00 EST, Mon-Fri
         est = pytz.timezone('US/Eastern')
-        now_est = datetime.now(est)
+        now_utc = datetime.now(timezone.utc)
+        now_est = now_utc.astimezone(est)
 
         if now_est.weekday() >= 5: # Sat(5) or Sun(6)
             return None

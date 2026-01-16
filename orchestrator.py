@@ -150,7 +150,8 @@ def is_market_open() -> bool:
     - Core liquidity: 4:15 AM - 1:30 PM ET
     """
     est = pytz.timezone('US/Eastern')
-    now_est = datetime.now(est)
+    now_utc = datetime.now(timezone.utc)
+    now_est = now_utc.astimezone(est)
 
     # Weekend check
     if now_est.weekday() == 5:  # Saturday
