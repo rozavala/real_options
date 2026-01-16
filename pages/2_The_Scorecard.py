@@ -180,7 +180,8 @@ pretty_names = {
     'sentiment_sentiment': '🧠 Sentiment/COT',
     'technical_sentiment': '📉 Technical',
     'volatility_sentiment': '⚡ Volatility',
-    'master_decision': '👑 Master Strategist'
+    'master_decision': '👑 Master Strategist',
+    'ml_signal': '🤖 ML Model'
 }
 
 # Sort by accuracy

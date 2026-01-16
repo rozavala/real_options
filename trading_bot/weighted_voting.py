@@ -255,7 +255,8 @@ async def calculate_weighted_decision(
     trigger_type: TriggerType,
     ml_signal: Optional[dict] = None,
     ib: Optional[Any] = None,
-    contract: Optional[Any] = None
+    contract: Optional[Any] = None,
+    regime: str = "UNKNOWN"
 ) -> dict:
     """
     Calculate weighted decision from all agent reports.
@@ -264,12 +265,11 @@ async def calculate_weighted_decision(
         dict with 'direction', 'confidence', 'weighted_score',
         'vote_breakdown', 'dominant_agent'
     """
-    # Detect Regime
-    regime = "UNKNOWN"
-
-    # 1. Try Advanced Detection first
-    if ib and contract:
-        regime = await RegimeDetector.detect_regime(ib, contract)
+    # 1. Detect Regime (if not provided)
+    if regime == "UNKNOWN":
+        # Try Advanced Detection first
+        if ib and contract:
+            regime = await RegimeDetector.detect_regime(ib, contract)
 
     # 2. Fallback to Simple Detection
     if regime == "UNKNOWN":
@@ -353,12 +353,31 @@ async def calculate_weighted_decision(
 
     normalized_score = total_weighted_score / total_weight if total_weight > 0 else 0.0
 
-    # Blend with ML signal (70% agents, 30% ML)
+    # DYNAMIC ML BLENDING (replaces hardcoded 30%)
     if ml_signal:
         ml_dir = ml_signal.get('direction', 'NEUTRAL')
         ml_conf = ml_signal.get('confidence', 0.5)
         ml_val = {'BULLISH': 1, 'BEARISH': -1, 'NEUTRAL': 0}.get(ml_dir, 0)
-        normalized_score = (0.7 * normalized_score) + (0.3 * ml_val * ml_conf)
+
+        # Get ML model's Brier-adjusted weight
+        ml_base_weight = 0.30  # Configurable base weight
+        ml_reliability = tracker.get_agent_weight_multiplier('ml_model')
+
+        # REGIME OVERRIDE: Zero out ML during crisis (Black Swan protection)
+        if regime in ('HIGH_VOLATILITY', 'CRISIS', 'HIGH_VOL'):
+            logger.warning(f"Regime={regime}: Zeroing ML weight (structural break risk)")
+            ml_dynamic_weight = 0.0
+        else:
+            # Apply same formula as other agents: base * reliability
+            ml_dynamic_weight = ml_base_weight * ml_reliability
+            # Cap at 40% max to prevent ML domination even with high accuracy
+            ml_dynamic_weight = min(0.40, ml_dynamic_weight)
+
+        # Blend: (1 - ml_weight) * agents + ml_weight * ML
+        agent_weight = 1.0 - ml_dynamic_weight
+        normalized_score = (agent_weight * normalized_score) + (ml_dynamic_weight * ml_val * ml_conf)
+
+        logger.info(f"ML Blend: Reliability={ml_reliability:.2f}, DynamicWeight={ml_dynamic_weight:.2f}, Regime={regime}")
 
     if normalized_score > 0.15:
         final_direction = 'BULLISH'
