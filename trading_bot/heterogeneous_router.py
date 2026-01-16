@@ -175,7 +175,6 @@ class OpenAIClient(LLMClient):
         kwargs = {
             "model": self.config.model_name,
             "messages": messages,
-            "temperature": self.config.temperature,
             "max_completion_tokens": self.config.max_tokens,
         }
 
