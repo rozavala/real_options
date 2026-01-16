@@ -187,6 +187,34 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                             f"- 24h Change: {pct_1d:+.2%} (Did the market already react?)\n"
                             f"- 5-Day Trend: {pct_5d:+.2%} (Is the move extended?)"
                         )
+
+                        # "Priced In" Guardrail
+                        if final_data["action"] == "BULLISH" and pct_1d > 0.03:
+                            logger.warning(f"Signal PRICED IN. Market up {pct_1d:.1%} in 24h. Forcing NEUTRAL.")
+                            final_data["action"] = "NEUTRAL"
+                            final_data["reason"] = "Signal Priced In (24h move > 3%)"
+                            return {
+                                **ml_signal,
+                                **final_data,
+                                "contract_month": contract.lastTradeDateOrContractMonth[:6],
+                                "direction": "NEUTRAL",
+                                "confidence": 0.0,
+                                "reason": "Signal Priced In (24h move > 3%)"
+                            }
+
+                        elif final_data["action"] == "BEARISH" and pct_1d < -0.03:
+                            logger.warning(f"Signal PRICED IN. Market down {pct_1d:.1%} in 24h. Forcing NEUTRAL.")
+                            final_data["action"] = "NEUTRAL"
+                            final_data["reason"] = "Signal Priced In (24h move < -3%)"
+                            return {
+                                **ml_signal,
+                                **final_data,
+                                "contract_month": contract.lastTradeDateOrContractMonth[:6],
+                                "direction": "NEUTRAL",
+                                "confidence": 0.0,
+                                "reason": "Signal Priced In (24h move < -3%)"
+                            }
+
                 except Exception as e:
                     logger.error(f"Failed to fetch history for context: {e}")
 

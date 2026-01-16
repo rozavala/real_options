@@ -168,12 +168,15 @@ class CoffeeCouncil:
 
         # Retrieve relevant context from TMS
         relevant_context = self.tms.retrieve(search_instruction, n_results=2)
+        if relevant_context:
+            logger.info(f"Retrieved {len(relevant_context)} TMS insights for {persona_key}.")
+
         context_str = "\n".join(relevant_context) if relevant_context else "No prior context."
 
         persona_prompt = self.personas.get(persona_key, "You are a helpful research assistant.")
         full_prompt = (
             f"{persona_prompt}\n\n"
-            f"RELEVANT PRIOR INSIGHTS:\n{context_str}\n\n"
+            f"PREVIOUS INSIGHTS (Do not repeat these if still valid):\n{context_str}\n\n"
             f"TASK: {search_instruction}\n"
             f"INSTRUCTIONS:\n"
             f"1. USE YOUR TOOLS: Use Google Search to find data from the last 24-48 hours.\n"
@@ -279,7 +282,7 @@ Keep the same format: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG]
 
         context_prompt = ""
         if opponent_argument:
-            context_prompt = f"\n\n--- OPPONENT ARGUMENT ---\n{opponent_argument}\n\nTASK: RESPOND to the above argument. Defend your position against it."
+            context_prompt = f"\n\n--- OPPONENT ARGUMENT ---\n{opponent_argument}\n\nTASK: The Bear has argued X. You must explicitly refute this point with evidence."
 
         prompt = (
             f"{persona_prompt}\n\n"
@@ -296,8 +299,12 @@ Keep the same format: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG]
         except Exception as e:
             return json.dumps({"error": str(e), "position": "NEUTRAL", "key_arguments": []})
 
-    async def _run_dialectical_debate(self, reports_text: str, ml_signal: dict) -> tuple[str, str]:
-        """Run sequential attack-defense debate."""
+    async def run_debate(self, reports_text: str, ml_signal: dict) -> tuple[str, str]:
+        """
+        Run sequential attack-defense debate.
+        Step 1: PERMABEAR generates the Thesis (Attack).
+        Step 2: PERMABULL must refute specific points (Defense).
+        """
 
         # Step 1: Bear attacks the thesis
         bear_json = await self._get_red_team_analysis("permabear", reports_text, ml_signal)
@@ -380,7 +387,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
 
         # 2. Antithesis: The Dialectical Debate
         # Run sequentially (Bear Attack -> Bull Defense)
-        bear_json, bull_json = await self._run_dialectical_debate(reports_text, ml_signal)
+        bear_json, bull_json = await self.run_debate(reports_text, ml_signal)
 
         # 3. Synthesis: Master Strategist
         master_persona = self.personas.get('master', "You are the Chief Strategist.")
@@ -448,7 +455,12 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
 
         # Run the Active Agent
         logger.info(f"Waking up {active_agent_key}...")
-        fresh_report = await self.research_topic(active_agent_key, search_instruction)
+
+        # Use Reflexion for high-ambiguity roles
+        if active_agent_key in ['agronomist', 'macro']:
+            fresh_report = await self.research_topic_with_reflexion(active_agent_key, search_instruction)
+        else:
+            fresh_report = await self.research_topic(active_agent_key, search_instruction)
 
         # Create combined reports for Decision context
         final_reports = cached_reports.copy()

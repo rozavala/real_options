@@ -105,17 +105,14 @@ class BrierScoreTracker:
         # For 3 classes (Bull/Bear/Neutral), baseline is 33%.
         # For Directional (Bull/Bear), baseline is 50%.
 
-        # Let's use a conservative booster:
-        # Multiplier = 1.0 + (Accuracy - 0.5) * 2
-        # 0.5 -> 1.0
-        # 0.75 -> 1.0 + 0.5 = 1.5
-        # 0.9 -> 1.0 + 0.8 = 1.8
-        # 0.4 -> 1.0 - 0.2 = 0.8
+        # Requested Formula: weight_multiplier = 0.5 + (accuracy_score * 1.5)
+        # 0.0 accuracy -> 0.5x
+        # 0.5 accuracy -> 1.25x
+        # 1.0 accuracy -> 2.0x
 
-        multiplier = 1.0 + (accuracy - 0.5) * 2.0
+        multiplier = 0.5 + (accuracy * 1.5)
 
-        # Clamp between 0.5 and 2.5
-        return max(0.5, min(2.5, multiplier))
+        return multiplier
 
 # Singleton
 _tracker: Optional[BrierScoreTracker] = None

@@ -135,6 +135,9 @@ class TriggerDeduplicator:
 # Global Deduplicator Instance
 GLOBAL_DEDUPLICATOR = TriggerDeduplicator()
 
+# Concurrent Cycle Lock (Global)
+EMERGENCY_LOCK = asyncio.Lock()
+
 
 async def log_stream(stream, logger_func):
     """Reads and logs lines from a subprocess stream."""
@@ -280,114 +283,119 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
     Runs a specialized cycle triggered by a Sentinel.
     Executes trades if the Council approves.
     """
-    logger.info(f"🚨 EMERGENCY CYCLE TRIGGERED by {trigger.source}: {trigger.reason}")
-    send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", trigger.reason)
+    # Acquire Lock to prevent race conditions
+    if EMERGENCY_LOCK.locked():
+        logger.warning(f"Emergency cycle for {trigger.source} queued (Lock active).")
 
-    # --- DEFCON 1: Crash Protection ---
-    # If price drops > 5% instantly, do NOT open new trades. Liquidation logic is complex, so we just Halt.
-    if trigger.source == "PriceSentinel" and abs(trigger.payload.get('change', 0)) > 5.0:
-        logger.critical("📉 FLASH CRASH DETECTED (>5%). Skipping Council. HALTING TRADING.")
-        send_pushover_notification(config.get('notifications', {}), "FLASH CRASH ALERT", "Price moved >5%. Emergency Halt Triggered. No new orders.")
-        # Future: await close_stale_positions(config, force=True)
-        return
+    async with EMERGENCY_LOCK:
+        logger.info(f"🚨 EMERGENCY CYCLE TRIGGERED by {trigger.source}: {trigger.reason}")
+        send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", trigger.reason)
 
-    try:
-        # 1. Initialize Council
-        council = CoffeeCouncil(config)
-
-        # 2. Get Active Futures (We need a target contract)
-        # For simplicity, target the Front Month or the one from the trigger payload
-        contract_name_hint = trigger.payload.get('contract')
-
-        active_futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=2)
-        if not active_futures:
-            logger.error("No active futures found for emergency cycle.")
+        # --- DEFCON 1: Crash Protection ---
+        # If price drops > 5% instantly, do NOT open new trades. Liquidation logic is complex, so we just Halt.
+        if trigger.source == "PriceSentinel" and abs(trigger.payload.get('change', 0)) > 5.0:
+            logger.critical("📉 FLASH CRASH DETECTED (>5%). Skipping Council. HALTING TRADING.")
+            send_pushover_notification(config.get('notifications', {}), "FLASH CRASH ALERT", "Price moved >5%. Emergency Halt Triggered. No new orders.")
+            # Future: await close_stale_positions(config, force=True)
             return
 
-        # Select contract
-        target_contract = active_futures[0]
-        if contract_name_hint:
-            # Try to match hint
-            for f in active_futures:
-                if f.localSymbol == contract_name_hint:
-                    target_contract = f
-                    break
+        try:
+            # 1. Initialize Council
+            council = CoffeeCouncil(config)
 
-        contract_name = f"{target_contract.localSymbol} ({target_contract.lastTradeDateOrContractMonth[:6]})"
-        logger.info(f"Targeting contract: {contract_name}")
+            # 2. Get Active Futures (We need a target contract)
+            # For simplicity, target the Front Month or the one from the trigger payload
+            contract_name_hint = trigger.payload.get('contract')
 
-        # 3. Get Market Context (Snapshot)
-        ticker = ib.reqMktData(target_contract, '', True, False)
-        await asyncio.sleep(2)
-        market_context_str = f"Live Price: {ticker.last if ticker.last else 'N/A'}"
-
-        # 4. Load Cached ML Signal (Fix Dummy Signal Blindness)
-        cached_state = StateManager.load_state()
-        cached_ml_signals_raw = cached_state.get('latest_ml_signals', {})
-        if isinstance(cached_ml_signals_raw, dict):
-            cached_ml_signals = cached_ml_signals_raw.get('data', [])
-        elif isinstance(cached_ml_signals_raw, list):
-            cached_ml_signals = cached_ml_signals_raw
-        else:
-            cached_ml_signals = []
-
-        ml_signal = {
-            "action": "NEUTRAL",
-            "confidence": 0.5,
-            "price": ticker.last,
-            "reason": "Emergency Cycle: ML Signal unavailable/stale.",
-            "regime": "UNKNOWN"
-        }
-
-        if cached_ml_signals:
-            # Try to find signal for this contract month
-            target_month = target_contract.lastTradeDateOrContractMonth[:6]
-            found_signal = next((s for s in cached_ml_signals if s.get('contract_month') == target_month), None)
-            if found_signal:
-                ml_signal = found_signal
-                logger.info(f"Loaded cached ML signal for {target_month}: {ml_signal.get('direction')}")
-
-        # 5. Run Specialized Cycle
-        decision = await council.run_specialized_cycle(trigger, contract_name, ml_signal, market_context_str)
-
-        logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
-
-        # 6. Execute if Actionable
-        if decision.get('direction') in ['BULLISH', 'BEARISH'] and decision.get('confidence', 0) > config.get('strategy', {}).get('signal_threshold', 0.5):
-            logger.info("Decision is actionable. Generating order...")
-
-            # Build Strategy
-            chain = await build_option_chain(ib, target_contract)
-            if not chain:
-                logger.warning("No option chain available.")
+            active_futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=2)
+            if not active_futures:
+                logger.error("No active futures found for emergency cycle.")
                 return
 
-            # Construct Signal Object for Strategy Definition
-            signal_obj = {
-                "contract_month": target_contract.lastTradeDateOrContractMonth[:6],
-                "direction": decision['direction'],
-                "confidence": decision['confidence'],
+            # Select contract
+            target_contract = active_futures[0]
+            if contract_name_hint:
+                # Try to match hint
+                for f in active_futures:
+                    if f.localSymbol == contract_name_hint:
+                        target_contract = f
+                        break
+
+            contract_name = f"{target_contract.localSymbol} ({target_contract.lastTradeDateOrContractMonth[:6]})"
+            logger.info(f"Targeting contract: {contract_name}")
+
+            # 3. Get Market Context (Snapshot)
+            ticker = ib.reqMktData(target_contract, '', True, False)
+            await asyncio.sleep(2)
+            market_context_str = f"Live Price: {ticker.last if ticker.last else 'N/A'}"
+
+            # 4. Load Cached ML Signal (Fix Dummy Signal Blindness)
+            cached_state = StateManager.load_state()
+            cached_ml_signals_raw = cached_state.get('latest_ml_signals', {})
+            if isinstance(cached_ml_signals_raw, dict):
+                cached_ml_signals = cached_ml_signals_raw.get('data', [])
+            elif isinstance(cached_ml_signals_raw, list):
+                cached_ml_signals = cached_ml_signals_raw
+            else:
+                cached_ml_signals = []
+
+            ml_signal = {
+                "action": "NEUTRAL",
+                "confidence": 0.5,
                 "price": ticker.last,
-                "prediction_type": "DIRECTIONAL"
+                "reason": "Emergency Cycle: ML Signal unavailable/stale.",
+                "regime": "UNKNOWN"
             }
 
-            strategy_def = define_directional_strategy(config, signal_obj, chain, ticker.last, target_contract)
+            if cached_ml_signals:
+                # Try to find signal for this contract month
+                target_month = target_contract.lastTradeDateOrContractMonth[:6]
+                found_signal = next((s for s in cached_ml_signals if s.get('contract_month') == target_month), None)
+                if found_signal:
+                    ml_signal = found_signal
+                    logger.info(f"Loaded cached ML signal for {target_month}: {ml_signal.get('direction')}")
 
-            if strategy_def:
-                order_objects = await create_combo_order_object(ib, config, strategy_def)
-                if order_objects:
-                    contract, order = order_objects
+            # 5. Run Specialized Cycle
+            decision = await council.run_specialized_cycle(trigger, contract_name, ml_signal, market_context_str)
 
-                    # Queue and Execute (Fix Global Queue Collision)
-                    # Pass specific list to place_queued_orders so we don't wipe the global queue
-                    emergency_order_list = [(contract, order, decision)]
-                    await place_queued_orders(config, orders_list=emergency_order_list)
-                    logger.info("Emergency Order Placed.")
-        else:
-            logger.info("Emergency Cycle concluded with no action.")
+            logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
 
-    except Exception as e:
-        logger.error(f"Emergency Cycle Failed: {e}\n{traceback.format_exc()}")
+            # 6. Execute if Actionable
+            if decision.get('direction') in ['BULLISH', 'BEARISH'] and decision.get('confidence', 0) > config.get('strategy', {}).get('signal_threshold', 0.5):
+                logger.info("Decision is actionable. Generating order...")
+
+                # Build Strategy
+                chain = await build_option_chain(ib, target_contract)
+                if not chain:
+                    logger.warning("No option chain available.")
+                    return
+
+                # Construct Signal Object for Strategy Definition
+                signal_obj = {
+                    "contract_month": target_contract.lastTradeDateOrContractMonth[:6],
+                    "direction": decision['direction'],
+                    "confidence": decision['confidence'],
+                    "price": ticker.last,
+                    "prediction_type": "DIRECTIONAL"
+                }
+
+                strategy_def = define_directional_strategy(config, signal_obj, chain, ticker.last, target_contract)
+
+                if strategy_def:
+                    order_objects = await create_combo_order_object(ib, config, strategy_def)
+                    if order_objects:
+                        contract, order = order_objects
+
+                        # Queue and Execute (Fix Global Queue Collision)
+                        # Pass specific list to place_queued_orders so we don't wipe the global queue
+                        emergency_order_list = [(contract, order, decision)]
+                        await place_queued_orders(config, orders_list=emergency_order_list)
+                        logger.info("Emergency Order Placed.")
+            else:
+                logger.info("Emergency Cycle concluded with no action.")
+
+        except Exception as e:
+            logger.error(f"Emergency Cycle Failed: {e}\n{traceback.format_exc()}")
 
 
 async def run_sentinels(config: dict):

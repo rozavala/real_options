@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import pytz
 import pandas as pd
 from ib_insync import IB, Contract, util
+from trading_bot.brier_scoring import get_brier_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -234,6 +235,27 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
 
             updates_made = True
             logger.info(f"Reconciled {contract_str}: Entry {entry_price} -> Exit {exit_price} ({trend}) | P&L: {pnl}")
+
+            # Update Brier Score
+            try:
+                # Actual trend is BULLISH or BEARISH or NEUTRAL
+                # Master Decision is BULLISH or BEARISH or NEUTRAL
+                # We record the Master's prediction
+                tracker = get_brier_tracker()
+
+                # Record Master Strategist prediction
+                # Note: trend logic above: if exit > entry => BULLISH.
+                # 'actual_trend_direction' holds this.
+                tracker.record_prediction(
+                    agent='master_decision', # Using key from score card
+                    predicted=decision,
+                    actual=trend,
+                    timestamp=target_exit_time
+                )
+                logger.info(f"Recorded Brier score for master: Predicted {decision} vs Actual {trend}")
+
+            except Exception as brier_e:
+                logger.error(f"Failed to record Brier score: {brier_e}")
 
             # Respect rate limits slightly
             await asyncio.sleep(0.1)

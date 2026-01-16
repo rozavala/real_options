@@ -24,6 +24,11 @@ from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
 
+class CriticalRPCError(RuntimeError):
+    """Raised when all LLM providers fail for a critical role."""
+    pass
+
+
 class ModelProvider(Enum):
     """Supported LLM providers."""
     GEMINI = "gemini"
@@ -351,6 +356,7 @@ class HeterogeneousRouter:
             oai_pro = get_model('openai', 'pro', 'gpt-4o')
             gem_pro = get_model('gemini', 'pro', 'gemini-1.5-pro-preview-0409')
 
+            # CRITICAL: NEVER fallback to Flash models for Tier 3
             if primary_provider == ModelProvider.OPENAI:
                 fallbacks.append((ModelProvider.ANTHROPIC, anth_pro))
                 fallbacks.append((ModelProvider.GEMINI, gem_pro))
@@ -409,12 +415,18 @@ class HeterogeneousRouter:
     ) -> str:
         """Route request to appropriate model with robust fallback."""
 
-        # Check Cache
+        # Check Cache (Force OFF for Sentinels)
+        use_cache = True
+        if role in [AgentRole.WEATHER_SENTINEL, AgentRole.LOGISTICS_SENTINEL, AgentRole.NEWS_SENTINEL, AgentRole.PRICE_SENTINEL, AgentRole.MICROSTRUCTURE_SENTINEL]:
+            use_cache = False
+
         full_key_prompt = f"{system_prompt or ''}:{prompt}"
-        cached_response = self.cache.get(full_key_prompt, role.value)
-        if cached_response:
-            logger.debug(f"Cache hit for {role.value}")
-            return cached_response
+
+        if use_cache:
+            cached_response = self.cache.get(full_key_prompt, role.value)
+            if cached_response:
+                logger.debug(f"Cache hit for {role.value}")
+                return cached_response
 
         # 1. Determine Execution Chain (Primary + Fallbacks)
         primary_provider, primary_model = self.assignments.get(
@@ -458,6 +470,11 @@ class HeterogeneousRouter:
         # If we get here, all models in the chain failed or were unavailable
         error_msg = f"ALL models failed for {role.value}. Last error: {last_exception}"
         logger.error(error_msg)
+
+        # Raise CriticalRPCError for Tier 3 roles to abort cycle
+        if role in [AgentRole.MASTER_STRATEGIST, AgentRole.COMPLIANCE_OFFICER]:
+             raise CriticalRPCError(error_msg) from last_exception
+
         raise RuntimeError(error_msg) from last_exception
 
     def get_diversity_report(self) -> dict:

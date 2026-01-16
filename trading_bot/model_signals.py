@@ -20,6 +20,10 @@ def log_model_signal(contract: str, signal: str, price: float = None, sma_200: f
         confidence (float, optional): The confidence of the prediction.
     """
     try:
+        # Clamp confidence if present
+        if confidence is not None:
+             confidence = max(0.0, min(1.0, float(confidence)))
+
         new_signal = pd.DataFrame({
             'timestamp': [datetime.now()],
             'contract': [contract],

@@ -56,29 +56,44 @@ confusion = calculate_confusion_matrix(graded_df)
 matrix_cols = st.columns([2, 3])
 
 with matrix_cols[0]:
-    # Visual Confusion Matrix
+    # Visual Confusion Matrix (Using px.imshow)
     matrix_data = [
         [confusion['true_positive'], confusion['false_negative']],
         [confusion['false_positive'], confusion['true_negative']]
     ]
 
-    fig = go.Figure(data=go.Heatmap(
-        z=matrix_data,
-        x=['Market UP', 'Market DOWN'],
-        y=['AI: BULLISH', 'AI: BEARISH'],
-        text=[
-            [f"TP: {confusion['true_positive']}", f"FN: {confusion['false_negative']}"],
-            [f"FP: {confusion['false_positive']}", f"TN: {confusion['true_negative']}"]
-        ],
-        texttemplate="%{text}",
-        colorscale='RdYlGn',
-        showscale=False
-    ))
+    # Labels for display
+    x_labels = ['Market UP', 'Market DOWN']
+    y_labels = ['AI: BULLISH', 'AI: BEARISH']
+
+    fig = px.imshow(
+        matrix_data,
+        labels=dict(x="Actual Trend", y="AI Prediction", color="Count"),
+        x=x_labels,
+        y=y_labels,
+        color_continuous_scale='RdYlGn',
+        aspect="auto"
+    )
+
+    # Custom text to show TP/FP/FN/TN explicitly
+    annotations = []
+    text_labels = [
+        [f"TP: {confusion['true_positive']}", f"FN: {confusion['false_negative']}"],
+        [f"FP: {confusion['false_positive']}", f"TN: {confusion['true_negative']}"]
+    ]
+
+    for i, row in enumerate(text_labels):
+        for j, val in enumerate(row):
+            annotations.append(dict(
+                x=x_labels[j], y=y_labels[i], text=str(val),
+                showarrow=False, font=dict(color='black')
+            ))
 
     fig.update_layout(
         title="Confusion Matrix",
         height=300,
-        margin=dict(l=0, r=0, t=40, b=0)
+        margin=dict(l=0, r=0, t=40, b=0),
+        annotations=annotations
     )
 
     st.plotly_chart(fig, width="stretch")

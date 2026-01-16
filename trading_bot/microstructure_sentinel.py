@@ -119,7 +119,7 @@ class MicrostructureSentinel:
     async def check(self) -> Optional[SentinelTrigger]:
         """Check for microstructure anomalies."""
         if not self.is_core_market_hours():
-            logger.info("Market Closed (Outside 09:00-13:30 ET), skipping microstructure check.")
+            logger.info("Market Closed")
             return None
 
         if not self.ib.isConnected():
