@@ -103,6 +103,9 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
         if pd.notna(row['exit_price']) and row['exit_price'] != '':
             continue
 
+        prediction_type = row.get('prediction_type', 'DIRECTIONAL')
+        strategy_type = row.get('strategy_type', '')
+
         entry_time = row['timestamp']
         # If entry is naive, assume local/system time which matches 'now'.
         # Safest is to treat everything as naive or aware consistently.
@@ -232,6 +235,22 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             df.at[index, 'exit_timestamp'] = target_exit_time.strftime('%Y-%m-%d %H:%M:%S') # Approx
             df.at[index, 'pnl_realized'] = round(pnl, 4)
             df.at[index, 'actual_trend_direction'] = trend
+
+            # Calculate Volatility Outcome if applicable
+            if prediction_type == 'VOLATILITY':
+                try:
+                    pct_change = abs((exit_price - entry_price) / entry_price)
+                    vol_outcome = None
+
+                    if strategy_type == 'LONG_STRADDLE':
+                        vol_outcome = 'BIG_MOVE' if pct_change >= 0.03 else 'STAYED_FLAT'
+                    elif strategy_type == 'IRON_CONDOR':
+                        vol_outcome = 'STAYED_FLAT' if pct_change <= 0.02 else 'BIG_MOVE'
+
+                    if vol_outcome:
+                        df.at[index, 'volatility_outcome'] = vol_outcome
+                except Exception as e:
+                    logger.warning(f"Failed to calc volatility outcome: {e}")
 
             updates_made = True
             logger.info(f"Reconciled {contract_str}: Entry {entry_price} -> Exit {exit_price} ({trend}) | P&L: {pnl}")
