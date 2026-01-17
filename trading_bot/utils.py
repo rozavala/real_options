@@ -425,8 +425,15 @@ def log_council_decision(decision_data):
         "technical_sentiment", "technical_summary",
         "volatility_sentiment", "volatility_summary",
         "master_decision", "master_confidence", "master_reasoning",
+
+        "prediction_type",
+        "volatility_level",
+        "strategy_type",
+
         "compliance_approved",
-        "exit_price", "exit_timestamp", "pnl_realized", "actual_trend_direction"
+        "exit_price", "exit_timestamp", "pnl_realized", "actual_trend_direction",
+
+        "volatility_outcome"
     ]
 
     # Check for schema mismatch and migrate if necessary

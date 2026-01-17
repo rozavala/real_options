@@ -434,6 +434,34 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                             agent_data[f"{key}_sentiment"] = extract_sentiment(report)
                             agent_data[f"{key}_summary"] = str(report) if report else "N/A"
 
+                    # === DECISION LOGIC FOR PREDICTION TYPE ===
+                    # Moved inside logging block to capture state for DB
+                    final_direction_log = final_data["action"]
+                    vol_sentiment_log = agent_data.get('volatility_sentiment', 'NEUTRAL')
+                    regime_log = regime_for_voting if 'regime_for_voting' in locals() else ml_signal.get('regime', 'UNKNOWN')
+
+                    prediction_type_log = "DIRECTIONAL"
+                    vol_level_log = None
+                    strategy_type_log = "NONE"
+
+                    if final_direction_log == 'NEUTRAL':
+                        agent_conflict_score_log = _calculate_agent_conflict(agent_data)
+                        imminent_catalyst_log = _detect_imminent_catalyst(agent_data)
+
+                        if imminent_catalyst_log or agent_conflict_score_log > 0.6:
+                            prediction_type_log = "VOLATILITY"
+                            vol_level_log = "HIGH"
+                            strategy_type_log = "LONG_STRADDLE"
+                        elif regime_log == 'RANGE_BOUND' and vol_sentiment_log == 'BULLISH':
+                            prediction_type_log = "VOLATILITY"
+                            vol_level_log = "LOW"
+                            strategy_type_log = "IRON_CONDOR"
+                    else:
+                        if final_direction_log == 'BULLISH':
+                            strategy_type_log = 'BULL_CALL_SPREAD'
+                        elif final_direction_log == 'BEARISH':
+                            strategy_type_log = 'BEAR_PUT_SPREAD'
+
                     council_log_entry = {
                         "timestamp": datetime.now(timezone.utc),
                         "contract": contract_name,
@@ -442,9 +470,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         "ml_confidence": ml_signal.get('confidence'),
 
                         # Unpack agent data (FULL TEXT, NO TRUNCATION)
-                        "meteorologist_sentiment": agent_data.get("agronomist_sentiment"), # Map agronomist to meteorologist column or add new?
-                        # NOTE: The database schema probably has 'meteorologist'. I should map 'agronomist' to it or add columns.
-                        # For safety, I'll map 'agronomist' to 'meteorologist' fields for now, as they are functionally similar (Weather).
+                        "meteorologist_sentiment": agent_data.get("agronomist_sentiment"),
                         "meteorologist_summary": agent_data.get("agronomist_summary"),
 
                         "macro_sentiment": agent_data.get('macro_sentiment'),
@@ -452,8 +478,6 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         "geopolitical_sentiment": agent_data.get('geopolitical_sentiment'),
                         "geopolitical_summary": agent_data.get('geopolitical_summary'),
 
-                        # Map Supply Chain -> Fundamentalist? Or Inventory?
-                        # Let's map Inventory -> Fundamentalist
                         "fundamentalist_sentiment": agent_data.get('inventory_sentiment'),
                         "fundamentalist_summary": agent_data.get('inventory_summary'),
 
@@ -469,6 +493,12 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         "master_decision": decision.get('direction'),
                         "master_confidence": decision.get('confidence'),
                         "master_reasoning": decision.get('reasoning'),
+
+                        # [NEW] Prediction & Strategy Fields
+                        "prediction_type": prediction_type_log,
+                        "volatility_level": vol_level_log,
+                        "strategy_type": strategy_type_log,
+
                         "compliance_approved": compliance_approved,
                         "compliance_reason": compliance_reason if not compliance_approved else "N/A"
                     }

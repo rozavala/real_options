@@ -328,13 +328,20 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
     grades = []
     now = datetime.now()
 
+    # Thresholds for volatility grading
+    STRADDLE_MOVE_THRESHOLD = 0.03  # 3% move = WIN for straddle
+    CONDOR_FLAT_THRESHOLD = 0.02    # <2% move = WIN for condor
+
     for idx, row in council_df.iterrows():
         decision = row.get('master_decision', 'NEUTRAL')
         confidence = row.get('master_confidence', 0.5)
         timestamp = row.get('timestamp')
 
-        # Skip neutral decisions
-        if decision == 'NEUTRAL':
+        prediction_type = row.get('prediction_type', 'DIRECTIONAL')
+        strategy_type = row.get('strategy_type', '')
+
+        # Skip neutral decisions (unless it's a volatility play)
+        if decision == 'NEUTRAL' and prediction_type != 'VOLATILITY':
             continue
 
         grade_entry = {
@@ -346,6 +353,9 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
             'exit_price': row.get('exit_price'),
             'pnl_realized': row.get('pnl_realized'),
             'actual_trend': row.get('actual_trend_direction'),
+            'prediction_type': prediction_type,
+            'strategy_type': strategy_type,
+            'volatility_outcome': row.get('volatility_outcome'),
             'outcome': 'PENDING'
         }
 
@@ -354,8 +364,47 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
             pnl = row['pnl_realized']
             grade_entry['outcome'] = 'WIN' if pnl > 0 else 'LOSS'
             grade_entry['pnl'] = pnl
+
+        # Fallback grading using price movement if P&L not reconciled but prices available
+        elif pd.notna(row.get('entry_price')) and pd.notna(row.get('exit_price')):
+             try:
+                entry = float(row['entry_price'])
+                exit_p = float(row['exit_price'])
+                pct_change = (exit_p - entry) / entry
+                abs_change = abs(pct_change)
+
+                if prediction_type == 'VOLATILITY':
+                    if strategy_type == 'LONG_STRADDLE':
+                        if abs_change >= STRADDLE_MOVE_THRESHOLD:
+                            grade_entry['outcome'] = 'WIN'
+                            grade_entry['volatility_outcome'] = 'BIG_MOVE'
+                        else:
+                            grade_entry['outcome'] = 'LOSS'
+                            grade_entry['volatility_outcome'] = 'STAYED_FLAT'
+                    elif strategy_type == 'IRON_CONDOR':
+                        if abs_change <= CONDOR_FLAT_THRESHOLD:
+                            grade_entry['outcome'] = 'WIN'
+                            grade_entry['volatility_outcome'] = 'STAYED_FLAT'
+                        else:
+                            grade_entry['outcome'] = 'LOSS'
+                            grade_entry['volatility_outcome'] = 'BIG_MOVE'
+                else:
+                    # Directional logic
+                    actual_trend = 'NEUTRAL'
+                    if pct_change > 0: actual_trend = 'UP'
+                    elif pct_change < 0: actual_trend = 'DOWN'
+
+                    if decision == 'BULLISH' and actual_trend == 'UP':
+                        grade_entry['outcome'] = 'WIN'
+                    elif decision == 'BEARISH' and actual_trend == 'DOWN':
+                        grade_entry['outcome'] = 'WIN'
+                    elif actual_trend in ['UP', 'DOWN']:
+                        grade_entry['outcome'] = 'LOSS'
+             except:
+                 pass
+
         elif pd.notna(row.get('actual_trend_direction')):
-            # Use trend direction if P&L not available
+            # Legacy fallback using string trend
             actual = row['actual_trend_direction']
             if decision == 'BULLISH' and actual == 'UP':
                 grade_entry['outcome'] = 'WIN'

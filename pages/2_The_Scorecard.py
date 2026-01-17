@@ -36,6 +36,14 @@ if council_df.empty:
     st.warning("No council history data available. Run the bot to generate decisions.")
     st.stop()
 
+# --- Sidebar Filters ---
+st.sidebar.markdown("### Filters")
+strategy_filter = st.sidebar.multiselect(
+    "Strategy Types",
+    options=['BULL_CALL_SPREAD', 'BEAR_PUT_SPREAD', 'LONG_STRADDLE', 'IRON_CONDOR', 'NONE'],
+    default=['BULL_CALL_SPREAD', 'BEAR_PUT_SPREAD', 'LONG_STRADDLE', 'IRON_CONDOR']
+)
+
 # Get live price for grading recent decisions
 live_price = None
 if config:
@@ -44,6 +52,10 @@ if config:
 
 # Grade decisions
 graded_df = grade_decision_quality(council_df)
+
+# Filter dataframe based on strategy
+if 'strategy_type' in graded_df.columns:
+    graded_df = graded_df[graded_df['strategy_type'].isin(strategy_filter)]
 
 st.markdown("---")
 
@@ -117,6 +129,43 @@ with matrix_cols[1]:
     with metric_cols[3]:
         st.metric("Total Graded", confusion['total'])
         st.caption("Decisions evaluated")
+
+# === NEW SECTION: Volatility Trade Performance ===
+st.markdown("---")
+st.subheader("⚡ Volatility Strategy Performance")
+
+vol_df = graded_df[graded_df['prediction_type'] == 'VOLATILITY'] if 'prediction_type' in graded_df.columns else pd.DataFrame()
+
+if not vol_df.empty:
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("**Long Straddle Performance**")
+        straddle_df = vol_df[vol_df['strategy_type'] == 'LONG_STRADDLE']
+        if not straddle_df.empty:
+            wins = (straddle_df['outcome'] == 'WIN').sum()
+            losses = (straddle_df['outcome'] == 'LOSS').sum()
+            total_vol = wins + losses
+            win_rate = wins/total_vol*100 if total_vol > 0 else 0
+            st.metric("Win Rate", f"{win_rate:.1f}%")
+            st.caption(f"Wins when price moved >3%: {wins} | Losses: {losses}")
+        else:
+            st.info("No Long Straddle trades.")
+
+    with col2:
+        st.markdown("**Iron Condor Performance**")
+        condor_df = vol_df[vol_df['strategy_type'] == 'IRON_CONDOR']
+        if not condor_df.empty:
+            wins = (condor_df['outcome'] == 'WIN').sum()
+            losses = (condor_df['outcome'] == 'LOSS').sum()
+            total_vol = wins + losses
+            win_rate = wins/total_vol*100 if total_vol > 0 else 0
+            st.metric("Win Rate", f"{win_rate:.1f}%")
+            st.caption(f"Wins when price stayed <2%: {wins} | Losses: {losses}")
+        else:
+            st.info("No Iron Condor trades.")
+else:
+    st.info("No volatility trades recorded yet.")
 
 st.markdown("---")
 
@@ -235,9 +284,12 @@ st.markdown("---")
 st.subheader("📜 Recent Decisions")
 
 if not graded_df.empty:
-    display_df = graded_df[[
-        'timestamp', 'contract', 'master_decision', 'master_confidence', 'outcome'
-    ]].copy()
+    # Add strategy_type column to display if available
+    cols_to_show = ['timestamp', 'contract', 'master_decision', 'master_confidence', 'outcome']
+    if 'strategy_type' in graded_df.columns:
+        cols_to_show.insert(2, 'strategy_type')
+
+    display_df = graded_df[cols_to_show].copy()
     display_df['master_confidence'] = display_df['master_confidence'].apply(lambda x: f"{x:.1%}")
 
     # Color code outcomes

@@ -194,38 +194,63 @@ else:
 st.markdown("---")
 
 # === SECTION 3: Strategy Efficiency (ROI by Strategy Type) ===
-st.subheader("🎯 Strategy Efficiency")
-st.caption("ROI breakdown by position/combo ID - Are certain strategies more profitable?")
+st.subheader("🎯 Strategy Efficiency by Type")
 
-if not trade_df.empty and 'position_id' in trade_df.columns:
-    # Group by position_id (combo)
-    strategy_perf = trade_df.groupby('position_id').agg({
-        'total_value_usd': 'sum',
-        'quantity': 'sum',
-        'timestamp': 'count'
-    }).rename(columns={'timestamp': 'trade_count'})
+if not council_df.empty and 'strategy_type' in council_df.columns and 'pnl_realized' in council_df.columns:
+    # Group by strategy type
+    strategy_perf = council_df.groupby('strategy_type').agg({
+        'pnl_realized': ['sum', 'mean', 'count']
+    })
+    strategy_perf.columns = ['Total P&L', 'Avg P&L', 'Trade Count']
+    strategy_perf = strategy_perf.reset_index()
 
-    if not strategy_perf.empty:
-        strategy_perf = strategy_perf.sort_values('total_value_usd', ascending=True)
+    # Create bar chart
+    fig = px.bar(
+        strategy_perf,
+        x='strategy_type',
+        y='Total P&L',
+        color='Total P&L',
+        color_continuous_scale='RdYlGn',
+        text='Trade Count',
+        title='P&L by Strategy Type'
+    )
 
-        fig = px.bar(
-            strategy_perf.reset_index(),
-            x='position_id',
-            y='total_value_usd',
-            color='total_value_usd',
-            color_continuous_scale='RdYlGn',
-            title='P&L by Position/Combo'
-        )
+    fig.update_traces(texttemplate='%{text} trades', textposition='outside')
+    st.plotly_chart(fig, use_container_width=True)
 
-        fig.update_layout(
-            xaxis_title='Position ID',
-            yaxis_title='P&L ($)',
-            height=400
-        )
+    # Detailed table
+    st.dataframe(strategy_perf)
 
-        st.plotly_chart(fig, width="stretch")
+# === NEW: Trade Type Breakdown ===
+st.subheader("📊 Directional vs Volatility Performance")
+
+if 'prediction_type' in council_df.columns:
+    type_perf = council_df.groupby('prediction_type').agg({
+        'pnl_realized': ['sum', 'mean', 'count']
+    })
+    type_perf.columns = ['Total P&L', 'Avg P&L', 'Trade Count']
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        dir_data = type_perf.loc['DIRECTIONAL'] if 'DIRECTIONAL' in type_perf.index else None
+        if dir_data is not None:
+            st.metric("Directional P&L", f"${dir_data['Total P&L']:,.2f}")
+            st.caption(f"{int(dir_data['Trade Count'])} trades | Avg: ${dir_data['Avg P&L']:,.2f}")
+        else:
+            st.metric("Directional P&L", "$0.00")
+            st.caption("No directional trades yet")
+
+    with col2:
+        vol_data = type_perf.loc['VOLATILITY'] if 'VOLATILITY' in type_perf.index else None
+        if vol_data is not None:
+            st.metric("Volatility P&L", f"${vol_data['Total P&L']:,.2f}")
+            st.caption(f"{int(vol_data['Trade Count'])} trades | Avg: ${vol_data['Avg P&L']:,.2f}")
+        else:
+            st.metric("Volatility P&L", "$0.00")
+            st.caption("No volatility trades yet")
 else:
-    st.info("Trade ledger empty or missing position_id column.")
+    st.info("No trade type data available.")
 
 st.markdown("---")
 

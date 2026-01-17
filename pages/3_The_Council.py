@@ -106,6 +106,10 @@ with radar_cols[1]:
         icon = "🟢" if sentiment in ['BULLISH', 'Bullish'] else "🔴" if sentiment in ['BEARISH', 'Bearish'] else "⚪"
         st.write(f"{icon} **{agent}**: {sentiment}")
 
+    # Add interpretation text based on trade type
+    if row.get('prediction_type') == 'VOLATILITY':
+        st.caption("ℹ️ For volatility trades, agent disagreement is expected - it signals market inflection points")
+
 st.markdown("---")
 
 # === SECTION 2: The "Tug-of-War" (Bull vs Bear) ===
@@ -187,6 +191,17 @@ st.markdown("---")
 
 # === SECTION 3: Master Decision Details ===
 st.subheader("👑 Master Decision")
+
+# Show prediction type badge
+pred_type = row.get('prediction_type', 'DIRECTIONAL')
+strategy = row.get('strategy_type', 'Unknown')
+
+if pred_type == 'VOLATILITY':
+    vol_level = row.get('volatility_level', 'N/A')
+    st.markdown(f"#### 🎲 Trade Type: VOLATILITY ({vol_level}) → {strategy}")
+else:
+    direction = row.get('master_decision', 'NEUTRAL')
+    st.markdown(f"#### 📊 Trade Type: DIRECTIONAL ({direction}) → {strategy}")
 
 master_cols = st.columns(3)
 
