@@ -362,11 +362,13 @@ OUTPUT FORMAT (JSON):
             f"YOUR TASK: Analyze the GROUNDED DATA above and provide your expert assessment regarding: {search_instruction}\n"
             f"CRITICAL: Base your analysis ONLY on the data provided above. Do NOT hallucinate or invent "
             f"information not present in the Grounded Data Packet. If the data is insufficient, say so.\n\n"
-            f"FORMAT YOUR RESPONSE EXACTLY AS FOLLOWS:\n"
-            f"   [EVIDENCE]: Cite 3-5 specific data points from the Grounded Data Packet above.\n"
-            f"   [ANALYSIS]: Explain what this data implies for Coffee supply/demand.\n"
-            f"   [CONFIDENCE]: Rate your confidence (HIGH/MEDIUM/LOW) based on data quality.\n"
-            f"   [SENTIMENT TAG]: End with exactly one: [SENTIMENT: BULLISH], [SENTIMENT: BEARISH], or [SENTIMENT: NEUTRAL].\n"
+            f"OUTPUT FORMAT (JSON ONLY):\n"
+            f"{{ \n"
+            f"  'evidence': 'Cite 3-5 specific data points from the Grounded Data Packet above.',\n"
+            f"  'analysis': 'Explain what this data implies for Coffee supply/demand.',\n"
+            f"  'confidence': 0.0-1.0 (Float based on data quality),\n"
+            f"  'sentiment': 'BULLISH'|'BEARISH'|'NEUTRAL'\n"
+            f"}}"
         )
 
         # Determine Role for routing
@@ -385,34 +387,61 @@ OUTPUT FORMAT (JSON):
         try:
             # Phase 2 always uses heterogeneous routing for diverse analysis if enabled
             if self.use_heterogeneous:
-                result = await self._route_call(role, full_prompt)
+                result_raw = await self.heterogeneous_router.route(role, full_prompt, response_json=True)
             else:
                 # If no heterogeneous, fallback to agent model (Gemini) without tools
-                # (tools were used in Phase 1, Phase 2 is pure reasoning)
-                result = await self._call_model(self.agent_model_name, full_prompt, use_tools=False)
+                result_raw = await self._call_model(self.agent_model_name, full_prompt, use_tools=False, response_json=True)
+
+            # Parse JSON
+            try:
+                data = json.loads(self._clean_json_text(result_raw))
+            except json.JSONDecodeError:
+                # Fallback to raw text if JSON fails
+                data = {
+                    'evidence': 'N/A',
+                    'analysis': result_raw,
+                    'confidence': 0.5,
+                    'sentiment': 'NEUTRAL'
+                }
+
+            # Construct structured report object
+            # We format 'data' as the readable text for compatibility
+            formatted_text = (
+                f"[EVIDENCE]: {data.get('evidence')}\n"
+                f"[ANALYSIS]: {data.get('analysis')}\n"
+                f"[CONFIDENCE]: {data.get('confidence')}\n"
+                f"[SENTIMENT TAG]: [SENTIMENT: {data.get('sentiment', 'NEUTRAL')}]"
+            )
+
+            structured_result = {
+                'data': formatted_text,
+                'confidence': float(data.get('confidence', 0.5)),
+                'sentiment': data.get('sentiment', 'NEUTRAL')
+            }
 
             # Store new insight in TMS
-            if result and len(result) > 50:
-                self.tms.encode(persona_key, result, {
+            if formatted_text and len(formatted_text) > 50:
+                self.tms.encode(persona_key, formatted_text, {
                     "task": search_instruction,
                     "grounded": True,
                     "data_gathered_at": grounded_data.gathered_at.isoformat()
                 })
 
-            return result
+            return structured_result
         except Exception as e:
-            return f"Error conducting research: {str(e)}"
+            return {'data': f"Error conducting research: {str(e)}", 'confidence': 0.0, 'sentiment': 'NEUTRAL'}
 
-    async def research_topic_with_reflexion(self, persona_key: str, search_instruction: str) -> str:
+    async def research_topic_with_reflexion(self, persona_key: str, search_instruction: str) -> dict:
         """Research with self-correction loop."""
 
         # Step 1: Initial analysis
-        initial_response = await self.research_topic(persona_key, search_instruction)
+        initial_response_struct = await self.research_topic(persona_key, search_instruction)
+        initial_text = initial_response_struct.get('data', '')
 
         # Step 2: Reflexion prompt
         reflexion_prompt = f"""You previously wrote this analysis:
 
-{initial_response}
+{initial_text}
 
 TASK: Critique your own analysis.
 1. Are there logical fallacies? (Confirmation bias, recency bias, false causation?)
@@ -420,7 +449,13 @@ TASK: Critique your own analysis.
 3. Is your sentiment tag justified by the evidence?
 
 REVISED ANALYSIS: Provide an improved version that addresses any weaknesses.
-Keep the same format: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG]
+OUTPUT FORMAT (JSON ONLY):
+{{
+  'evidence': '...',
+  'analysis': '...',
+  'confidence': 0.0-1.0,
+  'sentiment': 'BULLISH'|'BEARISH'|'NEUTRAL'
+}}
 """
         role_map = {
             'agronomist': AgentRole.AGRONOMIST,
@@ -434,8 +469,25 @@ Keep the same format: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG]
         }
         role = role_map.get(persona_key, AgentRole.AGRONOMIST)
 
-        revised = await self._route_call(role, reflexion_prompt)
-        return revised
+        revised_raw = await self._route_call(role, reflexion_prompt, response_json=True)
+
+        try:
+            data = json.loads(self._clean_json_text(revised_raw))
+        except:
+             return initial_response_struct # Fallback to initial
+
+        formatted_text = (
+            f"[EVIDENCE]: {data.get('evidence')}\n"
+            f"[ANALYSIS]: {data.get('analysis')}\n"
+            f"[CONFIDENCE]: {data.get('confidence')}\n"
+            f"[SENTIMENT TAG]: [SENTIMENT: {data.get('sentiment', 'NEUTRAL')}]"
+        )
+
+        return {
+            'data': formatted_text,
+            'confidence': float(data.get('confidence', 0.5)),
+            'sentiment': data.get('sentiment', 'NEUTRAL')
+        }
 
     async def _get_red_team_analysis(self, persona_key: str, reports_text: str, ml_signal: dict, opponent_argument: str = None) -> str:
         """Gets critique/defense from Permabear or Permabull."""
@@ -706,5 +758,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                 decision['direction'] = 'NEUTRAL'
                 decision['confidence'] = 0.0
                 decision['reasoning'] += f" [DA VETO: {da_review.get('risks', ['Unknown'])[0]}]"
+            else:
+                logger.info(f"DEVIL'S ADVOCATE CHECK PASSED. Risks identified: {da_review.get('risks', [])}")
 
         return decision

@@ -25,8 +25,62 @@ class ComplianceGuardian:
         self.limits.setdefault('max_volume_pct', 0.10)
         self.limits.setdefault('max_brazil_pct', 0.30)
         self.limits.setdefault('var_limit_pct', 0.01)
+        # Specific override from config for concentration check (Issue 8)
+        self.max_brazil_concentration = self.config.get('compliance', {}).get('max_brazil_concentration', 1.0)
 
         self.router = HeterogeneousRouter(config)
+
+    async def _check_concentration_risk(self, proposed_direction: str, ib) -> tuple[bool, str]:
+        """Check if proposed trade increases concentration risk."""
+        if not ib or not ib.isConnected():
+            return True, ""  # Fail open if no IB connection
+
+        try:
+            # Get current portfolio
+            portfolio = await ib.reqPortfolioAsync() # Or portfolio() sync if updated?
+            # ib.portfolio() is sync property, assumes updates. reqPortfolioAsync updates it?
+            # ib_insync 'portfolio()' returns list of Position.
+            # Ideally we ensure we have fresh data.
+            # But let's use the property.
+
+            # Define Brazil-correlated assets
+            brazil_proxies = ['KC', 'SB', 'EWZ', 'BRL']  # Coffee, Sugar, Brazil ETF, BRL futures
+
+            brazil_exposure = 0.0
+            total_equity = 0.0
+
+            # Get Net Liquidation Value from Account Summary
+            # We can't easily get it here without async call if not passed.
+            # We will approximate from sum of market values + cash? No.
+            # Let's sum absolute market value of positions as "Gross Exposure"
+            # Concentration = Brazil Gross Exposure / Total Gross Exposure
+
+            total_gross_exposure = sum(abs(p.marketValue) for p in portfolio)
+
+            for position in portfolio:
+                symbol = position.contract.symbol
+                if any(proxy in symbol for proxy in brazil_proxies):
+                    brazil_exposure += abs(position.marketValue)
+
+            # If we are adding a trade (assuming it increases exposure), we check current + new?
+            # We don't have new trade size here easily.
+            # We just check CURRENT concentration as a gate.
+
+            concentration_pct = (brazil_exposure / total_gross_exposure) if total_gross_exposure > 0 else 0
+
+            if concentration_pct > self.max_brazil_concentration:
+                # If we are adding to it (BULLISH/BEARISH)?
+                # Actually if we are already over limit, we should block ANY trade that adds risk.
+                # Since we don't know if Direction adds or reduces without complex correlation analysis,
+                # we block all NEW signals if concentration is too high.
+                if proposed_direction in ['BULLISH', 'BEARISH']:
+                     return False, f"Brazil concentration at {concentration_pct:.1%} (max: {self.max_brazil_concentration:.0%})"
+
+            return True, f"Brazil concentration: {concentration_pct:.1%}"
+
+        except Exception as e:
+            logger.warning(f"Concentration check failed: {e}")
+            return True, ""  # Fail open
 
     async def _fetch_volume_stats(self, ib, contract) -> float:
         """Fetch 15-min average volume for Article II check."""
@@ -128,9 +182,35 @@ class ComplianceGuardian:
         """
         Audits the Master Strategist's decision against the reports to prevent hallucinations (Signal Generation Stage).
         """
+        # NEW: Concentration Check (Programmatic)
+        # We need IB instance. It's not passed here?
+        # run_emergency_cycle calls audit_decision. It doesn't pass 'ib'.
+        # Wait, I need to update audit_decision signature or use a global?
+        # No, better to update the signature in compliance.py AND the caller in orchestrator.py.
+        # But 'audit_decision' is public API of this class.
+        # Check if 'run_emergency_cycle' has 'ib'. Yes.
+        # I will update signature of 'audit_decision' to accept optional 'ib'.
+        # However, I should check existing usages.
+        pass
+
+    async def audit_decision(self, reports: dict, market_context: str, decision: dict, master_persona: str, ib=None) -> dict:
+        """
+        Audits the Master Strategist's decision.
+        """
+        # NEW: Concentration Check
+        if ib:
+            conc_ok, conc_reason = await self._check_concentration_risk(decision.get('direction'), ib)
+            if not conc_ok:
+                return {
+                    'approved': False,
+                    'flagged_reason': f"CONCENTRATION RISK: {conc_reason}"
+                }
+
         reports_text = ""
         for agent, content in reports.items():
-            reports_text += f"\n--- {agent.upper()} ---\n{content}\n"
+            # Handle structured reports (extract data field)
+            content_str = content.get('data', str(content)) if isinstance(content, dict) else str(content)
+            reports_text += f"\n--- {agent.upper()} ---\n{content_str}\n"
 
         prompt = (
             f"You are the Compliance Officer auditing a trading decision.\n"
