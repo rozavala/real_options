@@ -16,6 +16,61 @@ from trading_bot.weighted_voting import calculate_weighted_decision, determine_t
 
 logger = logging.getLogger(__name__)
 
+def _calculate_agent_conflict(agent_data: dict) -> float:
+    """
+    Returns 0.0-1.0 score indicating how much agents disagree.
+    High conflict = potential inflection point = good for straddle.
+    """
+    sentiments = []
+    for key in ['macro_sentiment', 'technical_sentiment', 'geopolitical_sentiment',
+                'sentiment_sentiment', 'agronomist_sentiment']:
+        s = agent_data.get(key, 'NEUTRAL')
+        if s == 'BULLISH':
+            sentiments.append(1)
+        elif s == 'BEARISH':
+            sentiments.append(-1)
+        else:
+            sentiments.append(0)
+
+    if not sentiments:
+        return 0.0
+
+    # High variance = high conflict
+    avg = sum(sentiments) / len(sentiments)
+    variance = sum((s - avg) ** 2 for s in sentiments) / len(sentiments)
+    # Normalize: max variance with [-1, 1] values is 1.0
+    return min(1.0, variance)
+
+
+def _detect_imminent_catalyst(agent_data: dict) -> str | None:
+    """
+    Scans agent reports for signs of imminent market-moving events.
+    Returns catalyst description if found, None otherwise.
+    """
+    catalyst_keywords = [
+        ('frost', 'Frost risk in growing regions'),
+        ('freeze', 'Freeze warning'),
+        ('conab', 'CONAB report imminent'),
+        ('usda', 'USDA report pending'),
+        ('strike', 'Labor strike risk'),
+        ('drought', 'Drought conditions developing'),
+    ]
+
+    # Check agronomist and geopolitical summaries
+    reports_to_check = [
+        agent_data.get('agronomist_summary', ''),
+        agent_data.get('geopolitical_summary', ''),
+        agent_data.get('sentiment_summary', ''),
+    ]
+
+    combined_text = ' '.join(str(r).lower() for r in reports_to_check)
+
+    for keyword, description in catalyst_keywords:
+        if keyword in combined_text:
+            return description
+
+    return None
+
 async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
     """
     Generates trading signals by combining the existing ML signals (signals_list)
@@ -368,8 +423,16 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                     # Store structured data for logging
                     agent_data = {}
                     for key, report in reports.items():
-                        agent_data[f"{key}_sentiment"] = extract_sentiment(report)
-                        agent_data[f"{key}_summary"] = str(report) if report else "N/A"  # SAVE FULL TEXT
+                        if isinstance(report, dict):
+                            # Try explicit sentiment first, then regex on data
+                            s = report.get('sentiment')
+                            if not s or s == 'N/A':
+                                s = extract_sentiment(report.get('data', ''))
+                            agent_data[f"{key}_sentiment"] = s
+                            agent_data[f"{key}_summary"] = str(report.get('data', 'N/A'))
+                        else:
+                            agent_data[f"{key}_sentiment"] = extract_sentiment(report)
+                            agent_data[f"{key}_summary"] = str(report) if report else "N/A"
 
                     council_log_entry = {
                         "timestamp": datetime.now(timezone.utc),
@@ -422,19 +485,68 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 )
                 # We silently fall back to the ML defaults set at start of function
 
+        # === DECISION LOGIC FOR PREDICTION TYPE ===
+        # Conditions for VOLATILITY trade:
+        # 1. Direction is NEUTRAL (no directional conviction)
+        # 2. We have volatility data to guide HIGH vs LOW selection
+
+        final_direction = final_data["action"]
+        vol_sentiment = agent_data.get('volatility_sentiment', 'NEUTRAL')
+        # Use regime_for_voting calculated earlier if available, else ML signal fallback
+        regime = regime_for_voting if 'regime_for_voting' in locals() else ml_signal.get('regime', 'UNKNOWN')
+
+        prediction_type = "DIRECTIONAL"
+        vol_level = None
+        reason = final_data["reason"]
+
+        if final_direction == 'NEUTRAL':
+            # Check if we should deploy a volatility strategy instead of sitting idle
+
+            # HIGH VOLATILITY SIGNAL: Deploy Long Straddle
+            # Conditions: Agents are conflicted OR imminent catalyst detected
+            agent_conflict_score = _calculate_agent_conflict(agent_data)
+            imminent_catalyst = _detect_imminent_catalyst(agent_data)
+
+            if imminent_catalyst or agent_conflict_score > 0.6:
+                prediction_type = "VOLATILITY"
+                vol_level = "HIGH"
+                reason = f"Volatility Play: {imminent_catalyst or 'High agent conflict signals inflection point'}"
+
+            # LOW VOLATILITY SIGNAL: Deploy Iron Condor
+            # Conditions: Market is calm, vol is cheap, no catalysts
+            elif regime == 'RANGE_BOUND' and vol_sentiment == 'BULLISH':  # BULLISH = cheap options
+                prediction_type = "VOLATILITY"
+                vol_level = "LOW"
+                reason = "Premium Harvest: Range-bound market with cheap options"
+
         # Construct final signal object
-        return {
-            "contract_month": contract.lastTradeDateOrContractMonth[:6],
-            "prediction_type": "DIRECTIONAL",
-            "direction": final_data["action"],
-            "reason": final_data["reason"],
-            "regime": ml_signal.get('regime', 'N/A'),
-            "volatility_sentiment": agent_data.get('volatility_sentiment', 'NEUTRAL'),
-            "confidence": final_data["confidence"],
-            "price": ml_signal.get('price'),
-            "sma_200": ml_signal.get('sma_200'),
-            "expected_price": final_data["expected_price"]
-        }
+        if prediction_type == "VOLATILITY":
+            return {
+                "contract_month": contract.lastTradeDateOrContractMonth[:6],
+                "prediction_type": "VOLATILITY",
+                "level": vol_level,  # "HIGH" or "LOW"
+                "direction": "VOLATILITY", # Needed for logging and to bypass order_manager skip
+                "reason": reason,
+                "regime": regime,
+                "volatility_sentiment": vol_sentiment,
+                "confidence": final_data["confidence"],
+                "price": ml_signal.get('price'),
+                "sma_200": ml_signal.get('sma_200'),
+                "expected_price": final_data["expected_price"]
+            }
+        else:
+            return {
+                "contract_month": contract.lastTradeDateOrContractMonth[:6],
+                "prediction_type": "DIRECTIONAL",
+                "direction": final_direction,
+                "reason": reason,
+                "regime": regime,
+                "volatility_sentiment": vol_sentiment,
+                "confidence": final_data["confidence"],
+                "price": ml_signal.get('price'),
+                "sma_200": ml_signal.get('sma_200'),
+                "expected_price": final_data["expected_price"]
+            }
 
     # 5. Execute for all contracts
     tasks = []
