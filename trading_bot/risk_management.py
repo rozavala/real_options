@@ -414,13 +414,13 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
     try:
         while True:
             try:
-                logging.info("P&L monitor cycle starting...")
+                logging.debug("P&L monitor cycle starting...")
                 # Always run check if we have valid thresholds, but also the loop logic depends on them being present?
                 if target_capture_pct or max_risk_loss_pct:
                     # Arguments are ignored inside _check_risk_once but required by signature
                     await _check_risk_once(ib, config, closed_ids, 0.0, 0.0)
 
-                logging.info(f"P&L monitor cycle complete. Waiting {interval} seconds.")
+                logging.debug(f"P&L monitor cycle complete. Waiting {interval} seconds.")
                 await asyncio.sleep(interval)
             except asyncio.CancelledError:
                 logging.info("P&L monitoring task was cancelled."); break
