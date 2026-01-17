@@ -5,6 +5,29 @@ import os
 
 logger = logging.getLogger(__name__)
 
+# MAPPING: If Agent A sees [Keyword], Trigger Agent B
+CROSS_CUE_RULES = {
+    'meteorologist': {
+        'drought': ['fundamentalist', 'volatility'],
+        'frost': ['fundamentalist', 'volatility', 'technical'],
+        'rain': ['fundamentalist'],
+    },
+    'macro': {
+        'inflation': ['sentiment', 'technical'],
+        'brl': ['fundamentalist', 'geopolitical'], # Brazilian Real
+        'fed': ['volatility', 'sentiment'],
+    },
+    'logistics': {
+        'strike': ['fundamentalist', 'geopolitical'],
+        'port': ['fundamentalist'],
+        'suez': ['volatility'],
+    },
+    'technical': {
+        'breakout': ['sentiment', 'volatility'],
+        'oversold': ['fundamentalist'],
+    }
+}
+
 class TransactiveMemory:
     """Shared memory system for cross-agent knowledge retrieval using Vector DB."""
 
@@ -28,6 +51,7 @@ class TransactiveMemory:
         if not self.collection: return
 
         try:
+            # 1. Standard storage
             doc_id = f"{agent}_{datetime.now(timezone.utc).isoformat()}"
             self.collection.add(
                 documents=[insight],
@@ -39,6 +63,12 @@ class TransactiveMemory:
                 ids=[doc_id]
             )
             logger.info(f"TMS: Stored insight from {agent}")
+
+            # 2. Check for Cross-Cues
+            cues = self.get_cross_cue_agents(agent, insight)
+            if cues:
+                logger.info(f"TMS: {agent} insight on '{insight[:20]}...' cues -> {cues}")
+
         except Exception as e:
             logger.error(f"TMS Encode failed: {e}")
 
@@ -58,33 +88,23 @@ class TransactiveMemory:
             logger.error(f"TMS Retrieve failed: {e}")
             return []
 
-    def get_cross_cue_agents(self, source_agent: str, insight: str) -> list:
-        """Determine which agents should be notified based on content."""
+    def get_cross_cue_agents(self, source_role: str, insight_text: str) -> list:
+        """
+        Analyzes an insight to see if it should trigger other agents.
+        Returns a list of AgentRoles that should be alerted.
+        """
+        triggered_roles = set()
+        insight_lower = insight_text.lower()
 
-        CROSS_CUE_RULES = {
-            'macro': {
-                'currency': ['geopolitical', 'inventory'],
-                'interest_rate': ['volatility'],
-                'inflation': ['supply_chain'],
-            },
-            'agronomist': {
-                'frost': ['volatility', 'supply_chain'],
-                'drought': ['inventory', 'supply_chain'],
-                'harvest': ['inventory', 'macro'],
-            },
-            'logistics': {
-                'port': ['inventory', 'geopolitical'],
-                'shipping': ['supply_chain'],
-                'strike': ['geopolitical', 'macro'],
-            },
-        }
+        # Look up the source agent's rules
+        # Handle role names (e.g. 'AgentRole.METEOROLOGIST' -> 'meteorologist')
+        simple_role = str(source_role).split('.')[-1].lower().replace('_sentinel', '').replace('_analyst', '')
 
-        triggered = []
-        rules = CROSS_CUE_RULES.get(source_agent, {})
+        rules = CROSS_CUE_RULES.get(simple_role, {})
 
-        insight_lower = insight.lower()
-        for keyword, agents in rules.items():
+        for keyword, targets in rules.items():
             if keyword in insight_lower:
-                triggered.extend(agents)
+                for target in targets:
+                    triggered_roles.add(target)
 
-        return list(set(triggered))
+        return list(triggered_roles)
