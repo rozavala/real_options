@@ -24,7 +24,7 @@ from trading_bot.ib_interface import (
 )
 from trading_bot.signal_generator import generate_signals
 from trading_bot.strategy import define_directional_strategy, define_volatility_strategy
-from trading_bot.utils import log_trade_to_ledger, log_order_event, configure_market_data_type
+from trading_bot.utils import log_trade_to_ledger, log_order_event, configure_market_data_type, is_market_open
 from trading_bot.compliance import ComplianceGuardian
 from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.position_sizer import DynamicPositionSizer
@@ -44,6 +44,11 @@ async def generate_and_execute_orders(config: dict):
     This ensures that order placement isn't skipped if generation takes
     longer than the gap between scheduled times.
     """
+    # === EARLY EXIT: Skip entirely on non-trading days ===
+    if not is_market_open():
+        logger.info("Market is closed (weekend/holiday). Skipping order generation cycle.")
+        return
+
     logger.info(">>> Starting combined task: Generate and Execute Orders <<<")
     await generate_and_queue_orders(config)
 

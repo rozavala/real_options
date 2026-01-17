@@ -185,6 +185,12 @@ async def log_stream(stream, logger_func):
 async def start_monitoring(config: dict):
     """Starts the `position_monitor.py` script as a background process."""
     global monitor_process
+
+    # === EARLY EXIT: Don't start monitor on non-trading days ===
+    if not is_market_open():
+        logger.info("Market is closed (weekend/holiday). Skipping position monitoring startup.")
+        return
+
     if monitor_process and monitor_process.returncode is None:
         logger.warning("Monitoring process is already running.")
         return
@@ -241,10 +247,22 @@ def get_next_task(now_utc: datetime, schedule: dict) -> tuple[datetime, callable
 
     The schedule keys are in NY Local Time.
     We calculate the corresponding UTC run time dynamically to handle DST.
+    Automatically skips weekends (Saturday/Sunday).
     """
     ny_tz = pytz.timezone('America/New_York')
     utc = pytz.UTC
     now_ny = now_utc.astimezone(ny_tz)
+
+    # === WEEKEND SKIP LOGIC ===
+    # If today is Saturday (5) or Sunday (6) in NY, advance to Monday
+    if now_ny.weekday() == 5:  # Saturday
+        days_to_monday = 2
+        now_ny = (now_ny + timedelta(days=days_to_monday)).replace(hour=0, minute=0, second=0, microsecond=0)
+        logger.info(f"Weekend detected (Saturday). Next trading day: Monday {now_ny.strftime('%Y-%m-%d')}")
+    elif now_ny.weekday() == 6:  # Sunday
+        days_to_monday = 1
+        now_ny = (now_ny + timedelta(days=days_to_monday)).replace(hour=0, minute=0, second=0, microsecond=0)
+        logger.info(f"Weekend detected (Sunday). Next trading day: Monday {now_ny.strftime('%Y-%m-%d')}")
 
     next_run_utc, next_task = None, None
 
@@ -265,6 +283,15 @@ def get_next_task(now_utc: datetime, schedule: dict) -> tuple[datetime, callable
         # If this time has passed in NY, move to tomorrow
         if candidate_ny <= now_ny:
              candidate_ny += timedelta(days=1)
+
+        # === CHECK IF CANDIDATE IS ON WEEKEND ===
+        # After potentially moving to tomorrow, check if we landed on a weekend
+        if candidate_ny.weekday() == 5:  # Saturday -> Move to Monday
+            candidate_ny += timedelta(days=2)
+            # logger.info(f"Task scheduled for Saturday moved to Monday {candidate_ny.strftime('%Y-%m-%d')}")
+        elif candidate_ny.weekday() == 6: # Sunday -> Move to Monday
+            candidate_ny += timedelta(days=1)
+            # logger.info(f"Task scheduled for Sunday moved to Monday {candidate_ny.strftime('%Y-%m-%d')}")
 
         # Convert to UTC
         candidate_utc = candidate_ny.astimezone(utc)
@@ -709,28 +736,33 @@ async def run_sentinels(config: dict):
                     GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
 
             # 2. Weather Sentinel (Every 4 hours = 14400s)
-            if now - last_weather > 14400:
-                trigger = await weather_sentinel.check()
-                if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
-                    asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                last_weather = now
+            # Only run weather/news sentinels on trading days (they queue triggers anyway)
+            ny_tz = pytz.timezone('America/New_York')
+            now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
 
-            # 3. Logistics Sentinel (Every 6 hours = 21600s)
-            if now - last_logistics > 21600:
-                trigger = await logistics_sentinel.check()
-                if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
-                    asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                last_logistics = now
+            if is_market_open() or now_ny.weekday() < 5:  # Mon-Fri or Market Open
+                if now - last_weather > 14400:
+                    trigger = await weather_sentinel.check()
+                    if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
+                        asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                        GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                    last_weather = now
 
-            # 4. News Sentinel (Every 1 hour = 3600s)
-            if now - last_news > 3600:
-                trigger = await news_sentinel.check()
-                if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
-                    asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                last_news = now
+                # 3. Logistics Sentinel (Every 6 hours = 21600s)
+                if now - last_logistics > 21600:
+                    trigger = await logistics_sentinel.check()
+                    if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
+                        asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                        GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                    last_logistics = now
+
+                # 4. News Sentinel (Every 1 hour = 3600s)
+                if now - last_news > 3600:
+                    trigger = await news_sentinel.check()
+                    if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
+                        asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                        GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                    last_news = now
 
             # 5. X Sentiment Sentinel (Every 30 mins = 1800s, Market Hours)
             if now - last_x_sentiment > 1800:
