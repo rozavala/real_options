@@ -36,7 +36,7 @@ from trading_bot.order_manager import (
 )
 from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
-from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, SentinelTrigger
+from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, SentinelTrigger
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
 from trading_bot.agents import CoffeeCouncil
 from trading_bot.ib_interface import get_active_futures, build_option_chain, create_combo_order_object, get_underlying_iv_metrics
@@ -644,7 +644,17 @@ async def run_sentinels(config: dict):
     weather_sentinel = WeatherSentinel(config)
     logistics_sentinel = LogisticsSentinel(config)
     news_sentinel = NewsSentinel(config)
+    x_sentinel = XSentimentSentinel(config)
     microstructure_sentinel = MicrostructureSentinel(config, sentinel_ib)
+
+    # X Sentinel Stats
+    x_sentinel_stats = {
+        'checks_today': 0,
+        'triggers_today': 0,
+        'estimated_tokens': 0,
+        'estimated_cost_usd': 0.0,
+        'last_reset': datetime.now().date()
+    }
 
     # Subscribe microstructure sentinel to front-month contract
     try:
@@ -658,6 +668,7 @@ async def run_sentinels(config: dict):
     last_weather = 0
     last_logistics = 0
     last_news = 0
+    last_x_sentiment = 0
 
     # Contract Cache
     cached_contract = None
@@ -721,7 +732,40 @@ async def run_sentinels(config: dict):
                     GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
                 last_news = now
 
-            # 5. Microstructure Sentinel (Every 1 min with Price Sentinel)
+            # 5. X Sentiment Sentinel (Every 30 mins = 1800s, Market Hours)
+            if now - last_x_sentiment > 1800:
+                if is_market_open():
+                    trigger = await x_sentinel.check()
+
+                    # Update Stats
+                    today = datetime.now().date()
+                    if today != x_sentinel_stats['last_reset']:
+                        logger.info(f"X Sentinel daily stats: {x_sentinel_stats}")
+                        x_sentinel_stats = {'checks_today': 0, 'triggers_today': 0,
+                                          'estimated_tokens': 0, 'estimated_cost_usd': 0.0,
+                                          'last_reset': today}
+
+                    x_sentinel_stats['checks_today'] += 1
+                    x_sentinel_stats['estimated_tokens'] += 3000
+                    # grok-4-1-fast-reasoning pricing: ~$5/1M input tokens
+                    x_sentinel_stats['estimated_cost_usd'] = (x_sentinel_stats['estimated_tokens'] * 5.0 / 1_000_000)
+
+                    if trigger:
+                        x_sentinel_stats['triggers_today'] += 1
+                        if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                            asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                            GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+
+                    if x_sentinel_stats['checks_today'] % 10 == 0:
+                        logger.info(
+                            f"X Sentinel today: {x_sentinel_stats['checks_today']} checks, "
+                            f"{x_sentinel_stats['triggers_today']} triggers, "
+                            f"~${x_sentinel_stats['estimated_cost_usd']:.2f}"
+                        )
+
+                    last_x_sentiment = now
+
+            # 6. Microstructure Sentinel (Every 1 min with Price Sentinel)
             if sentinel_ib.isConnected():
                 micro_trigger = await microstructure_sentinel.check()
                 if micro_trigger:
