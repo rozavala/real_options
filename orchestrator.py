@@ -343,7 +343,7 @@ async def process_deferred_triggers(config: dict):
             for t in deferred:
                 trigger = SentinelTrigger(t['source'], t['reason'], t['payload'])
                 await run_emergency_cycle(trigger, config, ib_conn)
-            await IBConnectionPool.release_connection("deferred")
+            # await IBConnectionPool.release_connection("deferred") - REMOVED: Managed by pool
         else:
             logger.info("No deferred triggers to process.")
     except Exception as e:
@@ -785,7 +785,10 @@ async def main():
         logger.critical("Orchestrator cannot start without a valid configuration."); return
     
     # Process deferred triggers from overnight - ONLY if market is open
-    await process_deferred_triggers(config)
+    if is_market_open():
+        await process_deferred_triggers(config)
+    else:
+        logger.info("Market Closed. Deferred triggers will remain queued.")
 
     env_name = os.getenv("ENV_NAME", "DEV") 
     is_prod = env_name == "PROD 🚀"

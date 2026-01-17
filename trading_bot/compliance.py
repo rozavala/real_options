@@ -178,21 +178,6 @@ class ComplianceGuardian:
             # Fail closed
             return False, f"Compliance Error: {e}"
 
-    async def audit_decision(self, reports: dict, market_context: str, decision: dict, master_persona: str) -> dict:
-        """
-        Audits the Master Strategist's decision against the reports to prevent hallucinations (Signal Generation Stage).
-        """
-        # NEW: Concentration Check (Programmatic)
-        # We need IB instance. It's not passed here?
-        # run_emergency_cycle calls audit_decision. It doesn't pass 'ib'.
-        # Wait, I need to update audit_decision signature or use a global?
-        # No, better to update the signature in compliance.py AND the caller in orchestrator.py.
-        # But 'audit_decision' is public API of this class.
-        # Check if 'run_emergency_cycle' has 'ib'. Yes.
-        # I will update signature of 'audit_decision' to accept optional 'ib'.
-        # However, I should check existing usages.
-        pass
-
     async def audit_decision(self, reports: dict, market_context: str, decision: dict, master_persona: str, ib=None) -> dict:
         """
         Audits the Master Strategist's decision.
