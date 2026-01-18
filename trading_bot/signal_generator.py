@@ -139,6 +139,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
             }
 
         agent_data = {} # Initialize outside try/except to avoid UnboundLocalError
+        regime_for_voting = 'UNKNOWN' # Initialize here to avoid scope issues
+
         async with sem:
             try:
                 logger.info(f"Convening Council for {contract_name}...")
@@ -420,6 +422,11 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         match = re.search(r'\[SENTIMENT: (\w+)\]', text)
                         return match.group(1) if match else "N/A"
 
+                    # Initialize logging variables early to prevent UnboundLocalError
+                    prediction_type_log = "DIRECTIONAL"
+                    vol_level_log = None
+                    strategy_type_log = "NONE"
+
                     # Store structured data for logging
                     agent_data = {}
                     for key, report in reports.items():
@@ -438,11 +445,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                     # Moved inside logging block to capture state for DB
                     final_direction_log = final_data["action"]
                     vol_sentiment_log = agent_data.get('volatility_sentiment', 'NEUTRAL')
-                    regime_log = regime_for_voting if 'regime_for_voting' in locals() else ml_signal.get('regime', 'UNKNOWN')
-
-                    prediction_type_log = "DIRECTIONAL"
-                    vol_level_log = None
-                    strategy_type_log = "NONE"
+                    regime_log = regime_for_voting if regime_for_voting != 'UNKNOWN' else ml_signal.get('regime', 'UNKNOWN')
 
                     if final_direction_log == 'NEUTRAL':
                         agent_conflict_score_log = _calculate_agent_conflict(agent_data)
@@ -470,6 +473,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         "ml_confidence": ml_signal.get('confidence'),
 
                         # Unpack agent data (FULL TEXT, NO TRUNCATION)
+                        # NOTE: Agent keys map to UI-friendly names
+                        # agronomist (weather analyst) -> meteorologist (dashboard display)
                         "meteorologist_sentiment": agent_data.get("agronomist_sentiment"),
                         "meteorologist_summary": agent_data.get("agronomist_summary"),
 
@@ -523,7 +528,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
         final_direction = final_data["action"]
         vol_sentiment = agent_data.get('volatility_sentiment', 'NEUTRAL')
         # Use regime_for_voting calculated earlier if available, else ML signal fallback
-        regime = regime_for_voting if 'regime_for_voting' in locals() else ml_signal.get('regime', 'UNKNOWN')
+        regime = regime_for_voting if regime_for_voting != 'UNKNOWN' else ml_signal.get('regime', 'UNKNOWN')
 
         prediction_type = "DIRECTIONAL"
         vol_level = None
