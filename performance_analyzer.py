@@ -36,7 +36,7 @@ def get_trade_ledger_df():
         logger.info(f"Loading main trade ledger: {os.path.basename(ledger_path)}")
         dataframes.append(pd.read_csv(ledger_path))
     else:
-        logger.warning("Main trade_ledger.csv not found.")
+        logger.debug("Main trade_ledger.csv not found. This is normal for new installations.")
 
     if os.path.exists(archive_dir):
         archive_files = [os.path.join(archive_dir, f) for f in os.listdir(archive_dir) if f.startswith('trade_ledger_') and f.endswith('.csv')]

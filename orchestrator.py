@@ -871,8 +871,9 @@ async def main():
 
     current_schedule = schedule
     if not is_prod:
-        logger.info(f"Environment: {env_name}. Applying -5 minute 'Civil War' avoidance offset.")
-        current_schedule = apply_schedule_offset(schedule, offset_minutes=-10)
+        schedule_offset_minutes = -10
+        logger.info(f"Environment: {env_name}. Applying {schedule_offset_minutes} minute 'Civil War' avoidance offset.")
+        current_schedule = apply_schedule_offset(schedule, offset_minutes=schedule_offset_minutes)
     else:
         logger.info("Environment: PROD 🚀. Using standard master schedule.")
 
