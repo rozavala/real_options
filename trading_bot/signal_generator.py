@@ -295,6 +295,18 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 # Append weighted voting result to context
                 market_context_str += weighted_context
 
+                # === INJECT SENSOR STATUS ===
+                # Check X Sentiment status from StateManager
+                try:
+                    sensor_state = StateManager.load_state("sensors", max_age=3600)
+                    x_status = sensor_state.get("x_sentiment", {})
+                    # Handle both dict and potential stale string
+                    if isinstance(x_status, dict) and x_status.get("sentiment_sensor_status") == "OFFLINE":
+                        market_context_str += "\n\n⚠️ WARNING: X Sentiment Sensor is OFFLINE. " \
+                                              "Do not hallucinate sentiment. Treat social sentiment as UNKNOWN."
+                except Exception as e:
+                    logger.warning(f"Failed to check sensor status: {e}")
+
                 # Call decided (which now includes the Hegelian Loop)
                 decision = await council.decide(contract_name, ml_signal, reports, market_context_str)
 

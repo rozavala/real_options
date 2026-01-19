@@ -121,6 +121,46 @@ class BrierScoreTracker:
         except Exception as e:
             logger.error(f"Failed to record structured prediction: {e}")
 
+    def get_calibration_curve(self, agent: str) -> dict:
+        """Return accuracy at each confidence bucket for calibration."""
+        structured_file = self.history_file.replace(".csv", "_structured.csv")
+        if not os.path.exists(structured_file):
+            return {}
+
+        try:
+            df = pd.read_csv(structured_file)
+            if df.empty or agent not in df['agent'].values:
+                return {}
+
+            agent_df = df[df['agent'] == agent].copy()
+
+            # Simple binary correctness check (assuming 'actual' is direction)
+            # This is complex if actual is 'PENDING'. Filter for resolved.
+            # Assuming external process updates 'actual' or we have a way to know.
+            # For now, just bucket confidence if we have correctness data.
+            # If the file only stores 'PENDING', we can't build a curve.
+            # Assuming 'reconcile_council_history' updates this file (it updates agent_accuracy.csv).
+            # If structured file is new, it might be empty of results.
+            # We'll implement the logic assuming data exists.
+
+            # Bucket by confidence
+            # Bins: 0.5-0.6, 0.6-0.7, 0.7-0.8, 0.8-0.9, 0.9-1.0
+            agent_df['conf_bucket'] = pd.cut(agent_df['confidence'], bins=[0.0, 0.6, 0.7, 0.8, 0.9, 1.0])
+
+            # We need a 'correct' column. If not present (legacy), skip.
+            if 'correct' not in agent_df.columns:
+                return {}
+
+            calibration = agent_df.groupby('conf_bucket')['correct'].agg(['mean', 'count']).to_dict('index')
+            # Result: {Interval(0.6, 0.7, closed='right'): {'mean': 0.65, 'count': 10}, ...}
+
+            # Convert Interval keys to string for JSON serialization/easier handling
+            return {str(k): v for k, v in calibration.items()}
+
+        except Exception as e:
+            logger.error(f"Failed to get calibration curve: {e}")
+            return {}
+
     def get_agent_weight_multiplier(self, agent: str, base_weight: float = 1.0) -> float:
         """Get accuracy-adjusted weight multiplier for agent."""
         if agent not in self.scores:
