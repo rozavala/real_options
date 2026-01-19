@@ -1,128 +1,63 @@
-2026-01-19 18:16:39.635004: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
-2026-01-19 18:16:39.771907: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+2026-01-19 18:45:59.415762: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+2026-01-19 18:45:59.485989: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
 To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
-2026-01-19 18:16:43.083680: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
-2026-01-19 18:16:47,704 - Orchestrator - INFO - =============================================
-2026-01-19 18:16:47,704 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-01-19 18:16:47,705 - Orchestrator - INFO - =============================================
-2026-01-19 18:16:47,722 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-01-19 18:16:47,722 - Orchestrator - INFO - No deferred triggers to process.
-2026-01-19 18:16:47,722 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-01-19 18:16:47,723 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-01-19 18:20:00 UTC. Waiting for 0.05 hours.
-2026-01-19 18:16:47,723 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-01-19 18:16:47,724 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 101...
-2026-01-19 18:17:17,755 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:17:17,755 - Orchestrator - ERROR - Sentinel IB Connection Failed: 
-2026-01-19 18:17:18,158 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-01-19 18:17:18,158 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
-2026-01-19 18:17:18,159 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 101...
-2026-01-19 18:17:48,190 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:17:48,190 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
-2026-01-19 18:17:48,190 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-01-19 18:17:48,191 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 200...
-2026-01-19 18:18:18,222 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:18:18,223 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
-2026-01-19 18:18:20,170 - trading_bot.sentinels - WARNING - WEATHER SENTINEL TRIGGERED: Drought Risk in Dak Lak (Vietnam): 10 days with < 5.0mm rain
-2026-01-19 18:18:20,170 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-01-19 18:32:25.050858. Skipping WeatherSentinel
-2026-01-19 18:18:24,958 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-19 18:18:24,972 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'coffee frost Brazil'
-2026-01-19 18:18:25,217 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-19 18:18:25,219 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'arabica prices'
-2026-01-19 18:18:25,367 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-19 18:18:25,369 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'KC futures'
-2026-01-19 18:18:25,772 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-19 18:18:25,773 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'Santos port coffee'
-2026-01-19 18:18:25,830 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-19 18:18:25,831 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'Colombia coffee'
-2026-01-19 18:18:25,953 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-19 18:18:25,954 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'robusta coffee'
-2026-01-19 18:18:26,286 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-19 18:18:26,288 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'ICE coffee warehouse'
-2026-01-19 18:18:26,830 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-19 18:18:26,832 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'Vietnam robusta'
-2026-01-19 18:18:27,099 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-19 18:18:27,101 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'coffee supply chain'
-2026-01-19 18:18:27,435 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-19 18:18:27,437 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'Brazil coffee harvest'
-2026-01-19 18:18:27,554 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-19 18:18:27,556 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'CFTC coffee positioning'
-2026-01-19 18:18:27,838 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-19 18:18:27,839 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'coffee futures'
-2026-01-19 18:19:27,903 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
-2026-01-19 18:19:27,904 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 101...
-2026-01-19 18:19:57,926 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:19:57,927 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
-2026-01-19 18:19:57,927 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-01-19 18:19:57,927 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 200...
-2026-01-19 18:20:00,001 - Orchestrator - INFO - --- Running scheduled task: close_stale_positions ---
-2026-01-19 18:20:00,002 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
-2026-01-19 18:20:00,003 - trading_bot.connection_pool - INFO - Connecting IB (order_manager) ID: 104...
-2026-01-19 18:20:27,945 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:20:27,946 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
-2026-01-19 18:20:30,006 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:20:30,012 - OrderManager - CRITICAL - A critical error occurred while closing positions: 
-Traceback (most recent call last):
-  File "/usr/lib/python3.12/asyncio/tasks.py", line 520, in wait_for
-    return await fut
-           ^^^^^^^^^
-asyncio.exceptions.CancelledError
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/home/rodrigo/real_options/trading_bot/order_manager.py", line 1056, in close_stale_positions
-    ib = await IBConnectionPool.get_connection("order_manager", config)
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/rodrigo/real_options/trading_bot/connection_pool.py", line 47, in get_connection
-    await ib.connectAsync(
-  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py", line 1748, in connectAsync
-    await self.client.connectAsync(host, port, clientId, timeout)
-  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/client.py", line 217, in connectAsync
-    await asyncio.wait_for(self.apiStart, timeout)
-  File "/usr/lib/python3.12/asyncio/tasks.py", line 519, in wait_for
-    async with timeouts.timeout(timeout):
-  File "/usr/lib/python3.12/asyncio/timeouts.py", line 115, in __aexit__
-    raise TimeoutError from exc_val
-TimeoutError
-
-2026-01-19 18:20:30,324 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-19 18:20:30,543 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-19 18:20:30,545 - Orchestrator - INFO - Next task 'cancel_and_stop_monitoring' scheduled for 2026-01-19 18:35:00 UTC. Waiting for 0.24 hours.
-2026-01-19 18:21:28,002 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
-2026-01-19 18:21:28,003 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 101...
-2026-01-19 18:21:58,028 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:21:58,028 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
-2026-01-19 18:21:58,028 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-01-19 18:21:58,030 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 200...
-2026-01-19 18:22:28,054 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:22:28,054 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
-2026-01-19 18:23:28,114 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
-2026-01-19 18:23:28,115 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 101...
-2026-01-19 18:23:58,117 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:23:58,119 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
-2026-01-19 18:23:58,120 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-01-19 18:23:58,120 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 200...
-2026-01-19 18:24:28,152 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:24:28,152 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
-2026-01-19 18:25:28,173 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
-2026-01-19 18:25:28,173 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 101...
-2026-01-19 18:25:58,179 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:25:58,179 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
-2026-01-19 18:25:58,179 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-01-19 18:25:58,179 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 200...
-2026-01-19 18:26:28,204 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:26:28,204 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
-2026-01-19 18:27:28,261 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
-2026-01-19 18:27:28,262 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 101...
-2026-01-19 18:27:58,290 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:27:58,291 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
-2026-01-19 18:27:58,291 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-01-19 18:27:58,291 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 200...
-2026-01-19 18:28:28,318 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:28:28,318 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
-2026-01-19 18:29:28,378 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
-2026-01-19 18:29:28,379 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 101...
-2026-01-19 18:29:58,405 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-01-19 18:29:58,406 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
-2026-01-19 18:29:58,406 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-01-19 18:29:58,406 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 200...
+2026-01-19 18:46:02.461362: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+2026-01-19 18:46:06,276 - Orchestrator - INFO - =============================================
+2026-01-19 18:46:06,277 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-01-19 18:46:06,277 - Orchestrator - INFO - =============================================
+2026-01-19 18:46:06,302 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-01-19 18:46:06,303 - Orchestrator - INFO - No deferred triggers to process.
+2026-01-19 18:46:06,303 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-01-19 18:46:06,303 - Orchestrator - INFO - Next task 'log_equity_snapshot' scheduled for 2026-01-19 18:55:00 UTC. Waiting for 0.15 hours.
+2026-01-19 18:46:06,303 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-01-19 18:46:06,304 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 101...
+2026-01-19 18:46:36,324 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-19 18:46:36,324 - Orchestrator - ERROR - Sentinel IB Connection Failed: 
+2026-01-19 18:46:37,009 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-01-19 18:46:37,010 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-19 18:46:37,010 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 101...
+2026-01-19 18:47:07,038 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-19 18:47:07,038 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
+2026-01-19 18:47:07,038 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-01-19 18:47:07,039 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 200...
+2026-01-19 18:47:37,049 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-19 18:47:37,049 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
+2026-01-19 18:47:38,929 - trading_bot.sentinels - WARNING - WEATHER SENTINEL TRIGGERED: Drought Risk in Dak Lak (Vietnam): 10 days with < 5.0mm rain
+2026-01-19 18:47:38,938 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-01-19 18:47:38,938 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: Drought Risk in Dak Lak (Vietnam): 10 days with < 5.0mm rain
+2026-01-19 18:47:39,249 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-19 18:47:39,273 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-01-19 18:47:39,364 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-19 18:47:39,471 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-19 18:47:39,471 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'openai', 'anthropic', 'xai']
+2026-01-19 18:47:39,471 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'openai', 'anthropic', 'xai'], 'diversity_score': 1.0}
+2026-01-19 18:47:39,476 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-19 18:47:39,476 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-01-19 18:47:39,476 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-01-19 18:47:39,477 - root - ERROR - Error fetching active futures: Not connected
+2026-01-19 18:47:39,477 - Orchestrator - ERROR - No active futures found for emergency cycle.
+2026-01-19 18:47:39,477 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-19 18:47:46,294 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-19 18:47:46,303 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'coffee supply chain'
+2026-01-19 18:47:46,575 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-19 18:47:46,576 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'coffee frost Brazil'
+2026-01-19 18:47:46,593 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-19 18:47:46,595 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'robusta coffee'
+2026-01-19 18:47:46,896 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-19 18:47:46,897 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'Santos port coffee'
+2026-01-19 18:47:46,969 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-19 18:47:46,970 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'ICE coffee warehouse'
+2026-01-19 18:47:47,314 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-19 18:47:47,315 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'arabica prices'
+2026-01-19 18:47:47,701 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-19 18:47:47,703 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'Colombia coffee'
+2026-01-19 18:47:47,724 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-19 18:47:47,725 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'coffee futures'
+2026-01-19 18:47:48,262 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-19 18:47:48,263 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'Brazil coffee harvest'
+2026-01-19 18:47:48,548 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-19 18:47:48,550 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'KC futures'
+2026-01-19 18:47:48,577 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-19 18:47:48,580 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'CFTC coffee positioning'
+2026-01-19 18:47:51,186 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-19 18:47:51,187 - trading_bot.sentinels - WARNING - Empty response from Grok for query 'Vietnam robusta'
