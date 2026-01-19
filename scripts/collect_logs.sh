@@ -218,38 +218,6 @@ else
     } > "$DEST_DIR/system_snapshot.txt"
 fi
 
-# === LOG SUMMARY ===
-echo "Creating log summary..."
-{
-    echo "=== LOG SUMMARY FOR $ENV_NAME ==="
-    echo "Generated: $(date)"
-    echo ""
-    
-    # Orchestrator log summary
-    if [ -f "$REPO_DIR/logs/orchestrator.log" ]; then
-        echo "=== ORCHESTRATOR LOG (Last 50 lines) ==="
-        tail -50 "$REPO_DIR/logs/orchestrator.log"
-        echo ""
-    fi
-    
-    # Dashboard log summary
-    if [ -f "$REPO_DIR/logs/dashboard.log" ]; then
-        echo "=== DASHBOARD LOG (Last 50 lines) ==="
-        tail -50 "$REPO_DIR/logs/dashboard.log"
-        echo ""
-    fi
-    
-    # Any other .log files
-    for logfile in "$REPO_DIR/logs"/*.log; do
-        if [ -f "$logfile" ] && [[ "$logfile" != *"orchestrator.log" ]] && [[ "$logfile" != *"dashboard.log" ]]; then
-            filename=$(basename "$logfile")
-            echo "=== ${filename^^} (Last 20 lines) ==="
-            tail -20 "$logfile"
-            echo ""
-        fi
-    done
-} > "$DEST_DIR/log_summary.txt"
-
 # Keep the placeholder so the folder exists even if empty
 touch "$DEST_DIR/.keep"
 
