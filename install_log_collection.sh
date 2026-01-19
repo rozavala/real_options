@@ -46,6 +46,22 @@ echo "Repository: $REPO_DIR"
 echo "Branch: $BRANCH"
 echo "=========================="
 
+# 1. CAPTURE ORIGINAL BRANCH (Fix for Bug #1)
+# We must do this BEFORE we switch branches
+cd "$REPO_DIR" || exit
+ORIGINAL_BRANCH=$(git branch --show-current)
+
+if [ -z "$ORIGINAL_BRANCH" ]; then
+    echo "⚠️  Could not detect current branch, defaulting to 'main'"
+    ORIGINAL_BRANCH="main"
+fi
+echo "📍 Starting from branch: $ORIGINAL_BRANCH"
+
+# 2. MEMORY SAFETY (Fix for Bug #2)
+# Prevent Git from using too much RAM during operations on the 4GB droplet
+git config pack.windowMemory 512m
+git config pack.threads 1
+
 # 1. Go to repo and get the latest logs branch state
 cd "$REPO_DIR" || exit
 git fetch origin $BRANCH 2>/dev/null || echo "Creating new logs branch..."
@@ -268,6 +284,10 @@ touch "$DEST_DIR/.keep"
 git add "$DEST_DIR"
 git commit -m "Snapshot $ENV_NAME: $(date +'%Y-%m-%d %H:%M')"
 git push origin $BRANCH
+
+# 4. CRITICAL: SWITCH BACK TO ORIGINAL BRANCH
+echo "Switching back to original branch: $ORIGINAL_BRANCH"
+git checkout "$ORIGINAL_BRANCH"
 
 echo "✅ Successfully collected and pushed logs for $ENV_NAME"
 echo "📁 Files included in snapshot:"
