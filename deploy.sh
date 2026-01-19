@@ -18,10 +18,10 @@ echo "--- 2. Rotating logs... ---"
 mkdir -p ~/real_options/logs
 
 # Backup Orchestrator Log if it exists
-mv ~/real_options/logs/orchestrator.log ~/real_options/logs/orchestrator-$(date --iso=s).log || true
+[ -f ~/real_options/logs/orchestrator.log ] && mv ~/real_options/logs/orchestrator.log ~/real_options/logs/orchestrator-$(date --iso=s).log || true
 
 # Backup Dashboard Log
-mv ~/real_options/logs/dashboard.log ~/real_options/logs/dashboard-$(date --iso=s).log || true
+[ -f ~/real_options/logs/dashboard.log ] && mv ~/real_options/logs/dashboard.log ~/real_options/logs/dashboard-$(date --iso=s).log || true
 
 echo "--- 3. Activating virtual environment... ---"
 # OLD: source ~/Desktop/ib_env/bin/activate
