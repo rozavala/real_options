@@ -585,6 +585,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 "price": ml_signal.get('price'),
                 "sma_200": ml_signal.get('sma_200'),
                 "expected_price": final_data["expected_price"],
+                "predicted_return": ml_signal.get('predicted_return'),
                 "_agent_reports": reports
             }
         else:
@@ -599,6 +600,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 "price": ml_signal.get('price'),
                 "sma_200": ml_signal.get('sma_200'),
                 "expected_price": final_data["expected_price"],
+                "predicted_return": ml_signal.get('predicted_return'),
                 "_agent_reports": reports
             }
 
@@ -652,7 +654,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
             price=sig.get('price'),
             sma_200=sig.get('sma_200'),
             expected_price=sig.get('expected_price'),
-            confidence=sig.get('confidence')
+            confidence=sig.get('confidence'),
+            predicted_return=sig.get('predicted_return')
         )
 
     return final_signals_list

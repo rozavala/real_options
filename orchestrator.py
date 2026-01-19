@@ -35,7 +35,7 @@ from trading_bot.order_manager import (
     ORDER_QUEUE,
     get_trade_ledger_df
 )
-from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open
+from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, SentinelTrigger
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
@@ -1132,6 +1132,7 @@ async def run_sentinels(config: dict):
         try:
             now = time_module.time()
             market_open = is_market_open()
+            trading_day = is_trading_day()
 
             # --- Auto-Reconnect for Zombie Sentinel Risk ---
             if not sentinel_ib.isConnected():
@@ -1204,10 +1205,7 @@ async def run_sentinels(config: dict):
 
             # 2. Weather Sentinel (Every 4 hours = 14400s)
             # Only run weather/news sentinels on trading days (they queue triggers anyway)
-            ny_tz = pytz.timezone('America/New_York')
-            now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
-
-            if is_market_open() or now_ny.weekday() < 5:  # Mon-Fri or Market Open
+            if trading_day:
                 if now - last_weather > 14400:
                     trigger = await weather_sentinel.check()
                     if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):

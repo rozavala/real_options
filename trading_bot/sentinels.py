@@ -934,10 +934,15 @@ If the x_search tool returns no results or errors, provide neutral sentiment wit
         ENHANCEMENT: Parallel execution reduces latency from ~15s to ~3s.
         """
         # === MARKET HOURS GATE (Cost Optimization) ===
-        from trading_bot.utils import is_market_open
+        from trading_bot.utils import is_market_open, is_trading_day
+
+        if not is_trading_day():
+            # Complete holiday/weekend - skip entirely
+            logger.debug("Non-trading day - skipping X sentiment check")
+            return None
 
         if not is_market_open():
-            # During closed hours, only check every 4 hours for pre-market signals
+            # Trading day but outside hours - reduced frequency
             if not hasattr(self, '_last_closed_market_check'):
                 self._last_closed_market_check = None
 

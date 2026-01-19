@@ -7,7 +7,15 @@ logger = logging.getLogger(__name__)
 
 SIGNALS_FILE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'model_signals.csv'))
 
-def log_model_signal(contract: str, signal: str, price: float = None, sma_200: float = None, expected_price: float = None, confidence: float = None):
+def log_model_signal(
+    contract: str,
+    signal: str,
+    price: float = None,
+    sma_200: float = None,
+    expected_price: float = None,
+    confidence: float = None,
+    predicted_return: float = None  # NEW PARAMETER
+):
     """
     Logs a model signal to the model_signals.csv file.
 
@@ -18,6 +26,7 @@ def log_model_signal(contract: str, signal: str, price: float = None, sma_200: f
         sma_200 (float, optional): The 200-day SMA.
         expected_price (float, optional): The expected price from the prediction.
         confidence (float, optional): The confidence of the prediction.
+        predicted_return (float, optional): The raw predicted return from ML model.
     """
     try:
         # Clamp confidence if present
@@ -31,7 +40,8 @@ def log_model_signal(contract: str, signal: str, price: float = None, sma_200: f
             'price': [price],
             'sma_200': [sma_200],
             'expected_price': [expected_price],
-            'confidence': [confidence]
+            'confidence': [confidence],
+            'predicted_return': [predicted_return]  # NEW COLUMN
         })
 
         if not os.path.exists(SIGNALS_FILE_PATH):
