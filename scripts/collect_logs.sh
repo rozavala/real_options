@@ -242,6 +242,10 @@ git add "$DEST_DIR"
 git commit -m "Snapshot $ENV_NAME: $(date +'%Y-%m-%d %H:%M')"
 git push origin $BRANCH
 
+# 4. CRITICAL: SWITCH BACK TO ORIGINAL BRANCH
+echo "Switching back to original branch: $ORIGINAL_BRANCH"
+git checkout "$ORIGINAL_BRANCH"
+
 echo "✅ Successfully collected and pushed logs for $ENV_NAME"
 echo "📁 Files included in snapshot:"
 echo "   - logs/orchestrator.log and logs/dashboard.log (current only)"
