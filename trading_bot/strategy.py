@@ -106,6 +106,27 @@ def define_directional_strategy(config: dict, signal: dict, chain: dict, underly
     }
 
 
+def validate_iron_condor_risk(
+    max_loss_per_position: float,
+    account_equity: float,
+    max_risk_pct: float = 0.02  # 2% of equity max
+) -> bool:
+    """
+    Validates that Iron Condor max loss is within acceptable bounds.
+    The wings ARE the catastrophe protection - we just need proper sizing.
+    """
+    max_acceptable_loss = account_equity * max_risk_pct
+
+    if max_loss_per_position > max_acceptable_loss:
+        logging.warning(
+            f"Iron Condor max loss ${max_loss_per_position:.2f} exceeds "
+            f"{max_risk_pct:.0%} of equity (${max_acceptable_loss:.2f}). Reducing size or rejecting."
+        )
+        return False
+
+    return True
+
+
 def define_volatility_strategy(config: dict, signal: dict, chain: dict, underlying_price: float, future_contract: Contract) -> dict | None:
     """Constructs the definition for a volatility-based option strategy.
 

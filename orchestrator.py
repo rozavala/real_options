@@ -19,7 +19,7 @@ from collections import deque
 import time as time_module
 from datetime import datetime, time, timedelta, timezone
 import pytz
-from ib_insync import IB, util
+from ib_insync import IB, util, Contract, MarketOrder
 
 from config_loader import load_config
 from trading_bot.logging_config import setup_logging
@@ -32,20 +32,25 @@ from trading_bot.order_manager import (
     close_stale_positions,
     cancel_all_open_orders,
     place_queued_orders,
-    ORDER_QUEUE
+    ORDER_QUEUE,
+    get_trade_ledger_df
 )
 from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, SentinelTrigger
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
 from trading_bot.agents import CoffeeCouncil
-from trading_bot.ib_interface import get_active_futures, build_option_chain, create_combo_order_object, get_underlying_iv_metrics
+from trading_bot.ib_interface import (
+    get_active_futures, build_option_chain, create_combo_order_object, get_underlying_iv_metrics,
+    place_order, close_spread_with_protection_cleanup
+)
 from trading_bot.strategy import define_directional_strategy
 from trading_bot.state_manager import StateManager
 from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.compliance import ComplianceGuardian
 from trading_bot.position_sizer import DynamicPositionSizer
 from trading_bot.brier_scoring import get_brier_tracker
+from trading_bot.tms import TransactiveMemory
 
 # --- Logging Setup ---
 setup_logging()
@@ -170,6 +175,270 @@ GLOBAL_DEDUPLICATOR = TriggerDeduplicator()
 
 # Concurrent Cycle Lock (Global)
 EMERGENCY_LOCK = asyncio.Lock()
+
+
+async def _get_current_regime(ib: IB, config: dict) -> str:
+    """Estimates the current market regime based on simple VIX/Price metrics."""
+    # Simplified placeholder logic - ideally fetch from Volatility Agent or State
+    # Here we check IV Rank of the front month
+    try:
+        futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=1)
+        if futures:
+            metrics = await get_underlying_iv_metrics(ib, futures[0])
+            iv_rank = metrics.get('iv_rank', 50)
+            if isinstance(iv_rank, str): iv_rank = 50 # Fallback
+            if iv_rank > 70:
+                return 'HIGH_VOLATILITY'
+            elif iv_rank < 30:
+                return 'RANGE_BOUND'
+    except Exception:
+        pass
+    return 'TRENDING' # Default
+
+async def _get_current_price(ib: IB, contract: Contract) -> float:
+    """Fetches current price snapshot."""
+    ticker = ib.reqMktData(contract, '', True, False)
+    await asyncio.sleep(1)
+    price = 0.0
+    if not util.isNan(ticker.last): price = ticker.last
+    elif not util.isNan(ticker.close): price = ticker.close
+    ib.cancelMktData(contract)
+    return price
+
+async def _get_context_for_guardian(guardian: str, config: dict) -> str:
+    """Fetches relevant context (news/weather) for a specific guardian."""
+    # Simplified: Returns recent sentinel alerts or agent memory
+    # In a full impl, query the specific agent's memory
+    tms = TransactiveMemory()
+    return f"Context for {guardian}: " + str(tms.retrieve(f"{guardian} context", n_results=3))
+
+async def _validate_thesis(thesis: dict, position, council, config: dict, ib: IB) -> dict:
+    """
+    Validates if a trade thesis still holds given current market conditions.
+
+    Uses the Permabear/Permabull debate structure to stress-test the position.
+
+    Returns:
+        dict with 'action' ('HOLD', 'CLOSE', 'PRESS') and 'reason'
+    """
+    strategy_type = thesis.get('strategy_type', 'UNKNOWN')
+    guardian = thesis.get('guardian_agent', 'Master')
+
+    # A. REGIME-BASED VALIDATION (Iron Condor / Long Straddle)
+    if strategy_type == 'IRON_CONDOR':
+        # Get current regime
+        current_regime = await _get_current_regime(ib, config)
+        entry_regime = thesis.get('entry_regime', 'RANGE_BOUND')
+
+        if current_regime == 'HIGH_VOLATILITY' and entry_regime == 'RANGE_BOUND':
+            return {
+                'action': 'CLOSE',
+                'reason': f"REGIME BREACH: Entered as RANGE_BOUND, now HIGH_VOLATILITY. Iron Condor invalid."
+            }
+
+        # Check price breach
+        entry_price = thesis.get('supporting_data', {}).get('entry_price', 0)
+        if entry_price:
+            current_price = await _get_current_price(ib, position.contract)
+            if current_price > 0:
+                move_pct = abs((current_price - entry_price) / entry_price) * 100
+                if move_pct > 2.0:
+                    return {
+                        'action': 'CLOSE',
+                        'reason': f"GAMMA BREACH: Price moved {move_pct:.1f}% since entry. Condor structurally compromised."
+                    }
+
+    elif strategy_type == 'LONG_STRADDLE':
+        # Check theta efficiency
+        entry_time_str = thesis.get('entry_timestamp', '')
+        if entry_time_str:
+            entry_time = datetime.fromisoformat(entry_time_str)
+            hours_held = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600
+
+            # If held > 4 hours with minimal movement, consider closing
+            if hours_held > 4:
+                entry_price = thesis.get('supporting_data', {}).get('entry_price', 0)
+                if entry_price:
+                    current_price = await _get_current_price(ib, position.contract)
+                    if current_price > 0:
+                        move_pct = abs((current_price - entry_price) / entry_price) * 100
+
+                        # Theta hurdle: should have moved at least 1% to justify theta burn
+                        if move_pct < 1.0:
+                            return {
+                                'action': 'CLOSE',
+                                'reason': f"THETA BURN: {hours_held:.1f}h elapsed, only {move_pct:.2f}% move. Salvage residual value."
+                            }
+
+    # B. NARRATIVE-BASED VALIDATION (Directional Spreads)
+    elif strategy_type in ['BULL_CALL_SPREAD', 'BEAR_PUT_SPREAD']:
+        # Query the guardian agent for thesis validity
+        primary_rationale = thesis.get('primary_rationale', '')
+        invalidation_triggers = thesis.get('invalidation_triggers', [])
+
+        # Get current sentinel data relevant to this thesis
+        current_context = await _get_context_for_guardian(guardian, config)
+
+        # Permabear Attack prompt
+        attack_prompt = f"""You are stress-testing an existing position.
+
+POSITION: {strategy_type}
+ORIGINAL THESIS: {primary_rationale}
+KNOWN INVALIDATION TRIGGERS: {invalidation_triggers}
+
+CURRENT MARKET CONTEXT:
+{current_context}
+
+QUESTION: Does the original thesis STILL HOLD?
+- If ANY invalidation trigger has fired, return CLOSE.
+- If the thesis is weakening but not dead, return HOLD with concerns.
+- Be aggressive - we'd rather close early than ride a dead thesis.
+
+Return JSON: {{"verdict": "HOLD" or "CLOSE", "confidence": 0.0-1.0, "reasoning": "..."}}
+"""
+        # Note: calling router directly requires accessing it from council or passing router
+        if hasattr(council, 'router'):
+            verdict_response = await council.router.route_and_call(
+                model_key='permabear', # Use permabear model
+                prompt=attack_prompt,
+                response_model=None # Expecting JSON string or use strict mode if available
+            )
+
+            try:
+                # Clean up response if needed (remove markdown)
+                clean_response = verdict_response.replace('```json', '').replace('```', '')
+                verdict_data = json.loads(clean_response)
+                if verdict_data.get('verdict') == 'CLOSE' and verdict_data.get('confidence', 0) > 0.6:
+                    return {
+                        'action': 'CLOSE',
+                        'reason': f"NARRATIVE INVALIDATION: {verdict_data.get('reasoning', 'Thesis degraded')}"
+                    }
+            except Exception as e:
+                logger.warning(f"Could not parse thesis validation response: {e}")
+
+    # Default: HOLD
+    return {'action': 'HOLD', 'reason': 'Thesis intact'}
+
+def _find_position_id_for_contract(position, trade_ledger) -> str | None:
+    """Maps a live position contract to a position_id from the ledger."""
+    # Logic: Look for open trades with same symbol and reasonable match
+    # Since we don't have perfect link from IB Position -> Ledger Position ID (unless we used custom tags perfectly everywhere)
+    # We rely on matching symbol.
+    symbol = position.contract.localSymbol
+    # Filter ledger for this symbol
+    matches = trade_ledger[trade_ledger['local_symbol'] == symbol]
+    if not matches.empty:
+        # Return the most recent position_id?
+        # Ideally, we track unique position IDs.
+        return matches.iloc[-1]['position_id']
+    return None
+
+async def _close_position_with_thesis_reason(ib: IB, position, position_id: str, reason: str, config: dict):
+    """Executes a closing order for a specific position."""
+    logger.info(f"Executing THESIS CLOSE for {position_id}: {reason}")
+
+    contract = position.contract
+    # Invert action
+    action = 'SELL' if position.position > 0 else 'BUY'
+    qty = abs(position.position)
+
+    order = MarketOrder(action, qty)
+    trade = place_order(ib, contract, order)
+
+    # Wait for fill?
+    await asyncio.sleep(2)
+
+    # Cleanup stops
+    await close_spread_with_protection_cleanup(ib, trade, f"CATASTROPHE_{position_id}")
+
+
+async def run_position_audit_cycle(config: dict, trigger_source: str = "Scheduled"):
+    """
+    Reviews all active positions against their original theses.
+    Called at 08:30 ET (before trading) and upon high-severity Sentinel triggers.
+
+    The "Permabear Audit" - attacks existing positions before looking for new ones.
+    """
+    logger.info(f"--- POSITION AUDIT CYCLE ({trigger_source}) ---")
+
+    try:
+        ib = await IBConnectionPool.get_connection("audit", config)
+        configure_market_data_type(ib)
+
+        # 1. Get current positions from IB
+        live_positions = await ib.reqPositionsAsync()
+        if not live_positions or all(p.position == 0 for p in live_positions):
+            logger.info("No open positions to audit.")
+            return
+
+        # 2. Initialize components
+        tms = TransactiveMemory()
+        council = CoffeeCouncil(config)
+        positions_to_close = []
+
+        # 3. Get trade ledger for position mapping
+        trade_ledger = get_trade_ledger_df()
+
+        # 4. Audit each position
+        for pos in live_positions:
+            if pos.position == 0:
+                continue
+
+            # Find the position_id from ledger
+            position_id = _find_position_id_for_contract(pos, trade_ledger)
+            if not position_id:
+                logger.warning(f"Could not find position_id for {pos.contract.localSymbol}")
+                continue
+
+            # Retrieve the original thesis
+            thesis = tms.retrieve_thesis(position_id)
+            if not thesis:
+                logger.info(f"No thesis found for {position_id} - using default aging rules")
+                continue
+
+            # 5. Run thesis validation
+            verdict = await _validate_thesis(
+                thesis=thesis,
+                position=pos,
+                council=council,
+                config=config,
+                ib=ib
+            )
+
+            if verdict['action'] == 'CLOSE':
+                positions_to_close.append({
+                    'position_id': position_id,
+                    'position': pos,
+                    'reason': verdict['reason'],
+                    'thesis': thesis
+                })
+                logger.warning(f"THESIS INVALIDATED: {position_id} - {verdict['reason']}")
+
+        # 6. Execute closures
+        for item in positions_to_close:
+            await _close_position_with_thesis_reason(
+                ib=ib,
+                position=item['position'],
+                position_id=item['position_id'],
+                reason=item['reason'],
+                config=config
+            )
+            tms.invalidate_thesis(item['position_id'], item['reason'])
+
+        # 7. Summary notification
+        if positions_to_close:
+            summary = f"Closed {len(positions_to_close)} positions via thesis invalidation:\n"
+            summary += "\n".join([f"- {p['position_id']}: {p['reason']}" for p in positions_to_close])
+            send_pushover_notification(
+                config.get('notifications', {}),
+                "Position Audit Complete",
+                summary
+            )
+        else:
+            logger.info("Position audit complete. All theses remain valid.")
+
+    except Exception as e:
+        logger.error(f"Position Audit Cycle failed: {e}\n{traceback.format_exc()}")
 
 
 async def log_stream(stream, logger_func):
@@ -440,6 +709,66 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 send_pushover_notification(config.get('notifications', {}), "FLASH CRASH ALERT", "Price moved >5%. Emergency Halt Triggered. No new orders.")
                 # Future: await close_stale_positions(config, force=True)
                 return
+
+            # === NEW: DEFENSIVE CHECK (Defense Before Offense) ===
+            # If a Sentinel fires, check existing positions FIRST
+            if trigger.severity >= 6:
+                # Map sentinel sources to guardian agents
+                guardian_map = {
+                    'WeatherSentinel': 'Agronomist',
+                    'LogisticsSentinel': 'Logistics',
+                    'NewsSentinel': 'Fundamentalist',
+                    'PriceSentinel': 'VolatilityAnalyst',
+                    'XSentimentSentinel': 'Sentiment'
+                }
+
+                guardian = guardian_map.get(trigger.source)
+                if guardian:
+                    tms = TransactiveMemory()
+                    affected_theses = tms.get_active_theses_by_guardian(guardian)
+
+                    if affected_theses:
+                        # We have potential victims. We need to map them to live positions to close them.
+                        live_positions = await ib.reqPositionsAsync()
+                        trade_ledger = get_trade_ledger_df()
+
+                        for thesis in affected_theses:
+                            # Check if this trigger invalidates the thesis
+                            invalidation_triggers = thesis.get('invalidation_triggers', [])
+                            trigger_keywords = trigger.reason.lower()
+
+                            thesis_killed = False
+                            for inv_trigger in invalidation_triggers:
+                                if inv_trigger.lower() in trigger_keywords:
+                                    thesis_killed = True
+                                    logger.warning(f"SENTINEL INVALIDATION: {trigger.source} fired, killing thesis {thesis.get('trade_id')}")
+                                    break
+
+                            if thesis_killed:
+                                # Find the matching live position
+                                target_pos = None
+                                thesis_id = thesis.get('trade_id')
+
+                                for pos in live_positions:
+                                    if pos.position == 0: continue
+                                    # Map pos to ID
+                                    pos_id = _find_position_id_for_contract(pos, trade_ledger)
+                                    if pos_id == thesis_id:
+                                        target_pos = pos
+                                        break
+
+                                if target_pos:
+                                    await _close_position_with_thesis_reason(
+                                        ib=ib,
+                                        position=target_pos,
+                                        position_id=thesis_id,
+                                        reason=f"Sentinel Invalidation: {trigger.reason}",
+                                        config=config
+                                    )
+                                else:
+                                    logger.warning(f"Could not find live position for invalidated thesis {thesis_id}. Marking thesis as invalid anyway.")
+
+                                tms.invalidate_thesis(thesis_id, f"Sentinel: {trigger.source}")
 
             try:
                 # 1. Initialize Council
@@ -834,6 +1163,7 @@ async def run_sentinels(config: dict):
 schedule = {
     time(3, 30): start_monitoring,           # Market Open
     time(3, 31): process_deferred_triggers,  # 1 min after Open (Retry deferred)
+    time(8, 30): run_position_audit_cycle,   # NEW: Morning Roll Call (Defense before Offense)
     time(9, 0): generate_and_execute_orders, # Morning Trading
     time(13, 30): close_stale_positions,     # 30 mins before Close
     time(13, 45): cancel_and_stop_monitoring,# 15 mins before Close
