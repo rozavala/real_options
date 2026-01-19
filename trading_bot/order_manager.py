@@ -20,10 +20,12 @@ from trading_bot.inference import get_model_predictions
 from notifications import send_pushover_notification
 
 from trading_bot.ib_interface import (
-    get_active_futures, build_option_chain, create_combo_order_object, place_order
+    get_active_futures, build_option_chain, create_combo_order_object, place_order,
+    place_directional_spread_with_protection, close_spread_with_protection_cleanup
 )
+from trading_bot.tms import TransactiveMemory
 from trading_bot.signal_generator import generate_signals
-from trading_bot.strategy import define_directional_strategy, define_volatility_strategy
+from trading_bot.strategy import define_directional_strategy, define_volatility_strategy, validate_iron_condor_risk
 from trading_bot.utils import log_trade_to_ledger, log_order_event, configure_market_data_type, is_market_open
 from trading_bot.compliance import ComplianceGuardian
 from trading_bot.connection_pool import IBConnectionPool
@@ -180,6 +182,28 @@ async def generate_and_queue_orders(config: dict):
                     qty = await sizer.calculate_size(ib, signal, vol_sent, account_value)
                     strategy_def['quantity'] = qty
 
+                    # --- Iron Condor Risk Validation ---
+                    if signal['prediction_type'] == 'VOLATILITY' and signal.get('level') == 'LOW': # Iron Condor
+                        # Calculate Max Risk (Conservative: Width of Wings * Multiplier * Qty)
+                        # legs_def: [(right, action, strike), ...]
+                        # Puts: Buy lp, Sell sp. Calls: Sell sc, Buy lc.
+                        legs = strategy_def.get('legs_def', [])
+                        if len(legs) == 4:
+                            # Assume sorted or find by action/right
+                            puts = sorted([l for l in legs if l[0] == 'P'], key=lambda x: x[2]) # [lp, sp]
+                            calls = sorted([l for l in legs if l[0] == 'C'], key=lambda x: x[2]) # [sc, lc]
+
+                            width = 0
+                            if len(puts) == 2: width = max(width, abs(puts[1][2] - puts[0][2]))
+                            if len(calls) == 2: width = max(width, abs(calls[1][2] - calls[0][2]))
+
+                            multiplier = float(future.multiplier) if future.multiplier else 37500.0 # Default KC
+                            max_loss = width * multiplier * qty
+
+                            if not validate_iron_condor_risk(max_loss, account_value, config.get('catastrophe_protection', {}).get('iron_condor_max_risk_pct_of_equity', 0.02)):
+                                logger.warning(f"Skipping Iron Condor for {future.localSymbol} due to excessive risk.")
+                                continue
+
                     order_objects = await create_combo_order_object(ib, config, strategy_def)
                     if order_objects:
                         contract, order = order_objects
@@ -306,7 +330,7 @@ async def _get_market_data_for_leg(ib: IB, leg: ComboLeg) -> str:
         return f"Leg conId {leg.conId}: Error"
 
 
-async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, position_uuid: str):
+async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, position_uuid: str, decision_data: dict = None, config: dict = None):
     """
     Handles the logic for processing a trade fill, ensuring the contract
     details are complete before logging.
@@ -337,6 +361,31 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
         # This now calls the async version of the function, passing the unique position ID
         await log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=corrected_fill, combo_id=combo_id, position_id=position_uuid)
         logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId}, Position ID: {position_uuid})")
+
+        # --- NEW: Record Trade Thesis to TMS ---
+        if decision_data:
+            logger.info(f"Recording thesis for trade {position_uuid}...")
+            # We determine strategy type from contract or decision?
+            # Decision has 'prediction_type' and 'direction', not strategy name directly usually, unless added.
+            # But we can infer.
+            strategy_type = 'UNKNOWN'
+            if isinstance(trade.contract, Bag):
+                 if 'IRON' in trade.contract.localSymbol: strategy_type = 'IRON_CONDOR'
+                 elif trade.contract.localSymbol.startswith('STRDL'): strategy_type = 'LONG_STRADDLE'
+                 # Or use legs to infer
+                 # Simple inference:
+                 if decision_data.get('prediction_type') == 'DIRECTIONAL':
+                     strategy_type = 'BULL_CALL_SPREAD' if decision_data.get('direction') == 'BULLISH' else 'BEAR_PUT_SPREAD'
+                 elif decision_data.get('prediction_type') == 'VOLATILITY':
+                     strategy_type = 'LONG_STRADDLE' if decision_data.get('level') == 'HIGH' else 'IRON_CONDOR'
+
+            await record_entry_thesis_for_trade(
+                position_id=position_uuid,
+                strategy_type=strategy_type,
+                decision=decision_data,
+                entry_price=fill.execution.avgPrice, # Use fill price
+                config=config or {}
+            )
 
     except Exception as e:
         logger.error(f"Error processing and logging fill for order {trade.order.orderId}: {e}\n{traceback.format_exc()}")
@@ -442,9 +491,10 @@ async def place_queued_orders(config: dict, orders_list: list = None):
             combo_perm_id = parent_trade.order.permId
             # The unique position ID is the orderRef from the PARENT order object.
             position_uuid = parent_trade.order.orderRef
+            decision_data = order_details.get('decision_data')
 
             logger.info(f"Fill received for leg {leg_con_id} in order {order_id}. Processing with Position ID {position_uuid}.")
-            asyncio.create_task(_handle_and_log_fill(ib, trade, fill, combo_perm_id, position_uuid))
+            asyncio.create_task(_handle_and_log_fill(ib, trade, fill, combo_perm_id, position_uuid, decision_data, config))
 
             order_details['filled_legs'].add(leg_con_id)
             order_details['fill_prices'][leg_con_id] = fill.execution.avgPrice
@@ -641,8 +691,64 @@ async def place_queued_orders(config: dict, orders_list: list = None):
             logger.info(market_state_message)
 
             # --- 4. Place the actual order ---
-            trade = place_order(ib, contract, order)
-            log_order_event(trade, trade.orderStatus.status, market_state_message)
+            # Check for Catastrophe Protection Requirement
+            enable_protection = config.get('catastrophe_protection', {}).get('enable_directional_stops', False)
+            is_directional = decision_data.get('prediction_type') == 'DIRECTIONAL'
+
+            if enable_protection and is_directional and isinstance(contract, Bag):
+                # We need the underlying contract. Ideally passed or inferred.
+                # In define_directional_strategy, we have future_contract.
+                # But here we only have 'contract' (the BAG).
+                # We need to re-fetch or infer the underlying future.
+                # For safety, let's extract the symbol and expiry from the BAG or first leg.
+                # Or better, pass 'future_contract' in decision_data? No.
+                # We can construct it.
+
+                # Fetch first leg details
+                try:
+                    leg1_conid = contract.comboLegs[0].conId
+                    details = await ib.reqContractDetailsAsync(Contract(conId=leg1_conid))
+                    # Assuming Futures Option
+                    # Underlying is the Future.
+                    # details[0].contract.lastTradeDateOrContractMonth gives expiry.
+                    # We can construct the Future contract.
+                    opt_contract = details[0].contract
+                    underlying_future = Future(
+                        symbol=opt_contract.symbol,
+                        lastTradeDateOrContractMonth=opt_contract.lastTradeDateOrContractMonth,
+                        exchange=opt_contract.exchange,
+                        currency=opt_contract.currency
+                    )
+                    await ib.qualifyContractsAsync(underlying_future)
+
+                    # Entry Price for Stop Calculation
+                    # Use 'price' from decision_data (snapshot price at signal generation)
+                    # or 'market_trend_pct' logic?
+                    # decision_data['price'] is reliable enough.
+                    entry_price_ref = decision_data.get('price')
+                    if not entry_price_ref:
+                         # Fallback to current ticker last
+                         entry_price_ref = ticker.last
+
+                    is_bullish = decision_data.get('direction') == 'BULLISH'
+
+                    trade, stop_trade = await place_directional_spread_with_protection(
+                        ib=ib,
+                        combo_contract=contract,
+                        combo_order=order,
+                        underlying_contract=underlying_future,
+                        entry_price=entry_price_ref,
+                        stop_distance_pct=config.get('catastrophe_protection', {}).get('stop_distance_pct', 0.03),
+                        is_bullish_strategy=is_bullish
+                    )
+                    log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [Protected]")
+                except Exception as e:
+                    logger.error(f"Failed to place protected order, falling back to standard: {e}")
+                    trade = place_order(ib, contract, order)
+                    log_order_event(trade, trade.orderStatus.status, market_state_message)
+            else:
+                trade = place_order(ib, contract, order)
+                log_order_event(trade, trade.orderStatus.status, market_state_message)
             
             live_orders[trade.order.orderId] = {
                 'trade': trade,
@@ -652,7 +758,8 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                 'filled_legs': set(),
                 'fill_prices': {}, # Stores fill prices by conId
                 'last_update_time': time.time(),
-                'adaptive_ceiling_price': getattr(order, 'adaptive_limit_price', None) # Store ceiling/floor
+                'adaptive_ceiling_price': getattr(order, 'adaptive_limit_price', None), # Store ceiling/floor
+                'decision_data': decision_data
             }
 
             # --- 5. Build Notification String (ENHANCED FOR ALL DATA) ---
@@ -1200,6 +1307,11 @@ async def close_stale_positions(config: dict):
                     })
                     logger.info(f"Successfully closed {desc} (Pos ID: {pos_id}). P&L: {pnl}")
 
+                    # --- CLEANUP: Cancel Orphaned Catastrophe Stops ---
+                    # The stop order has orderRef = CATASTROPHE_{pos_id}
+                    # (since pos_id IS the original orderRef)
+                    await close_spread_with_protection_cleanup(ib, None, f"CATASTROPHE_{pos_id}")
+
                 else:
                     logger.warning(f"Order {trade.order.orderId} for Pos ID {pos_id} timed out or failed. Status: {trade.orderStatus.status}")
                     failed_closes.append(f"Pos ID {pos_id}: Status {trade.orderStatus.status}")
@@ -1262,6 +1374,91 @@ async def close_stale_positions(config: dict):
     finally:
         # Do not disconnect pool
         pass
+
+async def record_entry_thesis_for_trade(
+    position_id: str,
+    strategy_type: str,
+    decision: dict,
+    entry_price: float,
+    config: dict
+):
+    """Records the entry thesis for a newly opened position."""
+    tms = TransactiveMemory()
+
+    # Determine guardian agent based on the primary driver
+    reason = decision.get('reason', '')
+    guardian = _determine_guardian_from_reason(reason)
+
+    # Build invalidation triggers
+    invalidation_triggers = _build_invalidation_triggers(strategy_type, decision)
+
+    thesis_data = {
+        'strategy_type': strategy_type,
+        'guardian_agent': guardian,
+        'primary_rationale': reason,
+        'invalidation_triggers': invalidation_triggers,
+        'supporting_data': {
+            'entry_price': entry_price,
+            'entry_regime': decision.get('regime', 'UNKNOWN'),
+            'volatility_sentiment': decision.get('volatility_sentiment', 'NEUTRAL'),
+            'confidence': decision.get('confidence', 0.5)
+        },
+        'entry_timestamp': datetime.now(timezone.utc).isoformat(),
+        'entry_regime': decision.get('regime', 'UNKNOWN')
+    }
+
+    tms.record_trade_thesis(position_id, thesis_data)
+
+
+def _determine_guardian_from_reason(reason: str) -> str:
+    """Maps trade reasoning to the responsible specialist agent."""
+    reason_lower = reason.lower()
+
+    if any(kw in reason_lower for kw in ['frost', 'weather', 'drought', 'rain', 'temperature']):
+        return 'Agronomist'
+    elif any(kw in reason_lower for kw in ['port', 'shipping', 'logistics', 'strike', 'container']):
+        return 'Logistics'
+    elif any(kw in reason_lower for kw in ['volatility', 'iv', 'vix', 'range', 'premium']):
+        return 'VolatilityAnalyst'
+    elif any(kw in reason_lower for kw in ['macro', 'fed', 'dollar', 'brl', 'currency']):
+        return 'Macro'
+    elif any(kw in reason_lower for kw in ['sentiment', 'twitter', 'social']):
+        return 'Sentiment'
+    else:
+        return 'Master'
+
+
+def _build_invalidation_triggers(strategy_type: str, decision: dict) -> list:
+    """Builds strategy-specific invalidation triggers."""
+    triggers = []
+    reason = decision.get('reason', '').lower()
+
+    # Strategy-specific defaults
+    if strategy_type == 'IRON_CONDOR':
+        triggers.extend([
+            'price_move_exceeds_2_percent',
+            'iv_rank_above_70',
+            'regime_shift_to_high_volatility'
+        ])
+    elif strategy_type == 'LONG_STRADDLE':
+        triggers.extend([
+            'catalyst_passed_without_move',
+            'theta_burn_exceeds_hurdle',
+            'volatility_crush'
+        ])
+    elif strategy_type in ['BULL_CALL_SPREAD', 'BEAR_PUT_SPREAD']:
+        # Narrative-specific triggers
+        if 'frost' in reason:
+            triggers.append('rain_forecast')
+            triggers.append('warm_front')
+        if 'strike' in reason or 'port' in reason:
+            triggers.append('strike_resolution')
+            triggers.append('port_reopening')
+        if 'supply' in reason:
+            triggers.append('supply_normalization')
+
+    return triggers
+
 
 async def cancel_all_open_orders(config: dict):
     """
