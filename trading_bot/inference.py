@@ -1,3 +1,6 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # Suppress TensorFlow GPU/CPU logs
+
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -6,7 +9,7 @@ import joblib
 import json
 import logging
 import warnings
-import os
+import math
 from scipy.stats import linregress
 from arch import arch_model
 import pandas_ta as ta
@@ -15,7 +18,6 @@ import pandas_ta as ta
 
 # Suppress noisy warnings
 warnings.filterwarnings('ignore')
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # Suppress TensorFlow GPU/CPU logs
 tf.get_logger().setLevel('ERROR')
 
 # Configure logging to match your desired output format
@@ -288,9 +290,21 @@ def get_model_predictions(raw_df: pd.DataFrame, signal_threshold: float):
                     decision = "NEUTRAL"
                     reason = "AI Sell blocked by Bull Trend"
 
+            # Calculate proper confidence based on signal strength
+            # The further the predicted return from 0, the more confident
+            # Scale: |return| of 0.05 (5%) = high confidence (0.9)
+            #        |return| of 0.01 (1%) = medium confidence (0.6)
+            #        |return| of 0.00 (0%) = no confidence (0.5)
+            abs_return = abs(raw_return)
+            # Logistic scaling: maps small returns to ~0.5, large returns to ~0.9
+            # Formula: 0.5 + 0.4 * tanh(abs_return * 30)
+            ml_confidence = 0.5 + 0.4 * math.tanh(abs_return * 30)
+
             signals.append({
                 'action': decision,
-                'confidence': float(raw_return),
+                'predicted_return': float(raw_return),  # RENAMED: Clear semantic meaning
+                'ml_confidence': float(ml_confidence),  # NEW: Proper confidence score
+                'confidence': float(ml_confidence),     # KEEP: For backward compatibility
                 'expected_price': float(current_price * (1 + raw_return)),
                 'regime': macro_regime,
                 'reason': reason,

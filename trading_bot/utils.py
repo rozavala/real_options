@@ -6,6 +6,7 @@ helpers for normalizing and parsing contract data from Interactive Brokers,
 market hour checks, and trade logging utilities.
 """
 
+import holidays
 import asyncio
 import csv
 import logging
@@ -477,31 +478,73 @@ def is_market_open() -> bool:
     - Electronic: Sun 6:00 PM - Fri 5:00 PM ET
     - Core Validation/Trading Hours: 03:30 AM - 02:00 PM ET
 
-    Logic: Calculates open/close times in NY timezone (to respect DST),
-    then converts to UTC for comparison against current UTC time.
+    This function checks:
+    1. Weekends (Saturday/Sunday) -> CLOSED
+    2. US Market Holidays (NYSE calendar) -> CLOSED
+    3. Time of day (03:30 - 14:00 ET) -> OPEN if within window
+
+    Returns:
+        bool: True if market is currently open, False otherwise.
     """
     utc = pytz.UTC
     ny_tz = pytz.timezone('America/New_York')
 
-    # Get current UTC time
+    # Get current time in both UTC and NY
     now_utc = datetime.now(utc)
-
-    # Convert to NY time to determine the current "trading day" date
     now_ny = now_utc.astimezone(ny_tz)
 
-    # Skip weekends (Saturday=5, Sunday=6 in NY)
+    # 1. Check Weekend (Saturday=5, Sunday=6)
     if now_ny.weekday() >= 5:
         return False
 
-    # Define Market Open/Close in NY Time
-    # 03:30 AM NY
+    # 2. Check US Market Holidays (ICE follows NYSE calendar)
+    # The 'market="NYSE"' parameter gives us the NYSE holiday calendar
+    # which ICE coffee futures follow for closures
+    us_holidays = holidays.US(years=now_ny.year, observed=True)
+    # Also check financial market specific holidays
+    try:
+        # holidays >= 0.40 supports market parameter
+        nyse_holidays = holidays.financial_holidays('NYSE', years=now_ny.year)
+        if now_ny.date() in nyse_holidays:
+            return False
+    except (AttributeError, TypeError):
+        # Fallback for older holidays versions
+        pass
+
+    if now_ny.date() in us_holidays:
+        return False
+
+    # 3. Time Check (03:30 AM - 02:00 PM ET)
+    # Define thresholds in NY timezone
     market_open_ny = now_ny.replace(hour=3, minute=30, second=0, microsecond=0)
-    # 02:00 PM NY
     market_close_ny = now_ny.replace(hour=14, minute=0, second=0, microsecond=0)
 
-    # Convert thresholds back to UTC
+    # Convert to UTC for comparison
     market_open_utc = market_open_ny.astimezone(utc)
     market_close_utc = market_close_ny.astimezone(utc)
 
-    # Compare in UTC
     return market_open_utc <= now_utc <= market_close_utc
+
+
+def is_trading_day() -> bool:
+    """Check if today is a trading day (weekday + not a holiday).
+
+    Use this for 24/7 sentinels that should still run on trading days
+    but outside of core market hours (e.g., overnight weather monitoring).
+
+    Returns:
+        bool: True if today is a trading day, False on weekends/holidays.
+    """
+    ny_tz = pytz.timezone('America/New_York')
+    now_ny = datetime.now(ny_tz)
+
+    # Check weekend
+    if now_ny.weekday() >= 5:
+        return False
+
+    # Check holidays
+    us_holidays = holidays.US(years=now_ny.year, observed=True)
+    if now_ny.date() in us_holidays:
+        return False
+
+    return True
