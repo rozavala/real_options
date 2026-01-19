@@ -553,9 +553,31 @@ class XSentimentSentinel(Sentinel):
             timeout=180.0  # Allow time for agentic loops
         )
 
+        # === X API SETUP (for tool execution) ===
+        self.x_bearer_token = config.get('x_api', {}).get('bearer_token')
+        if not self.x_bearer_token or self.x_bearer_token == "LOADED_FROM_ENV":
+            self.x_bearer_token = os.environ.get('X_BEARER_TOKEN')
+
+        if not self.x_bearer_token:
+            logger.warning("X_BEARER_TOKEN not found - X sentiment will use Grok's training knowledge only")
+
         # === MODEL SELECTION ===
         # CORRECTED: Use current production model
         self.model = self.sentinel_config.get('model', 'grok-4-1-fast-reasoning')
+
+        # === MODEL VALIDATION ===
+        KNOWN_GROK_MODELS = [
+            'grok-4-1-fast-reasoning',
+            'grok-4',
+            'grok-3',
+            'grok-2-1212',
+            'grok-beta'
+        ]
+        if self.model not in KNOWN_GROK_MODELS:
+            logger.warning(
+                f"⚠️ Unrecognized Grok model '{self.model}' - verify with xAI API docs. "
+                f"Known models: {KNOWN_GROK_MODELS}"
+            )
 
         # === VOLUME TRACKING ===
         self.post_volume_history = []
@@ -609,180 +631,301 @@ class XSentimentSentinel(Sentinel):
     @with_retry(max_attempts=3)
     async def _search_x_and_analyze(self, query: str) -> Optional[dict]:
         """
-        Use Grok with explicit tool calling to search X and analyze sentiment.
+        Use Grok with tool execution loop for live X sentiment analysis.
 
-        CRITICAL: Tool schemas ensure real-time data, not hallucinations.
-        ENHANCEMENT: Code execution provides quantitative sentiment scoring.
+        ARCHITECTURE (per xAI expert feedback):
+        1. Send query to Grok with x_search tool defined
+        2. If Grok returns tool_calls, execute locally via X API
+        3. Feed results back to Grok for analysis
+        4. Loop until Grok returns final content
         """
         if not self.client:
-             logger.error("XAI Client not initialized (missing API key)")
-             return None
+            logger.error("XAI Client not initialized (missing API key)")
+            return None
 
         search_query = self._build_search_query(query)
 
+        # === TOOL DEFINITION ===
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_search",
+                    "description": "Search X (Twitter) for posts related to a query to gather real-time sentiment data.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The search query (e.g., 'coffee futures sentiment' with operators like OR, -exclude)."
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Number of posts to return (default 10, min 10, max 100)."
+                            },
+                            "mode": {
+                                "type": "string",
+                                "enum": ["Top", "Latest"],
+                                "description": "Sort preference: 'Latest' for most recent posts (recency), 'Top' for most relevant (relevancy). Maps to X API sort_order. Default 'Latest' for time-sensitive commodity sentiment."
+                            }
+                        },
+                        "required": ["query"]
+                    }
+                }
+            }
+        ]
+
         # === SYSTEM PROMPT ===
-        system_prompt = """You are an expert commodities market sentiment analyst specializing in real-time social media analysis.
+        system_prompt = """You are an expert commodities market sentiment analyst.
 
-You have access to:
-1. x_search: Search X (Twitter) for recent posts with advanced filtering
-2. code_execution: Run Python for quantitative sentiment analysis
+Use the x_search tool to fetch live X data when needed for accurate sentiment analysis.
+Analyze posts for bullish/bearish themes related to coffee futures.
 
-Your workflow:
-1. Use x_search to find relevant posts from the last 24 hours
-2. Use Python to calculate objective sentiment metrics:
-   - Count bullish vs bearish keywords (weighted by engagement)
-   - Calculate sentiment distribution with confidence intervals
-   - Identify statistical anomalies (volume spikes, influencer clustering)
-3. Return structured JSON analysis
+IMPORTANT: Prioritize RECENT posts for time-sensitive commodity sentiment (weather events, crop reports, frost alerts, port disruptions, etc.). Use mode="Latest" unless specifically looking for high-engagement historical takes.
 
-Be rigorous and quantitative. Show your calculations."""
+After analyzing posts, provide a JSON response with:
+- sentiment_score: 0-10 (0=very bearish, 5=neutral, 10=very bullish)
+- confidence: 0.0-1.0 based on data quality and volume
+- summary: Executive summary (max 200 chars)
+- post_volume: Number of relevant posts found
+- key_themes: Top 3 themes detected
+- notable_posts: Up to 3 notable posts with text snippet, engagement, sentiment
 
-        # === USER PROMPT ===
-        user_prompt = f"""Search X for: "{search_query}"
+If the x_search tool returns no results or errors, provide neutral sentiment with low confidence."""
 
-Analyze sentiment SPECIFICALLY for coffee futures pricing and market outlook.
+        # === MESSAGE LOOP ===
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Analyze X sentiment for: {search_query}"}
+        ]
 
-Return JSON with this EXACT structure:
-{{
-    "sentiment_score": <float 0-10, where 0=extremely bearish, 5=neutral, 10=extremely bullish>,
-    "sentiment_distribution": {{"bearish": <percentage>, "neutral": <percentage>, "bullish": <percentage>}},
-    "key_themes": ["<theme1>", "<theme2>", "<theme3>"],
-    "notable_posts": [
-        {{
-            "text": "<snippet max 100 chars>",
-            "engagement": <likes + retweets>,
-            "sentiment": "<bullish|bearish|neutral>",
-            "author": "<handle without @>"
-        }}
-    ],
-    "post_volume": <total relevant posts found>,
-    "confidence": <float 0.0-1.0 based on data quality>,
-    "quantitative_analysis": "<brief explanation of Python calculations>",
-    "summary": "<executive summary max 200 chars>"
-}}
-"""
+        max_iterations = 5
+        iteration = 0
 
         try:
-            # === TOOL CONFIGURATION ===
-            # CORRECTED: Updated tool schemas per latest API docs
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                tools=[
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": "x_search",
-                            "description": "Search X (Twitter) for posts. Supports keyword/semantic search with filters.",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "query": {
-                                        "type": "string",
-                                        "description": "Search query with optional filters (min_faves, from:handle, etc)"
-                                    },
-                                    "search_type": {
-                                        "type": "string",
-                                        "enum": ["keyword", "semantic"],
-                                        "default": "keyword"
-                                    },
-                                    "max_results": {
-                                        "type": "integer",
-                                        "default": 20
-                                    }
-                                },
-                                "required": ["query"]
-                            }
-                        }
-                    },
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": "code_execution",  # CORRECTED: Was "code_interpreter"
-                            "description": "Execute Python code in a secure sandbox for calculations and data analysis.",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "code": {
-                                        "type": "string",
-                                        "description": "The Python code to execute"
-                                    }
-                                },
-                                "required": ["code"]
-                            }
-                        }
-                    }
-                ],
-                tool_choice="auto",  # Let Grok autonomously decide when to invoke tools
-                temperature=0.3,
-                max_tokens=3000,
-                response_format={"type": "json_object"}
-            )
+            while iteration < max_iterations:
+                iteration += 1
 
-            content = response.choices[0].message.content
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    tools=tools if self.x_bearer_token else None,  # Only offer tools if we can execute them
+                    tool_choice="auto" if self.x_bearer_token else None,
+                    temperature=0.3,
+                    max_tokens=2000,
+                    response_format={"type": "json_object"}
+                )
 
-            # === FIX 1: Handle empty/None responses ===
-            if not content or not content.strip():
-                logger.warning(f"Empty response from Grok for query '{query}'")
+                message = response.choices[0].message
+
+                # === CASE 1: Grok provided final content ===
+                if message.content and message.content.strip():
+                    content = message.content.strip()
+
+                    # Strip markdown wrappers
+                    if content.startswith("```json"):
+                        content = content[7:]
+                    if content.startswith("```"):
+                        content = content[3:]
+                    if content.endswith("```"):
+                        content = content[:-3]
+                    content = content.strip()
+
+                    try:
+                        data = json.loads(content)
+
+                        # Validate required fields
+                        required_fields = ['sentiment_score', 'confidence', 'summary', 'post_volume']
+                        missing = [f for f in required_fields if f not in data]
+                        if missing:
+                            logger.warning(f"Missing fields {missing} in Grok response")
+                            data.setdefault('sentiment_score', 5.0)
+                            data.setdefault('confidence', 0.0)
+                            data.setdefault('summary', 'Incomplete response')
+                            data.setdefault('post_volume', 0)
+
+                        # Type validation
+                        data['sentiment_score'] = float(data['sentiment_score'])
+                        data['confidence'] = float(data['confidence'])
+                        data['post_volume'] = int(data['post_volume'])
+
+                        # Update volume tracking
+                        if data['post_volume'] > 0:
+                            self._update_volume_stats(data['post_volume'])
+
+                        logger.debug(f"X analysis for '{query}': sentiment={data['sentiment_score']:.1f}, "
+                                   f"volume={data['post_volume']}, confidence={data['confidence']:.2f}")
+                        return data
+
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Invalid JSON from Grok: {e}")
+                        return None
+
+                # === CASE 2: Grok wants to use a tool ===
+                if message.tool_calls:
+                    tool_call = message.tool_calls[0]
+                    function_name = tool_call.function.name
+
+                    try:
+                        args = json.loads(tool_call.function.arguments)
+                    except json.JSONDecodeError:
+                        args = {"query": query}
+
+                    logger.debug(f"Grok requested tool: {function_name} with args: {args}")
+
+                    if function_name == "x_search":
+                        # Execute tool locally
+                        tool_result = await self._execute_x_search(args)
+                    else:
+                        tool_result = {"error": f"Unknown tool: {function_name}"}
+
+                    # === ERROR LOGGING (per expert feedback) ===
+                    if "error" in tool_result:
+                        logger.warning(f"Tool execution failed: {tool_result['error']}")
+                        # Continue anyway - Grok will see the error and can provide fallback analysis
+
+                    # Append tool call and result to messages
+                    messages.append({
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [tool_call]
+                    })
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": function_name,
+                        "content": json.dumps(tool_result)
+                    })
+
+                    continue  # Loop to get Grok's analysis of the results
+
+                # === CASE 3: Empty response without tools ===
+                logger.warning(f"Empty response from Grok without tool calls for '{query}'")
                 return {
-                    "sentiment_score": 5.0,  # Neutral
-                    "confidence": 0.0,       # Zero confidence = "I don't know"
-                    "summary": "No X activity detected",
+                    "sentiment_score": 5.0,
+                    "confidence": 0.0,
+                    "summary": "No data available",
                     "post_volume": 0,
-                    "notable_posts": [],
-                    "key_themes": []
+                    "key_themes": [],
+                    "notable_posts": []
                 }
 
-            # === FIX 2: Strip markdown JSON wrappers ===
-            content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.startswith("```"):
-                content = content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
-            content = content.strip()
-
-            # === ROBUST JSON PARSING ===
-            try:
-                data = json.loads(content)
-            except json.JSONDecodeError as e:
-                # === FIX 3: Log actual content for debugging ===
-                logger.error(f"Invalid JSON from Grok for query '{query}': "
-                            f"len={len(content)}, preview='{content[:100]}', error={e}")
-                return None
-
-            # === VALIDATE REQUIRED FIELDS ===
-            required_fields = ['sentiment_score', 'confidence', 'summary', 'post_volume']
-            missing_fields = [f for f in required_fields if f not in data]
-            if missing_fields:
-                logger.warning(f"Missing required fields {missing_fields} in Grok response for '{query}'")
-                return None
-
-            # === TYPE VALIDATION ===
-            try:
-                data['sentiment_score'] = float(data['sentiment_score'])
-                data['confidence'] = float(data['confidence'])
-                data['post_volume'] = int(data['post_volume'])
-            except (ValueError, TypeError) as e:
-                logger.error(f"Type validation failed for '{query}': {e}")
-                return None
-
-            # === UPDATE VOLUME TRACKING ===
-            volume = data['post_volume']
-            if volume > 0:
-                self._update_volume_stats(volume)
-
-            logger.debug(f"X search for '{query}': sentiment={data['sentiment_score']:.1f}, volume={volume}, confidence={data['confidence']:.2f}")
-
-            return data
+            # Max iterations reached
+            logger.warning(f"Tool loop reached max iterations for '{query}'")
+            return {
+                "sentiment_score": 5.0,
+                "confidence": 0.0,
+                "summary": "Analysis loop timeout",
+                "post_volume": 0,
+                "key_themes": [],
+                "notable_posts": []
+            }
 
         except Exception as e:
             logger.error(f"X search failed for query '{query}': {e}", exc_info=True)
             return None
+
+
+    async def _execute_x_search(self, args: dict) -> dict:
+        """
+        Execute X API search locally.
+
+        Uses X API v2 recent search endpoint.
+        Requires X_BEARER_TOKEN in environment.
+
+        IMPORTANT: X API uses sort_order with values:
+        - "recency" = Latest/chronological (newest first)
+        - "relevancy" = Top/algorithmically relevant
+        Default to "recency" for time-sensitive commodity sentiment.
+        """
+        if not self.x_bearer_token:
+            return {
+                "error": "X API not configured",
+                "posts": [],
+                "post_volume": 0
+            }
+
+        query = args.get("query", "coffee futures")
+        limit = args.get("limit", 10)
+
+        # === CRITICAL FIX: Correct sort_order mapping ===
+        # Grok may send "Top" or "Latest" via the tool schema
+        # Map to X API's actual parameter values
+        mode = args.get("mode", "Latest")  # Default to Latest for freshness
+        if mode == "Latest":
+            sort_order = "recency"
+        elif mode == "Top":
+            sort_order = "relevancy"
+        else:
+            sort_order = "recency"  # Default to recency for time-sensitive sentiment
+
+        headers = {
+            "Authorization": f"Bearer {self.x_bearer_token}",
+            "Content-Type": "application/json"
+        }
+
+        params = {
+            "query": f"{query} -is:retweet lang:en",  # Filter retweets, English only
+            "max_results": max(10, min(limit, 100)),  # X API requires 10 ≤ max_results ≤ 100
+            "tweet.fields": "text,created_at,public_metrics,author_id",
+            "expansions": "author_id",
+            "user.fields": "username",
+            "sort_order": sort_order  # Always include sort_order
+        }
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    "https://api.twitter.com/2/tweets/search/recent",
+                    headers=headers,
+                    params=params,
+                    timeout=aiohttp.ClientTimeout(total=30)
+                ) as response:
+
+                    if response.status == 429:
+                        logger.warning("X API rate limit hit")
+                        return {"error": "Rate limit exceeded", "posts": [], "post_volume": 0}
+
+                    if response.status != 200:
+                        error_text = await response.text()
+                        logger.error(f"X API error {response.status}: {error_text}")
+                        return {"error": f"X API error: {response.status}", "posts": [], "post_volume": 0}
+
+                    data = await response.json()
+
+                    posts = []
+                    users = {}
+
+                    # Build user lookup
+                    if "includes" in data and "users" in data["includes"]:
+                        for user in data["includes"]["users"]:
+                            users[user["id"]] = user.get("username", "unknown")
+
+                    # Process tweets
+                    for tweet in data.get("data", []):
+                        metrics = tweet.get("public_metrics", {})
+                        posts.append({
+                            "text": tweet["text"][:400],  # Increased from 200 for better context
+                            "author": users.get(tweet.get("author_id"), "unknown"),
+                            "likes": metrics.get("like_count", 0),
+                            "retweets": metrics.get("retweet_count", 0),
+                            "created_at": tweet.get("created_at", "")
+                        })
+
+                    logger.info(f"X API returned {len(posts)} posts for '{query}' (sort: {sort_order})")
+
+                    return {
+                        "posts": posts,
+                        "post_volume": len(posts),
+                        "query": query
+                    }
+
+        except asyncio.TimeoutError:
+            logger.error("X API request timed out")
+            return {"error": "Request timeout", "posts": [], "post_volume": 0}
+        except Exception as e:
+            logger.error(f"X API request failed: {e}")
+            return {"error": str(e), "posts": [], "post_volume": 0}
 
     async def check(self) -> Optional[SentinelTrigger]:
         """
@@ -790,6 +933,23 @@ Return JSON with this EXACT structure:
 
         ENHANCEMENT: Parallel execution reduces latency from ~15s to ~3s.
         """
+        # === MARKET HOURS GATE (Cost Optimization) ===
+        from trading_bot.utils import is_market_open
+
+        if not is_market_open():
+            # During closed hours, only check every 4 hours for pre-market signals
+            if not hasattr(self, '_last_closed_market_check'):
+                self._last_closed_market_check = None
+
+            now = datetime.now(timezone.utc)
+            if self._last_closed_market_check:
+                hours_since_last = (now - self._last_closed_market_check).total_seconds() / 3600
+                if hours_since_last < 4:
+                    return None  # Skip check, still in cooldown
+
+            self._last_closed_market_check = now
+            logger.debug("Market closed - running periodic X sentiment check")
+
         # === CIRCUIT BREAKER CHECK ===
         if self.degraded_until and datetime.now(timezone.utc) < self.degraded_until:
             self.sensor_status = "OFFLINE"

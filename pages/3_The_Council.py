@@ -27,6 +27,14 @@ if council_df.empty:
     st.warning("No council history data available.")
     st.stop()
 
+# === CONTRACT CONTEXT INDICATOR ===
+st.info("""
+    ℹ️ **Note on Multi-Contract Analysis:** Agent reports shown below represent
+    *general market context* applicable to all Coffee (KC) futures. When multiple
+    contracts are analyzed, the most recent analysis is displayed. For contract-specific
+    insights, refer to the individual trade thesis in the Position Cards.
+""")
+
 st.markdown("---")
 
 # === Decision Selector ===

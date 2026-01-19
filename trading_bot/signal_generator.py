@@ -135,11 +135,13 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 **ml_signal,
                 **final_data,
                 "contract_month": contract.lastTradeDateOrContractMonth[:6],
-                "direction": final_data["action"]  # Ensure 'direction' key exists for logging
+                "direction": final_data["action"],  # Ensure 'direction' key exists for logging
+                "_agent_reports": {}
             }
 
         agent_data = {} # Initialize outside try/except to avoid UnboundLocalError
         regime_for_voting = 'UNKNOWN' # Initialize here to avoid scope issues
+        reports = {} # Initialize here to ensure scope for return
 
         async with sem:
             try:
@@ -187,8 +189,9 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         reports[key] = res
 
                 # --- SAVE STATE (For Sentinel Context) ---
-                # NOTE: StateManager merges updates, so this is safe.
-                StateManager.save_state(reports)
+                # DISABLED: Moved to post-gather consolidation to prevent race condition
+                # See Fix #2C in JULES_IMPLEMENTATION_GUIDE.md
+                # StateManager.save_state(reports)
 
                 # --- WEIGHTED VOTING (New) ---
                 # Determine trigger type from context
@@ -273,7 +276,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                                 "contract_month": contract.lastTradeDateOrContractMonth[:6],
                                 "direction": "NEUTRAL",
                                 "confidence": 0.0,
-                                "reason": "Signal Priced In (24h move > 3%)"
+                                "reason": "Signal Priced In (24h move > 3%)",
+                                "_agent_reports": reports
                             }
 
                         elif final_data["action"] == "BEARISH" and pct_1d < -0.03:
@@ -286,7 +290,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                                 "contract_month": contract.lastTradeDateOrContractMonth[:6],
                                 "direction": "NEUTRAL",
                                 "confidence": 0.0,
-                                "reason": "Signal Priced In (24h move < -3%)"
+                                "reason": "Signal Priced In (24h move < -3%)",
+                                "_agent_reports": reports
                             }
 
                 except Exception as e:
@@ -579,7 +584,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 "confidence": final_data["confidence"],
                 "price": ml_signal.get('price'),
                 "sma_200": ml_signal.get('sma_200'),
-                "expected_price": final_data["expected_price"]
+                "expected_price": final_data["expected_price"],
+                "_agent_reports": reports
             }
         else:
             return {
@@ -592,7 +598,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 "confidence": final_data["confidence"],
                 "price": ml_signal.get('price'),
                 "sma_200": ml_signal.get('sma_200'),
-                "expected_price": final_data["expected_price"]
+                "expected_price": final_data["expected_price"],
+                "_agent_reports": reports
             }
 
     # 5. Execute for all contracts
@@ -604,6 +611,28 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
         tasks.append(process_contract(contract, ml_signal))
 
     final_signals_list = await asyncio.gather(*tasks)
+
+    # --- CONSOLIDATED STATE SAVE (Fix Race Condition) ---
+    # Extract reports from each signal and save once
+    # NOTE: Currently using "General Market Context" approach where
+    # last contract's reports are used. This is acceptable because
+    # specialist agents analyze market-wide conditions, not contract-specific.
+    # TODO: For contract-specific state, key by contract ID:
+    #       e.g., "reports_KCZ25_agronomist" instead of "agronomist"
+
+    consolidated_reports = {}
+    for sig in final_signals_list:
+        if isinstance(sig, dict) and "_agent_reports" in sig:
+            # Last write wins (General Context approach)
+            consolidated_reports.update(sig.pop("_agent_reports"))
+
+    # Single atomic save
+    if consolidated_reports:
+        try:
+            StateManager.save_state(consolidated_reports)
+            logger.info(f"Persisted {len(consolidated_reports)} agent reports to state.")
+        except Exception as e:
+            logger.error(f"Failed to persist agent reports: {e}")
 
     # --- Persist Latest ML Signals to State ---
     # Store with a specific key "latest_ml_signals" to avoid conflict with agents
