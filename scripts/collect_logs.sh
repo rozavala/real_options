@@ -65,18 +65,21 @@ if [ -d "$REPO_DIR/logs" ]; then
 fi
 
 # === DATA FILES ===
-# Main data directory with all CSV files and state
+# Main data directory check - prevents errors if data folder is missing
 if [ -d "$REPO_DIR/data" ]; then
-    echo "Copying data directory..."
-    cp -r "$REPO_DIR/data" "$DEST_DIR/"
-fi
+    echo "Copying specific data files..."
+    mkdir -p "$DEST_DIR/data"
 
-# === TMS DATA ===
-# Transactive Memory System data (ChromaDB, etc.)
-if [ -d "$REPO_DIR/data/tms" ]; then
-    echo "Copying TMS data..."
-    # This is already included in the data directory copy above, but highlighting it
-    echo "  - ChromaDB and TMS files included in data/ copy"
+    # 1. Copy SAFE text-based files (CSV, JSON, LOG)
+    # We use simple wildcards to grab relevant files while avoiding heavy binaries
+    # 2>/dev/null ensures it doesn't complain if no files of that specific type exist
+    cp "$REPO_DIR/data/"*.csv "$DEST_DIR/data/" 2>/dev/null
+    cp "$REPO_DIR/data/"*.json "$DEST_DIR/data/" 2>/dev/null
+    cp "$REPO_DIR/data/"*.log "$DEST_DIR/data/" 2>/dev/null
+
+    # 2. EXPLICITLY SKIP HEAVY BINARIES
+    # We do NOT copy the 'tms' folder or .sqlite3 files here
+    echo "Skipping .sqlite3 and TMS binaries to prevent repo bloat."
 fi
 
 # === TRADE FILES ===
