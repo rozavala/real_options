@@ -171,6 +171,32 @@ def get_system_heartbeat():
     return heartbeat
 
 
+def get_ib_connection_health() -> dict:
+    """
+    Returns IB connection health metrics from state.
+    """
+    try:
+        from trading_bot.state_manager import StateManager
+        state = StateManager._load_raw_sync()
+
+        # Check for recent heartbeats or connection events
+        sensors = state.get("sensors", {})
+
+        return {
+            "sentinel_ib": sensors.get("sentinel_ib_status", {}).get("data", "UNKNOWN"),
+            "micro_ib": sensors.get("micro_ib_status", {}).get("data", "UNKNOWN"),
+            "last_successful_connection": sensors.get("last_ib_success", {}).get("data"),
+            "reconnect_backoff": sensors.get("reconnect_backoff", {}).get("data", 0)
+        }
+    except Exception:
+        return {
+            "sentinel_ib": "UNKNOWN",
+            "micro_ib": "UNKNOWN",
+            "last_successful_connection": None,
+            "reconnect_backoff": 0
+        }
+
+
 def get_sentinel_status():
     """
     Parses state.json to determine which Sentinels are active.

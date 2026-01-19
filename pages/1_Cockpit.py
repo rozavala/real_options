@@ -99,11 +99,13 @@ with hb_cols[2]:
     st.metric("Sentinels Active", f"{active_count}/{len(sentinels)}")
 
 with hb_cols[3]:
-    # Connection Status
-    if config:
-        st.metric("IB Connection", f"{config['connection']['host']}:{config['connection']['port']}")
-    else:
-        st.metric("IB Connection", "⚠️ Config Missing")
+    ib_health = get_ib_connection_health()
+    ib_status = "ONLINE" if ib_health.get("sentinel_ib") == "CONNECTED" else "OFFLINE"
+    ib_color = "🟢" if ib_status == "ONLINE" else "🔴"
+    st.metric("IB Gateway", f"{ib_color} {ib_status}")
+
+    if ib_health.get("reconnect_backoff", 0) > 0:
+        st.caption(f"⏳ Backoff: {ib_health['reconnect_backoff']}s")
 
 # Sentinel Details Expander
 with st.expander("🔍 Sentinel Details"):
@@ -112,6 +114,33 @@ with st.expander("🔍 Sentinel Details"):
         with sentinel_cols[idx % 4]:
             icon = "🟢" if status == "Active" else "💤"
             st.write(f"{icon} **{name}**: {status}")
+
+    # === NEW: X Sentiment Sensor Status ===
+    st.markdown("---")
+    st.markdown("**📡 X Sentiment Sensor**")
+
+    try:
+        from trading_bot.state_manager import StateManager
+        sensor_state = StateManager.load_state(namespace="sensors", max_age=3600)
+        x_status = sensor_state.get("x_sentiment", {})
+
+        if isinstance(x_status, dict):
+            status = x_status.get("sentiment_sensor_status", "UNKNOWN")
+            failures = x_status.get("consecutive_failures", 0)
+            degraded_until = x_status.get("degraded_until")
+
+            status_icon = "🟢" if status == "ONLINE" else "🔴" if status == "OFFLINE" else "🟡"
+            st.write(f"{status_icon} Status: **{status}**")
+
+            if failures > 0:
+                st.write(f"⚠️ Consecutive failures: {failures}")
+
+            if degraded_until:
+                st.write(f"⏰ Degraded until: {degraded_until}")
+        else:
+            st.write("⚪ Status: Not initialized")
+    except Exception as e:
+        st.write(f"❓ Unable to fetch X sensor status: {e}")
 
 st.markdown("---")
 

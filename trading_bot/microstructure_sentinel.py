@@ -125,10 +125,25 @@ class MicrostructureSentinel:
             return None
 
         if not self.ib.isConnected():
-            # Clear stale data on disconnect
-            self.spread_history.clear()
-            self.volume_history.clear()
+            # DON'T clear history - preserve data across reconnects
+            # The data may be slightly stale but maintains statistical context
+            # for anomaly detection when connection is restored.
+
+            # Track disconnect time for staleness-aware clearing
+            if not hasattr(self, '_disconnect_start'):
+                self._disconnect_start = datetime.now(timezone.utc)
+                logger.debug("IB disconnected - preserving historical data for reconnection")
+
             return None
+
+        # Reset disconnect tracker on successful data retrieval
+        if hasattr(self, '_disconnect_start') and self._disconnect_start:
+            disconnect_duration = (datetime.now(timezone.utc) - self._disconnect_start).total_seconds()
+            if disconnect_duration > 1800:  # 30 minutes
+                logger.warning(f"Extended disconnect ({disconnect_duration/60:.0f}min) - clearing potentially stale data")
+                self.spread_history.clear()
+                self.volume_history.clear()
+            self._disconnect_start = None
 
         if self._is_in_cooldown() or not self.tickers:
             return None
