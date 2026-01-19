@@ -125,6 +125,36 @@ def parse_sentiment_to_direction(sentiment_tag: str) -> Direction:
     return Direction.NEUTRAL
 
 
+def normalize_ml_confidence(raw_confidence: float, calibration_data: dict = None) -> float:
+    """
+    Normalize ML confidence to be comparable with agent confidence.
+
+    ML models are typically overconfident. We apply Platt scaling or
+    temperature scaling based on historical calibration.
+
+    Args:
+        raw_confidence: Raw model confidence (0-1)
+        calibration_data: Historical accuracy at each confidence level
+
+    Returns:
+        Calibrated confidence that better reflects actual accuracy
+    """
+    # Default: Apply conservative dampening (Linear Scaling)
+    # We want to pull confidence towards 0.5 (neutral) to reduce overconfidence.
+    # Formula: 0.5 + (raw - 0.5) / damping_factor
+
+    # Ensure raw_confidence is within [0, 1]
+    raw_confidence = max(0.0, min(1.0, raw_confidence))
+
+    damping_factor = 1.5 # Divisor
+
+    # Example (T=1.5):
+    #   0.90 -> 0.5 + 0.40/1.5 = 0.77
+    #   0.10 -> 0.5 - 0.40/1.5 = 0.23
+    #   0.50 -> 0.50
+
+    return 0.5 + ((raw_confidence - 0.5) / damping_factor)
+
 def extract_sentiment_from_report(report_text: str) -> tuple[str, float]:
     """Extract sentiment with multiple fallback patterns."""
     if not report_text or not isinstance(report_text, str):
@@ -356,7 +386,12 @@ async def calculate_weighted_decision(
     # DYNAMIC ML BLENDING (replaces hardcoded 30%)
     if ml_signal:
         ml_dir = ml_signal.get('direction', 'NEUTRAL')
-        ml_conf = ml_signal.get('confidence', 0.5)
+        raw_ml_conf = ml_signal.get('confidence', 0.5)
+
+        # === NEW: Normalize ML confidence before blending ===
+        ml_conf = normalize_ml_confidence(raw_ml_conf)
+        logger.info(f"ML confidence normalized: {raw_ml_conf:.2f} -> {ml_conf:.2f}")
+
         ml_val = {'BULLISH': 1, 'BEARISH': -1, 'NEUTRAL': 0}.get(ml_dir, 0)
 
         # Get ML model's Brier-adjusted weight

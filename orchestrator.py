@@ -1103,7 +1103,10 @@ async def run_sentinels(config: dict):
     logistics_sentinel = LogisticsSentinel(config)
     news_sentinel = NewsSentinel(config)
     x_sentinel = XSentimentSentinel(config)
-    microstructure_sentinel = MicrostructureSentinel(config, sentinel_ib)
+
+    # Initialize Microstructure variables
+    micro_sentinel = None
+    micro_ib = None
 
     # X Sentinel Stats
     x_sentinel_stats = {
@@ -1113,14 +1116,6 @@ async def run_sentinels(config: dict):
         'estimated_cost_usd': 0.0,
         'last_reset': datetime.now().date()
     }
-
-    # Subscribe microstructure sentinel to front-month contract
-    try:
-        active_futures = await get_active_futures(sentinel_ib, config['symbol'], config['exchange'])
-        if active_futures:
-            await microstructure_sentinel.subscribe_contract(active_futures[0])
-    except Exception as e:
-        logger.error(f"Failed to subscribe microstructure sentinel: {e}")
 
     # Timing state
     last_weather = 0
@@ -1136,6 +1131,7 @@ async def run_sentinels(config: dict):
     while True:
         try:
             now = time_module.time()
+            market_open = is_market_open()
 
             # --- Auto-Reconnect for Zombie Sentinel Risk ---
             if not sentinel_ib.isConnected():
@@ -1156,6 +1152,46 @@ async def run_sentinels(config: dict):
                     logger.info(f"Refreshed contract cache: {cached_contract.localSymbol if cached_contract else 'None'}")
                 except Exception as e:
                     logger.error(f"Failed to refresh contract cache: {e}")
+
+            # === LIFECYCLE MANAGEMENT: MicrostructureSentinel ===
+            if market_open and micro_sentinel is None:
+                logger.info("Market Open: Engaging Microstructure Sentinel")
+                try:
+                    micro_ib = await IBConnectionPool.get_connection("microstructure", config)
+                    configure_market_data_type(micro_ib)
+                    micro_sentinel = MicrostructureSentinel(config, micro_ib)
+
+                    # Use cached contract if available, else fetch
+                    target = cached_contract
+                    if not target and sentinel_ib.isConnected():
+                         # Try sentinel IB first as it might have cache or be connected
+                         active_futures = await get_active_futures(sentinel_ib, config['symbol'], config['exchange'], count=1)
+                         if active_futures: target = active_futures[0]
+
+                    if not target:
+                         # Try micro IB
+                         active_futures = await get_active_futures(micro_ib, config['symbol'], config['exchange'], count=1)
+                         if active_futures: target = active_futures[0]
+
+                    if target:
+                        await micro_sentinel.subscribe_contract(target)
+                    else:
+                        logger.warning("No active futures found for Microstructure Sentinel")
+
+                except Exception as e:
+                    logger.error(f"Failed to engage MicrostructureSentinel: {e}")
+                    micro_sentinel = None
+
+            elif not market_open and micro_sentinel is not None:
+                logger.info("Market Closed: Disengaging Microstructure Sentinel")
+                try:
+                    await micro_sentinel.unsubscribe_all()
+                except Exception as e:
+                    logger.error(f"Error unsubscribing microstructure: {e}")
+
+                micro_sentinel = None
+                await IBConnectionPool.release_connection("microstructure")
+                micro_ib = None
 
             # Use asyncio.create_task for non-blocking execution (Fix Blocking Sentinel)
 
@@ -1229,11 +1265,12 @@ async def run_sentinels(config: dict):
                     last_x_sentiment = now
 
             # 6. Microstructure Sentinel (Every 1 min with Price Sentinel)
-            if sentinel_ib.isConnected():
-                micro_trigger = await microstructure_sentinel.check()
+            if micro_sentinel and micro_ib and micro_ib.isConnected():
+                micro_trigger = await micro_sentinel.check()
                 if micro_trigger:
                     logger.warning(f"MICROSTRUCTURE ALERT: {micro_trigger.reason}")
                     if micro_trigger.severity >= 7:
+                        # Use sentinel_ib for emergency cycle as micro_ib is dedicated to monitoring
                         asyncio.create_task(run_emergency_cycle(micro_trigger, config, sentinel_ib))
                     else:
                         # Log warning but don't trigger full cycle

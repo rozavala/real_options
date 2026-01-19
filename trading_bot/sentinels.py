@@ -18,6 +18,7 @@ import aiohttp
 import json
 from functools import wraps
 from notifications import send_pushover_notification
+from trading_bot.state_manager import StateManager
 
 logger = logging.getLogger(__name__)
 
@@ -273,6 +274,10 @@ class WeatherSentinel(Sentinel):
         self.locations = self.sentinel_config.get('locations', [])
         self.triggers = self.sentinel_config.get('triggers', {})
 
+        self._active_alerts: Dict[str, dict] = {}  # {location_key: {"time": dt, "value": float}}
+        self._alert_cooldown_hours = 24
+        self._escalation_threshold = 0.05  # 5% worsening breaks cooldown
+
     async def check(self) -> Optional[SentinelTrigger]:
         for loc in self.locations:
             try:
@@ -296,9 +301,19 @@ class WeatherSentinel(Sentinel):
                 frost_threshold = self.triggers.get('min_temp_c', 4.0)
                 min_temp = min(min_temps)
                 if min_temp < frost_threshold:
-                    msg = f"Frost Risk in {name}: Min Temp {min_temp}°C < {frost_threshold}°C"
-                    logger.warning(f"WEATHER SENTINEL TRIGGERED: {msg}")
-                    return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "FROST", "value": min_temp}, severity=8)
+                    alert_key = f"frost_{name}"
+                    # Severity = distance below threshold. Higher is worse.
+                    # E.g. Threshold 4. Temp 3 -> 1. Temp -1 -> 5.
+                    severity_val = frost_threshold - min_temp
+
+                    if self._should_alert(alert_key, severity_val):
+                        self._active_alerts[alert_key] = {
+                            "time": datetime.now(timezone.utc),
+                            "value": severity_val
+                        }
+                        msg = f"Frost Risk in {name}: Min Temp {min_temp}°C < {frost_threshold}°C"
+                        logger.warning(f"WEATHER SENTINEL TRIGGERED: {msg}")
+                        return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "FROST", "value": min_temp}, severity=8)
 
                 # Check Drought
                 drought_days_limit = self.triggers.get('drought_days', 10)
@@ -307,14 +322,53 @@ class WeatherSentinel(Sentinel):
                 low_rain_days = sum(1 for p in precip if p < rain_limit)
 
                 if low_rain_days >= drought_days_limit:
-                    msg = f"Drought Risk in {name}: {low_rain_days} days with < {rain_limit}mm rain"
-                    logger.warning(f"WEATHER SENTINEL TRIGGERED: {msg}")
-                    return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "DROUGHT", "days": low_rain_days}, severity=6)
+                    alert_key = f"drought_{name}"
+                    if self._should_alert(alert_key, low_rain_days):
+                        self._active_alerts[alert_key] = {
+                            "time": datetime.now(timezone.utc),
+                            "value": low_rain_days
+                        }
+                        msg = f"Drought Risk in {name}: {low_rain_days} days with < {rain_limit}mm rain"
+                        logger.warning(f"WEATHER SENTINEL TRIGGERED: {msg}")
+                        return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "DROUGHT", "days": low_rain_days}, severity=6)
 
             except Exception as e:
                 logger.error(f"Weather Sentinel failed for {loc.get('name')}: {e}")
 
         return None
+
+    def _should_alert(self, alert_key: str, current_value: float) -> bool:
+        """
+        Alert if:
+        1. Never seen before, OR
+        2. Cooldown expired, OR
+        3. Situation has worsened by >5% (ESCALATION - breaks cooldown)
+        """
+        if alert_key not in self._active_alerts:
+            return True
+
+        prev = self._active_alerts[alert_key]
+        hours_since = (datetime.now(timezone.utc) - prev["time"]).total_seconds() / 3600
+
+        # Cooldown expired
+        if hours_since > self._alert_cooldown_hours:
+            return True
+
+        # ESCALATION CHECK: If situation worsened by >5%, break cooldown
+        # current_value > prev_value implies worsening (assuming metric is "badness")
+        prev_value = prev["value"]
+
+        # Avoid division by zero or negative base (metric should be positive severity)
+        if prev_value <= 0:
+            return current_value > prev_value
+
+        pct_change = (current_value - prev_value) / prev_value
+        if pct_change > self._escalation_threshold:
+            logger.warning(f"ESCALATION DETECTED for {alert_key}: "
+                          f"{prev_value:.2f} -> {current_value:.2f} ({pct_change:.1%})")
+            return True
+
+        return False
 
 class LogisticsSentinel(Sentinel):
     """
@@ -508,7 +562,20 @@ class XSentimentSentinel(Sentinel):
         self.volume_mean = 0.0
         self.volume_stddev = 0.0
 
+        # === CIRCUIT BREAKER ===
+        self.consecutive_failures = 0
+        self.degraded_until: Optional[datetime] = None
+        self.sensor_status = "ONLINE"
+
         logger.info(f"XSentimentSentinel initialized with model: {self.model}")
+
+    def get_sensor_status(self) -> dict:
+        """Return sensor status for injection into Council context."""
+        return {
+            "sentiment_sensor_status": self.sensor_status,
+            "consecutive_failures": self.consecutive_failures,
+            "degraded_until": self.degraded_until.isoformat() if self.degraded_until else None
+        }
 
     def _build_search_query(self, base_query: str) -> str:
         """Construct advanced X search query with filters."""
@@ -657,11 +724,35 @@ Return JSON with this EXACT structure:
 
             content = response.choices[0].message.content
 
+            # === FIX 1: Handle empty/None responses ===
+            if not content or not content.strip():
+                logger.warning(f"Empty response from Grok for query '{query}'")
+                return {
+                    "sentiment_score": 5.0,  # Neutral
+                    "confidence": 0.0,       # Zero confidence = "I don't know"
+                    "summary": "No X activity detected",
+                    "post_volume": 0,
+                    "notable_posts": [],
+                    "key_themes": []
+                }
+
+            # === FIX 2: Strip markdown JSON wrappers ===
+            content = content.strip()
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+
             # === ROBUST JSON PARSING ===
             try:
                 data = json.loads(content)
             except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON from Grok for query '{query}': {content[:200]}... Error: {e}")
+                # === FIX 3: Log actual content for debugging ===
+                logger.error(f"Invalid JSON from Grok for query '{query}': "
+                            f"len={len(content)}, preview='{content[:100]}', error={e}")
                 return None
 
             # === VALIDATE REQUIRED FIELDS ===
@@ -699,6 +790,13 @@ Return JSON with this EXACT structure:
 
         ENHANCEMENT: Parallel execution reduces latency from ~15s to ~3s.
         """
+        # === CIRCUIT BREAKER CHECK ===
+        if self.degraded_until and datetime.now(timezone.utc) < self.degraded_until:
+            self.sensor_status = "OFFLINE"
+            # Refresh state to ensure persistence knows we are still offline
+            StateManager.save_state({"x_sentiment": self.get_sensor_status()}, namespace="sensors")
+            return None
+
         # === PARALLEL QUERY EXECUTION ===
         tasks = [self._search_x_and_analyze(query) for query in self.search_queries]
         all_results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -712,8 +810,24 @@ Return JSON with this EXACT structure:
                 valid_results.append(result)
 
         if not valid_results:
+            self.consecutive_failures += 1
+            if self.consecutive_failures >= 3:
+                self.degraded_until = datetime.now(timezone.utc) + timedelta(hours=1)
+                self.sensor_status = "OFFLINE"
+                logger.warning("XSentimentSentinel entering degraded mode for 1 hour due to 3 consecutive failures")
+                # Optionally send notification here
+
+            # Save status
+            StateManager.save_state({"x_sentiment": self.get_sensor_status()}, namespace="sensors")
+
             logger.warning("XSentimentSentinel: All X searches failed")
             return None
+
+        # Success - Reset failure counter
+        self.consecutive_failures = 0
+        self.sensor_status = "ONLINE"
+        # Save status
+        StateManager.save_state({"x_sentiment": self.get_sensor_status()}, namespace="sensors")
 
         # === WEIGHTED AGGREGATION ===
         # ENHANCEMENT: Weight by confidence and post volume for better signal

@@ -55,6 +55,16 @@ class IBConnectionPool:
             return ib
 
     @classmethod
+    async def release_connection(cls, purpose: str):
+        """Releases a specific connection from the pool."""
+        async with cls._locks.get(purpose, asyncio.Lock()):
+            ib = cls._instances.pop(purpose, None)
+            if ib:
+                if ib.isConnected():
+                    logger.info(f"Disconnecting IB ({purpose})...")
+                    ib.disconnect()
+
+    @classmethod
     async def release_all(cls):
         for name, ib in cls._instances.items():
             if ib.isConnected():
