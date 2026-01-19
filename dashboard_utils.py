@@ -8,11 +8,15 @@ import pandas as pd
 import os
 import glob
 import random
-from datetime import datetime, timedelta
+import json
+import logging
+from datetime import datetime, timedelta, timezone
 import yfinance as yf
 import sys
 import asyncio
 import warnings
+
+logger = logging.getLogger(__name__)
 
 # Suppress "coroutine was never awaited" warnings from Streamlit's execution model
 warnings.filterwarnings("ignore", message="coroutine.*was never awaited")
@@ -648,3 +652,99 @@ def get_status_color(status: str) -> str:
         'NEUTRAL': 'gray'
     }
     return status_colors.get(status, 'gray')
+
+
+# === THESIS STATUS FUNCTIONS ===
+
+def get_active_theses() -> list[dict]:
+    """
+    Retrieves all active trade theses from TMS.
+    Returns a list of thesis dictionaries with computed fields.
+    """
+    try:
+        from trading_bot.tms import TransactiveMemory
+        tms = TransactiveMemory()
+
+        if not tms.collection:
+            return []
+
+        # Query all active theses
+        results = tms.collection.get(
+            where={"active": "true"},
+            include=['documents', 'metadatas']
+        )
+
+        theses = []
+        now = datetime.now(timezone.utc)
+
+        for doc, meta in zip(results.get('documents', []), results.get('metadatas', [])):
+            try:
+                thesis = json.loads(doc)
+
+                # Compute age
+                entry_time = datetime.fromisoformat(thesis.get('entry_timestamp', ''))
+                age_hours = (now - entry_time).total_seconds() / 3600
+
+                theses.append({
+                    'position_id': meta.get('trade_id', 'Unknown'),
+                    'strategy_type': thesis.get('strategy_type', 'Unknown'),
+                    'guardian_agent': thesis.get('guardian_agent', 'Unknown'),
+                    'primary_rationale': thesis.get('primary_rationale', '')[:50] + '...',
+                    'entry_regime': thesis.get('entry_regime', 'Unknown'),
+                    'invalidation_triggers': thesis.get('invalidation_triggers', []),
+                    'entry_price': thesis.get('supporting_data', {}).get('entry_price', 0),
+                    'confidence': thesis.get('supporting_data', {}).get('confidence', 0),
+                    'age_hours': age_hours,
+                    'entry_timestamp': entry_time
+                })
+            except Exception as e:
+                logger.warning(f"Failed to parse thesis: {e}")
+                continue
+
+        return sorted(theses, key=lambda x: x['entry_timestamp'], reverse=True)
+
+    except Exception as e:
+        logger.error(f"Failed to get active theses: {e}")
+        return []
+
+
+def get_current_market_regime(config: dict) -> str:
+    """
+    Fetches the current market regime estimate.
+    Returns 'HIGH_VOLATILITY', 'RANGE_BOUND', or 'TRENDING'.
+    """
+    try:
+        # Try to get from state.json first (faster)
+        if os.path.exists(STATE_FILE_PATH):
+            with open(STATE_FILE_PATH, 'r') as f:
+                state = json.load(f)
+                return state.get('current_regime', 'UNKNOWN')
+    except:
+        pass
+
+    return 'UNKNOWN'
+
+
+def get_guardian_icon(guardian: str) -> str:
+    """Returns an emoji icon for each guardian agent type."""
+    icons = {
+        'Agronomist': '🌱',
+        'Logistics': '🚢',
+        'VolatilityAnalyst': '📊',
+        'Macro': '💹',
+        'Sentiment': '🐦',
+        'Master': '👑',
+        'Fundamentalist': '📈'
+    }
+    return icons.get(guardian, '🤖')
+
+
+def get_strategy_color(strategy_type: str) -> str:
+    """Returns a color code for each strategy type."""
+    colors = {
+        'BULL_CALL_SPREAD': '#00CC96',  # Green
+        'BEAR_PUT_SPREAD': '#EF553B',   # Red
+        'IRON_CONDOR': '#636EFA',       # Blue
+        'LONG_STRADDLE': '#AB63FA'      # Purple
+    }
+    return colors.get(strategy_type, '#FFFFFF')

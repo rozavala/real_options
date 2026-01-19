@@ -49,8 +49,8 @@ class TestExitLogic(unittest.IsolatedAsyncioTestCase):
 
         # Bull Call Spread (Narrative)
         triggers_bcs = _build_invalidation_triggers('BULL_CALL_SPREAD', {'reason': 'Frost risk'})
-        self.assertIn('rain_forecast', triggers_bcs)
-        self.assertIn('warm_front', triggers_bcs)
+        self.assertIn('rain', triggers_bcs)
+        self.assertIn('warm front', triggers_bcs)
 
     def test_iron_condor_risk_validation(self):
         """Test risk check logic."""

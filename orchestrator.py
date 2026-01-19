@@ -19,7 +19,7 @@ from collections import deque
 import time as time_module
 from datetime import datetime, time, timedelta, timezone
 import pytz
-from ib_insync import IB, util, Contract, MarketOrder
+from ib_insync import IB, util, Contract, MarketOrder, OrderStatus
 
 from config_loader import load_config
 from trading_bot.logging_config import setup_logging
@@ -333,8 +333,80 @@ def _find_position_id_for_contract(position, trade_ledger) -> str | None:
         return matches.iloc[-1]['position_id']
     return None
 
-async def _close_position_with_thesis_reason(ib: IB, position, position_id: str, reason: str, config: dict):
-    """Executes a closing order for a specific position."""
+def _build_thesis_invalidation_notification(
+    position_id: str,
+    thesis: dict,
+    invalidation_reason: str,
+    pnl: float = None
+) -> tuple[str, str]:
+    """
+    Builds a rich notification for thesis invalidation.
+
+    Returns:
+        tuple of (title, message) for Pushover
+    """
+    strategy_type = thesis.get('strategy_type', 'Unknown')
+    guardian = thesis.get('guardian_agent', 'Unknown')
+
+    # Calculate holding time
+    entry_time_str = thesis.get('entry_timestamp', '')
+    if entry_time_str:
+        entry_time = datetime.fromisoformat(entry_time_str)
+        held_duration = datetime.now(timezone.utc) - entry_time
+        held_hours = held_duration.total_seconds() / 3600
+        held_str = f"{held_hours:.1f} hours"
+    else:
+        held_str = "Unknown"
+
+    # Format P&L
+    if pnl is not None:
+        pnl_str = f"${pnl:+,.2f}"
+        pnl_color = "green" if pnl >= 0 else "red"
+        pnl_section = f"<font color='{pnl_color}'><b>P&L: {pnl_str}</b></font>"
+    else:
+        pnl_section = "<i>P&L: Pending fill</i>"
+
+    # Guardian icons
+    guardian_icons = {
+        'Agronomist': '🌱',
+        'Logistics': '🚢',
+        'VolatilityAnalyst': '📊',
+        'Macro': '💹',
+        'Sentiment': '🐦',
+        'Master': '👑'
+    }
+    icon = guardian_icons.get(guardian, '🤖')
+
+    # Build title
+    title = f"🎯 Thesis Invalidated: {position_id}"
+
+    # Build message
+    message = f"""<b>Strategy:</b> {strategy_type.replace('_', ' ')}
+<b>Guardian:</b> {icon} {guardian}
+
+<b>📥 ENTRY THESIS:</b>
+{thesis.get('primary_rationale', 'No rationale recorded')}
+
+<b>❌ INVALIDATION REASON:</b>
+{invalidation_reason}
+
+<b>⏱️ Time Held:</b> {held_str}
+<b>Entry Regime:</b> {thesis.get('entry_regime', 'Unknown')}
+<b>Entry Confidence:</b> {thesis.get('supporting_data', {}).get('confidence', 0):.0%}
+
+{pnl_section}"""
+
+    return title, message
+
+async def _close_position_with_thesis_reason(
+    ib: IB,
+    position,
+    position_id: str,
+    reason: str,
+    config: dict,
+    thesis: dict = None
+):
+    """Executes a closing order for a specific position with enhanced notification."""
     logger.info(f"Executing THESIS CLOSE for {position_id}: {reason}")
 
     contract = position.contract
@@ -345,8 +417,36 @@ async def _close_position_with_thesis_reason(ib: IB, position, position_id: str,
     order = MarketOrder(action, qty)
     trade = place_order(ib, contract, order)
 
-    # Wait for fill?
+    # Wait for fill
     await asyncio.sleep(2)
+
+    # Try to get P&L from trade (may not be available immediately)
+    pnl = None
+    if trade.orderStatus.status == OrderStatus.Filled:
+        # Estimate P&L if we have entry price
+        if thesis and thesis.get('supporting_data', {}).get('entry_price'):
+            entry_price = thesis['supporting_data']['entry_price']
+            fill_price = trade.orderStatus.avgFillPrice
+            # Rough P&L estimate (this is simplified - real calc would use multiplier)
+            direction_mult = 1 if position.position > 0 else -1
+            pnl = (fill_price - entry_price) * direction_mult * qty
+
+    # Send rich notification
+    if thesis:
+        title, message = _build_thesis_invalidation_notification(
+            position_id=position_id,
+            thesis=thesis,
+            invalidation_reason=reason,
+            pnl=pnl
+        )
+        send_pushover_notification(config.get('notifications', {}), title, message)
+    else:
+        # Fallback to simple notification
+        send_pushover_notification(
+            config.get('notifications', {}),
+            f"Position Closed: {position_id}",
+            f"Reason: {reason}"
+        )
 
     # Cleanup stops
     await close_spread_with_protection_cleanup(ib, trade, f"CATASTROPHE_{position_id}")
@@ -421,7 +521,8 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
                 position=item['position'],
                 position_id=item['position_id'],
                 reason=item['reason'],
-                config=config
+                config=config,
+                thesis=item['thesis']
             )
             tms.invalidate_thesis(item['position_id'], item['reason'])
 
@@ -763,7 +864,8 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                                         position=target_pos,
                                         position_id=thesis_id,
                                         reason=f"Sentinel Invalidation: {trigger.reason}",
-                                        config=config
+                                        config=config,
+                                        thesis=thesis
                                     )
                                 else:
                                     logger.warning(f"Could not find live position for invalidated thesis {thesis_id}. Marking thesis as invalid anyway.")

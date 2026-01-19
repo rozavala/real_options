@@ -22,7 +22,11 @@ from dashboard_utils import (
     load_council_history,
     grade_decision_quality,
     calculate_rolling_win_rate,
-    get_status_color
+    get_status_color,
+    get_active_theses,
+    get_current_market_regime,
+    get_guardian_icon,
+    get_strategy_color
 )
 
 st.set_page_config(layout="wide", page_title="Cockpit | Coffee Bot")
@@ -184,6 +188,105 @@ if config:
 
 else:
     st.error("Configuration not loaded. Cannot fetch live data.")
+
+st.markdown("---")
+
+# === SECTION: Active Position Theses ===
+st.subheader("📋 Active Position Theses")
+st.caption("Real-time view of open positions and their trading rationales")
+
+# Regime Status Banner
+current_regime = get_current_market_regime(config)
+regime_colors = {
+    'HIGH_VOLATILITY': ('🔴', '#EF553B'),
+    'RANGE_BOUND': ('🟢', '#00CC96'),
+    'TRENDING': ('🟡', '#FECB52'),
+    'UNKNOWN': ('⚪', '#AAAAAA')
+}
+regime_icon, regime_color = regime_colors.get(current_regime, ('⚪', '#AAAAAA'))
+
+st.markdown(
+    f"""
+    <div style="background-color: {regime_color}22; padding: 10px; border-radius: 5px; border-left: 4px solid {regime_color};">
+        <strong>{regime_icon} Current Market Regime:</strong> {current_regime}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown("")
+
+# Active Theses Table
+active_theses = get_active_theses()
+
+if active_theses:
+    # Summary metrics
+    thesis_cols = st.columns(4)
+
+    with thesis_cols[0]:
+        st.metric("Active Positions", len(active_theses))
+
+    with thesis_cols[1]:
+        # Count by strategy
+        strategy_counts = {}
+        for t in active_theses:
+            s = t['strategy_type']
+            strategy_counts[s] = strategy_counts.get(s, 0) + 1
+        dominant = max(strategy_counts.items(), key=lambda x: x[1])[0] if strategy_counts else 'None'
+        st.metric("Dominant Strategy", dominant.replace('_', ' ').title())
+
+    with thesis_cols[2]:
+        # Average age
+        avg_age = sum(t['age_hours'] for t in active_theses) / len(active_theses)
+        st.metric("Avg Position Age", f"{avg_age:.1f}h")
+
+    with thesis_cols[3]:
+        # Average confidence
+        avg_conf = sum(t['confidence'] for t in active_theses) / len(active_theses)
+        st.metric("Avg Entry Confidence", f"{avg_conf:.0%}")
+
+    st.markdown("")
+
+    # Detailed thesis cards
+    for thesis in active_theses:
+        strategy_color = get_strategy_color(thesis['strategy_type'])
+        guardian_icon = get_guardian_icon(thesis['guardian_agent'])
+
+        with st.expander(
+            f"{guardian_icon} **{thesis['position_id']}** | {thesis['strategy_type'].replace('_', ' ')} | Age: {thesis['age_hours']:.1f}h",
+            expanded=False
+        ):
+            detail_cols = st.columns([2, 1, 1])
+
+            with detail_cols[0]:
+                st.markdown(f"**Rationale:** {thesis['primary_rationale']}")
+                st.markdown(f"**Guardian Agent:** {guardian_icon} {thesis['guardian_agent']}")
+                st.markdown(f"**Entry Regime:** {thesis['entry_regime']}")
+
+            with detail_cols[1]:
+                st.metric("Entry Price", f"${thesis['entry_price']:.2f}")
+                st.metric("Confidence", f"{thesis['confidence']:.0%}")
+
+            with detail_cols[2]:
+                st.markdown("**Kill Triggers:**")
+                for trigger in thesis['invalidation_triggers'][:3]:  # Show top 3
+                    st.markdown(f"- `{trigger}`")
+                if len(thesis['invalidation_triggers']) > 3:
+                    st.caption(f"+{len(thesis['invalidation_triggers']) - 3} more")
+
+else:
+    st.info("No active position theses. The system has no open positions or theses haven't been recorded yet.")
+
+# Regime-specific warnings
+if active_theses and current_regime != 'UNKNOWN':
+    # Check for regime mismatches
+    at_risk = [t for t in active_theses if t['entry_regime'] != current_regime]
+
+    if at_risk:
+        st.warning(
+            f"⚠️ **Regime Mismatch Alert:** {len(at_risk)} position(s) were entered in a different regime. "
+            f"Morning audit will evaluate these for potential closure."
+        )
 
 st.markdown("---")
 

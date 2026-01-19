@@ -1449,13 +1449,13 @@ def _build_invalidation_triggers(strategy_type: str, decision: dict) -> list:
     elif strategy_type in ['BULL_CALL_SPREAD', 'BEAR_PUT_SPREAD']:
         # Narrative-specific triggers
         if 'frost' in reason:
-            triggers.append('rain_forecast')
-            triggers.append('warm_front')
+            triggers.append('rain')
+            triggers.append('warm front')
         if 'strike' in reason or 'port' in reason:
-            triggers.append('strike_resolution')
-            triggers.append('port_reopening')
+            triggers.append('strike resolution')
+            triggers.append('port reopening')
         if 'supply' in reason:
-            triggers.append('supply_normalization')
+            triggers.append('supply normalization')
 
     return triggers
 
