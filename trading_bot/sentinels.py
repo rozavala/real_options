@@ -916,13 +916,13 @@ If the x_search tool returns no results or errors, provide neutral sentiment wit
                 min_engagement = self.min_engagement
                 posts = [p for p in posts if p.get('likes', 0) >= min_engagement]
 
-                    logger.info(f"X API returned {len(posts)} posts for '{query}' (sort: {sort_order})")
+                logger.info(f"X API returned {len(posts)} posts for '{query}' (sort: {sort_order})")
 
-                    return {
-                        "posts": posts,
-                        "post_volume": len(posts),
-                        "query": query
-                    }
+                return {
+                    "posts": posts,
+                    "post_volume": len(posts),
+                    "query": query
+                }
 
         except asyncio.TimeoutError:
             logger.error("X API request timed out")
