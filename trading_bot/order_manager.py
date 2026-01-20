@@ -394,6 +394,13 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
 async def check_liquidity_conditions(ib: IB, contract, order_size: int) -> tuple[bool, str]:
     """Check if liquidity conditions are safe for execution."""
     try:
+        # --- PATCH: Bypass Depth Check for Combos (BAG) ---
+        # IBKR returns 0 depth for synthetic combos even when legs have liquidity.
+        # We rely on IBKR's Smart Routing to handle combo execution.
+        if contract.secType == 'BAG':
+            return True, "Liquidity check skipped for BAG (Combo) - relying on Smart Routing"
+        # --- END PATCH ---
+
         # Request order book
         ticker = ib.reqMktDepth(contract, numRows=5)
         await asyncio.sleep(1)  # Allow data to populate

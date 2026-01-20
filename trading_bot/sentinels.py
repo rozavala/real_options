@@ -612,8 +612,8 @@ class XSentimentSentinel(Sentinel):
         for keyword in self.exclude_keywords:
             query_parts.append(f"-{keyword}")
 
-        # Engagement filter (X search syntax)
-        query_parts.append(f"min_faves:{self.min_engagement}")
+    # NOTE: min_faves removed - not available on Basic/Pro X API tiers
+    # Engagement filtering is now done in post-processing (see _execute_x_search)
 
         return " ".join(query_parts)
 
@@ -911,6 +911,10 @@ If the x_search tool returns no results or errors, provide neutral sentiment wit
                             "retweets": metrics.get("retweet_count", 0),
                             "created_at": tweet.get("created_at", "")
                         })
+
+                # Filter by engagement (replaces min_faves operator)
+                min_engagement = self.min_engagement
+                posts = [p for p in posts if p.get('likes', 0) >= min_engagement]
 
                     logger.info(f"X API returned {len(posts)} posts for '{query}' (sort: {sort_order})")
 

@@ -28,15 +28,20 @@ TRADE_LEDGER_LOCK = asyncio.Lock()
 
 def configure_market_data_type(ib: IB):
     """
-    Configures the market data type based on the environment.
-    If ENV_NAME is not 'PROD', it switches to Delayed Market Data (Type 3)
-    to prevent conflicting live sessions with the Production bot.
+    Configures the market data type.
+
+    UPDATED: Always requests LIVE (Type 1) data to ensure OrderManager
+    liquidity checks pass. This assumes no parallel IB sessions are running.
+
+    If you need to run parallel sessions, set FORCE_DELAYED_DATA=1 in .env
     """
-    env = os.getenv("ENV_NAME", "DEV")
-    if env != "PROD":
-        logging.getLogger(__name__).info(f"🛠️ {env} MODE: Switching to Delayed Market Data (Type 3)")
+    force_delayed = os.getenv("FORCE_DELAYED_DATA", "0") == "1"
+
+    if force_delayed:
+        logging.getLogger(__name__).info("🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)")
         ib.reqMarketDataType(3)
     else:
+        logging.getLogger(__name__).info("🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.")
         ib.reqMarketDataType(1)
 
 def _get_combo_description(trade: Trade) -> str:
