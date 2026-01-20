@@ -17,6 +17,7 @@ from dashboard_utils import (
     get_config,
     get_system_heartbeat,
     get_sentinel_status,
+    get_ib_connection_health,
     fetch_live_dashboard_data,
     fetch_todays_benchmark_data,
     load_council_history,
