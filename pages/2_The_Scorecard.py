@@ -148,7 +148,7 @@ if not vol_df.empty:
             total_vol = wins + losses
             win_rate = wins/total_vol*100 if total_vol > 0 else 0
             st.metric("Win Rate", f"{win_rate:.1f}%")
-            st.caption(f"Wins when price moved >3%: {wins} | Losses: {losses}")
+            st.caption(f"Wins when price moved >1.8%: {wins} | Losses: {losses}")
         else:
             st.info("No Long Straddle trades.")
 
