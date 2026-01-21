@@ -519,8 +519,11 @@ class HeterogeneousRouter:
         Route request to appropriate model with robust fallback.
 
         AMENDED (Protocol 2C): Includes rate limiting before API calls.
+        HOTFIX: Corrected RouterMetrics API calls.
         """
         from trading_bot.router_metrics import get_router_metrics
+        import time
+
         metrics = get_router_metrics()
 
         # Check Cache (Force OFF for Sentinels)
@@ -554,23 +557,41 @@ class HeterogeneousRouter:
             slot_acquired = await acquire_api_slot(provider_name, timeout=30.0)
 
             if slot_acquired:
+                start_time = time.time()
                 try:
                     client = self._get_client(primary_provider, primary_model)
                     response = await client.generate(prompt, system_prompt, response_json)
+
+                    latency_ms = (time.time() - start_time) * 1000
 
                     # Success - cache and return
                     if use_cache:
                         self.cache.set(full_key_prompt, role.value, response)
 
-                    metrics.record_success(provider_name, role.value)
+                    # HOTFIX: Use correct API - record_request with success=True
+                    metrics.record_request(
+                        role=role.value,
+                        provider=primary_provider.value,
+                        success=True,
+                        latency_ms=latency_ms,
+                        was_fallback=False
+                    )
                     return response
 
                 except Exception as e:
+                    latency_ms = (time.time() - start_time) * 1000
                     last_exception = e
                     logger.warning(
                         f"{primary_provider.value}/{primary_model} failed for {role.value}: {e}"
                     )
-                    metrics.record_failure(provider_name, role.value, str(e))
+                    # HOTFIX: Use correct API - record_request with success=False
+                    metrics.record_request(
+                        role=role.value,
+                        provider=primary_provider.value,
+                        success=False,
+                        latency_ms=latency_ms,
+                        was_fallback=False
+                    )
             else:
                 # Rate limit timeout - treat as failure, move to fallback
                 logger.warning(
@@ -580,7 +601,6 @@ class HeterogeneousRouter:
                 last_exception = RuntimeError(f"Rate limit timeout for {provider_name}")
 
         # === FALLBACK CHAIN (with Rate Limiting per provider) ===
-        # CRITICAL FIX: Use correct method name _get_fallback_models (not _get_fallback_chain)
         fallback_chain = self._get_fallback_models(role, primary_provider)
 
         for fallback_provider, fallback_model in fallback_chain:
@@ -597,9 +617,12 @@ class HeterogeneousRouter:
                 logger.warning(f"Rate limit timeout for fallback {fallback_name}, trying next")
                 continue
 
+            start_time = time.time()
             try:
                 client = self._get_client(fallback_provider, fallback_model)
                 response = await client.generate(prompt, system_prompt, response_json)
+
+                latency_ms = (time.time() - start_time) * 1000
 
                 # Fallback succeeded
                 logger.warning(
@@ -607,7 +630,17 @@ class HeterogeneousRouter:
                     f"for {role.value} after primary failure."
                 )
 
-                # Record fallback event
+                # HOTFIX: Use correct API - record_request for the successful fallback
+                metrics.record_request(
+                    role=role.value,
+                    provider=fallback_provider.value,
+                    success=True,
+                    latency_ms=latency_ms,
+                    was_fallback=True,
+                    primary_provider=primary_provider.value if primary_provider else None
+                )
+
+                # Record fallback event (this method DOES exist)
                 metrics.record_fallback(
                     role.value,
                     primary_provider.value if primary_provider else "none",
@@ -622,12 +655,21 @@ class HeterogeneousRouter:
                 return response
 
             except Exception as e:
+                latency_ms = (time.time() - start_time) * 1000
                 last_exception = e
                 logger.warning(
                     f"Fallback {fallback_provider.value}/{fallback_model} "
                     f"also failed for {role.value}: {e}"
                 )
-                metrics.record_failure(fallback_name, role.value, str(e))
+                # HOTFIX: Use correct API - record_request with success=False
+                metrics.record_request(
+                    role=role.value,
+                    provider=fallback_provider.value,
+                    success=False,
+                    latency_ms=latency_ms,
+                    was_fallback=True,
+                    primary_provider=primary_provider.value if primary_provider else None
+                )
                 continue
 
         # === ALL PROVIDERS EXHAUSTED ===
