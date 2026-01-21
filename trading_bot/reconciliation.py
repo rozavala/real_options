@@ -73,20 +73,12 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
     """Internal helper to process the DataFrame rows using the active IB connection."""
 
     # Ensure columns exist (if migrated recently, they should be there, but good to be safe)
-    required_cols = ['exit_price', 'exit_timestamp', 'pnl_realized', 'actual_trend_direction']
+    required_cols = ['exit_price', 'exit_timestamp', 'pnl_realized', 'actual_trend_direction', 'volatility_outcome']
     for col in required_cols:
         if col not in df.columns:
             df[col] = None
 
     # Identify candidates for reconciliation
-    # Criteria:
-    # 1. exit_price is NaN or empty
-    # 2. timestamp is older than X hours (e.g., 20h to be safe for next-day close)
-    # The user mentioned "around 27h generally". We check if current time > entry time + 20h to catch the next closing.
-    # Actually, we want the price at the *holding period end*.
-    # If the trade is older than 27h, we can definitely reconcile.
-
-    # Convert timestamp to datetime
     try:
         df['timestamp'] = pd.to_datetime(df['timestamp'])
     except Exception as e:
@@ -97,23 +89,28 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
     updates_made = False
 
     # Filter for rows that need processing
-    # We iterate manually to handle async calls and potential failures gracefully per row
     for index, row in df.iterrows():
-        # Check if already reconciled
-        if pd.notna(row['exit_price']) and row['exit_price'] != '':
+        # --- FORCE RECALCULATION CHECK ---
+        # NEW: If it's a VOLATILITY trade with 0 P&L, process it anyway to fix the bug
+        is_broken_volatility = (
+            row.get('prediction_type') == 'VOLATILITY' and
+            pd.notna(row.get('exit_price')) and
+            row.get('exit_price') != '' and
+            float(row.get('pnl_realized', 0) or 0) == 0.0
+        )
+
+        # Skip only if reconciled AND not a broken volatility row
+        if pd.notna(row['exit_price']) and row['exit_price'] != '' and not is_broken_volatility:
             continue
 
         prediction_type = row.get('prediction_type', 'DIRECTIONAL')
         strategy_type = row.get('strategy_type', '')
 
         entry_time = row['timestamp']
-        # If entry is naive, assume local/system time which matches 'now'.
-        # Safest is to treat everything as naive or aware consistently.
-        # df['timestamp'] usually comes from datetime.now() stringified.
 
         # Check age. If it's less than ~20 hours old, it might still be open.
         # We only want to grade "finished" tests.
-        if (now - entry_time).total_seconds() < 20 * 3600:
+        if (now - entry_time).total_seconds() < 20 * 3600 and not is_broken_volatility:
             continue
 
         contract_str = row['contract']  # e.g., "KC H4 (202403)" or just "KC H4"
@@ -125,104 +122,101 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
 
         logger.info(f"Reconciling trade from {entry_time}: {contract_str} ({decision})")
 
-        # 1. Parse Contract
-        # Expected format: "Symbol (YYYYMM)" or similar from signal_generator.py
-        # signal_generator.py: f"{contract.localSymbol} ({contract.lastTradeDateOrContractMonth[:6]})"
+        # Determine Target Exit Time (Default)
+        target_exit_time = entry_time + timedelta(hours=27)
+
         try:
-            # Regex or split to get symbol and date
-            # Example: "KCH5 (202503)"
-            if '(' in contract_str and ')' in contract_str:
-                parts = contract_str.split('(')
-                symbol = parts[0].strip()
-                last_trade_date = parts[1].replace(')', '').strip()
+            exit_price = 0.0
+
+            # 1. GET EXIT PRICE
+            if is_broken_volatility:
+                # Use existing data
+                exit_price = float(row['exit_price'])
+                # Try to use existing exit timestamp if valid
+                if pd.notna(row.get('exit_timestamp')):
+                    try:
+                        target_exit_time = pd.to_datetime(row['exit_timestamp'])
+                    except:
+                        pass
+                logger.info(f"Force-recalculating broken volatility row: {contract_str}")
+
             else:
-                # Fallback or skip
-                logger.warning(f"Could not parse contract string: {contract_str}")
-                continue
+                # FULL RECONCILIATION PROCESS
 
-            contract = Contract()
-            contract.symbol = config.get('symbol', 'KC') # 'KC'
-            contract.secType = 'FUT'
-            contract.exchange = config.get('exchange', 'NYBOT') # 'NYBOT'
-            contract.currency = 'USD'
-            contract.lastTradeDateOrContractMonth = last_trade_date
-            contract.includeExpired = True
+                # Parse Contract
+                if '(' in contract_str and ')' in contract_str:
+                    parts = contract_str.split('(')
+                    symbol = parts[0].strip()
+                    last_trade_date = parts[1].replace(')', '').strip()
+                else:
+                    logger.warning(f"Could not parse contract string: {contract_str}")
+                    continue
 
-            # Qualify to be sure
-            details = await ib.reqContractDetailsAsync(contract)
-            if not details:
-                logger.error(f"Contract not found: {contract_str}")
-                continue
+                contract = Contract()
+                contract.symbol = config.get('symbol', 'KC')
+                contract.secType = 'FUT'
+                contract.exchange = config.get('exchange', 'NYBOT')
+                contract.currency = 'USD'
+                contract.lastTradeDateOrContractMonth = last_trade_date
+                contract.includeExpired = True
 
-            qualified_contract = details[0].contract
-            qualified_contract.includeExpired = True
+                # Qualify
+                details = await ib.reqContractDetailsAsync(contract)
+                if not details:
+                    logger.error(f"Contract not found: {contract_str}")
+                    continue
+                qualified_contract = details[0].contract
+                qualified_contract.includeExpired = True
 
-            # 2. Determine Exit Time
-            # Logic: Entry Time + ~27 hours (Next Day Close)
-            # We want the closing price of the day AFTER entry.
-            # If entry is Monday 14:00, exit is Tuesday 17:00.
-            # We can request Historical Data around that target time.
+                # If target exit time is in the future, we can't reconcile yet
+                if target_exit_time > now:
+                    continue
 
-            target_exit_time = entry_time + timedelta(hours=27)
+                # Fetch Historical Data
+                end_str = (target_exit_time + timedelta(days=2)).strftime('%Y%m%d %H:%M:%S')
+                bars = await ib.reqHistoricalDataAsync(
+                    qualified_contract,
+                    endDateTime=end_str,
+                    durationStr='1 M',
+                    barSizeSetting='1 day',
+                    whatToShow='TRADES',
+                    useRTH=True,
+                    formatDate=1
+                )
 
-            # If target exit time is in the future, we can't reconcile yet (should have been caught by age check)
-            if target_exit_time > now:
-                continue
+                if not bars:
+                    logger.warning(f"No historical data found for {contract_str}")
+                    continue
 
-            # 3. Fetch Historical Data
-            # We ask for TRADES for a short window around target_exit_time
-            # Or simpler: Ask for daily bars covering the entry and next few days.
-            end_str = (target_exit_time + timedelta(days=2)).strftime('%Y%m%d %H:%M:%S')
+                # Find bar
+                target_date = target_exit_time.date()
+                matched_bar = None
+                for bar in bars:
+                    if bar.date == target_date:
+                        matched_bar = bar
+                        break
+                if not matched_bar:
+                     entry_date = entry_time.date()
+                     post_entry_bars = [b for b in bars if b.date > entry_date]
+                     if post_entry_bars:
+                         matched_bar = post_entry_bars[0]
 
-            bars = await ib.reqHistoricalDataAsync(
-                qualified_contract,
-                endDateTime=end_str,
-                durationStr='1 M', # 1 Month to be safe and cover the range
-                barSizeSetting='1 day',
-                whatToShow='TRADES',
-                useRTH=True,
-                formatDate=1
-            )
+                if not matched_bar:
+                    logger.warning(f"Could not find a valid exit bar for {contract_str}")
+                    continue
 
-            if not bars:
-                logger.warning(f"No historical data found for {contract_str}")
-                continue
+                exit_price = matched_bar.close
 
-            # Find the bar that corresponds to the "Exit Day"
-            # The exit day is the day of target_exit_time.
-            target_date = target_exit_time.date()
 
-            matched_bar = None
-            for bar in bars:
-                # bar.date is usually datetime.date for daily bars
-                if bar.date == target_date:
-                    matched_bar = bar
-                    break
+            # ================================================================
+            # VOLATILITY-AWARE P&L CALCULATION (NET BASIS)
+            # ================================================================
 
-            # If exact match failed (maybe holiday?), try next available bar?
-            # Or just take the bar immediately after entry_time?
-            if not matched_bar:
-                 # Find first bar after entry_time
-                 entry_date = entry_time.date()
-                 post_entry_bars = [b for b in bars if b.date > entry_date]
-                 if post_entry_bars:
-                     matched_bar = post_entry_bars[0] # The next trading day
+            # 1. Calculate percentage move
+            pct_change = (exit_price - entry_price) / entry_price if entry_price != 0 else 0
+            abs_pct_change = abs(pct_change)
 
-            if not matched_bar:
-                logger.warning(f"Could not find a valid exit bar for {contract_str} after {entry_time}")
-                continue
-
-            exit_price = matched_bar.close
-
-            # 4. Calculate Results
-            pnl = 0.0
-            trend = "NEUTRAL"
-
-            if decision == 'BULLISH':
-                pnl = exit_price - entry_price
-            elif decision == 'BEARISH':
-                pnl = entry_price - exit_price
-
+            # 2. Determine Trend Direction
             if exit_price > entry_price:
                 trend = 'BULLISH'
             elif exit_price < entry_price:
@@ -230,66 +224,107 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             else:
                 trend = 'NEUTRAL'
 
-            # Update DataFrame
+            # 3. Strategy-Specific P&L (NET BASIS)
+            # Thresholds calibrated to IV regime (~31-35%)
+            # Daily Vol ≈ 35% / 16 = 2.2%, Breakeven ≈ 0.8 × 2.2% = 1.76% → 1.8%
+            STRADDLE_THRESHOLD = 0.018  # 1.8%
+            CONDOR_THRESHOLD = 0.015    # 1.5%
+
+            pnl = 0.0
+            vol_outcome = None
+
+            if prediction_type == 'VOLATILITY':
+
+                if strategy_type == 'LONG_STRADDLE':
+                    if abs_pct_change >= STRADDLE_THRESHOLD:
+                        # WIN: Profit is the move BEYOND the breakeven (premium cost)
+                        # Net profit = (actual_move - breakeven) × entry_price
+                        net_move = abs_pct_change - STRADDLE_THRESHOLD
+                        pnl = net_move * entry_price
+                        vol_outcome = 'BIG_MOVE'
+                        logger.info(f"STRADDLE WIN: {abs_pct_change:.2%} move exceeds {STRADDLE_THRESHOLD:.2%} threshold. Net P&L: {pnl:.2f}")
+                    else:
+                        # LOSS: Lost the premium (approximately the threshold value)
+                        # Max loss is capped at premium paid
+                        pnl = -1 * (STRADDLE_THRESHOLD * entry_price)
+                        vol_outcome = 'STAYED_FLAT'
+                        logger.info(f"STRADDLE LOSS: {abs_pct_change:.2%} move below {STRADDLE_THRESHOLD:.2%} threshold. P&L: {pnl:.2f}")
+
+                elif strategy_type == 'IRON_CONDOR':
+                    if abs_pct_change <= CONDOR_THRESHOLD:
+                        # WIN: Keep the premium (approximately 1% of notional)
+                        pnl = entry_price * 0.01
+                        vol_outcome = 'STAYED_FLAT'
+                        logger.info(f"CONDOR WIN: {abs_pct_change:.2%} move within {CONDOR_THRESHOLD:.2%} threshold. P&L: {pnl:.2f}")
+                    else:
+                        # LOSS: Move exceeded wings, loss proportional to excess
+                        net_move = abs_pct_change - CONDOR_THRESHOLD
+                        pnl = -1 * (net_move * entry_price)
+                        vol_outcome = 'BIG_MOVE'
+                        logger.info(f"CONDOR LOSS: {abs_pct_change:.2%} move exceeds {CONDOR_THRESHOLD:.2%} threshold. P&L: {pnl:.2f}")
+
+                # Commit volatility outcome
+                df.at[index, 'volatility_outcome'] = vol_outcome
+
+            else:
+                # Standard Directional Logic (unchanged)
+                if decision == 'BULLISH':
+                    pnl = exit_price - entry_price
+                elif decision == 'BEARISH':
+                    pnl = entry_price - exit_price
+                # NEUTRAL directional = no position, pnl stays 0
+
+            # 4. Commit Results
             df.at[index, 'exit_price'] = exit_price
-            df.at[index, 'exit_timestamp'] = target_exit_time.strftime('%Y-%m-%d %H:%M:%S') # Approx
+            df.at[index, 'exit_timestamp'] = target_exit_time.strftime('%Y-%m-%d %H:%M:%S')
             df.at[index, 'pnl_realized'] = round(pnl, 4)
             df.at[index, 'actual_trend_direction'] = trend
 
-            # Calculate Volatility Outcome if applicable
-            if prediction_type == 'VOLATILITY':
-                try:
-                    pct_change = abs((exit_price - entry_price) / entry_price)
-                    vol_outcome = None
-
-                    if strategy_type == 'LONG_STRADDLE':
-                        vol_outcome = 'BIG_MOVE' if pct_change >= 0.03 else 'STAYED_FLAT'
-                    elif strategy_type == 'IRON_CONDOR':
-                        vol_outcome = 'STAYED_FLAT' if pct_change <= 0.02 else 'BIG_MOVE'
-
-                    if vol_outcome:
-                        df.at[index, 'volatility_outcome'] = vol_outcome
-                except Exception as e:
-                    logger.warning(f"Failed to calc volatility outcome: {e}")
-
             updates_made = True
-            logger.info(f"Reconciled {contract_str}: Entry {entry_price} -> Exit {exit_price} ({trend}) | P&L: {pnl}")
+            logger.info(
+                f"Reconciled {contract_str}: Entry {entry_price:.2f} -> Exit {exit_price:.2f} "
+                f"({abs_pct_change:.2%} move) | Strategy: {strategy_type or 'DIRECTIONAL'} | "
+                f"Outcome: {vol_outcome or trend} | P&L: {pnl:.4f}"
+            )
 
             # Update Brier Score
             try:
-                # Actual trend is BULLISH or BEARISH or NEUTRAL
-                # Master Decision is BULLISH or BEARISH or NEUTRAL
-                # We record the Master's prediction
                 tracker = get_brier_tracker()
 
-                # Record Master Strategist prediction
-                # Note: trend logic above: if exit > entry => BULLISH.
-                # 'actual_trend_direction' holds this.
-                tracker.record_prediction(
-                    agent='master_decision', # Using key from score card
-                    predicted=decision,
-                    actual=trend,
-                    timestamp=target_exit_time
-                )
-                logger.info(f"Recorded Brier score for master: Predicted {decision} vs Actual {trend}")
+                if prediction_type == 'VOLATILITY':
+                    # Record Volatility Prediction
+                    tracker.record_volatility_prediction(
+                        strategy_type=strategy_type,
+                        predicted_vol_level='HIGH' if strategy_type == 'LONG_STRADDLE' else 'LOW', # implied
+                        actual_outcome=vol_outcome or 'UNKNOWN',
+                        timestamp=target_exit_time
+                    )
 
-                # Record ML Model prediction separately
-                ml_signal_direction = row.get('ml_signal', 'NEUTRAL')
-                if ml_signal_direction and ml_signal_direction != 'NEUTRAL':
-                    # Normalize: LONG -> BULLISH, SHORT -> BEARISH
-                    ml_normalized = ml_signal_direction.upper()
-                    if ml_normalized == 'LONG':
-                        ml_normalized = 'BULLISH'
-                    elif ml_normalized == 'SHORT':
-                        ml_normalized = 'BEARISH'
-
+                else:
+                    # Standard directional recording
                     tracker.record_prediction(
-                        agent='ml_model',  # Distinct entity name
-                        predicted=ml_normalized,
+                        agent='master_decision',
+                        predicted=decision,
                         actual=trend,
                         timestamp=target_exit_time
                     )
-                    logger.info(f"Recorded Brier score for ML_Model: Predicted {ml_normalized} vs Actual {trend}")
+                    logger.info(f"Recorded Brier for master: Predicted {decision} vs Actual {trend}")
+
+                    # Also record ML Model if available
+                    ml_signal_direction = row.get('ml_signal', 'NEUTRAL')
+                    if ml_signal_direction and ml_signal_direction != 'NEUTRAL':
+                        ml_normalized = ml_signal_direction.upper()
+                        if ml_normalized == 'LONG':
+                            ml_normalized = 'BULLISH'
+                        elif ml_normalized == 'SHORT':
+                            ml_normalized = 'BEARISH'
+
+                        tracker.record_prediction(
+                            agent='ml_model',
+                            predicted=ml_normalized,
+                            actual=trend,
+                            timestamp=target_exit_time
+                        )
 
             except Exception as brier_e:
                 logger.error(f"Failed to record Brier score: {brier_e}")
