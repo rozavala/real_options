@@ -589,6 +589,11 @@ class XSentimentSentinel(Sentinel):
         self.degraded_until: Optional[datetime] = None
         self.sensor_status = "ONLINE"
 
+        # === CONCURRENCY CONTROL (Protocol 1) ===
+        self._semaphore = asyncio.Semaphore(2)
+        self._request_interval = 1.5
+        self._last_request_time = 0
+
         logger.info(f"XSentimentSentinel initialized with model: {self.model}")
 
     def get_sensor_status(self) -> dict:
@@ -627,6 +632,56 @@ class XSentimentSentinel(Sentinel):
             # statistics imported at top
             self.volume_mean = statistics.mean(self.post_volume_history)
             self.volume_stddev = statistics.stdev(self.post_volume_history) if len(self.post_volume_history) > 1 else 0
+
+    async def _sem_bound_search(self, query: str) -> Optional[dict]:
+        """Wrapper with semaphore and circuit breaker integration."""
+        async with self._semaphore:
+            jitter = np.random.uniform(0.5, 2.0)
+            await asyncio.sleep(jitter)
+
+            import time as time_module
+            now = time_module.time()
+            time_since_last = now - self._last_request_time
+            if time_since_last < self._request_interval:
+                await asyncio.sleep(self._request_interval - time_since_last)
+
+            self._last_request_time = time_module.time()
+
+            try:
+                result = await self._search_x_and_analyze(query)
+
+                if result is not None:
+                    self.consecutive_failures = 0
+                    self.sensor_status = "ONLINE"
+
+                return result
+
+            except Exception as e:
+                error_str = str(e)
+                is_server_error = any(code in error_str for code in ['502', '503', '504', '500'])
+
+                if is_server_error:
+                    self.consecutive_failures += 1
+                    logger.warning(
+                        f"XSentimentSentinel: Server error. "
+                        f"Consecutive failures: {self.consecutive_failures}"
+                    )
+
+                    if self.consecutive_failures >= 3:
+                        self.degraded_until = datetime.now(timezone.utc) + timedelta(hours=1)
+                        self.sensor_status = "OFFLINE"
+                        logger.error(
+                            f"XSentimentSentinel: CIRCUIT BREAKER TRIGGERED. "
+                            f"Degraded until {self.degraded_until.isoformat()}"
+                        )
+                        StateManager.save_state(
+                            {"x_sentiment": self.get_sensor_status()},
+                            namespace="sensors"
+                        )
+                else:
+                    self.consecutive_failures += 1
+
+                raise
 
     @with_retry(max_attempts=3)
     async def _search_x_and_analyze(self, query: str) -> Optional[dict]:
@@ -967,7 +1022,7 @@ If the x_search tool returns no results or errors, provide neutral sentiment wit
             return None
 
         # === PARALLEL QUERY EXECUTION ===
-        tasks = [self._search_x_and_analyze(query) for query in self.search_queries]
+        tasks = [self._sem_bound_search(query) for query in self.search_queries]
         all_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # === FILTER SUCCESSFUL RESULTS ===

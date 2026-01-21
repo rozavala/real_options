@@ -86,7 +86,7 @@ def load_council_history():
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=300)
 def load_equity_data():
     """Loads daily_equity.csv for equity curve visualization."""
     try:
@@ -102,7 +102,7 @@ def load_equity_data():
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=15)
+@st.cache_data(ttl=60)
 def load_log_data():
     """Finds all relevant log files and returns last 50 lines of each."""
     try:

@@ -21,7 +21,9 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Optional, Any
 from dataclasses import dataclass
+import numpy as np
 from trading_bot.router_metrics import get_router_metrics
+from trading_bot.rate_limiter import acquire_api_slot
 
 logger = logging.getLogger(__name__)
 
@@ -181,20 +183,38 @@ class ResponseCache:
 
 
 def with_retry(max_retries=3, backoff_factor=2):
-    """Decorator to retry async methods with exponential backoff."""
+    """
+    Decorator to retry async methods with exponential backoff and 429 awareness.
+    """
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
+            import re
             last_exception = None
+
             for attempt in range(max_retries):
                 try:
                     return await func(*args, **kwargs)
                 except Exception as e:
                     last_exception = e
-                    if attempt < max_retries - 1:
+                    error_str = str(e)
+
+                    if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                        retry_match = re.search(r'retry in (\d+\.?\d*)s', error_str, re.IGNORECASE)
+                        if retry_match:
+                            wait_time = float(retry_match.group(1)) + np.random.uniform(0.5, 2.0)
+                        else:
+                            wait_time = (backoff_factor ** attempt) * 10
+                    else:
                         wait_time = backoff_factor ** attempt
-                        logger.warning(f"Attempt {attempt+1} failed for {func.__name__}, retrying in {wait_time}s: {e}")
+
+                    if attempt < max_retries - 1:
+                        logger.warning(
+                            f"Attempt {attempt+1} failed for {func.__name__}, "
+                            f"retrying in {wait_time:.1f}s: {e}"
+                        )
                         await asyncio.sleep(wait_time)
+
             raise last_exception
         return wrapper
     return decorator
@@ -495,13 +515,19 @@ class HeterogeneousRouter:
         system_prompt: Optional[str] = None,
         response_json: bool = False
     ) -> str:
-        """Route request to appropriate model with robust fallback."""
+        """
+        Route request to appropriate model with robust fallback.
 
+        AMENDED (Protocol 2C): Includes rate limiting before API calls.
+        """
+        from trading_bot.router_metrics import get_router_metrics
         metrics = get_router_metrics()
 
         # Check Cache (Force OFF for Sentinels)
         use_cache = True
-        if role in [AgentRole.WEATHER_SENTINEL, AgentRole.LOGISTICS_SENTINEL, AgentRole.NEWS_SENTINEL, AgentRole.PRICE_SENTINEL, AgentRole.MICROSTRUCTURE_SENTINEL]:
+        if role in [AgentRole.WEATHER_SENTINEL, AgentRole.LOGISTICS_SENTINEL,
+                    AgentRole.NEWS_SENTINEL, AgentRole.PRICE_SENTINEL,
+                    AgentRole.MICROSTRUCTURE_SENTINEL]:
             use_cache = False
 
         full_key_prompt = f"{system_prompt or ''}:{prompt}"
@@ -512,81 +538,110 @@ class HeterogeneousRouter:
                 logger.debug(f"Cache hit for {role.value}")
                 return cached_response
 
-        # 1. Determine Execution Chain (Primary + Fallbacks)
+        # 1. Get Primary Assignment
         primary_provider, primary_model = self.assignments.get(
             role,
-            (ModelProvider.GEMINI, "gemini-3-flash-preview")
+            (ModelProvider.GEMINI, self.registry.get('gemini', {}).get('flash', 'gemini-1.5-flash'))
         )
 
-        execution_chain = [(primary_provider, primary_model)]
-
-        # Add fallbacks
-        fallbacks = self._get_fallback_models(role, primary_provider)
-        execution_chain.extend(fallbacks)
-
         last_exception = None
-        is_first_attempt = True
 
-        for provider, model_name in execution_chain:
-            # Skip if provider strictly unavailable (no API key)
-            if provider not in self.available_providers:
-                logger.warning(f"Skipping {provider.value} (unavailable) for {role.value}")
+        # === ATTEMPT PRIMARY (with Rate Limiting) ===
+        if primary_provider is not None:
+            provider_name = primary_provider.value.lower()
+
+            # Acquire rate limit slot (blocks if at limit)
+            slot_acquired = await acquire_api_slot(provider_name, timeout=30.0)
+
+            if slot_acquired:
+                try:
+                    client = self._get_client(primary_provider, primary_model)
+                    response = await client.generate(prompt, system_prompt, response_json)
+
+                    # Success - cache and return
+                    if use_cache:
+                        self.cache.set(full_key_prompt, role.value, response)
+
+                    metrics.record_success(provider_name, role.value)
+                    return response
+
+                except Exception as e:
+                    last_exception = e
+                    logger.warning(
+                        f"{primary_provider.value}/{primary_model} failed for {role.value}: {e}"
+                    )
+                    metrics.record_failure(provider_name, role.value, str(e))
+            else:
+                # Rate limit timeout - treat as failure, move to fallback
+                logger.warning(
+                    f"Rate limit slot timeout for {provider_name} on role {role.value}. "
+                    f"Skipping to fallback."
+                )
+                last_exception = RuntimeError(f"Rate limit timeout for {provider_name}")
+
+        # === FALLBACK CHAIN (with Rate Limiting per provider) ===
+        # CRITICAL FIX: Use correct method name _get_fallback_models (not _get_fallback_chain)
+        fallback_chain = self._get_fallback_models(role, primary_provider)
+
+        for fallback_provider, fallback_model in fallback_chain:
+            # Skip if provider not available
+            if fallback_provider not in self.available_providers:
                 continue
 
-            logger.debug(f"Routing {role.value} to {provider.value}/{model_name}")
+            fallback_name = fallback_provider.value.lower()
 
-            start_time = time.time()
+            # Acquire rate limit slot for fallback provider
+            slot_acquired = await acquire_api_slot(fallback_name, timeout=30.0)
+
+            if not slot_acquired:
+                logger.warning(f"Rate limit timeout for fallback {fallback_name}, trying next")
+                continue
 
             try:
-                client = self._get_client(provider, model_name)
+                client = self._get_client(fallback_provider, fallback_model)
                 response = await client.generate(prompt, system_prompt, response_json)
 
-                latency_ms = (time.time() - start_time) * 1000
-
-                # Record success metrics
-                metrics.record_request(
-                    role=role.value,
-                    provider=provider.value,
-                    success=True,
-                    latency_ms=latency_ms,
-                    was_fallback=not is_first_attempt,
-                    primary_provider=primary_provider.value if not is_first_attempt else None
+                # Fallback succeeded
+                logger.warning(
+                    f"FALLBACK SUCCESS: Used {fallback_provider.value}/{fallback_model} "
+                    f"for {role.value} after primary failure."
                 )
 
-                # Success! Cache and return
-                self.cache.set(full_key_prompt, role.value, response)
+                # Record fallback event
+                metrics.record_fallback(
+                    role.value,
+                    primary_provider.value if primary_provider else "none",
+                    fallback_provider.value,
+                    str(last_exception) if last_exception else "rate_limit"
+                )
 
-                if provider != primary_provider:
-                    logger.warning(f"FALLBACK SUCCESS: Used {provider.value}/{model_name} for {role.value} after primary failure.")
-                    metrics.record_fallback(role.value, primary_provider.value, provider.value, str(last_exception))
+                # Cache successful response
+                if use_cache:
+                    self.cache.set(full_key_prompt, role.value, response)
 
                 return response
 
             except Exception as e:
-                latency_ms = (time.time() - start_time) * 1000
-
-                # Record failure metrics
-                metrics.record_request(
-                    role=role.value,
-                    provider=provider.value,
-                    success=False,
-                    latency_ms=latency_ms,
-                    was_fallback=not is_first_attempt,
-                    primary_provider=primary_provider.value if not is_first_attempt else None
-                )
-
-                logger.warning(f"{provider.value}/{model_name} failed for {role.value}: {e}")
                 last_exception = e
-                is_first_attempt = False
-                # Continue to next model in chain
+                logger.warning(
+                    f"Fallback {fallback_provider.value}/{fallback_model} "
+                    f"also failed for {role.value}: {e}"
+                )
+                metrics.record_failure(fallback_name, role.value, str(e))
+                continue
 
-        # If we get here, all models in the chain failed or were unavailable
-        error_msg = f"ALL models failed for {role.value}. Last error: {last_exception}"
+        # === ALL PROVIDERS EXHAUSTED ===
+        error_msg = (
+            f"All providers exhausted for {role.value}. "
+            f"Primary: {primary_provider.value if primary_provider else 'None'}. "
+            f"Fallbacks tried: {len(fallback_chain)}. "
+            f"Last error: {last_exception}"
+        )
         logger.error(error_msg)
 
         # Raise CriticalRPCError for Tier 3 roles to abort cycle
         if role in [AgentRole.MASTER_STRATEGIST, AgentRole.COMPLIANCE_OFFICER]:
-             raise CriticalRPCError(error_msg) from last_exception
+            raise CriticalRPCError(error_msg) from last_exception
 
         raise RuntimeError(error_msg) from last_exception
 

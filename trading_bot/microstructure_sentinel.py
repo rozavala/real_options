@@ -38,7 +38,20 @@ class MicrostructureSentinel:
         self.cooldown_seconds = sentinel_config.get('cooldown_seconds', 300)
         self.tickers = {}
 
+        self._last_alert_pct = None
+        self._alert_threshold_delta = 10
+
         logger.info(f"MicrostructureSentinel initialized")
+
+    def _should_alert_microstructure(self, current_pct: float) -> bool:
+        if self._last_alert_pct is None:
+            self._last_alert_pct = current_pct
+            return True
+        delta = abs(current_pct - self._last_alert_pct)
+        if delta >= self._alert_threshold_delta:
+            self._last_alert_pct = current_pct
+            return True
+        return False
 
     async def subscribe_contract(self, contract):
         """Subscribe to market data for contract with conflict handling."""

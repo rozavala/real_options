@@ -83,27 +83,37 @@ class ComplianceGuardian:
             return True, ""  # Fail open
 
     async def _fetch_volume_stats(self, ib, contract) -> float:
-        """Fetch 15-min average volume for Article II check."""
+        """Fetch volume with IB primary, YFinance fallback, -1 for unknown."""
+        # PRIMARY: IB
         try:
-            if not ib or not contract:
-                return 0.0
-
-            bars = await ib.reqHistoricalDataAsync(
-                contract,
-                endDateTime='',
-                durationStr='900 S', # 15 mins
-                barSizeSetting='1 min',
-                whatToShow='TRADES',
-                useRTH=False
-            )
-            if not bars:
-                return 0.0
-
-            total_vol = sum(b.volume for b in bars)
-            return float(total_vol)
+            if ib and contract and ib.isConnected():
+                bars = await ib.reqHistoricalDataAsync(
+                    contract, endDateTime='', durationStr='900 S',
+                    barSizeSetting='1 min', whatToShow='TRADES', useRTH=False
+                )
+                if bars:
+                    total_vol = sum(b.volume for b in bars)
+                    if total_vol > 0:
+                        logger.info(f"Volume from IB: {total_vol}")
+                        return float(total_vol)
         except Exception as e:
-            logger.warning(f"Failed to fetch volume stats: {e}")
-            return 0.0
+            logger.warning(f"IB volume fetch failed: {e}")
+
+        # SECONDARY: YFinance
+        try:
+            from trading_bot.utils import get_market_data_cached
+            symbol = contract.symbol if contract else 'KC'
+            data = get_market_data_cached([f"{symbol}=F"], period="1d")
+            if data is not None and not data.empty and 'Volume' in data.columns:
+                volume = float(data['Volume'].iloc[-1])
+                if volume > 0:
+                    logger.info(f"Volume from YFinance: {volume}")
+                    return volume
+        except Exception as e:
+            logger.warning(f"YFinance fallback failed: {e}")
+
+        logger.warning("Volume unknown from all sources. Returning -1.")
+        return -1.0
 
     async def review_order(self, order_context: dict) -> tuple[bool, str]:
         """
@@ -119,6 +129,13 @@ class ComplianceGuardian:
 
         # 1. Gather Data for Constitution
         volume_15m = await self._fetch_volume_stats(ib, contract)
+
+        if volume_15m < 0:
+            return False, "REVIEW REQUIRED - Volume data unavailable. Manual approval needed."
+        elif volume_15m == 0:
+            return False, f"REJECTED - Article II: Zero volume for {symbol}. Market illiquid."
+        elif qty > volume_15m * self.limits['max_volume_pct']:
+            return False, f"REJECTED - Article II: Order qty {qty} exceeds {self.limits['max_volume_pct']:.0%} of volume ({volume_15m:.0f})."
 
         # Prepare Review Packet
         review_packet = {
