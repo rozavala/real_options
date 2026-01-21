@@ -12,7 +12,7 @@ import csv
 import logging
 import os
 import shutil
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 import pytz
 from ib_insync import *
 import numpy as np
@@ -22,6 +22,62 @@ from trading_bot.logging_config import setup_logging
 
 # --- Logging Setup ---
 setup_logging()
+
+_yf_cache_session = None
+
+def get_cached_yf_session():
+    """Get cached yfinance session (filesystem backend for multi-process safety)."""
+    global _yf_cache_session
+
+    if _yf_cache_session is None:
+        try:
+            from requests_cache import CachedSession
+            import os
+
+            cache_dir = 'data/yfinance_cache'
+            os.makedirs(cache_dir, exist_ok=True)
+
+            _yf_cache_session = CachedSession(
+                cache_name=cache_dir,
+                backend='filesystem',
+                expire_after=timedelta(minutes=30),
+                stale_if_error=True,
+            )
+            logging.info(f"YFinance cache initialized at {cache_dir}")
+
+        except ImportError:
+            logging.error("requests-cache not installed! Run: pip install requests-cache")
+            return None
+
+    return _yf_cache_session
+
+
+def get_market_data_cached(tickers: list, period: str = "1d"):
+    """Fetch market data with caching."""
+    import pandas as pd
+
+    try:
+        import yfinance as yf
+
+        session = get_cached_yf_session()
+
+        download_kwargs = {
+            'tickers': tickers,
+            'period': period,
+            'progress': False,
+            'threads': False
+        }
+
+        if session is not None:
+            download_kwargs['session'] = session
+
+        data = yf.download(**download_kwargs)
+        return data
+
+    except Exception as e:
+        logging.error(f"YFinance fetch failed: {e}")
+        return pd.DataFrame()
+
 
 # Global lock for writing to the trade ledger to prevent race conditions
 TRADE_LEDGER_LOCK = asyncio.Lock()
