@@ -379,3 +379,298 @@
 2026-01-21 16:37:47,647 - trading_bot.heterogeneous_router - WARNING - openai/gpt-4o failed for master: 'RouterMetrics' object has no attribute 'record_success'
 2026-01-21 16:37:47,647 - trading_bot.agents - WARNING - Router failed for master, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
 2026-01-21 16:37:47,647 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:38:21,418 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.5)
+2026-01-21 16:38:21,419 - Orchestrator - INFO - Emergency Cycle concluded with no action.
+2026-01-21 16:38:21,419 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-21 16:38:21,430 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-01-21 16:38:21,430 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: Drought Risk in São Paulo: 10 days with < 5.0mm rain
+2026-01-21 16:38:21,723 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-21 16:38:21,818 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-21 16:38:21,818 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
+2026-01-21 16:38:21,818 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'gemini', 'anthropic', 'openai'], 'diversity_score': 1.0}
+2026-01-21 16:38:21,823 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-21 16:38:21,823 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-01-21 16:38:21,823 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-01-21 16:38:21,887 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-01-21 16:38:21,887 - Orchestrator - INFO - Targeting contract: KCH6 (202603)
+2026-01-21 16:38:26,009 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
+2026-01-21 16:38:26,011 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
+2026-01-21 16:38:26,011 - trading_bot.agents - INFO - Waking up agronomist...
+2026-01-21 16:38:26,325 - trading_bot.agents - INFO - Retrieved 2 TMS insights for agronomist.
+2026-01-21 16:38:26,325 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-21 16:38:26,326 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:39:09,319 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:39:28,328 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:39:28,329 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:40:09,956 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:40:09,957 - trading_bot.agents - WARNING - Router failed for agronomist, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:40:09,958 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:40:42,794 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-21 16:40:42,795 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.50 -> 0.50
+2026-01-21 16:40:42,795 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=RANGE_BOUND
+2026-01-21 16:40:42,795 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-21 16:40:42,795 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 3.0,
+    "reliability_mult": 1.0,
+    "final_weight": 3.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 0.5,
+    "reliability_mult": 1.0,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.4,
+    "reliability_mult": 1.0,
+    "final_weight": 1.4,
+    "contribution": 0.0
+  },
+  {
+    "agent": "latest_ml_signals",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  }
+]
+2026-01-21 16:41:02,612 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-21 16:41:02,614 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-5-20251101 failed for permabear: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:41:02,614 - trading_bot.agents - WARNING - Router failed for permabear, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:41:02,615 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:41:41,198 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:41:41,199 - trading_bot.heterogeneous_router - WARNING - xai/grok-4-1-fast-reasoning failed for permabull: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:41:41,199 - trading_bot.agents - WARNING - Router failed for permabull, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:41:41,200 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:42:16,348 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:42:16,352 - trading_bot.heterogeneous_router - WARNING - openai/gpt-4o failed for master: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:42:16,354 - trading_bot.agents - WARNING - Router failed for master, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:42:16,354 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:42:55,812 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.5)
+2026-01-21 16:42:55,815 - Orchestrator - INFO - Emergency Cycle concluded with no action.
+2026-01-21 16:42:55,816 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-21 16:42:55,827 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-01-21 16:42:55,827 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: Drought Risk in São Paulo: 10 days with < 5.0mm rain
+2026-01-21 16:42:56,011 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-21 16:42:56,107 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-21 16:42:56,107 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
+2026-01-21 16:42:56,107 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'gemini', 'anthropic', 'openai'], 'diversity_score': 1.0}
+2026-01-21 16:42:56,111 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-21 16:42:56,112 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-01-21 16:42:56,112 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-01-21 16:42:56,181 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-01-21 16:42:56,182 - Orchestrator - INFO - Targeting contract: KCH6 (202603)
+2026-01-21 16:43:00,305 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
+2026-01-21 16:43:00,307 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
+2026-01-21 16:43:00,307 - trading_bot.agents - INFO - Waking up agronomist...
+2026-01-21 16:43:00,607 - trading_bot.agents - INFO - Retrieved 2 TMS insights for agronomist.
+2026-01-21 16:43:00,607 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-21 16:43:00,607 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:43:50,971 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:44:10,276 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:44:10,276 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:44:33,323 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:44:33,323 - trading_bot.agents - WARNING - Router failed for agronomist, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:44:33,323 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:45:00,173 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-21 16:45:00,173 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.50 -> 0.50
+2026-01-21 16:45:00,174 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=RANGE_BOUND
+2026-01-21 16:45:00,174 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-21 16:45:00,174 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 3.0,
+    "reliability_mult": 1.0,
+    "final_weight": 3.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 0.5,
+    "reliability_mult": 1.0,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.4,
+    "reliability_mult": 1.0,
+    "final_weight": 1.4,
+    "contribution": 0.0
+  },
+  {
+    "agent": "latest_ml_signals",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  }
+]
+2026-01-21 16:45:17,079 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-21 16:45:17,080 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-5-20251101 failed for permabear: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:45:17,080 - trading_bot.agents - WARNING - Router failed for permabear, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:45:17,080 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:46:10,975 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:46:10,977 - trading_bot.heterogeneous_router - WARNING - xai/grok-4-1-fast-reasoning failed for permabull: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:46:10,977 - trading_bot.agents - WARNING - Router failed for permabull, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:46:10,977 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:46:52,812 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:46:52,814 - trading_bot.heterogeneous_router - WARNING - openai/gpt-4o failed for master: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:46:52,814 - trading_bot.agents - WARNING - Router failed for master, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:46:52,814 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:47:50,931 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.6)
+2026-01-21 16:47:50,932 - Orchestrator - INFO - Emergency Cycle concluded with no action.
+2026-01-21 16:47:50,933 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-21 16:47:50,933 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-01-21 16:47:50,933 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-01-21 18:20:00 UTC. Waiting for 1.54 hours.
+2026-01-21 16:47:50,933 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-01-21 16:47:50,934 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 116...
+2026-01-21 16:47:51,356 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 116
+2026-01-21 16:47:51,360 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-21 16:47:51,568 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-01-21 16:47:51,570 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-01-21 16:47:51,680 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-01-21 16:47:51,680 - Orchestrator - INFO - Refreshed contract cache: KCH6
+2026-01-21 16:47:51,680 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-01-21 16:47:51,681 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 206...
+2026-01-21 16:47:51,988 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 206
+2026-01-21 16:47:51,992 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-21 16:47:51,992 - trading_bot.microstructure_sentinel - INFO - MicrostructureSentinel initialized
+2026-01-21 16:47:53,993 - trading_bot.microstructure_sentinel - INFO - Subscribed to microstructure for KCH6
+2026-01-21 16:47:55,345 - trading_bot.sentinels - WARNING - WEATHER SENTINEL TRIGGERED: Drought Risk in São Paulo: 10 days with < 5.0mm rain
+2026-01-21 16:47:55,346 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-01-21 17:17:50.932928. Skipping WeatherSentinel
+2026-01-21 16:48:03,244 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:03,332 - trading_bot.sentinels - INFO - X API returned 0 posts for 'arabica prices (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto' (sort: recency)
+2026-01-21 16:48:04,549 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:04,631 - trading_bot.sentinels - INFO - X API returned 0 posts for 'coffee futures (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto' (sort: recency)
+2026-01-21 16:48:06,282 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:09,483 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:12,109 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:12,216 - trading_bot.sentinels - INFO - X API returned 0 posts for 'Brazil coffee harvest (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto' (sort: recency)
+2026-01-21 16:48:15,174 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:15,590 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:15,671 - trading_bot.sentinels - INFO - X API returned 0 posts for 'Colombia coffee (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto' (sort: recency)
+2026-01-21 16:48:18,908 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:20,285 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:20,381 - trading_bot.sentinels - INFO - X API returned 0 posts for 'Vietnam robusta (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto' (sort: recency)
+2026-01-21 16:48:22,826 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:24,120 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:24,202 - trading_bot.sentinels - INFO - X API returned 0 posts for 'ICE coffee warehouse (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto' (sort: recency)
+2026-01-21 16:48:27,591 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:29,089 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:29,170 - trading_bot.sentinels - INFO - X API returned 0 posts for 'CFTC coffee positioning (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto' (sort: recency)
+2026-01-21 16:48:34,151 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:34,355 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:48:34,436 - trading_bot.sentinels - INFO - X API returned 0 posts for 'US coffee tariffs (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto' (sort: recency)
+2026-01-21 16:48:37,601 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
