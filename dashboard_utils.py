@@ -522,13 +522,15 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
     """
     Calculates accuracy scores for each sub-agent based on actual outcomes.
 
-    IMPORTANT DISTINCTION:
+    ARCHITECTURE NOTES:
     - Agent Accuracy = Did the agent correctly predict market behavior?
     - Trade Success = Did the Master's trade make money?
 
-    For the leaderboard, we measure PREDICTION ACCURACY, not trade profitability.
-    Agents are graded against market reality (volatility_outcome, actual_trend_direction),
-    NOT against whether the Master's chosen strategy was profitable.
+    CRITICAL DISTINCTION FOR VOLATILITY TRADES:
+    - master_decision is ALWAYS 'NEUTRAL' for vol trades (by design)
+    - Master is scored on STRATEGY success, not direction
+    - Volatility agent is scored on PREDICTION accuracy
+    - Skip NEUTRAL for other agents (means "no opinion")
 
     Supports both DIRECTIONAL (Up/Down) and VOLATILITY (Big Move/Flat) grading.
     """
@@ -551,19 +553,35 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
 
     for idx, row in council_df.iterrows():
 
+        # === DETERMINE TRADE TYPE ===
+        prediction_type = row.get('prediction_type', '')
+
+        # Handle missing/NaN prediction_type
+        if pd.isna(prediction_type) or prediction_type == '' or prediction_type is None:
+            # Infer from strategy_type if available
+            strategy = row.get('strategy_type', '')
+            if strategy in ['LONG_STRADDLE', 'IRON_CONDOR']:
+                prediction_type = 'VOLATILITY'
+            elif strategy in ['BULL_CALL_SPREAD', 'BEAR_PUT_SPREAD']:
+                prediction_type = 'DIRECTIONAL'
+            else:
+                continue  # Can't determine type, skip
+
         # ================================================================
-        # SECTION 1: HANDLE VOLATILITY TRADES
+        # SECTION 1: VOLATILITY TRADES
         # ================================================================
-        if row.get('prediction_type') == 'VOLATILITY':
+        if prediction_type == 'VOLATILITY':
             vol_outcome = row.get('volatility_outcome')  # 'BIG_MOVE' or 'STAYED_FLAT'
 
-            if not vol_outcome:
-                continue  # Can't grade without knowing the outcome
+            # Skip if not yet graded (no outcome)
+            if not vol_outcome or pd.isna(vol_outcome):
+                continue
 
-            # --- A. Score Master Strategist (Based on Trade Success) ---
-            # The Master is graded on whether their STRATEGY CHOICE was correct
-            # given what the market actually did
-            strategy = row.get('strategy_type')
+            strategy = row.get('strategy_type', '')
+
+            # --- A. Score Master Strategist (STRATEGY SUCCESS) ---
+            # NOTE: master_decision is NEUTRAL for vol trades - that's correct!
+            # We score based on whether the STRATEGY CHOICE was right
             is_win = False
             if strategy == 'LONG_STRADDLE' and vol_outcome == 'BIG_MOVE':
                 is_win = True
@@ -574,61 +592,74 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
             if is_win:
                 scores['master_decision']['correct'] += 1
 
-            # --- B. Score Volatility Agent (Based on PREDICTION TRUTH) ---
-            # CRITICAL: Grade the agent against MARKET REALITY, not trade result
-            # The agent's job is to predict volatility, regardless of what
-            # strategy the Master chooses to deploy
+            # --- B. Score Volatility Agent (PREDICTION ACCURACY) ---
             vol_sentiment = row.get('volatility_sentiment')
-            if vol_sentiment:
-                scores['volatility_sentiment']['total'] += 1
-                sentiment_norm = str(vol_sentiment).upper()
+            if vol_sentiment and not pd.isna(vol_sentiment):
+                sent_str = str(vol_sentiment).upper().strip()
 
-                # Definition of Accuracy for Volatility Agent:
-                # HIGH/BULLISH/VOLATILE prediction matches BIG_MOVE outcome
-                # LOW/BEARISH/QUIET/RANGE_BOUND prediction matches STAYED_FLAT outcome
-                predicted_high = sentiment_norm in ['HIGH', 'BULLISH', 'VOLATILE']
-                predicted_low = sentiment_norm in ['LOW', 'BEARISH', 'QUIET', 'RANGE_BOUND', 'NEUTRAL']
+                # IMPORTANT: Skip NEUTRAL - it means "uncertain", not a prediction
+                if sent_str not in ['NEUTRAL', 'NONE', '']:
+                    scores['volatility_sentiment']['total'] += 1
 
-                if vol_outcome == 'BIG_MOVE' and predicted_high:
-                    scores['volatility_sentiment']['correct'] += 1
-                elif vol_outcome == 'STAYED_FLAT' and predicted_low:
-                    scores['volatility_sentiment']['correct'] += 1
+                    # HIGH/BULLISH/VOLATILE = expects big move
+                    # LOW/BEARISH/QUIET = expects flat
+                    predicted_high = sent_str in ['HIGH', 'BULLISH', 'VOLATILE']
+                    predicted_low = sent_str in ['LOW', 'BEARISH', 'QUIET', 'RANGE_BOUND']
 
-            continue  # Done processing this volatility trade row
+                    if (vol_outcome == 'BIG_MOVE' and predicted_high) or \
+                       (vol_outcome == 'STAYED_FLAT' and predicted_low):
+                        scores['volatility_sentiment']['correct'] += 1
+
+            continue  # Done with this volatility trade row
 
         # ================================================================
-        # SECTION 2: HANDLE DIRECTIONAL TRADES
+        # SECTION 2: DIRECTIONAL TRADES
         # ================================================================
+        if prediction_type != 'DIRECTIONAL':
+            continue  # Unknown type, skip
+
         actual = row.get('actual_trend_direction')
 
-        # Fallback: Calculate from live price if actual not yet set
-        if not actual and live_price and pd.notna(row.get('entry_price')):
-            entry = float(row['entry_price'])
-            if live_price > entry * 1.005:
-                actual = 'UP'
-            elif live_price < entry * 0.995:
-                actual = 'DOWN'
+        # Fallback: Calculate from live price if not yet reconciled
+        if not actual or pd.isna(actual):
+            if live_price and pd.notna(row.get('entry_price')):
+                try:
+                    entry = float(row['entry_price'])
+                    if live_price > entry * 1.005:
+                        actual = 'UP'
+                    elif live_price < entry * 0.995:
+                        actual = 'DOWN'
+                except (ValueError, TypeError):
+                    pass
 
-        if not actual or actual == 'NEUTRAL':
-            continue  # Can't grade without knowing market direction
+        # Skip if still can't determine market direction
+        if not actual or pd.isna(actual) or actual == 'NEUTRAL':
+            continue
 
-        # Score each agent against the actual market direction
+        # --- Score Each Agent on Direction Prediction ---
         for agent in agents:
+            # Skip master_decision if this row was actually a vol trade (edge case)
+            if agent == 'master_decision':
+                strategy = row.get('strategy_type', '')
+                if strategy in ['LONG_STRADDLE', 'IRON_CONDOR']:
+                    continue  # Don't double-count
+
             sentiment = row.get(agent)
-            if not sentiment or sentiment == 'NEUTRAL':
+            if not sentiment or pd.isna(sentiment):
                 continue
 
-            # Skip Master on Directional loop if this was a Vol trade (already handled above)
-            if agent == 'master_decision' and row.get('prediction_type') == 'VOLATILITY':
+            sent_str = str(sentiment).upper().strip()
+
+            # Skip NEUTRAL votes - "no opinion" shouldn't affect accuracy
+            if sent_str in ['NEUTRAL', 'NONE', '']:
                 continue
 
             scores[agent]['total'] += 1
 
             # Map sentiment to expected direction
-            sentiment_upper = str(sentiment).upper()
-            expected_up = sentiment_upper in ['BULLISH', 'LONG']
+            is_bullish = sent_str in ['BULLISH', 'LONG', 'UP']
 
-            if (expected_up and actual == 'UP') or (not expected_up and actual == 'DOWN'):
+            if (is_bullish and actual == 'UP') or (not is_bullish and actual == 'DOWN'):
                 scores[agent]['correct'] += 1
 
     # ================================================================
@@ -801,21 +832,49 @@ def get_active_theses() -> list[dict]:
         return []
 
 
-def get_current_market_regime(config: dict) -> str:
+def get_current_market_regime() -> str:
     """
-    Fetches the current market regime estimate.
-    Returns 'HIGH_VOLATILITY', 'RANGE_BOUND', or 'TRENDING'.
+    Retrieves the current market regime from state.json.
+
+    Priority:
+    1. state.json -> reports -> latest_ml_signals (most recent)
+    2. council_history -> entry_regime column (fallback)
+    3. "UNKNOWN" if no data
+
+    Returns:
+        str: One of HIGH_VOLATILITY, RANGE_BOUND, TRENDING_UP, TRENDING_DOWN, or UNKNOWN
     """
     try:
-        # Try to get from state.json first (faster)
-        if os.path.exists(STATE_FILE_PATH):
-            with open(STATE_FILE_PATH, 'r') as f:
-                state = json.load(f)
-                return state.get('current_regime', 'UNKNOWN')
-    except:
-        pass
+        from trading_bot.state_manager import StateManager
 
-    return 'UNKNOWN'
+        # Priority 1: Check latest_ml_signals in state.json
+        raw_state = StateManager._load_raw_sync()
+        reports = raw_state.get("reports", {})
+        ml_signals_entry = reports.get("latest_ml_signals", {})
+
+        if isinstance(ml_signals_entry, dict):
+            signals_data = ml_signals_entry.get("data", [])
+            if isinstance(signals_data, list) and signals_data:
+                # Get regime from most recent signal (first in list)
+                for signal in signals_data:
+                    if isinstance(signal, dict):
+                        regime = signal.get("regime")
+                        if regime and regime != "UNKNOWN":
+                            return regime
+
+        # Priority 2: Fallback to council_history CSV
+        if os.path.exists(COUNCIL_HISTORY_PATH):
+            df = pd.read_csv(COUNCIL_HISTORY_PATH)
+            if not df.empty and 'entry_regime' in df.columns:
+                recent_regimes = df['entry_regime'].dropna()
+                if not recent_regimes.empty:
+                    return recent_regimes.iloc[-1]
+
+        return "UNKNOWN"
+
+    except Exception as e:
+        logger.error(f"Error getting market regime: {e}")
+        return "UNKNOWN"
 
 
 def get_guardian_icon(guardian: str) -> str:

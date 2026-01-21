@@ -122,16 +122,53 @@ with st.expander("🔍 Sentinel Details"):
 
     try:
         from trading_bot.state_manager import StateManager
+        import json
+        import re
+
+        # Try fresh data first (max_age=3600 = 1 hour)
         sensor_state = StateManager.load_state(namespace="sensors", max_age=3600)
         x_status = sensor_state.get("x_sentiment", {})
 
-        if isinstance(x_status, dict):
+        is_stale = False
+        stale_minutes = 0
+
+        # CRITICAL FIX: Handle STALE string return from StateManager
+        # When data is older than max_age, StateManager returns a string like:
+        # "STALE (900min old) - {'sentiment_sensor_status': 'ONLINE', ...}"
+        if isinstance(x_status, str) and x_status.startswith("STALE"):
+            is_stale = True
+            # Extract minutes from "STALE (XXXmin old)"
+            match = re.search(r'STALE \((\d+)min old\)', x_status)
+            if match:
+                stale_minutes = int(match.group(1))
+
+            # Extract the JSON payload after the " - "
+            json_match = re.search(r' - ({.*})', x_status)
+            if json_match:
+                try:
+                    # Python dict uses single quotes, JSON needs double quotes
+                    x_status = json.loads(json_match.group(1).replace("'", '"'))
+                except json.JSONDecodeError:
+                    # Fallback: Load raw state directly
+                    raw_state = StateManager._load_raw_sync()
+                    x_entry = raw_state.get("sensors", {}).get("x_sentiment", {})
+                    x_status = x_entry.get("data", {}) if isinstance(x_entry, dict) else {}
+
+        # Now x_status should be a dict (or empty)
+        if isinstance(x_status, dict) and x_status:
             status = x_status.get("sentiment_sensor_status", "UNKNOWN")
             failures = x_status.get("consecutive_failures", 0)
             degraded_until = x_status.get("degraded_until")
 
-            status_icon = "🟢" if status == "ONLINE" else "🔴" if status == "OFFLINE" else "🟡"
-            st.write(f"{status_icon} Status: **{status}**")
+            # Determine icon based on status AND staleness
+            if is_stale:
+                status_icon = "🟡"
+                status_display = f"{status} (data {stale_minutes}m old)"
+            else:
+                status_icon = "🟢" if status == "ONLINE" else "🔴" if status == "OFFLINE" else "🟡"
+                status_display = status
+
+            st.write(f"{status_icon} Status: **{status_display}**")
 
             if failures > 0:
                 st.write(f"⚠️ Consecutive failures: {failures}")
@@ -139,7 +176,10 @@ with st.expander("🔍 Sentinel Details"):
             if degraded_until:
                 st.write(f"⏰ Degraded until: {degraded_until}")
         else:
+            # Truly not initialized - no data ever saved
             st.write("⚪ Status: Not initialized")
+            st.caption("X Sentiment Sentinel has not run yet")
+
     except Exception as e:
         st.write(f"❓ Unable to fetch X sensor status: {e}")
 
@@ -242,23 +282,16 @@ st.subheader("📋 Active Position Theses")
 st.caption("Real-time view of open positions and their trading rationales")
 
 # Regime Status Banner
-current_regime = get_current_market_regime(config)
-regime_colors = {
-    'HIGH_VOLATILITY': ('🔴', '#EF553B'),
-    'RANGE_BOUND': ('🟢', '#00CC96'),
-    'TRENDING': ('🟡', '#FECB52'),
-    'UNKNOWN': ('⚪', '#AAAAAA')
+current_regime = get_current_market_regime()
+regime_display = {
+    'HIGH_VOLATILITY': ('🔴', 'High Volatility'),
+    'RANGE_BOUND': ('🟡', 'Range Bound'),
+    'TRENDING_UP': ('🟢', 'Trending Up'),
+    'TRENDING_DOWN': ('🔻', 'Trending Down'),
+    'UNKNOWN': ('⚪', 'Unknown')
 }
-regime_icon, regime_color = regime_colors.get(current_regime, ('⚪', '#AAAAAA'))
-
-st.markdown(
-    f"""
-    <div style="background-color: {regime_color}22; padding: 10px; border-radius: 5px; border-left: 4px solid {regime_color};">
-        <strong>{regime_icon} Current Market Regime:</strong> {current_regime}
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+icon, label = regime_display.get(current_regime, ('⚪', current_regime))
+st.write(f"{icon} Current Market Regime: **{label}**")
 
 st.markdown("")
 
