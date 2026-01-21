@@ -145,7 +145,7 @@ with analysis_cols[1]:
                 st.error(f"Error: {e}")
 
 with analysis_cols[2]:
-    if st.button("🔍 Analyze Prod"):
+    if st.button("🔍 Analyze Prod NO"):
         with st.spinner("Analyzing prod environment..."):
             try:
                 result = subprocess.run(
