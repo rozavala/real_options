@@ -164,11 +164,27 @@ if config:
     with fin_cols[1]:
         daily_pnl = live_data['DailyPnL']
         daily_pct = live_data['DailyPnLPct']
-        st.metric(
-            "Daily P&L",
-            f"${daily_pnl:,.2f}",
-            f"{daily_pct:+.2f}%"
+
+        # Handle NaN/None values from IB when market is closed or no data
+        import math
+        is_invalid = (
+            daily_pnl is None or
+            (isinstance(daily_pnl, float) and math.isnan(daily_pnl))
         )
+
+        if is_invalid:
+            st.metric(
+                "Daily P&L",
+                "$0.00",
+                "N/A",
+                help="No P&L data available - market may be closed or no positions"
+            )
+        else:
+            st.metric(
+                "Daily P&L",
+                f"${daily_pnl:,.2f}",
+                f"{daily_pct:+.2f}%"
+            )
 
     with fin_cols[2]:
         margin_util = 0.0
