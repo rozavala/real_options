@@ -130,6 +130,13 @@ with matrix_cols[1]:
         st.metric("Total Graded", confusion['total'])
         st.caption("Decisions evaluated")
 
+    # After the existing metrics, add volatility context:
+    if confusion.get('vol_total', 0) > 0:
+        st.caption(
+            f"📊 Includes **{confusion['vol_total']}** volatility trades: "
+            f"**{confusion['vol_wins']}** wins, **{confusion['vol_losses']}** losses"
+        )
+
 # === NEW SECTION: Volatility Trade Performance ===
 st.markdown("---")
 st.subheader("⚡ Volatility Strategy Performance")
@@ -173,24 +180,32 @@ st.markdown("---")
 st.subheader("📊 The Liar's Plot")
 st.caption("High confidence should correlate with profits. Bottom-right clustering indicates overconfidence.")
 
-if 'master_confidence' in graded_df.columns and 'pnl' in graded_df.columns:
+# Determine which P&L column to use
+pnl_col = None
+if 'pnl' in graded_df.columns:
+    pnl_col = 'pnl'
+elif 'pnl_realized' in graded_df.columns:
+    pnl_col = 'pnl_realized'
+
+if 'master_confidence' in graded_df.columns and pnl_col is not None:
     plot_df = graded_df[graded_df['outcome'].isin(['WIN', 'LOSS'])].copy()
 
-    if not plot_df.empty:
-        plot_df['pnl'] = plot_df.get('pnl', 0).fillna(0)
+    if not plot_df.empty and pnl_col in plot_df.columns:
+        plot_df['pnl_display'] = plot_df[pnl_col].fillna(0).astype(float)
 
         fig = px.scatter(
             plot_df,
             x='master_confidence',
-            y='pnl',
+            y='pnl_display',
             color='outcome',
             color_discrete_map={'WIN': '#00CC96', 'LOSS': '#EF553B'},
-            hover_data=['timestamp', 'contract', 'master_decision'],
+            hover_data=['timestamp', 'contract', 'master_decision', 'strategy_type'],
             title="Confidence vs. Realized P&L"
         )
 
         fig.add_hline(y=0, line_dash="dash", line_color="gray")
-        fig.add_vline(x=0.75, line_dash="dash", line_color="gray", annotation_text="High Confidence Zone")
+        fig.add_vline(x=0.75, line_dash="dash", line_color="gray",
+                      annotation_text="High Confidence Zone")
 
         fig.update_layout(
             xaxis_title="Master Confidence Score",
@@ -199,14 +214,15 @@ if 'master_confidence' in graded_df.columns and 'pnl' in graded_df.columns:
             height=400
         )
 
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
 
         # Quadrant Analysis
         high_conf = plot_df[plot_df['master_confidence'] >= 0.75]
         if not high_conf.empty:
             high_conf_wins = (high_conf['outcome'] == 'WIN').sum()
             high_conf_total = len(high_conf)
-            st.info(f"High Confidence Zone (≥75%): **{high_conf_wins}/{high_conf_total}** wins ({high_conf_wins/high_conf_total:.1%} accuracy)")
+            st.info(f"High Confidence Zone (≥75%): **{high_conf_wins}/{high_conf_total}** wins "
+                    f"({high_conf_wins/high_conf_total:.1%} accuracy)")
     else:
         st.info("Not enough graded decisions with P&L data for this chart.")
 else:

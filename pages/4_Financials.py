@@ -66,7 +66,15 @@ with metric_cols[2]:
     st.metric("Total P&L", f"${total_pnl:+,.0f}")
 
 with metric_cols[3]:
-    trade_count = len(trade_df) if not trade_df.empty else 0
+    # Primary: Use trade_ledger if available
+    # Fallback: Count reconciled trades from council_history
+    if not trade_df.empty:
+        trade_count = len(trade_df)
+    elif not council_df.empty and 'pnl_realized' in council_df.columns:
+        # Count trades that have been reconciled (have P&L data)
+        trade_count = council_df['pnl_realized'].notna().sum()
+    else:
+        trade_count = 0
     st.metric("Total Trades", trade_count)
 
 with metric_cols[4]:
@@ -358,9 +366,29 @@ st.markdown("---")
 st.subheader("📋 Trade Ledger")
 
 if not trade_df.empty:
+    # Primary: Show from trade_ledger.csv
+    display_cols = ['timestamp', 'local_symbol', 'action', 'quantity', 'price', 'total_value_usd']
+    display_cols = [c for c in display_cols if c in trade_df.columns]
     st.dataframe(
-        trade_df.sort_values('timestamp', ascending=False),
-        width="stretch"
+        trade_df[display_cols].sort_values('timestamp', ascending=False).head(50),
+        use_container_width=True
     )
+
+elif not council_df.empty and 'pnl_realized' in council_df.columns:
+    # Fallback: Show reconciled trades from council_history
+    reconciled_trades = council_df[council_df['pnl_realized'].notna()].copy()
+
+    if not reconciled_trades.empty:
+        display_cols = ['timestamp', 'contract', 'strategy_type', 'master_decision',
+                        'entry_price', 'exit_price', 'pnl_realized']
+        display_cols = [c for c in display_cols if c in reconciled_trades.columns]
+
+        st.dataframe(
+            reconciled_trades[display_cols].sort_values('timestamp', ascending=False).head(50),
+            use_container_width=True
+        )
+        st.caption("⚠️ Showing reconciled trades from council_history (trade_ledger.csv is empty)")
+    else:
+        st.info("No trades recorded.")
 else:
     st.info("No trades recorded.")

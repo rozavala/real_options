@@ -340,6 +340,7 @@ def fetch_benchmark_data(start_date, end_date):
 def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> pd.DataFrame:
     """
     Categorizes every AI decision as WIN, LOSS, or PENDING.
+    Also ensures 'pnl' column is populated for visualization.
 
     CRITICAL: Volatility trades use volatility_outcome field as source of truth.
     Thresholds calibrated to IV regime (~35%): Straddle=1.8%, Condor=1.5%
@@ -347,39 +348,19 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
     if council_df.empty:
         return pd.DataFrame()
 
-    grades = []
-    now = datetime.now()
+    # Work on a copy to avoid modifying original
+    graded_df = council_df.copy()
 
-    # Thresholds for volatility grading (IV-calibrated, NET basis)
-    STRADDLE_MOVE_THRESHOLD = 0.018  # 1.8%
-    CONDOR_FLAT_THRESHOLD = 0.015    # 1.5%
+    outcomes = []
+    pnl_values = []
 
-    for idx, row in council_df.iterrows():
+    for idx, row in graded_df.iterrows():
+        outcome = 'PENDING'
+        pnl = float(row.get('pnl_realized', 0.0) or 0.0)  # Ensure numeric
+
         decision = row.get('master_decision', 'NEUTRAL')
-        confidence = row.get('master_confidence', 0.5)
-        timestamp = row.get('timestamp')
-
         prediction_type = row.get('prediction_type', 'DIRECTIONAL')
         strategy_type = row.get('strategy_type', '')
-
-        # Skip neutral DIRECTIONAL decisions (no position taken)
-        if decision == 'NEUTRAL' and prediction_type != 'VOLATILITY':
-            continue
-
-        grade_entry = {
-            'timestamp': timestamp,
-            'contract': row.get('contract', 'Unknown'),
-            'master_decision': decision,
-            'master_confidence': confidence,
-            'entry_price': row.get('entry_price'),
-            'exit_price': row.get('exit_price'),
-            'pnl_realized': row.get('pnl_realized'),
-            'actual_trend': row.get('actual_trend_direction'),
-            'prediction_type': prediction_type,
-            'strategy_type': strategy_type,
-            'volatility_outcome': row.get('volatility_outcome'),
-            'outcome': 'PENDING'
-        }
 
         # ================================================================
         # VOLATILITY TRADES: Grade by volatility_outcome (Source of Truth)
@@ -387,159 +368,169 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
         if prediction_type == 'VOLATILITY':
             vol_outcome = row.get('volatility_outcome')
 
-            # PRIMARY: Use volatility_outcome field set during reconciliation
             if vol_outcome == 'BIG_MOVE':
-                grade_entry['outcome'] = 'WIN' if strategy_type == 'LONG_STRADDLE' else 'LOSS'
+                outcome = 'WIN' if strategy_type == 'LONG_STRADDLE' else 'LOSS'
             elif vol_outcome == 'STAYED_FLAT':
-                grade_entry['outcome'] = 'LOSS' if strategy_type == 'LONG_STRADDLE' else 'WIN'
-
-            # FALLBACK: Calculate from prices if volatility_outcome missing
-            elif pd.notna(row.get('entry_price')) and pd.notna(row.get('exit_price')):
-                try:
-                    entry = float(row['entry_price'])
-                    exit_p = float(row['exit_price'])
-                    abs_change = abs((exit_p - entry) / entry)
-
-                    if strategy_type == 'LONG_STRADDLE':
-                        if abs_change >= STRADDLE_MOVE_THRESHOLD:
-                            grade_entry['outcome'] = 'WIN'
-                            grade_entry['volatility_outcome'] = 'BIG_MOVE'
-                        else:
-                            grade_entry['outcome'] = 'LOSS'
-                            grade_entry['volatility_outcome'] = 'STAYED_FLAT'
-                    elif strategy_type == 'IRON_CONDOR':
-                        if abs_change <= CONDOR_FLAT_THRESHOLD:
-                            grade_entry['outcome'] = 'WIN'
-                            grade_entry['volatility_outcome'] = 'STAYED_FLAT'
-                        else:
-                            grade_entry['outcome'] = 'LOSS'
-                            grade_entry['volatility_outcome'] = 'BIG_MOVE'
-
-                    grade_entry['price_move_pct'] = abs_change * 100
-                except Exception:
-                    pass
-
-            # Also capture P&L for display (should now be non-zero after fix)
-            if pd.notna(row.get('pnl_realized')):
-                grade_entry['pnl'] = row['pnl_realized']
+                outcome = 'WIN' if strategy_type == 'IRON_CONDOR' else 'LOSS'
+            # else: remains PENDING
 
         # ================================================================
-        # DIRECTIONAL TRADES: Grade by P&L (standard logic)
+        # DIRECTIONAL TRADES: Grade by P&L or trend direction
         # ================================================================
-        elif pd.notna(row.get('pnl_realized')):
-            pnl = float(row['pnl_realized'])
-            # Strict inequality: 0.0 should be PENDING, not LOSS
-            if pnl > 0:
-                grade_entry['outcome'] = 'WIN'
-            elif pnl < 0:
-                grade_entry['outcome'] = 'LOSS'
-            else:
-                grade_entry['outcome'] = 'PENDING'  # Treat exact 0.0 as pending
-            grade_entry['pnl'] = pnl
+        elif prediction_type == 'DIRECTIONAL' or prediction_type is None:
+            # Skip neutral directional decisions (no position taken)
+            if decision == 'NEUTRAL':
+                outcomes.append('PENDING')
+                pnl_values.append(pnl)
+                continue
 
-        # FALLBACK: Directional grading using price movement
-        elif pd.notna(row.get('entry_price')) and pd.notna(row.get('exit_price')):
-            try:
-                entry = float(row['entry_price'])
-                exit_p = float(row['exit_price'])
-                pct_change = (exit_p - entry) / entry
+            # Primary: Use P&L if available
+            if pd.notna(row.get('pnl_realized')) and row.get('pnl_realized') != 0:
+                pnl = float(row['pnl_realized'])
+                if pnl > 0:
+                    outcome = 'WIN'
+                elif pnl < 0:
+                    outcome = 'LOSS'
 
-                actual_trend = 'NEUTRAL'
-                if pct_change > 0:
-                    actual_trend = 'UP'
-                elif pct_change < 0:
-                    actual_trend = 'DOWN'
+            # Secondary: Use actual_trend_direction
+            elif pd.notna(row.get('actual_trend_direction')):
+                actual = row['actual_trend_direction']
+                if decision == 'BULLISH' and actual == 'UP':
+                    outcome = 'WIN'
+                elif decision == 'BULLISH' and actual == 'DOWN':
+                    outcome = 'LOSS'
+                elif decision == 'BEARISH' and actual == 'DOWN':
+                    outcome = 'WIN'
+                elif decision == 'BEARISH' and actual == 'UP':
+                    outcome = 'LOSS'
 
-                if decision == 'BULLISH' and actual_trend == 'UP':
-                    grade_entry['outcome'] = 'WIN'
-                elif decision == 'BEARISH' and actual_trend == 'DOWN':
-                    grade_entry['outcome'] = 'WIN'
-                elif actual_trend in ['UP', 'DOWN']:
-                    grade_entry['outcome'] = 'LOSS'
-            except Exception:
-                pass
+        outcomes.append(outcome)
+        pnl_values.append(pnl)
 
-        # LEGACY FALLBACK: String trend direction
-        elif pd.notna(row.get('actual_trend_direction')):
-            actual = row['actual_trend_direction']
-            if decision == 'BULLISH' and actual == 'UP':
-                grade_entry['outcome'] = 'WIN'
-            elif decision == 'BEARISH' and actual == 'DOWN':
-                grade_entry['outcome'] = 'WIN'
-            elif actual in ['UP', 'DOWN']:
-                grade_entry['outcome'] = 'LOSS'
+    # Add columns to dataframe
+    graded_df['outcome'] = outcomes
+    graded_df['pnl'] = pnl_values
 
-        grades.append(grade_entry)
+    # Filter out rows that shouldn't be displayed (NEUTRAL directional with no position)
+    # Keep VOLATILITY trades even if master_decision is NEUTRAL
+    graded_df = graded_df[
+        (graded_df['prediction_type'] == 'VOLATILITY') |
+        (graded_df['master_decision'] != 'NEUTRAL') |
+        (graded_df['outcome'] != 'PENDING')
+    ]
 
-    return pd.DataFrame(grades)
+    return graded_df
 
 
 def calculate_confusion_matrix(graded_df: pd.DataFrame) -> dict:
     """
-    Calculates the confusion matrix for AI decisions.
+    Calculates confusion matrix for decision quality analysis.
+
+    Supports both DIRECTIONAL and VOLATILITY trade evaluation.
+
+    For DIRECTIONAL trades:
+      - TP: BULLISH decision + Market UP = WIN
+      - FP: BULLISH decision + Market DOWN = LOSS
+      - TN: BEARISH decision + Market DOWN = WIN
+      - FN: BEARISH decision + Market UP = LOSS
+
+    For VOLATILITY trades:
+      - TP: Correct strategy for outcome (Straddle+BigMove OR Condor+Flat)
+      - FP: Wrong strategy for outcome
+      - TN/FN: Not directly applicable (mapped to TP/FP)
 
     Returns:
-        dict with keys: true_positive, false_positive, true_negative, false_negative,
-                       precision, recall, accuracy
+        dict with matrix values, metrics, and volatility-specific counts
     """
+    result = {
+        'true_positive': 0,
+        'false_positive': 0,
+        'true_negative': 0,
+        'false_negative': 0,
+        'precision': 0.0,
+        'recall': 0.0,
+        'accuracy': 0.0,
+        'total': 0,
+        # Volatility-specific metrics for dashboard display
+        'vol_wins': 0,
+        'vol_losses': 0,
+        'vol_total': 0
+    }
+
     if graded_df.empty:
-        return {
-            'true_positive': 0, 'false_positive': 0,
-            'true_negative': 0, 'false_negative': 0,
-            'precision': 0.0, 'recall': 0.0, 'accuracy': 0.0,
-            'total': 0
-        }
+        return result
 
     # Filter to only graded decisions (not PENDING)
-    graded = graded_df[graded_df['outcome'].isin(['WIN', 'LOSS'])]
+    graded = graded_df[graded_df['outcome'].isin(['WIN', 'LOSS'])].copy()
 
     if graded.empty:
-        return {
-            'true_positive': 0, 'false_positive': 0,
-            'true_negative': 0, 'false_negative': 0,
-            'precision': 0.0, 'recall': 0.0, 'accuracy': 0.0,
-            'total': 0
-        }
+        return result
 
-    # Calculate matrix values
-    # True Positive: BULLISH decision -> WIN
-    # False Positive: BULLISH decision -> LOSS
-    # True Negative: BEARISH decision -> WIN
-    # False Negative: BEARISH decision -> LOSS
+    # --- Process VOLATILITY TRADES ---
+    if 'prediction_type' in graded.columns:
+        vol_trades = graded[graded['prediction_type'] == 'VOLATILITY']
+        if not vol_trades.empty:
+            vol_wins = len(vol_trades[vol_trades['outcome'] == 'WIN'])
+            vol_losses = len(vol_trades[vol_trades['outcome'] == 'LOSS'])
 
-    tp = len(graded[(graded['master_decision'] == 'BULLISH') & (graded['outcome'] == 'WIN')])
-    fp = len(graded[(graded['master_decision'] == 'BULLISH') & (graded['outcome'] == 'LOSS')])
-    tn = len(graded[(graded['master_decision'] == 'BEARISH') & (graded['outcome'] == 'WIN')])
-    fn = len(graded[(graded['master_decision'] == 'BEARISH') & (graded['outcome'] == 'LOSS')])
+            result['vol_wins'] = vol_wins
+            result['vol_losses'] = vol_losses
+            result['vol_total'] = vol_wins + vol_losses
 
+            # Map volatility trades to confusion matrix
+            # WIN = Correct prediction (True Positive)
+            # LOSS = Incorrect prediction (False Positive)
+            result['true_positive'] += vol_wins
+            result['false_positive'] += vol_losses
+
+    # --- Process DIRECTIONAL TRADES ---
+    # Filter to only directional trades with BULLISH/BEARISH decisions
+    if 'prediction_type' in graded.columns:
+        dir_trades = graded[graded['prediction_type'] != 'VOLATILITY']
+    else:
+        dir_trades = graded.copy()
+
+    dir_trades = dir_trades[dir_trades['master_decision'].isin(['BULLISH', 'BEARISH'])]
+
+    if not dir_trades.empty:
+        tp = len(dir_trades[(dir_trades['master_decision'] == 'BULLISH') & (dir_trades['outcome'] == 'WIN')])
+        fp = len(dir_trades[(dir_trades['master_decision'] == 'BULLISH') & (dir_trades['outcome'] == 'LOSS')])
+        tn = len(dir_trades[(dir_trades['master_decision'] == 'BEARISH') & (dir_trades['outcome'] == 'WIN')])
+        fn = len(dir_trades[(dir_trades['master_decision'] == 'BEARISH') & (dir_trades['outcome'] == 'LOSS')])
+
+        result['true_positive'] += tp
+        result['false_positive'] += fp
+        result['true_negative'] += tn
+        result['false_negative'] += fn
+
+    # --- Calculate Final Metrics ---
+    tp = result['true_positive']
+    fp = result['false_positive']
+    tn = result['true_negative']
+    fn = result['false_negative']
     total = tp + fp + tn + fn
 
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-    accuracy = (tp + tn) / total if total > 0 else 0.0
+    result['total'] = total
+    result['precision'] = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    result['recall'] = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    result['accuracy'] = (tp + tn) / total if total > 0 else 0.0
 
-    return {
-        'true_positive': tp,
-        'false_positive': fp,
-        'true_negative': tn,
-        'false_negative': fn,
-        'precision': precision,
-        'recall': recall,
-        'accuracy': accuracy,
-        'total': total
-    }
+    return result
 
 
 def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -> dict:
     """
     Calculates accuracy scores for each sub-agent based on actual outcomes.
 
-    Args:
-        council_df: DataFrame from council_history.csv
-        live_price: Current market price for grading recent decisions
+    IMPORTANT DISTINCTION:
+    - Agent Accuracy = Did the agent correctly predict market behavior?
+    - Trade Success = Did the Master's trade make money?
 
-    Returns:
-        dict with agent names as keys and dicts of {correct, total, accuracy} as values
+    For the leaderboard, we measure PREDICTION ACCURACY, not trade profitability.
+    Agents are graded against market reality (volatility_outcome, actual_trend_direction),
+    NOT against whether the Master's chosen strategy was profitable.
+
+    Supports both DIRECTIONAL (Up/Down) and VOLATILITY (Big Move/Flat) grading.
     """
     agents = [
         'meteorologist_sentiment',
@@ -559,40 +550,90 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
         return scores
 
     for idx, row in council_df.iterrows():
-        # Determine actual outcome
-        actual = None
-        if pd.notna(row.get('actual_trend_direction')):
-            actual = row['actual_trend_direction']
-        elif live_price and pd.notna(row.get('entry_price')):
-            entry = row['entry_price']
+
+        # ================================================================
+        # SECTION 1: HANDLE VOLATILITY TRADES
+        # ================================================================
+        if row.get('prediction_type') == 'VOLATILITY':
+            vol_outcome = row.get('volatility_outcome')  # 'BIG_MOVE' or 'STAYED_FLAT'
+
+            if not vol_outcome:
+                continue  # Can't grade without knowing the outcome
+
+            # --- A. Score Master Strategist (Based on Trade Success) ---
+            # The Master is graded on whether their STRATEGY CHOICE was correct
+            # given what the market actually did
+            strategy = row.get('strategy_type')
+            is_win = False
+            if strategy == 'LONG_STRADDLE' and vol_outcome == 'BIG_MOVE':
+                is_win = True
+            elif strategy == 'IRON_CONDOR' and vol_outcome == 'STAYED_FLAT':
+                is_win = True
+
+            scores['master_decision']['total'] += 1
+            if is_win:
+                scores['master_decision']['correct'] += 1
+
+            # --- B. Score Volatility Agent (Based on PREDICTION TRUTH) ---
+            # CRITICAL: Grade the agent against MARKET REALITY, not trade result
+            # The agent's job is to predict volatility, regardless of what
+            # strategy the Master chooses to deploy
+            vol_sentiment = row.get('volatility_sentiment')
+            if vol_sentiment:
+                scores['volatility_sentiment']['total'] += 1
+                sentiment_norm = str(vol_sentiment).upper()
+
+                # Definition of Accuracy for Volatility Agent:
+                # HIGH/BULLISH/VOLATILE prediction matches BIG_MOVE outcome
+                # LOW/BEARISH/QUIET/RANGE_BOUND prediction matches STAYED_FLAT outcome
+                predicted_high = sentiment_norm in ['HIGH', 'BULLISH', 'VOLATILE']
+                predicted_low = sentiment_norm in ['LOW', 'BEARISH', 'QUIET', 'RANGE_BOUND', 'NEUTRAL']
+
+                if vol_outcome == 'BIG_MOVE' and predicted_high:
+                    scores['volatility_sentiment']['correct'] += 1
+                elif vol_outcome == 'STAYED_FLAT' and predicted_low:
+                    scores['volatility_sentiment']['correct'] += 1
+
+            continue  # Done processing this volatility trade row
+
+        # ================================================================
+        # SECTION 2: HANDLE DIRECTIONAL TRADES
+        # ================================================================
+        actual = row.get('actual_trend_direction')
+
+        # Fallback: Calculate from live price if actual not yet set
+        if not actual and live_price and pd.notna(row.get('entry_price')):
+            entry = float(row['entry_price'])
             if live_price > entry * 1.005:
                 actual = 'UP'
             elif live_price < entry * 0.995:
                 actual = 'DOWN'
 
-        if not actual:
-            continue
+        if not actual or actual == 'NEUTRAL':
+            continue  # Can't grade without knowing market direction
 
-        # Score each agent
+        # Score each agent against the actual market direction
         for agent in agents:
-            sentiment = row.get(agent, None)
+            sentiment = row.get(agent)
             if not sentiment or sentiment == 'NEUTRAL':
+                continue
+
+            # Skip Master on Directional loop if this was a Vol trade (already handled above)
+            if agent == 'master_decision' and row.get('prediction_type') == 'VOLATILITY':
                 continue
 
             scores[agent]['total'] += 1
 
             # Map sentiment to expected direction
-            if agent == 'master_decision':
-                expected_up = sentiment == 'BULLISH'
-            elif agent == 'ml_signal':
-                expected_up = sentiment in ['BULLISH', 'Bullish', 'LONG', 'Long', 'long']
-            else:
-                expected_up = sentiment in ['BULLISH', 'Bullish', 'bullish']
+            sentiment_upper = str(sentiment).upper()
+            expected_up = sentiment_upper in ['BULLISH', 'LONG']
 
             if (expected_up and actual == 'UP') or (not expected_up and actual == 'DOWN'):
                 scores[agent]['correct'] += 1
 
-    # Calculate accuracies
+    # ================================================================
+    # SECTION 3: Calculate Final Accuracy Percentages
+    # ================================================================
     for agent in agents:
         if scores[agent]['total'] > 0:
             scores[agent]['accuracy'] = scores[agent]['correct'] / scores[agent]['total']
