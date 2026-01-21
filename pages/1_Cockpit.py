@@ -380,7 +380,7 @@ with ctrl_cols[0]:
     st.caption("No active cooldown")
 
 with ctrl_cols[1]:
-    if st.button("🛑 EMERGENCY HALT", type="primary", use_container_width=True):
+    if st.button("🛑 EMERGENCY HALT", type="primary", width="stretch"):
         if config:
             with st.spinner("Cancelling all open orders..."):
                 try:
@@ -402,7 +402,7 @@ with ctrl_cols[1]:
             st.error("Config not loaded")
 
 with ctrl_cols[2]:
-    if st.button("🔄 Refresh All Data", use_container_width=True):
+    if st.button("🔄 Refresh All Data", width="stretch"):
         st.cache_data.clear()
         st.rerun()
 

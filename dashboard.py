@@ -31,6 +31,7 @@ Use the sidebar to navigate between pages:
 | **⚖️ Scorecard** | Decision quality analysis, win rates, confusion matrix |
 | **🧠 Council** | Agent explainability, consensus visualization |
 | **📈 Financials** | ROI, equity curve, strategy performance |
+| **🔧 Utilities** | Log collection, equity sync, system maintenance |
 
 ---
 
