@@ -46,7 +46,7 @@ st.markdown("---")
 # === SECTION 1: Key Metrics ===
 st.subheader("📊 Performance Summary")
 
-metric_cols = st.columns(5)
+metric_cols = st.columns(6)
 
 with metric_cols[0]:
     if config:
@@ -88,6 +88,18 @@ with metric_cols[4]:
             st.metric("Win Rate", "N/A")
     else:
         st.metric("Win Rate", "N/A")
+
+with metric_cols[5]:
+    # Sum realized P&L from reconciled trades
+    if not council_df.empty and 'pnl_realized' in council_df.columns:
+        realized_pnl = council_df['pnl_realized'].fillna(0).sum()
+        st.metric(
+            "Realized P&L",
+            f"${realized_pnl:+,.2f}",
+            help="Sum of P&L from reconciled trades in council_history"
+        )
+    else:
+        st.metric("Realized P&L", "$0.00")
 
 st.markdown("---")
 
@@ -198,6 +210,72 @@ if not equity_df.empty:
 
 else:
     st.warning("No equity data available. Ensure equity_logger.py is running.")
+
+st.markdown("---")
+
+# === SYNTHETIC EQUITY CURVE (Trade-Based) ===
+st.markdown("---")
+st.subheader("📈 Synthetic Equity Curve")
+st.caption("Reconstructed from starting capital + cumulative trade P&L")
+
+if not council_df.empty and 'pnl_realized' in council_df.columns:
+    # Filter to trades with P&L data
+    trades_with_pnl = council_df[council_df['pnl_realized'].notna()].copy()
+
+    if not trades_with_pnl.empty and len(trades_with_pnl) > 0:
+        # Sort by timestamp and calculate cumulative
+        trades_with_pnl = trades_with_pnl.sort_values('timestamp')
+        trades_with_pnl['cumulative_pnl'] = trades_with_pnl['pnl_realized'].cumsum()
+        trades_with_pnl['synthetic_equity'] = starting_capital + trades_with_pnl['cumulative_pnl']
+
+        # Create chart
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(
+            x=pd.to_datetime(trades_with_pnl['timestamp']),
+            y=trades_with_pnl['synthetic_equity'],
+            mode='lines+markers',
+            name='Synthetic Equity',
+            line=dict(color='#636EFA', width=2),
+            marker=dict(size=8)
+        ))
+
+        # Add starting capital reference line
+        fig.add_hline(
+            y=starting_capital,
+            line_dash="dash",
+            line_color="gray",
+            annotation_text=f"Starting: ${starting_capital:,.0f}"
+        )
+
+        fig.update_layout(
+            title='Equity Based on Realized Trade P&L',
+            xaxis_title='Date',
+            yaxis_title='Equity ($)',
+            height=400,
+            hovermode='x unified'
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Summary stats
+        final_equity = trades_with_pnl['synthetic_equity'].iloc[-1]
+        total_pnl = final_equity - starting_capital
+        pnl_pct = (total_pnl / starting_capital) * 100
+
+        stat_cols = st.columns(4)
+        with stat_cols[0]:
+            st.metric("Final Equity", f"${final_equity:,.2f}")
+        with stat_cols[1]:
+            st.metric("Total P&L", f"${total_pnl:+,.2f}")
+        with stat_cols[2]:
+            st.metric("Return", f"{pnl_pct:+.2f}%")
+        with stat_cols[3]:
+            st.metric("Trades", len(trades_with_pnl))
+    else:
+        st.info("No reconciled trades with P&L data yet.")
+else:
+    st.info("Trade P&L data not available.")
 
 st.markdown("---")
 
