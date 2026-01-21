@@ -149,3 +149,233 @@
 2026-01-21 16:29:09,616 - trading_bot.agents - INFO - Retrieved 2 TMS insights for agronomist.
 2026-01-21 16:29:09,617 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
 2026-01-21 16:29:09,617 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:30:27,896 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:30:48,112 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:30:48,113 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:31:20,866 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:31:20,866 - trading_bot.agents - WARNING - Router failed for agronomist, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:31:20,869 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:31:40,947 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-21 16:31:40,948 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.50 -> 0.50
+2026-01-21 16:31:40,948 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=RANGE_BOUND
+2026-01-21 16:31:40,948 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-21 16:31:40,949 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 3.0,
+    "reliability_mult": 1.0,
+    "final_weight": 3.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 0.5,
+    "reliability_mult": 1.0,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.4,
+    "reliability_mult": 1.0,
+    "final_weight": 1.4,
+    "contribution": 0.0
+  },
+  {
+    "agent": "latest_ml_signals",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  }
+]
+2026-01-21 16:31:58,134 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-21 16:31:58,143 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-5-20251101 failed for permabear: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:31:58,144 - trading_bot.agents - WARNING - Router failed for permabear, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:31:58,144 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:32:52,755 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:32:52,757 - trading_bot.heterogeneous_router - WARNING - xai/grok-4-1-fast-reasoning failed for permabull: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:32:52,757 - trading_bot.agents - WARNING - Router failed for permabull, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:32:52,758 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:33:28,242 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:33:28,243 - trading_bot.heterogeneous_router - WARNING - openai/gpt-4o failed for master: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:33:28,243 - trading_bot.agents - WARNING - Router failed for master, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:33:28,243 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:34:05,792 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.5)
+2026-01-21 16:34:05,794 - Orchestrator - INFO - Emergency Cycle concluded with no action.
+2026-01-21 16:34:05,794 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-21 16:34:05,800 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-01-21 16:34:05,801 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: Drought Risk in Dak Lak (Vietnam): 10 days with < 5.0mm rain
+2026-01-21 16:34:06,095 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-21 16:34:06,222 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-21 16:34:06,222 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
+2026-01-21 16:34:06,222 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'gemini', 'anthropic', 'openai'], 'diversity_score': 1.0}
+2026-01-21 16:34:06,229 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-21 16:34:06,230 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-01-21 16:34:06,230 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-01-21 16:34:06,298 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-01-21 16:34:06,298 - Orchestrator - INFO - Targeting contract: KCH6 (202603)
+2026-01-21 16:34:10,424 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
+2026-01-21 16:34:10,426 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
+2026-01-21 16:34:10,426 - trading_bot.agents - INFO - Waking up agronomist...
+2026-01-21 16:34:10,726 - trading_bot.agents - INFO - Retrieved 2 TMS insights for agronomist.
+2026-01-21 16:34:10,726 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-21 16:34:10,726 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:35:05,213 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:35:25,915 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:35:25,915 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:35:50,954 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:35:50,955 - trading_bot.agents - WARNING - Router failed for agronomist, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:35:50,955 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:36:18,088 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-21 16:36:18,089 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.50 -> 0.50
+2026-01-21 16:36:18,089 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=RANGE_BOUND
+2026-01-21 16:36:18,089 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-21 16:36:18,089 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 3.0,
+    "reliability_mult": 1.0,
+    "final_weight": 3.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 0.5,
+    "reliability_mult": 1.0,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.4,
+    "reliability_mult": 1.0,
+    "final_weight": 1.4,
+    "contribution": 0.0
+  },
+  {
+    "agent": "latest_ml_signals",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  }
+]
+2026-01-21 16:36:35,836 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-21 16:36:35,838 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-5-20251101 failed for permabear: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:36:35,838 - trading_bot.agents - WARNING - Router failed for permabear, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:36:35,838 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:37:20,071 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:37:20,073 - trading_bot.heterogeneous_router - WARNING - xai/grok-4-1-fast-reasoning failed for permabull: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:37:20,073 - trading_bot.agents - WARNING - Router failed for permabull, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:37:20,073 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-21 16:37:47,642 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 16:37:47,647 - trading_bot.heterogeneous_router - WARNING - openai/gpt-4o failed for master: 'RouterMetrics' object has no attribute 'record_success'
+2026-01-21 16:37:47,647 - trading_bot.agents - WARNING - Router failed for master, falling back to Gemini: 'RouterMetrics' object has no attribute 'record_failure'
+2026-01-21 16:37:47,647 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
