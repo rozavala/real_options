@@ -214,7 +214,7 @@ if 'master_confidence' in graded_df.columns and pnl_col is not None:
             height=400
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         # Quadrant Analysis
         high_conf = plot_df[plot_df['master_confidence'] >= 0.75]

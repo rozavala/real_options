@@ -256,7 +256,7 @@ if not council_df.empty and 'pnl_realized' in council_df.columns:
             hovermode='x unified'
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         # Summary stats
         final_equity = trades_with_pnl['synthetic_equity'].iloc[-1]
@@ -302,7 +302,7 @@ if not council_df.empty and 'strategy_type' in council_df.columns and 'pnl_reali
     )
 
     fig.update_traces(texttemplate='%{text} trades', textposition='outside')
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # Detailed table
     st.dataframe(strategy_perf)
@@ -449,7 +449,7 @@ if not trade_df.empty:
     display_cols = [c for c in display_cols if c in trade_df.columns]
     st.dataframe(
         trade_df[display_cols].sort_values('timestamp', ascending=False).head(50),
-        use_container_width=True
+        width="stretch"
     )
 
 elif not council_df.empty and 'pnl_realized' in council_df.columns:
@@ -463,7 +463,7 @@ elif not council_df.empty and 'pnl_realized' in council_df.columns:
 
         st.dataframe(
             reconciled_trades[display_cols].sort_values('timestamp', ascending=False).head(50),
-            use_container_width=True
+            width="stretch"
         )
         st.caption("⚠️ Showing reconciled trades from council_history (trade_ledger.csv is empty)")
     else:
