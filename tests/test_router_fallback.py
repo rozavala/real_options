@@ -69,7 +69,7 @@ async def test_tier3_safety_failure(router):
         with pytest.raises(RuntimeError) as excinfo:
             await router.route(AgentRole.MASTER_STRATEGIST, "test")
 
-        assert "ALL models failed" in str(excinfo.value)
+        assert "All providers exhausted" in str(excinfo.value)
 
         # Verify it tried the Pro models but NOT Flash
         calls = mock_get_client.call_args_list
