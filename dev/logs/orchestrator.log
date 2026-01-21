@@ -239,3 +239,91 @@
 2026-01-21 18:55:00,778 - EquityLogger - INFO - Updated data/daily_equity.csv with value $50,000.00
 2026-01-21 18:55:00,779 - EquityLogger - INFO - Disconnected from IB.
 2026-01-21 18:55:00,780 - Orchestrator - INFO - Next task 'reconcile_and_analyze' scheduled for 2026-01-21 19:05:00 UTC. Waiting for 0.17 hours.
+2026-01-21 19:00:04,324 - Orchestrator - INFO - Market Closed: Disengaging Microstructure Sentinel
+2026-01-21 19:00:04,324 - trading_bot.connection_pool - INFO - Disconnecting IB (microstructure)...
+2026-01-21 19:05:00,054 - Orchestrator - INFO - --- Running scheduled task: reconcile_and_analyze ---
+2026-01-21 19:05:00,056 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-01-21 19:05:00,056 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
+2026-01-21 19:05:00,090 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1341111)...
+2026-01-21 19:05:00,386 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1341111&v=3 "HTTP/1.1 200 OK"
+2026-01-21 19:05:00,387 - TradeReconciler - INFO - Successfully requested report. Reference Code: 6333423702
+2026-01-21 19:05:10,392 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-01-21 19:05:10,652 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=6333423702&v=3 "HTTP/1.1 200 OK"
+2026-01-21 19:05:10,653 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-01-21 19:05:10,666 - EquityLogger - INFO - Preserving 1 local equity records not present in Flex Query.
+2026-01-21 19:05:10,668 - EquityLogger - INFO - Successfully synced 4 equity records to data/daily_equity.csv.
+2026-01-21 19:05:10,668 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-01-21 19:05:10,668 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-01-21 19:05:10,669 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-01-21 19:05:10,719 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1328326)...
+2026-01-21 19:05:10,911 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1328326&v=3 "HTTP/1.1 200 OK"
+2026-01-21 19:05:10,911 - TradeReconciler - INFO - Successfully requested report. Reference Code: 8064327897
+2026-01-21 19:05:20,921 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-01-21 19:05:21,124 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=8064327897&v=3 "HTTP/1.1 200 OK"
+2026-01-21 19:05:21,125 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-01-21 19:05:21,127 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-01-21 19:05:21,128 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-01-21 19:05:21,128 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-01-21 19:05:21,162 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1331422)...
+2026-01-21 19:05:22,601 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1331422&v=3 "HTTP/1.1 200 OK"
+2026-01-21 19:05:22,601 - TradeReconciler - INFO - Successfully requested report. Reference Code: 9797466158
+2026-01-21 19:05:32,611 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-01-21 19:05:32,827 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=9797466158&v=3 "HTTP/1.1 200 OK"
+2026-01-21 19:05:32,828 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-01-21 19:05:32,830 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-01-21 19:05:32,830 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-01-21 19:05:32,830 - TradeReconciler - WARNING - No trade data was fetched from any IB Flex Query. Exiting.
+2026-01-21 19:05:32,831 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
+2026-01-21 19:05:32,831 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-01-21 19:05:32,862 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1341164)...
+2026-01-21 19:05:33,059 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1341164&v=3 "HTTP/1.1 200 OK"
+2026-01-21 19:05:33,060 - TradeReconciler - INFO - Successfully requested report. Reference Code: 1668072579
+2026-01-21 19:05:43,069 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-01-21 19:05:43,263 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=1668072579&v=3 "HTTP/1.1 200 OK"
+2026-01-21 19:05:43,263 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-01-21 19:05:43,266 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
+2026-01-21 19:05:43,266 - TradeReconciler - INFO - Found 0 archived ledger files.
+2026-01-21 19:05:43,266 - TradeReconciler - WARNING - No trade ledger data found.
+2026-01-21 19:05:43,272 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-01-21 19:05:43,272 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-01-21 19:05:43,393 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-20 13:54:09: KCK6 (202605) (NEUTRAL)
+2026-01-21 19:05:43,577 - trading_bot.reconciliation - INFO - STRADDLE LOSS: 1.33% move below 1.80% threshold. P&L: -6.02
+2026-01-21 19:05:43,578 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 334.70 -> Exit 330.25 (1.33% move) | Strategy: LONG_STRADDLE | Outcome: STAYED_FLAT | P&L: -6.0246
+2026-01-21 19:05:43,579 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual STAYED_FLAT -> INCORRECT
+2026-01-21 19:05:43,680 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-20 13:54:47: KCH6 (202603) (NEUTRAL)
+2026-01-21 19:05:43,851 - trading_bot.reconciliation - INFO - STRADDLE LOSS: 1.55% move below 1.80% threshold. P&L: -6.34
+2026-01-21 19:05:43,851 - trading_bot.reconciliation - INFO - Reconciled KCH6 (202603): Entry 352.45 -> Exit 347.00 (1.55% move) | Strategy: LONG_STRADDLE | Outcome: STAYED_FLAT | P&L: -6.3441
+2026-01-21 19:05:43,851 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual STAYED_FLAT -> INCORRECT
+2026-01-21 19:05:43,952 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-20 13:55:18: KCN6 (202607) (NEUTRAL)
+2026-01-21 19:05:44,125 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 328.30 -> Exit 323.55 (1.45% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
+2026-01-21 19:05:44,125 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
+2026-01-21 19:05:44,226 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-20 13:57:39: KCU6 (202609) (NEUTRAL)
+2026-01-21 19:05:44,399 - trading_bot.reconciliation - INFO - STRADDLE LOSS: 1.61% move below 1.80% threshold. P&L: -5.81
+2026-01-21 19:05:44,399 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 322.55 -> Exit 317.35 (1.61% move) | Strategy: LONG_STRADDLE | Outcome: STAYED_FLAT | P&L: -5.8059
+2026-01-21 19:05:44,400 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual STAYED_FLAT -> INCORRECT
+2026-01-21 19:05:44,500 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-20 13:58:04: KCZ6 (202612) (NEUTRAL)
+2026-01-21 19:05:44,672 - trading_bot.reconciliation - INFO - STRADDLE LOSS: 1.67% move below 1.80% threshold. P&L: -5.71
+2026-01-21 19:05:44,672 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 317.45 -> Exit 312.15 (1.67% move) | Strategy: LONG_STRADDLE | Outcome: STAYED_FLAT | P&L: -5.7141
+2026-01-21 19:05:44,673 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual STAYED_FLAT -> INCORRECT
+2026-01-21 19:05:44,779 - trading_bot.reconciliation - INFO - Successfully updated council_history.csv with reconciliation results.
+2026-01-21 19:05:44,779 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-01-21 19:05:44,781 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-01-21 19:05:44,781 - PerformanceAnalyzer - INFO - No archived trade ledgers found.
+2026-01-21 19:05:44,781 - PerformanceAnalyzer - WARNING - No trade ledger data found to consolidate.
+2026-01-21 19:05:44,786 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-01-21 19:05:45,230 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $50,000.00
+2026-01-21 19:05:47,234 - PerformanceAnalyzer - INFO - Successfully fetched 0 execution(s) for today from IB.
+2026-01-21 19:05:47,235 - PerformanceAnalyzer - INFO - Loading daily_equity.csv for equity curve.
+2026-01-21 19:05:47,240 - PerformanceAnalyzer - INFO - Dynamic Starting Capital from History: $50,000.00
+2026-01-21 19:05:47,241 - PerformanceAnalyzer - INFO - Calculated LTD Total P&L (Equity): $0.00
+2026-01-21 19:05:47,243 - PerformanceAnalyzer - WARNING - Trade ledger is empty, skipping chart generation.
+2026-01-21 19:05:47,243 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-01-21 19:05:47,541 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-21 19:05:47,877 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-21 19:05:49,087 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-21 19:05:50,282 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-21 19:05:51,472 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-21 19:05:52,475 - root - INFO - 'trade_ledger.csv' not found, no action taken.
+2026-01-21 19:05:52,476 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-01-21 19:05:52,476 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-01-21 19:05:52,477 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-01-22 08:20:00 UTC. Waiting for 13.24 hours.
