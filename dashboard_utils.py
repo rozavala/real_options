@@ -341,16 +341,8 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
     """
     Categorizes every AI decision as WIN, LOSS, or PENDING.
 
-    Logic:
-    - For decisions with reconciled data (exit_price exists), use actual P&L.
-    - For recent decisions without exit data, mark as PENDING.
-
-    Args:
-        council_df: DataFrame from council_history.csv
-        lookback_days: Number of days to wait before grading (default 5)
-
-    Returns:
-        DataFrame with columns: timestamp, master_decision, master_confidence, outcome, pnl
+    CRITICAL: Volatility trades use volatility_outcome field as source of truth.
+    Thresholds calibrated to IV regime (~35%): Straddle=1.8%, Condor=1.5%
     """
     if council_df.empty:
         return pd.DataFrame()
@@ -358,9 +350,9 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
     grades = []
     now = datetime.now()
 
-    # Thresholds for volatility grading
-    STRADDLE_MOVE_THRESHOLD = 0.03  # 3% move = WIN for straddle
-    CONDOR_FLAT_THRESHOLD = 0.02    # <2% move = WIN for condor
+    # Thresholds for volatility grading (IV-calibrated, NET basis)
+    STRADDLE_MOVE_THRESHOLD = 0.018  # 1.8%
+    CONDOR_FLAT_THRESHOLD = 0.015    # 1.5%
 
     for idx, row in council_df.iterrows():
         decision = row.get('master_decision', 'NEUTRAL')
@@ -370,7 +362,7 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
         prediction_type = row.get('prediction_type', 'DIRECTIONAL')
         strategy_type = row.get('strategy_type', '')
 
-        # Skip neutral decisions (unless it's a volatility play)
+        # Skip neutral DIRECTIONAL decisions (no position taken)
         if decision == 'NEUTRAL' and prediction_type != 'VOLATILITY':
             continue
 
@@ -389,21 +381,25 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
             'outcome': 'PENDING'
         }
 
-        # Check if we have reconciled data
-        if pd.notna(row.get('pnl_realized')):
-            pnl = row['pnl_realized']
-            grade_entry['outcome'] = 'WIN' if pnl > 0 else 'LOSS'
-            grade_entry['pnl'] = pnl
+        # ================================================================
+        # VOLATILITY TRADES: Grade by volatility_outcome (Source of Truth)
+        # ================================================================
+        if prediction_type == 'VOLATILITY':
+            vol_outcome = row.get('volatility_outcome')
 
-        # Fallback grading using price movement if P&L not reconciled but prices available
-        elif pd.notna(row.get('entry_price')) and pd.notna(row.get('exit_price')):
-             try:
-                entry = float(row['entry_price'])
-                exit_p = float(row['exit_price'])
-                pct_change = (exit_p - entry) / entry
-                abs_change = abs(pct_change)
+            # PRIMARY: Use volatility_outcome field set during reconciliation
+            if vol_outcome == 'BIG_MOVE':
+                grade_entry['outcome'] = 'WIN' if strategy_type == 'LONG_STRADDLE' else 'LOSS'
+            elif vol_outcome == 'STAYED_FLAT':
+                grade_entry['outcome'] = 'LOSS' if strategy_type == 'LONG_STRADDLE' else 'WIN'
 
-                if prediction_type == 'VOLATILITY':
+            # FALLBACK: Calculate from prices if volatility_outcome missing
+            elif pd.notna(row.get('entry_price')) and pd.notna(row.get('exit_price')):
+                try:
+                    entry = float(row['entry_price'])
+                    exit_p = float(row['exit_price'])
+                    abs_change = abs((exit_p - entry) / entry)
+
                     if strategy_type == 'LONG_STRADDLE':
                         if abs_change >= STRADDLE_MOVE_THRESHOLD:
                             grade_entry['outcome'] = 'WIN'
@@ -418,23 +414,53 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
                         else:
                             grade_entry['outcome'] = 'LOSS'
                             grade_entry['volatility_outcome'] = 'BIG_MOVE'
-                else:
-                    # Directional logic
-                    actual_trend = 'NEUTRAL'
-                    if pct_change > 0: actual_trend = 'UP'
-                    elif pct_change < 0: actual_trend = 'DOWN'
 
-                    if decision == 'BULLISH' and actual_trend == 'UP':
-                        grade_entry['outcome'] = 'WIN'
-                    elif decision == 'BEARISH' and actual_trend == 'DOWN':
-                        grade_entry['outcome'] = 'WIN'
-                    elif actual_trend in ['UP', 'DOWN']:
-                        grade_entry['outcome'] = 'LOSS'
-             except:
-                 pass
+                    grade_entry['price_move_pct'] = abs_change * 100
+                except Exception:
+                    pass
 
+            # Also capture P&L for display (should now be non-zero after fix)
+            if pd.notna(row.get('pnl_realized')):
+                grade_entry['pnl'] = row['pnl_realized']
+
+        # ================================================================
+        # DIRECTIONAL TRADES: Grade by P&L (standard logic)
+        # ================================================================
+        elif pd.notna(row.get('pnl_realized')):
+            pnl = float(row['pnl_realized'])
+            # Strict inequality: 0.0 should be PENDING, not LOSS
+            if pnl > 0:
+                grade_entry['outcome'] = 'WIN'
+            elif pnl < 0:
+                grade_entry['outcome'] = 'LOSS'
+            else:
+                grade_entry['outcome'] = 'PENDING'  # Treat exact 0.0 as pending
+            grade_entry['pnl'] = pnl
+
+        # FALLBACK: Directional grading using price movement
+        elif pd.notna(row.get('entry_price')) and pd.notna(row.get('exit_price')):
+            try:
+                entry = float(row['entry_price'])
+                exit_p = float(row['exit_price'])
+                pct_change = (exit_p - entry) / entry
+
+                actual_trend = 'NEUTRAL'
+                if pct_change > 0:
+                    actual_trend = 'UP'
+                elif pct_change < 0:
+                    actual_trend = 'DOWN'
+
+                if decision == 'BULLISH' and actual_trend == 'UP':
+                    grade_entry['outcome'] = 'WIN'
+                elif decision == 'BEARISH' and actual_trend == 'DOWN':
+                    grade_entry['outcome'] = 'WIN'
+                elif actual_trend in ['UP', 'DOWN']:
+                    grade_entry['outcome'] = 'LOSS'
+            except Exception:
+                pass
+
+        # LEGACY FALLBACK: String trend direction
         elif pd.notna(row.get('actual_trend_direction')):
-            # Legacy fallback using string trend
             actual = row['actual_trend_direction']
             if decision == 'BULLISH' and actual == 'UP':
                 grade_entry['outcome'] = 'WIN'

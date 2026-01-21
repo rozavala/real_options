@@ -64,6 +64,51 @@ class BrierScoreTracker:
         except Exception as e:
             logger.error(f"Failed to record prediction for {agent}: {e}")
 
+    def record_volatility_prediction(
+        self,
+        strategy_type: str,
+        predicted_vol_level: str,
+        actual_outcome: str,
+        timestamp: Optional[datetime] = None
+    ):
+        """
+        Record a volatility prediction for Brier scoring.
+        Uses existing agent_accuracy.csv with distinct agent names for UI compatibility.
+
+        Args:
+            strategy_type: 'LONG_STRADDLE' or 'IRON_CONDOR'
+            predicted_vol_level: 'HIGH' or 'LOW'
+            actual_outcome: 'BIG_MOVE' or 'STAYED_FLAT'
+        """
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+
+        # Create distinct agent name for dashboard compatibility
+        agent_name = f"Strategy_{strategy_type}"  # e.g., Strategy_LONG_STRADDLE
+
+        # Determine correctness
+        is_correct = 0
+        if strategy_type == 'LONG_STRADDLE':
+            predicted_str = "HIGH_VOL"
+            is_correct = 1 if actual_outcome == 'BIG_MOVE' else 0
+        elif strategy_type == 'IRON_CONDOR':
+            predicted_str = "LOW_VOL"
+            is_correct = 1 if actual_outcome == 'STAYED_FLAT' else 0
+        else:
+            predicted_str = "UNKNOWN"
+
+        # Use existing record_prediction method to maintain file format
+        # This writes to agent_accuracy.csv which the dashboard already reads
+        self.record_prediction(
+            agent=agent_name,
+            predicted=predicted_str,
+            actual=actual_outcome,
+            timestamp=timestamp
+        )
+
+        logger.info(f"Recorded volatility prediction: {agent_name} predicted {predicted_str}, "
+                    f"actual {actual_outcome} -> {'CORRECT' if is_correct else 'INCORRECT'}")
+
     def record_prediction_structured(
         self,
         agent: str,
