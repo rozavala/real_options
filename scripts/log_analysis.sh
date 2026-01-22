@@ -18,6 +18,22 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Helper: Capture original branch
+capture_original_branch() {
+    ORIGINAL_BRANCH=$(git branch --show-current)
+    if [ -z "$ORIGINAL_BRANCH" ]; then
+        echo "⚠️  Could not detect current branch, defaulting to 'main'"
+        ORIGINAL_BRANCH="main"
+    fi
+    echo "📍 Starting from branch: $ORIGINAL_BRANCH"
+}
+
+# Helper: Switch back to original branch
+return_to_original_branch() {
+    echo "Switching back to original branch: $ORIGINAL_BRANCH"
+    git checkout "$ORIGINAL_BRANCH" > /dev/null 2>&1
+}
+
 usage() {
     echo "☕ Coffee Bot Mission Control - Log Analysis Utilities"
     echo ""
@@ -44,6 +60,9 @@ usage() {
 init_logs_branch() {
     cd "$REPO_DIR" || { echo -e "${RED}❌ Repository not found: $REPO_DIR${NC}"; exit 1; }
     
+    # CRITICAL: Capture original branch BEFORE switching
+    capture_original_branch
+
     # Switch to logs branch
     if ! git checkout $BRANCH > /dev/null 2>&1; then
         echo -e "${RED}❌ Cannot switch to logs branch. Run setup_logs_infrastructure.sh first.${NC}"
@@ -233,6 +252,28 @@ show_performance() {
     fi
 }
 
+show_health() {
+    local env=$1
+
+    if [ ! -d "$env" ]; then
+        echo -e "${RED}❌ Environment '$env' not found${NC}"
+        return 1
+    fi
+
+    echo -e "${BLUE}🏥 System Health Report ($env)${NC}"
+    echo "================================"
+
+    # Check for health report files
+    if [ "$env" = "prod" ] && [ -f "$env/production_health_report.txt" ]; then
+        cat "$env/production_health_report.txt"
+    elif [ -f "$env/system_snapshot.txt" ]; then
+        cat "$env/system_snapshot.txt"
+    else
+        echo -e "${YELLOW}⚠️  No health report found for $env${NC}"
+        echo "Run log collection first: ./scripts/collect_logs.sh"
+    fi
+}
+
 collect_logs() {
     local env=$1
     
@@ -243,12 +284,9 @@ collect_logs() {
     
     echo -e "${BLUE}📥 Collecting logs for $env environment${NC}"
     
-    # Switch back to main branch to run collection
-    cd "$REPO_DIR" || exit
-    git checkout main 2>/dev/null || git checkout master 2>/dev/null || {
-        echo -e "${RED}❌ Could not switch to main branch${NC}"
-        exit 1
-    }
+    # Note: We do NOT switch branches here anymore because
+    # scripts/collect_logs.sh handles its own branch capturing and switching.
+    # We just execute it.
     
     # Run collection script
     if [ -f "scripts/collect_logs.sh" ]; then
@@ -257,9 +295,6 @@ collect_logs() {
         echo -e "${RED}❌ Collection script not found: scripts/collect_logs.sh${NC}"
         return 1
     fi
-    
-    # Switch back to logs branch
-    git checkout $BRANCH > /dev/null 2>&1
 }
 
 # Main script logic
@@ -267,6 +302,7 @@ case "$1" in
     "status")
         init_logs_branch
         show_status
+        return_to_original_branch
         ;;
     "analyze")
         if [ -z "$2" ]; then
@@ -276,6 +312,7 @@ case "$1" in
         fi
         init_logs_branch
         analyze_environment "$2"
+        return_to_original_branch
         ;;
     "errors")
         if [ -z "$2" ]; then
@@ -285,6 +322,7 @@ case "$1" in
         fi
         init_logs_branch
         show_errors "$2" "$3"
+        return_to_original_branch
         ;;
     "performance")
         if [ -z "$2" ]; then
@@ -294,8 +332,20 @@ case "$1" in
         fi
         init_logs_branch
         show_performance "$2"
+        return_to_original_branch
+        ;;
+    "health")
+        if [ -z "$2" ]; then
+            echo -e "${RED}❌ Please specify environment (dev/prod)${NC}"
+            usage
+            exit 1
+        fi
+        init_logs_branch
+        show_health "$2"
+        return_to_original_branch
         ;;
     "collect")
+        # Note: collect_logs already handles branch switching internally
         if [ -z "$2" ]; then
             echo -e "${RED}❌ Please specify environment (dev/prod)${NC}"
             usage
@@ -312,6 +362,7 @@ case "$1" in
         echo ""
         echo -e "${YELLOW}Prod Environment:${NC}"
         analyze_environment "prod"
+        return_to_original_branch
         ;;
     *)
         usage
