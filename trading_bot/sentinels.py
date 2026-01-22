@@ -16,6 +16,7 @@ from google.genai import types
 import pytz
 import aiohttp
 import json
+import re
 from functools import wraps
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager
@@ -628,7 +629,9 @@ class XSentimentSentinel(Sentinel):
         Construct a broader search query without author restrictions.
         Used as fallback when expert-filtered search returns no results.
 
-        ENHANCED (X Expert): Added min_faves for quality filtering on pay-per-use.
+        NOTE: min_faves operator removed - not available on Basic tier.
+        Engagement filtering is done in post-processing via _fetch_x_posts with
+        dynamic threshold passed from _execute_x_search.
         """
         query_parts = [base_query]
 
@@ -636,27 +639,28 @@ class XSentimentSentinel(Sentinel):
         for keyword in self.exclude_keywords:
             query_parts.append(f"-{keyword}")
 
-        # === X EXPERT ENHANCEMENT: Gentle engagement filter ===
-        # Reduces low-effort spam, lowers credit cost per call
-        # Start with min_faves:3 (adjustable via config if needed)
-        min_faves_threshold = self.sentinel_config.get('broad_min_faves', 3)
-        if min_faves_threshold > 0:
-            query_parts.append(f"min_faves:{min_faves_threshold}")
+        # REMOVED: min_faves operator (not available on Basic tier)
+        # Threshold is now passed to _fetch_x_posts as min_likes parameter
 
         # Cap query length to prevent 400 errors (X API limit ~512 chars)
         full_query = " ".join(query_parts)
         if len(full_query) > 450:
             logger.warning(f"Broad query too long ({len(full_query)} chars), trimming exclusions")
-            # Keep base + min_faves, drop exclusions if needed
-            full_query = f"{base_query} min_faves:{min_faves_threshold}"
+            full_query = base_query
 
         return full_query
 
-    async def _fetch_x_posts(self, query: str, limit: int, sort_order: str) -> list:
+    async def _fetch_x_posts(self, query: str, limit: int, sort_order: str, min_likes: int = None) -> list:
         """
         Execute X API HTTP request and return posts.
 
-        ENHANCED (X Expert): Added since: date bound for recency.
+        ENHANCED (X Expert): Added recency bound via start_time param.
+
+        Args:
+            query: Search query string
+            limit: Max results to fetch
+            sort_order: 'recency' or 'relevancy'
+            min_likes: Minimum likes threshold for filtering. Defaults to self.min_engagement if None.
 
         Returns:
             list: Posts matching query (empty list on error/no results)
@@ -669,14 +673,15 @@ class XSentimentSentinel(Sentinel):
         }
 
         # === X EXPERT ENHANCEMENT: Add recency bound ===
-        # X recent search defaults to ~7 days, but explicit is safer
-        since_date = (datetime.now(timezone.utc).date() - timedelta(days=7)).strftime("%Y-%m-%d")
+        # Build query WITHOUT since: operator (not available on Basic tier)
+        query_with_filters = f"{query} -is:retweet lang:en"
 
-        # Build query with recency filter
-        query_with_filters = f"{query} since:{since_date} -is:retweet lang:en"
+        # Use start_time parameter instead (ISO 8601 format)
+        since_datetime = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         params = {
             "query": query_with_filters,
+            "start_time": since_datetime,  # CORRECT: API parameter, not query operator
             "max_results": max(10, min(limit, 100)),
             "tweet.fields": "text,created_at,public_metrics,author_id",
             "expansions": "author_id",
@@ -721,8 +726,10 @@ class XSentimentSentinel(Sentinel):
                             "created_at": tweet.get("created_at", "")
                         })
 
-                    # Filter by engagement (post-processing for pay-per-use efficiency)
-                    posts = [p for p in posts if p.get('likes', 0) >= self.min_engagement]
+                    # Filter by engagement (post-processing since min_faves not available on Basic tier)
+                    # Use passed threshold or fall back to instance default
+                    likes_threshold = min_likes if min_likes is not None else self.min_engagement
+                    posts = [p for p in posts if p.get('likes', 0) >= likes_threshold]
 
                     # === X EXPERT ENHANCEMENT: Log top post for debugging ===
                     if posts:
@@ -1036,26 +1043,49 @@ If the x_search tool returns no results or errors, provide neutral sentiment wit
         mode = args.get("mode", "Latest")
         sort_order = "recency" if mode == "Latest" else "relevancy"
 
+        # === NEW: SANITIZE LLM QUERY INPUT ===
+        # Grok may pre-add exclusion keywords to the query. Remove them to prevent
+        # duplication when _build_search_query adds them again.
+        sanitized_query = query
+        for keyword in self.exclude_keywords:
+            # Remove both "-keyword" and "- keyword" patterns
+            sanitized_query = sanitized_query.replace(f"-{keyword}", "").replace(f"- {keyword}", "")
+
+        # Also remove any from: filters that Grok might have added
+        # (we'll add our configured handles via _build_search_query)
+        sanitized_query = re.sub(r'\(from:[^)]+\)', '', sanitized_query)
+        sanitized_query = re.sub(r'from:\w+', '', sanitized_query)
+
+        # Clean up extra whitespace
+        sanitized_query = ' '.join(sanitized_query.split()).strip()
+
+        if sanitized_query != query:
+            logger.debug(f"Sanitized LLM query: '{query}' -> '{sanitized_query}'")
+
         # Track which stage succeeded for logging
         search_stage = "strict"
 
         # === STAGE 1: STRICT SEARCH (Expert Accounts) ===
-        strict_query = self._build_search_query(query)
+        strict_query = self._build_search_query(sanitized_query)
         logger.debug(f"Stage 1 (strict) query: {strict_query}")
         posts = await self._fetch_x_posts(strict_query, limit, sort_order)
 
         # === STAGE 2: BROAD SEARCH FALLBACK ===
         if not posts:
-            logger.info(f"Strict search for '{query}' returned 0 posts. Trying broad search...")
+            logger.info(f"Strict search for '{sanitized_query}' returned 0 posts. Trying broad search...")
             search_stage = "broad"
-            broad_query = self._build_broad_search_query(query)
+            broad_query = self._build_broad_search_query(sanitized_query)
             logger.debug(f"Stage 2 (broad) query: {broad_query}")
-            posts = await self._fetch_x_posts(broad_query, limit, sort_order)
+
+            # DYNAMIC THRESHOLD: Use config value for broad search (default: 3)
+            # This is looser than strict search (default: 5) to capture more results
+            broad_threshold = self.sentinel_config.get('broad_min_faves', 3)
+            posts = await self._fetch_x_posts(broad_query, limit, sort_order, min_likes=broad_threshold)
 
             if posts:
-                logger.info(f"Broad search returned {len(posts)} posts for '{query}'")
+                logger.info(f"Broad search returned {len(posts)} posts for '{sanitized_query}'")
             else:
-                logger.warning(f"Both strict and broad search returned 0 posts for '{query}'")
+                logger.warning(f"Both strict and broad search returned 0 posts for '{sanitized_query}'")
         else:
             logger.info(f"X API returned {len(posts)} posts for '{query}' (sort: {sort_order})")
 

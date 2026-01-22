@@ -26,40 +26,40 @@ setup_logging()
 _yf_cache_session = None
 
 def get_cached_yf_session():
-    """Get cached yfinance session (filesystem backend for multi-process safety)."""
-    global _yf_cache_session
+    """
+    DEPRECATED: YFinance v0.2.66+ uses curl_cffi which is incompatible
+    with requests_cache sessions. This function is no longer used.
 
-    if _yf_cache_session is None:
-        try:
-            from requests_cache import CachedSession
-            import os
+    TODO: Remove in next cleanup sprint.
+    """
+    # FIXME: Remove this import when function is deleted
+    try:
+        from requests_cache import CachedSession
+    except ImportError:
+        pass
 
-            cache_dir = 'data/yfinance_cache'
-            os.makedirs(cache_dir, exist_ok=True)
-
-            _yf_cache_session = CachedSession(
-                cache_name=cache_dir,
-                backend='filesystem',
-                expire_after=timedelta(minutes=30),
-                stale_if_error=True,
-            )
-            logging.info(f"YFinance cache initialized at {cache_dir}")
-
-        except ImportError:
-            logging.error("requests-cache not installed! Run: pip install requests-cache")
-            return None
-
-    return _yf_cache_session
+    logging.warning("get_cached_yf_session is deprecated and has no effect")
+    return None
 
 
 def get_market_data_cached(tickers: list, period: str = "1d"):
-    """Fetch market data with caching."""
+    """
+    Fetch market data from YFinance.
+
+    NOTE: Session injection removed. YFinance v0.2.66+ uses curl_cffi internally
+    which is incompatible with requests_cache. Let YFinance manage its own sessions.
+
+    TODO (Next Sprint): Implement file-based caching by saving DataFrame to
+    parquet/csv with timestamp. Check file age before fetching fresh data.
+    Example: data/yf_cache/{ticker}_{period}_{date}.parquet
+    """
     import pandas as pd
 
     try:
         import yfinance as yf
 
-        session = get_cached_yf_session()
+        # REMOVED: session injection (incompatible with curl_cffi in yfinance 0.2.66+)
+        # session = get_cached_yf_session()
 
         download_kwargs = {
             'tickers': tickers,
@@ -68,10 +68,15 @@ def get_market_data_cached(tickers: list, period: str = "1d"):
             'threads': False
         }
 
-        if session is not None:
-            download_kwargs['session'] = session
+        # REMOVED: if session is not None: download_kwargs['session'] = session
 
         data = yf.download(**download_kwargs)
+
+        if data.empty:
+            logging.warning(f"YFinance returned empty data for {tickers}")
+        else:
+            logging.info(f"YFinance fetched data for {tickers}: {len(data)} rows")
+
         return data
 
     except Exception as e:
