@@ -586,3 +586,157 @@
 2026-01-22 18:59:28,603 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
 2026-01-22 18:59:28,603 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
 2026-01-22 18:59:28,603 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: Connection microstructure in backoff period
+2026-01-22 19:00:28,665 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:00:28,666 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 113...
+2026-01-22 19:00:58,685 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 19:00:58,685 - trading_bot.connection_pool - ERROR - IB (sentinel) connection failed: . Next retry backoff: 600s
+2026-01-22 19:00:58,685 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
+2026-01-22 19:01:58,703 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:01:58,704 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:02:58,766 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:02:58,766 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:03:58,820 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:03:58,820 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:04:58,834 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:04:58,835 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:05:00,002 - Orchestrator - INFO - --- Running scheduled task: reconcile_and_analyze ---
+2026-01-22 19:05:00,002 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-01-22 19:05:00,003 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
+2026-01-22 19:05:00,068 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1341111)...
+2026-01-22 19:05:00,288 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1341111&v=3 "HTTP/1.1 200 OK"
+2026-01-22 19:05:00,291 - TradeReconciler - INFO - Successfully requested report. Reference Code: 4124956832
+2026-01-22 19:05:10,302 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-01-22 19:05:10,449 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=4124956832&v=3 "HTTP/1.1 200 OK"
+2026-01-22 19:05:10,450 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-01-22 19:05:10,467 - EquityLogger - INFO - Successfully synced 4 equity records to data/daily_equity.csv.
+2026-01-22 19:05:10,468 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-01-22 19:05:10,468 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-01-22 19:05:10,470 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-01-22 19:05:10,508 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1328326)...
+2026-01-22 19:05:10,666 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1328326&v=3 "HTTP/1.1 200 OK"
+2026-01-22 19:05:10,668 - TradeReconciler - INFO - Successfully requested report. Reference Code: 5792891625
+2026-01-22 19:05:20,673 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-01-22 19:05:20,792 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=5792891625&v=3 "HTTP/1.1 200 OK"
+2026-01-22 19:05:20,792 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-01-22 19:05:20,794 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-01-22 19:05:20,795 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-01-22 19:05:20,795 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-01-22 19:05:20,825 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1331422)...
+2026-01-22 19:05:20,965 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1331422&v=3 "HTTP/1.1 200 OK"
+2026-01-22 19:05:20,966 - TradeReconciler - INFO - Successfully requested report. Reference Code: 2270203969
+2026-01-22 19:05:30,971 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-01-22 19:05:31,157 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=2270203969&v=3 "HTTP/1.1 200 OK"
+2026-01-22 19:05:31,158 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-01-22 19:05:31,160 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-01-22 19:05:31,160 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-01-22 19:05:31,160 - TradeReconciler - WARNING - No trade data was fetched from any IB Flex Query. Exiting.
+2026-01-22 19:05:31,161 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
+2026-01-22 19:05:31,161 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-01-22 19:05:31,192 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1341164)...
+2026-01-22 19:05:31,427 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1341164&v=3 "HTTP/1.1 200 OK"
+2026-01-22 19:05:31,428 - TradeReconciler - INFO - Successfully requested report. Reference Code: 1811946200
+2026-01-22 19:05:41,429 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-01-22 19:05:41,555 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=1811946200&v=3 "HTTP/1.1 200 OK"
+2026-01-22 19:05:41,556 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-01-22 19:05:41,565 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
+2026-01-22 19:05:41,565 - TradeReconciler - INFO - Found 0 archived ledger files.
+2026-01-22 19:05:41,566 - TradeReconciler - WARNING - No trade ledger data found.
+2026-01-22 19:05:41,572 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-01-22 19:05:41,574 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-01-22 19:05:45,586 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 19:05:45,587 - trading_bot.reconciliation - ERROR - Failed to connect to IB for reconciliation: 
+2026-01-22 19:05:45,588 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-01-22 19:05:45,589 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-01-22 19:05:45,590 - PerformanceAnalyzer - INFO - No archived trade ledgers found.
+2026-01-22 19:05:45,590 - PerformanceAnalyzer - WARNING - No trade ledger data found to consolidate.
+2026-01-22 19:05:45,595 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-01-22 19:05:58,841 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:05:58,842 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:06:00,599 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 19:06:00,600 - PerformanceAnalyzer - ERROR - Connection to IB timed out during live data fetch.
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/asyncio/tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/rodrigo/real_options/performance_analyzer.py", line 80, in get_live_account_data
+    await ib.connectAsync(
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py", line 1748, in connectAsync
+    await self.client.connectAsync(host, port, clientId, timeout)
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/client.py", line 217, in connectAsync
+    await asyncio.wait_for(self.apiStart, timeout)
+  File "/usr/lib/python3.12/asyncio/tasks.py", line 519, in wait_for
+    async with timeouts.timeout(timeout):
+  File "/usr/lib/python3.12/asyncio/timeouts.py", line 115, in __aexit__
+    raise TimeoutError from exc_val
+TimeoutError
+2026-01-22 19:06:00,608 - PerformanceAnalyzer - INFO - Loading daily_equity.csv for equity curve.
+2026-01-22 19:06:00,612 - PerformanceAnalyzer - INFO - Dynamic Starting Capital from History: $50,000.00
+2026-01-22 19:06:00,614 - PerformanceAnalyzer - WARNING - Using last recorded equity for LTD P&L (Live NetLiq unavailable).
+2026-01-22 19:06:00,617 - PerformanceAnalyzer - WARNING - Trade ledger is empty, skipping chart generation.
+2026-01-22 19:06:00,618 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-01-22 19:06:00,923 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-22 19:06:01,273 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-22 19:06:02,496 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-22 19:06:03,720 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-22 19:06:04,933 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-22 19:06:05,936 - root - INFO - 'trade_ledger.csv' not found, no action taken.
+2026-01-22 19:06:05,937 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-01-22 19:06:05,938 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-01-22 19:06:05,939 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-01-23 08:20:00 UTC. Waiting for 13.23 hours.
+2026-01-22 19:06:58,894 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:06:58,894 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:07:58,915 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:07:58,915 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:08:58,977 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:08:58,977 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:09:59,030 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:09:59,031 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:10:59,055 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:10:59,056 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 115...
+2026-01-22 19:11:29,085 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 19:11:29,087 - trading_bot.connection_pool - ERROR - IB (sentinel) connection failed: . Next retry backoff: 600s
+2026-01-22 19:11:29,087 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
+2026-01-22 19:12:29,149 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:12:29,150 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:13:29,206 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:13:29,206 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:14:29,260 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:14:29,261 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:15:29,320 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:15:29,320 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:16:29,370 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:16:29,371 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:17:29,417 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:17:29,418 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:18:29,470 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:18:29,470 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:19:29,525 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:19:29,525 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:20:29,582 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:20:29,584 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:21:29,612 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:21:29,613 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 113...
+2026-01-22 19:21:59,639 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 19:21:59,639 - trading_bot.connection_pool - ERROR - IB (sentinel) connection failed: . Next retry backoff: 600s
+2026-01-22 19:21:59,640 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
+2026-01-22 19:22:59,666 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:22:59,666 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:23:59,720 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:23:59,720 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:24:59,784 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:24:59,784 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:25:59,809 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:25:59,812 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:26:59,873 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:26:59,875 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:27:59,932 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:27:59,933 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:28:59,946 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:28:59,948 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 19:30:00,008 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 19:30:00,010 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
