@@ -367,3 +367,222 @@
 2026-01-22 18:41:13,961 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
 2026-01-22 18:41:13,962 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
 2026-01-22 18:41:55,975 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-22 18:42:22,625 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-22 18:42:22,626 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-22 18:42:49,954 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-22 18:42:49,955 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.50 -> 0.50
+2026-01-22 18:42:49,955 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=RANGE_BOUND
+2026-01-22 18:42:49,955 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-22 18:42:49,955 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 3.0,
+    "reliability_mult": 1.0,
+    "final_weight": 3.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 0.5,
+    "reliability_mult": 1.0,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.4,
+    "reliability_mult": 1.0,
+    "final_weight": 1.4,
+    "contribution": 0.0
+  },
+  {
+    "agent": "latest_ml_signals",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  }
+]
+2026-01-22 18:43:09,879 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-22 18:43:36,259 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:43:44,403 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:43:44,406 - trading_bot.agents - INFO - Master decision vetoed by conflicting Weighted Vote (NEUTRAL)
+2026-01-22 18:43:44,406 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.65)
+2026-01-22 18:43:44,407 - Orchestrator - INFO - Emergency Cycle concluded with no action.
+2026-01-22 18:43:44,407 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-22 18:43:44,407 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-01-22 18:43:44,411 - Orchestrator - INFO - Next task 'log_equity_snapshot' scheduled for 2026-01-22 18:55:00 UTC. Waiting for 0.19 hours.
+2026-01-22 18:43:44,412 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-01-22 18:43:44,414 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 114...
+2026-01-22 18:44:14,428 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 18:44:14,429 - trading_bot.connection_pool - ERROR - IB (sentinel) connection failed: . Next retry backoff: 10.0s
+2026-01-22 18:44:14,429 - Orchestrator - ERROR - Sentinel IB Connection Failed: 
+2026-01-22 18:44:14,664 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-01-22 18:44:14,666 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 18:44:14,668 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 118...
+2026-01-22 18:44:44,698 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 18:44:44,698 - trading_bot.connection_pool - ERROR - IB (sentinel) connection failed: . Next retry backoff: 20.0s
+2026-01-22 18:44:44,699 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
+2026-01-22 18:44:44,699 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-01-22 18:44:44,701 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 206...
+2026-01-22 18:45:14,718 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 18:45:14,718 - trading_bot.connection_pool - ERROR - IB (microstructure) connection failed: . Next retry backoff: 10.0s
+2026-01-22 18:45:14,719 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
+2026-01-22 18:45:16,719 - trading_bot.sentinels - WARNING - WEATHER SENTINEL TRIGGERED: Drought Risk in Dak Lak (Vietnam): 10 days with < 5.0mm rain
+2026-01-22 18:45:16,719 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-01-22 19:13:44.407176. Skipping WeatherSentinel
+2026-01-22 18:45:21,310 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-22 18:45:24,124 - Orchestrator - ERROR - Error in Sentinel Loop: 'list' object has no attribute 'get'
+2026-01-22 18:46:24,139 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 18:46:24,143 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 115...
+2026-01-22 18:46:54,162 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 18:46:54,162 - trading_bot.connection_pool - ERROR - IB (sentinel) connection failed: . Next retry backoff: 40.0s
+2026-01-22 18:46:54,162 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
+2026-01-22 18:46:54,162 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-01-22 18:46:54,162 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 206...
+2026-01-22 18:47:24,180 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 18:47:24,183 - trading_bot.connection_pool - ERROR - IB (microstructure) connection failed: . Next retry backoff: 20.0s
+2026-01-22 18:47:24,183 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
+2026-01-22 18:47:33,112 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:33,207 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
+2026-01-22 18:47:33,313 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'Brazil coffee harvest'
+2026-01-22 18:47:33,734 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:33,867 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:33,917 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
+2026-01-22 18:47:33,946 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
+2026-01-22 18:47:34,100 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'coffee futures'
+2026-01-22 18:47:34,117 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'arabica prices'
+2026-01-22 18:47:34,842 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:34,918 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
+2026-01-22 18:47:35,206 - trading_bot.sentinels - INFO - Broad search returned 3 posts for 'Colombia coffee'
+2026-01-22 18:47:36,209 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:36,576 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:36,827 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:36,903 - trading_bot.sentinels - INFO - Strict search for 'Vietnam robusta' returned 0 posts. Trying broad search...
+2026-01-22 18:47:37,125 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'Vietnam robusta'
+2026-01-22 18:47:39,635 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:39,720 - trading_bot.sentinels - INFO - Strict search for 'ICE coffee warehouse' returned 0 posts. Trying broad search...
+2026-01-22 18:47:39,870 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:39,896 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'ICE coffee warehouse'
+2026-01-22 18:47:40,685 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:42,228 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:42,379 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:42,468 - trading_bot.sentinels - INFO - Strict search for 'CFTC coffee positioning' returned 0 posts. Trying broad search...
+2026-01-22 18:47:42,548 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'CFTC coffee positioning'
+2026-01-22 18:47:44,119 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:44,196 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
+2026-01-22 18:47:44,610 - trading_bot.sentinels - INFO - Broad search returned 7 posts for 'US coffee tariffs'
+2026-01-22 18:47:44,981 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:45,224 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:47:58,100 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-22 18:48:58,110 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 18:48:58,111 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 118...
+2026-01-22 18:49:28,142 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 18:49:28,143 - trading_bot.connection_pool - ERROR - IB (sentinel) connection failed: . Next retry backoff: 80.0s
+2026-01-22 18:49:28,144 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
+2026-01-22 18:49:28,144 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-01-22 18:49:28,146 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 204...
+2026-01-22 18:49:58,169 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 18:49:58,170 - trading_bot.connection_pool - ERROR - IB (microstructure) connection failed: . Next retry backoff: 40.0s
+2026-01-22 18:49:58,170 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
+2026-01-22 18:50:58,230 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 18:50:58,232 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 112...
+2026-01-22 18:51:28,263 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 18:51:28,263 - trading_bot.connection_pool - ERROR - IB (sentinel) connection failed: . Next retry backoff: 160.0s
+2026-01-22 18:51:28,264 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
+2026-01-22 18:51:28,264 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-01-22 18:51:28,264 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 205...
+2026-01-22 18:51:58,292 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 18:51:58,292 - trading_bot.connection_pool - ERROR - IB (microstructure) connection failed: . Next retry backoff: 80.0s
+2026-01-22 18:51:58,293 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
+2026-01-22 18:52:58,302 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 18:52:58,304 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 18:52:58,305 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-01-22 18:52:58,305 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 201...
+2026-01-22 18:53:28,336 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 18:53:28,336 - trading_bot.connection_pool - ERROR - IB (microstructure) connection failed: . Next retry backoff: 160.0s
+2026-01-22 18:53:28,336 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
+2026-01-22 18:54:28,381 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 18:54:28,382 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 115...
+2026-01-22 18:54:58,410 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 18:54:58,410 - trading_bot.connection_pool - ERROR - IB (sentinel) connection failed: . Next retry backoff: 320.0s
+2026-01-22 18:54:58,410 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: 
+2026-01-22 18:54:58,410 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-01-22 18:54:58,410 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: Connection microstructure in backoff period
+2026-01-22 18:55:00,000 - Orchestrator - INFO - --- Running scheduled task: log_equity_snapshot ---
+2026-01-22 18:55:00,001 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
+2026-01-22 18:55:00,002 - EquityLogger - INFO - Connecting to IB at 127.0.0.1:7497 with clientId 7902...
+2026-01-22 18:55:04,005 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 18:55:04,006 - EquityLogger - ERROR - Failed to log equity snapshot: 
+2026-01-22 18:55:04,007 - Orchestrator - INFO - Next task 'reconcile_and_analyze' scheduled for 2026-01-22 19:05:00 UTC. Waiting for 0.17 hours.
+2026-01-22 18:55:58,415 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 18:55:58,416 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 18:55:58,416 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-01-22 18:55:58,418 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 200...
+2026-01-22 18:56:28,448 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-22 18:56:28,449 - trading_bot.connection_pool - ERROR - IB (microstructure) connection failed: . Next retry backoff: 320.0s
+2026-01-22 18:56:28,449 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
+2026-01-22 18:57:28,495 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 18:57:28,495 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 18:57:28,496 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-01-22 18:57:28,497 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: Connection microstructure in backoff period
+2026-01-22 18:58:28,559 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 18:58:28,560 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 18:58:28,560 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-01-22 18:58:28,560 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: Connection microstructure in backoff period
+2026-01-22 18:59:28,603 - Orchestrator - WARNING - Sentinel IB connection lost. Attempting reconnect...
+2026-01-22 18:59:28,603 - Orchestrator - ERROR - Sentinel IB Reconnect Failed: Connection sentinel in backoff period
+2026-01-22 18:59:28,603 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-01-22 18:59:28,603 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: Connection microstructure in backoff period
