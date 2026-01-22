@@ -1140,7 +1140,12 @@ async def run_sentinels(config: dict):
                     logger.warning("Sentinel IB connection lost. Attempting reconnect...")
                     sentinel_ib = await IBConnectionPool.get_connection("sentinel", config)
                     configure_market_data_type(sentinel_ib)
-                    logger.info("Sentinel IB reconnected successfully.")
+
+                    # === CRITICAL FIX: Update PriceSentinel's IB reference ===
+                    # Without this, price_sentinel.ib holds stale disconnected reference
+                    price_sentinel.ib = sentinel_ib
+                    logger.info("Sentinel IB reconnected successfully. PriceSentinel reference updated.")
+
                 except Exception as e:
                     logger.error(f"Sentinel IB Reconnect Failed: {e}")
 

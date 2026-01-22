@@ -10,7 +10,8 @@ class TestOrchestrator(unittest.TestCase):
 
     @patch('orchestrator.send_pushover_notification')
     @patch('asyncio.create_subprocess_exec')
-    def test_start_monitoring(self, mock_create_subprocess, mock_send_notification):
+    @patch('orchestrator.is_market_open', return_value=True)
+    def test_start_monitoring(self, mock_is_market_open, mock_create_subprocess, mock_send_notification):
         async def run_test():
             config = {'notifications': {}}
             mock_process = AsyncMock()
