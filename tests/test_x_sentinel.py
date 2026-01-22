@@ -129,8 +129,13 @@ async def test_no_trigger_neutral(mock_config):
 @pytest.mark.asyncio
 async def test_parallel_execution(mock_config):
     """Test that multiple queries execute in parallel."""
-    with patch('trading_bot.sentinels.AsyncOpenAI'):
+    with patch('trading_bot.sentinels.AsyncOpenAI'), \
+         patch('trading_bot.sentinels.acquire_api_slot', new_callable=AsyncMock) as mock_limit, \
+         patch('numpy.random.uniform', return_value=0.0): # Remove jitter
+
+        mock_limit.return_value = True # Grant slot immediately
         sentinel = XSentimentSentinel(mock_config)
+        sentinel._request_interval = 0.0 # Remove rate limit interval
 
         call_count = 0
 

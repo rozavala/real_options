@@ -8,7 +8,7 @@ import streamlit as st
 import subprocess
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import get_config
@@ -191,7 +191,7 @@ with info_cols[1]:
     st.metric("Streamlit Version", streamlit.__version__)
 
 with info_cols[2]:
-    st.metric("Current Time (UTC)", datetime.utcnow().strftime("%H:%M:%S"))
+    st.metric("Current Time (UTC)", datetime.now(timezone.utc).strftime("%H:%M:%S"))
 
 # Display recent log files
 st.markdown("### 📄 Recent Log Files")

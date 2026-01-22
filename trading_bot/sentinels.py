@@ -19,6 +19,7 @@ import json
 from functools import wraps
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager
+from trading_bot.rate_limiter import acquire_api_slot
 
 logger = logging.getLogger(__name__)
 
@@ -590,7 +591,7 @@ class XSentimentSentinel(Sentinel):
         self.sensor_status = "ONLINE"
 
         # === CONCURRENCY CONTROL (Protocol 1) ===
-        self._semaphore = asyncio.Semaphore(2)
+        # Semaphore removed in favor of GlobalRateLimiter
         self._request_interval = 1.5
         self._last_request_time = 0
 
@@ -622,6 +623,120 @@ class XSentimentSentinel(Sentinel):
 
         return " ".join(query_parts)
 
+    def _build_broad_search_query(self, base_query: str) -> str:
+        """
+        Construct a broader search query without author restrictions.
+        Used as fallback when expert-filtered search returns no results.
+
+        ENHANCED (X Expert): Added min_faves for quality filtering on pay-per-use.
+        """
+        query_parts = [base_query]
+
+        # Exclude noise keywords
+        for keyword in self.exclude_keywords:
+            query_parts.append(f"-{keyword}")
+
+        # === X EXPERT ENHANCEMENT: Gentle engagement filter ===
+        # Reduces low-effort spam, lowers credit cost per call
+        # Start with min_faves:3 (adjustable via config if needed)
+        min_faves_threshold = self.sentinel_config.get('broad_min_faves', 3)
+        if min_faves_threshold > 0:
+            query_parts.append(f"min_faves:{min_faves_threshold}")
+
+        # Cap query length to prevent 400 errors (X API limit ~512 chars)
+        full_query = " ".join(query_parts)
+        if len(full_query) > 450:
+            logger.warning(f"Broad query too long ({len(full_query)} chars), trimming exclusions")
+            # Keep base + min_faves, drop exclusions if needed
+            full_query = f"{base_query} min_faves:{min_faves_threshold}"
+
+        return full_query
+
+    async def _fetch_x_posts(self, query: str, limit: int, sort_order: str) -> list:
+        """
+        Execute X API HTTP request and return posts.
+
+        ENHANCED (X Expert): Added since: date bound for recency.
+
+        Returns:
+            list: Posts matching query (empty list on error/no results)
+        """
+        from datetime import timedelta
+
+        headers = {
+            "Authorization": f"Bearer {self.x_bearer_token}",
+            "Content-Type": "application/json"
+        }
+
+        # === X EXPERT ENHANCEMENT: Add recency bound ===
+        # X recent search defaults to ~7 days, but explicit is safer
+        since_date = (datetime.now(timezone.utc).date() - timedelta(days=7)).strftime("%Y-%m-%d")
+
+        # Build query with recency filter
+        query_with_filters = f"{query} since:{since_date} -is:retweet lang:en"
+
+        params = {
+            "query": query_with_filters,
+            "max_results": max(10, min(limit, 100)),
+            "tweet.fields": "text,created_at,public_metrics,author_id",
+            "expansions": "author_id",
+            "user.fields": "username",
+            "sort_order": sort_order
+        }
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    "https://api.twitter.com/2/tweets/search/recent",
+                    headers=headers,
+                    params=params,
+                    timeout=aiohttp.ClientTimeout(total=30)
+                ) as response:
+
+                    if response.status == 429:
+                        logger.warning("X API rate limit hit")
+                        return []
+
+                    if response.status != 200:
+                        error_text = await response.text()
+                        logger.error(f"X API error {response.status}: {error_text}")
+                        return []
+
+                    data = await response.json()
+
+                    posts = []
+                    users = {}
+
+                    if "includes" in data and "users" in data["includes"]:
+                        for user in data["includes"]["users"]:
+                            users[user["id"]] = user.get("username", "unknown")
+
+                    for tweet in data.get("data", []):
+                        metrics = tweet.get("public_metrics", {})
+                        posts.append({
+                            "text": tweet["text"][:400],
+                            "author": users.get(tweet.get("author_id"), "unknown"),
+                            "likes": metrics.get("like_count", 0),
+                            "retweets": metrics.get("retweet_count", 0),
+                            "created_at": tweet.get("created_at", "")
+                        })
+
+                    # Filter by engagement (post-processing for pay-per-use efficiency)
+                    posts = [p for p in posts if p.get('likes', 0) >= self.min_engagement]
+
+                    # === X EXPERT ENHANCEMENT: Log top post for debugging ===
+                    if posts:
+                        logger.debug(f"Top post: {posts[0]['text'][:50]}...")
+
+                    return posts
+
+        except asyncio.TimeoutError:
+            logger.error("X API request timed out")
+            return []
+        except Exception as e:
+            logger.error(f"X API request failed: {e}")
+            return []
+
     def _update_volume_stats(self, new_volume: int):
         """Update rolling volume statistics for spike detection."""
         self.post_volume_history.append(new_volume)
@@ -634,54 +749,69 @@ class XSentimentSentinel(Sentinel):
             self.volume_stddev = statistics.stdev(self.post_volume_history) if len(self.post_volume_history) > 1 else 0
 
     async def _sem_bound_search(self, query: str) -> Optional[dict]:
-        """Wrapper with semaphore and circuit breaker integration."""
-        async with self._semaphore:
-            jitter = np.random.uniform(0.5, 2.0)
-            await asyncio.sleep(jitter)
+        """
+        Wrapper with GlobalRateLimiter integration and circuit breaker.
 
-            import time as time_module
-            now = time_module.time()
-            time_since_last = now - self._last_request_time
-            if time_since_last < self._request_interval:
-                await asyncio.sleep(self._request_interval - time_since_last)
+        AMENDED: Now uses GlobalRateLimiter instead of local semaphore
+        to prevent quota exhaustion race conditions with Council agents.
 
-            self._last_request_time = time_module.time()
+        Uses 'xai' provider bucket (25 RPM as configured in PROVIDER_LIMITS).
+        """
+        # === ACQUIRE SLOT FROM GLOBAL LIMITER ===
+        slot_acquired = await acquire_api_slot('xai', timeout=30.0)
 
-            try:
-                result = await self._search_x_and_analyze(query)
+        if not slot_acquired:
+            logger.warning(f"Rate limit exceeded for X Sentinel query: {query}")
+            return None
 
-                if result is not None:
-                    self.consecutive_failures = 0
-                    self.sensor_status = "ONLINE"
+        # Add jitter to prevent thundering herd
+        jitter = np.random.uniform(0.5, 2.0)
+        await asyncio.sleep(jitter)
 
-                return result
+        # Respect minimum interval between requests
+        import time as time_module
+        now = time_module.time()
+        time_since_last = now - self._last_request_time
+        if time_since_last < self._request_interval:
+            await asyncio.sleep(self._request_interval - time_since_last)
 
-            except Exception as e:
-                error_str = str(e)
-                is_server_error = any(code in error_str for code in ['502', '503', '504', '500'])
+        self._last_request_time = time_module.time()
 
-                if is_server_error:
-                    self.consecutive_failures += 1
-                    logger.warning(
-                        f"XSentimentSentinel: Server error. "
-                        f"Consecutive failures: {self.consecutive_failures}"
+        try:
+            result = await self._search_x_and_analyze(query)
+
+            if result is not None:
+                self.consecutive_failures = 0
+                self.sensor_status = "ONLINE"
+
+            return result
+
+        except Exception as e:
+            error_str = str(e)
+            is_server_error = any(code in error_str for code in ['502', '503', '504', '500'])
+
+            if is_server_error:
+                self.consecutive_failures += 1
+                logger.warning(
+                    f"XSentimentSentinel: Server error. "
+                    f"Consecutive failures: {self.consecutive_failures}"
+                )
+
+                if self.consecutive_failures >= 3:
+                    self.degraded_until = datetime.now(timezone.utc) + timedelta(hours=1)
+                    self.sensor_status = "OFFLINE"
+                    logger.error(
+                        f"XSentimentSentinel: CIRCUIT BREAKER TRIGGERED. "
+                        f"Degraded until {self.degraded_until.isoformat()}"
                     )
+                    StateManager.save_state(
+                        {"x_sentiment": self.get_sensor_status()},
+                        namespace="sensors"
+                    )
+            else:
+                self.consecutive_failures += 1
 
-                    if self.consecutive_failures >= 3:
-                        self.degraded_until = datetime.now(timezone.utc) + timedelta(hours=1)
-                        self.sensor_status = "OFFLINE"
-                        logger.error(
-                            f"XSentimentSentinel: CIRCUIT BREAKER TRIGGERED. "
-                            f"Degraded until {self.degraded_until.isoformat()}"
-                        )
-                        StateManager.save_state(
-                            {"x_sentiment": self.get_sensor_status()},
-                            namespace="sensors"
-                        )
-                else:
-                    self.consecutive_failures += 1
-
-                raise
+            raise
 
     @with_retry(max_attempts=3)
     async def _search_x_and_analyze(self, query: str) -> Optional[dict]:
@@ -883,108 +1013,63 @@ If the x_search tool returns no results or errors, provide neutral sentiment wit
 
     async def _execute_x_search(self, args: dict) -> dict:
         """
-        Execute X API search locally.
+        Execute X API search with two-stage fallback.
 
-        Uses X API v2 recent search endpoint.
-        Requires X_BEARER_TOKEN in environment.
+        ARCHITECTURE (AMENDED with X Expert feedback):
+        Stage 1: Strict search (expert accounts from config)
+        Stage 2: Broad search (general public with min_faves filter) if strict returns 0
 
-        IMPORTANT: X API uses sort_order with values:
-        - "recency" = Latest/chronological (newest first)
-        - "relevancy" = Top/algorithmically relevant
-        Default to "recency" for time-sensitive commodity sentiment.
+        ENHANCED: Added data_quality flag for Grok confidence calibration.
         """
         if not self.x_bearer_token:
             return {
                 "error": "X API not configured",
                 "posts": [],
-                "post_volume": 0
+                "post_volume": 0,
+                "data_quality": "unavailable"
             }
 
         query = args.get("query", "coffee futures")
         limit = args.get("limit", 10)
 
-        # === CRITICAL FIX: Correct sort_order mapping ===
-        # Grok may send "Top" or "Latest" via the tool schema
-        # Map to X API's actual parameter values
-        mode = args.get("mode", "Latest")  # Default to Latest for freshness
-        if mode == "Latest":
-            sort_order = "recency"
-        elif mode == "Top":
-            sort_order = "relevancy"
+        # Map mode to X API sort_order
+        mode = args.get("mode", "Latest")
+        sort_order = "recency" if mode == "Latest" else "relevancy"
+
+        # Track which stage succeeded for logging
+        search_stage = "strict"
+
+        # === STAGE 1: STRICT SEARCH (Expert Accounts) ===
+        strict_query = self._build_search_query(query)
+        logger.debug(f"Stage 1 (strict) query: {strict_query}")
+        posts = await self._fetch_x_posts(strict_query, limit, sort_order)
+
+        # === STAGE 2: BROAD SEARCH FALLBACK ===
+        if not posts:
+            logger.info(f"Strict search for '{query}' returned 0 posts. Trying broad search...")
+            search_stage = "broad"
+            broad_query = self._build_broad_search_query(query)
+            logger.debug(f"Stage 2 (broad) query: {broad_query}")
+            posts = await self._fetch_x_posts(broad_query, limit, sort_order)
+
+            if posts:
+                logger.info(f"Broad search returned {len(posts)} posts for '{query}'")
+            else:
+                logger.warning(f"Both strict and broad search returned 0 posts for '{query}'")
         else:
-            sort_order = "recency"  # Default to recency for time-sensitive sentiment
+            logger.info(f"X API returned {len(posts)} posts for '{query}' (sort: {sort_order})")
 
-        headers = {
-            "Authorization": f"Bearer {self.x_bearer_token}",
-            "Content-Type": "application/json"
+        # === X EXPERT ENHANCEMENT: Data quality flag ===
+        # Grok should reduce confidence when data is sparse
+        data_quality = "high" if len(posts) >= 5 else ("low" if len(posts) < 3 else "medium")
+
+        return {
+            "posts": posts,
+            "post_volume": len(posts),
+            "query": query,
+            "search_stage": search_stage,
+            "data_quality": data_quality  # Grok uses this to calibrate confidence
         }
-
-        params = {
-            "query": f"{query} -is:retweet lang:en",  # Filter retweets, English only
-            "max_results": max(10, min(limit, 100)),  # X API requires 10 ≤ max_results ≤ 100
-            "tweet.fields": "text,created_at,public_metrics,author_id",
-            "expansions": "author_id",
-            "user.fields": "username",
-            "sort_order": sort_order  # Always include sort_order
-        }
-
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    "https://api.twitter.com/2/tweets/search/recent",
-                    headers=headers,
-                    params=params,
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-
-                    if response.status == 429:
-                        logger.warning("X API rate limit hit")
-                        return {"error": "Rate limit exceeded", "posts": [], "post_volume": 0}
-
-                    if response.status != 200:
-                        error_text = await response.text()
-                        logger.error(f"X API error {response.status}: {error_text}")
-                        return {"error": f"X API error: {response.status}", "posts": [], "post_volume": 0}
-
-                    data = await response.json()
-
-                    posts = []
-                    users = {}
-
-                    # Build user lookup
-                    if "includes" in data and "users" in data["includes"]:
-                        for user in data["includes"]["users"]:
-                            users[user["id"]] = user.get("username", "unknown")
-
-                    # Process tweets
-                    for tweet in data.get("data", []):
-                        metrics = tweet.get("public_metrics", {})
-                        posts.append({
-                            "text": tweet["text"][:400],  # Increased from 200 for better context
-                            "author": users.get(tweet.get("author_id"), "unknown"),
-                            "likes": metrics.get("like_count", 0),
-                            "retweets": metrics.get("retweet_count", 0),
-                            "created_at": tweet.get("created_at", "")
-                        })
-
-                # Filter by engagement (replaces min_faves operator)
-                min_engagement = self.min_engagement
-                posts = [p for p in posts if p.get('likes', 0) >= min_engagement]
-
-                logger.info(f"X API returned {len(posts)} posts for '{query}' (sort: {sort_order})")
-
-                return {
-                    "posts": posts,
-                    "post_volume": len(posts),
-                    "query": query
-                }
-
-        except asyncio.TimeoutError:
-            logger.error("X API request timed out")
-            return {"error": "Request timeout", "posts": [], "post_volume": 0}
-        except Exception as e:
-            logger.error(f"X API request failed: {e}")
-            return {"error": str(e), "posts": [], "post_volume": 0}
 
     async def check(self) -> Optional[SentinelTrigger]:
         """
