@@ -8,6 +8,7 @@ import streamlit as st
 import subprocess
 import os
 import sys
+import socket
 from datetime import datetime, timezone
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -17,6 +18,21 @@ st.set_page_config(layout="wide", page_title="Utilities | Coffee Bot")
 
 st.title("🔧 Utilities")
 st.caption("System maintenance and operational tools")
+
+# Helper to detect environment
+def get_current_environment():
+    """Detect current environment from hostname or config."""
+    hostname = socket.gethostname()
+    # Production droplet typically has 'prod' in hostname or specific IP
+    # Adjust this logic based on your actual naming convention
+    if 'prod' in hostname.lower() or hostname == 'coffee-bot-prod':
+        return 'prod'
+    # Fallback to env var if set
+    if os.getenv("COFFEE_BOT_ENV") == "prod":
+        return "prod"
+    return 'dev'
+
+current_env = get_current_environment()
 
 st.markdown("---")
 
@@ -30,20 +46,14 @@ This captures orchestrator logs, dashboard logs, state files, and trading data.
 col1, col2 = st.columns(2)
 
 with col1:
-    env_option = st.selectbox(
-        "Environment",
-        options=["dev", "prod"],
-        help="Select which environment to collect logs from"
-    )
+    st.info(f"📍 Current Environment: **{current_env}**")
 
 with col2:
-    st.markdown("&nbsp;")  # Spacer for alignment
     if st.button("🚀 Collect Logs", type="primary"):
-        with st.spinner(f"Collecting {env_option} logs..."):
+        with st.spinner(f"Collecting {current_env} logs..."):
             try:
-                # Set environment variable and run script
                 env = os.environ.copy()
-                env["LOG_ENV_NAME"] = env_option
+                env["LOG_ENV_NAME"] = current_env
 
                 result = subprocess.run(
                     ["bash", "scripts/collect_logs.sh"],
@@ -55,7 +65,7 @@ with col2:
                 )
 
                 if result.returncode == 0:
-                    st.success(f"✅ Successfully collected {env_option} logs!")
+                    st.success(f"✅ Successfully collected {current_env} logs!")
                     with st.expander("View Output"):
                         st.code(result.stdout)
                 else:
@@ -110,49 +120,102 @@ st.markdown("---")
 
 # === SECTION 3: Log Analysis Quick Actions ===
 st.subheader("📊 Log Analysis")
-st.markdown("Quick access to log analysis utilities.")
+st.markdown("Quick access to log analysis utilities for the current environment.")
 
-analysis_cols = st.columns(3)
+# Row 1: Status and Analyze
+row1_cols = st.columns(2)
 
-with analysis_cols[0]:
-    if st.button("📋 View Status"):
+with row1_cols[0]:
+    if st.button("📋 View Status", use_container_width=True):
         with st.spinner("Fetching status..."):
             try:
                 result = subprocess.run(
                     ["bash", "scripts/log_analysis.sh", "status"],
                     capture_output=True,
                     text=True,
-                    timeout=30,
+                    timeout=60,
                     cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 )
                 st.code(result.stdout or result.stderr)
             except Exception as e:
                 st.error(f"Error: {e}")
 
-with analysis_cols[1]:
-    if st.button("🔍 Analyze Dev"):
-        with st.spinner("Analyzing dev environment..."):
+with row1_cols[1]:
+    if st.button(f"🔍 Analyze {current_env.upper()}", use_container_width=True):
+        with st.spinner(f"Analyzing {current_env} environment..."):
             try:
                 result = subprocess.run(
-                    ["bash", "scripts/log_analysis.sh", "analyze", "dev"],
+                    ["bash", "scripts/log_analysis.sh", "analyze", current_env],
                     capture_output=True,
                     text=True,
-                    timeout=30,
+                    timeout=60,
                     cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 )
                 st.code(result.stdout or result.stderr)
             except Exception as e:
                 st.error(f"Error: {e}")
 
-with analysis_cols[2]:
-    if st.button("🔍 Analyze Prod NO"):
-        with st.spinner("Analyzing prod environment..."):
+# Row 2: Errors with configurable hours
+st.markdown("##### 🚨 Error Analysis")
+error_cols = st.columns([2, 1])
+
+with error_cols[0]:
+    hours_option = st.selectbox(
+        "Time Range",
+        options=[6, 12, 24, 48, 72],
+        index=2,  # Default to 24 hours
+        format_func=lambda x: f"Last {x} hours",
+        key="error_hours"
+    )
+
+with error_cols[1]:
+    st.markdown("&nbsp;")  # Spacer
+    if st.button(f"🚨 Show Errors", use_container_width=True):
+        with st.spinner(f"Finding errors from last {hours_option} hours..."):
             try:
                 result = subprocess.run(
-                    ["bash", "scripts/log_analysis.sh", "analyze", "prod"],
+                    ["bash", "scripts/log_analysis.sh", "errors", current_env, str(hours_option)],
                     capture_output=True,
                     text=True,
-                    timeout=30,
+                    timeout=60,
+                    cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
+                output = result.stdout or result.stderr
+                if "No errors found" in output or not output.strip():
+                    st.success(f"✅ No errors found in the last {hours_option} hours!")
+                else:
+                    st.code(output)
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+# Row 3: Additional utilities
+st.markdown("##### 📈 Performance & Health")
+perf_cols = st.columns(2)
+
+with perf_cols[0]:
+    if st.button(f"📈 Trading Performance", use_container_width=True):
+        with st.spinner("Loading performance data..."):
+            try:
+                result = subprocess.run(
+                    ["bash", "scripts/log_analysis.sh", "performance", current_env],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
+                st.code(result.stdout or result.stderr)
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+with perf_cols[1]:
+    if st.button(f"🏥 System Health", use_container_width=True):
+        with st.spinner("Checking system health..."):
+            try:
+                result = subprocess.run(
+                    ["bash", "scripts/log_analysis.sh", "health", current_env],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
                     cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 )
                 st.code(result.stdout or result.stderr)
