@@ -83,31 +83,91 @@ class ComplianceGuardian:
             return True, ""  # Fail open
 
     async def _fetch_volume_stats(self, ib, contract) -> float:
-        """Fetch volume with IB primary, YFinance fallback, -1 for unknown."""
-        # PRIMARY: IB
-        try:
-            if ib and contract and ib.isConnected():
+        """
+        Fetch volume with IB primary, YFinance fallback, -1 for unknown.
+
+        For FOP (options) and BAG (combos), fetches volume from the UNDERLYING
+        FUTURES contract using the 'underlyingConId' hard link from ContractDetails.
+
+        IMPORTANT: Coffee options expire the month BEFORE the underlying future's
+        delivery month (e.g., Feb option for Mar future). Using underlyingConId
+        avoids the "Expiry Trap" of guessing futures expiry from option expiry.
+        """
+        from ib_insync import Contract, Bag
+
+        # === RESOLVE TARGET CONTRACT FOR VOLUME CHECK ===
+        target_contract = contract
+        underlying_resolved = False
+
+        if contract and contract.secType in ('FOP', 'BAG'):
+            logger.debug(f"Contract is {contract.secType}, resolving underlying futures for volume check")
+            try:
+                # 1. Identify the FOP contract to query details from
+                if contract.secType == 'BAG' and contract.comboLegs:
+                    # For BAG: use first leg (should be an FOP)
+                    first_leg_conid = contract.comboLegs[0].conId
+                    query_contract = Contract(conId=first_leg_conid)
+                else:
+                    # For direct FOP: use the contract itself
+                    query_contract = Contract(conId=contract.conId) if contract.conId else contract
+
+                # 2. Get ContractDetails to find the underlyingConId "hard link"
+                details_list = await ib.reqContractDetailsAsync(query_contract)
+
+                if details_list:
+                    fop_details = details_list[0]
+
+                    # 3. Follow the hard link to the underlying future
+                    if fop_details.underlyingConId:
+                        fut_contract = Contract(conId=fop_details.underlyingConId)
+                        qualified = await ib.qualifyContractsAsync(fut_contract)
+
+                        if qualified:
+                            target_contract = qualified[0]
+                            underlying_resolved = True
+                            logger.info(f"Resolved underlying future: {target_contract.localSymbol} (conId: {target_contract.conId})")
+                        else:
+                            logger.warning(f"Failed to qualify underlying future conId {fop_details.underlyingConId}")
+                    else:
+                        logger.warning(f"No underlyingConId found in ContractDetails for {query_contract}")
+                else:
+                    logger.warning(f"No ContractDetails returned for {query_contract}")
+
+            except Exception as e:
+                logger.warning(f"Failed to resolve underlying for volume: {e}")
+
+        # === PRIMARY: IB ===
+        if target_contract and ib and ib.isConnected():
+            try:
                 bars = await ib.reqHistoricalDataAsync(
-                    contract, endDateTime='', durationStr='900 S',
-                    barSizeSetting='1 min', whatToShow='TRADES', useRTH=False
+                    target_contract,
+                    endDateTime='',
+                    durationStr='900 S',
+                    barSizeSetting='1 min',
+                    whatToShow='TRADES',
+                    useRTH=False
                 )
                 if bars:
                     total_vol = sum(b.volume for b in bars)
                     if total_vol > 0:
-                        logger.info(f"Volume from IB: {total_vol}")
+                        source = f"IB ({target_contract.localSymbol})" if underlying_resolved else "IB"
+                        logger.info(f"Volume from {source}: {total_vol}")
                         return float(total_vol)
-        except Exception as e:
-            logger.warning(f"IB volume fetch failed: {e}")
+            except Exception as e:
+                logger.warning(f"IB volume fetch failed: {e}")
 
-        # SECONDARY: YFinance
+        # === SECONDARY: YFinance (fallback) ===
         try:
             from trading_bot.utils import get_market_data_cached
-            symbol = contract.symbol if contract else 'KC'
-            data = get_market_data_cached([f"{symbol}=F"], period="1d")
+            # Use the resolved underlying symbol if available, else default to KC
+            symbol = target_contract.symbol if target_contract else 'KC'
+            yf_ticker = f"{symbol}=F"
+
+            data = get_market_data_cached([yf_ticker], period="1d")
             if data is not None and not data.empty and 'Volume' in data.columns:
                 volume = float(data['Volume'].iloc[-1])
                 if volume > 0:
-                    logger.info(f"Volume from YFinance: {volume}")
+                    logger.info(f"Volume from YFinance ({yf_ticker}): {volume}")
                     return volume
         except Exception as e:
             logger.warning(f"YFinance fallback failed: {e}")
