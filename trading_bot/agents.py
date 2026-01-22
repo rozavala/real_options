@@ -338,11 +338,24 @@ OUTPUT FORMAT (JSON):
         """
 
         # Retrieve relevant context from TMS
-        relevant_context = self.tms.retrieve(search_instruction, n_results=2)
+        # Retrieve ONLY recent insights (last 14 days) to prevent temporal confusion
+        # This prevents agents from citing old frost/weather events as current
+        relevant_context = self.tms.retrieve(
+            search_instruction,
+            n_results=3,
+            max_age_days=14
+        )
         if relevant_context:
             logger.info(f"Retrieved {len(relevant_context)} TMS insights for {persona_key}.")
 
-        context_str = "\n".join(relevant_context) if relevant_context else "No prior context."
+        if relevant_context:
+            # Add temporal warning to prevent confusion
+            context_str = (
+                "PRIOR INSIGHTS (from last 14 days only - do NOT cite older events):\n"
+                + "\n".join(relevant_context)
+            )
+        else:
+            context_str = "No recent prior context available."
 
         # === PHASE 1: GROUNDED DATA GATHERING ===
         logger.info(f"[{persona_key}] Phase 1: Gathering grounded data...")

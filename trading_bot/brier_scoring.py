@@ -260,3 +260,136 @@ def get_brier_tracker() -> BrierScoreTracker:
     if _tracker is None:
         _tracker = BrierScoreTracker()
     return _tracker
+
+def resolve_pending_predictions(council_history_path: str = "data/council_history.csv") -> int:
+    """
+    Resolve PENDING predictions by cross-referencing with reconciled council_history.
+
+    IDEMPOTENT: Running this multiple times will NOT duplicate data because
+    we only process rows where actual == 'PENDING'.
+
+    Args:
+        council_history_path: Path to the reconciled council history CSV
+
+    Returns:
+        Number of newly resolved predictions
+    """
+    structured_file = "data/agent_accuracy_structured.csv"
+
+    if not os.path.exists(structured_file):
+        logger.info("No structured predictions file found - nothing to resolve")
+        return 0
+
+    if not os.path.exists(council_history_path):
+        logger.warning(f"Council history not found at {council_history_path}")
+        return 0
+
+    try:
+        # Load both files
+        predictions_df = pd.read_csv(structured_file)
+        council_df = pd.read_csv(council_history_path)
+
+        if predictions_df.empty or council_df.empty:
+            logger.info("Empty dataframes - nothing to resolve")
+            return 0
+
+        # Ensure timestamp columns are datetime with UTC
+        predictions_df['timestamp'] = pd.to_datetime(predictions_df['timestamp'], utc=True)
+        council_df['timestamp'] = pd.to_datetime(council_df['timestamp'], utc=True)
+
+        # Filter to ONLY PENDING predictions - this ensures idempotency
+        pending_mask = predictions_df['actual'] == 'PENDING'
+        pending_count = pending_mask.sum()
+
+        if pending_count == 0:
+            logger.info("No pending predictions to resolve")
+            return 0
+
+        logger.info(f"Found {pending_count} pending predictions to check")
+
+        # Track which indices we resolve THIS RUN
+        newly_resolved_indices = []
+
+        for idx in predictions_df[pending_mask].index:
+            pred_row = predictions_df.loc[idx]
+            pred_time = pred_row['timestamp']
+
+            # Find matching council decision within 5-minute window
+            time_window = pd.Timedelta(minutes=5)
+            matches = council_df[
+                (council_df['timestamp'] >= pred_time - time_window) &
+                (council_df['timestamp'] <= pred_time + time_window) &
+                (council_df['actual_trend_direction'].notna()) &
+                (council_df['actual_trend_direction'] != '')
+            ]
+
+            if not matches.empty:
+                actual_direction = str(matches.iloc[0]['actual_trend_direction']).upper().strip()
+
+                # Normalize direction names to match prediction format
+                if actual_direction == 'UP':
+                    actual_direction = 'BULLISH'
+                elif actual_direction == 'DOWN':
+                    actual_direction = 'BEARISH'
+
+                # Only resolve if we got a valid direction
+                if actual_direction in ['BULLISH', 'BEARISH', 'NEUTRAL']:
+                    predictions_df.loc[idx, 'actual'] = actual_direction
+                    newly_resolved_indices.append(idx)
+                    logger.debug(f"Resolved {pred_row['agent']}: predicted {pred_row['direction']} -> actual {actual_direction}")
+
+        if newly_resolved_indices:
+            # 1. Save updated structured file (this is the source of truth)
+            predictions_df.to_csv(structured_file, index=False)
+            logger.info(f"Updated {len(newly_resolved_indices)} predictions in {structured_file}")
+
+            # 2. Append ONLY newly resolved rows to legacy accuracy file
+            newly_resolved_df = predictions_df.loc[newly_resolved_indices].copy()
+            _append_to_legacy_accuracy(newly_resolved_df)
+
+            return len(newly_resolved_indices)
+
+        logger.info("No predictions could be resolved this run")
+        return 0
+
+    except Exception as e:
+        logger.error(f"Failed to resolve pending predictions: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return 0
+
+
+def _append_to_legacy_accuracy(resolved_df: pd.DataFrame):
+    """
+    Append ONLY newly resolved rows to the legacy agent_accuracy.csv file.
+
+    This maintains compatibility with existing dashboard and scoring logic
+    that reads from agent_accuracy.csv.
+
+    Args:
+        resolved_df: DataFrame containing only the newly resolved predictions
+    """
+    accuracy_file = "data/agent_accuracy.csv"
+
+    try:
+        # Calculate correctness for each row
+        resolved_df = resolved_df.copy()
+        resolved_df['correct'] = (
+            resolved_df['direction'].str.upper() == resolved_df['actual'].str.upper()
+        ).astype(int)
+
+        # Check if file exists to determine if we need header
+        file_exists = os.path.exists(accuracy_file)
+
+        with open(accuracy_file, 'a') as f:
+            if not file_exists:
+                f.write("timestamp,agent,predicted,actual,correct\n")
+
+            for _, row in resolved_df.iterrows():
+                # Write in legacy format: timestamp,agent,predicted,actual,correct
+                f.write(f"{row['timestamp']},{row['agent']},{row['direction']},{row['actual']},{row['correct']}\n")
+
+        logger.info(f"Appended {len(resolved_df)} resolved predictions to {accuracy_file}")
+
+    except Exception as e:
+        logger.error(f"Failed to append to legacy accuracy file: {e}")
