@@ -341,6 +341,17 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             # Use columns order from utils.py to keep it clean
             df.to_csv(file_path, index=False)
             logger.info("Successfully updated council_history.csv with reconciliation results.")
+
+            # === RESOLVE INDIVIDUAL AGENT PREDICTIONS ===
+            # This closes the feedback loop by scoring each agent's prediction
+            try:
+                from trading_bot.brier_scoring import resolve_pending_predictions
+                resolved_count = resolve_pending_predictions(file_path)
+                if resolved_count > 0:
+                    logger.info(f"Feedback Loop: Resolved {resolved_count} individual agent predictions")
+            except Exception as resolve_e:
+                logger.error(f"Failed to resolve agent predictions: {resolve_e}")
+
         except Exception as e:
             logger.error(f"Failed to save updated CSV: {e}")
     else:

@@ -73,18 +73,87 @@ class TransactiveMemory:
         except Exception as e:
             logger.error(f"TMS Encode failed: {e}")
 
-    def retrieve(self, query: str, agent_filter: str = None, n_results: int = 5) -> list:
-        """Retrieve relevant insights, optionally filtered by agent."""
-        if not self.collection: return []
+    def retrieve(
+        self,
+        query: str,
+        agent_filter: str = None,
+        n_results: int = 5,
+        max_age_days: int = 30
+    ) -> list:
+        """
+        Retrieve relevant insights, optionally filtered by agent and recency.
+
+        Args:
+            query: Search query for semantic similarity
+            agent_filter: Optional agent name to filter results
+            n_results: Maximum number of results to return
+            max_age_days: Only return insights from the last N days (default: 30)
+                          Set to 0 or None to disable temporal filtering
+
+        Returns:
+            List of insight strings matching the query
+        """
+        if not self.collection:
+            return []
 
         try:
+            # Build where filter with optional clauses
+            # NOTE: ChromaDB < 1.4.1 (and potentially newer) does not support $gte on string timestamps.
+            # We must filter in Python.
             where_filter = {"agent": agent_filter} if agent_filter else None
+
+            # Fetch more results to allow for filtering
+            # We request 4x the desired results to have a buffer for filtering old insights
+            fetch_count = n_results * 4
+
             results = self.collection.query(
                 query_texts=[query],
-                n_results=n_results,
-                where=where_filter
+                n_results=fetch_count,
+                where=where_filter,
+                include=['documents', 'metadatas']
             )
-            return results['documents'][0] if results['documents'] else []
+
+            if not results['documents'] or not results['documents'][0]:
+                return []
+
+            documents = results['documents'][0]
+            metadatas = results['metadatas'][0]
+
+            filtered_docs = []
+
+            # Temporal filter in Python
+            if max_age_days and max_age_days > 0:
+                from datetime import timedelta
+                # Calculate cutoff (naive UTC comparison)
+                cutoff_dt = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+
+                for doc, meta in zip(documents, metadatas):
+                    try:
+                        ts_str = meta.get('timestamp')
+                        if ts_str:
+                            # Handle ISO format
+                            ts = datetime.fromisoformat(ts_str)
+                            # Ensure UTC
+                            if ts.tzinfo is None:
+                                ts = ts.replace(tzinfo=timezone.utc)
+
+                            if ts >= cutoff_dt:
+                                filtered_docs.append(doc)
+                    except Exception:
+                        # If parsing fails or no timestamp, exclude to be safe
+                        continue
+            else:
+                filtered_docs = documents
+
+            # Slice to original n_results
+            final_docs = filtered_docs[:n_results]
+
+            # Log for debugging
+            if final_docs:
+                logger.debug(f"TMS retrieved {len(final_docs)} insights (max_age: {max_age_days}d)")
+
+            return final_docs
+
         except Exception as e:
             logger.error(f"TMS Retrieve failed: {e}")
             return []
