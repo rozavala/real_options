@@ -56,9 +56,9 @@ class MockComboLeg(MagicMock):
         self.conId = conId
 
 class MockContractDetails(MagicMock):
-    def __init__(self, underlyingConId=None):
+    def __init__(self, underConId=None):
         super().__init__()
-        self.underlyingConId = underlyingConId
+        self.underConId = underConId
         self.contract = MockContract()
 
 # Attach classes to the mock module
@@ -122,7 +122,7 @@ class TestComplianceVolume(unittest.TestCase):
             fop_contract = MockContract(conId=999, secType='FOP', symbol='KC')
 
             # Setup ContractDetails return with underlyingConId
-            details = MockContractDetails(underlyingConId=12345)
+            details = MockContractDetails(underConId=12345)
             self.mock_ib.reqContractDetailsAsync.return_value = [details]
 
             # Setup qualified future contract
@@ -161,7 +161,7 @@ class TestComplianceVolume(unittest.TestCase):
             bag_contract = MockBag(secType='BAG', comboLegs=[leg1], symbol='KC')
 
             # Setup ContractDetails for LEG 1
-            details = MockContractDetails(underlyingConId=12345)
+            details = MockContractDetails(underConId=12345)
             self.mock_ib.reqContractDetailsAsync.return_value = [details]
 
             # Setup qualified future

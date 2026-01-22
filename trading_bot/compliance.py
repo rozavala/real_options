@@ -87,11 +87,7 @@ class ComplianceGuardian:
         Fetch volume with IB primary, YFinance fallback, -1 for unknown.
 
         For FOP (options) and BAG (combos), fetches volume from the UNDERLYING
-        FUTURES contract using the 'underlyingConId' hard link from ContractDetails.
-
-        IMPORTANT: Coffee options expire the month BEFORE the underlying future's
-        delivery month (e.g., Feb option for Mar future). Using underlyingConId
-        avoids the "Expiry Trap" of guessing futures expiry from option expiry.
+        FUTURES contract using the 'underConId' hard link from ContractDetails.
         """
         from ib_insync import Contract, Bag
 
@@ -111,15 +107,18 @@ class ComplianceGuardian:
                     # For direct FOP: use the contract itself
                     query_contract = Contract(conId=contract.conId) if contract.conId else contract
 
-                # 2. Get ContractDetails to find the underlyingConId "hard link"
+                # 2. Get ContractDetails to find the Hard Link
                 details_list = await ib.reqContractDetailsAsync(query_contract)
 
                 if details_list:
                     fop_details = details_list[0]
 
                     # 3. Follow the hard link to the underlying future
-                    if fop_details.underlyingConId:
-                        fut_contract = Contract(conId=fop_details.underlyingConId)
+                    # NOTE: ib_insync uses 'underConId' (not 'underlyingConId')
+                    under_id = getattr(fop_details, 'underConId', 0)
+
+                    if under_id:
+                        fut_contract = Contract(conId=under_id)
                         qualified = await ib.qualifyContractsAsync(fut_contract)
 
                         if qualified:
@@ -127,9 +126,9 @@ class ComplianceGuardian:
                             underlying_resolved = True
                             logger.info(f"Resolved underlying future: {target_contract.localSymbol} (conId: {target_contract.conId})")
                         else:
-                            logger.warning(f"Failed to qualify underlying future conId {fop_details.underlyingConId}")
+                            logger.warning(f"Failed to qualify underlying future conId {under_id}")
                     else:
-                        logger.warning(f"No underlyingConId found in ContractDetails for {query_contract}")
+                        logger.warning(f"No underConId found in ContractDetails for {query_contract}")
                 else:
                     logger.warning(f"No ContractDetails returned for {query_contract}")
 
@@ -159,13 +158,18 @@ class ComplianceGuardian:
         # === SECONDARY: YFinance (fallback) ===
         try:
             from trading_bot.utils import get_market_data_cached
-            # Use the resolved underlying symbol if available, else default to KC
             symbol = target_contract.symbol if target_contract else 'KC'
             yf_ticker = f"{symbol}=F"
 
             data = get_market_data_cached([yf_ticker], period="1d")
             if data is not None and not data.empty and 'Volume' in data.columns:
-                volume = float(data['Volume'].iloc[-1])
+                last_vol = data['Volume'].iloc[-1]
+                # Handle numpy scalar vs native float (avoids Pandas FutureWarning)
+                if hasattr(last_vol, 'item'):
+                    volume = float(last_vol.item())
+                else:
+                    volume = float(last_vol)
+
                 if volume > 0:
                     logger.info(f"Volume from YFinance ({yf_ticker}): {volume}")
                     return volume
