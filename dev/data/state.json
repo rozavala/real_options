@@ -10,16 +10,6 @@
             "type": "DROUGHT",
             "days": 10
           },
-          "timestamp": "2026-01-22T18:38:37.719912+00:00"
-        },
-        {
-          "source": "WeatherSentinel",
-          "reason": "Drought Risk in Dak Lak (Vietnam): 10 days with < 5.0mm rain",
-          "payload": {
-            "location": "Dak Lak (Vietnam)",
-            "type": "DROUGHT",
-            "days": 10
-          },
           "timestamp": "2026-01-22T18:41:09.037545+00:00"
         },
         {
@@ -115,9 +105,51 @@
             "days": 10
           },
           "timestamp": "2026-01-23T10:35:09.932384+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (17 posts, 2.0x baseline)",
+          "payload": {
+            "sentiment_score": 4.36,
+            "confidence": 0.17,
+            "top_themes": [
+              "Systematic trading in ag markets",
+              "Futures trading challenges",
+              "High prices",
+              "Future supply constraints",
+              "Alternative growing opportunities"
+            ],
+            "post_volume": 17,
+            "volume_baseline": 4.1,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 1,
+                "confidence": 0.2,
+                "top_post": "N/A"
+              },
+              {
+                "query": "arabica prices",
+                "score": 5.0,
+                "volume": 1,
+                "confidence": 0.2,
+                "top_post": "Why are coffee Prices especially Arabica high? ... Arabica coffee faces up to 50% loss of suitable growing areas by 2050"
+              },
+              {
+                "query": "Brazil coffee harvest",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              }
+            ]
+          },
+          "timestamp": "2026-01-23T11:35:12.327466+00:00"
         }
       ],
-      "timestamp": 1769164509.932658
+      "timestamp": 1769168112.3277335
     }
   },
   "reports": {
@@ -131,11 +163,11 @@
     },
     "macro": {
       "data": {
-        "data": "[EVIDENCE]: Arabica coffee futures experienced a slight recovery of 0.06%, influenced by a stronger Brazilian Real, as Brazilian farmers may reduce sales, limiting supply and supporting prices. Uganda's record exports of 8.4 million bags introduce additional supply, potentially putting downward pressure on prices. Viral discussions about significant future losses in growing areas due to climate change are recirculating, impacting long-term sentiment without immediate supply effects.\n[ANALYSIS]: The original analysis presented a balanced view of the coffee market by identifying the bullish influence of the strengthened Brazilian Real on Arabica futures, while also highlighting the bearish implications of increased Ugandan exports. A potential logical fallacy could be confirmation bias in interpreting the viral climate data as a factor affecting current sentiment without immediate impact on supply. However, the analysis effectively integrates multiple pieces of evidence without overstating any single factor. Citations to specific aspects, such as the impact of the Brazilian Real and Uganda's export data, are appropriately used. The sentiment tag of NEUTRAL is justified as there is no overwhelming evidence pointing definitively towards a predominantly bullish or bearish outlook, giving equal weight to both upward and downward pressures on the market.\n[CONFIDENCE]: 0.7\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
-        "confidence": 0.7,
+        "data": "[EVIDENCE]: [2026-01-23] March Arabica coffee futures closed up +0.06% at roughly $3.48/lb, recovering from a recent slump. (source: Barchart / Trading Economics), [2026-01-23] Rain forecasts for Minas Gerais (Brazil) are weighing on prices by easing drought concerns. (source: The Weather Channel / Palmetto Grain Brokerage), [2026-01-22] A rally in the Brazilian Real to a 2.25-month high against the dollar sparked short-covering in Arabica futures. (source: Nasdaq / Barchart), [2026-01-08] A market report titled 'Coffee Derivatives Market 2026' highlighted institutional capital treating coffee as a 'strategic commodity,' fueling systematic trading volatility. (source: Vietnam Coffee Market)\n[ANALYSIS]: The interplay between forecasted weather improvements and currency dynamics appears to significantly influence Arabica coffee futures. Recent rainfall in Minas Gerais is expected to alleviate drought fears, potentially boosting future supply, which can pressure prices downward. The strengthening of the Brazilian Real has induced short-covering that temporarily elevated prices; however, such actions usually indicate market participants reducing bearish bets rather than establishing long-term bullish positions. Systematic trading by institutions treating coffee as a 'strategic commodity' introduces additional volatility. This environment suggests price instability with potential downward pressures due to supply increase factors but is unstable due to systematic financial strategies and currency influences.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
+        "confidence": 0.8,
         "sentiment": "NEUTRAL"
       },
-      "timestamp": 1769164521.9950678
+      "timestamp": 1769168167.9968498
     },
     "geopolitical": {
       "data": {
@@ -265,7 +297,7 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1769166284.7599797
+      "timestamp": 1769168112.3203976
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
