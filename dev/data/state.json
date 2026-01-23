@@ -4,16 +4,6 @@
       "data": [
         {
           "source": "WeatherSentinel",
-          "reason": "Drought Risk in Central Highlands (Vietnam): 10 days with < 5.0mm rain",
-          "payload": {
-            "location": "Central Highlands (Vietnam)",
-            "type": "DROUGHT",
-            "days": 10
-          },
-          "timestamp": "2026-01-22T11:36:17.569235+00:00"
-        },
-        {
-          "source": "WeatherSentinel",
           "reason": "Drought Risk in Dak Lak (Vietnam): 10 days with < 5.0mm rain",
           "payload": {
             "location": "Dak Lak (Vietnam)",
@@ -51,9 +41,51 @@
             "days": 10
           },
           "timestamp": "2026-01-22T18:41:09.037545+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (17 posts, 2.0x baseline)",
+          "payload": {
+            "sentiment_score": 4.07,
+            "confidence": 0.19,
+            "top_themes": [
+              "Favorable Brazil weather bearish for prices",
+              "Skepticism on coffee bull market",
+              "Systematic trading dominance/neutral",
+              "High Arabica prices",
+              "Future supply shortages"
+            ],
+            "post_volume": 17,
+            "volume_baseline": 4.2,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 3.0,
+                "volume": 3,
+                "confidence": 0.3,
+                "top_post": "Typical clowns trying to \"beef up\" another #BullMarket for #coffee futures. These rains... perfect for Brazil cherries... --NOT!"
+              },
+              {
+                "query": "arabica prices",
+                "score": 5.0,
+                "volume": 1,
+                "confidence": 0.2,
+                "top_post": "Why are coffee Prices especially Arabica high? ... Arabica coffee faces up to 50% loss of suitable growing areas by 2050"
+              },
+              {
+                "query": "Brazil coffee harvest",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              }
+            ]
+          },
+          "timestamp": "2026-01-23T09:02:05.197118+00:00"
         }
       ],
-      "timestamp": 1769107269.0377648
+      "timestamp": 1769158925.1972907
     }
   },
   "reports": {
@@ -67,11 +99,11 @@
     },
     "macro": {
       "data": {
-        "data": "[EVIDENCE]: [2026-01-21] USD/BRL exchange rate fell to 5.3240, strengthening past 5.33. (source: Trading Economics), [2026-01-21] Brazilian Real reached its strongest level since early December due to global rotation into emerging markets. (source: Trading Economics), [2026-01-15] Brazil's benchmark interest rate (Selic) remains at 15%, suppressing farmer margins and increasing bankruptcy risks. (source: AgTechNavigator)\n[ANALYSIS]: The recent strengthening of the BRL, moving to 5.3240 against the USD, indicates a trend contrary to encouraging farmer selling, as it makes local currency earnings from exports less attractive. This strengthening generally leads to less farmer selling due to reduced local currency gains from exports. Furthermore, the high Selic rate at 15% adds to the financial burden on farmers, making them hesitant to sell voluntarily unless forced by liquidity issues. This scenario of a strong BRL coupled with high interest rates could lead to a constrained coffee supply as farmers choose to hold back, supporting higher coffee prices.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: BULLISH]",
+        "data": "[EVIDENCE]: 1. March Arabica coffee futures (KCH26) closed at 347.70 cents/lb, recovering slightly after hitting a 4-week low. (source: Barchart / Nasdaq) 2. The Weather Channel forecast daily showers for Minas Gerais, exerting bearish pressure due to expected alleviation of crop stress. (source: Comunicaffe International) 3. Somar Meteorologia reported 33.9 mm of rain in Minas Gerais, only 53% of the historical average. (source: Barchart) 4. Brazilian coffee exports for December down 18.4% year-over-year. (source: Cecafe / Nasdaq).\n[ANALYSIS]: There are mixed factors influencing the coffee market. The expected showers in Minas Gerais could relieve crop stress, suggesting a bearish outlook due to potential increased yields. However, the significantly lower actual rainfall compared to historical averages suggests that the expected impact of rain might not materialize to the anticipated extent, potentially limiting yield increases. This discrepancy creates uncertainty in the market. Furthermore, the notable decrease in Brazilian coffee exports indicates supply constraints, which could counterbalance the bearish sentiment from rainfall forecasts. Overall, these elements contribute to a complex market scenario without a clear bearish or bullish dominance.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
         "confidence": 0.8,
-        "sentiment": "BULLISH"
+        "sentiment": "NEUTRAL"
       },
-      "timestamp": 1769091955.0939777
+      "timestamp": 1769159007.386532
     },
     "geopolitical": {
       "data": {
@@ -201,7 +233,7 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1769157087.8419816
+      "timestamp": 1769158925.1873007
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
