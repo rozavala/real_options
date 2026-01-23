@@ -26,4 +26,4 @@ sync
 # Activate venv and start
 source venv/bin/activate
 echo "Starting orchestrator..."
-exec python orchestrator.py
+exec python -u orchestrator.py
