@@ -268,6 +268,8 @@ class WeatherSentinel(Sentinel):
     Monitors specific coffee-growing regions for frost or drought risks.
     Frequency: Every 4 Hours (24/7).
     """
+    ALERT_STATE_FILE = "data/weather_sentinel_alerts.json"
+
     def __init__(self, config: dict):
         super().__init__(config)
         self.sentinel_config = config.get('sentinels', {}).get('weather', {})
@@ -276,9 +278,41 @@ class WeatherSentinel(Sentinel):
         self.locations = self.sentinel_config.get('locations', [])
         self.triggers = self.sentinel_config.get('triggers', {})
 
-        self._active_alerts: Dict[str, dict] = {}  # {location_key: {"time": dt, "value": float}}
+        self._active_alerts = self._load_alert_state()
         self._alert_cooldown_hours = 24
         self._escalation_threshold = 0.05  # 5% worsening breaks cooldown
+
+    def _load_alert_state(self) -> Dict[str, dict]:
+        """Load alert state from disk."""
+        if os.path.exists(self.ALERT_STATE_FILE):
+            try:
+                with open(self.ALERT_STATE_FILE, 'r') as f:
+                    data = json.load(f)
+                    # Parse ISO timestamps back to datetime
+                    for key, val in data.items():
+                        if 'time' in val and isinstance(val['time'], str):
+                            val['time'] = datetime.fromisoformat(val['time'])
+                    logger.info(f"WeatherSentinel: Loaded {len(data)} active alerts from disk")
+                    return data
+            except Exception as e:
+                logger.warning(f"Failed to load weather alert state: {e}")
+        return {}
+
+    def _save_alert_state(self):
+        """Persist alert state to disk."""
+        try:
+            os.makedirs(os.path.dirname(self.ALERT_STATE_FILE) or '.', exist_ok=True)
+            # Serialize datetime to ISO format
+            data = {}
+            for key, val in self._active_alerts.items():
+                data[key] = {
+                    'time': val['time'].isoformat() if isinstance(val['time'], datetime) else val['time'],
+                    'value': val['value']
+                }
+            with open(self.ALERT_STATE_FILE, 'w') as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            logger.warning(f"Failed to save weather alert state: {e}")
 
     async def check(self) -> Optional[SentinelTrigger]:
         for loc in self.locations:
@@ -313,6 +347,7 @@ class WeatherSentinel(Sentinel):
                             "time": datetime.now(timezone.utc),
                             "value": severity_val
                         }
+                        self._save_alert_state()
                         msg = f"Frost Risk in {name}: Min Temp {min_temp}°C < {frost_threshold}°C"
                         logger.warning(f"WEATHER SENTINEL TRIGGERED: {msg}")
                         return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "FROST", "value": min_temp}, severity=8)
@@ -330,6 +365,7 @@ class WeatherSentinel(Sentinel):
                             "time": datetime.now(timezone.utc),
                             "value": low_rain_days
                         }
+                        self._save_alert_state()
                         msg = f"Drought Risk in {name}: {low_rain_days} days with < {rain_limit}mm rain"
                         logger.warning(f"WEATHER SENTINEL TRIGGERED: {msg}")
                         return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "DROUGHT", "days": low_rain_days}, severity=6)
@@ -356,11 +392,8 @@ class WeatherSentinel(Sentinel):
         if hours_since > self._alert_cooldown_hours:
             return True
 
-        # ESCALATION CHECK: If situation worsened by >5%, break cooldown
-        # current_value > prev_value implies worsening (assuming metric is "badness")
+        # ESCALATION CHECK
         prev_value = prev["value"]
-
-        # Avoid division by zero or negative base (metric should be positive severity)
         if prev_value <= 0:
             return current_value > prev_value
 
