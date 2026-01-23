@@ -1337,3 +1337,762 @@ I0000 00:00:1769176234.247248  171537 device_compiler.h:196] Compiled cluster us
 2026-01-23 13:58:41,792 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
 2026-01-23 13:58:42,090 - trading_bot.tms - INFO - TMS: Stored insight from geopolitical
 2026-01-23 13:58:49,434 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:00:37,460 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:01:08,324 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-23 14:01:08,325 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:01:30,358 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:02:12,150 - trading_bot.tms - INFO - TMS: Stored insight from supply_chain
+2026-01-23 14:02:34,393 - trading_bot.tms - INFO - TMS: Stored insight from volatility
+2026-01-23 14:02:45,726 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-23 14:02:45,727 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:03:03,285 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:03:20,952 - trading_bot.tms - INFO - TMS: Stored insight from volatility
+2026-01-23 14:03:28,119 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-23 14:03:28,119 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-01-23 14:03:28,119 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.56 -> 0.54
+2026-01-23 14:03:28,120 - trading_bot.weighted_voting - WARNING - Regime=HIGH_VOLATILITY: Zeroing ML weight (structural break risk)
+2026-01-23 14:03:28,120 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.00, Regime=HIGH_VOLATILITY
+2026-01-23 14:03:28,120 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-23 14:03:28,120 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.3,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.0,
+    "final_weight": 1.05,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.3,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  }
+]
+2026-01-23 14:03:46,045 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 14:04:07,224 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:04:30,217 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-23 14:04:35,783 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:04:40,688 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:05:07,444 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 14:05:07,445 - trading_bot.signal_generator - WARNING - Devil's Advocate VETOED trade: DO NOT PROCEED. The trade has poor risk-reward characteristics: (1) Consensus is genuinely neutral with no edge, (2) We would be buying extended price action, (3) Options are expensive making entry costly, (4) Multiple high-confidence signals lean bearish, (5) The bullish thesis relies on supply constraints persisting while multiple agents suggest they're easing. If conviction on logistics/BRL thesis is strong, wait for a pullback to 317-320 support zone with cheaper volatility, or express the view through spread structures rather than outright long exposure.
+2026-01-23 14:05:07,445 - trading_bot.signal_generator - INFO - Council Decision KCN6 (202607): NEUTRAL (0.75)
+2026-01-23 14:05:07,447 - root - INFO - Logged Council decision for KCN6 (202607)
+2026-01-23 14:05:07,447 - trading_bot.signal_generator - INFO - Convening Council for KCU6 (202609)...
+2026-01-23 14:05:08,234 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-23 14:05:08,234 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-23 14:05:08,234 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:05:08,516 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-23 14:05:08,517 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-23 14:05:08,517 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:05:08,780 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-01-23 14:05:08,780 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-01-23 14:05:08,780 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:05:09,041 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-01-23 14:05:09,042 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-01-23 14:05:09,042 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:05:09,324 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-01-23 14:05:09,324 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-01-23 14:05:09,325 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:05:09,592 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-01-23 14:05:09,592 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-01-23 14:05:09,592 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:05:09,863 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-01-23 14:05:09,863 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-01-23 14:05:09,863 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:05:10,148 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-01-23 14:05:10,148 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-01-23 14:05:10,149 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:05:27,832 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-23 14:05:50,902 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-01-23 14:05:50,903 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.57 -> 0.55
+2026-01-23 14:05:50,903 - trading_bot.weighted_voting - WARNING - Regime=HIGH_VOLATILITY: Zeroing ML weight (structural break risk)
+2026-01-23 14:05:50,903 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.00, Regime=HIGH_VOLATILITY
+2026-01-23 14:05:50,903 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-23 14:05:50,903 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.0,
+    "final_weight": 1.05,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  }
+]
+2026-01-23 14:05:58,244 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:06:09,844 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:06:10,148 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-23 14:06:10,148 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: [2026-01...' cues -> ['geopolitical', 'fundamentalist']
+2026-01-23 14:06:10,151 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:06:11,383 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 14:06:18,826 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:06:19,137 - trading_bot.tms - INFO - TMS: Stored insight from sentiment
+2026-01-23 14:06:21,852 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:06:22,148 - trading_bot.tms - INFO - TMS: Stored insight from technical
+2026-01-23 14:06:23,745 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-23 14:06:23,746 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:06:24,053 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:06:24,338 - trading_bot.tms - INFO - TMS: Stored insight from technical
+2026-01-23 14:06:24,338 - trading_bot.tms - INFO - TMS: technical insight on '[EVIDENCE]: 1) May-2...' cues -> ['fundamentalist']
+2026-01-23 14:06:24,655 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-23 14:06:25,445 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:06:37,932 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:06:37,934 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-01-23 14:06:37,934 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.56 -> 0.54
+2026-01-23 14:06:37,935 - trading_bot.weighted_voting - WARNING - Regime=HIGH_VOLATILITY: Zeroing ML weight (structural break risk)
+2026-01-23 14:06:37,935 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.00, Regime=HIGH_VOLATILITY
+2026-01-23 14:06:37,935 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-23 14:06:37,935 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.3,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.3,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.0,
+    "final_weight": 1.05,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  }
+]
+2026-01-23 14:06:43,663 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:06:43,999 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:06:50,287 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:06:57,796 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 14:07:05,287 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 14:07:05,289 - trading_bot.signal_generator - WARNING - Devil's Advocate VETOED trade: DO NOT PROCEED. The bearish thesis relies heavily on forward-looking weather forecasts (notoriously unreliable), while ignoring multiple countervailing factors: (1) The macro agent shows 0.9 confidence BULLISH due to BRL strength reducing farmer selling incentive - this directly contradicts the bearish supply narrative; (2) Technical analysis shows NEUTRAL with price sitting ON the 200-day SMA - this is a decision point, not a confirmed breakdown; (3) Speculative positioning is LIGHT, not crowded long, meaning limited fuel for downside continuation. We are succumbing to RECENCY BIAS (recent rain forecasts) and CONFIRMATION BIAS (cherry-picking inventory builds while ignoring the persistent backwardation signaling tight prompt supply). The 0.8 confidence is unjustified given the conflicting signals - wait for price to break below 341 support with volume confirmation before establishing bearish exposure.
+2026-01-23 14:07:05,289 - trading_bot.signal_generator - INFO - Council Decision KCH6 (202603): NEUTRAL (0.8)
+2026-01-23 14:07:05,291 - root - INFO - Logged Council decision for KCH6 (202603)
+2026-01-23 14:07:05,291 - trading_bot.signal_generator - INFO - Convening Council for KCZ6 (202612)...
+2026-01-23 14:07:06,110 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-23 14:07:06,110 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-23 14:07:06,110 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-01-23 14:07:06,423 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-23 14:07:06,698 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-23 14:07:06,698 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-23 14:07:06,698 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-01-23 14:07:06,969 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-23 14:07:06,969 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: [2026-01...' cues -> ['geopolitical', 'fundamentalist']
+2026-01-23 14:07:07,237 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-01-23 14:07:07,237 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-01-23 14:07:07,237 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:07:07,505 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-01-23 14:07:07,506 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-01-23 14:07:07,506 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:07:07,788 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-01-23 14:07:07,788 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-01-23 14:07:07,788 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-01-23 14:07:08,070 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-23 14:07:08,348 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-01-23 14:07:08,349 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-01-23 14:07:08,349 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-01-23 14:07:08,617 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-01-23 14:07:08,617 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-01-23 14:07:08,617 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:07:08,893 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-01-23 14:07:08,893 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-01-23 14:07:08,893 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:07:08,902 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:07:11,825 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:12,133 - trading_bot.tms - INFO - TMS: Stored insight from sentiment
+2026-01-23 14:07:13,866 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:14,162 - trading_bot.tms - INFO - TMS: Stored insight from geopolitical
+2026-01-23 14:07:22,663 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:30,121 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:34,465 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:34,554 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
+2026-01-23 14:07:34,896 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:34,982 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
+2026-01-23 14:07:35,036 - trading_bot.sentinels - INFO - Broad search returned 3 posts for 'coffee futures'
+2026-01-23 14:07:35,197 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'arabica prices'
+2026-01-23 14:07:35,301 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:35,432 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
+2026-01-23 14:07:35,542 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'Brazil coffee harvest'
+2026-01-23 14:07:37,575 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:37,653 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:37,740 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
+2026-01-23 14:07:38,066 - trading_bot.sentinels - INFO - Broad search returned 5 posts for 'Colombia coffee'
+2026-01-23 14:07:38,681 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:38,764 - trading_bot.sentinels - INFO - Strict search for 'Vietnam robusta' returned 0 posts. Trying broad search...
+2026-01-23 14:07:38,889 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'Vietnam robusta'
+2026-01-23 14:07:41,127 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:41,912 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:41,995 - trading_bot.sentinels - INFO - Strict search for 'ICE coffee warehouse' returned 0 posts. Trying broad search...
+2026-01-23 14:07:42,075 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'ICE coffee warehouse'
+2026-01-23 14:07:42,174 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:43,143 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:44,414 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:45,813 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:45,886 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:45,895 - trading_bot.sentinels - INFO - Strict search for 'CFTC coffee positioning' returned 0 posts. Trying broad search...
+2026-01-23 14:07:45,974 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'CFTC coffee positioning'
+2026-01-23 14:07:46,422 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:46,505 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
+2026-01-23 14:07:46,810 - trading_bot.sentinels - INFO - Broad search returned 8 posts for 'US coffee tariffs'
+2026-01-23 14:07:48,078 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:52,591 - trading_bot.tms - INFO - TMS: Stored insight from supply_chain
+2026-01-23 14:07:55,873 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 14:07:55,875 - trading_bot.signal_generator - WARNING - Devil's Advocate VETOED trade: DO NOT PROCEED. The trade exhibits dangerous confirmation bias by cherry-picking bearish data points while dismissing the highest-conviction bullish signal (supply chain at 0.95 confidence). The steep backwardation curve directly contradicts the thesis that inventory builds signal price weakness. Additionally, the 24h price action (+1.54%) and 5-day trend (+1.97%) suggest the market is ALREADY rejecting bearish narratives. Entering short into supportive price action, against steep backwardation, with crowded put positioning, creates asymmetric risk to the upside. If proceeding at all, reduce position size by 60% and set tight stop-loss at 345 cents.
+2026-01-23 14:07:55,875 - trading_bot.signal_generator - INFO - Council Decision KCK6 (202605): NEUTRAL (0.75)
+2026-01-23 14:07:55,877 - root - INFO - Logged Council decision for KCK6 (202605)
+2026-01-23 14:07:59,452 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:07:59,458 - trading_bot.sentinels - WARNING - X volume spike: 14 vs mean 4 (>2.0x)
+2026-01-23 14:07:59,458 - trading_bot.sentinels - INFO - X volume anomaly: z-score=3.3
+2026-01-23 14:07:59,459 - trading_bot.sentinels - WARNING - 🚨 X SENTINEL TRIGGERED: UNUSUAL X ACTIVITY SPIKE (14 posts, 2.0x baseline)
+2026-01-23 14:07:59,465 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
+2026-01-23 14:07:59,465 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by XSentimentSentinel: UNUSUAL X ACTIVITY SPIKE (14 posts, 2.0x baseline)
+2026-01-23 14:07:59,749 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-23 14:07:59,757 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-23 14:07:59,868 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-23 14:07:59,869 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-01-23 14:07:59,869 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-01-23 14:07:59,873 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-23 14:07:59,873 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-01-23 14:07:59,873 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-01-23 14:07:59,936 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-01-23 14:07:59,936 - Orchestrator - INFO - Targeting contract: KCH6 (202603)
+2026-01-23 14:08:04,061 - trading_bot.agents - INFO - Running Specialized Cycle triggered by XSentimentSentinel...
+2026-01-23 14:08:04,061 - trading_bot.agents - INFO - Routing to macro (Reason: Default routing)
+2026-01-23 14:08:04,061 - trading_bot.agents - INFO - Waking up macro...
+2026-01-23 14:08:04,314 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-23 14:08:04,315 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-23 14:08:04,315 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:08:25,948 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:08:26,250 - trading_bot.tms - INFO - TMS: Stored insight from geopolitical
+2026-01-23 14:08:33,682 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:08:57,989 - trading_bot.tms - INFO - TMS: Stored insight from volatility
+2026-01-23 14:09:09,727 - trading_bot.tms - INFO - TMS: Stored insight from volatility
+2026-01-23 14:09:09,728 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-01-23 14:09:09,728 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.55 -> 0.54
+2026-01-23 14:09:09,728 - trading_bot.weighted_voting - WARNING - Regime=HIGH_VOLATILITY: Zeroing ML weight (structural break risk)
+2026-01-23 14:09:09,728 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.00, Regime=HIGH_VOLATILITY
+2026-01-23 14:09:09,728 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-23 14:09:09,728 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.3,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.3,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.0,
+    "final_weight": 1.05,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  }
+]
+2026-01-23 14:09:28,663 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 14:09:41,567 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:09:41,879 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-23 14:09:48,376 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:09:48,504 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-23 14:09:48,504 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.50 -> 0.50
+2026-01-23 14:09:48,504 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=RANGE_BOUND
+2026-01-23 14:09:48,505 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-23 14:09:48,505 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.3,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.0,
+    "final_weight": 1.05,
+    "contribution": 0.0
+  },
+  {
+    "agent": "latest_ml_signals",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  }
+]
+2026-01-23 14:10:07,360 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 14:10:16,857 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:10:22,594 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:10:32,625 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:10:37,745 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:10:37,749 - trading_bot.agents - INFO - Master decision vetoed by conflicting Weighted Vote (NEUTRAL)
+2026-01-23 14:10:37,749 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.7)
+2026-01-23 14:10:37,754 - Orchestrator - INFO - Emergency Cycle concluded with no action.
+2026-01-23 14:10:37,754 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-23 14:10:38,148 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 14:10:50,452 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 14:10:50,454 - trading_bot.signal_generator - WARNING - Devil's Advocate VETOED trade: DO NOT PROCEED. The trade exhibits classic 'fighting the physical market' characteristics. If taking any position, wait for: (1) Port congestion metrics to improve below 30% delay rate, (2) Certified stocks to rebuild above 600,000 bags with consecutive weekly builds, (3) Backwardation to flatten significantly. Current setup has asymmetric risk to the upside given supply chain failures. Consider NEUTRAL stance or small tactical long as contrarian play against weather-driven weakness.
+2026-01-23 14:10:50,454 - trading_bot.signal_generator - INFO - Council Decision KCU6 (202609): NEUTRAL (0.78)
+2026-01-23 14:10:50,455 - root - INFO - Logged Council decision for KCU6 (202609)
+2026-01-23 14:11:25,407 - trading_bot.tms - INFO - TMS: Stored insight from supply_chain
+2026-01-23 14:12:22,180 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:12:22,480 - trading_bot.tms - INFO - TMS: Stored insight from technical
+2026-01-23 14:12:22,481 - trading_bot.tms - INFO - TMS: technical insight on '[EVIDENCE]: 1) KCZ26...' cues -> ['fundamentalist']
+2026-01-23 14:12:35,697 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:12:35,699 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-23 14:12:35,699 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.55 -> 0.53
+2026-01-23 14:12:35,699 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=RANGE_BOUND
+2026-01-23 14:12:35,699 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-23 14:12:35,699 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.3,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.0,
+    "final_weight": 1.05,
+    "contribution": 0.0
+  }
+]
+2026-01-23 14:12:59,061 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 14:13:35,079 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:13:45,017 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 14:14:08,619 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 14:14:08,620 - trading_bot.signal_generator - WARNING - Devil's Advocate VETOED trade: DO NOT PROCEED. The trade exhibits a dangerous mismatch: 0.85 confidence on a BEARISH position when the weighted voting consensus is NEUTRAL (0.71) with no dominant agent. We are fighting against tight physical supply (inventory, supply chain), favorable macro for holding (strong BRL), and positioned near technical support with a recent bullish bounce. The bearish thesis relies entirely on weather forecasts and speculative liquidation that may have already occurred. The risk/reward is asymmetric to the upside. If weather disappoints or logistics worsen, this trade fails catastrophically. Wait for confirmation of actual rainfall impact on production estimates or a clear technical break below 300 before initiating bearish exposure.
+2026-01-23 14:14:08,620 - trading_bot.signal_generator - INFO - Council Decision KCZ6 (202612): NEUTRAL (0.85)
+2026-01-23 14:14:08,621 - root - INFO - Logged Council decision for KCZ6 (202612)
+2026-01-23 14:14:08,625 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-01-23 14:14:08,629 - trading_bot.signal_generator - INFO - Persisted latest ML signals to state.
+2026-01-23 14:14:08,635 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202603, Signal=VOLATILITY
+2026-01-23 14:14:08,638 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202605, Signal=NEUTRAL
+2026-01-23 14:14:08,640 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202607, Signal=NEUTRAL
+2026-01-23 14:14:08,643 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202609, Signal=VOLATILITY
+2026-01-23 14:14:08,646 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202612, Signal=VOLATILITY
+2026-01-23 14:14:08,647 - OrderManager - INFO - Generated 5 signals: [{'contract_month': '202603', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Drought conditions developing', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.8, 'price': 354.04998779296875, 'sma_200': 346.53900024414065, 'expected_price': 352.0, 'predicted_return': 0.00580708777844655}, {'contract_month': '202605', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': 'Both the permabear and permabull present strong arguments, but critical factors lean towards a bearish outlook. The recent rains during the critical bean filling stage should alleviate some previous stress, leading to potential stripping of weather risk premiums as supported by the agronomist report. Inventory levels are rising, indicating a pause in physical scarcity, further supported by technical indicators showing price below the 200-day SMA. While the ML model suggests a bull regime, its confidence is only moderate, at 56.4%, and the permabear highlights significant factors against a bullish scenario. With lower confidence in a sustained upward move and technicals indicating more downside potential, the current direction seems bearish. [DA VETO: SCENARIO 1 - WEATHER REVERSAL: The forecasted rains fail to materialize or prove insufficient. The 53% rainfall deficit during the critical bean-filling stage has already caused irreversible damage to bean density. Within days, agronomist reports confirm yield losses of 10-15% for the 2026/27 crop, triggering a violent short-covering rally. Coffee spikes 15% to 385+ cents as weather risk premiums are re-priced HIGHER, not stripped out.]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.75, 'price': 336.95001220703125, 'sma_200': 346.53900024414065, 'expected_price': 338.77018322818526, 'predicted_return': 0.005401902226481151}, {'contract_month': '202607', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': "The debate centers around conflicting views on the consequences of weather improvements and logistical challenges, as well as the impact of inventory changes and technical signals on market direction. The Permabear emphasizes the fading weather premium, rising ICE stocks, and technical indicators supporting a bearish view. The Permabull counters with the severe impact of logistical constraints, persistent backwardation, and delayed farmer selling due to a strong BRL, suggesting structural supply issues. Both sides acknowledge weather improvements and stock changes, but the logistics and currency factors appear more materially impactful. The ML signal is neutral with modest confidence, not definitively supporting either directional stance. Given the comprehensive analysis, logistical paradox, backwardation, and potential frictions from delayed farmer selling support a mildly bullish position over transient weather adjustments. [DA VETO: SCENARIO 1 - Weather Premium Collapse: The forecasted daily showers materialize as expected, definitively ending drought concerns. The agronomist's 0.85 confidence bearish view proves correct as improved moisture during bean-filling stage removes the last supply-fear bid from the market. Speculators who were holding long positions based on weather anxiety liquidate en masse, triggering a 15-20 cent drop within 3 trading sessions.]", 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.75, 'price': 330.3500061035156, 'sma_200': 346.53900024414065, 'expected_price': 331.9882173371818, 'predicted_return': 0.0049590168106517975}, {'contract_month': '202609', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Drought conditions developing', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.78, 'price': 324.29998779296875, 'sma_200': 346.53900024414065, 'expected_price': 322.95, 'predicted_return': 0.004500123248691784}, {'contract_month': '202612', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Drought conditions developing', 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.85, 'price': 319.3999938964844, 'sma_200': 346.53900024414065, 'expected_price': 312.0, 'predicted_return': 0.004184867847504766}]
+2026-01-23 14:14:08,647 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-01-23 14:14:08,717 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-01-23 14:14:08,814 - OrderManager - INFO - Account Value for Sizing: $50,000.00
+2026-01-23 14:14:08,814 - OrderManager - INFO - Requesting snapshot market price for KCH6...
+2026-01-23 14:14:08,858 - OrderManager - INFO - Using bid/ask midpoint for KCH6: 353.825
+2026-01-23 14:14:08,858 - root - INFO - Fetching option chain for future KCH6...
+2026-01-23 14:14:08,860 - root - INFO - --- Defining HIGH Volatility Strategy for KCH6 ---
+2026-01-23 14:14:08,862 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.90) * Vol(0.6) * Heat(1.0) = 0
+2026-01-23 14:14:08,862 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-23 14:14:09,144 - root - INFO - Fetching market data for option: KOH6 C3.55
+2026-01-23 14:14:11,147 - root - ERROR - Insufficient live market data for KOH6 C3.55. Bid: 9.99, Ask: 10.3, IV: None
+2026-01-23 14:14:11,148 - root - ERROR - Failed to get market data for KOH6 C3.55. Aborting order.
+2026-01-23 14:14:11,148 - OrderManager - INFO - Requesting snapshot market price for KCU6...
+2026-01-23 14:14:11,472 - OrderManager - INFO - Using bid/ask midpoint for KCU6: 323.70000000000005
+2026-01-23 14:14:11,472 - root - INFO - Fetching option chain for future KCU6...
+2026-01-23 14:14:11,760 - root - INFO - --- Defining HIGH Volatility Strategy for KCU6 ---
+2026-01-23 14:14:11,761 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.89) * Vol(0.6) * Heat(1.0) = 0
+2026-01-23 14:14:11,761 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-23 14:14:12,033 - root - INFO - Fetching market data for option: KOU6 C3.225
+2026-01-23 14:14:14,034 - root - INFO - Using IBKR Model Greeks IV: 35.21%
+2026-01-23 14:14:14,042 - root - INFO - Theoretical price calculated for C @ 322.5: {'price': np.float64(37.6876), 'delta': np.float64(0.591), 'gamma': np.float64(0.0046), 'vega': np.float64(93.7889), 'theta': np.float64(-0.0982)}
+2026-01-23 14:14:14,042 - root - INFO -   -> Leg Theoretical Price (BUY): KOU6 C3.225 @ 37.69
+2026-01-23 14:14:14,043 - root - INFO - Fetching market data for option: KOU6 P3.225
+2026-01-23 14:14:16,045 - root - INFO - Using IBKR Model Greeks IV: 35.21%
+2026-01-23 14:14:16,046 - root - INFO - Theoretical price calculated for P @ 322.5: {'price': np.float64(29.3923), 'delta': np.float64(-0.409), 'gamma': np.float64(0.0046), 'vega': np.float64(93.7889), 'theta': np.float64(-0.0991)}
+2026-01-23 14:14:16,046 - root - INFO -   -> Leg Theoretical Price (BUY): KOU6 P3.225 @ 29.39
+2026-01-23 14:14:16,047 - root - INFO - Net Theoretical: 67.08, Market Spread: 4.76
+2026-01-23 14:14:16,047 - root - INFO - Adaptive Strategy: Start @ 64.04, Cap/Floor @ 67.58
+2026-01-23 14:14:16,047 - root - INFO - Creating Limit Order for BUY 1 @ 64.04 (Adaptive Cap: 67.58).
+2026-01-23 14:14:16,047 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-01-23 14:14:16,047 - root - INFO - Assigned OrderRef: 9616ac8e-482c-41b8-b358-61e03a6ae253
+2026-01-23 14:14:16,047 - OrderManager - INFO - Successfully queued order for KCU6.
+2026-01-23 14:14:16,048 - OrderManager - INFO - Requesting snapshot market price for KCZ6...
+2026-01-23 14:14:16,299 - OrderManager - INFO - Using bid/ask midpoint for KCZ6: 318.375
+2026-01-23 14:14:16,299 - root - INFO - Fetching option chain for future KCZ6...
+2026-01-23 14:14:16,356 - root - INFO - --- Defining HIGH Volatility Strategy for KCZ6 ---
+2026-01-23 14:14:16,358 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.93) * Vol(1.0) * Heat(1.0) = 0
+2026-01-23 14:14:16,358 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-23 14:14:16,629 - root - INFO - Fetching market data for option: KOZ6 C3.175
+2026-01-23 14:14:18,631 - root - INFO - Using IBKR Model Greeks IV: 34.09%
+2026-01-23 14:14:18,633 - root - INFO - Theoretical price calculated for C @ 317.5: {'price': np.float64(43.6839), 'delta': np.float64(0.6052), 'gamma': np.float64(0.004), 'vega': np.float64(109.8178), 'theta': np.float64(-0.0802)}
+2026-01-23 14:14:18,633 - root - INFO -   -> Leg Theoretical Price (BUY): KOZ6 C3.175 @ 43.68
+2026-01-23 14:14:18,633 - root - INFO - Fetching market data for option: KOZ6 P3.175
+2026-01-23 14:14:20,636 - root - ERROR - Insufficient live market data for KOZ6 P3.175. Bid: -100.0, Ask: -100.0, IV: None
+2026-01-23 14:14:20,636 - root - ERROR - Failed to get market data for KOZ6 P3.175. Aborting order.
+2026-01-23 14:14:20,636 - OrderManager - INFO - --- Order generation complete. 1 orders queued. ---
+2026-01-23 14:14:20,947 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-23 14:14:21,235 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-23 14:14:21,434 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-23 14:14:21,639 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-23 14:14:21,641 - OrderManager - INFO - --- Placing and monitoring 1 orders ---
+2026-01-23 14:14:21,641 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-23 14:14:21,642 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-01-23 14:14:21,642 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-23 14:14:21,642 - OrderManager - INFO - Using pooled IB connection for order placement.
+2026-01-23 14:14:21,642 - OrderManager - INFO - Sorted orders by expiration proximity.
+2026-01-23 14:14:21,642 - OrderManager - INFO - Current Available Funds: $50,000.00 | Equity: $50,000.00
+2026-01-23 14:14:23,809 - ib_insync.wrapper - ERROR - Error 162, reqId 364: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=759879038, symbol='KC', lastTradeDateOrContractMonth='20260814', strike=322.5, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOU6 C3.225', tradingClass='KO')
+2026-01-23 14:14:23,812 - trading_bot.compliance - INFO - Resolved underlying future: KCU6 (conId: 657732419)
+2026-01-23 14:14:23,929 - trading_bot.compliance - INFO - Volume from IB (KCU6): 31.0
+2026-01-23 14:14:32,460 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 14:14:32,461 - trading_bot.compliance - ERROR - Compliance Guardian failed: Expecting value: line 1 column 1 (char 0)
+2026-01-23 14:14:32,461 - OrderManager - WARNING - Order for  blocked by Compliance: Compliance Error: Expecting value: line 1 column 1 (char 0)
+2026-01-23 14:14:32,462 - OrderManager - WARNING - No orders fit within available funds or compliance limits. Aborting placement.
+2026-01-23 14:14:32,462 - OrderManager - INFO - Order placement complete. Releasing event handlers.
+2026-01-23 14:14:32,462 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-01-23 14:14:32,462 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-01-23 18:20:00 UTC. Waiting for 4.09 hours.
+2026-01-23 14:28:01,834 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 39% of average
+2026-01-23 14:28:02,120 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
