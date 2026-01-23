@@ -10,16 +10,6 @@
             "type": "DROUGHT",
             "days": 10
           },
-          "timestamp": "2026-01-23T17:19:22.118309+00:00"
-        },
-        {
-          "source": "WeatherSentinel",
-          "reason": "Drought Risk in Dak Lak (Vietnam): 10 days with < 5.0mm rain",
-          "payload": {
-            "location": "Dak Lak (Vietnam)",
-            "type": "DROUGHT",
-            "days": 10
-          },
           "timestamp": "2026-01-23T17:22:01.468783+00:00"
         },
         {
@@ -83,9 +73,51 @@
             ]
           },
           "timestamp": "2026-01-23T18:01:31.080597+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (15 posts, 2.0x baseline)",
+          "payload": {
+            "sentiment_score": 4.54,
+            "confidence": 0.16,
+            "top_themes": [
+              "High Arabica prices",
+              "Future supply constraints",
+              "New production opportunities",
+              "Coffee quality praise",
+              "Cultural/economic ties"
+            ],
+            "post_volume": 15,
+            "volume_baseline": 4.1,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              },
+              {
+                "query": "arabica prices",
+                "score": 5.0,
+                "volume": 1,
+                "confidence": 0.2,
+                "top_post": "Why are coffee Prices especially Arabica high? ... Arabica coffee faces up to 50% loss of suitable growing areas by 2050"
+              },
+              {
+                "query": "Brazil coffee harvest",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              }
+            ]
+          },
+          "timestamp": "2026-01-23T18:47:47.896605+00:00"
         }
       ],
-      "timestamp": 1769191291.080807
+      "timestamp": 1769194067.8968282
     }
   },
   "reports": {
@@ -99,11 +131,11 @@
     },
     "macro": {
       "data": {
-        "data": "[EVIDENCE]: 1) Arabica coffee futures rose toward $3.55/lb, rebounding from 4-week lows of $3.46 [source: Trading Economics], 2) Brazilian Real rallied to a 2.25-month high, sparking short covering in Arabica futures [source: Barchart], 3) Cecaf\u00e9 reported December Brazilian green coffee exports fell 18.4% YoY to 2.86 million bags [source: Cecaf\u00e9 / Trading Economics], 4) StoneX projects Brazil's 2026/27 coffee crop could reach a record 70.7 million bags [source: Royalty Coffees / StoneX].\n[ANALYSIS]: The rise in Arabica coffee futures is likely due to a combination of factors, primarily the strengthening of the Brazilian Real, which increases the cost of production in local currency terms. This makes Brazilian coffee less competitive on the international market, encouraging short covering and supporting prices. The decline in December coffee exports from Brazil is an indication of short-term supply constraints, which puts upward pressure on prices. However, the long-term forecast of a record Brazilian coffee harvest suggests that while prices may remain elevated in the short-term, they could face downward pressure in the long-term as supply potentially increases. The influence of systematic trading could exacerbate volatile short-term price movements but is unlikely to change the fundamental supply-demand dynamics.\n[CONFIDENCE]: 0.85\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
-        "confidence": 0.85,
+        "data": "[EVIDENCE]: 1. Arabica coffee futures have rebounded to approximately 350.88 USd/Lbs, recovering from a four-week low, driven by currency movements and ongoing supply dynamics [source: Trading Economics]. 2. Estimates for Brazil's 2026/27 crop remain between 70-80 million bags, indicating potential record production levels [source: Trading Economics / Dealers]. 3. Recent weather volatility and a reported 18.4% year-over-year drop in Brazilian green coffee exports for December 2025 continue to influence market sentiment [source: Grounded Data]. 4. Increased Brazilian coffee imports by China, with a rise of nearly 20% [source: Datamar News / Cecaf\u00e9]. 5. The report of a 50% potential loss of suitable Arabica growing areas by 2050 due to climate change continues to surface in news discussions, impacting long-term production outlook [source: Worth / World Coffee Research].\n[ANALYSIS]: The current increase in Arabica coffee futures suggests a short-term bullish sentiment primarily driven by currency strength and supply dynamics. A stronger Brazilian Real makes coffee exports more expensive, which limits farmer selling and supports higher prices in the short term. However, the medium to long-term outlook could be affected by Brazil's potential record harvest in 2026/27, which if weather conditions are favorable, would alleviate supply concerns. The considerable drop in Brazilian exports for December 2025 indicates immediate supply issues potentially driven by weather conditions or logistical challenges. Long-term concerns about climate change impacting suitable growing areas could provoke strategic stockpiling and investment in alternative regions, affecting future supply dynamics. Meanwhile, China's increased imports may reflect shifting trade patterns that stabilize or even enhance demand. Overall, the evidence points to a nuanced situation where immediate upward pressure on prices could be offset by potential supply increases and long-term structural challenges, justifying a neutral sentiment.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
+        "confidence": 0.8,
         "sentiment": "NEUTRAL"
       },
-      "timestamp": 1769188346.3352282
+      "timestamp": 1769194135.5129554
     },
     "geopolitical": {
       "data": {
@@ -234,7 +266,7 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1769192233.9276097
+      "timestamp": 1769194067.8905094
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
