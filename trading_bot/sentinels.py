@@ -197,6 +197,10 @@ class PriceSentinel(Sentinel):
         self.exchange = config.get('exchange', 'NYBOT')
 
     async def check(self, cached_contract=None) -> Optional[SentinelTrigger]:
+        # Guard: Check connection before doing anything
+        if self.ib is None or not self.ib.isConnected():
+            return None
+
         import time as time_module
         now = time_module.time()
 

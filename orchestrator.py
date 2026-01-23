@@ -1125,24 +1125,28 @@ def validate_trigger(trigger):
 async def run_sentinels(config: dict):
     """
     Main loop for Sentinels. Runs concurrently with the scheduler.
+
+    ARCHITECTURE (per Mission Control):
+    - Weather/News/Logistics/X sentinels run 24/7 (no IB needed)
+    - Price/Microstructure sentinels only run during market hours (IB needed)
+    - IB connection is LAZY: only established when market is actually open
     """
     logger.info("--- Starting Sentinel Array ---")
 
-    # Sentinel Config
-    try:
-        sentinel_ib = await IBConnectionPool.get_connection("sentinel", config)
-        configure_market_data_type(sentinel_ib)
-    except Exception as e:
-        logger.error(f"Sentinel IB Connection Failed: {e}")
-        sentinel_ib = IB() # Fallback
+    # === 1. LAZY INITIALIZATION: Start with NO connection ===
+    # Do NOT attempt connection at startup - wait for market open
+    sentinel_ib = None
 
-    price_sentinel = PriceSentinel(config, sentinel_ib)
+    # Initialize Price Sentinel with None - will inject connection later
+    price_sentinel = PriceSentinel(config, None)
+
+    # These sentinels don't need IB - initialize normally
     weather_sentinel = WeatherSentinel(config)
     logistics_sentinel = LogisticsSentinel(config)
     news_sentinel = NewsSentinel(config)
     x_sentinel = XSentimentSentinel(config)
 
-    # Initialize Microstructure variables
+    # Microstructure variables (also lazy)
     micro_sentinel = None
     micro_ib = None
 
@@ -1166,8 +1170,8 @@ async def run_sentinels(config: dict):
     last_contract_refresh = 0
     CONTRACT_REFRESH_INTERVAL = 14400  # 4 hours
 
-    # Outage Tracking
-    last_successful_ib_time = time_module.time()
+    # Outage Tracking (only relevant during market hours)
+    last_successful_ib_time = None  # Will be set on first successful connection
     outage_notification_sent = False
     OUTAGE_THRESHOLD_SECONDS = 600  # 10 minutes
 
@@ -1177,45 +1181,64 @@ async def run_sentinels(config: dict):
             market_open = is_market_open()
             trading_day = is_trading_day()
 
-            # --- Auto-Reconnect for Zombie Sentinel Risk ---
-            if not sentinel_ib.isConnected():
-                try:
-                    logger.warning("Sentinel IB connection lost. Attempting reconnect...")
-                    sentinel_ib = await IBConnectionPool.get_connection("sentinel", config)
-                    configure_market_data_type(sentinel_ib)
+            # === 2. MARKET HOURS GATE: Only connect when market is OPEN ===
+            should_connect = market_open  # NOT trading_day - must be is_market_open()
 
-                    # === CRITICAL FIX: Update PriceSentinel's IB reference ===
-                    # Without this, price_sentinel.ib holds stale disconnected reference
-                    price_sentinel.ib = sentinel_ib
-                    logger.info("Sentinel IB reconnected successfully. PriceSentinel reference updated.")
+            if should_connect:
+                # Market is open - we need IB for Price/Microstructure sentinels
+                if sentinel_ib is None or not sentinel_ib.isConnected():
+                    try:
+                        logger.info("Market Open: Establishing Sentinel IB connection...")
+                        sentinel_ib = await IBConnectionPool.get_connection("sentinel", config)
+                        configure_market_data_type(sentinel_ib)
 
-                    # Reset tracking on success
+                        # === 3. CRITICAL: Inject connection into PriceSentinel ===
+                        # Without this, price_sentinel.ib holds stale/None reference
+                        price_sentinel.ib = sentinel_ib
+
+                        logger.info("Sentinel IB connected and injected into PriceSentinel.")
+
+                        # Reset outage tracking on success
+                        last_successful_ib_time = time_module.time()
+                        outage_notification_sent = False
+
+                    except Exception as e:
+                        # Log as WARNING during market hours (connection should be possible)
+                        logger.warning(f"Sentinel IB connection deferred: {e}")
+
+                        # Track outage duration
+                        if last_successful_ib_time is not None:
+                            time_disconnected = time_module.time() - last_successful_ib_time
+
+                            if time_disconnected > OUTAGE_THRESHOLD_SECONDS and not outage_notification_sent:
+                                send_pushover_notification(
+                                    config.get('notifications', {}),
+                                    "🚨 IB CONNECTION CRITICAL",
+                                    f"No IB connection for {time_disconnected/60:.0f} minutes during market hours. "
+                                    f"Price/Microstructure sentinels OFFLINE. "
+                                    f"Check Gateway status."
+                                )
+                                outage_notification_sent = True
+                                logger.critical(f"IB outage notification sent after {time_disconnected/60:.0f} minutes")
+                else:
+                    # Connection is good - reset tracking
                     last_successful_ib_time = time_module.time()
                     outage_notification_sent = False
 
-                except Exception as e:
-                    logger.error(f"Sentinel IB Reconnect Failed: {e}")
-
-                    # === NEW: Check for extended outage ===
-                    time_disconnected = time_module.time() - last_successful_ib_time
-
-                    if time_disconnected > OUTAGE_THRESHOLD_SECONDS and not outage_notification_sent:
-                        send_pushover_notification(
-                            config.get('notifications', {}),
-                            "🚨 IB CONNECTION CRITICAL",
-                            f"No IB connection for {time_disconnected/60:.0f} minutes. "
-                            f"Price/Microstructure sentinels OFFLINE. "
-                            f"Check Gateway status or restart orchestrator."
-                        )
-                        outage_notification_sent = True
-                        logger.critical(f"IB outage notification sent after {time_disconnected/60:.0f} minutes")
             else:
-                # Connection is good - reset tracking
-                last_successful_ib_time = time_module.time()
-                outage_notification_sent = False
+                # === 4. MARKET CLOSED: Disconnect to prevent zombie state ===
+                if sentinel_ib is not None and sentinel_ib.isConnected():
+                    logger.info("Market Closed: Disconnecting Sentinel IB to prevent zombie state.")
+                    sentinel_ib.disconnect()
+                    sentinel_ib = None
+                    price_sentinel.ib = None
 
-            # Refresh contract cache
-            if sentinel_ib.isConnected() and (now - last_contract_refresh > CONTRACT_REFRESH_INTERVAL):
+                    # Reset outage tracking (not relevant when market is closed)
+                    last_successful_ib_time = None
+                    outage_notification_sent = False
+
+            # === CONTRACT CACHE REFRESH ===
+            if sentinel_ib and sentinel_ib.isConnected() and (now - last_contract_refresh > CONTRACT_REFRESH_INTERVAL):
                 try:
                     active_futures = await get_active_futures(sentinel_ib, config['symbol'], config['exchange'], count=1)
                     cached_contract = active_futures[0] if active_futures else None
@@ -1224,10 +1247,9 @@ async def run_sentinels(config: dict):
                 except Exception as e:
                     logger.error(f"Failed to refresh contract cache: {e}")
 
-            # === LIFECYCLE MANAGEMENT: MicrostructureSentinel ===
-            gateway_available = sentinel_ib.isConnected()
+            # === MICROSTRUCTURE SENTINEL LIFECYCLE ===
+            gateway_available = sentinel_ib is not None and sentinel_ib.isConnected()
 
-            # Only engage microstructure if gateway is available
             if market_open and micro_sentinel is None and gateway_available:
                 logger.info("Market Open: Engaging Microstructure Sentinel")
                 try:
@@ -1235,17 +1257,11 @@ async def run_sentinels(config: dict):
                     configure_market_data_type(micro_ib)
                     micro_sentinel = MicrostructureSentinel(config, micro_ib)
 
-                    # Use cached contract if available, else fetch
                     target = cached_contract
                     if not target and sentinel_ib.isConnected():
-                         # Try sentinel IB first as it might have cache or be connected
-                         active_futures = await get_active_futures(sentinel_ib, config['symbol'], config['exchange'], count=1)
-                         if active_futures: target = active_futures[0]
-
-                    if not target:
-                         # Try micro IB
-                         active_futures = await get_active_futures(micro_ib, config['symbol'], config['exchange'], count=1)
-                         if active_futures: target = active_futures[0]
+                        active_futures = await get_active_futures(sentinel_ib, config['symbol'], config['exchange'], count=1)
+                        if active_futures:
+                            target = active_futures[0]
 
                     if target:
                         await micro_sentinel.subscribe_contract(target)
@@ -1255,6 +1271,7 @@ async def run_sentinels(config: dict):
                 except Exception as e:
                     logger.error(f"Failed to engage MicrostructureSentinel: {e}")
                     micro_sentinel = None
+
             elif market_open and micro_sentinel is None and not gateway_available:
                 logger.debug("Skipping Microstructure engagement - Gateway unavailable")
 
@@ -1269,78 +1286,86 @@ async def run_sentinels(config: dict):
                 await IBConnectionPool.release_connection("microstructure")
                 micro_ib = None
 
-            # Use asyncio.create_task for non-blocking execution (Fix Blocking Sentinel)
+            # === RUN SENTINELS ===
 
-            # 1. Price Sentinel (Every 1 min) - Only if Connected
-            if sentinel_ib.isConnected():
+            # 1. Price Sentinel (Every 1 min) - ONLY if IB connected
+            if sentinel_ib and sentinel_ib.isConnected():
                 trigger = await price_sentinel.check(cached_contract=cached_contract)
                 trigger = validate_trigger(trigger)
                 if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                     asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
                     GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
 
-            # 2. Weather Sentinel (Every 4 hours = 14400s)
-            # Only run weather/news sentinels on trading days (they queue triggers anyway)
-            if trading_day:
-                if now - last_weather > 14400:
-                    trigger = await weather_sentinel.check()
-                    trigger = validate_trigger(trigger)
-                    if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
-                        asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                        GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                    last_weather = now
-
-                # 3. Logistics Sentinel (Every 6 hours = 21600s)
-                if now - last_logistics > 21600:
-                    trigger = await logistics_sentinel.check()
-                    trigger = validate_trigger(trigger)
-                    if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
-                        asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                        GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                    last_logistics = now
-
-                # 4. News Sentinel (Every 1 hour = 3600s)
-                if now - last_news > 3600:
-                    trigger = await news_sentinel.check()
-                    trigger = validate_trigger(trigger)
-                    if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
-                        asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                        GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                    last_news = now
-
-            # 5. X Sentiment Sentinel (Every 30 mins = 1800s, Market Hours)
-            if now - last_x_sentiment > 1800:
-                if is_market_open():
-                    trigger = await x_sentinel.check()
-                    trigger = validate_trigger(trigger)
-
-                    # Update Stats
-                    today = datetime.now().date()
-                    if today != x_sentinel_stats['last_reset']:
-                        logger.info(f"X Sentinel daily stats: {x_sentinel_stats}")
-                        x_sentinel_stats = {'checks_today': 0, 'triggers_today': 0,
-                                          'estimated_tokens': 0, 'estimated_cost_usd': 0.0,
-                                          'last_reset': today}
-
-                    x_sentinel_stats['checks_today'] += 1
-                    x_sentinel_stats['estimated_tokens'] += 3000
-                    # grok-4-1-fast-reasoning pricing: ~$5/1M input tokens
-                    x_sentinel_stats['estimated_cost_usd'] = (x_sentinel_stats['estimated_tokens'] * 5.0 / 1_000_000)
-
-                    if trigger:
-                        x_sentinel_stats['triggers_today'] += 1
+            # 2. Weather Sentinel (Every 4 hours) - Runs 24/7, no IB needed
+            if (now - last_weather) > 14400:
+                trigger = await weather_sentinel.check()
+                trigger = validate_trigger(trigger)
+                if trigger:
+                    if market_open and sentinel_ib and sentinel_ib.isConnected():
                         if GLOBAL_DEDUPLICATOR.should_process(trigger):
                             asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
                             GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                    else:
+                        # Defer for market open
+                        StateManager.queue_deferred_trigger(trigger)
+                        logger.info(f"Deferred {trigger.source} trigger for market open")
+                last_weather = now
 
-                    if x_sentinel_stats['checks_today'] % 10 == 0:
-                        logger.info(
-                            f"X Sentinel today: {x_sentinel_stats['checks_today']} checks, "
-                            f"{x_sentinel_stats['triggers_today']} triggers, "
-                            f"~${x_sentinel_stats['estimated_cost_usd']:.2f}"
-                        )
+            # 3. Logistics Sentinel (Every 6 hours) - Runs 24/7, no IB needed
+            if (now - last_logistics) > 21600:
+                trigger = await logistics_sentinel.check()
+                trigger = validate_trigger(trigger)
+                if trigger:
+                    if market_open and sentinel_ib and sentinel_ib.isConnected():
+                        if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                            asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                            GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                    else:
+                        StateManager.queue_deferred_trigger(trigger)
+                        logger.info(f"Deferred {trigger.source} trigger for market open")
+                last_logistics = now
 
-                    last_x_sentiment = now
+            # 4. News Sentinel (Every 2 hours) - Runs 24/7, no IB needed
+            if (now - last_news) > 7200:
+                trigger = await news_sentinel.check()
+                trigger = validate_trigger(trigger)
+                if trigger:
+                    if market_open and sentinel_ib and sentinel_ib.isConnected():
+                        if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                            asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                            GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                    else:
+                        StateManager.queue_deferred_trigger(trigger)
+                        logger.info(f"Deferred {trigger.source} trigger for market open")
+                last_news = now
+
+            # 5. X Sentiment Sentinel (Every 30 min during trading day)
+            if trading_day and (now - last_x_sentiment) > 1800:
+                # Reset daily stats if new day
+                if datetime.now().date() != x_sentinel_stats['last_reset']:
+                    x_sentinel_stats = {
+                        'checks_today': 0,
+                        'triggers_today': 0,
+                        'estimated_tokens': 0,
+                        'estimated_cost_usd': 0.0,
+                        'last_reset': datetime.now().date()
+                    }
+
+                trigger = await x_sentinel.check()
+                trigger = validate_trigger(trigger)
+                x_sentinel_stats['checks_today'] += 1
+
+                if trigger:
+                    x_sentinel_stats['triggers_today'] += 1
+                    if market_open and sentinel_ib and sentinel_ib.isConnected():
+                        if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                            asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                            GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                    else:
+                        StateManager.queue_deferred_trigger(trigger)
+                        logger.info(f"Deferred {trigger.source} trigger for market open")
+
+                last_x_sentiment = now
 
             # 6. Microstructure Sentinel (Every 1 min with Price Sentinel)
             if micro_sentinel and micro_ib and micro_ib.isConnected():
@@ -1348,17 +1373,15 @@ async def run_sentinels(config: dict):
                 if micro_trigger:
                     logger.warning(f"MICROSTRUCTURE ALERT: {micro_trigger.reason}")
                     if micro_trigger.severity >= 7:
-                        # Use sentinel_ib for emergency cycle as micro_ib is dedicated to monitoring
                         asyncio.create_task(run_emergency_cycle(micro_trigger, config, sentinel_ib))
                     else:
-                        # Log warning but don't trigger full cycle
                         send_pushover_notification(
                             config.get('notifications', {}),
                             "Microstructure Warning",
                             f"{micro_trigger.reason} (Severity: {micro_trigger.severity:.1f})"
                         )
 
-            await asyncio.sleep(60) # Loop tick
+            await asyncio.sleep(60)  # Loop tick
 
         except asyncio.CancelledError:
             logger.info("Sentinel Loop Cancelled.")
