@@ -3,16 +3,6 @@
     "events": {
       "data": [
         {
-          "source": "WeatherSentinel",
-          "reason": "Drought Risk in Central Highlands (Vietnam): 10 days with < 5.0mm rain",
-          "payload": {
-            "location": "Central Highlands (Vietnam)",
-            "type": "DROUGHT",
-            "days": 10
-          },
-          "timestamp": "2026-01-23T10:35:09.932384+00:00"
-        },
-        {
           "source": "XSentimentSentinel",
           "reason": "UNUSUAL X ACTIVITY SPIKE (17 posts, 2.0x baseline)",
           "payload": {
@@ -179,9 +169,51 @@
             ]
           },
           "timestamp": "2026-01-23T15:09:19.886686+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (12 posts, 2.0x baseline)",
+          "payload": {
+            "sentiment_score": 4.5,
+            "confidence": 0.15,
+            "top_themes": [
+              "systematic trading dominance",
+              "personal trading anecdotes",
+              "casual coffee mentions",
+              "High Arabica prices",
+              "Future supply shortages"
+            ],
+            "post_volume": 12,
+            "volume_baseline": 4.2,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 3,
+                "confidence": 0.2,
+                "top_post": "@chigrl Just another trade just owned by systematic momteum centric strategies... Look at coffee and cocoa last year. Systematic participants dominate..."
+              },
+              {
+                "query": "arabica prices",
+                "score": 5.0,
+                "volume": 1,
+                "confidence": 0.2,
+                "top_post": "Why are coffee Prices especially Arabica high? ... Arabica coffee faces up to 50% loss of suitable growing areas by 2050..."
+              },
+              {
+                "query": "Brazil coffee harvest",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              }
+            ]
+          },
+          "timestamp": "2026-01-23T16:12:23.535215+00:00"
         }
       ],
-      "timestamp": 1769180959.8869176
+      "timestamp": 1769184743.5354197
     }
   },
   "reports": {
@@ -195,11 +227,11 @@
     },
     "macro": {
       "data": {
-        "data": "[EVIDENCE]: 1. Arabica coffee futures rebounded to ~$3.55/lb, recovering from a 4-week low of $3.44/lb [source: Trading Economics / Barchart]. 2. Brazilian Real rallied to a 2.25-month high, discouraging producer selling and supporting futures prices [source: Barchart]. 3. Media reports predict a 50% reduction in suitable Arabica growing land by 2050 due to climate change [source: Worth Magazine]. 4. Forecasts of improved rainfall in Brazil's Minas Gerais region initially led to falling coffee prices [source: Nasdaq / Barchart].\n[ANALYSIS]: The analysis identified potential factors affecting Arabica coffee futures, notably the strengthening Brazilian Real and climate change concerns, which might support higher prices. However, causal relationships were somewhat assumed without strong backing. For instance, while a stronger Real could discourage producer selling, it doesn't guarantee futures prices will rise if other factors counteract this. Additionally, climate change warnings are more speculative and long-term, possibly bearing limited immediate impact. Improved rainfall forecasts indeed introduce volatility, but their exact effect on pricing was not precisely quantified. More concrete data on supply levels and demand dynamics would strengthen such assessments.\n[CONFIDENCE]: 0.7\n[SENTIMENT TAG]: [SENTIMENT: BULLISH]",
+        "data": "[EVIDENCE]: 1) Arabica coffee futures rose to 351.21 USd/lb (+0.98%) on January 23, 2026, recovering from a 4-week low. [Source: Trading Economics / Nasdaq]; 2) The Brazilian Real rallied to a 2.25-month high, triggering short-covering in coffee futures. [Source: Barchart / Nasdaq]; 3) Minas Gerais received only 33.9 mm of rain last week, 53% of the historical average, indicating ongoing supply concerns. [Source: Barchart]\n[ANALYSIS]: The analysis correctly identifies the relationship between the rally in the Brazilian Real and its impact on coffee futures. The currency appreciation logically discourages sales from Brazilian farmers, leading to short-covering in coffee markets. However, the link between rainfall inadequacies and supply concerns could be a bit overemphasized without further details on how much this impacts overall supply. The evidence supports the idea of ongoing supply concerns, which could support higher future prices, but concurrent broader bearish signals have been noted. This results in a contested near-term trend, not fully leaning bullish or bearish. The mention of systematic trading influences could keep the sentiment neutral. To improve, the analysis should weigh the previous bearish factors more specifically with the new developments.\n[CONFIDENCE]: 0.7\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
         "confidence": 0.7,
-        "sentiment": "BULLISH"
+        "sentiment": "NEUTRAL"
       },
-      "timestamp": 1769181349.4045067
+      "timestamp": 1769184856.7397096
     },
     "geopolitical": {
       "data": {
@@ -330,7 +362,7 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1769182798.4415483
+      "timestamp": 1769184743.5286102
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
