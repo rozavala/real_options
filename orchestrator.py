@@ -679,7 +679,7 @@ async def analyze_and_archive(config: dict):
     """
     logger.info("--- Initiating end-of-day analysis and archiving ---")
     try:
-        await run_performance_analysis()
+        await run_performance_analysis(config)
         archive_trade_ledger()
         logger.info("--- End-of-day analysis and archiving complete ---")
     except Exception as e:
