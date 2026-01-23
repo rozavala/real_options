@@ -2197,3 +2197,105 @@ I0000 00:00:1769176234.247248  171537 device_compiler.h:196] Compiled cluster us
 2026-01-23 15:09:24,887 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
 2026-01-23 15:09:24,887 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
 2026-01-23 15:09:24,887 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 15:15:43,497 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 15:15:43,820 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-23 15:15:43,820 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: 1. Arabi...' cues -> ['geopolitical', 'fundamentalist']
+2026-01-23 15:15:49,399 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 15:15:49,521 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-23 15:15:49,521 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.80 -> 0.70
+2026-01-23 15:15:49,521 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=RANGE_BOUND
+2026-01-23 15:15:49,522 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=-0.020, dominant=latest_ml_signals)
+2026-01-23 15:15:49,522 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.3,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.0,
+    "final_weight": 1.05,
+    "contribution": 0.0
+  },
+  {
+    "agent": "latest_ml_signals",
+    "direction": "BEARISH",
+    "confidence": 0.3,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": -0.3
+  }
+]
+2026-01-23 15:16:12,064 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 15:16:35,875 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 15:16:44,042 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 15:16:44,051 - trading_bot.agents - INFO - Master decision vetoed by conflicting Weighted Vote (NEUTRAL)
+2026-01-23 15:16:44,051 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.85)
+2026-01-23 15:16:44,052 - Orchestrator - INFO - Emergency Cycle concluded with no action.
+2026-01-23 15:16:44,053 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-23 15:18:20,970 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 41% of average
+2026-01-23 15:18:21,261 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-23 15:24:22,010 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 41% of average
+2026-01-23 15:24:22,204 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
