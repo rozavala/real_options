@@ -3,16 +3,6 @@
     "events": {
       "data": [
         {
-          "source": "WeatherSentinel",
-          "reason": "Drought Risk in Dak Lak (Vietnam): 10 days with < 5.0mm rain",
-          "payload": {
-            "location": "Dak Lak (Vietnam)",
-            "type": "DROUGHT",
-            "days": 10
-          },
-          "timestamp": "2026-01-22T18:41:09.037545+00:00"
-        },
-        {
           "source": "XSentimentSentinel",
           "reason": "UNUSUAL X ACTIVITY SPIKE (17 posts, 2.0x baseline)",
           "payload": {
@@ -147,9 +137,51 @@
             ]
           },
           "timestamp": "2026-01-23T11:35:12.327466+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (14 posts, 2.0x baseline)",
+          "payload": {
+            "sentiment_score": 4.25,
+            "confidence": 0.15,
+            "top_themes": [
+              "None detected",
+              "High current prices",
+              "Future growing area loss",
+              "Coffee quality praise",
+              "Cultural/economic promotion"
+            ],
+            "post_volume": 14,
+            "volume_baseline": 4.1,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.2,
+                "top_post": null
+              },
+              {
+                "query": "arabica prices",
+                "score": 5.0,
+                "volume": 1,
+                "confidence": 0.1,
+                "top_post": "Why are coffee Prices especially Arabica high? ... Arabica coffee faces up to 50% loss of suitable growing areas by 2050"
+              },
+              {
+                "query": "Brazil coffee harvest",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              }
+            ]
+          },
+          "timestamp": "2026-01-23T13:06:46.362676+00:00"
         }
       ],
-      "timestamp": 1769168112.3277335
+      "timestamp": 1769173606.3628843
     }
   },
   "reports": {
@@ -163,11 +195,11 @@
     },
     "macro": {
       "data": {
-        "data": "[EVIDENCE]: [2026-01-23] March Arabica coffee futures closed up +0.06% at roughly $3.48/lb, recovering from a recent slump. (source: Barchart / Trading Economics), [2026-01-23] Rain forecasts for Minas Gerais (Brazil) are weighing on prices by easing drought concerns. (source: The Weather Channel / Palmetto Grain Brokerage), [2026-01-22] A rally in the Brazilian Real to a 2.25-month high against the dollar sparked short-covering in Arabica futures. (source: Nasdaq / Barchart), [2026-01-08] A market report titled 'Coffee Derivatives Market 2026' highlighted institutional capital treating coffee as a 'strategic commodity,' fueling systematic trading volatility. (source: Vietnam Coffee Market)\n[ANALYSIS]: The interplay between forecasted weather improvements and currency dynamics appears to significantly influence Arabica coffee futures. Recent rainfall in Minas Gerais is expected to alleviate drought fears, potentially boosting future supply, which can pressure prices downward. The strengthening of the Brazilian Real has induced short-covering that temporarily elevated prices; however, such actions usually indicate market participants reducing bearish bets rather than establishing long-term bullish positions. Systematic trading by institutions treating coffee as a 'strategic commodity' introduces additional volatility. This environment suggests price instability with potential downward pressures due to supply increase factors but is unstable due to systematic financial strategies and currency influences.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
-        "confidence": 0.8,
-        "sentiment": "NEUTRAL"
+        "data": "[EVIDENCE]: [EVIDENCE]: 1. Coffee prices rose to 352.54 USd/Lbs, up 1.36% from the previous day. (source: Trading Economics) 2. March Arabica coffee futures closed up +0.20 (+0.06%) while Robusta closed down. (source: Barchart) 3. Brazilian coffee exports for 2025 reached a record revenue of $15.6 billion despite a 21% drop in volume. (source: Cecaf\u00e9 / GCR Magazine) 4. Arabica coffee futures hit a 4-week low, dipping below $3.45 per pound on positive Brazil crop expectations. (source: Trading Economics) 5. Estimates for Brazil's 2026/27 crop remain between 70-80 million bags. (source: Trading Economics)\n[ANALYSIS]: The analysis suggests a short-term bullish outlook on coffee prices, supported by recent price increases and Brazil's strong revenue from exports despite volume drops. However, the reasoning could be improved by acknowledging potential biases such as confirmation bias\u2014interpreting the recent price rise as a definitive trend without considering broader context or alternative explanations. The mention of a temporary rally in the Brazilian Real is not further explored or quantified, weakening the causation claim. Furthermore, while high current prices do imply tight stocks, the recognition of potential future supply increases due to a strong 2026/27 crop might suggest a more neutral long-term perspective. Therefore, it's essential to balance near-term bullish sentiment with a cautious outlook for medium to long-term supply changes. Sources are cited appropriately, providing a solid basis for claims, though the reliance on XSentimentSentinel is presented vaguely without source specifics or data insights.\n[CONFIDENCE]: 0.7\n[SENTIMENT TAG]: [SENTIMENT: BULLISH]",
+        "confidence": 0.7,
+        "sentiment": "BULLISH"
       },
-      "timestamp": 1769168167.9968498
+      "timestamp": 1769173742.2080767
     },
     "geopolitical": {
       "data": {
@@ -297,15 +329,15 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1769171770.5212727
+      "timestamp": 1769173606.3551729
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
       "timestamp": 1769150022.7641332
     },
     "last_ib_success": {
-      "data": "2026-01-23T08:30:56.792505+00:00",
-      "timestamp": 1769157056.7928226
+      "data": "2026-01-23T13:20:00.457331+00:00",
+      "timestamp": 1769174400.4577234
     },
     "microstructure_ib_status": {
       "data": "CONNECTED",
@@ -313,7 +345,7 @@
     },
     "audit_ib_status": {
       "data": "CONNECTED",
-      "timestamp": 1769088000.3177412
+      "timestamp": 1769174400.4577205
     },
     "order_manager_ib_status": {
       "data": "CONNECTED",
