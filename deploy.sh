@@ -36,8 +36,10 @@ echo "--- 5. Syncing Equity Data... ---"
 python ~/real_options/equity_logger.py --sync || true
 
 echo "--- 6. Starting the new bot & dashboard... ---"
-# Start Orchestrator
-nohup python -u ~/real_options/orchestrator.py >> ~/real_options/logs/orchestrator.log 2>&1 &
+# Start Orchestrator (Updated to use Safety Wrapper)
+# Ensures pre-flight module checks run every time
+chmod +x ~/real_options/scripts/start_orchestrator.sh
+nohup ~/real_options/scripts/start_orchestrator.sh >> ~/real_options/logs/orchestrator.log 2>&1 &
 
 # Start Dashboard
 nohup streamlit run ~/real_options/dashboard.py --server.address 0.0.0.0 > ~/real_options/logs/dashboard.log 2>&1 &
