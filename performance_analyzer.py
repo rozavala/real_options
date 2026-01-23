@@ -452,13 +452,14 @@ async def analyze_performance(config: dict) -> dict | None:
         logger.error(f"An error occurred during performance analysis: {e}", exc_info=True)
         return None
 
-async def main():
+async def main(config: dict = None):
     """
     Main function to run analysis and send notifications in multiple parts.
     """
-    config = load_config()
-    if not config:
-        logger.critical("Failed to load configuration. Exiting."); return
+    if config is None:
+        config = load_config()
+        if not config:
+            logger.critical("Failed to load configuration. Exiting."); return
 
     analysis_result = await analyze_performance(config)
 

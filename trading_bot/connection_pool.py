@@ -118,10 +118,9 @@ class IBConnectionPool:
             port = config.get('connection', {}).get('port', 7497)
 
             if await cls._check_gateway_health(host, port):
-                # Gateway is responding! Reset backoff if it was high
-                if cls._reconnect_backoff.get(purpose, 5.0) > 60:
-                    logger.info(f"Gateway healthy - resetting backoff for {purpose}")
-                    cls._reconnect_backoff[purpose] = 5.0
+                # TCP is open, but DO NOT RESET BACKOFF HERE.
+                # We don't know if the App layer is healthy yet.
+                pass
             else:
                 # Gateway not responding - don't increase backoff for Gateway-level issues
                 logger.error(f"IB Gateway at {host}:{port} not accepting connections")
@@ -154,7 +153,7 @@ class IBConnectionPool:
                     host=host,
                     port=port,
                     clientId=client_id,
-                    timeout=30
+                    timeout=10
                 )
                 cls._instances[purpose] = ib
                 cls._reconnect_backoff[purpose] = 5.0
@@ -179,6 +178,24 @@ class IBConnectionPool:
                     cls.MAX_RECONNECT_BACKOFF
                 )
                 cls._consecutive_failures[purpose] = cls._consecutive_failures.get(purpose, 0) + 1
+
+                # === ALERTING LOGIC ===
+                # Alert exactly once when threshold is reached
+                if cls._consecutive_failures[purpose] == cls.FORCE_RESET_THRESHOLD:
+                    try:
+                        from notifications import send_pushover_notification
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "🚨 IB GATEWAY ZOMBIE DETECTED",
+                            f"Gateway accepting TCP but failing API handshake "
+                            f"{cls.FORCE_RESET_THRESHOLD} times in a row. "
+                            f"Manual restart may be required."
+                        )
+                    except Exception:
+                        pass
+
+                if cls._consecutive_failures.get(purpose, 0) >= cls.FORCE_RESET_THRESHOLD:
+                    await cls._force_reset_connection(purpose)
 
                 # === NEW: Log DISCONNECTED status ===
                 try:

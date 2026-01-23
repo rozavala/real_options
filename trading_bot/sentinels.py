@@ -349,7 +349,7 @@ class WeatherSentinel(Sentinel):
                         }
                         self._save_alert_state()
                         msg = f"Frost Risk in {name}: Min Temp {min_temp}°C < {frost_threshold}°C"
-                        logger.warning(f"WEATHER SENTINEL TRIGGERED: {msg}")
+                        logger.warning(f"WEATHER SENTINEL DETECTED: {msg}")
                         return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "FROST", "value": min_temp}, severity=8)
 
                 # Check Drought
@@ -367,7 +367,7 @@ class WeatherSentinel(Sentinel):
                         }
                         self._save_alert_state()
                         msg = f"Drought Risk in {name}: {low_rain_days} days with < {rain_limit}mm rain"
-                        logger.warning(f"WEATHER SENTINEL TRIGGERED: {msg}")
+                        logger.warning(f"WEATHER SENTINEL DETECTED: {msg}")
                         return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "DROUGHT", "days": low_rain_days}, severity=6)
 
             except Exception as e:
@@ -464,7 +464,7 @@ class LogisticsSentinel(Sentinel):
 
         if "YES" in answer:
             msg = "Potential Supply Chain Disruption detected in headlines."
-            logger.warning(f"LOGISTICS SENTINEL TRIGGERED: {msg}")
+            logger.warning(f"LOGISTICS SENTINEL DETECTED: {msg}")
             return SentinelTrigger("LogisticsSentinel", msg, {"headlines": headlines[:3]}, severity=6)
 
         return None
@@ -531,7 +531,7 @@ class NewsSentinel(Sentinel):
         score = data.get('score', 0)
         if score >= self.threshold:
             msg = f"Extreme Sentiment Detected (Score: {score}/10): {data.get('summary')}"
-            logger.warning(f"NEWS SENTINEL TRIGGERED: {msg}")
+            logger.warning(f"NEWS SENTINEL DETECTED: {msg}")
             return SentinelTrigger("NewsSentinel", msg, {"score": score, "summary": data.get('summary')}, severity=int(score))
 
         return None
