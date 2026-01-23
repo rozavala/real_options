@@ -25,3 +25,114 @@
 2026-01-23 17:19:27,747 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
 2026-01-23 17:20:15,904 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
 2026-01-23 17:20:16,014 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 17:20:36,966 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 17:21:16,401 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-23 17:21:16,417 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.50 -> 0.50
+2026-01-23 17:21:16,417 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=RANGE_BOUND
+2026-01-23 17:21:16,417 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-23 17:21:16,417 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.0,
+    "domain_weight": 3.0,
+    "reliability_mult": 1.0,
+    "final_weight": 3.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 0.5,
+    "reliability_mult": 1.0,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.4,
+    "reliability_mult": 1.0,
+    "final_weight": 1.4,
+    "contribution": 0.0
+  },
+  {
+    "agent": "latest_ml_signals",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  }
+]
+2026-01-23 17:21:30,404 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 17:21:55,733 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 17:22:01,462 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 17:22:01,465 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.7)
+2026-01-23 17:22:01,466 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-01-23 17:22:01,466 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-23 17:22:01,474 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-01-23 17:22:01,474 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: Drought Risk in Dak Lak (Vietnam): 10 days with < 5.0mm rain
+2026-01-23 17:22:01,816 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-23 17:22:01,995 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-23 17:22:01,996 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'xai', 'openai', 'anthropic']
+2026-01-23 17:22:01,996 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'xai', 'openai', 'anthropic'], 'diversity_score': 1.0}
+2026-01-23 17:22:02,005 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-23 17:22:02,005 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-01-23 17:22:02,005 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-01-23 17:22:02,070 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-01-23 17:22:02,071 - Orchestrator - INFO - Targeting contract: KCH6 (202603)
+2026-01-23 17:22:06,192 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
+2026-01-23 17:22:06,194 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
+2026-01-23 17:22:06,194 - trading_bot.agents - INFO - Waking up agronomist...
+2026-01-23 17:22:06,538 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-23 17:22:06,539 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-23 17:22:06,539 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
