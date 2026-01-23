@@ -341,3 +341,40 @@
 2026-01-23 17:27:08,464 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
 2026-01-23 17:27:29,085 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
 2026-01-23 17:27:33,951 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 17:28:02,025 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 17:28:02,027 - trading_bot.agents - ERROR - Devil's Advocate failed: Extra data: line 12 column 1 (char 2177)
+2026-01-23 17:28:02,027 - trading_bot.agents - INFO - DEVIL'S ADVOCATE CHECK PASSED. Risks identified: ['DA Failed']
+2026-01-23 17:28:02,027 - Orchestrator - INFO - Emergency Decision: BULLISH (0.75)
+2026-01-23 17:28:02,027 - Orchestrator - INFO - Emergency Cycle ACTION: BULLISH (DIRECTIONAL)
+2026-01-23 17:28:02,027 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-23 17:28:02,027 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'xai', 'openai', 'anthropic']
+2026-01-23 17:28:02,028 - trading_bot.compliance - WARNING - Concentration check failed: 'IB' object has no attribute 'reqPortfolioAsync'
+2026-01-23 17:28:03,971 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 17:28:03,972 - Orchestrator - INFO - Decision is actionable. Generating order...
+2026-01-23 17:28:04,070 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.88) * Vol(1.0) * Heat(1.0) = 0
+2026-01-23 17:28:04,071 - root - INFO - Fetching option chain for future KCH6...
+2026-01-23 17:28:04,113 - root - INFO - --- Defining BULLISH Spread for KCH6 ---
+2026-01-23 17:28:04,114 - root - INFO - Identified ATM strike: 350.0 for underlying price 350.9
+2026-01-23 17:28:04,114 - root - INFO - Defined Bull Call Spread legs: BUY 350.0C, SELL 525.0C
+2026-01-23 17:28:04,114 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-23 17:28:04,349 - root - INFO - Fetching market data for option: KOH6 C3.5
+2026-01-23 17:28:06,350 - root - ERROR - Insufficient live market data for KOH6 C3.5. Bid: 10.41, Ask: 10.73, IV: None
+2026-01-23 17:28:06,351 - root - ERROR - Failed to get market data for KOH6 C3.5. Aborting order.
+2026-01-23 17:28:06,354 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-23 17:28:06,367 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-01-23 17:28:06,368 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: Drought Risk in Dak Lak (Vietnam): 10 days with < 5.0mm rain
+2026-01-23 17:28:06,685 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-23 17:28:06,774 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-23 17:28:06,775 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'xai', 'openai', 'anthropic']
+2026-01-23 17:28:06,775 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'xai', 'openai', 'anthropic'], 'diversity_score': 1.0}
+2026-01-23 17:28:06,780 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-23 17:28:06,780 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-01-23 17:28:06,780 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-01-23 17:28:06,843 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-01-23 17:28:06,843 - Orchestrator - INFO - Targeting contract: KCH6 (202603)
+2026-01-23 17:28:10,962 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
+2026-01-23 17:28:10,964 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
+2026-01-23 17:28:10,964 - trading_bot.agents - INFO - Waking up agronomist...
+2026-01-23 17:28:11,299 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-23 17:28:11,299 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-23 17:28:11,299 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
