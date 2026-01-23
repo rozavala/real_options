@@ -9,6 +9,7 @@ import subprocess
 import os
 import sys
 import socket
+import json
 from datetime import datetime, timezone
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,102 +24,61 @@ st.caption("System maintenance and operational tools")
 def get_current_environment():
     """Detect current environment from hostname or config."""
     hostname = socket.gethostname()
-    # Production droplet typically has 'prod' in hostname or specific IP
-    # Adjust this logic based on your actual naming convention
     if 'prod' in hostname.lower() or hostname == 'coffee-bot-prod':
         return 'prod'
-    # Fallback to env var if set
     if os.getenv("COFFEE_BOT_ENV") == "prod":
         return "prod"
     return 'dev'
 
 current_env = get_current_environment()
-
+st.info(f"📍 Current Environment: **{current_env}**")
 st.markdown("---")
 
-# === SECTION 1: Log Collection ===
+# ==============================================================================
+# SECTION 1: Log Collection
+# ==============================================================================
 st.subheader("📥 Log Collection")
 st.markdown("""
 Collect and archive logs to the centralized logs branch for analysis and debugging.
 This captures orchestrator logs, dashboard logs, state files, and trading data.
 """)
 
-col1, col2 = st.columns(2)
-
-with col1:
-    st.info(f"📍 Current Environment: **{current_env}**")
-
-with col2:
-    if st.button("🚀 Collect Logs", type="primary"):
-        with st.spinner(f"Collecting {current_env} logs..."):
-            try:
-                env = os.environ.copy()
-                env["LOG_ENV_NAME"] = current_env
-
-                result = subprocess.run(
-                    ["bash", "scripts/collect_logs.sh"],
-                    capture_output=True,
-                    text=True,
-                    timeout=120,
-                    env=env,
-                    cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                )
-
-                if result.returncode == 0:
-                    st.success(f"✅ Successfully collected {current_env} logs!")
-                    with st.expander("View Output"):
-                        st.code(result.stdout)
-                else:
-                    st.error(f"❌ Log collection failed")
-                    with st.expander("View Error"):
-                        st.code(result.stderr or result.stdout)
-
-            except subprocess.TimeoutExpired:
-                st.error("⏱️ Log collection timed out (120s)")
-            except FileNotFoundError:
-                st.error("❌ Script not found: scripts/collect_logs.sh")
-            except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
-
-st.markdown("---")
-
-# === SECTION 2: Equity Sync ===
-st.subheader("💰 Equity Data Sync")
-st.markdown("""
-Synchronize equity data from IBKR Flex Query. This updates `data/daily_equity.csv`
-with the official Net Asset Value history from your broker.
-""")
-
-if st.button("🔄 Sync Equity from IBKR"):
-    with st.spinner("Syncing equity data from Flex Query..."):
+if st.button("🚀 Collect Logs", type="primary"):
+    with st.spinner(f"Collecting {current_env} logs..."):
         try:
+            env = os.environ.copy()
+            env["LOG_ENV_NAME"] = current_env
+
             result = subprocess.run(
-                [sys.executable, "equity_logger.py", "--sync"],
+                ["bash", "scripts/collect_logs.sh"],
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=120,
+                env=env,
                 cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             )
 
             if result.returncode == 0:
-                st.success("✅ Equity data synced successfully!")
-                # Clear cache so dashboard shows updated data
-                st.cache_data.clear()
+                st.success(f"✅ Successfully collected {current_env} logs!")
                 with st.expander("View Output"):
                     st.code(result.stdout)
             else:
-                st.error("❌ Sync failed")
+                st.error(f"❌ Log collection failed")
                 with st.expander("View Error"):
                     st.code(result.stderr or result.stdout)
 
         except subprocess.TimeoutExpired:
-            st.error("⏱️ Sync timed out (60s)")
+            st.error("⏱️ Log collection timed out (120s)")
+        except FileNotFoundError:
+            st.error("❌ Script not found: scripts/collect_logs.sh")
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")
 
 st.markdown("---")
 
-# === SECTION 3: Log Analysis Quick Actions ===
+# ==============================================================================
+# SECTION 2: Log Analysis
+# ==============================================================================
 st.subheader("📊 Log Analysis")
 st.markdown("Quick access to log analysis utilities for the current environment.")
 
@@ -224,7 +184,164 @@ with perf_cols[1]:
 
 st.markdown("---")
 
-# === SECTION 4: Cache Management ===
+# ==============================================================================
+# SECTION 3: System Validation
+# ==============================================================================
+st.subheader("🔍 System Validation")
+st.markdown("""
+Run comprehensive preflight checks to verify all system components are operational.
+This validates the entire architecture from sentinels to council to order execution.
+""")
+
+validation_cols = st.columns([2, 1])
+
+with validation_cols[0]:
+    run_validation = st.button("🚀 Run System Validation", type="primary", use_container_width=True)
+
+with validation_cols[1]:
+    json_output = st.checkbox("JSON Output", value=False)
+    quick_mode = st.checkbox("Quick Mode (Skip slow tests)", value=True)
+
+if run_validation:
+    with st.spinner("Running comprehensive system validation..."):
+        try:
+            cmd = [sys.executable, "verify_system_readiness.py"]
+
+            if json_output:
+                cmd.append("--json")
+            else:
+                cmd.append("--verbose")
+
+            if quick_mode:
+                cmd.append("--quick")
+
+            # Also skip IBKR if not available (auto-detect or user pref?)
+            # For now let script handle it or assume user wants full check if not quick
+            # But let's add --skip-ibkr if quick mode is OFF but we suspect no gateway?
+            # No, keep it simple.
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            )
+
+            # Parse exit code
+            if result.returncode == 0:
+                st.success("✅ All systems operational!")
+            elif result.returncode == 2:
+                st.warning("⚠️ System operational with warnings")
+            else:
+                st.error("❌ Critical issues detected")
+
+            # Display output
+            if json_output:
+                try:
+                    # Robust JSON parsing (ignore preceding warnings)
+                    output_str = result.stdout.strip()
+                    json_start = output_str.find("{")
+                    json_end = output_str.rfind("}") + 1
+
+                    if json_start >= 0 and json_end > json_start:
+                        data = json.loads(output_str[json_start:json_end])
+                    else:
+                        data = json.loads(output_str) # Fallback attempt
+
+                    # Summary metrics
+                    summary = data.get('summary', {})
+                    metric_cols = st.columns(4)
+                    with metric_cols[0]:
+                        total = summary.get('total', 0)
+                        passed = summary.get('passed', 0)
+                        health = (passed / total * 100) if total > 0 else 0
+                        st.metric("Health", f"{health:.1f}%")
+                    with metric_cols[1]:
+                        st.metric("Passed", summary.get('passed', 0), delta=None)
+                    with metric_cols[2]:
+                        st.metric("Warnings", summary.get('warnings', 0), delta=None, delta_color="off")
+                    with metric_cols[3]:
+                        st.metric("Failures", summary.get('failed', 0), delta=None, delta_color="inverse")
+
+                    # Results table
+                    if data.get('checks'):
+                        import pandas as pd
+                        df = pd.DataFrame(data['checks'])
+
+                        # Color-code status
+                        def color_status(val):
+                            colors = {
+                                'PASS': 'background-color: #d4edda; color: #155724',
+                                'WARN': 'background-color: #fff3cd; color: #856404',
+                                'FAIL': 'background-color: #f8d7da; color: #721c24',
+                                'SKIP': 'background-color: #e2e3e5; color: #383d41',
+                                'INFO': 'background-color: #cce5ff; color: #004085',
+                            }
+                            return colors.get(val, '')
+
+                        # Select relevant columns
+                        display_df = df[['status', 'name', 'message', 'details', 'duration_ms']]
+
+                        styled_df = display_df.style.applymap(color_status, subset=['status'])
+                        st.dataframe(styled_df, use_container_width=True, hide_index=True)
+
+                except json.JSONDecodeError:
+                    st.warning("Could not parse JSON output. Raw output below:")
+                    st.code(result.stdout)
+            else:
+                # Plain text output
+                st.code(result.stdout or result.stderr, language=None)
+
+        except subprocess.TimeoutExpired:
+            st.error("⏱️ Validation timed out (120s)")
+        except FileNotFoundError:
+            st.error("❌ verify_system_readiness.py not found")
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
+
+st.markdown("---")
+
+# ==============================================================================
+# SECTION 4: Equity Sync
+# ==============================================================================
+st.subheader("💰 Equity Data Sync")
+st.markdown("""
+Synchronize equity data from IBKR Flex Query. This updates `data/daily_equity.csv`
+with the official Net Asset Value history from your broker.
+""")
+
+if st.button("🔄 Sync Equity from IBKR"):
+    with st.spinner("Syncing equity data from Flex Query..."):
+        try:
+            result = subprocess.run(
+                [sys.executable, "equity_logger.py", "--sync"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            )
+
+            if result.returncode == 0:
+                st.success("✅ Equity data synced successfully!")
+                st.cache_data.clear()
+                with st.expander("View Output"):
+                    st.code(result.stdout)
+            else:
+                st.error("❌ Sync failed")
+                with st.expander("View Error"):
+                    st.code(result.stderr or result.stdout)
+
+        except subprocess.TimeoutExpired:
+            st.error("⏱️ Sync timed out (60s)")
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
+
+st.markdown("---")
+
+# ==============================================================================
+# SECTION 5: Cache Management
+# ==============================================================================
 st.subheader("🗑️ Cache Management")
 st.markdown("Clear cached data to force fresh data loads from sources.")
 
@@ -241,7 +358,9 @@ with cache_cols[1]:
 
 st.markdown("---")
 
-# === SECTION 5: System Info ===
+# ==============================================================================
+# SECTION 6: System Info
+# ==============================================================================
 st.subheader("ℹ️ System Information")
 
 info_cols = st.columns(3)
