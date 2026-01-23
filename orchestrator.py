@@ -726,23 +726,38 @@ async def reconcile_and_analyze(config: dict):
 
 
 async def process_deferred_triggers(config: dict):
-    """Process deferred triggers from overnight, but ONLY if market is open."""
+    """Process deferred triggers from overnight with deduplication."""
     if not is_market_open():
-        logger.info("Market is closed. Skipping deferred trigger processing (will retry at scheduled time).")
+        logger.info("Market is closed. Skipping deferred trigger processing.")
         return
 
     logger.info("--- Processing Deferred Triggers ---")
     try:
         deferred = StateManager.get_deferred_triggers()
-        if deferred:
-            logger.info(f"Processing {len(deferred)} deferred triggers from overnight")
-            ib_conn = await IBConnectionPool.get_connection("deferred", config)
-            for t in deferred:
-                trigger = SentinelTrigger(t['source'], t['reason'], t['payload'])
-                await run_emergency_cycle(trigger, config, ib_conn)
-            # await IBConnectionPool.release_connection("deferred") - REMOVED: Managed by pool
-        else:
+        if not deferred:
             logger.info("No deferred triggers to process.")
+            return
+
+        logger.info(f"Processing {len(deferred)} deferred triggers from overnight")
+        ib_conn = await IBConnectionPool.get_connection("deferred", config)
+
+        processed_count = 0
+        skipped_count = 0
+
+        for t in deferred:
+            trigger = SentinelTrigger(t['source'], t['reason'], t['payload'])
+
+            # === CRITICAL FIX: Check deduplicator before each cycle ===
+            if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                await run_emergency_cycle(trigger, config, ib_conn)
+                processed_count += 1
+                # Note: run_emergency_cycle sets POST_CYCLE debounce internally
+            else:
+                logger.info(f"Skipping deferred trigger (deduplicated): {trigger.source}")
+                skipped_count += 1
+
+        logger.info(f"Deferred triggers complete: {processed_count} processed, {skipped_count} skipped")
+
     except Exception as e:
         logger.error(f"Failed to process deferred triggers: {e}")
 
@@ -1151,6 +1166,11 @@ async def run_sentinels(config: dict):
     last_contract_refresh = 0
     CONTRACT_REFRESH_INTERVAL = 14400  # 4 hours
 
+    # Outage Tracking
+    last_successful_ib_time = time_module.time()
+    outage_notification_sent = False
+    OUTAGE_THRESHOLD_SECONDS = 600  # 10 minutes
+
     while True:
         try:
             now = time_module.time()
@@ -1169,8 +1189,30 @@ async def run_sentinels(config: dict):
                     price_sentinel.ib = sentinel_ib
                     logger.info("Sentinel IB reconnected successfully. PriceSentinel reference updated.")
 
+                    # Reset tracking on success
+                    last_successful_ib_time = time_module.time()
+                    outage_notification_sent = False
+
                 except Exception as e:
                     logger.error(f"Sentinel IB Reconnect Failed: {e}")
+
+                    # === NEW: Check for extended outage ===
+                    time_disconnected = time_module.time() - last_successful_ib_time
+
+                    if time_disconnected > OUTAGE_THRESHOLD_SECONDS and not outage_notification_sent:
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "🚨 IB CONNECTION CRITICAL",
+                            f"No IB connection for {time_disconnected/60:.0f} minutes. "
+                            f"Price/Microstructure sentinels OFFLINE. "
+                            f"Check Gateway status or restart orchestrator."
+                        )
+                        outage_notification_sent = True
+                        logger.critical(f"IB outage notification sent after {time_disconnected/60:.0f} minutes")
+            else:
+                # Connection is good - reset tracking
+                last_successful_ib_time = time_module.time()
+                outage_notification_sent = False
 
             # Refresh contract cache
             if sentinel_ib.isConnected() and (now - last_contract_refresh > CONTRACT_REFRESH_INTERVAL):
@@ -1183,7 +1225,10 @@ async def run_sentinels(config: dict):
                     logger.error(f"Failed to refresh contract cache: {e}")
 
             # === LIFECYCLE MANAGEMENT: MicrostructureSentinel ===
-            if market_open and micro_sentinel is None:
+            gateway_available = sentinel_ib.isConnected()
+
+            # Only engage microstructure if gateway is available
+            if market_open and micro_sentinel is None and gateway_available:
                 logger.info("Market Open: Engaging Microstructure Sentinel")
                 try:
                     micro_ib = await IBConnectionPool.get_connection("microstructure", config)
@@ -1210,6 +1255,8 @@ async def run_sentinels(config: dict):
                 except Exception as e:
                     logger.error(f"Failed to engage MicrostructureSentinel: {e}")
                     micro_sentinel = None
+            elif market_open and micro_sentinel is None and not gateway_available:
+                logger.debug("Skipping Microstructure engagement - Gateway unavailable")
 
             elif not market_open and micro_sentinel is not None:
                 logger.info("Market Closed: Disengaging Microstructure Sentinel")
