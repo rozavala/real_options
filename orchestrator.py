@@ -960,7 +960,18 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
 
                 # 6. Execute if Actionable
-                if decision.get('direction') in ['BULLISH', 'BEARISH'] and decision.get('confidence', 0) > config.get('strategy', {}).get('signal_threshold', 0.5):
+                direction = decision.get('direction')
+                pred_type = decision.get('prediction_type', 'DIRECTIONAL')
+                confidence = decision.get('confidence', 0)
+                threshold = config.get('strategy', {}).get('signal_threshold', 0.5)
+
+                is_actionable = (
+                    (direction in ['BULLISH', 'BEARISH'] and confidence > threshold) or
+                    (direction == 'NEUTRAL' and pred_type in ['VOLATILITY', 'RANGE_BOUND'] and confidence > threshold)
+                )
+
+                if is_actionable:
+                    logger.info(f"Emergency Cycle ACTION: {direction} ({pred_type})")
 
                     # === NEW: Compliance Audit ===
                     compliance = ComplianceGuardian(config)
@@ -1071,8 +1082,8 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         timestamp=datetime.now(timezone.utc)
                     )
 
-                if decision.get('direction') not in ['BULLISH', 'BEARISH']:
-                    logger.info("Emergency Cycle concluded with no action.")
+                if not is_actionable:
+                    logger.info(f"Emergency Cycle concluded with no action: {direction} ({pred_type})")
 
             except Exception as e:
                 logger.error(f"Emergency Cycle Failed: {e}\n{traceback.format_exc()}")
@@ -1082,6 +1093,18 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
             debounce_seconds = config.get('sentinels', {}).get('post_cycle_debounce_seconds', 1800)
             GLOBAL_DEDUPLICATOR.set_cooldown("POST_CYCLE", debounce_seconds)
             logger.info(f"Post-cycle debounce set for {debounce_seconds}s")
+
+
+def validate_trigger(trigger):
+    """Defensive check for sentinel triggers."""
+    if isinstance(trigger, list):
+        logger.warning(f"Sentinel returned list instead of single trigger. Using first item.")
+        trigger = trigger[0] if trigger else None
+
+    if trigger is not None and not hasattr(trigger, 'source'):
+        logger.error(f"Invalid trigger object (missing 'source'): {type(trigger)}")
+        return None
+    return trigger
 
 
 async def run_sentinels(config: dict):
@@ -1204,6 +1227,7 @@ async def run_sentinels(config: dict):
             # 1. Price Sentinel (Every 1 min) - Only if Connected
             if sentinel_ib.isConnected():
                 trigger = await price_sentinel.check(cached_contract=cached_contract)
+                trigger = validate_trigger(trigger)
                 if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                     asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
                     GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
@@ -1213,6 +1237,7 @@ async def run_sentinels(config: dict):
             if trading_day:
                 if now - last_weather > 14400:
                     trigger = await weather_sentinel.check()
+                    trigger = validate_trigger(trigger)
                     if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                         asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
                         GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
@@ -1221,6 +1246,7 @@ async def run_sentinels(config: dict):
                 # 3. Logistics Sentinel (Every 6 hours = 21600s)
                 if now - last_logistics > 21600:
                     trigger = await logistics_sentinel.check()
+                    trigger = validate_trigger(trigger)
                     if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                         asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
                         GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
@@ -1229,6 +1255,7 @@ async def run_sentinels(config: dict):
                 # 4. News Sentinel (Every 1 hour = 3600s)
                 if now - last_news > 3600:
                     trigger = await news_sentinel.check()
+                    trigger = validate_trigger(trigger)
                     if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                         asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
                         GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
@@ -1238,6 +1265,7 @@ async def run_sentinels(config: dict):
             if now - last_x_sentiment > 1800:
                 if is_market_open():
                     trigger = await x_sentinel.check()
+                    trigger = validate_trigger(trigger)
 
                     # Update Stats
                     today = datetime.now().date()
