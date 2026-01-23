@@ -231,43 +231,54 @@ async def check_config() -> CheckResult:
 # CHECK 3: IBKR CONNECTIVITY (STRICT MODE)
 # ============================================================================
 
+
 @timed_check
 async def check_ibkr_connection(config: dict) -> CheckResult:
     """
-    STRICT CONNECTION TEST:
-    Attempts connection regardless of market hours.
-    Verifies TCP Socket AND API Handshake.
+    STRICT CONNECTION TEST (Revised):
+    - Removed pre-flight TCP probe (avoids race conditions)
+    - Increased timeout to 15s (accounts for Gateway latency)
+    - Detailed logging enabled
     """
     try:
-        from ib_insync import IB
+        from ib_insync import IB, util
+        import logging
+        
+        # TEMPORARILY ELEVATE LOGGING to see handshake details
+        util.logToConsole(logging.DEBUG)
+        
         ib = IB()
         host = config.get('connection', {}).get('host', '127.0.0.1')
         port = config.get('connection', {}).get('port', 7497)
-
-        # 1. TCP Check
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(2)
-        result = sock.connect_ex((host, port))
-        sock.close()
-
-        if result != 0:
-            return CheckResult("IBKR Connection", CheckStatus.FAIL, "TCP Connection Failed", f"Host: {host}:{port} unreachable. Gateway is likely DOWN.")
-
-        # 2. API Handshake (Strict)
-        await ib.connectAsync(host, port, clientId=999, timeout=5)
-
-        # 3. Latency Check (Zombie Detection)
+        
+        # Attempt connection directly (15s timeout)
+        await ib.connectAsync(host, port, clientId=999, timeout=15)
+        
+        # Latency Check
         start = time.time()
         await ib.reqCurrentTimeAsync()
         latency = (time.time() - start) * 1000
-
+        
         account = ib.managedAccounts()[0] if ib.managedAccounts() else "Unknown"
         ib.disconnect()
-
+        
+        # Restore logging level
+        util.logToConsole(logging.INFO)
+        
         return CheckResult("IBKR Connection", CheckStatus.PASS, f"Connected | Latency: {latency:.0f}ms | Acct: {account}")
-
+        
     except Exception as e:
-        return CheckResult("IBKR Connection", CheckStatus.FAIL, "API Handshake Failed", f"TCP is Open but Gateway refused API: {e}")
+        # Restore logging level
+        from ib_insync import util
+        import logging
+        util.logToConsole(logging.INFO)
+        
+        return CheckResult(
+            name="IBKR Connection",
+            status=CheckStatus.FAIL, 
+            message="API Handshake Failed", 
+            details=f"Gateway at {host}:{port} did not respond within 15s.\nError: {str(e)}"
+        )
 
 # ============================================================================
 # CHECK 4: IBKR MARKET DATA (SMART MODE)
