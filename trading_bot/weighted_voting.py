@@ -156,28 +156,41 @@ def normalize_ml_confidence(raw_confidence: float, calibration_data: dict = None
     return 0.5 + ((raw_confidence - 0.5) / damping_factor)
 
 def extract_sentiment_from_report(report_text: str) -> tuple[str, float]:
-    """Extract sentiment with multiple fallback patterns."""
+    """Extract sentiment with validated patterns for actual text format."""
     if not report_text or not isinstance(report_text, str):
-        return "NEUTRAL", 0.3
+        return "NEUTRAL", 0.5
 
-    # Try multiple patterns
+    # Normalize whitespace
+    text = ' '.join(report_text.split())
+
+    # VALIDATED PATTERNS - Order matters! Most specific first.
     patterns = [
-        r'\[SENTIMENT[:\s]+(\w+)\]',           # Standard format
-        r'"sentiment"[:\s]*"?(\w+)"?',          # JSON format
-        r'SENTIMENT:\s*(\w+)',                  # Plain text
-        r'\*\*Sentiment\*\*[:\s]*(\w+)',        # Markdown bold
+        # 1. Exact format from research_topic: [SENTIMENT TAG]: [SENTIMENT: BULLISH]
+        r'\[SENTIMENT TAG\]:\s*\[SENTIMENT:\s*(\w+)\]',
+
+        # 2. Standard format: [SENTIMENT: BULLISH] (requires COLON, not space)
+        r'\[SENTIMENT:\s*(\w+)\]',
+
+        # 3. JSON format: "sentiment": "BULLISH"
+        r'"sentiment"\s*:\s*"?(\w+)"?',
+
+        # 4. Loose fallback: SENTIMENT: BULLISH
+        r'SENTIMENT:\s*(\w+)',
     ]
 
-    sentiment_tag = "NEUTRAL"
+    sentiment = "NEUTRAL"
     for pattern in patterns:
-        match = re.search(pattern, report_text, re.IGNORECASE)
+        match = re.search(pattern, text, re.IGNORECASE)
         if match:
-            sentiment_tag = match.group(1).upper()
-            break
+            found = match.group(1).upper()
+            if found in ['BULLISH', 'BEARISH', 'NEUTRAL']:
+                sentiment = found
+                break
+            # If matched but invalid value (e.g., 'TAG'), continue to next pattern
 
-    # Fallback: scan for keywords if NEUTRAL and no pattern matched (or matched neutral)
-    if sentiment_tag == "NEUTRAL":
-        text_lower = report_text.lower()
+    # Fallback: scan for keywords if NEUTRAL and no pattern matched
+    if sentiment == "NEUTRAL":
+        text_lower = text.lower()
         bullish_words = ['bullish', 'buy', 'long', 'positive', 'upside', 'support']
         bearish_words = ['bearish', 'sell', 'short', 'negative', 'downside', 'resistance']
 
@@ -185,26 +198,28 @@ def extract_sentiment_from_report(report_text: str) -> tuple[str, float]:
         bear_count = sum(1 for w in bearish_words if w in text_lower)
 
         if bull_count > bear_count:
-            sentiment_tag = "BULLISH"
+            sentiment = "BULLISH"
         elif bear_count > bull_count:
-            sentiment_tag = "BEARISH"
+            sentiment = "BEARISH"
 
-    # Confidence estimation
+    # CONFIDENCE: Extract [CONFIDENCE]: 0.9
     confidence = 0.5
-    report_lower = report_text.lower()
-    strong_signals = ["strong", "extremely", "high conviction", "overwhelming"]
-    weak_signals = ["uncertain", "mixed", "unclear", "conflicting"]
-
-    for phrase in strong_signals:
-        if phrase in report_lower:
+    conf_match = re.search(r'\[CONFIDENCE\]:\s*([0-9.]+)', text)
+    if conf_match:
+        try:
+            confidence = float(conf_match.group(1))
+            confidence = max(0.0, min(1.0, confidence))
+        except ValueError:
+            pass
+    else:
+        # Fallback: strength words
+        text_lower = text.lower()
+        if any(w in text_lower for w in ["strong", "high conviction", "extremely"]):
             confidence = 0.85
-            break
-    for phrase in weak_signals:
-        if phrase in report_lower:
+        elif any(w in text_lower for w in ["uncertain", "mixed", "unclear"]):
             confidence = 0.3
-            break
 
-    return sentiment_tag, confidence
+    return sentiment, confidence
 
 
 class RegimeDetector:
@@ -326,8 +341,29 @@ async def calculate_weighted_decision(
         if not report or report in ["Data Unavailable", "N/A"]:
             continue
 
-        report_text = report.get('data', report) if isinstance(report, dict) else str(report)
-        sentiment_tag, confidence = extract_sentiment_from_report(report_text)
+        # === PRIORITY 1: Use structured dict fields if available ===
+        if isinstance(report, dict) and report.get('sentiment'):
+            sentiment_tag = str(report['sentiment']).upper().strip()
+            if sentiment_tag in ['BULLISH', 'BEARISH', 'NEUTRAL']:
+                try:
+                    confidence = float(report.get('confidence', 0.5))
+                except (ValueError, TypeError):
+                    confidence = 0.5
+                logger.debug(f"Agent {agent_name}: Using structured data -> {sentiment_tag} ({confidence:.2f})")
+            else:
+                # Invalid sentiment value, fall through to text parsing
+                sentiment_tag = None
+                confidence = 0.5
+        else:
+            sentiment_tag = None
+            confidence = 0.5
+
+        # === PRIORITY 2: Parse from text (with fixed regex) ===
+        if sentiment_tag is None:
+            report_text = report.get('data', report) if isinstance(report, dict) else str(report)
+            sentiment_tag, confidence = extract_sentiment_from_report(report_text)
+            logger.debug(f"Agent {agent_name}: Parsed from text -> {sentiment_tag} ({confidence:.2f})")
+
         confidence = max(0.0, min(1.0, float(confidence)))  # Defensive clamp
         direction = parse_sentiment_to_direction(sentiment_tag)
 
