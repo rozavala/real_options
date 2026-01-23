@@ -248,3 +248,96 @@
 2026-01-23 17:24:52,649 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
 2026-01-23 17:24:52,649 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
 2026-01-23 17:24:52,650 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 17:26:06,555 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 17:26:26,243 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-23 17:26:26,244 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-23 17:26:50,366 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-23 17:26:50,366 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.50 -> 0.50
+2026-01-23 17:26:50,366 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=RANGE_BOUND
+2026-01-23 17:26:50,366 - trading_bot.weighted_voting - INFO - Weighted Vote: BULLISH (score=0.171, dominant=agronomist)
+2026-01-23 17:26:50,367 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BULLISH",
+    "confidence": 0.85,
+    "domain_weight": 3.0,
+    "reliability_mult": 1.0,
+    "final_weight": 3.0,
+    "contribution": 2.55
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 0.5,
+    "reliability_mult": 1.0,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.4,
+    "reliability_mult": 1.0,
+    "final_weight": 1.4,
+    "contribution": 0.0
+  },
+  {
+    "agent": "latest_ml_signals",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  }
+]
+2026-01-23 17:27:08,464 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-23 17:27:29,085 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-23 17:27:33,951 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
