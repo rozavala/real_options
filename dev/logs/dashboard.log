@@ -3,11 +3,30 @@
 
   URL: http://0.0.0.0:8501
 
-2026-01-24 02:56:08.580 Please replace `use_container_width` with `width`.
+[31m──[0m[31m────────────────────────[0m[31m [0m[1;31mTraceback [0m[1;2;31m(most recent call last)[0m[31m [0m[31m─────────────────────────[0m[31m──[0m
+[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/indexes/[0m[1mbas[0m [31m [0m
+[31m [0m [1me.py[0m:3812 in get_loc                                                                 [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m   [2m3809 [0m[2;33m│   │   [0m[33m"""[0m                                                                   [31m [0m
+[31m [0m   [2m3810 [0m[2m│   │   [0mcasted_key = [96mself[0m._maybe_cast_indexer(key)                            [31m [0m
+[31m [0m   [2m3811 [0m[2m│   │   [0m[94mtry[0m:                                                                  [31m [0m
+[31m [0m [31m❱ [0m3812 [2m│   │   │   [0m[94mreturn[0m [96mself[0m._engine.get_loc(casted_key)                           [31m [0m
+[31m [0m   [2m3813 [0m[2m│   │   [0m[94mexcept[0m [96mKeyError[0m [94mas[0m err:                                               [31m [0m
+[31m [0m   [2m3814 [0m[2m│   │   │   [0m[94mif[0m [96misinstance[0m(casted_key, [96mslice[0m) [95mor[0m (                             [31m [0m
+[31m [0m   [2m3815 [0m[2m│   │   │   │   [0m[96misinstance[0m(casted_key, abc.Iterable)                          [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m in pandas._libs.index.IndexEngine.get_loc:167                                        [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m in pandas._libs.index.IndexEngine.get_loc:196                                        [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m in pandas._libs.hashtable.PyObjectHashTable.get_item:7088                            [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m in pandas._libs.hashtable.PyObjectHashTable.get_item:7096                            [31m [0m
+[31m────────────────────────────────────────────────────────────────────────────────────────[0m
+[1;91mKeyError: [0m[32m'rationale'[0m
 
-`use_container_width` will be removed after 2025-12-31.
+[3mThe above exception was the direct cause of the following exception:[0m
 
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
 [31m──[0m[31m────────────────────────[0m[31m [0m[1;31mTraceback [0m[1;2;31m(most recent call last)[0m[31m [0m[31m─────────────────────────[0m[31m──[0m
 [31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/streamlit/runtime/scrip[0m [31m [0m
 [31m [0m [2mtrunner/[0m[1mexec_code.py[0m:129 in exec_func_with_error_handling                            [31m [0m
@@ -21,171 +40,36 @@ For `use_container_width=True`, use `width='stretch'`. For `use_container_width=
 [31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/streamlit/navigation/[0m[1mpa[0m [31m [0m
 [31m [0m [1mge.py[0m:310 in run                                                                     [31m [0m
 [31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/pages/[0m[1m6_Signal_Overlay.py[0m:460 in <module>                 [31m [0m
+[31m [0m [2m/home/rodrigo/real_options/pages/[0m[1m6_Signal_Overlay.py[0m:278 in <module>                 [31m [0m
 [31m [0m                                                                                      [31m [0m
-[31m [0m   [2m457 [0m[2m│   [0m[94mwith[0m st.expander([33m"[0m[33m📝 Raw Signal Log[0m[33m"[0m, expanded=[94mTrue[0m):                      [31m [0m
-[31m [0m   [2m458 [0m[2m│   │   [0m[94mif[0m [95mnot[0m signals.empty:                                                  [31m [0m
-[31m [0m   [2m459 [0m[2m│   │   │   [0mst.dataframe(                                                      [31m [0m
-[31m [0m [31m❱ [0m460 [2m│   │   │   │   [0m[1;4msignals[[[0m[1;4;33m'[0m[1;4;33mtimestamp[0m[1;4;33m'[0m[1;4m, [0m[1;4;33m'[0m[1;4;33mplot_label[0m[1;4;33m'[0m[1;4m, [0m[1;4;33m'[0m[1;4;33mplot_confidence[0m[1;4;33m'[0m[1;4m, [0m[1;4;33m'[0m[1;4;33mration[0m [31m [0m
-[31m [0m   [2m461 [0m[2m│   │   │   │   [0mcolumn_config={                                                [31m [0m
-[31m [0m   [2m462 [0m[2m│   │   │   │   │   [0m[33m"[0m[33mtimestamp[0m[33m"[0m: st.column_config.DatetimeColumn([33m"[0m[33mTime (UTC)[0m[33m"[0m, [31m [0m
-[31m [0m   [2m463 [0m[2m│   │   │   │   │   [0m[33m"[0m[33mplot_label[0m[33m"[0m: [33m"[0m[33mSignal[0m[33m"[0m,                                    [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/[0m[1mframe.py[0m:41 [31m [0m
-[31m [0m 19 in __getitem__                                                                    [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m   [2m 4116 [0m[2m│   │   [0m[94melse[0m:                                                                [31m [0m
-[31m [0m   [2m 4117 [0m[2m│   │   │   [0m[94mif[0m is_iterator(key):                                             [31m [0m
-[31m [0m   [2m 4118 [0m[2m│   │   │   │   [0mkey = [96mlist[0m(key)                                              [31m [0m
-[31m [0m [31m❱ [0m 4119 [2m│   │   │   [0mindexer = [1;4;96mself[0m[1;4m.columns._get_indexer_strict(key, [0m[1;4;33m"[0m[1;4;33mcolumns[0m[1;4;33m"[0m[1;4m)[0m[[94m1[0m]    [31m [0m
-[31m [0m   [2m 4120 [0m[2m│   │   [0m                                                                     [31m [0m
-[31m [0m   [2m 4121 [0m[2m│   │   [0m[2m# take() does not accept boolean indexers[0m                            [31m [0m
-[31m [0m   [2m 4122 [0m[2m│   │   [0m[94mif[0m [96mgetattr[0m(indexer, [33m"[0m[33mdtype[0m[33m"[0m, [94mNone[0m) == [96mbool[0m:                          [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/indexes/[0m[1mbas[0m [31m [0m
-[31m [0m [1me.py[0m:6212 in _get_indexer_strict                                                     [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m   [2m6209 [0m[2m│   │   [0m[94melse[0m:                                                                 [31m [0m
-[31m [0m   [2m6210 [0m[2m│   │   │   [0mkeyarr, indexer, new_indexer = [96mself[0m._reindex_non_unique(keyarr)   [31m [0m
-[31m [0m   [2m6211 [0m[2m│   │   [0m                                                                      [31m [0m
-[31m [0m [31m❱ [0m6212 [2m│   │   [0m[1;4;96mself[0m[1;4m._raise_if_missing(keyarr, indexer, axis_name)[0m                    [31m [0m
-[31m [0m   [2m6213 [0m[2m│   │   [0m                                                                      [31m [0m
-[31m [0m   [2m6214 [0m[2m│   │   [0mkeyarr = [96mself[0m.take(indexer)                                           [31m [0m
-[31m [0m   [2m6215 [0m[2m│   │   [0m[94mif[0m [96misinstance[0m(key, Index):                                            [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/indexes/[0m[1mbas[0m [31m [0m
-[31m [0m [1me.py[0m:6264 in _raise_if_missing                                                       [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m   [2m6261 [0m[2m│   │   │   │   [0m[94mraise[0m [96mKeyError[0m([33mf[0m[33m"[0m[33mNone of [[0m[33m{[0mkey[33m}[0m[33m] are in the [[0m[33m{[0maxis_name[33m}[0m[33m][0m[33m"[0m)   [31m [0m
-[31m [0m   [2m6262 [0m[2m│   │   │   [0m                                                                  [31m [0m
-[31m [0m   [2m6263 [0m[2m│   │   │   [0mnot_found = [96mlist[0m(ensure_index(key)[missing_mask.nonzero()[[94m0[0m]].uni [31m [0m
-[31m [0m [31m❱ [0m6264 [2m│   │   │   [0m[1;4;94mraise[0m[1;4m [0m[1;4;96mKeyError[0m[1;4m([0m[1;4;33mf[0m[1;4;33m"[0m[1;4;33m{[0m[1;4mnot_found[0m[1;4;33m}[0m[1;4;33m not in index[0m[1;4;33m"[0m[1;4m)[0m                       [31m [0m
-[31m [0m   [2m6265 [0m[2m│   [0m                                                                          [31m [0m
-[31m [0m   [2m6266 [0m[2m│   [0m[1;95m@overload[0m                                                                 [31m [0m
-[31m [0m   [2m6267 [0m[2m│   [0m[94mdef[0m[90m [0m[92m_get_indexer_non_comparable[0m(                                          [31m [0m
-[31m────────────────────────────────────────────────────────────────────────────────────────[0m
-[1;91mKeyError: [0m[32m"[0m[32m[[0m[32m'rationale'[0m[32m][0m[32m not in index"[0m
-2026-01-24 02:56:42.513 Please replace `use_container_width` with `width`.
-
-`use_container_width` will be removed after 2025-12-31.
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-[31m──[0m[31m────────────────────────[0m[31m [0m[1;31mTraceback [0m[1;2;31m(most recent call last)[0m[31m [0m[31m─────────────────────────[0m[31m──[0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/streamlit/runtime/scrip[0m [31m [0m
-[31m [0m [2mtrunner/[0m[1mexec_code.py[0m:129 in exec_func_with_error_handling                            [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/streamlit/runtime/scrip[0m [31m [0m
-[31m [0m [2mtrunner/[0m[1mscript_runner.py[0m:670 in code_to_exec                                         [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/streamlit/runtime/scrip[0m [31m [0m
-[31m [0m [2mtrunner/[0m[1mscript_runner.py[0m:166 in _mpa_v1                                              [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/streamlit/navigation/[0m[1mpa[0m [31m [0m
-[31m [0m [1mge.py[0m:310 in run                                                                     [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/pages/[0m[1m6_Signal_Overlay.py[0m:460 in <module>                 [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m   [2m457 [0m[2m│   [0m[94mwith[0m st.expander([33m"[0m[33m📝 Raw Signal Log[0m[33m"[0m, expanded=[94mTrue[0m):                      [31m [0m
-[31m [0m   [2m458 [0m[2m│   │   [0m[94mif[0m [95mnot[0m signals.empty:                                                  [31m [0m
-[31m [0m   [2m459 [0m[2m│   │   │   [0mst.dataframe(                                                      [31m [0m
-[31m [0m [31m❱ [0m460 [2m│   │   │   │   [0m[1;4msignals[[[0m[1;4;33m'[0m[1;4;33mtimestamp[0m[1;4;33m'[0m[1;4m, [0m[1;4;33m'[0m[1;4;33mplot_label[0m[1;4;33m'[0m[1;4m, [0m[1;4;33m'[0m[1;4;33mplot_confidence[0m[1;4;33m'[0m[1;4m, [0m[1;4;33m'[0m[1;4;33mration[0m [31m [0m
-[31m [0m   [2m461 [0m[2m│   │   │   │   [0mcolumn_config={                                                [31m [0m
-[31m [0m   [2m462 [0m[2m│   │   │   │   │   [0m[33m"[0m[33mtimestamp[0m[33m"[0m: st.column_config.DatetimeColumn([33m"[0m[33mTime (UTC)[0m[33m"[0m, [31m [0m
-[31m [0m   [2m463 [0m[2m│   │   │   │   │   [0m[33m"[0m[33mplot_label[0m[33m"[0m: [33m"[0m[33mSignal[0m[33m"[0m,                                    [31m [0m
+[31m [0m   [2m275 [0m[2m│   │   │   │   [0m[33m"[0m[33m<b>[0m[33m"[0m + plot_df[[33m'[0m[33mplot_label[0m[33m'[0m] + [33m"[0m[33m</b><br>[0m[33m"[0m +                   [31m [0m
+[31m [0m   [2m276 [0m[2m│   │   │   │   [0m[33m"[0m[33mTime: [0m[33m"[0m + plot_df[[33m'[0m[33mtimestamp[0m[33m'[0m].dt.strftime([33m'[0m[33m%d[0m[33m [0m[33m%[0m[33mb [0m[33m%[0m[33mH:[0m[33m%[0m[33mM[0m[33m'[0m) + [33m"[0m [31m [0m
+[31m [0m   [2m277 [0m[2m│   │   │   │   [0m[33m"[0m[33mConf: [0m[33m"[0m + plot_df[[33m'[0m[33mplot_confidence[0m[33m'[0m].apply([94mlambda[0m x: [33mf[0m[33m"[0m[33m{[0mx[33m:[0m[33m.2f[0m [31m [0m
+[31m [0m [31m❱ [0m278 [2m│   │   │   │   [0m[33m"[0m[33m<i>[0m[33m"[0m + [1;4mplot_df[[0m[1;4;33m'[0m[1;4;33mrationale[0m[1;4;33m'[0m[1;4m][0m.astype([96mstr[0m).str.slice([94m0[0m, [94m150[0m) + [33m"[0m [31m [0m
+[31m [0m   [2m279 [0m[2m│   │   │   [0m)                                                                  [31m [0m
+[31m [0m   [2m280 [0m[2m│   [0m                                                                           [31m [0m
+[31m [0m   [2m281 [0m[2m│   [0m[2m# === DRAW CHARTS ===[0m                                                      [31m [0m
 [31m [0m                                                                                      [31m [0m
 [31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/[0m[1mframe.py[0m:41 [31m [0m
-[31m [0m 19 in __getitem__                                                                    [31m [0m
+[31m [0m 13 in __getitem__                                                                    [31m [0m
 [31m [0m                                                                                      [31m [0m
+[31m [0m   [2m 4110 [0m[2m│   │   [0m[94mif[0m is_single_key:                                                    [31m [0m
+[31m [0m   [2m 4111 [0m[2m│   │   │   [0m[94mif[0m [96mself[0m.columns.nlevels > [94m1[0m:                                     [31m [0m
+[31m [0m   [2m 4112 [0m[2m│   │   │   │   [0m[94mreturn[0m [96mself[0m._getitem_multilevel(key)                         [31m [0m
+[31m [0m [31m❱ [0m 4113 [2m│   │   │   [0mindexer = [1;4;96mself[0m[1;4m.columns.get_loc(key)[0m                              [31m [0m
+[31m [0m   [2m 4114 [0m[2m│   │   │   [0m[94mif[0m is_integer(indexer):                                          [31m [0m
+[31m [0m   [2m 4115 [0m[2m│   │   │   │   [0mindexer = [indexer]                                          [31m [0m
 [31m [0m   [2m 4116 [0m[2m│   │   [0m[94melse[0m:                                                                [31m [0m
-[31m [0m   [2m 4117 [0m[2m│   │   │   [0m[94mif[0m is_iterator(key):                                             [31m [0m
-[31m [0m   [2m 4118 [0m[2m│   │   │   │   [0mkey = [96mlist[0m(key)                                              [31m [0m
-[31m [0m [31m❱ [0m 4119 [2m│   │   │   [0mindexer = [1;4;96mself[0m[1;4m.columns._get_indexer_strict(key, [0m[1;4;33m"[0m[1;4;33mcolumns[0m[1;4;33m"[0m[1;4m)[0m[[94m1[0m]    [31m [0m
-[31m [0m   [2m 4120 [0m[2m│   │   [0m                                                                     [31m [0m
-[31m [0m   [2m 4121 [0m[2m│   │   [0m[2m# take() does not accept boolean indexers[0m                            [31m [0m
-[31m [0m   [2m 4122 [0m[2m│   │   [0m[94mif[0m [96mgetattr[0m(indexer, [33m"[0m[33mdtype[0m[33m"[0m, [94mNone[0m) == [96mbool[0m:                          [31m [0m
 [31m [0m                                                                                      [31m [0m
 [31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/indexes/[0m[1mbas[0m [31m [0m
-[31m [0m [1me.py[0m:6212 in _get_indexer_strict                                                     [31m [0m
+[31m [0m [1me.py[0m:3819 in get_loc                                                                 [31m [0m
 [31m [0m                                                                                      [31m [0m
-[31m [0m   [2m6209 [0m[2m│   │   [0m[94melse[0m:                                                                 [31m [0m
-[31m [0m   [2m6210 [0m[2m│   │   │   [0mkeyarr, indexer, new_indexer = [96mself[0m._reindex_non_unique(keyarr)   [31m [0m
-[31m [0m   [2m6211 [0m[2m│   │   [0m                                                                      [31m [0m
-[31m [0m [31m❱ [0m6212 [2m│   │   [0m[1;4;96mself[0m[1;4m._raise_if_missing(keyarr, indexer, axis_name)[0m                    [31m [0m
-[31m [0m   [2m6213 [0m[2m│   │   [0m                                                                      [31m [0m
-[31m [0m   [2m6214 [0m[2m│   │   [0mkeyarr = [96mself[0m.take(indexer)                                           [31m [0m
-[31m [0m   [2m6215 [0m[2m│   │   [0m[94mif[0m [96misinstance[0m(key, Index):                                            [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/indexes/[0m[1mbas[0m [31m [0m
-[31m [0m [1me.py[0m:6264 in _raise_if_missing                                                       [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m   [2m6261 [0m[2m│   │   │   │   [0m[94mraise[0m [96mKeyError[0m([33mf[0m[33m"[0m[33mNone of [[0m[33m{[0mkey[33m}[0m[33m] are in the [[0m[33m{[0maxis_name[33m}[0m[33m][0m[33m"[0m)   [31m [0m
-[31m [0m   [2m6262 [0m[2m│   │   │   [0m                                                                  [31m [0m
-[31m [0m   [2m6263 [0m[2m│   │   │   [0mnot_found = [96mlist[0m(ensure_index(key)[missing_mask.nonzero()[[94m0[0m]].uni [31m [0m
-[31m [0m [31m❱ [0m6264 [2m│   │   │   [0m[1;4;94mraise[0m[1;4m [0m[1;4;96mKeyError[0m[1;4m([0m[1;4;33mf[0m[1;4;33m"[0m[1;4;33m{[0m[1;4mnot_found[0m[1;4;33m}[0m[1;4;33m not in index[0m[1;4;33m"[0m[1;4m)[0m                       [31m [0m
-[31m [0m   [2m6265 [0m[2m│   [0m                                                                          [31m [0m
-[31m [0m   [2m6266 [0m[2m│   [0m[1;95m@overload[0m                                                                 [31m [0m
-[31m [0m   [2m6267 [0m[2m│   [0m[94mdef[0m[90m [0m[92m_get_indexer_non_comparable[0m(                                          [31m [0m
+[31m [0m   [2m3816 [0m[2m│   │   │   │   [0m[95mand[0m [96many[0m([96misinstance[0m(x, [96mslice[0m) [94mfor[0m x [95min[0m casted_key)             [31m [0m
+[31m [0m   [2m3817 [0m[2m│   │   │   [0m):                                                                [31m [0m
+[31m [0m   [2m3818 [0m[2m│   │   │   │   [0m[94mraise[0m InvalidIndexError(key)                                  [31m [0m
+[31m [0m [31m❱ [0m3819 [2m│   │   │   [0m[1;4;94mraise[0m[1;4m [0m[1;4;96mKeyError[0m[1;4m(key) [0m[1;4;94mfrom[0m[1;4;90m [0m[1;4;96merr[0m                                      [31m [0m
+[31m [0m   [2m3820 [0m[2m│   │   [0m[94mexcept[0m [96mTypeError[0m:                                                     [31m [0m
+[31m [0m   [2m3821 [0m[2m│   │   │   [0m[2m# If we have a listlike key, _check_indexing_error will raise[0m     [31m [0m
+[31m [0m   [2m3822 [0m[2m│   │   │   [0m[2m#  InvalidIndexError. Otherwise we fall through and re-raise[0m      [31m [0m
 [31m────────────────────────────────────────────────────────────────────────────────────────[0m
-[1;91mKeyError: [0m[32m"[0m[32m[[0m[32m'rationale'[0m[32m][0m[32m not in index"[0m
-2026-01-24 02:59:19.617 Please replace `use_container_width` with `width`.
-
-`use_container_width` will be removed after 2025-12-31.
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-[31m──[0m[31m────────────────────────[0m[31m [0m[1;31mTraceback [0m[1;2;31m(most recent call last)[0m[31m [0m[31m─────────────────────────[0m[31m──[0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/streamlit/runtime/scrip[0m [31m [0m
-[31m [0m [2mtrunner/[0m[1mexec_code.py[0m:129 in exec_func_with_error_handling                            [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/streamlit/runtime/scrip[0m [31m [0m
-[31m [0m [2mtrunner/[0m[1mscript_runner.py[0m:670 in code_to_exec                                         [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/streamlit/runtime/scrip[0m [31m [0m
-[31m [0m [2mtrunner/[0m[1mscript_runner.py[0m:166 in _mpa_v1                                              [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/streamlit/navigation/[0m[1mpa[0m [31m [0m
-[31m [0m [1mge.py[0m:310 in run                                                                     [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/pages/[0m[1m6_Signal_Overlay.py[0m:460 in <module>                 [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m   [2m457 [0m[2m│   [0m[94mwith[0m st.expander([33m"[0m[33m📝 Raw Signal Log[0m[33m"[0m, expanded=[94mTrue[0m):                      [31m [0m
-[31m [0m   [2m458 [0m[2m│   │   [0m[94mif[0m [95mnot[0m signals.empty:                                                  [31m [0m
-[31m [0m   [2m459 [0m[2m│   │   │   [0mst.dataframe(                                                      [31m [0m
-[31m [0m [31m❱ [0m460 [2m│   │   │   │   [0m[1;4msignals[[[0m[1;4;33m'[0m[1;4;33mtimestamp[0m[1;4;33m'[0m[1;4m, [0m[1;4;33m'[0m[1;4;33mplot_label[0m[1;4;33m'[0m[1;4m, [0m[1;4;33m'[0m[1;4;33mplot_confidence[0m[1;4;33m'[0m[1;4m, [0m[1;4;33m'[0m[1;4;33mration[0m [31m [0m
-[31m [0m   [2m461 [0m[2m│   │   │   │   [0mcolumn_config={                                                [31m [0m
-[31m [0m   [2m462 [0m[2m│   │   │   │   │   [0m[33m"[0m[33mtimestamp[0m[33m"[0m: st.column_config.DatetimeColumn([33m"[0m[33mTime (UTC)[0m[33m"[0m, [31m [0m
-[31m [0m   [2m463 [0m[2m│   │   │   │   │   [0m[33m"[0m[33mplot_label[0m[33m"[0m: [33m"[0m[33mSignal[0m[33m"[0m,                                    [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/[0m[1mframe.py[0m:41 [31m [0m
-[31m [0m 19 in __getitem__                                                                    [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m   [2m 4116 [0m[2m│   │   [0m[94melse[0m:                                                                [31m [0m
-[31m [0m   [2m 4117 [0m[2m│   │   │   [0m[94mif[0m is_iterator(key):                                             [31m [0m
-[31m [0m   [2m 4118 [0m[2m│   │   │   │   [0mkey = [96mlist[0m(key)                                              [31m [0m
-[31m [0m [31m❱ [0m 4119 [2m│   │   │   [0mindexer = [1;4;96mself[0m[1;4m.columns._get_indexer_strict(key, [0m[1;4;33m"[0m[1;4;33mcolumns[0m[1;4;33m"[0m[1;4m)[0m[[94m1[0m]    [31m [0m
-[31m [0m   [2m 4120 [0m[2m│   │   [0m                                                                     [31m [0m
-[31m [0m   [2m 4121 [0m[2m│   │   [0m[2m# take() does not accept boolean indexers[0m                            [31m [0m
-[31m [0m   [2m 4122 [0m[2m│   │   [0m[94mif[0m [96mgetattr[0m(indexer, [33m"[0m[33mdtype[0m[33m"[0m, [94mNone[0m) == [96mbool[0m:                          [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/indexes/[0m[1mbas[0m [31m [0m
-[31m [0m [1me.py[0m:6212 in _get_indexer_strict                                                     [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m   [2m6209 [0m[2m│   │   [0m[94melse[0m:                                                                 [31m [0m
-[31m [0m   [2m6210 [0m[2m│   │   │   [0mkeyarr, indexer, new_indexer = [96mself[0m._reindex_non_unique(keyarr)   [31m [0m
-[31m [0m   [2m6211 [0m[2m│   │   [0m                                                                      [31m [0m
-[31m [0m [31m❱ [0m6212 [2m│   │   [0m[1;4;96mself[0m[1;4m._raise_if_missing(keyarr, indexer, axis_name)[0m                    [31m [0m
-[31m [0m   [2m6213 [0m[2m│   │   [0m                                                                      [31m [0m
-[31m [0m   [2m6214 [0m[2m│   │   [0mkeyarr = [96mself[0m.take(indexer)                                           [31m [0m
-[31m [0m   [2m6215 [0m[2m│   │   [0m[94mif[0m [96misinstance[0m(key, Index):                                            [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m [2m/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/indexes/[0m[1mbas[0m [31m [0m
-[31m [0m [1me.py[0m:6264 in _raise_if_missing                                                       [31m [0m
-[31m [0m                                                                                      [31m [0m
-[31m [0m   [2m6261 [0m[2m│   │   │   │   [0m[94mraise[0m [96mKeyError[0m([33mf[0m[33m"[0m[33mNone of [[0m[33m{[0mkey[33m}[0m[33m] are in the [[0m[33m{[0maxis_name[33m}[0m[33m][0m[33m"[0m)   [31m [0m
-[31m [0m   [2m6262 [0m[2m│   │   │   [0m                                                                  [31m [0m
-[31m [0m   [2m6263 [0m[2m│   │   │   [0mnot_found = [96mlist[0m(ensure_index(key)[missing_mask.nonzero()[[94m0[0m]].uni [31m [0m
-[31m [0m [31m❱ [0m6264 [2m│   │   │   [0m[1;4;94mraise[0m[1;4m [0m[1;4;96mKeyError[0m[1;4m([0m[1;4;33mf[0m[1;4;33m"[0m[1;4;33m{[0m[1;4mnot_found[0m[1;4;33m}[0m[1;4;33m not in index[0m[1;4;33m"[0m[1;4m)[0m                       [31m [0m
-[31m [0m   [2m6265 [0m[2m│   [0m                                                                          [31m [0m
-[31m [0m   [2m6266 [0m[2m│   [0m[1;95m@overload[0m                                                                 [31m [0m
-[31m [0m   [2m6267 [0m[2m│   [0m[94mdef[0m[90m [0m[92m_get_indexer_non_comparable[0m(                                          [31m [0m
-[31m────────────────────────────────────────────────────────────────────────────────────────[0m
-[1;91mKeyError: [0m[32m"[0m[32m[[0m[32m'rationale'[0m[32m][0m[32m not in index"[0m
+[1;91mKeyError: [0m[32m'rationale'[0m
