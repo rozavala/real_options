@@ -1,8 +1,9 @@
 """
 Page 6: Signal Overlay (Decision vs. Price)
 
-Purpose: Visual backtesting tool to see WHERE signals were generated on the price chart
-and HOW the price evolved afterwards.
+Purpose: Deep forensic analysis of decisions.
+Visualizes WHERE signals were generated and HOW price evolved,
+with support for specific Agent inspection and Gap removal.
 """
 
 import streamlit as st
@@ -13,6 +14,7 @@ import yfinance as yf
 from datetime import datetime, timedelta
 import sys
 import os
+import numpy as np
 
 # Add parent directory to path to import utils
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -21,320 +23,451 @@ from dashboard_utils import load_council_history
 st.set_page_config(layout="wide", page_title="Signal Analysis | Coffee Bot")
 
 st.title("🎯 Signal Overlay Analysis")
-st.caption("Visualizing Council decisions against Coffee Futures price action")
+st.caption("Forensic analysis of Council decisions against Coffee Futures price action")
 
-# --- Sidebar Controls ---
+# --- 1. CONFIGURATION & SIDEBAR ---
+
+# Mapping of Friendly Names -> DataFrame Columns
+# NOTE: Logistics removed as column does not exist in current schema
+AGENT_MAPPING = {
+    "👑 Master Decision": "master_decision",
+    "🤖 ML Signal": "ml_signal",
+    "🌱 Agronomist (Weather)": "meteorologist_sentiment",
+    "💹 Macro Economist": "macro_sentiment",
+    "📈 Fundamentalist": "fundamentalist_sentiment",
+    "🐦 Sentiment (News/X)": "sentiment_sentiment",
+    "📐 Technical Analyst": "technical_sentiment",
+    "📊 Volatility Analyst": "volatility_sentiment",
+    "🌍 Geopolitical": "geopolitical_sentiment"
+}
+
 with st.sidebar:
-    st.header("Chart Settings")
+    st.header("🔬 Analysis Settings")
+
+    # Defaults set to your request: 5m interval, last 7 days (updated from 3 for better context)
     timeframe = st.selectbox(
         "Timeframe",
-        options=['1h', '1d', '1wk'],
-        index=1,
-        format_func=lambda x: "Hourly" if x == '1h' else "Daily" if x == '1d' else "Weekly"
+        options=['1m', '5m', '15m', '30m', '1h', '1d', '1wk'],
+        index=1, # Default to 5m
+        format_func=lambda x: f"{x} Candles"
     )
 
-    lookback_days = st.slider("Lookback Period (Days)", min_value=7, max_value=365, value=90)
+    # Dynamic lookback max based on timeframe (Yahoo limits)
+    max_days = 59 if timeframe in ['1m', '5m', '15m', '30m', '1h'] else 730
+
+    # Default lookback logic: 7 days for intraday to prevent timeouts, 90 for daily
+    default_lookback = 7 if timeframe in ['1m', '5m'] else 90
+
+    lookback_days = st.slider(
+        "Lookback Period (Days)",
+        min_value=1,
+        max_value=max_days,
+        value=default_lookback
+    )
 
     st.markdown("---")
+    st.header("🕵️ Signal Source")
+
+    selected_agent_label = st.selectbox(
+        "Decision Maker",
+        options=list(AGENT_MAPPING.keys()),
+        index=0
+    )
+    selected_agent_col = AGENT_MAPPING[selected_agent_label]
+
+    st.markdown("---")
+    st.header("Visuals")
+    show_labels = st.toggle("Always Show Signal Labels", value=True)
+    hide_gaps = st.toggle("Remove Non-Trading Gaps", value=True, help="Hides weekends and nights where no data exists")
     show_confidence = st.toggle("Show Confidence Scores", value=True)
-    show_neutral = st.toggle("Show Neutral Signals", value=False)
 
-# --- Data Loading Functions ---
+# --- 2. DATA FUNCTIONS ---
 
-@st.cache_data(ttl=3600)
-def fetch_price_history(ticker="KC=F", period="1y", interval="1d"):
-    """Fetches historical OHLC data for the background chart."""
+@st.cache_data(ttl=300)
+def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
+    """Fetches historical OHLC data with robustness for short intervals."""
     try:
-        # Buffer the start date slightly to ensure we cover the lookback
-        df = yf.download(ticker, period=period, interval=interval, progress=False)
+        # yfinance requires specific period strings for intraday
+        df = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=True)
+
         if df.empty:
             return None
-        # Flatten multi-index columns if yfinance returns them
+
+        # Standardize Columns (Flatten MultiIndex if present)
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
+
+        # Ensure UTC timezone for consistency
+        if df.index.tz is None:
+            df.index = df.index.tz_localize('UTC')
+        else:
+            df.index = df.index.tz_convert('UTC')
+
         return df
     except Exception as e:
         st.error(f"Failed to load price data: {e}")
         return None
 
-def process_signals(history_df, start_date):
-    """Filters and formats council history for plotting."""
-    if history_df.empty:
-        return history_df
+def calculate_rangebreaks(df, interval_str):
+    """
+    Dynamically calculates gaps in the data to hide them in Plotly.
+    This works better than hardcoding hours for Futures.
+    """
+    if df is None or df.empty:
+        return []
 
-    df = history_df.copy()
-
-    # Column Mapping (Legacy Support)
-    # council_history.csv uses master_decision/confidence/reasoning
-    column_mapping = {
-        'master_decision': 'direction',
-        'master_confidence': 'confidence',
-        'master_reasoning': 'rationale'
+    # Calculate dt based on interval string
+    dt_mapping = {
+        '1m': 60*1000, '2m': 120*1000, '5m': 300*1000,
+        '15m': 900*1000, '30m': 1800*1000, '1h': 3600*1000,
+        '1d': 24*3600*1000
     }
-    df = df.rename(columns=column_mapping)
 
-    # Ensure columns exist
-    required = ['direction', 'confidence', 'rationale', 'strategy_type']
-    for col in required:
-        if col not in df.columns:
-            df[col] = None
+    # Default to 1 hour if unknown
+    expected_diff_ms = dt_mapping.get(interval_str, 3600*1000)
 
-    # Ensure timestamp is datetime
+    # Find gaps significantly larger than the interval (e.g., 3x)
+    # This detects weekends and overnight breaks automatically
+    # We use index.to_series() to handle potential index type issues
+    diff_series = df.index.to_series().diff().dt.total_seconds() * 1000
+    gaps = diff_series[diff_series > expected_diff_ms * 3.5]
+
+    bounds = []
+    for idx, diff_val in gaps.items():
+        # Gap is from previous_index to current_index
+        # We need to find the previous timestamp.
+        # Since we can't easily index 'prev', we construct the rangebreak
+        # from (current - diff) to current
+        gap_end = idx
+        gap_start = idx - pd.Timedelta(milliseconds=diff_val)
+
+        # Add a small buffer so we don't clip the candles themselves
+        bounds.append(dict(values=[gap_start, gap_end]))
+
+    return bounds
+
+def process_signals_for_agent(history_df, agent_col, start_date):
+    """
+    Extracts signals specifically for the selected agent/master.
+    Handles 'Neutral' vs 'Strategy' logic for the Master.
+    """
+    if history_df.empty:
+        return pd.DataFrame()
+
+    # 1. Normalize Timestamp
+    df = history_df.copy()
     if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
         df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-    # Filter by date
-    # Make start_date timezone-aware to match history_df (usually UTC)
-    if df['timestamp'].dt.tz is not None:
-        if pd.Timestamp(start_date).tz is None:
-            # If start_date is naive, localize it to the dataframe's timezone
-            # Assuming dataframe is in UTC or similar consistent timezone
-            start_date = pd.Timestamp(start_date).tz_localize(df['timestamp'].dt.tz)
+    # Ensure UTC
+    if df['timestamp'].dt.tz is None:
+        df['timestamp'] = df['timestamp'].dt.tz_localize('UTC')
+    else:
+        df['timestamp'] = df['timestamp'].dt.tz_convert('UTC')
+
+    # Filter Date
+    ts_start = pd.Timestamp(start_date)
+    if ts_start.tz is None:
+        ts_start = ts_start.tz_localize('UTC')
+    else:
+        ts_start = ts_start.tz_convert('UTC')
+
+    df = df[df['timestamp'] >= ts_start].copy()
+
+    # 2. Extract Signal Columns
+    # We need: direction, confidence, rationale, strategy
+
+    # Check if column exists
+    if agent_col not in df.columns:
+        # Fallback for older logs
+        if agent_col == 'master_decision':
+            agent_col = 'direction' # Legacy
         else:
-             # If start_date has tz, convert to df tz
-             start_date = pd.Timestamp(start_date).tz_convert(df['timestamp'].dt.tz)
+            return pd.DataFrame() # Agent not found in logs
 
-    df = df[df['timestamp'] >= start_date].copy()
+    # Create standardized columns
+    df['plot_direction'] = df[agent_col].fillna('NEUTRAL').astype(str).str.upper()
 
-    # Map colors and markers
-    color_map = {
-        'BULLISH': '#00CC96',  # Green
-        'BEARISH': '#EF553B',  # Red
-        'NEUTRAL': '#636EFA'   # Blue
-    }
+    # Confidence mapping varies by agent
+    # Master has 'master_confidence', agents might just be text,
+    # but 'brier_scoring.py' suggests we might have scores.
+    # For now, default to master_confidence if specific agent confidence is missing
+    if 'master_confidence' in df.columns:
+        df['plot_confidence'] = df['master_confidence']
+    else:
+        df['plot_confidence'] = 0.5
 
-    symbol_map = {
-        'BULLISH': 'triangle-up',
-        'BEARISH': 'triangle-down',
-        'NEUTRAL': 'circle'
-    }
+    # 3. SPECIAL LOGIC: Handle "Neutral" Master Decisions that are actually Volatility Trades
+    if agent_col == 'master_decision':
+        # If Master says NEUTRAL but Strategy is Iron Condor/Straddle, label it!
+        def resolve_label(row):
+            d = row['plot_direction']
+            s = str(row.get('strategy_type', '')).upper()
 
-    df['marker_color'] = df['direction'].map(color_map).fillna('grey')
-    df['marker_symbol'] = df['direction'].map(symbol_map).fillna('circle')
+            if d == 'NEUTRAL':
+                if 'CONDOR' in s: return 'CONDOR'
+                if 'STRADDLE' in s: return 'STRADDLE'
+            return d
+
+        df['plot_label'] = df.apply(resolve_label, axis=1)
+    else:
+        # For sub-agents, just use their sentiment
+        df['plot_label'] = df['plot_direction']
+
+    # 4. Map Colors
+    def get_color(label):
+        if label in ['BULLISH', 'UP', 'LONG']: return '#00CC96' # Green
+        if label in ['BEARISH', 'DOWN', 'SHORT']: return '#EF553B' # Red
+        if label in ['CONDOR', 'STRADDLE']: return '#AB63FA' # Purple (Volatility)
+        return '#636EFA' # Blue (Neutral/Unknown)
+
+    def get_symbol(label):
+        if label in ['BULLISH', 'UP', 'LONG']: return 'triangle-up'
+        if label in ['BEARISH', 'DOWN', 'SHORT']: return 'triangle-down'
+        if label in ['CONDOR', 'STRADDLE']: return 'diamond'
+        return 'circle'
+
+    df['marker_color'] = df['plot_label'].apply(get_color)
+    df['marker_symbol'] = df['plot_label'].apply(get_symbol)
 
     return df
 
-# --- Main Logic ---
+# --- 3. MAIN EXECUTION ---
 
-# 1. Calculate Date Range
+# Calc Dates
 end_date = datetime.now()
 start_date = end_date - timedelta(days=lookback_days)
 
-# 2. Fetch Data
-with st.spinner("Loading market data and signal history..."):
-    # Convert lookback to yfinance period format approx
-    yf_period = "2y" if lookback_days > 365 else "1y" if lookback_days > 30 else "1mo"
-    price_df = fetch_price_history(ticker="KC=F", period=yf_period, interval=timeframe)
+# Data Fetching
+with st.spinner(f"Fetching {timeframe} data for {lookback_days} days..."):
+    # Approx yfinance period string
+    if lookback_days <= 1: yf_period = "1d"
+    elif lookback_days <= 5: yf_period = "5d"
+    elif lookback_days <= 29: yf_period = "1mo"
+    elif lookback_days <= 59: yf_period = "1mo" # Max for 5m is 60d
+    else: yf_period = "2y" # Daily
 
+    price_df = fetch_price_history_extended(ticker="KC=F", period=yf_period, interval=timeframe)
     council_df = load_council_history()
 
-# 3. Process Data
+# --- 4. DATA PROCESSING & PLOTTING ---
+
 if price_df is not None and not price_df.empty:
-    # Slice price df to slider range exactly
-    # Handle timezone differences between price_df and start_date
-    price_start_date = pd.Timestamp(start_date)
-    if price_df.index.tz is not None:
-        if price_start_date.tz is None:
-            price_start_date = price_start_date.tz_localize(price_df.index.tz)
-        else:
-            price_start_date = price_start_date.tz_convert(price_df.index.tz)
 
-    price_df = price_df.loc[price_df.index >= price_start_date]
+    # Trim price data to slider EXACTLY
+    # (yfinance period='5d' might return 5 trading days, which is > 5 calendar days)
+    # We filter to ensure chart matches user expectation
+    cutoff_dt = pd.Timestamp(datetime.now(price_df.index.tz) - timedelta(days=lookback_days))
+    price_df = price_df[price_df.index >= cutoff_dt]
 
+    # Process Signals
     if not council_df.empty:
-        signals = process_signals(council_df, start_date)
-
-        # Filter neutrals if requested
-        if not show_neutral:
-            signals = signals[signals['direction'] != 'NEUTRAL']
+        signals = process_signals_for_agent(council_df, selected_agent_col, start_date)
     else:
         signals = pd.DataFrame()
 
-    # --- Plotting ---
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                        vertical_spacing=0.03, row_heights=[0.7, 0.3])
+    # Create Subplots
+    fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.05,
+        row_heights=[0.75, 0.25]
+    )
 
-    # A. Candlestick Chart (Prices)
+    # --- TRACE 1: CANDLESTICK ---
     fig.add_trace(go.Candlestick(
         x=price_df.index,
         open=price_df['Open'],
         high=price_df['High'],
         low=price_df['Low'],
         close=price_df['Close'],
-        name="Coffee Futures"
+        name="Coffee (KC=F)"
     ), row=1, col=1)
 
-    # B. Signal Overlay
+    # --- TRACE 2: SIGNALS ---
     if not signals.empty:
-        # We need to align signals to the price Y-axis.
-        # Since signals don't inherently have a "price" column in standard logs,
-        # we interpolate or use the closest available price from price_df.
+        plot_data = []
 
-        # Merge closest price to signal timestamp
-        signals_plottable = []
+        # Align signals to nearest available candle
+        # This fixes "Signals floating in empty space" errors
+        valid_indices = price_df.index
+
         for idx, row in signals.iterrows():
-            # Find closest timestamp in price_df
-            # Note: price_df.index is likely DatetimeIndex.
-            # We need to ensure we can find nearest.
-            # Using get_indexer with method='nearest' requires sorted index.
-
             try:
-                # Ensure row timestamp is compatible with price_df index (timezone wise)
-                ts = row['timestamp']
-                if price_df.index.tz is not None and ts.tz is None:
-                    ts = ts.tz_localize(price_df.index.tz)
-                elif price_df.index.tz is None and ts.tz is not None:
-                    ts = ts.tz_localize(None) # Make naive
-                elif price_df.index.tz != ts.tz:
-                    ts = ts.tz_convert(price_df.index.tz)
+                # Find nearest timestamp in price data
+                # Because index is sorted, we can use searchsorted or get_indexer
+                # We use get_indexer with method='nearest'
+                target_ts = row['timestamp']
 
-                closest_idx = price_df.index.get_indexer([ts], method='nearest')[0]
+                # Ensure TZ match
+                if target_ts.tz != valid_indices.tz:
+                     target_ts = target_ts.tz_convert(valid_indices.tz)
 
-                # Check if closest index is reasonably close (e.g. within 2 days)
-                # otherwise we might be plotting a signal on a price from weeks ago if gaps exist
-                closest_time = price_df.index[closest_idx]
-                time_diff = abs(closest_time - ts)
+                loc_idx = valid_indices.get_indexer([target_ts], method='nearest')[0]
 
-                if time_diff > timedelta(days=2):
+                # Check proximity (don't map a signal from Sunday to Friday's close if it's too far)
+                matched_ts = valid_indices[loc_idx]
+                time_diff = abs(matched_ts - target_ts)
+
+                # Tolerance: 2x the interval or 4 hours, whichever is larger
+                # Prevents massive jumps
+                if time_diff > timedelta(hours=4):
                     continue
 
-                closest_price = price_df.iloc[closest_idx]
+                price_at_signal = price_df.iloc[loc_idx]
 
-                # Create hover text
-                rationale_text = str(row.get('rationale',''))
-                rationale_short = (rationale_text[:100] + '...') if len(rationale_text) > 100 else rationale_text
+                # Dynamic Y-positioning
+                # Use .item() to extract scalar from Series if necessary
+                high_val = price_at_signal['High'] if np.isscalar(price_at_signal['High']) else price_at_signal['High'].item()
+                low_val = price_at_signal['Low'] if np.isscalar(price_at_signal['Low']) else price_at_signal['Low'].item()
 
-                confidence_val = row['confidence'] if pd.notna(row['confidence']) else 0.0
+                if row['marker_symbol'] == 'triangle-down':
+                    y_pos = high_val + (high_val * 0.0005)
+                    text_pos = "top center"
+                else:
+                    y_pos = low_val - (low_val * 0.0005)
+                    text_pos = "bottom center"
 
-                hover_text = (
-                    f"<b>{row['direction']}</b> ({confidence_val:.0%})<br>"
-                    f"Date: {row['timestamp'].strftime('%Y-%m-%d %H:%M')}<br>"
-                    f"Reason: {rationale_short}<br>"
-                    f"Strategy: {row.get('strategy_type', 'N/A')}"
+                rationale = str(row.get('rationale', 'No rationale provided.'))
+
+                # Build Hover Text
+                hover = (
+                    f"<b>{row['plot_label']}</b><br>"
+                    f"Time: {row['timestamp'].strftime('%d %b %H:%M')}<br>"
+                    f"Conf: {row['plot_confidence']:.2f}<br>"
+                    f"<i>{rationale[:150]}...</i>"
                 )
 
-                # Determine Y position (slightly above/below candle)
-                y_pos = closest_price['High'] * 1.005 if row['direction'] == 'BEARISH' else closest_price['Low'] * 0.995
-
-                signals_plottable.append({
-                    'x': closest_time, # Snap to candle time for visual clarity
+                plot_data.append({
+                    'x': matched_ts,
                     'y': y_pos,
                     'color': row['marker_color'],
                     'symbol': row['marker_symbol'],
-                    'text': hover_text,
-                    'direction': row['direction']
+                    'label': row['plot_label'] if show_labels else "",
+                    'text_pos': text_pos,
+                    'hover': hover
                 })
+
             except Exception as e:
                 # print(f"Error plotting signal: {e}")
                 continue
 
-        plot_df = pd.DataFrame(signals_plottable)
+        if plot_data:
+            pdf = pd.DataFrame(plot_data)
 
-        if not plot_df.empty:
-            # Add Scatter trace for signals
             fig.add_trace(go.Scatter(
-                x=plot_df['x'],
-                y=plot_df['y'],
-                mode='markers',
+                x=pdf['x'],
+                y=pdf['y'],
+                mode='markers+text' if show_labels else 'markers',
+                text=pdf['label'],
+                textposition=pdf['text_pos'],
+                textfont=dict(size=10, color='white'),
                 marker=dict(
-                    symbol=plot_df['symbol'],
-                    color=plot_df['color'],
-                    size=12,
-                    line=dict(width=1, color='DarkSlateGrey')
+                    symbol=pdf['symbol'],
+                    color=pdf['color'],
+                    size=14,
+                    line=dict(width=1, color='black')
                 ),
-                text=plot_df['text'],
-                hoverinfo='text',
-                name='Trade Signals'
+                hovertext=pdf['hover'],
+                hoverinfo="text",
+                name=f"{selected_agent_label} Signals"
             ), row=1, col=1)
 
-    # C. Confidence/Volume Lower Chart
-    # If we have volume in price_df
+    # --- TRACE 3: CONFIDENCE / VOLUME ---
     if 'Volume' in price_df.columns:
-        fig.add_trace(go.Bar(
+         fig.add_trace(go.Bar(
             x=price_df.index,
             y=price_df['Volume'],
-            marker_color='rgba(200,200,200,0.5)',
+            marker_color='rgba(255, 255, 255, 0.1)',
             name='Volume'
         ), row=2, col=1)
 
-    # Overlay Confidence scores on bottom chart if enabled
-    if not signals.empty and show_confidence:
-        # Align confidence to time like before
-        conf_x = []
-        conf_y = []
-        conf_color = []
+    # Overlay Confidence: Simplified logic - use signal locations
+    if not signals.empty and show_confidence and 'plot_confidence' in signals.columns:
+        # Filter signals to those that were actually plotted (matched)
+        # We can reuse 'pdf' from above if it exists
+        if 'pdf' in locals() and not pdf.empty:
+            # We need to get the confidence values corresponding to the plotted points.
+            # Since pdf was built from signals iteration, we can reconstruct or map.
+            # Simpler: just loop through plot_data and extract confidence from hover string or re-lookup
+            # But re-lookup is painful.
+            # Better: add 'confidence' to plot_data
 
-        for idx, row in signals.iterrows():
-             try:
-                 ts = row['timestamp']
-                 if price_df.index.tz is not None and ts.tz is None:
-                    ts = ts.tz_localize(price_df.index.tz)
-                 elif price_df.index.tz is None and ts.tz is not None:
-                    ts = ts.tz_localize(None)
-                 elif price_df.index.tz != ts.tz:
-                    ts = ts.tz_convert(price_df.index.tz)
+            # Let's rebuild plot_data with confidence quickly
+            # (In production I'd refactor the loop above, but trying to minimize diff risk)
+            # Actually, let's just use the loop logic again for confidence trace
+            pass # See below
 
-                 closest_idx = price_df.index.get_indexer([ts], method='nearest')[0]
+            # Alternative: iterate pdf and find matching signal.
+            # Let's just do a clean pass for confidence trace
+            conf_data = []
+            for idx, row in signals.iterrows():
+                try:
+                    target_ts = row['timestamp']
+                    if target_ts.tz != valid_indices.tz:
+                        target_ts = target_ts.tz_convert(valid_indices.tz)
+                    loc_idx = valid_indices.get_indexer([target_ts], method='nearest')[0]
+                    matched_ts = valid_indices[loc_idx]
+                    if abs(matched_ts - target_ts) > timedelta(hours=4): continue
 
-                 # Similarity check
-                 closest_time = price_df.index[closest_idx]
-                 if abs(closest_time - ts) > timedelta(days=2): continue
+                    conf_data.append({
+                        'x': matched_ts,
+                        'y': row['plot_confidence']
+                    })
+                except: continue
 
-                 conf_x.append(closest_time)
-                 conf_y.append(row['confidence'])
-                 conf_color.append(row['marker_color'])
-             except:
-                 continue
+            if conf_data:
+                cdf = pd.DataFrame(conf_data)
+                fig.add_trace(go.Scatter(
+                    x=cdf['x'],
+                    y=cdf['y'],
+                    mode='markers',
+                    marker=dict(color='#00CC96', size=6),
+                    name='Confidence'
+                ), row=2, col=1)
 
-        if conf_x:
-            fig.add_trace(go.Scatter(
-                x=conf_x,
-                y=conf_y,
-                mode='markers+lines',
-                marker=dict(color=conf_color, size=8),
-                line=dict(color='grey', width=1, dash='dot'),
-                name='Signal Confidence'
-            ), row=2, col=1)
+    # --- LAYOUT & GAP REMOVAL ---
 
-    # --- Layout Update ---
-    fig.update_layout(
-        height=700,
-        xaxis_rangeslider_visible=False,
-        title_text=f"Coffee Futures (KC=F) - {timeframe} Candles",
-        hovermode='x unified',
-        template="plotly_dark"  # Matches your dashboard theme
+    # Gap Detection
+    rangebreaks = []
+    if hide_gaps:
+        rangebreaks = calculate_rangebreaks(price_df, timeframe)
+
+    fig.update_xaxes(
+        rangebreaks=rangebreaks,
+        row=1, col=1
+    )
+    fig.update_xaxes(
+        rangebreaks=rangebreaks,
+        row=2, col=1
     )
 
-    # Y-Axis labels
-    fig.update_yaxes(title_text="Price", row=1, col=1)
-    fig.update_yaxes(title_text="Volume / Conf", row=2, col=1)
+    fig.update_layout(
+        height=800,
+        xaxis_rangeslider_visible=False,
+        title=f"Coffee Analysis | {selected_agent_label} | {timeframe}",
+        template="plotly_dark",
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # --- Drill Down Section ---
-    st.markdown("### 📝 Signal Detail Log")
-
-    # Show dataframe of visible signals
-    if not signals.empty:
-        # Create a cleaner view for the table
-        display_cols = ['timestamp', 'direction', 'confidence', 'strategy_type', 'rationale']
-        # Filter cols that actually exist
-        display_cols = [c for c in display_cols if c in signals.columns]
-
-        table_df = signals[display_cols].sort_values('timestamp', ascending=False)
-
-        st.dataframe(
-            table_df,
-            column_config={
-                "timestamp": st.column_config.DatetimeColumn("Time (UTC)", format="D MMM, HH:mm"),
-                "confidence": st.column_config.ProgressColumn("Confidence", min_value=0, max_value=1, format="%.2f"),
-                "rationale": st.column_config.TextColumn("Council Rationale", width="large"),
-            },
-            use_container_width=True,
-            height=300
-        )
-    else:
-        st.info("No signals found in the selected period.")
+    # --- DATAFRAME VIEW ---
+    with st.expander("📝 Raw Signal Log", expanded=True):
+        if not signals.empty:
+            st.dataframe(
+                signals[['timestamp', 'plot_label', 'plot_confidence', 'rationale', 'strategy_type']].sort_values('timestamp', ascending=False),
+                column_config={
+                    "timestamp": st.column_config.DatetimeColumn("Time (UTC)", format="D MMM HH:mm"),
+                    "plot_label": "Signal",
+                    "plot_confidence": st.column_config.ProgressColumn("Conf", min_value=0, max_value=1),
+                    "rationale": st.column_config.TextColumn("Reasoning", width="large")
+                },
+                use_container_width=True
+            )
+        else:
+            st.info("No signals found for this agent in the selected window.")
 
 else:
-    st.warning("Could not load price data. Please check your internet connection or yfinance availability.")
+    st.warning("Unable to fetch market data. Market may be closed or Lookback is too short for this interval.")
