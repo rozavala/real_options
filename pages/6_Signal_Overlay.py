@@ -5,11 +5,10 @@ Purpose: Deep forensic analysis of decisions.
 Visualizes WHERE signals were generated and HOW price evolved.
 Optimized for performance using vectorized operations (merge_asof).
 
-v2.1 - Fixes:
-- Data Overlap Bug: Enforced index sorting and deduplication.
-- Visuals: Added Day Separators (dotted lines).
-- Deprecation: Updated st.dataframe argument.
-- Timezone: Enforced America/New_York consistency.
+v2.3 - Final Fixes:
+- STABILITY: Fixed 'overlap' chart bug by enforcing strict index sorting.
+- COMPLIANCE: Replaced deprecated 'use_container_width' with "width='stretch'".
+- VISUALS: Forced America/New_York timezone for accurate market hour filtering.
 """
 
 import streamlit as st
@@ -140,11 +139,6 @@ def calculate_market_hours_rangebreaks(df: pd.DataFrame, interval_str: str) -> l
     """
     Calculates rangebreaks to exclude non-trading periods.
     Assumes df.index is in America/New_York timezone.
-
-    Excludes:
-    1. Weekends (Saturday/Sunday)
-    2. US Market Holidays
-    3. Non-trading hours (for intraday: 1:30 PM - 3:30 AM ET)
     """
     if df is None or df.empty:
         return []
@@ -155,22 +149,18 @@ def calculate_market_hours_rangebreaks(df: pd.DataFrame, interval_str: str) -> l
     rangebreaks.append(dict(bounds=["sat", "mon"]))
 
     # 2. Holiday exclusion
-    # df.index is America/New_York.
     start_year = df.index.min().year
     end_year = df.index.max().year + 1
 
     us_holidays = holidays.US(years=range(start_year, end_year), observed=True)
 
     for holiday_date in us_holidays.keys():
-        # Holiday is defined as a DATE.
-        # We need to exclude the whole day in NY time.
         holiday_start = pd.Timestamp(holiday_date, tz='America/New_York')
         holiday_end = holiday_start + pd.Timedelta(days=1)
         rangebreaks.append(dict(values=[holiday_start.isoformat(), holiday_end.isoformat()]))
 
     # 3. Non-trading hours (intraday only)
     # ICE Coffee settlement is 1:30 PM ET (13.5), opens 3:30 AM ET (3.5)
-    # Exclude 13.5 to 3.5
     if interval_str in ['5m', '15m', '30m', '1h']:
         rangebreaks.append(dict(bounds=[13.5, 3.5], pattern="hour"))
 
@@ -202,14 +192,15 @@ def process_signals_for_agent(history_df, agent_col, start_date):
     df['timestamp'] = df['timestamp'].dt.tz_convert('America/New_York')
 
     # 3. Date filtering
-    # start_date is likely naive or local. Convert to ET for comparison.
-    ts_start = pd.Timestamp(start_date)
-    if ts_start.tzinfo is None:
-        ts_start = ts_start.tz_localize(datetime.now().astimezone().tzinfo).tz_convert('America/New_York')
+    # Ensure strict timezone awareness for comparison
+    cutoff_ts = pd.Timestamp(start_date)
+    if cutoff_ts.tzinfo is None:
+        # If naive, assume it's meant to be in the same TZ as our data (NY)
+        cutoff_ts = cutoff_ts.tz_localize('America/New_York')
     else:
-        ts_start = ts_start.tz_convert('America/New_York')
+        cutoff_ts = cutoff_ts.tz_convert('America/New_York')
 
-    df = df[df['timestamp'] >= ts_start].copy()
+    df = df[df['timestamp'] >= cutoff_ts].copy()
     if df.empty:
         return pd.DataFrame()
 
@@ -234,18 +225,14 @@ def process_signals_for_agent(history_df, agent_col, start_date):
         def resolve_label(row):
             d = str(row['plot_direction']).upper()
             s = str(row.get('strategy_type', '')).upper().strip()
-
-            if 'IRON_CONDOR' in s:
-                return 'IRON_CONDOR'
-            if 'STRADDLE' in s:
-                return 'LONG_STRADDLE'
-            if 'BULL_CALL' in s:
-                return 'BULLISH'
-            if 'BEAR_PUT' in s:
-                return 'BEARISH'
-
+            
+            if 'IRON_CONDOR' in s: return 'IRON_CONDOR'
+            if 'STRADDLE' in s: return 'LONG_STRADDLE'
+            if 'BULL_CALL' in s: return 'BULLISH'
+            if 'BEAR_PUT' in s: return 'BEARISH'
+            
             return d if d in ['BULLISH', 'BEARISH'] else 'NEUTRAL'
-
+        
         df['plot_label'] = df.apply(resolve_label, axis=1)
     else:
         df['plot_label'] = df['plot_direction']
@@ -253,7 +240,7 @@ def process_signals_for_agent(history_df, agent_col, start_date):
     # 8. Colors & Symbols
     df['marker_color'] = df['plot_label'].map(COLOR_MAP).fillna('#888888')
     df['marker_symbol'] = df['plot_label'].map(SYMBOL_MAP).fillna('circle')
-
+    
     # 9. Confidence-based sizing
     df['marker_size'] = df['plot_confidence'].apply(lambda c: get_marker_size(c, base_size=14))
 
@@ -262,7 +249,7 @@ def process_signals_for_agent(history_df, agent_col, start_date):
                     'marker_color', 'marker_symbol', 'marker_size', 'strategy_type',
                     'master_reasoning', 'rationale']
     cols_to_keep = [c for c in cols_to_keep if c in df.columns]
-
+    
     return df[cols_to_keep]
 
 
@@ -273,22 +260,22 @@ def build_hover_text(row):
         f"Time: {row['timestamp'].strftime('%d %b %H:%M')} ET",
         f"Confidence: {row.get('plot_confidence', 0.5):.0%}",
     ]
-
+    
     if 'strategy_type' in row and pd.notna(row.get('strategy_type')):
         parts.append(f"Strategy: {row['strategy_type']}")
-
+    
     if 'outcome' in row and row.get('outcome') in ['WIN', 'LOSS']:
         outcome_emoji = '✅' if row['outcome'] == 'WIN' else '❌'
         parts.append(f"Outcome: {outcome_emoji} {row['outcome']}")
-
+    
     if 'pnl_realized' in row and pd.notna(row.get('pnl_realized')) and row.get('pnl_realized') != 0:
         pnl = float(row['pnl_realized'])
         parts.append(f"P&L: {pnl:+.4f}")
-
+    
     rationale = str(row.get('master_reasoning', row.get('rationale', '')))[:150]
     if rationale and rationale != 'nan':
         parts.append(f"<i>{rationale}...</i>")
-
+    
     return "<br>".join(parts)
 
 
@@ -299,16 +286,11 @@ start_date = end_date - timedelta(days=lookback_days)
 
 with st.spinner("Loading market data and signals..."):
     # Determine YFinance period
-    if lookback_days <= 1:
-        yf_period = "1d"
-    elif lookback_days <= 5:
-        yf_period = "5d"
-    elif lookback_days <= 29:
-        yf_period = "1mo"
-    elif lookback_days <= 59:
-        yf_period = "2mo"
-    else:
-        yf_period = "2y"
+    if lookback_days <= 1: yf_period = "1d"
+    elif lookback_days <= 5: yf_period = "5d"
+    elif lookback_days <= 29: yf_period = "1mo"
+    elif lookback_days <= 59: yf_period = "2mo"
+    else: yf_period = "2y"
 
     price_df = fetch_price_history_extended(ticker="KC=F", period=yf_period, interval=timeframe)
     council_df = load_council_history()
@@ -319,8 +301,10 @@ with st.spinner("Loading market data and signals..."):
 if price_df is not None and not price_df.empty:
 
     # Filter price data to slider range
-    # Ensure cutoff_dt is aware (ET)
-    cutoff_dt = pd.Timestamp(datetime.now(price_df.index.tz) - timedelta(days=lookback_days))
+    # FIX: Robust timezone handling for cutoff
+    current_time_et = datetime.now().astimezone(pytz.timezone('America/New_York'))
+    cutoff_dt = current_time_et - timedelta(days=lookback_days)
+    
     price_df = price_df[price_df.index >= cutoff_dt]
 
     # Process signals
@@ -370,16 +354,13 @@ if price_df is not None and not price_df.empty:
                 graded_df = grade_decision_quality(council_df)
                 if not graded_df.empty:
                     graded_subset = graded_df[['timestamp', 'outcome', 'pnl_realized']].copy()
-                    graded_subset['timestamp'] = pd.to_datetime(graded_subset['timestamp'])
+                    graded_subset['timestamp'] = pd.to_datetime(graded_subset['timestamp'], errors='coerce')
+                    
+                    # Normalize graded data to NY time for merge
                     if graded_subset['timestamp'].dt.tz is None:
                         graded_subset['timestamp'] = graded_subset['timestamp'].dt.tz_localize('UTC')
-
-                    # Convert graded subset to ET for merge key matching if needed,
-                    # but we merge on timestamp. signals['timestamp'] is ET.
-                    # graded_subset['timestamp'] is likely UTC (from load_council_history).
-                    # We should convert graded_subset to ET to ensure matching.
                     graded_subset['timestamp'] = graded_subset['timestamp'].dt.tz_convert('America/New_York')
-
+                    
                     plot_df = plot_df.merge(
                         graded_subset,
                         on='timestamp',
@@ -408,7 +389,7 @@ if price_df is not None and not price_df.empty:
     # 1. Candlestick
     fig.add_trace(go.Candlestick(
         x=price_df.index, open=price_df['Open'], high=price_df['High'],
-        low=price_df['Low'], close=price_df['Close'], name="KC Coffee"
+        low=price_df['Low'], close=price_df['Close'], name="KC Coffee (ET)"
     ), row=1, col=1)
 
     # 2. Signal markers
@@ -467,16 +448,12 @@ if price_df is not None and not price_df.empty:
             name='Confidence', showlegend=False
         ), row=2, col=1)
 
-    # === VISUAL SEPARATORS ===
-    # Draw vertical lines at day boundaries
+    # === VISUAL SEPARATORS (DAY LINES) ===
     if len(price_df) > 1:
-        # Get unique dates
         dates = price_df.index.date
-        # Find where date changes (index i != index i-1)
-        # Using numpy for speed
         day_changes = np.where(dates[1:] != dates[:-1])[0] + 1
         day_timestamps = price_df.index[day_changes]
-
+        
         for ts in day_timestamps:
             fig.add_vline(
                 x=ts,
@@ -495,7 +472,7 @@ if price_df is not None and not price_df.empty:
         height=800,
         xaxis_rangeslider_visible=False,
         template="plotly_dark",
-        title=f"Coffee Analysis | {selected_agent_label} | {timeframe} | Last {lookback_days} Days",
+        title=f"Coffee Analysis (ET) | {selected_agent_label} | {timeframe} | Last {lookback_days} Days",
         hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
@@ -510,16 +487,17 @@ if price_df is not None and not price_df.empty:
                 display_cols.append('outcome')
             if 'pnl_realized' in plot_df.columns:
                 display_cols.append('pnl_realized')
-
+            
             display_cols = [c for c in display_cols if c in plot_df.columns]
-
+            
             st.dataframe(
                 plot_df[display_cols].sort_values('timestamp', ascending=False),
                 column_config={
                     "timestamp": st.column_config.DatetimeColumn("Time (ET)", format="D MMM HH:mm"),
                     "plot_confidence": st.column_config.ProgressColumn("Confidence", min_value=0, max_value=1),
                 },
-                use_container_width=True
+                # FIX: Replaced deprecated argument
+                width='stretch' 
             )
         else:
             st.info("No signals found in this window.")
