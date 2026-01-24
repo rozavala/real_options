@@ -5,11 +5,11 @@ Purpose: Deep forensic analysis of decisions.
 Visualizes WHERE signals were generated and HOW price evolved.
 Optimized for performance using vectorized operations (merge_asof).
 
-v2.1 - Enhanced with:
-- Proper market hours filtering (ET Timezone Fixed)
-- Custom symbols for each signal type
-- 72-hour default view
-- Win/Loss visual indicators
+v2.1 - Fixes:
+- Data Overlap Bug: Enforced index sorting and deduplication.
+- Visuals: Added Day Separators (dotted lines).
+- Deprecation: Updated st.dataframe argument.
+- Timezone: Enforced America/New_York consistency.
 """
 
 import streamlit as st
@@ -120,18 +120,15 @@ def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
             df.columns = df.columns.get_level_values(0)
 
         # Standardize to America/New_York
-        # YF usually returns aware timestamps for intraday, naive for daily
         if df.index.tz is None:
-            # Assume naive data is UTC (YF standard) then convert, OR if it matches exchange time?
-            # Safe bet with YF intraday: it's usually properly localized if we are lucky, or we force it.
-            # KC=F is ICE US, so ET.
-            # If naive, we assume it's already ET or UTC.
-            # Let's try localize to UTC then convert to ET to be safe if we assume source is UTC.
-            # But simpler: YF 'interval=5m' usually returns UTC-aware or Exchange-aware.
-            # We force convert to ET.
+            # Assume naive data is UTC (YF standard) then convert to ET
             df.index = df.index.tz_localize('UTC').tz_convert('America/New_York')
         else:
             df.index = df.index.tz_convert('America/New_York')
+
+        # FIX: Enforce Monotonic Index to prevent "overlapping" chart glitches
+        df = df[~df.index.duplicated(keep='last')] # Remove dups
+        df = df.sort_index() # Force sort
 
         return df
     except Exception as e:
@@ -205,13 +202,12 @@ def process_signals_for_agent(history_df, agent_col, start_date):
     df['timestamp'] = df['timestamp'].dt.tz_convert('America/New_York')
 
     # 3. Date filtering
-    # start_date is naive, assume local system time? Or convert to ET.
-    # Best to make it aware.
-    if start_date.tzinfo is None:
-        # Assume input was UTC or local, let's localize to ET for comparison
-        ts_start = pd.Timestamp(start_date).tz_localize(datetime.now().astimezone().tzinfo).tz_convert('America/New_York')
+    # start_date is likely naive or local. Convert to ET for comparison.
+    ts_start = pd.Timestamp(start_date)
+    if ts_start.tzinfo is None:
+        ts_start = ts_start.tz_localize(datetime.now().astimezone().tzinfo).tz_convert('America/New_York')
     else:
-        ts_start = pd.Timestamp(start_date).tz_convert('America/New_York')
+        ts_start = ts_start.tz_convert('America/New_York')
 
     df = df[df['timestamp'] >= ts_start].copy()
     if df.empty:
@@ -272,8 +268,6 @@ def process_signals_for_agent(history_df, agent_col, start_date):
 
 def build_hover_text(row):
     """Build rich hover text."""
-    # timestamp is now ET, show ET time?
-    # Or explicitly state ET.
     parts = [
         f"<b>{row.get('plot_label', 'SIGNAL')}</b>",
         f"Time: {row['timestamp'].strftime('%d %b %H:%M')} ET",
@@ -472,6 +466,25 @@ if price_df is not None and not price_df.empty:
             marker=dict(color='#00CC96', size=6),
             name='Confidence', showlegend=False
         ), row=2, col=1)
+
+    # === VISUAL SEPARATORS ===
+    # Draw vertical lines at day boundaries
+    if len(price_df) > 1:
+        # Get unique dates
+        dates = price_df.index.date
+        # Find where date changes (index i != index i-1)
+        # Using numpy for speed
+        day_changes = np.where(dates[1:] != dates[:-1])[0] + 1
+        day_timestamps = price_df.index[day_changes]
+
+        for ts in day_timestamps:
+            fig.add_vline(
+                x=ts,
+                line_width=1,
+                line_dash="dot",
+                line_color="rgba(255, 255, 255, 0.2)",
+                row="all"
+            )
 
     # Layout
     rangebreaks = calculate_market_hours_rangebreaks(price_df, timeframe) if hide_gaps else []
