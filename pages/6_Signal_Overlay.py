@@ -3,11 +3,12 @@ Page 6: Signal Overlay (Decision vs. Price)
 
 Purpose: Deep forensic analysis of decisions.
 Visualizes WHERE signals were generated and HOW price evolved.
+Optimized for performance using vectorized operations (merge_asof).
 
-v3.1 - Final Feature Set:
-- OVERLAP FIX: Explicitly DROP rows outside core trading hours.
-- VISUALS: Added Session Markers (🔔) and Day/Week Separators.
-- COMPLIANCE: Fixed st.dataframe deprecation warnings.
+v2.4 - Nuclear Fixes:
+- OVERLAP FIX: Explicitly DROP all rows outside core trading hours (03:30-13:30 ET). 
+  This prevents Plotly from trying to render "hidden" data points.
+- WARNING FIX: Replaced 'use_container_width' with 'width="stretch"' for st.dataframe.
 """
 
 import streamlit as st
@@ -81,7 +82,7 @@ with st.sidebar:
         min_value=1,
         max_value=max_days,
         value=default_lookback,
-        help="Default: 3 days (72 hours)"
+        help="Default: 3 days (72 hours) for recent decision analysis"
     )
 
     st.markdown("---")
@@ -106,7 +107,7 @@ with st.sidebar:
 
 @st.cache_data(ttl=300)
 def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
-    """Fetches historical OHLC data, sorted and converted to NY Time."""
+    """Fetches historical OHLC data, sorted, cleaned, and converted to NY Time."""
     try:
         df = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=True)
         if df.empty:
@@ -137,13 +138,19 @@ def filter_market_hours(df):
     """
     NUCLEAR FIX for Overlaps:
     Explicitly drop rows outside of core trading hours (03:30 - 13:30 ET).
+    If we don't drop them, Plotly's rangebreaks will try to hide them but 
+    might still connect lines through them, causing 'folding' artifacts.
     """
     if df is None or df.empty:
         return df
-    
+        
+    # Define Core Hours: 03:30 AM to 01:30 PM (13:30)
+    # We allow a small buffer (up to 14:00) just in case settlement is late
     start_time = time(3, 30)
-    end_time = time(14, 0) # Buffer to include settlement
+    end_time = time(14, 0) 
     
+    # Filter: Keep rows where time is between start and end
+    # df.index is already in America/New_York from fetch function
     mask = (df.index.time >= start_time) & (df.index.time <= end_time)
     return df.loc[mask]
 
@@ -167,15 +174,19 @@ def calculate_market_hours_rangebreaks(df: pd.DataFrame, interval_str: str) -> l
         rangebreaks.append(dict(values=[h_ts.isoformat()]))
     
     # 3. Non-trading hours (intraday only)
+    # Exclude 14:00 (2 PM) to 03:30 AM
+    # This matches our filter_market_hours logic
     if interval_str in ['5m', '15m', '30m', '1h']:
         rangebreaks.append(dict(bounds=[14, 3.5], pattern="hour"))
     
     return rangebreaks
 
+
 def get_marker_size(confidence: float, base_size: int = 14) -> int:
     """Scale marker size by confidence."""
     scale = 0.7 + (confidence * 0.6)
     return int(base_size * scale)
+
 
 def process_signals_for_agent(history_df, agent_col, start_date):
     """Clean, filter, and format signals."""
@@ -188,9 +199,10 @@ def process_signals_for_agent(history_df, agent_col, start_date):
     df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
     df = df.dropna(subset=['timestamp'])
 
-    # 2. Timezone: Convert to NY
+    # 2. Timezone: Convert to NY to match Price
     if df['timestamp'].dt.tz is None:
         df['timestamp'] = df['timestamp'].dt.tz_localize('UTC')
+    
     df['timestamp'] = df['timestamp'].dt.tz_convert('America/New_York')
 
     # 3. Date filtering
@@ -242,6 +254,7 @@ def process_signals_for_agent(history_df, agent_col, start_date):
     df['marker_size'] = df['plot_confidence'].apply(lambda c: get_marker_size(c, base_size=14))
 
     return df
+
 
 def build_hover_text(row):
     """Build rich hover text."""
@@ -348,7 +361,6 @@ if price_df is not None and not price_df.empty:
                     graded_subset = graded_df[['timestamp', 'outcome', 'pnl_realized']].copy()
                     graded_subset['timestamp'] = pd.to_datetime(graded_subset['timestamp'], errors='coerce')
                     
-                    # Normalize graded data to NY time
                     if graded_subset['timestamp'].dt.tz is None:
                         graded_subset['timestamp'] = graded_subset['timestamp'].dt.tz_localize('UTC')
                     graded_subset['timestamp'] = graded_subset['timestamp'].dt.tz_convert('America/New_York')
@@ -408,7 +420,7 @@ if price_df is not None and not price_df.empty:
             showlegend=False
         ), row=1, col=1)
 
-    # 3. Legend entries
+    # 3. Legend entries (dummy traces)
     legend_entries = [
         ('Bullish', '#00CC96', 'triangle-up'),
         ('Bearish', '#EF553B', 'triangle-down'),
@@ -440,52 +452,20 @@ if price_df is not None and not price_df.empty:
             name='Confidence', showlegend=False
         ), row=2, col=1)
 
-    # === FEATURE: SESSION MARKERS (Task 4A) ===
-    # Draw a Bell Icon 🔔 at the start of each trading session
-    if timeframe in ['5m', '15m', '30m']:
-        # Group by day
-        dates = price_df.index.date
-        unique_dates = np.unique(dates)
-        
-        for date in unique_dates:
-            day_data = price_df[price_df.index.date == date]
-            if not day_data.empty:
-                first_candle = day_data.index[0]
-                # Only mark if it's strictly a morning open (e.g. before 4:30 AM ET)
-                # This prevents marking late data starts as "Open"
-                if first_candle.time() <= time(4, 30):
-                    fig.add_annotation(
-                        x=first_candle,
-                        y=day_data.iloc[0]['High'],
-                        text="🔔",
-                        showarrow=True,
-                        arrowhead=0,
-                        ax=0,
-                        ay=-25,
-                        row=1, col=1
-                    )
-
-    # === FEATURE: VISUAL SEPARATORS (Day & Week) ===
+    # === VISUAL SEPARATORS (DAY LINES) ===
     if len(price_df) > 1:
         dates = price_df.index.date
-        weekdays = price_df.index.dayofweek
-        
         day_changes = np.where(dates[1:] != dates[:-1])[0] + 1
+        day_timestamps = price_df.index[day_changes]
         
-        for idx in day_changes:
-            ts = price_df.index[idx]
-            current_weekday = weekdays[idx]
-            prev_weekday = weekdays[idx - 1] if idx > 0 else current_weekday
-            
-            # Week boundary: Monday (0) or a gap larger than 2 days
-            is_week_start = (current_weekday == 0) or (current_weekday < prev_weekday)
-            
-            if is_week_start:
-                # WEEK: Thick Dashed Orange
-                fig.add_vline(x=ts, line_width=2, line_dash="dash", line_color="rgba(255, 165, 0, 0.5)", row="all")
-            else:
-                # DAY: Thin Dotted White
-                fig.add_vline(x=ts, line_width=1, line_dash="dot", line_color="rgba(255, 255, 255, 0.2)", row="all")
+        for ts in day_timestamps:
+            fig.add_vline(
+                x=ts,
+                line_width=1,
+                line_dash="dot",
+                line_color="rgba(255, 255, 255, 0.2)",
+                row="all"
+            )
 
     # Layout
     rangebreaks = calculate_market_hours_rangebreaks(price_df, timeframe) if hide_gaps else []
@@ -520,7 +500,7 @@ if price_df is not None and not price_df.empty:
                     "timestamp": st.column_config.DatetimeColumn("Time (ET)", format="D MMM HH:mm"),
                     "plot_confidence": st.column_config.ProgressColumn("Confidence", min_value=0, max_value=1),
                 },
-                # FIX: Use width='stretch' to fix the warning
+                # FIX: Replaced use_container_width=True with width='stretch' to fix warning
                 width='stretch' 
             )
         else:
