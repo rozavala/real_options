@@ -5,10 +5,10 @@ Purpose: Deep forensic analysis of decisions.
 Visualizes WHERE signals were generated and HOW price evolved.
 Optimized for performance using vectorized operations (merge_asof).
 
-v2.3 - Final Fixes:
-- STABILITY: Fixed 'overlap' chart bug by enforcing strict index sorting.
-- COMPLIANCE: Replaced deprecated 'use_container_width' with "width='stretch'".
-- VISUALS: Forced America/New_York timezone for accurate market hour filtering.
+v2.4 - Nuclear Fixes:
+- OVERLAP FIX: Explicitly DROP all rows outside core trading hours (03:30-13:30 ET). 
+  This prevents Plotly from trying to render "hidden" data points.
+- WARNING FIX: Replaced 'use_container_width' with 'width="stretch"' for st.dataframe.
 """
 
 import streamlit as st
@@ -16,7 +16,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
 import yfinance as yf
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 import sys
 import os
 import numpy as np
@@ -46,7 +46,6 @@ AGENT_MAPPING = {
     "🌍 Geopolitical": "geopolitical_sentiment"
 }
 
-# Signal Visualization Mapping
 COLOR_MAP = {
     'BULLISH': '#00CC96', 'UP': '#00CC96', 'LONG': '#00CC96',
     'BEARISH': '#EF553B', 'DOWN': '#EF553B', 'SHORT': '#EF553B',
@@ -62,7 +61,6 @@ SYMBOL_MAP = {
     'LONG_STRADDLE': 'diamond-wide', 'STRADDLE': 'diamond-wide',
     'NEUTRAL': 'circle', 'HOLD': 'circle',
 }
-
 
 # === SIDEBAR CONFIGURATION ===
 
@@ -100,7 +98,7 @@ with st.sidebar:
     st.markdown("---")
     st.header("Visuals")
     show_labels = st.toggle("Always Show Signal Labels", value=True)
-    hide_gaps = st.toggle("Remove Non-Trading Gaps", value=True)
+    hide_gaps = st.toggle("Remove Non-Trading Gaps", value=True, help="Hides nights/weekends")
     show_confidence = st.toggle("Show Confidence Scores", value=True)
     show_outcomes = st.toggle("Highlight Win/Loss", value=True)
 
@@ -109,7 +107,7 @@ with st.sidebar:
 
 @st.cache_data(ttl=300)
 def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
-    """Fetches historical OHLC data with robustness, standardized to ET."""
+    """Fetches historical OHLC data, sorted, cleaned, and converted to NY Time."""
     try:
         df = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=True)
         if df.empty:
@@ -118,52 +116,69 @@ def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        # Standardize to America/New_York
+        # 1. Standardize to UTC first
         if df.index.tz is None:
-            # Assume naive data is UTC (YF standard) then convert to ET
-            df.index = df.index.tz_localize('UTC').tz_convert('America/New_York')
+            df.index = df.index.tz_localize('UTC')
         else:
-            df.index = df.index.tz_convert('America/New_York')
+            df.index = df.index.tz_convert('UTC')
+            
+        # 2. Convert to NY Time
+        df.index = df.index.tz_convert('America/New_York')
 
-        # FIX: Enforce Monotonic Index to prevent "overlapping" chart glitches
-        df = df[~df.index.duplicated(keep='last')] # Remove dups
-        df = df.sort_index() # Force sort
+        # 3. Strict Sorting & Dedup
+        df = df[~df.index.duplicated(keep='last')]
+        df = df.sort_index()
 
         return df
     except Exception as e:
         st.error(f"Failed to load price data: {e}")
         return None
 
-
-def calculate_market_hours_rangebreaks(df: pd.DataFrame, interval_str: str) -> list:
+def filter_market_hours(df):
     """
-    Calculates rangebreaks to exclude non-trading periods.
-    Assumes df.index is in America/New_York timezone.
+    NUCLEAR FIX for Overlaps:
+    Explicitly drop rows outside of core trading hours (03:30 - 13:30 ET).
+    If we don't drop them, Plotly's rangebreaks will try to hide them but 
+    might still connect lines through them, causing 'folding' artifacts.
     """
     if df is None or df.empty:
+        return df
+        
+    # Define Core Hours: 03:30 AM to 01:30 PM (13:30)
+    # We allow a small buffer (up to 14:00) just in case settlement is late
+    start_time = time(3, 30)
+    end_time = time(14, 0) 
+    
+    # Filter: Keep rows where time is between start and end
+    # df.index is already in America/New_York from fetch function
+    mask = (df.index.time >= start_time) & (df.index.time <= end_time)
+    return df.loc[mask]
+
+def calculate_market_hours_rangebreaks(df: pd.DataFrame, interval_str: str) -> list:
+    """Calculates rangebreaks using NY Time bounds."""
+    if df is None or df.empty:
         return []
-
+    
     rangebreaks = []
-
+    
     # 1. Weekend exclusion
     rangebreaks.append(dict(bounds=["sat", "mon"]))
-
-    # 2. Holiday exclusion
+    
+    # 2. Holiday exclusion (NY Time)
     start_year = df.index.min().year
     end_year = df.index.max().year + 1
-
     us_holidays = holidays.US(years=range(start_year, end_year), observed=True)
-
+    
     for holiday_date in us_holidays.keys():
-        holiday_start = pd.Timestamp(holiday_date, tz='America/New_York')
-        holiday_end = holiday_start + pd.Timedelta(days=1)
-        rangebreaks.append(dict(values=[holiday_start.isoformat(), holiday_end.isoformat()]))
-
+        h_ts = pd.Timestamp(holiday_date).tz_localize('America/New_York')
+        rangebreaks.append(dict(values=[h_ts.isoformat()]))
+    
     # 3. Non-trading hours (intraday only)
-    # ICE Coffee settlement is 1:30 PM ET (13.5), opens 3:30 AM ET (3.5)
+    # Exclude 14:00 (2 PM) to 03:30 AM
+    # This matches our filter_market_hours logic
     if interval_str in ['5m', '15m', '30m', '1h']:
-        rangebreaks.append(dict(bounds=[13.5, 3.5], pattern="hour"))
-
+        rangebreaks.append(dict(bounds=[14, 3.5], pattern="hour"))
+    
     return rangebreaks
 
 
@@ -174,7 +189,7 @@ def get_marker_size(confidence: float, base_size: int = 14) -> int:
 
 
 def process_signals_for_agent(history_df, agent_col, start_date):
-    """Clean, filter, and format signals for the selected agent."""
+    """Clean, filter, and format signals."""
     if history_df.empty:
         return pd.DataFrame()
 
@@ -184,18 +199,15 @@ def process_signals_for_agent(history_df, agent_col, start_date):
     df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
     df = df.dropna(subset=['timestamp'])
 
-    # 2. Timezone standardization
+    # 2. Timezone: Convert to NY to match Price
     if df['timestamp'].dt.tz is None:
         df['timestamp'] = df['timestamp'].dt.tz_localize('UTC')
-
-    # Convert to America/New_York to match price data
+    
     df['timestamp'] = df['timestamp'].dt.tz_convert('America/New_York')
 
     # 3. Date filtering
-    # Ensure strict timezone awareness for comparison
     cutoff_ts = pd.Timestamp(start_date)
     if cutoff_ts.tzinfo is None:
-        # If naive, assume it's meant to be in the same TZ as our data (NY)
         cutoff_ts = cutoff_ts.tz_localize('America/New_York')
     else:
         cutoff_ts = cutoff_ts.tz_convert('America/New_York')
@@ -220,7 +232,7 @@ def process_signals_for_agent(history_df, agent_col, start_date):
     else:
         df['plot_confidence'] = 0.5
 
-    # 7. Label resolution (strategy-aware)
+    # 7. Label resolution
     if agent_col == 'master_decision':
         def resolve_label(row):
             d = str(row['plot_direction']).upper()
@@ -230,7 +242,6 @@ def process_signals_for_agent(history_df, agent_col, start_date):
             if 'STRADDLE' in s: return 'LONG_STRADDLE'
             if 'BULL_CALL' in s: return 'BULLISH'
             if 'BEAR_PUT' in s: return 'BEARISH'
-            
             return d if d in ['BULLISH', 'BEARISH'] else 'NEUTRAL'
         
         df['plot_label'] = df.apply(resolve_label, axis=1)
@@ -240,17 +251,9 @@ def process_signals_for_agent(history_df, agent_col, start_date):
     # 8. Colors & Symbols
     df['marker_color'] = df['plot_label'].map(COLOR_MAP).fillna('#888888')
     df['marker_symbol'] = df['plot_label'].map(SYMBOL_MAP).fillna('circle')
-    
-    # 9. Confidence-based sizing
     df['marker_size'] = df['plot_confidence'].apply(lambda c: get_marker_size(c, base_size=14))
 
-    # 10. Preserve additional columns for hover
-    cols_to_keep = ['timestamp', 'plot_direction', 'plot_confidence', 'plot_label',
-                    'marker_color', 'marker_symbol', 'marker_size', 'strategy_type',
-                    'master_reasoning', 'rationale']
-    cols_to_keep = [c for c in cols_to_keep if c in df.columns]
-    
-    return df[cols_to_keep]
+    return df
 
 
 def build_hover_text(row):
@@ -300,12 +303,14 @@ with st.spinner("Loading market data and signals..."):
 
 if price_df is not None and not price_df.empty:
 
-    # Filter price data to slider range
-    # FIX: Robust timezone handling for cutoff
+    # 1. Filter Date Range
     current_time_et = datetime.now().astimezone(pytz.timezone('America/New_York'))
     cutoff_dt = current_time_et - timedelta(days=lookback_days)
-    
     price_df = price_df[price_df.index >= cutoff_dt]
+
+    # 2. NUCLEAR FIX: Filter Market Hours explicitly if hiding gaps
+    if hide_gaps and timeframe in ['5m', '15m', '30m', '1h']:
+        price_df = filter_market_hours(price_df)
 
     # Process signals
     signals = process_signals_for_agent(council_df, selected_agent_col, start_date)
@@ -356,7 +361,6 @@ if price_df is not None and not price_df.empty:
                     graded_subset = graded_df[['timestamp', 'outcome', 'pnl_realized']].copy()
                     graded_subset['timestamp'] = pd.to_datetime(graded_subset['timestamp'], errors='coerce')
                     
-                    # Normalize graded data to NY time for merge
                     if graded_subset['timestamp'].dt.tz is None:
                         graded_subset['timestamp'] = graded_subset['timestamp'].dt.tz_localize('UTC')
                     graded_subset['timestamp'] = graded_subset['timestamp'].dt.tz_convert('America/New_York')
@@ -496,7 +500,7 @@ if price_df is not None and not price_df.empty:
                     "timestamp": st.column_config.DatetimeColumn("Time (ET)", format="D MMM HH:mm"),
                     "plot_confidence": st.column_config.ProgressColumn("Confidence", min_value=0, max_value=1),
                 },
-                # FIX: Replaced deprecated argument
+                # FIX: Replaced use_container_width=True with width='stretch' to fix warning
                 width='stretch' 
             )
         else:
