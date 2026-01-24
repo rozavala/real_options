@@ -284,7 +284,7 @@ if run_validation:
                         display_df = df[['status', 'name', 'message', 'details', 'duration_ms']]
 
                         styled_df = display_df.style.applymap(color_status, subset=['status'])
-                        st.dataframe(styled_df, use_container_width=True, hide_index=True)
+                        st.dataframe(styled_df, width='stretch', hide_index=True)
 
                 except json.JSONDecodeError:
                     st.warning("Could not parse JSON output. Raw output below:")

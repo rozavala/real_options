@@ -376,9 +376,19 @@ if price_df is not None and not price_df.empty:
             st.metric("Range", f"${high - low:.2f}")
 
     # === DRAW CHARTS ===
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.05, row_heights=[0.75, 0.25])
+    # CREATE SUBPLOTS WITH SECONDARY Y-AXIS
+    fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.05,
+        row_heights=[0.75, 0.25],
+        specs=[
+            [{"secondary_y": False}],  # Row 1: Price chart
+            [{"secondary_y": True}]    # Row 2: Confidence (left) + Volume (right)
+        ]
+    )
 
-    # 1. Candlestick
+    # 1. Candlestick (Row 1)
     fig.add_trace(go.Candlestick(
         x=price_df.index,
         open=price_df['Open'],
@@ -388,7 +398,7 @@ if price_df is not None and not price_df.empty:
         name="KC Coffee (ET)"
     ), row=1, col=1)
 
-    # 2. Signal markers
+    # 2. Signal markers (Row 1)
     if not plot_df.empty:
         fig.add_trace(go.Scatter(
             x=plot_df['plot_x'],
@@ -412,7 +422,7 @@ if price_df is not None and not price_df.empty:
             showlegend=False
         ), row=1, col=1)
 
-    # 3. Legend entries
+    # 3. Legend entries (Row 1)
     legend_entries = [
         ('Bullish', '#00CC96', 'triangle-up'),
         ('Bearish', '#EF553B', 'triangle-down'),
@@ -427,31 +437,29 @@ if price_df is not None and not price_df.empty:
             name=name, showlegend=True
         ), row=1, col=1)
 
-    # 4. Volume (on secondary Y-axis)
+    # 4. Volume (Row 2 - SECONDARY Y-AXIS on RIGHT)
     if 'Volume' in price_df.columns:
         fig.add_trace(go.Bar(
             x=price_df.index,
             y=price_df['Volume'],
-            marker_color='rgba(100, 100, 255, 0.3)',  # Light blue for visibility
+            marker_color='rgba(100, 150, 255, 0.4)',  # Slightly more visible
             name='Volume',
             showlegend=False,
-            yaxis='y3'  # Use secondary Y-axis for row 2
-        ), row=2, col=1)
+        ), row=2, col=1, secondary_y=True)
 
-    # 5. Confidence trace (on primary Y-axis of row 2)
+    # 5. Confidence (Row 2 - PRIMARY Y-AXIS on LEFT)
     if not plot_df.empty and show_confidence:
         fig.add_trace(go.Scatter(
             x=plot_df['plot_x'],
             y=plot_df['plot_confidence'],
             mode='markers+lines',
-            line=dict(color='#00CC96', width=1, dash='dot'),
-            marker=dict(color='#00CC96', size=8),
+            line=dict(color='#00CC96', width=1.5, dash='dot'),
+            marker=dict(color='#00CC96', size=8, symbol='circle'),
             name='Confidence',
             showlegend=False,
-            yaxis='y2'  # Primary Y-axis for row 2
-        ), row=2, col=1)
+        ), row=2, col=1, secondary_y=False)
 
-    # === DAY & WEEK SEPARATORS ===
+    # === DAY & WEEK SEPARATORS (FIXED VISIBILITY) ===
     if show_day_separators and len(price_df) > 1:
         dates = price_df.index.date
         weekdays = price_df.index.dayofweek
@@ -463,35 +471,33 @@ if price_df is not None and not price_df.empty:
             current_weekday = weekdays[idx]
             prev_weekday = weekdays[idx - 1] if idx > 0 else current_weekday
 
-            # Week boundary: Monday after weekend
             is_week_start = (current_weekday == 0) or (current_weekday < prev_weekday)
 
             if is_week_start:
-                # WEEK SEPARATOR
+                # WEEK SEPARATOR - Prominent orange
                 fig.add_vline(
                     x=ts,
                     line_width=2,
                     line_dash="dash",
-                    line_color="rgba(255, 200, 100, 0.5)",
+                    line_color="rgba(255, 180, 80, 0.8)",
                     row="all"
                 )
-                # Add week label annotation
                 fig.add_annotation(
                     x=ts,
                     y=1.02,
                     yref="paper",
                     text="📅 Week",
                     showarrow=False,
-                    font=dict(size=9, color="rgba(255, 200, 100, 0.8)"),
+                    font=dict(size=9, color="rgba(255, 180, 80, 0.9)"),
                     xanchor="left"
                 )
             else:
-                # DAY SEPARATOR
+                # DAY SEPARATOR - Visible gray
                 fig.add_vline(
                     x=ts,
                     line_width=1,
                     line_dash="dot",
-                    line_color="rgba(255, 255, 255, 0.15)",
+                    line_color="rgba(180, 180, 180, 0.6)",
                     row="all"
                 )
 
@@ -529,13 +535,30 @@ if price_df is not None and not price_df.empty:
         row=2, col=1
     )
 
-    # Primary Y-axis for row 2 (Confidence) - LEFT side
+    # Row 1 Y-axis
+    fig.update_yaxes(title_text="Price (¢/lb)", row=1, col=1)
+
+    # Row 2 Primary Y-axis (Confidence) - LEFT
     fig.update_yaxes(
         title_text="Confidence",
-        row=2, col=1,
         range=[0, 1],
         tickformat='.0%',
-        side='left'
+        side='left',
+        showgrid=True,
+        gridcolor='rgba(128, 128, 128, 0.2)',
+        row=2, col=1,
+        secondary_y=False
+    )
+
+    # Row 2 Secondary Y-axis (Volume) - RIGHT
+    fig.update_yaxes(
+        title_text="Volume",
+        side='right',
+        showgrid=True,
+        gridcolor='rgba(100, 150, 255, 0.1)',
+        tickformat=',d',
+        row=2, col=1,
+        secondary_y=True
     )
 
     fig.update_layout(
@@ -544,18 +567,10 @@ if price_df is not None and not price_df.empty:
         template="plotly_dark",
         title=f"Coffee Analysis (ET) | {selected_agent_label} | {timeframe} | Last {lookback_days} Days",
         hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        # Secondary Y-axis for Volume - RIGHT side of row 2
-        yaxis3=dict(
-            title="Volume",
-            overlaying='y2',  # Overlay on the confidence axis
-            side='right',
-            showgrid=False,
-            tickformat=',d'  # Comma-separated integers
-        )
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # === SIGNAL STATISTICS ===
     if not plot_df.empty:
