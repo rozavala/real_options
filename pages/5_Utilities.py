@@ -303,41 +303,214 @@ if run_validation:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 4: Equity Sync
+# SECTION 3.5: Data Reconciliation
 # ==============================================================================
-st.subheader("💰 Equity Data Sync")
+st.subheader("🔄 Data Reconciliation")
 st.markdown("""
-Synchronize equity data from IBKR Flex Query. This updates `data/daily_equity.csv`
-with the official Net Asset Value history from your broker.
+Manually trigger reconciliation processes to verify data integrity across all systems.
+These processes normally run automatically in the orchestrator but can be triggered
+on-demand for debugging or immediate verification.
 """)
 
-if st.button("🔄 Sync Equity from IBKR"):
-    with st.spinner("Syncing equity data from Flex Query..."):
-        try:
-            result = subprocess.run(
-                [sys.executable, "equity_logger.py", "--sync"],
-                capture_output=True,
-                text=True,
-                timeout=60,
-                cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            )
+# Create a 2x2 grid for reconciliation buttons
+recon_row1 = st.columns(2)
+recon_row2 = st.columns(2)
 
-            if result.returncode == 0:
-                st.success("✅ Equity data synced successfully!")
-                st.cache_data.clear()
-                with st.expander("View Output"):
-                    st.code(result.stdout)
-            else:
-                st.error("❌ Sync failed")
-                with st.expander("View Error"):
-                    st.code(result.stderr or result.stdout)
+# --- Council History Reconciliation ---
+with recon_row1[0]:
+    st.markdown("**📊 Council History**")
+    st.caption("Backfill exit prices and P&L for closed positions")
 
-        except subprocess.TimeoutExpired:
-            st.error("⏱️ Sync timed out (60s)")
-        except Exception as e:
-            st.error(f"❌ Error: {str(e)}")
+    if st.button("🔄 Reconcile Council History", use_container_width=True, key="recon_council"):
+        with st.spinner("Reconciling council history with market outcomes..."):
+            try:
+                result = subprocess.run(
+                    [sys.executable, "backfill_council_history.py"],
+                    capture_output=True,
+                    text=True,
+                    timeout=180,  # Council reconciliation can take time with IB calls
+                    cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
+
+                if result.returncode == 0:
+                    st.success("✅ Council history reconciliation complete!")
+                    # Clear cache to show updated data
+                    st.cache_data.clear()
+                    with st.expander("View Details"):
+                        st.code(result.stdout)
+                else:
+                    st.error("❌ Council history reconciliation failed")
+                    with st.expander("View Error"):
+                        st.code(result.stderr or result.stdout)
+
+            except subprocess.TimeoutExpired:
+                st.error("⏱️ Reconciliation timed out (180s)")
+            except FileNotFoundError:
+                st.error("❌ backfill_council_history.py not found")
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+
+# --- Trade Ledger Reconciliation ---
+with recon_row1[1]:
+    st.markdown("**📝 Trade Ledger**")
+    st.caption("Compare local ledger with IB Flex Query reports")
+
+    if st.button("🔄 Reconcile Trade Ledger", use_container_width=True, key="recon_trades"):
+        with st.spinner("Reconciling trade ledger with IB reports..."):
+            try:
+                result = subprocess.run(
+                    [sys.executable, "reconcile_trades.py"],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
+
+                if result.returncode == 0:
+                    # Check if discrepancies were found
+                    output = result.stdout
+                    if "No discrepancies found" in output:
+                        st.success("✅ Trade ledger is perfectly in sync!")
+                    else:
+                        st.warning("⚠️ Discrepancies found - check archive_ledger/ directory")
+
+                    with st.expander("View Details"):
+                        st.code(output)
+                else:
+                    st.error("❌ Trade reconciliation failed")
+                    with st.expander("View Error"):
+                        st.code(result.stderr or result.stdout)
+
+            except subprocess.TimeoutExpired:
+                st.error("⏱️ Reconciliation timed out (120s)")
+            except FileNotFoundError:
+                st.error("❌ reconcile_trades.py not found")
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+
+# --- Active Positions Reconciliation ---
+with recon_row2[0]:
+    st.markdown("**📍 Active Positions**")
+    st.caption("Verify current positions against IB")
+
+    if st.button("🔄 Reconcile Positions", use_container_width=True, key="recon_positions"):
+        with st.spinner("Reconciling active positions..."):
+            try:
+                # Create a temporary script to run just the position reconciliation
+                result = subprocess.run(
+                    [sys.executable, "-c", """
+import asyncio
+import sys
+import os
+sys.path.append(os.path.abspath('.'))
+from config_loader import load_config
+from reconcile_trades import reconcile_active_positions
+
+async def main():
+    config = load_config()
+    await reconcile_active_positions(config)
+
+asyncio.run(main())
+"""],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
+
+                if result.returncode == 0:
+                    output = result.stdout
+                    if "No discrepancies found" in output:
+                        st.success("✅ Positions are in sync!")
+                    else:
+                        st.warning("⚠️ Position discrepancies detected")
+
+                    with st.expander("View Details"):
+                        st.code(output)
+                else:
+                    st.error("❌ Position reconciliation failed")
+                    with st.expander("View Error"):
+                        st.code(result.stderr or result.stdout)
+
+            except subprocess.TimeoutExpired:
+                st.error("⏱️ Reconciliation timed out (60s)")
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+
+# --- Equity Sync (Move from Section 4) ---
+with recon_row2[1]:
+    st.markdown("**💰 Equity History**")
+    st.caption("Sync equity data from IBKR Flex Query")
+
+    if st.button("🔄 Sync Equity Data", use_container_width=True, key="recon_equity"):
+        with st.spinner("Syncing equity data from Flex Query..."):
+            try:
+                result = subprocess.run(
+                    [sys.executable, "equity_logger.py", "--sync"],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
+
+                if result.returncode == 0:
+                    st.success("✅ Equity data synced successfully!")
+                    st.cache_data.clear()
+                    with st.expander("View Output"):
+                        st.code(result.stdout)
+                else:
+                    st.error("❌ Sync failed")
+                    with st.expander("View Error"):
+                        st.code(result.stderr or result.stdout)
+
+            except subprocess.TimeoutExpired:
+                st.error("⏱️ Sync timed out (60s)")
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
 
 st.markdown("---")
+
+# Info box with reconciliation details
+with st.expander("ℹ️ About Reconciliation Processes"):
+    st.markdown("""
+    ### Reconciliation Types
+
+    **Council History**: Backfills missing exit prices and P&L for positions that have closed.
+    Only processes trades older than 27 hours to allow time for settlement.
+
+    **Trade Ledger**: Compares the last 33 days of trades from IB Flex Queries with the local
+    ledger to identify missing or superfluous entries. Writes discrepancy reports to
+    `archive_ledger/` directory.
+
+    **Active Positions**: Validates that current positions match between IB and local calculations.
+    Excludes symbols traded in the last 24 hours to avoid timing issues.
+
+    **Equity History**: Syncs the official Net Asset Value history (last 365 days) from IBKR
+    to ensure `daily_equity.csv` matches broker records. Uses 17:00 NY time as the daily close.
+
+    ### When to Use
+
+    - **After system recovery**: Verify data integrity after downtime
+    - **Before important decisions**: Ensure all data is current
+    - **During debugging**: Identify data discrepancies manually
+    - **Weekly verification**: Regular health checks of data quality
+
+    ### Automatic Execution
+
+    These reconciliation processes run automatically:
+    - **Council History**: During end-of-day reconciliation (weekdays at 17:15 ET)
+    - **Trade Ledger**: During end-of-day reconciliation (weekdays at 17:15 ET)
+    - **Active Positions**: During end-of-day reconciliation (weekdays at 17:15 ET)
+    - **Equity History**: During end-of-day reconciliation (weekdays at 17:15 ET)
+    """)
+
+st.markdown("---")
+
+# ==============================================================================
+# SECTION 4: Equity Sync [MOVED TO RECONCILIATION SECTION]
+# ==============================================================================
+# Note: Equity sync has been moved to the Data Reconciliation section above
+# for better organization. Keeping this comment as a marker.
 
 # ==============================================================================
 # SECTION 5: Cache Management
