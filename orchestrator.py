@@ -1230,6 +1230,8 @@ async def run_sentinels(config: dict):
                 if sentinel_ib is not None and sentinel_ib.isConnected():
                     logger.info("Market Closed: Disconnecting Sentinel IB to prevent zombie state.")
                     sentinel_ib.disconnect()
+                    # === NEW: Give Gateway time to cleanup ===
+                    await asyncio.sleep(3.0)
                     sentinel_ib = None
                     price_sentinel.ib = None
 

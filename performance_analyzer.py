@@ -118,6 +118,8 @@ async def get_live_account_data(config: dict) -> dict | None:
     finally:
         if ib.isConnected():
             ib.disconnect()
+            # === NEW: Give Gateway time to cleanup ===
+            await asyncio.sleep(3.0)
 
     return live_data
 

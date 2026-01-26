@@ -262,6 +262,9 @@ async def check_ibkr_connection(config: dict) -> CheckResult:
         account = ib.managedAccounts()[0] if ib.managedAccounts() else "Unknown"
         ib.disconnect()
         
+        # === NEW: Give Gateway time to cleanup connection ===
+        await asyncio.sleep(3.0)
+
         # Restore logging level
         util.logToConsole(logging.INFO)
         
@@ -324,6 +327,9 @@ async def check_ibkr_market_data(config: dict) -> CheckResult:
 
         price = ticker.last or ticker.close or ticker.bid
         ib.disconnect()
+
+        # === NEW: Give Gateway time to cleanup connection ===
+        await asyncio.sleep(3.0)
 
         if has_data:
             return CheckResult("Market Data", CheckStatus.PASS, f"Data Received: {price}")
