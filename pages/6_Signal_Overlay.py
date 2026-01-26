@@ -76,52 +76,105 @@ SYMBOL_MAP = {
 
 def clean_contract_symbol(contract: str) -> str | None:
     """
-    Extracts clean ticker from potential dirty string like 'KCH26 (202603)'.
-    Returns None if no valid KC+Month+Year pattern is found.
+    Extracts clean yfinance-compatible ticker from various input formats.
+
+    Handles formats found in council_history.csv:
+    - 'KCH6 (202603)' -> 'KCH26' (IB localSymbol + date)
+    - 'KCH26 (202603)' -> 'KCH26' (already correct)
+    - 'KCH26' -> 'KCH26' (clean)
+    - 'KCH6' -> 'KCH26' (single-digit year, needs date context)
+    - '(202603)' -> None (date only, no ticker)
+    - None/empty -> None
+
+    Returns:
+        5-character ticker like 'KCH26' or None if unparseable
     """
     if not contract:
         return None
-    # Regex to find KC + MonthCode + Year (2 digits)
-    # Matches KCH26, KCK26, etc.
-    match = re.search(r'(KC[FGHJKMNQUVXZ]\d{2})', contract.upper())
-    if match:
-        return match.group(1)
+
+    contract = str(contract).strip()
+
+    # Skip if it's just a date in parentheses like "(202603)"
+    if contract.startswith('(') and ')' in contract:
+        # Check if there's anything before the parentheses
+        if contract.index('(') == 0:
+            return None
+
+    contract_upper = contract.upper()
+
+    # Strategy 1: Try to match KC + Month + 2-digit year directly (e.g., KCH26)
+    match_full = re.search(r'KC([FGHJKMNQUVXZ])(\d{2})(?!\d)', contract_upper)
+    if match_full:
+        month_code = match_full.group(1)
+        year_2digit = match_full.group(2)
+        return f"KC{month_code}{year_2digit}"
+
+    # Strategy 2: Match KC + Month + 1-digit year AND extract year from date portion
+    # Pattern: "KCH6 (202603)" -> extract H from KCH6, extract 26 from 202603
+    match_ib_format = re.search(r'KC([FGHJKMNQUVXZ])(\d)(?:\s*\((\d{4})(\d{2})\))?', contract_upper)
+    if match_ib_format:
+        month_code = match_ib_format.group(1)
+        single_year = match_ib_format.group(2)
+
+        # If we have the date portion, extract the proper 2-digit year
+        if match_ib_format.group(3) and match_ib_format.group(4):
+            full_year = match_ib_format.group(3)  # e.g., "2026"
+            year_2digit = full_year[2:4]  # e.g., "26"
+            return f"KC{month_code}{year_2digit}"
+        else:
+            # No date portion - assume 202X decade (prepend "2" to make "26" from "6")
+            year_2digit = "2" + single_year
+            return f"KC{month_code}{year_2digit}"
+
+    # Strategy 3: Try to extract from date portion if month code exists somewhere
+    # This handles edge cases where format is unusual
+    match_date = re.search(r'\((\d{4})(\d{2})\)', contract)
+    match_month = re.search(r'KC([FGHJKMNQUVXZ])', contract_upper)
+    if match_date and match_month:
+        year_2digit = match_date.group(1)[2:4]  # "2026" -> "26"
+        month_code = match_month.group(1)
+        return f"KC{month_code}{year_2digit}"
+
     return None
+
 
 def get_available_contracts(council_df: pd.DataFrame) -> list[str]:
     """
-    Extract unique contract symbols from council history.
+    Extract unique, clean contract symbols from council history.
     Returns sorted list with most recent contracts first.
 
-    Example output: ['KCH26', 'KCK26', 'KCZ25']
+    Example output: ['KCK26', 'KCH26']
     """
     if council_df.empty or 'contract' not in council_df.columns:
         return []
 
-    # Get unique contracts, remove NaN/empty
+    # Get unique raw contracts
     raw_contracts = council_df['contract'].dropna().unique().tolist()
 
-    # Clean and deduplicate (filtering out None)
-    cleaned_contracts = [clean_contract_symbol(c) for c in raw_contracts if c]
-    contracts = sorted(list(set([c for c in cleaned_contracts if c])))
+    # Clean each one
+    cleaned = []
+    for raw in raw_contracts:
+        clean = clean_contract_symbol(raw)
+        if clean and len(clean) == 5:  # Valid: KC + month + 2 digits
+            cleaned.append(clean)
 
-    # Sort by year (desc) then month code
-    # Month order: F,G,H,J,K,M,N,Q,U,V,X,Z
+    # Deduplicate
+    contracts = sorted(set(cleaned))
+
+    # Sort by year (desc) then month (asc)
     month_order = 'FGHJKMNQUVXZ'
 
-    def sort_key(contract: str) -> tuple:
-        """Sort by year (desc) then month (asc)."""
+    def sort_key(symbol: str) -> tuple:
+        """Sort by year descending, then month ascending."""
         try:
-            # Extract year and month: "KCH26" -> year=26, month=H
-            symbol = contract.upper().strip()
             if len(symbol) == 5 and symbol.startswith('KC'):
-                month = symbol[2]  # H in KCH26
-                year = int(symbol[3:])  # 26 in KCH26
-                month_idx = month_order.find(month) if month in month_order else 99
-                return (-year, month_idx)  # Negative year for descending
+                month = symbol[2]
+                year = int(symbol[3:5])
+                month_idx = month_order.find(month)
+                return (-year, month_idx if month_idx >= 0 else 99)
         except:
             pass
-        return (0, 99)  # Put unparseable at end
+        return (0, 99)
 
     return sorted(contracts, key=sort_key)
 
@@ -129,26 +182,35 @@ def get_available_contracts(council_df: pd.DataFrame) -> list[str]:
 def contract_to_yfinance_ticker(contract: str) -> str:
     """
     Convert contract symbol to yfinance ticker.
-    Falls back to 'KC=F' if contract is invalid/None.
 
+    yfinance Coffee futures format: KC{MONTH}{YY}.NYB
     Examples:
-        'FRONT_MONTH' -> 'KC=F'
-        'KCH26' -> 'KCH26.NYB'
-        'KCK26' -> 'KCK26.NYB'
-        'KCH26 (202603)' -> 'KCH26.NYB' (Fixed)
-        '(202603)' -> 'KC=F' (Fallback)
+        - KCH26.NYB (March 2026)
+        - KCK26.NYB (May 2026)
+
+    Args:
+        contract: Raw contract string (e.g., 'KCH6 (202603)' or 'FRONT_MONTH')
+
+    Returns:
+        Valid yfinance ticker (e.g., 'KCH26.NYB') or 'KC=F' for front month/fallback
     """
+    # Front month option
     if contract == 'FRONT_MONTH' or not contract:
         return 'KC=F'
 
-    # Clean the symbol before appending suffix
-    symbol = clean_contract_symbol(contract)
+    # Clean the symbol
+    clean_symbol = clean_contract_symbol(contract)
 
-    if not symbol:
+    # Validate: must be exactly 5 chars (KC + month + 2-digit year)
+    if not clean_symbol or len(clean_symbol) != 5:
         return 'KC=F'
 
-    # yfinance uses .NYB suffix for ICE/NYBOT coffee futures
-    return f"{symbol}.NYB"
+    # Validate format: KC + valid month + 2 digits
+    if not re.match(r'^KC[FGHJKMNQUVXZ]\d{2}$', clean_symbol):
+        return 'KC=F'
+
+    # Add yfinance suffix for ICE/NYBOT
+    return f"{clean_symbol}.NYB"
 
 
 def get_contract_display_name(contract: str) -> str:
@@ -158,7 +220,7 @@ def get_contract_display_name(contract: str) -> str:
     Examples:
         'FRONT_MONTH' -> '📊 Front Month (Continuous)'
         'KCH26' -> 'KCH26 (Mar 2026)'
-        'KCK26' -> 'KCK26 (May 2026)'
+        'KCH6 (202603)' -> 'KCH26 (Mar 2026)'
     """
     if contract == 'FRONT_MONTH':
         return '📊 Front Month (Continuous)'
@@ -169,18 +231,15 @@ def get_contract_display_name(contract: str) -> str:
         'U': 'Sep', 'V': 'Oct', 'X': 'Nov', 'Z': 'Dec'
     }
 
-    try:
-        # Use cleaned symbol for display parsing
-        symbol = clean_contract_symbol(contract)
-        if symbol and len(symbol) >= 4:
-            month_code = symbol[2]
-            year = symbol[3:]
-            month_name = month_names.get(month_code, '???')
-            return f"{symbol} ({month_name} 20{year})"
-    except:
-        pass
+    clean_symbol = clean_contract_symbol(contract)
+    if clean_symbol and len(clean_symbol) == 5:
+        month_code = clean_symbol[2]
+        year = clean_symbol[3:5]
+        month_name = month_names.get(month_code, '???')
+        return f"{clean_symbol} ({month_name} 20{year})"
 
-    return contract
+    # Fallback: return original if can't parse
+    return str(contract) if contract else 'Unknown'
 
 def get_contract_color(contract: str, default_color: str) -> str:
     """Get color for contract based on month code."""
@@ -283,15 +342,30 @@ with st.sidebar:
 @st.cache_data(ttl=300)
 def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
     """
-    Fetches historical OHLC data, converted to NY Time.
+    Fetches historical OHLC data from yfinance, converted to NY Time.
 
     Args:
         ticker: yfinance ticker (e.g., 'KC=F' or 'KCH26.NYB')
         period: lookback period
         interval: candle interval
+
+    Returns:
+        DataFrame with OHLC data, or None if fetch failed
     """
+    import logging
+
     try:
-        df = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=True)
+        # Suppress yfinance error logging temporarily
+        yf_logger = logging.getLogger('yfinance')
+        original_level = yf_logger.level
+        yf_logger.setLevel(logging.CRITICAL)
+
+        try:
+            df = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=True)
+        finally:
+            # Restore original logging level
+            yf_logger.setLevel(original_level)
+
         if df.empty:
             return None
 
@@ -311,8 +385,9 @@ def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
         df = df.sort_index()
 
         return df
+
     except Exception as e:
-        st.error(f"Failed to load price data for {ticker}: {e}")
+        # Silent fail - we'll fall back to front month
         return None
 
 
@@ -482,6 +557,11 @@ start_date = end_date - timedelta(days=lookback_days)
 
 # Determine yfinance ticker based on contract selection
 yf_ticker = contract_to_yfinance_ticker(selected_contract)
+
+# Debug info (helps troubleshooting)
+if selected_contract != 'FRONT_MONTH':
+    clean = clean_contract_symbol(selected_contract)
+    st.caption(f"🔍 Debug: `{selected_contract}` → cleaned: `{clean}` → yfinance: `{yf_ticker}`")
 
 with st.spinner(f"Loading {get_contract_display_name(selected_contract)} data..."):
     # Determine period
