@@ -57,6 +57,8 @@ async def main():
         logger.info(f"Received shutdown signal: {sig.name}. Disconnecting from IB...")
         if ib.isConnected():
             ib.disconnect()
+            # === NEW: Give Gateway time to cleanup ===
+            await asyncio.sleep(3.0)
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
         for task in tasks:
             task.cancel()
@@ -105,6 +107,8 @@ async def main():
             monitor_task.cancel()
         if ib.isConnected():
             ib.disconnect()
+            # === NEW: Give Gateway time to cleanup ===
+            await asyncio.sleep(3.0)
         logger.info("Position monitor has shut down.")
 
 

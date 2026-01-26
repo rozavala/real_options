@@ -67,6 +67,8 @@ async def reconcile_council_history(config: dict, ib: IB = None):
     finally:
         if managed_connection and ib.isConnected():
             ib.disconnect()
+            # === NEW: Give Gateway time to cleanup ===
+            await asyncio.sleep(3.0)
 
 
 async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_path: str):

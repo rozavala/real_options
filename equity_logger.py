@@ -206,6 +206,8 @@ async def log_equity_snapshot(config: dict):
     finally:
         if ib.isConnected():
             ib.disconnect()
+            # === NEW: Give Gateway time to cleanup ===
+            await asyncio.sleep(3.0)
             logger.info("Disconnected from IB.")
 
 if __name__ == "__main__":

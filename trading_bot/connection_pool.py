@@ -32,7 +32,7 @@ class IBConnectionPool:
     }
 
     MAX_RECONNECT_BACKOFF = 600  # 10 minutes
-    DISCONNECT_SETTLE_TIME = 2.0  # Seconds to wait after disconnect
+    DISCONNECT_SETTLE_TIME = 3.0  # Seconds to wait after disconnect (allows Gateway cleanup)
 
     @classmethod
     async def _check_gateway_health(cls, host: str, port: int, timeout: float = 5.0) -> bool:
@@ -64,6 +64,8 @@ class IBConnectionPool:
         if old_ib:
             try:
                 old_ib.disconnect()
+                # === NEW: Give Gateway time to cleanup ===
+                await asyncio.sleep(3.0)
             except Exception:
                 pass
 
@@ -87,17 +89,29 @@ class IBConnectionPool:
 
             # Check if existing connection is alive
             if ib and ib.isConnected():
-                # === NEW: Verify connection is actually alive (not zombie) ===
-                # AMENDMENT from Mission Control: Use reqCurrentTimeAsync with strict timeout
-                # to prevent hanging if Gateway is unresponsive (TCP open, app frozen)
+                # === ZOMBIE DETECTION: Verify connection is actually alive ===
                 try:
-                    await asyncio.wait_for(ib.reqCurrentTimeAsync(), timeout=2.0)
+                    await asyncio.wait_for(ib.reqCurrentTimeAsync(), timeout=5.0)  # Increased from 2.0
                     return ib
                 except asyncio.TimeoutError:
-                    logger.warning(f"IB ({purpose}) zombie connection detected: reqCurrentTime timed out")
+                    logger.warning(f"IB ({purpose}) zombie connection detected: reqCurrentTime timed out after 5s")
+                    # Force proper cleanup before reconnecting
+                    try:
+                        ib.disconnect()
+                        await asyncio.sleep(3.0)  # Give Gateway time to cleanup
+                    except Exception:
+                        pass
+                    cls._instances.pop(purpose, None)
                     # Fall through to reconnect
                 except Exception as e:
-                    logger.warning(f"IB ({purpose}) zombie connection detected: {e}")
+                    logger.warning(f"IB ({purpose}) connection health check failed: {e}")
+                    # Force proper cleanup before reconnecting
+                    try:
+                        ib.disconnect()
+                        await asyncio.sleep(3.0)
+                    except Exception:
+                        pass
+                    cls._instances.pop(purpose, None)
                     # Fall through to reconnect
 
             # === BACKOFF CHECK ===
@@ -113,24 +127,9 @@ class IBConnectionPool:
 
             cls._last_reconnect_attempt[purpose] = now
 
-            # === GATEWAY HEALTH CHECK (NEW) ===
+            # === DIRECT CONNECTION (No TCP Pre-Flight) ===
             host = config.get('connection', {}).get('host', '127.0.0.1')
             port = config.get('connection', {}).get('port', 7497)
-
-            if await cls._check_gateway_health(host, port):
-                # TCP is open, but DO NOT RESET BACKOFF HERE.
-                # We don't know if the App layer is healthy yet.
-                pass
-            else:
-                # Gateway not responding - don't increase backoff for Gateway-level issues
-                logger.error(f"IB Gateway at {host}:{port} not accepting connections")
-                cls._consecutive_failures[purpose] = cls._consecutive_failures.get(purpose, 0) + 1
-
-                # Check if we should force reset
-                if cls._consecutive_failures.get(purpose, 0) >= cls.FORCE_RESET_THRESHOLD:
-                    await cls._force_reset_connection(purpose)
-
-                raise ConnectionError(f"IB Gateway unavailable at {host}:{port}")
 
             # === CLEAN DISCONNECT ===
             if ib:
@@ -153,7 +152,7 @@ class IBConnectionPool:
                     host=host,
                     port=port,
                     clientId=client_id,
-                    timeout=10
+                    timeout=15  # Increased from 10 to match verify_system_readiness
                 )
                 cls._instances[purpose] = ib
                 cls._reconnect_backoff[purpose] = 5.0
@@ -224,6 +223,8 @@ class IBConnectionPool:
                 if ib.isConnected():
                     logger.info(f"Disconnecting IB ({purpose})...")
                     ib.disconnect()
+                    # === NEW: Give Gateway time to cleanup ===
+                    await asyncio.sleep(3.0)
                 # Reset backoff when explicitly released
                 cls._reconnect_backoff[purpose] = 5.0
 
@@ -233,5 +234,7 @@ class IBConnectionPool:
             if ib and ib.isConnected():
                 logger.info(f"Disconnecting IB ({name})...")
                 ib.disconnect()
+                # === NEW: Give Gateway time to cleanup each connection ===
+                await asyncio.sleep(2.0)  # 2s per connection (shorter for batch operation)
         cls._instances.clear()
         cls._reconnect_backoff.clear()
