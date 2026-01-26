@@ -632,14 +632,39 @@ with st.spinner(f"Loading {get_contract_display_name(selected_contract)} data...
 
 if price_df is not None and not price_df.empty:
 
-    # 1. Filter Date Range
+    # 1. Filter Date Range (UPDATED TO USE TRADING DAYS)
     current_time_et = datetime.now().astimezone(pytz.timezone('America/New_York'))
-    cutoff_dt = current_time_et - timedelta(days=lookback_days)
-    price_df = price_df[price_df.index >= cutoff_dt]
+    
+    # Initialize US Holidays
+    us_holidays = holidays.US(years=[current_time_et.year, current_time_et.year - 1], observed=True)
+    
+    # Calculate cutoff by counting back N trading days
+    cutoff_dt = current_time_et
+    days_counted = 0
+    
+    while days_counted < lookback_days:
+        cutoff_dt -= timedelta(days=1)
+        # Check if weekday (0-4) and not a holiday
+        if cutoff_dt.weekday() < 5 and cutoff_dt.date() not in us_holidays:
+            days_counted += 1
+            
+    # Apply the date filter with a small buffer
+    price_df = price_df[price_df.index >= (cutoff_dt - timedelta(hours=4))]
 
     # 2. Remove non-trading days (weekends/holidays) - NEW
+    # We define the variable here so the subsequent check works
     pre_filter_count = len(price_df)
     price_df = filter_non_trading_days(price_df)
+
+    # Check for filtered rows
+    if len(price_df) < pre_filter_count:
+        removed_count = pre_filter_count - len(price_df)
+        removed_pct = (removed_count / pre_filter_count) * 100
+        st.caption(f"🗓️ Filtered {removed_count} candles ({removed_pct:.1f}%) - weekends/holidays/invalid data")
+
+    # OPTIONAL: Warn if we ended up with no data after filtering
+    if price_df.empty:
+        st.warning(f"⚠️ No trading data available for the selected {lookback_days}-day lookback period.")
 
     if len(price_df) < pre_filter_count:
         removed_count = pre_filter_count - len(price_df)
