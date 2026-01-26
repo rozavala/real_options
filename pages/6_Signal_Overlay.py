@@ -634,23 +634,12 @@ if price_df is not None and not price_df.empty:
 
     # 1. Filter Date Range
     current_time_et = datetime.now().astimezone(pytz.timezone('America/New_York'))
-    # Initialize US Holidays for the loop
-    us_holidays = holidays.US(years=[current_time_et.year, current_time_et.year - 1], observed=True)
-    
-    # Calculate cutoff by counting back N trading days
-    cutoff_dt = current_time_et
-    days_counted = 0
-    
-    # Loop backward until we have found 'lookback_days' worth of trading days
-    while days_counted < lookback_days:
-        cutoff_dt -= timedelta(days=1)
-        # Check if weekday (0-4) and not a holiday
-        if cutoff_dt.weekday() < 5 and cutoff_dt.date() not in us_holidays:
-            days_counted += 1
-            
-    # Apply the filter
-    # We use a slightly earlier buffer (-4 hours) to ensure we don't accidentally clip the Open of the first day
-    price_df = price_df[price_df.index >= (cutoff_dt - timedelta(hours=4))]
+    cutoff_dt = current_time_et - timedelta(days=lookback_days)
+    price_df = price_df[price_df.index >= cutoff_dt]
+
+    # 2. Remove non-trading days (weekends/holidays) - NEW
+    pre_filter_count = len(price_df)
+    price_df = filter_non_trading_days(price_df)
 
     if len(price_df) < pre_filter_count:
         removed_count = pre_filter_count - len(price_df)
