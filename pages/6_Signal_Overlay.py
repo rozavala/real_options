@@ -408,18 +408,19 @@ def filter_market_hours(df):
 
 def filter_non_trading_days(df):
     """
-    Remove weekend days and US market holidays from the dataframe.
+    Remove weekend days, US market holidays, and rows with missing OHLC data.
 
-    Coffee futures don't trade on weekends or holidays, so YFinance
-    returns NaN for OHLC but may still have volume=0, causing rendering issues.
+    Coffee futures don't trade on weekends or holidays. YFinance may return:
+    - Rows for weekends with NaN OHLC but Volume=0
+    - Rows for holidays with NaN OHLC but Volume=0
 
-    This function mirrors the logic from trading_bot.utils.is_trading_day().
+    This function filters all three cases.
 
     Args:
         df: DataFrame with DatetimeIndex in America/New_York timezone
 
     Returns:
-        DataFrame filtered to trading days only
+        DataFrame filtered to trading days with valid price data only
     """
     if df is None or df.empty:
         return df
@@ -431,8 +432,15 @@ def filter_non_trading_days(df):
     unique_years = df.index.year.unique()
     us_holidays = holidays.US(years=list(unique_years), observed=True)
 
-    # Convert index dates to set for efficient lookup
-    df = df[~pd.Index(df.index.date).isin(us_holidays)]
+    # FIX: Convert holidays object to a set of dates for proper filtering
+    holiday_dates = set(us_holidays.keys())
+    # Use df.index.date to compare with holiday dates (using normalize() keeps it as Timestamp which mismatches)
+    df = df[~pd.Index(df.index.date).isin(holiday_dates)]
+
+    # 3. CRITICAL: Filter out rows with NaN in OHLC columns
+    # YFinance returns these for non-trading periods
+    if 'Open' in df.columns and 'High' in df.columns and 'Low' in df.columns and 'Close' in df.columns:
+        df = df.dropna(subset=['Open', 'High', 'Low', 'Close'])
 
     return df
 
@@ -635,7 +643,10 @@ if price_df is not None and not price_df.empty:
 
     if len(price_df) < pre_filter_count:
         removed_count = pre_filter_count - len(price_df)
-        st.caption(f"🗓️ Filtered {removed_count} non-trading day candles (weekends/holidays)")
+        removed_pct = (removed_count / pre_filter_count) * 100
+        st.caption(f"🗓️ Filtered {removed_count} candles ({removed_pct:.1f}%) - weekends/holidays/invalid data")
+    elif len(price_df) == 0:
+        st.warning("⚠️ No valid trading data available for the selected period.")
 
     # 3. Optionally filter to market hours
     original_count = len(price_df)
