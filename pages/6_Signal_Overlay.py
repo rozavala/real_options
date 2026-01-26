@@ -406,6 +406,37 @@ def filter_market_hours(df):
     return df.loc[mask]
 
 
+def filter_non_trading_days(df):
+    """
+    Remove weekend days and US market holidays from the dataframe.
+
+    Coffee futures don't trade on weekends or holidays, so YFinance
+    returns NaN for OHLC but may still have volume=0, causing rendering issues.
+
+    This function mirrors the logic from trading_bot.utils.is_trading_day().
+
+    Args:
+        df: DataFrame with DatetimeIndex in America/New_York timezone
+
+    Returns:
+        DataFrame filtered to trading days only
+    """
+    if df is None or df.empty:
+        return df
+
+    # 1. Filter out weekends (Monday=0, Sunday=6)
+    df = df[df.index.weekday < 5]
+
+    # 2. Filter out US holidays (ICE follows NYSE calendar)
+    unique_years = df.index.year.unique()
+    us_holidays = holidays.US(years=list(unique_years), observed=True)
+
+    # Convert index dates to set for efficient lookup
+    df = df[~pd.Index(df.index.date).isin(us_holidays)]
+
+    return df
+
+
 def get_marker_size(confidence: float, base_size: int = 14) -> int:
     """Scale marker size by confidence."""
     scale = 0.7 + (confidence * 0.6)
@@ -598,7 +629,15 @@ if price_df is not None and not price_df.empty:
     cutoff_dt = current_time_et - timedelta(days=lookback_days)
     price_df = price_df[price_df.index >= cutoff_dt]
 
-    # 2. Optionally filter to market hours
+    # 2. Remove non-trading days (weekends/holidays) - NEW
+    pre_filter_count = len(price_df)
+    price_df = filter_non_trading_days(price_df)
+
+    if len(price_df) < pre_filter_count:
+        removed_count = pre_filter_count - len(price_df)
+        st.caption(f"🗓️ Filtered {removed_count} non-trading day candles (weekends/holidays)")
+
+    # 3. Optionally filter to market hours
     original_count = len(price_df)
     if filter_to_market_hours and timeframe in ['5m', '15m', '30m', '1h']:
         price_df = filter_market_hours(price_df)
