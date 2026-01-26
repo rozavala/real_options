@@ -74,19 +74,19 @@ SYMBOL_MAP = {
 
 # === DATA HELPER FUNCTIONS ===
 
-def clean_contract_symbol(contract: str) -> str:
+def clean_contract_symbol(contract: str) -> str | None:
     """
     Extracts clean ticker from potential dirty string like 'KCH26 (202603)'.
-    Returns stripped string if no pattern match.
+    Returns None if no valid KC+Month+Year pattern is found.
     """
     if not contract:
-        return ""
+        return None
     # Regex to find KC + MonthCode + Year (2 digits)
     # Matches KCH26, KCK26, etc.
     match = re.search(r'(KC[FGHJKMNQUVXZ]\d{2})', contract.upper())
     if match:
         return match.group(1)
-    return contract.strip()
+    return None
 
 def get_available_contracts(council_df: pd.DataFrame) -> list[str]:
     """
@@ -101,8 +101,9 @@ def get_available_contracts(council_df: pd.DataFrame) -> list[str]:
     # Get unique contracts, remove NaN/empty
     raw_contracts = council_df['contract'].dropna().unique().tolist()
 
-    # Clean and deduplicate
-    contracts = sorted(list(set([clean_contract_symbol(c) for c in raw_contracts if c])))
+    # Clean and deduplicate (filtering out None)
+    cleaned_contracts = [clean_contract_symbol(c) for c in raw_contracts if c]
+    contracts = sorted(list(set([c for c in cleaned_contracts if c])))
 
     # Sort by year (desc) then month code
     # Month order: F,G,H,J,K,M,N,Q,U,V,X,Z
@@ -128,18 +129,23 @@ def get_available_contracts(council_df: pd.DataFrame) -> list[str]:
 def contract_to_yfinance_ticker(contract: str) -> str:
     """
     Convert contract symbol to yfinance ticker.
+    Falls back to 'KC=F' if contract is invalid/None.
 
     Examples:
         'FRONT_MONTH' -> 'KC=F'
         'KCH26' -> 'KCH26.NYB'
         'KCK26' -> 'KCK26.NYB'
         'KCH26 (202603)' -> 'KCH26.NYB' (Fixed)
+        '(202603)' -> 'KC=F' (Fallback)
     """
     if contract == 'FRONT_MONTH' or not contract:
         return 'KC=F'
 
     # Clean the symbol before appending suffix
     symbol = clean_contract_symbol(contract)
+
+    if not symbol:
+        return 'KC=F'
 
     # yfinance uses .NYB suffix for ICE/NYBOT coffee futures
     return f"{symbol}.NYB"
@@ -166,7 +172,7 @@ def get_contract_display_name(contract: str) -> str:
     try:
         # Use cleaned symbol for display parsing
         symbol = clean_contract_symbol(contract)
-        if len(symbol) >= 4:
+        if symbol and len(symbol) >= 4:
             month_code = symbol[2]
             year = symbol[3:]
             month_name = month_names.get(month_code, '???')
@@ -182,7 +188,7 @@ def get_contract_color(contract: str, default_color: str) -> str:
         return default_color
 
     clean = clean_contract_symbol(contract)
-    if len(clean) >= 3:
+    if clean and len(clean) >= 3:
         month_code = clean[2]
         return MONTH_COLORS.get(month_code, default_color)
 
@@ -372,20 +378,21 @@ def process_signals_for_agent(history_df, agent_col, start_date, contract_filter
     if 'contract' in df.columns:
         df['contract_clean'] = df['contract'].apply(clean_contract_symbol)
     else:
-        df['contract_clean'] = 'Unknown'
+        df['contract_clean'] = None
 
     if not show_all and contract_filter and contract_filter != 'FRONT_MONTH':
         # Clean the filter target as well
         target_contract = clean_contract_symbol(contract_filter)
 
         # Filter using the clean column
-        df = df[df['contract_clean'] == target_contract]
-        if df.empty:
-            return pd.DataFrame()
+        if target_contract:
+            df = df[df['contract_clean'] == target_contract]
+            if df.empty:
+                return pd.DataFrame()
 
     # Add contract info for display (use original or clean?)
-    # Using clean makes it cleaner in hover text
-    df['signal_contract'] = df['contract_clean']
+    # Using clean makes it cleaner in hover text, fallback to "Unknown"
+    df['signal_contract'] = df['contract_clean'].fillna('Unknown')
 
     # Column mapping
     if agent_col not in df.columns:
