@@ -1341,8 +1341,8 @@ async def run_sentinels(config: dict):
                         logger.info(f"Deferred {trigger.source} trigger for market open")
                 last_news = now
 
-            # 5. X Sentiment Sentinel (Every 30 min during trading day)
-            if trading_day and (now - last_x_sentiment) > 1800:
+            # 5. X Sentiment Sentinel (Every 90 min during trading day)
+            if trading_day and (now - last_x_sentiment) > 5400:
                 # Reset daily stats if new day
                 if datetime.now().date() != x_sentinel_stats['last_reset']:
                     x_sentinel_stats = {
