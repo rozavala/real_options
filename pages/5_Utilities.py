@@ -10,10 +10,15 @@ import os
 import sys
 import socket
 import json
+import asyncio
+import traceback
 from datetime import datetime, timezone
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import get_config
+
+# Load config at module level
+config = get_config()
 
 st.set_page_config(layout="wide", page_title="Utilities | Coffee Bot")
 
@@ -185,7 +190,292 @@ with perf_cols[1]:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 3: System Validation
+# SECTION 3: Manual Trading Operations
+# ==============================================================================
+st.subheader("🎯 Manual Trading Operations")
+st.markdown("""
+Manually trigger trading operations outside of the normal schedule.
+**Use with caution** - these bypass normal market hours validation.
+""")
+
+manual_cols = st.columns(2)
+
+with manual_cols[0]:
+    st.warning("⚠️ **Generate & Execute Orders**")
+    st.caption("Runs full order generation cycle: data pull → ML inference → signals → order placement")
+
+    if st.button("🚀 Force Generate & Execute Orders", type="primary"):
+        if not config:
+            st.error("❌ Config not loaded")
+        else:
+            with st.spinner("Running order generation and execution..."):
+                try:
+                    import sys
+                    import os
+                    # Ensure path is correct for imports
+                    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                    from trading_bot.order_manager import generate_and_execute_orders
+
+                    # Run the async function
+                    try:
+                        asyncio.run(generate_and_execute_orders(config))
+                        st.success("✅ Order generation and execution completed!")
+                        st.info("💡 Check Cockpit page for new positions and Council page for decision details")
+                    except RuntimeError:
+                        # If loop is already running
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        loop.run_until_complete(generate_and_execute_orders(config))
+                        st.success("✅ Order generation and execution completed!")
+                        st.info("💡 Check Cockpit page for new positions and Council page for decision details")
+
+                except Exception as e:
+                    st.error(f"❌ Order generation failed: {str(e)}")
+                    with st.expander("View Error Details"):
+                        st.code(traceback.format_exc())
+
+with manual_cols[1]:
+    st.warning("⚠️ **Cancel All Open Orders**")
+    st.caption("Immediately cancels all unfilled DAY orders in IB")
+
+    if st.button("🛑 Cancel All Open Orders"):
+        if not config:
+            st.error("❌ Config not loaded")
+        else:
+            with st.spinner("Cancelling all open orders..."):
+                try:
+                    import sys
+                    import os
+                    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                    from trading_bot.order_manager import cancel_all_open_orders
+
+                    try:
+                        asyncio.run(cancel_all_open_orders(config))
+                        st.success("✅ All open orders cancelled!")
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        loop.run_until_complete(cancel_all_open_orders(config))
+                        st.success("✅ All open orders cancelled!")
+
+                except Exception as e:
+                    st.error(f"❌ Failed to cancel orders: {str(e)}")
+                    with st.expander("View Error Details"):
+                        st.code(traceback.format_exc())
+
+manual_cols2 = st.columns(2)
+
+with manual_cols2[0]:
+    st.warning("⚠️ **Close Stale Positions**")
+    st.caption("Closes positions held longer than max_holding_days")
+
+    if st.button("🔄 Force Close Stale Positions"):
+        if not config:
+            st.error("❌ Config not loaded")
+        else:
+            with st.spinner("Closing stale positions..."):
+                try:
+                    import sys
+                    import os
+                    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                    from trading_bot.order_manager import close_stale_positions
+
+                    try:
+                        asyncio.run(close_stale_positions(config))
+                        st.success("✅ Stale position closure completed!")
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        loop.run_until_complete(close_stale_positions(config))
+                        st.success("✅ Stale position closure completed!")
+
+                except Exception as e:
+                    st.error(f"❌ Failed to close positions: {str(e)}")
+                    with st.expander("View Error Details"):
+                        st.code(traceback.format_exc())
+
+with manual_cols2[1]:
+    st.info("ℹ️ **Sync Equity Data**")
+    st.caption("Forces fresh equity sync from IB Flex Query")
+
+    if st.button("💰 Force Equity Sync"):
+        if not config:
+            st.error("❌ Config not loaded")
+        else:
+            with st.spinner("Syncing equity data from IBKR..."):
+                try:
+                    import sys
+                    import os
+                    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                    from equity_logger import sync_equity_from_flex
+
+                    try:
+                        asyncio.run(sync_equity_from_flex(config))
+                        st.success("✅ Equity data synced successfully!")
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        loop.run_until_complete(sync_equity_from_flex(config))
+                        st.success("✅ Equity data synced successfully!")
+
+                except Exception as e:
+                    st.error(f"❌ Equity sync failed: {str(e)}")
+                    with st.expander("View Error Details"):
+                        st.code(traceback.format_exc())
+
+st.markdown("---")
+
+# ==============================================================================
+# SECTION 4: System Diagnostics
+# ==============================================================================
+st.subheader("🔍 System Diagnostics")
+
+diag_cols = st.columns(3)
+
+with diag_cols[0]:
+    st.info("**IB Connection Test**")
+    if st.button("🔌 Test IB Gateway Connection"):
+        if not config:
+            st.error("❌ Config not loaded")
+        else:
+            with st.spinner("Testing IB connection..."):
+                try:
+                    import sys
+                    import os
+                    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                    from trading_bot.connection_pool import IBConnectionPool
+
+                    async def test_connection():
+                        try:
+                            ib = await IBConnectionPool.get_connection("test_utilities", config)
+                            if ib and ib.isConnected():
+                                return True, "Connection successful"
+                            return False, "Connection failed"
+                        except Exception as e:
+                            return False, str(e)
+
+                    try:
+                        success, message = asyncio.run(test_connection())
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        success, message = loop.run_until_complete(test_connection())
+
+                    if success:
+                        st.success(f"✅ {message}")
+                    else:
+                        st.error(f"❌ {message}")
+
+                except Exception as e:
+                    st.error(f"❌ Connection test failed: {str(e)}")
+
+with diag_cols[1]:
+    st.info("**Test Notifications**")
+    if st.button("📱 Send Test Notification"):
+        if not config:
+            st.error("❌ Config not loaded")
+        else:
+            try:
+                import sys
+                import os
+                sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                from notifications import send_pushover_notification
+
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    "Test Notification",
+                    f"This is a test notification from Coffee Bot Utilities at {datetime.now(timezone.utc).strftime('%H:%M:%S UTC')}"
+                )
+                st.success("✅ Test notification sent!")
+            except Exception as e:
+                st.error(f"❌ Failed to send notification: {str(e)}")
+
+with diag_cols[2]:
+    st.info("**Market Status**")
+    if st.button("🕐 Check Market Status"):
+        try:
+            import sys
+            import os
+            sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            from trading_bot.utils import is_market_open, is_trading_day
+            import pytz
+
+            utc_now = datetime.now(timezone.utc)
+            ny_tz = pytz.timezone('America/New_York')
+            ny_now = utc_now.astimezone(ny_tz)
+
+            market_open = is_market_open()
+            trading_day = is_trading_day()
+
+            st.write(f"**UTC Time:** {utc_now.strftime('%Y-%m-%d %H:%M:%S')}")
+            st.write(f"**NY Time:** {ny_now.strftime('%Y-%m-%d %H:%M:%S')}")
+            st.write(f"**Is Trading Day:** {'✅ Yes' if trading_day else '❌ No'}")
+            st.write(f"**Market Status:** {'🟢 OPEN' if market_open else '🔴 CLOSED'}")
+
+            if not trading_day:
+                st.warning("Today is a weekend or holiday")
+
+        except Exception as e:
+            st.error(f"❌ Failed to check market status: {str(e)}")
+
+st.markdown("---")
+
+# ==============================================================================
+# SECTION 5: State Management
+# ==============================================================================
+st.subheader("📁 State Management")
+
+state_cols = st.columns(2)
+
+with state_cols[0]:
+    st.info("**View System State**")
+    if st.button("👁️ Show state.json Contents"):
+        try:
+            state_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "state.json")
+            if os.path.exists(state_path):
+                with open(state_path, 'r') as f:
+                    state_data = json.load(f)
+                    st.json(state_data)
+            else:
+                st.warning("⚠️ state.json file not found")
+        except Exception as e:
+            st.error(f"❌ Failed to load state.json: {str(e)}")
+
+with state_cols[1]:
+    st.warning("**Clear State File**")
+    st.caption("⚠️ This will reset all state data (sentinels, triggers, etc.)")
+
+    # Use a form with confirmation checkbox to prevent accidental clicks
+    with st.form("clear_state_form"):
+        confirm_clear = st.checkbox("I understand this will clear all state data")
+        submit_clear = st.form_submit_button("🗑️ Clear State File")
+
+        if submit_clear:
+            if not confirm_clear:
+                st.error("❌ Please confirm by checking the box")
+            else:
+                try:
+                    state_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "state.json")
+                    if os.path.exists(state_path):
+                        # Create backup first
+                        backup_path = f"{state_path}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                        import shutil
+                        shutil.copy2(state_path, backup_path)
+
+                        # Clear state file
+                        with open(state_path, 'w') as f:
+                            json.dump({}, f, indent=2)
+
+                        st.success(f"✅ State file cleared! Backup saved to: {os.path.basename(backup_path)}")
+                    else:
+                        st.warning("⚠️ No state.json file to clear")
+                except Exception as e:
+                    st.error(f"❌ Failed to clear state: {str(e)}")
+
+st.markdown("---")
+
+# ==============================================================================
+# SECTION 6: System Validation
 # ==============================================================================
 st.subheader("🔍 System Validation")
 st.markdown("""
@@ -214,11 +504,6 @@ if run_validation:
 
             if quick_mode:
                 cmd.append("--quick")
-
-            # Also skip IBKR if not available (auto-detect or user pref?)
-            # For now let script handle it or assume user wants full check if not quick
-            # But let's add --skip-ibkr if quick mode is OFF but we suspect no gateway?
-            # No, keep it simple.
 
             result = subprocess.run(
                 cmd,
@@ -303,7 +588,7 @@ if run_validation:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 3.5: Data Reconciliation
+# SECTION 7: Data Reconciliation
 # ==============================================================================
 st.subheader("🔄 Data Reconciliation")
 st.markdown("""
@@ -437,10 +722,10 @@ asyncio.run(main())
             except Exception as e:
                 st.error(f"❌ Error: {str(e)}")
 
-# --- Equity Sync (Move from Section 4) ---
+# --- Equity Sync (Legacy/Subprocess) ---
 with recon_row2[1]:
-    st.markdown("**💰 Equity History**")
-    st.caption("Sync equity data from IBKR Flex Query")
+    st.markdown("**💰 Equity History (Subprocess)**")
+    st.caption("Sync equity data from IBKR Flex Query (Legacy)")
 
     if st.button("🔄 Sync Equity Data", use_container_width=True, key="recon_equity"):
         with st.spinner("Syncing equity data from Flex Query..."):
@@ -507,13 +792,7 @@ with st.expander("ℹ️ About Reconciliation Processes"):
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 4: Equity Sync [MOVED TO RECONCILIATION SECTION]
-# ==============================================================================
-# Note: Equity sync has been moved to the Data Reconciliation section above
-# for better organization. Keeping this comment as a marker.
-
-# ==============================================================================
-# SECTION 5: Cache Management
+# SECTION 8: Cache Management
 # ==============================================================================
 st.subheader("🗑️ Cache Management")
 st.markdown("Clear cached data to force fresh data loads from sources.")
@@ -532,7 +811,7 @@ with cache_cols[1]:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 6: System Info
+# SECTION 9: System Info
 # ==============================================================================
 st.subheader("ℹ️ System Information")
 
