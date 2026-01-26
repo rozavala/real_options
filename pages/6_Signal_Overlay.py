@@ -23,6 +23,7 @@ import os
 import numpy as np
 import holidays
 import pytz
+import re
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import load_council_history, grade_decision_quality
@@ -54,13 +55,13 @@ COLOR_MAP = {
     'NEUTRAL': '#888888', 'HOLD': '#888888',
 }
 
-# New constant for contract-specific colors
-CONTRACT_COLORS = {
-    'KCH26': '#00CC96',  # Green
-    'KCK26': '#636EFA',  # Blue
-    'KCN26': '#EF553B',  # Red
-    'KCU26': '#AB63FA',  # Purple
-    'KCZ26': '#FFA15A',  # Orange
+# New constant for Month-specific colors (perpetual)
+MONTH_COLORS = {
+    'H': '#00CC96',  # March - Green
+    'K': '#636EFA',  # May - Blue
+    'N': '#EF553B',  # July - Red
+    'U': '#AB63FA',  # Sep - Purple
+    'Z': '#FFA15A',  # Dec - Orange
 }
 
 SYMBOL_MAP = {
@@ -73,19 +74,35 @@ SYMBOL_MAP = {
 
 # === DATA HELPER FUNCTIONS ===
 
+def clean_contract_symbol(contract: str) -> str:
+    """
+    Extracts clean ticker from potential dirty string like 'KCH26 (202603)'.
+    Returns stripped string if no pattern match.
+    """
+    if not contract:
+        return ""
+    # Regex to find KC + MonthCode + Year (2 digits)
+    # Matches KCH26, KCK26, etc.
+    match = re.search(r'(KC[FGHJKMNQUVXZ]\d{2})', contract.upper())
+    if match:
+        return match.group(1)
+    return contract.strip()
+
 def get_available_contracts(council_df: pd.DataFrame) -> list[str]:
     """
     Extract unique contract symbols from council history.
     Returns sorted list with most recent contracts first.
 
-    Example output: ['KCK26', 'KCH26', 'KCZ25']
+    Example output: ['KCH26', 'KCK26', 'KCZ25']
     """
     if council_df.empty or 'contract' not in council_df.columns:
         return []
 
     # Get unique contracts, remove NaN/empty
-    contracts = council_df['contract'].dropna().unique().tolist()
-    contracts = [c for c in contracts if c and str(c).strip()]
+    raw_contracts = council_df['contract'].dropna().unique().tolist()
+
+    # Clean and deduplicate
+    contracts = sorted(list(set([clean_contract_symbol(c) for c in raw_contracts if c])))
 
     # Sort by year (desc) then month code
     # Month order: F,G,H,J,K,M,N,Q,U,V,X,Z
@@ -96,7 +113,7 @@ def get_available_contracts(council_df: pd.DataFrame) -> list[str]:
         try:
             # Extract year and month: "KCH26" -> year=26, month=H
             symbol = contract.upper().strip()
-            if len(symbol) >= 4:
+            if len(symbol) == 5 and symbol.startswith('KC'):
                 month = symbol[2]  # H in KCH26
                 year = int(symbol[3:])  # 26 in KCH26
                 month_idx = month_order.find(month) if month in month_order else 99
@@ -116,12 +133,15 @@ def contract_to_yfinance_ticker(contract: str) -> str:
         'FRONT_MONTH' -> 'KC=F'
         'KCH26' -> 'KCH26.NYB'
         'KCK26' -> 'KCK26.NYB'
+        'KCH26 (202603)' -> 'KCH26.NYB' (Fixed)
     """
     if contract == 'FRONT_MONTH' or not contract:
         return 'KC=F'
 
+    # Clean the symbol before appending suffix
+    symbol = clean_contract_symbol(contract)
+
     # yfinance uses .NYB suffix for ICE/NYBOT coffee futures
-    symbol = contract.upper().strip()
     return f"{symbol}.NYB"
 
 
@@ -144,7 +164,8 @@ def get_contract_display_name(contract: str) -> str:
     }
 
     try:
-        symbol = contract.upper().strip()
+        # Use cleaned symbol for display parsing
+        symbol = clean_contract_symbol(contract)
         if len(symbol) >= 4:
             month_code = symbol[2]
             year = symbol[3:]
@@ -156,9 +177,15 @@ def get_contract_display_name(contract: str) -> str:
     return contract
 
 def get_contract_color(contract: str, default_color: str) -> str:
-    """Get color for contract, with fallback to default."""
-    if contract and contract.upper() in CONTRACT_COLORS:
-        return CONTRACT_COLORS[contract.upper()]
+    """Get color for contract based on month code."""
+    if not contract or contract == 'FRONT_MONTH':
+        return default_color
+
+    clean = clean_contract_symbol(contract)
+    if len(clean) >= 3:
+        month_code = clean[2]
+        return MONTH_COLORS.get(month_code, default_color)
+
     return default_color
 
 
@@ -340,19 +367,25 @@ def process_signals_for_agent(history_df, agent_col, start_date, contract_filter
     if df.empty:
         return pd.DataFrame()
 
-    # === NEW: CONTRACT FILTERING ===
-    if not show_all and contract_filter and contract_filter != 'FRONT_MONTH':
-        if 'contract' in df.columns:
-            # Filter to only matching contract
-            df = df[df['contract'].str.upper().str.strip() == contract_filter.upper().strip()]
-            if df.empty:
-                return pd.DataFrame()
-
-    # Add contract info for display
+    # === NEW: CONTRACT FILTERING (With Regex Cleaning) ===
+    # Clean the 'contract' column in the DataFrame for reliable filtering
     if 'contract' in df.columns:
-        df['signal_contract'] = df['contract'].fillna('Unknown')
+        df['contract_clean'] = df['contract'].apply(clean_contract_symbol)
     else:
-        df['signal_contract'] = 'Unknown'
+        df['contract_clean'] = 'Unknown'
+
+    if not show_all and contract_filter and contract_filter != 'FRONT_MONTH':
+        # Clean the filter target as well
+        target_contract = clean_contract_symbol(contract_filter)
+
+        # Filter using the clean column
+        df = df[df['contract_clean'] == target_contract]
+        if df.empty:
+            return pd.DataFrame()
+
+    # Add contract info for display (use original or clean?)
+    # Using clean makes it cleaner in hover text
+    df['signal_contract'] = df['contract_clean']
 
     # Column mapping
     if agent_col not in df.columns:
@@ -397,7 +430,7 @@ def process_signals_for_agent(history_df, agent_col, start_date, contract_filter
 
     # Override colors if show_all is True to distinguish contracts
     if show_all:
-        df['marker_color'] = df['signal_contract'].map(CONTRACT_COLORS).fillna('#888888')
+        df['marker_color'] = df['signal_contract'].apply(lambda c: get_contract_color(c, '#888888'))
 
     df['marker_size'] = df['plot_confidence'].apply(lambda c: get_marker_size(c, base_size=14))
 
