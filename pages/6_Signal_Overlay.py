@@ -54,6 +54,15 @@ COLOR_MAP = {
     'NEUTRAL': '#888888', 'HOLD': '#888888',
 }
 
+# New constant for contract-specific colors
+CONTRACT_COLORS = {
+    'KCH26': '#00CC96',  # Green
+    'KCK26': '#636EFA',  # Blue
+    'KCN26': '#EF553B',  # Red
+    'KCU26': '#AB63FA',  # Purple
+    'KCZ26': '#FFA15A',  # Orange
+}
+
 SYMBOL_MAP = {
     'BULLISH': 'triangle-up', 'UP': 'triangle-up', 'LONG': 'triangle-up',
     'BEARISH': 'triangle-down', 'DOWN': 'triangle-down', 'SHORT': 'triangle-down',
@@ -61,6 +70,97 @@ SYMBOL_MAP = {
     'LONG_STRADDLE': 'diamond-wide', 'STRADDLE': 'diamond-wide',
     'NEUTRAL': 'circle', 'HOLD': 'circle',
 }
+
+# === DATA HELPER FUNCTIONS ===
+
+def get_available_contracts(council_df: pd.DataFrame) -> list[str]:
+    """
+    Extract unique contract symbols from council history.
+    Returns sorted list with most recent contracts first.
+
+    Example output: ['KCK26', 'KCH26', 'KCZ25']
+    """
+    if council_df.empty or 'contract' not in council_df.columns:
+        return []
+
+    # Get unique contracts, remove NaN/empty
+    contracts = council_df['contract'].dropna().unique().tolist()
+    contracts = [c for c in contracts if c and str(c).strip()]
+
+    # Sort by year (desc) then month code
+    # Month order: F,G,H,J,K,M,N,Q,U,V,X,Z
+    month_order = 'FGHJKMNQUVXZ'
+
+    def sort_key(contract: str) -> tuple:
+        """Sort by year (desc) then month (asc)."""
+        try:
+            # Extract year and month: "KCH26" -> year=26, month=H
+            symbol = contract.upper().strip()
+            if len(symbol) >= 4:
+                month = symbol[2]  # H in KCH26
+                year = int(symbol[3:])  # 26 in KCH26
+                month_idx = month_order.find(month) if month in month_order else 99
+                return (-year, month_idx)  # Negative year for descending
+        except:
+            pass
+        return (0, 99)  # Put unparseable at end
+
+    return sorted(contracts, key=sort_key)
+
+
+def contract_to_yfinance_ticker(contract: str) -> str:
+    """
+    Convert contract symbol to yfinance ticker.
+
+    Examples:
+        'FRONT_MONTH' -> 'KC=F'
+        'KCH26' -> 'KCH26.NYB'
+        'KCK26' -> 'KCK26.NYB'
+    """
+    if contract == 'FRONT_MONTH' or not contract:
+        return 'KC=F'
+
+    # yfinance uses .NYB suffix for ICE/NYBOT coffee futures
+    symbol = contract.upper().strip()
+    return f"{symbol}.NYB"
+
+
+def get_contract_display_name(contract: str) -> str:
+    """
+    Get human-readable display name for contract.
+
+    Examples:
+        'FRONT_MONTH' -> '📊 Front Month (Continuous)'
+        'KCH26' -> 'KCH26 (Mar 2026)'
+        'KCK26' -> 'KCK26 (May 2026)'
+    """
+    if contract == 'FRONT_MONTH':
+        return '📊 Front Month (Continuous)'
+
+    month_names = {
+        'F': 'Jan', 'G': 'Feb', 'H': 'Mar', 'J': 'Apr',
+        'K': 'May', 'M': 'Jun', 'N': 'Jul', 'Q': 'Aug',
+        'U': 'Sep', 'V': 'Oct', 'X': 'Nov', 'Z': 'Dec'
+    }
+
+    try:
+        symbol = contract.upper().strip()
+        if len(symbol) >= 4:
+            month_code = symbol[2]
+            year = symbol[3:]
+            month_name = month_names.get(month_code, '???')
+            return f"{symbol} ({month_name} 20{year})"
+    except:
+        pass
+
+    return contract
+
+def get_contract_color(contract: str, default_color: str) -> str:
+    """Get color for contract, with fallback to default."""
+    if contract and contract.upper() in CONTRACT_COLORS:
+        return CONTRACT_COLORS[contract.upper()]
+    return default_color
+
 
 # === SIDEBAR CONFIGURATION ===
 
@@ -83,6 +183,46 @@ with st.sidebar:
         max_value=max_days,
         value=default_lookback,
         help="Default: 3 days (72 hours)"
+    )
+
+    st.markdown("---")
+
+    # === NEW: CONTRACT SELECTOR ===
+    st.header("📜 Contract")
+
+    # Load council data early to get available contracts
+    council_df_for_contracts = load_council_history()
+    available_contracts = get_available_contracts(council_df_for_contracts)
+
+    # Build options list: Front Month + specific contracts
+    contract_options = ['FRONT_MONTH'] + available_contracts
+
+    # Format function for display
+    contract_format = lambda c: get_contract_display_name(c)
+
+    selected_contract = st.selectbox(
+        "Price Data Source",
+        options=contract_options,
+        index=0,  # Default to Front Month
+        format_func=contract_format,
+        help="Select which contract's price data to display"
+    )
+
+    # Signal filter option
+    if selected_contract != 'FRONT_MONTH':
+        filter_signals_to_contract = st.checkbox(
+            f"Only show {selected_contract} signals",
+            value=True,
+            help="When checked, only shows signals targeting this specific contract"
+        )
+    else:
+        filter_signals_to_contract = False
+
+    # Multi-contract mode (optional - more advanced)
+    show_all_signals = st.checkbox(
+        "Show signals from all contracts",
+        value=False,
+        help="Shows signals from all contracts overlaid on the selected price chart"
     )
 
     st.markdown("---")
@@ -109,7 +249,14 @@ with st.sidebar:
 
 @st.cache_data(ttl=300)
 def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
-    """Fetches historical OHLC data, converted to NY Time."""
+    """
+    Fetches historical OHLC data, converted to NY Time.
+
+    Args:
+        ticker: yfinance ticker (e.g., 'KC=F' or 'KCH26.NYB')
+        period: lookback period
+        interval: candle interval
+    """
     try:
         df = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=True)
         if df.empty:
@@ -132,7 +279,7 @@ def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
 
         return df
     except Exception as e:
-        st.error(f"Failed to load price data: {e}")
+        st.error(f"Failed to load price data for {ticker}: {e}")
         return None
 
 
@@ -157,8 +304,17 @@ def get_marker_size(confidence: float, base_size: int = 14) -> int:
     return int(base_size * scale)
 
 
-def process_signals_for_agent(history_df, agent_col, start_date):
-    """Clean, filter, and format signals."""
+def process_signals_for_agent(history_df, agent_col, start_date, contract_filter=None, show_all=False):
+    """
+    Clean, filter, and format signals.
+
+    Args:
+        history_df: Council history DataFrame
+        agent_col: Column name for agent to display
+        start_date: Cutoff date
+        contract_filter: If set, only show signals for this contract (e.g., 'KCH26')
+        show_all: If True, show all contracts (overrides contract_filter)
+    """
     if history_df.empty:
         return pd.DataFrame()
 
@@ -183,6 +339,20 @@ def process_signals_for_agent(history_df, agent_col, start_date):
     df = df[df['timestamp'] >= cutoff_ts].copy()
     if df.empty:
         return pd.DataFrame()
+
+    # === NEW: CONTRACT FILTERING ===
+    if not show_all and contract_filter and contract_filter != 'FRONT_MONTH':
+        if 'contract' in df.columns:
+            # Filter to only matching contract
+            df = df[df['contract'].str.upper().str.strip() == contract_filter.upper().strip()]
+            if df.empty:
+                return pd.DataFrame()
+
+    # Add contract info for display
+    if 'contract' in df.columns:
+        df['signal_contract'] = df['contract'].fillna('Unknown')
+    else:
+        df['signal_contract'] = 'Unknown'
 
     # Column mapping
     if agent_col not in df.columns:
@@ -224,6 +394,11 @@ def process_signals_for_agent(history_df, agent_col, start_date):
     # Colors & Symbols
     df['marker_color'] = df['plot_label'].map(COLOR_MAP).fillna('#888888')
     df['marker_symbol'] = df['plot_label'].map(SYMBOL_MAP).fillna('circle')
+
+    # Override colors if show_all is True to distinguish contracts
+    if show_all:
+        df['marker_color'] = df['signal_contract'].map(CONTRACT_COLORS).fillna('#888888')
+
     df['marker_size'] = df['plot_confidence'].apply(lambda c: get_marker_size(c, base_size=14))
 
     return df
@@ -234,24 +409,29 @@ def build_hover_text(row):
     parts = [
         f"<b>{row.get('plot_label', 'SIGNAL')}</b>",
         f"Time: {row['timestamp'].strftime('%b %d %H:%M')} ET",
-        f"Confidence: {row.get('plot_confidence', 0.5):.0%}",
     ]
     
+    # Add contract info
+    if 'signal_contract' in row and row.get('signal_contract') not in [None, 'Unknown', 'nan']:
+        parts.append(f"Contract: {row['signal_contract']}")
+
+    parts.append(f"Confidence: {row.get('plot_confidence', 0.5):.0%}")
+
     if 'strategy_type' in row and pd.notna(row.get('strategy_type')):
         parts.append(f"Strategy: {row['strategy_type']}")
-    
+
     if 'outcome' in row and row.get('outcome') in ['WIN', 'LOSS']:
         outcome_emoji = '✅' if row['outcome'] == 'WIN' else '❌'
         parts.append(f"Outcome: {outcome_emoji} {row['outcome']}")
-    
+
     if 'pnl_realized' in row and pd.notna(row.get('pnl_realized')) and row.get('pnl_realized') != 0:
         pnl = float(row['pnl_realized'])
         parts.append(f"P&L: {pnl:+.4f}")
-    
+
     rationale = str(row.get('master_reasoning', row.get('rationale', '')))[:150]
     if rationale and rationale != 'nan':
         parts.append(f"<i>{rationale}...</i>")
-    
+
     return "<br>".join(parts)
 
 
@@ -260,14 +440,32 @@ def build_hover_text(row):
 end_date = datetime.now()
 start_date = end_date - timedelta(days=lookback_days)
 
-with st.spinner("Loading market data and signals..."):
+# Determine yfinance ticker based on contract selection
+yf_ticker = contract_to_yfinance_ticker(selected_contract)
+
+with st.spinner(f"Loading {get_contract_display_name(selected_contract)} data..."):
+    # Determine period
     if lookback_days <= 1: yf_period = "1d"
     elif lookback_days <= 5: yf_period = "5d"
     elif lookback_days <= 29: yf_period = "1mo"
     elif lookback_days <= 59: yf_period = "2mo"
     else: yf_period = "2y"
 
-    price_df = fetch_price_history_extended(ticker="KC=F", period=yf_period, interval=timeframe)
+    # Fetch price data for selected contract
+    price_df = fetch_price_history_extended(ticker=yf_ticker, period=yf_period, interval=timeframe)
+
+    # Fallback: If specific contract has no data, try front month
+    if price_df is None or price_df.empty:
+        if selected_contract != 'FRONT_MONTH':
+            st.warning(f"⚠️ No price data available for {selected_contract}. Falling back to front month.")
+            price_df = fetch_price_history_extended(ticker='KC=F', period=yf_period, interval=timeframe)
+            # Update display to show fallback
+            actual_ticker_display = "Front Month (Fallback)"
+        else:
+            actual_ticker_display = None
+    else:
+        actual_ticker_display = get_contract_display_name(selected_contract)
+
     council_df = load_council_history()
 
 
@@ -288,8 +486,15 @@ if price_df is not None and not price_df.empty:
     if len(price_df) < original_count:
         st.caption(f"📊 Showing {len(price_df):,} candles (filtered from {original_count:,} to market hours only)")
 
-    # 3. Process signals
-    signals = process_signals_for_agent(council_df, selected_agent_col, start_date)
+    # 3. Process signals with contract filter
+    contract_filter = selected_contract if filter_signals_to_contract else None
+    signals = process_signals_for_agent(
+        council_df,
+        selected_agent_col,
+        start_date,
+        contract_filter=contract_filter,
+        show_all=show_all_signals
+    )
 
     # === ALIGNMENT ENGINE ===
     plot_df = pd.DataFrame()
@@ -519,6 +724,18 @@ if price_df is not None and not price_df.empty:
                         row=1, col=1
                     )
 
+    # Determine title based on contract
+    if actual_ticker_display:
+        chart_title = f"{actual_ticker_display} | {selected_agent_label} | {timeframe} | Last {lookback_days} Days"
+    else:
+        chart_title = f"Coffee Analysis (ET) | {selected_agent_label} | {timeframe} | Last {lookback_days} Days"
+
+    # Add signal contract info if showing multiple
+    if show_all_signals and not signals.empty:
+        unique_contracts = signals['signal_contract'].unique()
+        if len(unique_contracts) > 1:
+            chart_title += f" | Signals: {', '.join(unique_contracts)}"
+
     # === LAYOUT (CRITICAL: type='category' fixes overlaps) ===
     fig.update_xaxes(
         type='category',
@@ -565,7 +782,7 @@ if price_df is not None and not price_df.empty:
         height=800,
         xaxis_rangeslider_visible=False,
         template="plotly_dark",
-        title=f"Coffee Analysis (ET) | {selected_agent_label} | {timeframe} | Last {lookback_days} Days",
+        title=chart_title,
         hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
@@ -612,6 +829,8 @@ if price_df is not None and not price_df.empty:
                 display_cols.append('outcome')
             if 'pnl_realized' in plot_df.columns:
                 display_cols.append('pnl_realized')
+            if 'signal_contract' in plot_df.columns:
+                display_cols.insert(1, 'signal_contract')
             
             display_cols = [c for c in display_cols if c in plot_df.columns]
             
