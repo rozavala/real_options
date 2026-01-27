@@ -697,9 +697,14 @@ if price_df is not None and not price_df.empty:
         show_all=show_all_signals
     )
 
-    # === X-AXIS PREPARATION (String Conversion for Category Axis) ===
-    # Convert index to string to ensure reliable plotting on categorical axis (fixes missing candles on short lookbacks)
+    # === X-AXIS PREPARATION (Numerical Index for Reliable Candlestick Rendering) ===
+    # Use numerical indices (0, 1, 2, ...) for x-axis - this is the most reliable approach for candlesticks
+    # Store string labels for tick display
     price_df['str_index'] = price_df.index.strftime('%Y-%m-%d %H:%M')
+    price_df['num_index'] = range(len(price_df))
+
+    # Create mapping from timestamp to numerical index for signal alignment
+    timestamp_to_num = dict(zip(price_df.index, price_df['num_index']))
 
     # === ALIGNMENT ENGINE ===
     plot_df = pd.DataFrame()
@@ -724,8 +729,10 @@ if price_df is not None and not price_df.empty:
 
             plot_df = matched_signals.copy()
             plot_df['plot_x'] = matched_signals['candle_timestamp']
-            # Create string version for plotting to match price_df['str_index']
+            # Create string version for display and numerical version for plotting
             plot_df['plot_x_str'] = plot_df['plot_x'].dt.strftime('%Y-%m-%d %H:%M')
+            # Map timestamps to numerical indices for reliable plotting
+            plot_df['plot_x_num'] = plot_df['plot_x'].map(timestamp_to_num)
 
             plot_df['candle_high'] = aligned_prices['High'].values
             plot_df['candle_low'] = aligned_prices['Low'].values
@@ -802,9 +809,9 @@ if price_df is not None and not price_df.empty:
     )
 
     # 1. Candlestick (Row 1)
-    # CRITICAL: Explicit increasing/decreasing colors required for reliable rendering with categorical x-axis
+    # CRITICAL: Use numerical x-axis for reliable candlestick rendering
     fig.add_trace(go.Candlestick(
-        x=price_df['str_index'],
+        x=price_df['num_index'],
         open=price_df['Open'],
         high=price_df['High'],
         low=price_df['Low'],
@@ -817,7 +824,7 @@ if price_df is not None and not price_df.empty:
     # 2. Signal markers (Row 1)
     if not plot_df.empty:
         fig.add_trace(go.Scatter(
-            x=plot_df['plot_x_str'],
+            x=plot_df['plot_x_num'],
             y=plot_df['y_pos'],
             mode='markers+text' if show_labels else 'markers',
             text=plot_df['plot_label'] if show_labels else None,
@@ -856,7 +863,7 @@ if price_df is not None and not price_df.empty:
     # 4. Volume (Row 2 - SECONDARY Y-AXIS on RIGHT)
     if 'Volume' in price_df.columns:
         fig.add_trace(go.Bar(
-            x=price_df['str_index'],
+            x=price_df['num_index'],
             y=price_df['Volume'],
             marker_color='rgba(100, 150, 255, 0.4)',  # Slightly more visible
             name='Volume',
@@ -866,7 +873,7 @@ if price_df is not None and not price_df.empty:
     # 5. Confidence (Row 2 - PRIMARY Y-AXIS on LEFT)
     if not plot_df.empty and show_confidence:
         fig.add_trace(go.Scatter(
-            x=plot_df['plot_x_str'],
+            x=plot_df['plot_x_num'],
             y=plot_df['plot_confidence'],
             mode='markers+lines',
             line=dict(color='#00CC96', width=1.5, dash='dot'),
@@ -881,10 +888,9 @@ if price_df is not None and not price_df.empty:
         weekdays = price_df.index.dayofweek
 
         day_changes = np.where(dates[1:] != dates[:-1])[0] + 1
-        
+
         for idx in day_changes:
-            ts = price_df.index[idx]
-            ts_str = price_df['str_index'].iloc[idx] # Use string representation for categorical axis
+            ts_num = price_df['num_index'].iloc[idx]  # Use numerical index
             current_weekday = weekdays[idx]
             prev_weekday = weekdays[idx - 1] if idx > 0 else current_weekday
 
@@ -893,14 +899,14 @@ if price_df is not None and not price_df.empty:
             if is_week_start:
                 # WEEK SEPARATOR - Prominent orange
                 fig.add_vline(
-                    x=ts_str,
+                    x=ts_num,
                     line_width=2,
                     line_dash="dash",
                     line_color="rgba(255, 180, 80, 0.8)",
                     row="all"
                 )
                 fig.add_annotation(
-                    x=ts_str,
+                    x=ts_num,
                     y=1.02,
                     yref="paper",
                     text="📅 Week",
@@ -911,7 +917,7 @@ if price_df is not None and not price_df.empty:
             else:
                 # DAY SEPARATOR - Visible gray
                 fig.add_vline(
-                    x=ts_str,
+                    x=ts_num,
                     line_width=1,
                     line_dash="dot",
                     line_color="rgba(180, 180, 180, 0.6)",
@@ -925,11 +931,11 @@ if price_df is not None and not price_df.empty:
             date_data = price_df[price_df.index.date == date]
             if not date_data.empty:
                 first_candle = date_data.index[0]
-                first_candle_str = date_data['str_index'].iloc[0]
+                first_candle_num = date_data['num_index'].iloc[0]  # Use numerical index
                 # Market Open marker
                 if first_candle.time() <= time(4, 0):  # Within first 30 min
                     fig.add_annotation(
-                        x=first_candle_str,
+                        x=first_candle_num,
                         y=date_data.loc[first_candle, 'High'] * 1.003,
                         text="🔔",
                         showarrow=False,
@@ -949,19 +955,29 @@ if price_df is not None and not price_df.empty:
         if len(unique_contracts) > 1:
             chart_title += f" | Signals: {', '.join(unique_contracts)}"
 
-    # === LAYOUT (CRITICAL: type='category' fixes overlaps) ===
-    # FIXED: Use category axis with string values for reliable rendering
+    # === LAYOUT (Numerical X-Axis with Custom Tick Labels) ===
+    # Use numerical indices for reliable candlestick rendering, with custom tick labels for display
+    # Select ~15 evenly spaced tick positions
+    n_ticks = min(15, len(price_df))
+    if n_ticks > 0:
+        tick_indices = np.linspace(0, len(price_df) - 1, n_ticks, dtype=int)
+        tick_vals = price_df['num_index'].iloc[tick_indices].tolist()
+        tick_text = price_df['str_index'].iloc[tick_indices].tolist()
+    else:
+        tick_vals = []
+        tick_text = []
+
     fig.update_xaxes(
-        type='category',
-        # tickformat ignored for category, relying on string labels
-        nticks=15,
-        tickangle=0,
+        tickvals=tick_vals,
+        ticktext=tick_text,
+        tickangle=45,
         row=1, col=1
     )
 
     fig.update_xaxes(
-        type='category',
-        nticks=15,
+        tickvals=tick_vals,
+        ticktext=tick_text,
+        tickangle=45,
         row=2, col=1
     )
 
@@ -1012,7 +1028,7 @@ if price_df is not None and not price_df.empty:
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # === SIGNAL STATISTICS ===
     if not plot_df.empty:
