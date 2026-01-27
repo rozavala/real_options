@@ -802,13 +802,16 @@ if price_df is not None and not price_df.empty:
     )
 
     # 1. Candlestick (Row 1)
+    # CRITICAL: Explicit increasing/decreasing colors required for reliable rendering with categorical x-axis
     fig.add_trace(go.Candlestick(
         x=price_df['str_index'],
         open=price_df['Open'],
         high=price_df['High'],
         low=price_df['Low'],
         close=price_df['Close'],
-        name="KC Coffee (ET)"
+        name="KC Coffee (ET)",
+        increasing=dict(line=dict(color='#00CC96', width=1), fillcolor='#00CC96'),
+        decreasing=dict(line=dict(color='#EF553B', width=1), fillcolor='#EF553B'),
     ), row=1, col=1)
 
     # 2. Signal markers (Row 1)
@@ -1009,7 +1012,7 @@ if price_df is not None and not price_df.empty:
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
 
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, use_container_width=True)
 
     # === SIGNAL STATISTICS ===
     if not plot_df.empty:
