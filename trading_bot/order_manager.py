@@ -124,6 +124,29 @@ async def generate_and_queue_orders(config: dict):
                 if not future:
                     logger.warning(f"No active future for signal month {signal.get('contract_month')}."); continue
 
+                # --- FIX: Early Liquidity Gate (inline) ---
+                try:
+                    min_vol = config.get('strategy', {}).get('min_underlying_volume', 50)
+                    # REQUEST 2 DAYS to capture yesterday's full session if today is just starting
+                    bars = await ib.reqHistoricalDataAsync(
+                        future,
+                        endDateTime='',
+                        durationStr='2 D',
+                        barSizeSetting='1 day',
+                        whatToShow='TRADES',
+                        useRTH=True
+                    )
+
+                    # Check MAX volume of the last 2 days (Yesterday OR Today)
+                    recent_vol = max([b.volume for b in bars]) if bars else 0
+
+                    if recent_vol < min_vol:
+                        logger.info(f"Skipping {future.localSymbol}: Max Recent Volume {recent_vol} < Threshold {min_vol}")
+                        continue
+                except Exception as e:
+                    logger.warning(f"Volume pre-check failed for {future.localSymbol}: {e}. Proceeding cautiously.")
+                # --- END FIX ---
+
                 logger.info(f"Requesting snapshot market price for {future.localSymbol}...")
 
                 price = float('nan')

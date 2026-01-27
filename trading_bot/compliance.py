@@ -242,11 +242,21 @@ class ComplianceGuardian:
                 response_json=True
             )
 
+            # --- FIX: Validate raw response ---
+            if not response or not response.strip():
+                logger.error(f"Compliance LLM returned empty response for {symbol}")
+                return False, "Compliance Error: Empty LLM response (fail-closed)"
+
             text = response.strip()
             # Clean potential markdown
             if text.startswith("```json"): text = text[7:]
             if text.startswith("```"): text = text[3:]
             if text.endswith("```"): text = text[:-3]
+
+            # Validate cleaned text
+            if not text.strip():
+                logger.error(f"Compliance response empty after cleaning for {symbol}. Raw: {response}")
+                return False, "Compliance Error: Empty JSON after cleanup (fail-closed)"
 
             result = json.loads(text)
             if not result.get('approved'):
@@ -254,9 +264,11 @@ class ComplianceGuardian:
 
             return True, "Approved"
 
+        except json.JSONDecodeError as e:
+            logger.error(f"Compliance Guardian JSON parse failed: {e}. Raw response: {response[:500] if response else 'None'}")
+            return False, f"Compliance Error: Invalid JSON response (fail-closed)"
         except Exception as e:
-            logger.error(f"Compliance Guardian failed: {e}")
-            # Fail closed
+            logger.error(f"Compliance Guardian failed: {e}", exc_info=True)
             return False, f"Compliance Error: {e}"
 
     async def audit_decision(self, reports: dict, market_context: str, decision: dict, master_persona: str, ib=None) -> dict:
