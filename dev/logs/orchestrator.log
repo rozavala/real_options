@@ -1,285 +1,31 @@
-2026-01-27 17:04:00,334 - Orchestrator - INFO - =============================================
-2026-01-27 17:04:00,335 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-01-27 17:04:00,335 - Orchestrator - INFO - =============================================
-2026-01-27 17:04:00,599 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-01-27 17:04:00,600 - Orchestrator - INFO - No deferred triggers to process.
-2026-01-27 17:04:00,600 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-01-27 17:04:00,600 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-01-27 18:20:00 UTC. Waiting for 1.27 hours.
-2026-01-27 17:04:00,600 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-01-27 17:04:00,601 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
-2026-01-27 17:04:00,908 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-01-27 17:04:00,910 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
-2026-01-27 17:04:00,911 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 111...
-2026-01-27 17:04:01,127 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 111
-2026-01-27 17:04:01,134 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-01-27 17:04:01,135 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
-2026-01-27 17:04:01,135 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
-2026-01-27 17:04:01,337 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-01-27 17:04:01,337 - Orchestrator - INFO - Refreshed contract cache: KCH6
-2026-01-27 17:04:01,337 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-01-27 17:04:01,337 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 207...
-2026-01-27 17:04:01,472 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 207
-2026-01-27 17:04:01,479 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-01-27 17:04:01,479 - trading_bot.microstructure_sentinel - INFO - MicrostructureSentinel initialized
-2026-01-27 17:04:03,480 - trading_bot.microstructure_sentinel - INFO - Subscribed to microstructure for KCH6
-2026-01-27 17:04:14,271 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-01-27 17:04:17,533 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 17:04:17,644 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
-2026-01-27 17:04:17,975 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'coffee futures'
-2026-01-27 17:04:18,712 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 17:04:18,814 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
-2026-01-27 17:04:18,964 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'Brazil coffee harvest'
-2026-01-27 17:04:19,326 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 17:04:19,376 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 17:04:19,487 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
-2026-01-27 17:04:19,638 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'arabica prices'
-2026-01-27 17:04:21,280 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 17:04:21,365 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
-2026-01-27 17:04:21,774 - trading_bot.sentinels - INFO - Broad search returned 10 posts for 'Colombia coffee'
-2026-01-27 17:04:22,022 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 17:04:22,113 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
-2026-01-27 17:04:22,410 - trading_bot.sentinels - INFO - Broad search returned 3 posts for 'US coffee tariffs'
-2026-01-27 17:04:23,169 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 17:04:23,476 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 17:04:27,368 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 17:04:29,198 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 17:20:31,107 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 48% of average
-2026-01-27 17:20:31,417 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-27 17:36:33,404 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 41% of average
-2026-01-27 17:36:33,710 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-27 18:20:00,007 - Orchestrator - INFO - --- Running scheduled task: close_stale_positions ---
-2026-01-27 18:20:00,008 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
-2026-01-27 18:20:00,008 - trading_bot.connection_pool - INFO - Connecting IB (order_manager) ID: 144...
-2026-01-27 18:20:00,259 - trading_bot.connection_pool - INFO - IB (order_manager) connected successfully with ID 144
-2026-01-27 18:20:00,264 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-01-27 18:20:00,264 - OrderManager - INFO - Connected to IB for closing positions.
-2026-01-27 18:20:00,365 - OrderManager - INFO - No open positions found in the IB account. Nothing to close.
-2026-01-27 18:20:00,694 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-27 18:20:00,697 - Orchestrator - INFO - Next task 'cancel_and_stop_monitoring' scheduled for 2026-01-27 18:35:00 UTC. Waiting for 0.25 hours.
-2026-01-27 18:34:43,328 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:34:43,413 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
-2026-01-27 18:34:43,741 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'coffee futures'
-2026-01-27 18:34:44,983 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:34:45,007 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:34:45,066 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
-2026-01-27 18:34:45,087 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
-2026-01-27 18:34:45,205 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:34:45,219 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'arabica prices'
-2026-01-27 18:34:45,267 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'Brazil coffee harvest'
-2026-01-27 18:34:47,367 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:34:47,471 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
-2026-01-27 18:34:47,781 - trading_bot.sentinels - INFO - Broad search returned 10 posts for 'Colombia coffee'
-2026-01-27 18:34:48,908 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:34:48,924 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:34:48,995 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
-2026-01-27 18:34:49,301 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'US coffee tariffs'
-2026-01-27 18:34:50,356 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:34:53,353 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:34:53,578 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:34:53,584 - trading_bot.sentinels - WARNING - X volume spike: 14 vs mean 4 (>3.0x)
-2026-01-27 18:34:53,584 - trading_bot.sentinels - INFO - X volume anomaly: z-score=2.6
-2026-01-27 18:34:53,584 - trading_bot.sentinels - WARNING - 🚨 X SENTINEL TRIGGERED: UNUSUAL X ACTIVITY SPIKE (14 posts, 3.0x baseline)
-2026-01-27 18:34:53,590 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
-2026-01-27 18:34:53,590 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by XSentimentSentinel: UNUSUAL X ACTIVITY SPIKE (14 posts, 3.0x baseline)
-2026-01-27 18:34:53,910 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-27 18:34:53,932 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-01-27 18:34:54,028 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-01-27 18:34:54,166 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-01-27 18:34:54,166 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'anthropic', 'openai', 'xai']
-2026-01-27 18:34:54,166 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'anthropic', 'openai', 'xai'], 'diversity_score': 1.0}
-2026-01-27 18:34:54,171 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-01-27 18:34:54,171 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
-2026-01-27 18:34:54,171 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
-2026-01-27 18:34:54,232 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 2.
-2026-01-27 18:34:54,233 - Orchestrator - INFO - Targeting contract: KCH6 (202603)
-2026-01-27 18:34:58,352 - trading_bot.agents - INFO - Running Specialized Cycle triggered by XSentimentSentinel...
-2026-01-27 18:34:58,353 - trading_bot.agents - INFO - Routing to macro (Reason: Default routing)
-2026-01-27 18:34:58,353 - trading_bot.agents - INFO - Waking up macro...
-2026-01-27 18:34:58,708 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
-2026-01-27 18:34:58,709 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
-2026-01-27 18:34:58,709 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
-2026-01-27 18:35:00,003 - Orchestrator - INFO - --- Running scheduled task: cancel_and_stop_monitoring ---
-2026-01-27 18:35:00,004 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
-2026-01-27 18:35:00,005 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
-2026-01-27 18:35:00,007 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-01-27 18:35:00,007 - OrderManager - INFO - Connected to IB for canceling open orders.
-2026-01-27 18:35:00,010 - OrderManager - INFO - No open orders found to cancel.
-2026-01-27 18:35:00,010 - Orchestrator - WARNING - Monitoring process is not running or has already terminated.
-2026-01-27 18:35:00,010 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
-2026-01-27 18:35:00,010 - Orchestrator - INFO - Next task 'log_equity_snapshot' scheduled for 2026-01-27 18:55:00 UTC. Waiting for 0.33 hours.
-2026-01-27 18:35:38,352 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:35:38,722 - trading_bot.tms - INFO - TMS: Stored insight from macro
-2026-01-27 18:35:38,722 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: ["[2026-...' cues -> ['geopolitical', 'fundamentalist']
-2026-01-27 18:35:57,045 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:35:57,179 - trading_bot.weighted_voting - INFO - Market Regime Detected: TRENDING
-2026-01-27 18:35:57,192 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.50 -> 0.50
-2026-01-27 18:35:57,193 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=TRENDING
-2026-01-27 18:35:57,193 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
-2026-01-27 18:35:57,193 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
-  {
-    "agent": "agronomist",
-    "direction": "NEUTRAL",
-    "confidence": 0.5,
-    "domain_weight": 1.5,
-    "reliability_mult": 0.5,
-    "final_weight": 0.75,
-    "contribution": 0.0
-  },
-  {
-    "agent": "macro",
-    "direction": "NEUTRAL",
-    "confidence": 0.6,
-    "domain_weight": 2.25,
-    "reliability_mult": 0.5,
-    "final_weight": 1.12,
-    "contribution": 0.0
-  },
-  {
-    "agent": "geopolitical",
-    "direction": "NEUTRAL",
-    "confidence": 0.5,
-    "domain_weight": 2.25,
-    "reliability_mult": 0.5,
-    "final_weight": 1.12,
-    "contribution": 0.0
-  },
-  {
-    "agent": "supply_chain",
-    "direction": "NEUTRAL",
-    "confidence": 0.5,
-    "domain_weight": 1.0,
-    "reliability_mult": 0.5,
-    "final_weight": 0.5,
-    "contribution": 0.0
-  },
-  {
-    "agent": "inventory",
-    "direction": "NEUTRAL",
-    "confidence": 0.5,
-    "domain_weight": 1.5,
-    "reliability_mult": 0.5,
-    "final_weight": 0.75,
-    "contribution": 0.0
-  },
-  {
-    "agent": "sentiment",
-    "direction": "NEUTRAL",
-    "confidence": 0.5,
-    "domain_weight": 1.5,
-    "reliability_mult": 0.5,
-    "final_weight": 0.75,
-    "contribution": 0.0
-  },
-  {
-    "agent": "technical",
-    "direction": "NEUTRAL",
-    "confidence": 0.5,
-    "domain_weight": 1.5,
-    "reliability_mult": 0.5,
-    "final_weight": 0.75,
-    "contribution": 0.0
-  },
-  {
-    "agent": "volatility",
-    "direction": "NEUTRAL",
-    "confidence": 0.5,
-    "domain_weight": 1.5,
-    "reliability_mult": 0.5,
-    "final_weight": 0.75,
-    "contribution": 0.0
-  },
-  {
-    "agent": "latest_ml_signals",
-    "direction": "NEUTRAL",
-    "confidence": 0.5,
-    "domain_weight": 1.0,
-    "reliability_mult": 0.5,
-    "final_weight": 0.5,
-    "contribution": 0.0
-  }
-]
-2026-01-27 18:36:15,771 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
-2026-01-27 18:36:27,861 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:36:35,164 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-27 18:36:35,170 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.7)
-2026-01-27 18:36:35,172 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
-2026-01-27 18:36:35,173 - Orchestrator - INFO - Post-cycle debounce set for 1800s
-2026-01-27 18:55:00,002 - Orchestrator - INFO - --- Running scheduled task: log_equity_snapshot ---
-2026-01-27 18:55:00,002 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
-2026-01-27 18:55:00,003 - EquityLogger - INFO - Connecting to IB at 127.0.0.1:7497 with clientId 7133...
-2026-01-27 18:55:00,117 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-01-27 18:55:00,311 - EquityLogger - INFO - Fetched NetLiquidation: $50,000.00
-2026-01-27 18:55:00,323 - EquityLogger - INFO - Updated data/daily_equity.csv with value $50,000.00
-2026-01-27 18:55:03,327 - EquityLogger - INFO - Disconnected from IB.
-2026-01-27 18:55:03,328 - Orchestrator - INFO - Next task 'reconcile_and_analyze' scheduled for 2026-01-27 19:05:00 UTC. Waiting for 0.17 hours.
-2026-01-27 19:00:57,652 - Orchestrator - INFO - Market Closed: Disconnecting Sentinel IB to prevent zombie state.
-2026-01-27 19:01:00,657 - Orchestrator - INFO - Market Closed: Disengaging Microstructure Sentinel
-2026-01-27 19:01:00,657 - trading_bot.connection_pool - INFO - Disconnecting IB (microstructure)...
-2026-01-27 19:04:07,305 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
-2026-01-27 19:05:00,032 - Orchestrator - INFO - --- Running scheduled task: reconcile_and_analyze ---
-2026-01-27 19:05:00,033 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
-2026-01-27 19:05:00,033 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
-2026-01-27 19:05:00,071 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1341111)...
-2026-01-27 19:05:00,360 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1341111&v=3 "HTTP/1.1 200 OK"
-2026-01-27 19:05:00,362 - TradeReconciler - INFO - Successfully requested report. Reference Code: 6269055448
-2026-01-27 19:05:10,372 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-01-27 19:05:11,908 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=6269055448&v=3 "HTTP/1.1 200 OK"
-2026-01-27 19:05:11,909 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-01-27 19:05:11,920 - EquityLogger - INFO - Preserving 6 local equity records not present in Flex Query.
-2026-01-27 19:05:11,923 - EquityLogger - INFO - Successfully synced 8 equity records to data/daily_equity.csv.
-2026-01-27 19:05:11,923 - Orchestrator - INFO - --- Starting trade reconciliation ---
-2026-01-27 19:05:11,923 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
-2026-01-27 19:05:11,925 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
-2026-01-27 19:05:11,955 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1328326)...
-2026-01-27 19:05:12,112 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1328326&v=3 "HTTP/1.1 200 OK"
-2026-01-27 19:05:12,112 - TradeReconciler - INFO - Successfully requested report. Reference Code: 3402794664
-2026-01-27 19:05:22,114 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-01-27 19:05:22,279 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=3402794664&v=3 "HTTP/1.1 200 OK"
-2026-01-27 19:05:22,279 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-01-27 19:05:22,286 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
-2026-01-27 19:05:22,286 - TradeReconciler - WARNING - Flex Query report contained no data.
-2026-01-27 19:05:22,286 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
-2026-01-27 19:05:22,341 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1331422)...
-2026-01-27 19:05:22,505 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1331422&v=3 "HTTP/1.1 200 OK"
-2026-01-27 19:05:22,505 - TradeReconciler - INFO - Successfully requested report. Reference Code: 6704676136
-2026-01-27 19:05:32,507 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-01-27 19:05:32,667 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=6704676136&v=3 "HTTP/1.1 200 OK"
-2026-01-27 19:05:32,668 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-01-27 19:05:32,670 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
-2026-01-27 19:05:32,670 - TradeReconciler - WARNING - Flex Query report contained no data.
-2026-01-27 19:05:32,670 - TradeReconciler - WARNING - No trade data was fetched from any IB Flex Query. Exiting.
-2026-01-27 19:05:32,671 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
-2026-01-27 19:05:32,671 - TradeReconciler - INFO - Starting Active Position Reconciliation...
-2026-01-27 19:05:32,702 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1341164)...
-2026-01-27 19:05:33,165 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1341164&v=3 "HTTP/1.1 200 OK"
-2026-01-27 19:05:33,166 - TradeReconciler - INFO - Successfully requested report. Reference Code: 5831606626
-2026-01-27 19:05:43,176 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-01-27 19:05:43,301 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=5831606626&v=3 "HTTP/1.1 200 OK"
-2026-01-27 19:05:43,301 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-01-27 19:05:43,304 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
-2026-01-27 19:05:43,304 - TradeReconciler - INFO - Found 0 archived ledger files.
-2026-01-27 19:05:43,304 - TradeReconciler - WARNING - No trade ledger data found.
-2026-01-27 19:05:43,310 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
-2026-01-27 19:05:43,310 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
-2026-01-27 19:05:43,634 - trading_bot.reconciliation - INFO - No rows required updates.
-2026-01-27 19:05:46,638 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
-2026-01-27 19:05:46,639 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
-2026-01-27 19:05:46,639 - PerformanceAnalyzer - INFO - No archived trade ledgers found.
-2026-01-27 19:05:46,639 - PerformanceAnalyzer - WARNING - No trade ledger data found to consolidate.
-2026-01-27 19:05:46,645 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
-2026-01-27 19:05:47,188 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $50,000.00
-2026-01-27 19:05:49,192 - PerformanceAnalyzer - INFO - Successfully fetched 0 execution(s) for today from IB.
-2026-01-27 19:05:52,196 - PerformanceAnalyzer - INFO - Loading daily_equity.csv for equity curve.
-2026-01-27 19:05:52,200 - PerformanceAnalyzer - INFO - Dynamic Starting Capital from History: $50,000.00
-2026-01-27 19:05:52,202 - PerformanceAnalyzer - INFO - Calculated LTD Total P&L (Equity): $0.00
-2026-01-27 19:05:52,204 - PerformanceAnalyzer - WARNING - Trade ledger is empty, skipping chart generation.
-2026-01-27 19:05:52,204 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
-2026-01-27 19:05:52,495 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-27 19:05:52,810 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-27 19:05:54,043 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-27 19:05:55,263 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-27 19:05:56,496 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-27 19:05:57,498 - root - INFO - 'trade_ledger.csv' not found, no action taken.
-2026-01-27 19:05:57,499 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
-2026-01-27 19:05:57,499 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
-2026-01-27 19:05:57,500 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-01-28 08:20:00 UTC. Waiting for 13.23 hours.
+2026-01-27 19:32:35,718 - Orchestrator - INFO - =============================================
+2026-01-27 19:32:35,720 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-01-27 19:32:35,720 - Orchestrator - INFO - =============================================
+2026-01-27 19:32:35,936 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-01-27 19:32:35,936 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-01-27 19:32:35,937 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-01-28 08:20:00 UTC. Waiting for 12.79 hours.
+2026-01-27 19:32:35,937 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-01-27 19:32:35,937 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
+2026-01-27 19:32:36,164 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-01-27 19:32:44,385 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 19:32:47,424 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-01-27 19:32:51,307 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 19:32:51,396 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
+2026-01-27 19:32:51,522 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 19:32:51,562 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'Brazil coffee harvest'
+2026-01-27 19:32:51,603 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
+2026-01-27 19:32:51,904 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'coffee futures'
+2026-01-27 19:32:52,321 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 19:32:52,402 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
+2026-01-27 19:32:52,529 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'arabica prices'
+2026-01-27 19:32:53,523 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 19:32:54,665 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 19:32:54,752 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
+2026-01-27 19:32:55,057 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 19:32:55,066 - trading_bot.sentinels - INFO - Broad search returned 10 posts for 'Colombia coffee'
+2026-01-27 19:32:55,403 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 19:32:55,493 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
+2026-01-27 19:32:55,775 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'US coffee tariffs'
+2026-01-27 19:32:58,194 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 19:32:59,248 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 19:33:00,977 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
