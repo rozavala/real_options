@@ -604,8 +604,8 @@ if selected_contract != 'FRONT_MONTH':
 
 with st.spinner(f"Loading {get_contract_display_name(selected_contract)} data..."):
     # Determine period
-    if lookback_days <= 1: yf_period = "4d"
-    elif lookback_days <= 5: yf_period = "6d"
+    if lookback_days <= 1: yf_period = "1d"
+    elif lookback_days <= 5: yf_period = "5d"
     elif lookback_days <= 29: yf_period = "1mo"
     elif lookback_days <= 59: yf_period = "2mo"
     else: yf_period = "2y"
