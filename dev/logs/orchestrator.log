@@ -191,3 +191,118 @@
 2026-01-27 09:59:10,990 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.72)
 2026-01-27 09:59:10,991 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
 2026-01-27 09:59:10,992 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-27 10:56:46,779 - trading_bot.sentinels - WARNING - WEATHER SENTINEL DETECTED: Drought Risk in Honduras Copan: 10 days with < 5.0mm rain
+2026-01-27 10:56:46,792 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-01-27 10:56:46,793 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: Drought Risk in Honduras Copan: 10 days with < 5.0mm rain
+2026-01-27 10:56:47,133 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-27 10:56:47,140 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-27 10:56:47,234 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-27 10:56:47,234 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'openai', 'gemini']
+2026-01-27 10:56:47,234 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'anthropic', 'openai', 'gemini'], 'diversity_score': 1.0}
+2026-01-27 10:56:47,239 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-27 10:56:47,240 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-01-27 10:56:47,240 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-01-27 10:56:47,311 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-01-27 10:56:47,312 - Orchestrator - INFO - Targeting contract: KCH6 (202603)
+2026-01-27 10:56:51,820 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
+2026-01-27 10:56:51,821 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
+2026-01-27 10:56:51,821 - trading_bot.agents - INFO - Waking up agronomist...
+2026-01-27 10:56:52,118 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-27 10:56:52,119 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-27 10:56:52,119 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 10:58:01,834 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 10:58:34,081 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 10:59:17,370 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-27 10:59:17,370 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.50 -> 0.50
+2026-01-27 10:59:17,370 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=RANGE_BOUND
+2026-01-27 10:59:17,370 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-27 10:59:17,371 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.0,
+    "domain_weight": 3.0,
+    "reliability_mult": 0.5,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.75,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 0.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.4,
+    "reliability_mult": 0.5,
+    "final_weight": 0.7,
+    "contribution": 0.0
+  },
+  {
+    "agent": "latest_ml_signals",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  }
+]
+2026-01-27 10:59:32,724 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 10:59:49,823 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 10:59:56,560 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 10:59:56,563 - trading_bot.agents - INFO - Master decision vetoed by conflicting Weighted Vote (NEUTRAL)
+2026-01-27 10:59:56,564 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.6)
+2026-01-27 10:59:56,565 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-01-27 10:59:56,568 - Orchestrator - INFO - Post-cycle debounce set for 1800s
