@@ -824,16 +824,14 @@ if price_df is not None and not price_df.empty:
         ]
     )
 
-    # Use OHLC instead of Candlestick - more reliable with category x-axis
-    fig.add_trace(go.Ohlc(
-        x=price_df.index,
+    # 1. Candlestick (Row 1)
+    fig.add_trace(go.Candlestick(
+        x=price_df.index.strftime('%Y-%m-%d %H:%M'),  # Convert to string for category axis
         open=price_df['Open'],
         high=price_df['High'],
         low=price_df['Low'],
         close=price_df['Close'],
-        name="KC Coffee (ET)",
-        increasing_line_color='#00CC96',
-        decreasing_line_color='#EF553B',
+        name="KC Coffee (ET)"
     ), row=1, col=1)
 
     # 2. Signal markers (Row 1)
