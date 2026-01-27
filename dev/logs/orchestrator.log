@@ -1433,3 +1433,144 @@ I0000 00:00:1769521837.923725  386991 device_compiler.h:196] Compiled cluster us
   }
 ]
 2026-01-27 14:30:00,074 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 14:30:06,085 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 14:30:06,090 - trading_bot.signal_generator - INFO - Council Decision KCZ6 (202612): NEUTRAL (0.7)
+2026-01-27 14:30:06,091 - root - INFO - Logged Council decision for KCZ6 (202612)
+2026-01-27 14:30:06,098 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-01-27 14:30:06,101 - trading_bot.signal_generator - INFO - Persisted latest ML signals to state.
+2026-01-27 14:30:06,109 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202603, Signal=VOLATILITY
+2026-01-27 14:30:06,112 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202605, Signal=VOLATILITY
+2026-01-27 14:30:06,115 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202607, Signal=VOLATILITY
+2026-01-27 14:30:06,117 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202609, Signal=VOLATILITY
+2026-01-27 14:30:06,120 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202612, Signal=NEUTRAL
+2026-01-27 14:30:06,120 - OrderManager - INFO - Generated 5 signals: [{'contract_month': '202603', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Drought conditions developing', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.65, 'price': 360.25, 'sma_200': 346.73100036621094, 'expected_price': 362.42, 'predicted_return': 0.006023298332008125}, {'contract_month': '202605', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Drought conditions developing', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.65, 'price': 341.25, 'sma_200': 346.73100036621094, 'expected_price': 341.25, 'predicted_return': 0.00559896291470702}, {'contract_month': '202607', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Drought conditions developing', 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.0, 'price': 333.95001220703125, 'sma_200': 346.73100036621094, 'expected_price': 335.66732371114256, 'predicted_return': 0.0051424208454486685}, {'contract_month': '202609', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Drought conditions developing', 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.7, 'price': 327.79998779296875, 'sma_200': 346.73100036621094, 'expected_price': 327.8, 'predicted_return': 0.004669288804207896}, {'contract_month': '202612', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': 'Both the Permabear and Permabull present strong arguments with valid points. The Permabear emphasizes improving Brazilian weather conditions anticipated to positively impact the harvest, reducing future price pressures. The Permabear also highlights technical resistance and overbought conditions, suggesting short-term downward pressure. On the other hand, the Permabull stresses persistent structural supply issues due to port bottlenecks and macroeconomic variables like BRL strength that restrict immediate farmer selling. Given the volatility is expensive, it makes bullish positions costly, but on the flip side, it reflects market uncertainty. The consensus is BEARISH, but the ML model, though NEUTRAL, signals a bull regime, albeit with modest confidence. Given these mixed signals, with the market showing a slight upwards momentum but in a range-bound scenario and the high cost of volatility, maintaining a NEUTRAL stance is prudent. Avoid directional bets until clearer market direction emerges.', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.7, 'price': 322.0, 'sma_200': 346.73100036621094, 'expected_price': 323.39645846956745, 'predicted_return': 0.004336827545240363}]
+2026-01-27 14:30:06,120 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-01-27 14:30:06,182 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-01-27 14:30:06,279 - OrderManager - INFO - Account Value for Sizing: $50,000.00
+2026-01-27 14:30:06,279 - OrderManager - INFO - Requesting snapshot market price for KCH6...
+2026-01-27 14:30:06,322 - OrderManager - INFO - Using bid/ask midpoint for KCH6: 359.075
+2026-01-27 14:30:06,322 - root - INFO - Fetching option chain for future KCH6...
+2026-01-27 14:30:06,366 - root - INFO - --- Defining HIGH Volatility Strategy for KCH6 ---
+2026-01-27 14:30:06,367 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.82) * Vol(1.0) * Heat(1.0) = 0
+2026-01-27 14:30:06,367 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-27 14:30:06,640 - root - INFO - Fetching market data for option: KOH6 C3.6
+2026-01-27 14:30:08,643 - root - INFO - Using IBKR Model Greeks IV: 34.09%
+2026-01-27 14:30:08,647 - root - INFO - Theoretical price calculated for C @ 360.0: {'price': np.float64(9.7365), 'delta': np.float64(0.5084), 'gamma': np.float64(0.0161), 'vega': np.float64(29.0334), 'theta': np.float64(-0.3489)}
+2026-01-27 14:30:08,648 - root - INFO -   -> Leg Theoretical Price (BUY): KOH6 C3.6 @ 9.74
+2026-01-27 14:30:08,648 - root - INFO - Fetching market data for option: KOH6 P3.6
+2026-01-27 14:30:10,650 - root - INFO - Using IBKR Model Greeks IV: 34.09%
+2026-01-27 14:30:10,653 - root - INFO - Theoretical price calculated for P @ 360.0: {'price': np.float64(10.0702), 'delta': np.float64(-0.4916), 'gamma': np.float64(0.0161), 'vega': np.float64(29.0334), 'theta': np.float64(-0.3504)}
+2026-01-27 14:30:10,654 - root - INFO -   -> Leg Theoretical Price (BUY): KOH6 P3.6 @ 10.07
+2026-01-27 14:30:10,654 - root - INFO - Net Theoretical: 19.81, Market Spread: 0.61
+2026-01-27 14:30:10,654 - root - INFO - Adaptive Strategy: Start @ 19.72, Cap/Floor @ 20.31
+2026-01-27 14:30:10,655 - root - INFO - Creating Limit Order for BUY 1 @ 19.72 (Adaptive Cap: 20.31).
+2026-01-27 14:30:10,655 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-01-27 14:30:10,656 - root - INFO - Assigned OrderRef: a8de17d0-927a-4fb3-828c-fd7b716236b9
+2026-01-27 14:30:10,656 - OrderManager - INFO - Successfully queued order for KCH6.
+2026-01-27 14:30:10,656 - OrderManager - INFO - Requesting snapshot market price for KCK6...
+2026-01-27 14:30:10,910 - OrderManager - INFO - Using bid/ask midpoint for KCK6: 340.175
+2026-01-27 14:30:10,911 - root - INFO - Fetching option chain for future KCK6...
+2026-01-27 14:30:11,228 - root - INFO - --- Defining HIGH Volatility Strategy for KCK6 ---
+2026-01-27 14:30:11,230 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.82) * Vol(0.6) * Heat(1.0) = 0
+2026-01-27 14:30:11,230 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-27 14:30:11,523 - root - INFO - Fetching market data for option: KOK6 C3.4
+2026-01-27 14:30:12,540 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 14:30:13,525 - root - INFO - Using IBKR Model Greeks IV: 34.27%
+2026-01-27 14:30:13,527 - root - INFO - Theoretical price calculated for C @ 340.0: {'price': np.float64(22.1657), 'delta': np.float64(0.5526), 'gamma': np.float64(0.0076), 'vega': np.float64(60.1635), 'theta': np.float64(-0.1594)}
+2026-01-27 14:30:13,527 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 C3.4 @ 22.17
+2026-01-27 14:30:13,527 - root - INFO - Fetching market data for option: KOK6 P3.4
+2026-01-27 14:30:15,528 - root - INFO - Using IBKR Model Greeks IV: 34.27%
+2026-01-27 14:30:15,530 - root - INFO - Theoretical price calculated for P @ 340.0: {'price': np.float64(19.2815), 'delta': np.float64(-0.4474), 'gamma': np.float64(0.0076), 'vega': np.float64(60.1635), 'theta': np.float64(-0.16)}
+2026-01-27 14:30:15,530 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 P3.4 @ 19.28
+2026-01-27 14:30:15,532 - root - INFO - Net Theoretical: 41.45, Market Spread: 0.97
+2026-01-27 14:30:15,532 - root - INFO - Adaptive Strategy: Start @ 41.14, Cap/Floor @ 41.95
+2026-01-27 14:30:15,533 - root - INFO - Creating Limit Order for BUY 1 @ 41.14 (Adaptive Cap: 41.95).
+2026-01-27 14:30:15,533 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-01-27 14:30:15,535 - root - INFO - Assigned OrderRef: 26114bfc-70f6-4d82-a62c-1870241193a6
+2026-01-27 14:30:15,536 - OrderManager - INFO - Successfully queued order for KCK6.
+2026-01-27 14:30:15,536 - OrderManager - INFO - Requesting snapshot market price for KCN6...
+2026-01-27 14:30:15,855 - OrderManager - INFO - Using bid/ask midpoint for KCN6: 332.925
+2026-01-27 14:30:15,856 - root - INFO - Fetching option chain for future KCN6...
+2026-01-27 14:30:15,955 - root - INFO - --- Defining HIGH Volatility Strategy for KCN6 ---
+2026-01-27 14:30:15,957 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.50) * Vol(1.0) * Heat(1.0) = 0
+2026-01-27 14:30:15,957 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-27 14:30:16,320 - root - INFO - Fetching market data for option: KON6 C3.325
+2026-01-27 14:30:18,322 - root - INFO - Using IBKR Model Greeks IV: 34.54%
+2026-01-27 14:30:18,323 - root - INFO - Theoretical price calculated for C @ 332.5: {'price': np.float64(30.4799), 'delta': np.float64(0.5723), 'gamma': np.float64(0.0056), 'vega': np.float64(79.7395), 'theta': np.float64(-0.1188)}
+2026-01-27 14:30:18,324 - root - INFO -   -> Leg Theoretical Price (BUY): KON6 C3.325 @ 30.48
+2026-01-27 14:30:18,325 - root - INFO - Fetching market data for option: KON6 P3.325
+2026-01-27 14:30:20,326 - root - INFO - Using IBKR Model Greeks IV: 34.54%
+2026-01-27 14:30:20,328 - root - INFO - Theoretical price calculated for P @ 332.5: {'price': np.float64(25.136), 'delta': np.float64(-0.4277), 'gamma': np.float64(0.0056), 'vega': np.float64(79.7395), 'theta': np.float64(-0.1196)}
+2026-01-27 14:30:20,328 - root - INFO -   -> Leg Theoretical Price (BUY): KON6 P3.325 @ 25.14
+2026-01-27 14:30:20,329 - root - INFO - Net Theoretical: 55.62, Market Spread: 1.63
+2026-01-27 14:30:20,329 - root - INFO - Adaptive Strategy: Start @ 55.07, Cap/Floor @ 56.12
+2026-01-27 14:30:20,329 - root - INFO - Creating Limit Order for BUY 1 @ 55.07 (Adaptive Cap: 56.12).
+2026-01-27 14:30:20,329 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-01-27 14:30:20,329 - root - INFO - Assigned OrderRef: 41a08f03-a4ca-465f-a5c7-ad30d11e5967
+2026-01-27 14:30:20,329 - OrderManager - INFO - Successfully queued order for KCN6.
+2026-01-27 14:30:20,329 - OrderManager - INFO - Requesting snapshot market price for KCU6...
+2026-01-27 14:30:20,542 - OrderManager - INFO - Using bid/ask midpoint for KCU6: 326.70000000000005
+2026-01-27 14:30:20,543 - root - INFO - Fetching option chain for future KCU6...
+2026-01-27 14:30:20,600 - root - INFO - --- Defining HIGH Volatility Strategy for KCU6 ---
+2026-01-27 14:30:20,602 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.0) * Heat(1.0) = 0
+2026-01-27 14:30:20,602 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-27 14:30:20,868 - root - INFO - Fetching market data for option: KOU6 C3.275
+2026-01-27 14:30:22,870 - root - INFO - Using IBKR Model Greeks IV: 35.11%
+2026-01-27 14:30:22,872 - root - INFO - Theoretical price calculated for C @ 327.5: {'price': np.float64(36.5991), 'delta': np.float64(0.5809), 'gamma': np.float64(0.0046), 'vega': np.float64(94.2485), 'theta': np.float64(-0.0999)}
+2026-01-27 14:30:22,872 - root - INFO -   -> Leg Theoretical Price (BUY): KOU6 C3.275 @ 36.60
+2026-01-27 14:30:22,872 - root - INFO - Fetching market data for option: KOU6 P3.275
+2026-01-27 14:30:24,875 - root - INFO - Using IBKR Model Greeks IV: 35.11%
+2026-01-27 14:30:24,878 - root - INFO - Theoretical price calculated for P @ 327.5: {'price': np.float64(30.3342), 'delta': np.float64(-0.4191), 'gamma': np.float64(0.0046), 'vega': np.float64(94.2485), 'theta': np.float64(-0.1015)}
+2026-01-27 14:30:24,878 - root - INFO -   -> Leg Theoretical Price (BUY): KOU6 P3.275 @ 30.33
+2026-01-27 14:30:24,878 - root - INFO - Net Theoretical: 66.93, Market Spread: 4.70
+2026-01-27 14:30:24,878 - root - INFO - Adaptive Strategy: Start @ 64.07, Cap/Floor @ 67.43
+2026-01-27 14:30:24,879 - root - INFO - Creating Limit Order for BUY 1 @ 64.07 (Adaptive Cap: 67.43).
+2026-01-27 14:30:24,879 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-01-27 14:30:24,879 - root - INFO - Assigned OrderRef: d5778c62-6bbc-46a1-88bc-f4fa74116025
+2026-01-27 14:30:24,879 - OrderManager - INFO - Successfully queued order for KCU6.
+2026-01-27 14:30:24,879 - OrderManager - INFO - --- Order generation complete. 4 orders queued. ---
+2026-01-27 14:30:25,173 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-27 14:30:25,371 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-27 14:30:25,562 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-27 14:30:25,563 - OrderManager - INFO - --- Placing and monitoring 4 orders ---
+2026-01-27 14:30:25,563 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-27 14:30:25,563 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'openai', 'gemini']
+2026-01-27 14:30:25,564 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-27 14:30:25,564 - OrderManager - INFO - Using pooled IB connection for order placement.
+2026-01-27 14:30:25,564 - OrderManager - INFO - Sorted orders by expiration proximity.
+2026-01-27 14:30:25,564 - OrderManager - INFO - Current Available Funds: $50,000.00 | Equity: $50,000.00
+2026-01-27 14:30:27,749 - ib_insync.wrapper - ERROR - Error 162, reqId 37: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=744866487, symbol='KC', lastTradeDateOrContractMonth='20260211', strike=360.0, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOH6 C3.6', tradingClass='KO')
+2026-01-27 14:30:27,837 - trading_bot.compliance - INFO - Resolved underlying future: KCH6 (conId: 624024277)
+2026-01-27 14:30:27,953 - trading_bot.compliance - INFO - Volume from IB (KCH6): 143.0
+2026-01-27 14:30:28,889 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 14:30:35,555 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 14:30:35,557 - trading_bot.compliance - ERROR - Compliance Guardian failed: Expecting value: line 1 column 1 (char 0)
+2026-01-27 14:30:35,557 - OrderManager - WARNING - Order for  blocked by Compliance: Compliance Error: Expecting value: line 1 column 1 (char 0)
+2026-01-27 14:30:36,387 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 14:30:36,396 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.65)
+2026-01-27 14:30:36,398 - Orchestrator - INFO - Emergency Cycle concluded with no action: BULLISH (DIRECTIONAL)
+2026-01-27 14:30:36,398 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-27 14:30:37,618 - ib_insync.wrapper - ERROR - Error 162, reqId 43: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=743224036, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=340.0, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 C3.4', tradingClass='KO')
+2026-01-27 14:30:37,623 - trading_bot.compliance - INFO - Resolved underlying future: KCK6 (conId: 634760204)
+2026-01-27 14:30:37,738 - trading_bot.compliance - INFO - Volume from IB (KCK6): 40.0
+2026-01-27 14:30:45,249 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 14:30:45,253 - trading_bot.compliance - ERROR - Compliance Guardian failed: Expecting value: line 1 column 1 (char 0)
+2026-01-27 14:30:45,253 - OrderManager - WARNING - Order for  blocked by Compliance: Compliance Error: Expecting value: line 1 column 1 (char 0)
+2026-01-27 14:30:45,253 - OrderManager - INFO - Refreshing account summary for margin safety...
+2026-01-27 14:30:45,253 - OrderManager - INFO - Refreshed Available Funds: $50,000.00
+2026-01-27 14:30:47,312 - ib_insync.wrapper - ERROR - Error 162, reqId 49: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=759112986, symbol='KC', lastTradeDateOrContractMonth='20260612', strike=332.5, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KON6 C3.325', tradingClass='KO')
+2026-01-27 14:30:47,366 - trading_bot.compliance - INFO - Resolved underlying future: KCN6 (conId: 646040490)
+2026-01-27 14:30:47,489 - trading_bot.compliance - INFO - Volume from IB (KCN6): 22.0
+2026-01-27 14:30:54,478 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 14:30:54,484 - trading_bot.compliance - ERROR - Compliance Guardian failed: Expecting value: line 1 column 1 (char 0)
+2026-01-27 14:30:54,485 - OrderManager - WARNING - Order for  blocked by Compliance: Compliance Error: Expecting value: line 1 column 1 (char 0)
+2026-01-27 14:30:56,548 - ib_insync.wrapper - ERROR - Error 162, reqId 55: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=760187170, symbol='KC', lastTradeDateOrContractMonth='20260814', strike=327.5, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOU6 C3.275', tradingClass='KO')
+2026-01-27 14:30:56,559 - trading_bot.compliance - INFO - Resolved underlying future: KCU6 (conId: 657732419)
+2026-01-27 14:30:56,691 - trading_bot.compliance - INFO - Volume from IB (KCU6): 7.0
+2026-01-27 14:30:56,693 - OrderManager - WARNING - Order for  blocked by Compliance: REJECTED - Article II: Order qty 1 exceeds 10% of volume (7).
+2026-01-27 14:30:56,693 - OrderManager - WARNING - No orders fit within available funds or compliance limits. Aborting placement.
+2026-01-27 14:30:56,693 - OrderManager - INFO - Order placement complete. Releasing event handlers.
+2026-01-27 14:30:56,693 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-01-27 14:30:56,698 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-01-27 18:20:00 UTC. Waiting for 3.82 hours.
+2026-01-27 14:50:56,511 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 36% of average
+2026-01-27 14:50:56,846 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
