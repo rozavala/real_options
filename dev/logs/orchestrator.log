@@ -374,3 +374,106 @@
 2026-01-27 12:58:29,230 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
 2026-01-27 12:58:29,230 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
 2026-01-27 12:58:29,231 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 13:01:26,117 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 13:01:26,397 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-27 13:01:34,572 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 13:01:34,700 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-27 13:01:34,701 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.50 -> 0.50
+2026-01-27 13:01:34,701 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=RANGE_BOUND
+2026-01-27 13:01:34,701 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.070, dominant=macro)
+2026-01-27 13:01:34,701 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.7,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.525
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.5,
+    "final_weight": 0.52,
+    "contribution": 0.0
+  },
+  {
+    "agent": "latest_ml_signals",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  }
+]
+2026-01-27 13:01:50,561 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 13:02:03,249 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 13:02:08,851 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 13:02:08,859 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.55)
+2026-01-27 13:02:08,860 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-01-27 13:02:08,861 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-27 13:20:00,009 - Orchestrator - INFO - --- Running scheduled task: run_position_audit_cycle ---
+2026-01-27 13:20:00,009 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-01-27 13:20:00,010 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 209...
+2026-01-27 13:20:00,338 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 209
+2026-01-27 13:20:00,342 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-27 13:20:00,443 - Orchestrator - INFO - No open positions to audit.
+2026-01-27 13:20:00,444 - Orchestrator - INFO - Next task 'generate_and_execute_orders' scheduled for 2026-01-27 13:50:00 UTC. Waiting for 0.50 hours.
