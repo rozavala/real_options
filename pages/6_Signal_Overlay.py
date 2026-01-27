@@ -694,6 +694,39 @@ if price_df is not None and not price_df.empty:
         show_all=show_all_signals
     )
 
+    # === DEBUG OUTPUT (TEMPORARY) ===
+    st.markdown("---")
+    st.subheader("🔧 DEBUG: Data Pipeline Status")
+    
+    debug_cols = st.columns(4)
+    with debug_cols[0]:
+        st.metric("Raw Rows", len(price_df) if price_df is not None else 0)
+    with debug_cols[1]:
+        if price_df is not None and not price_df.empty:
+            st.metric("Date Range", f"{price_df.index.min().strftime('%m/%d')} - {price_df.index.max().strftime('%m/%d')}")
+        else:
+            st.metric("Date Range", "N/A")
+    with debug_cols[2]:
+        if price_df is not None and not price_df.empty:
+            st.metric("OHLC NaN Count", price_df[['Open','High','Low','Close']].isna().sum().sum())
+        else:
+            st.metric("OHLC NaN Count", "N/A")
+    with debug_cols[3]:
+        if price_df is not None and not price_df.empty:
+            st.metric("Price Range", f"{price_df['Close'].min():.1f} - {price_df['Close'].max():.1f}")
+        else:
+            st.metric("Price Range", "N/A")
+    
+    # Show sample data
+    if price_df is not None and not price_df.empty:
+        with st.expander("📊 Sample Data (First 5 Rows)", expanded=True):
+            st.dataframe(price_df[['Open', 'High', 'Low', 'Close', 'Volume']].head())
+        with st.expander("📊 Sample Data (Last 5 Rows)"):
+            st.dataframe(price_df[['Open', 'High', 'Low', 'Close', 'Volume']].tail())
+    
+    st.markdown("---")
+    # === END DEBUG ===
+    
     # === ALIGNMENT ENGINE ===
     plot_df = pd.DataFrame()
     if not signals.empty:
