@@ -647,10 +647,7 @@ if price_df is not None and not price_df.empty:
         # Check if weekday (0-4) and not a holiday
         if cutoff_dt.weekday() < 5 and cutoff_dt.date() not in us_holidays:
             days_counted += 1
-
-    # Force the start time to Midnight (00:00) to include the full morning session
-    cutoff_dt = cutoff_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-    
+            
     # Apply the date filter with a small buffer
     price_df = price_df[price_df.index >= (cutoff_dt - timedelta(hours=4))]
 
