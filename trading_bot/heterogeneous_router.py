@@ -315,7 +315,19 @@ class AnthropicClient(LLMClient):
             kwargs["system"] = system_prompt
 
         response = await self.client.messages.create(**kwargs)
-        return response.content[0].text
+
+        # --- FIX: Validate response integrity before access ---
+        if not response.content:
+            logger.error(f"Anthropic returned empty content. Stop reason: {response.stop_reason}")
+            raise ValueError(f"Empty response from Anthropic (stop_reason: {response.stop_reason})")
+
+        text = response.content[0].text
+        if not text or not text.strip():
+            logger.error(f"Anthropic returned empty text block. Full response: {response}")
+            raise ValueError("Empty text in Anthropic response")
+        # --- END FIX ---
+
+        return text
 
 
 class XAIClient(LLMClient):
