@@ -604,9 +604,8 @@ if selected_contract != 'FRONT_MONTH':
 
 with st.spinner(f"Loading {get_contract_display_name(selected_contract)} data..."):
     # Determine period
-    if lookback_days <= 1: yf_period = "1d"
-    elif lookback_days <= 5: yf_period = "5d"
-    elif lookback_days <= 29: yf_period = "1mo"
+    # FIX: Use 1mo minimum to ensure we catch enough trading days (skipping weekends/holidays)
+    if lookback_days <= 29: yf_period = "1mo"
     elif lookback_days <= 59: yf_period = "2mo"
     else: yf_period = "2y"
 
@@ -935,17 +934,12 @@ if price_df is not None and not price_df.empty:
             chart_title += f" | Signals: {', '.join(unique_contracts)}"
 
     # === LAYOUT (CRITICAL: type='category' fixes overlaps) ===
-    # FIXED: Use date axis for candlesticks (more reliable rendering)
-    # Remove gaps using rangebreaks instead of category
+    # FIXED: Use category axis for both charts to ensure perfect alignment and remove gaps
     fig.update_xaxes(
-        type='date',  # Changed from 'category'
+        type='category',
         tickformat='%b %d\n%H:%M',
         nticks=15,
         tickangle=0,
-        rangebreaks=[
-            dict(bounds=["sat", "mon"]),  # Hide weekends
-            dict(bounds=[13.5, 3.5], pattern="hour"),  # Hide overnight (13:30-03:30)
-        ],
         row=1, col=1
     )
 
