@@ -4,48 +4,6 @@
       "data": [
         {
           "source": "XSentimentSentinel",
-          "reason": "UNUSUAL X ACTIVITY SPIKE (24 posts, 2.0x baseline)",
-          "payload": {
-            "sentiment_score": 4.71,
-            "confidence": 0.24,
-            "top_themes": [
-              "COT net long positions",
-              "Rising futures prices",
-              "historic highs",
-              "price retreat",
-              "ongoing YoY gains"
-            ],
-            "post_volume": 24,
-            "volume_baseline": 4.7,
-            "volume_spike": true,
-            "query_results": [
-              {
-                "query": "coffee futures",
-                "score": 6.0,
-                "volume": 2,
-                "confidence": 0.3,
-                "top_post": "#COT - Commitments of Traders... net long position in #coffee futures"
-              },
-              {
-                "query": "arabica prices",
-                "score": 5.0,
-                "volume": 1,
-                "confidence": 0.2,
-                "top_post": "Coffee prices hit historic highs... Arabica soared past $4.40/lb before retreating to ~$3.56/lb today - still up 9.5% YoY. Is the supercycle over...?"
-              },
-              {
-                "query": "Brazil coffee harvest",
-                "score": 4.0,
-                "volume": 2,
-                "confidence": 0.3,
-                "top_post": "Arabica coffee growers in Brazil expect this year's harvest to match or slightly exceed 2025's crop, while canephora growers... forecast yields will fall."
-              }
-            ]
-          },
-          "timestamp": "2026-01-26T18:01:12.524416+00:00"
-        },
-        {
-          "source": "XSentimentSentinel",
           "reason": "UNUSUAL X ACTIVITY SPIKE (18 posts, 3.0x baseline)",
           "payload": {
             "sentiment_score": 4.54,
@@ -179,9 +137,18 @@
             ]
           },
           "timestamp": "2026-01-27T14:28:53.930002+00:00"
+        },
+        {
+          "source": "PriceSentinel",
+          "reason": "Price moved 1.58% in last hour (Threshold: 1.5%)",
+          "payload": {
+            "contract": "KCH6",
+            "change": 1.5848741832337123
+          },
+          "timestamp": "2026-01-27T15:55:12.498879+00:00"
         }
       ],
-      "timestamp": 1769524133.9302347
+      "timestamp": 1769529312.4994059
     }
   },
   "reports": {
@@ -235,11 +202,11 @@
     },
     "technical": {
       "data": {
-        "data": "[EVIDENCE]: 1) KCZ26 (Dec\u201926 Coffee) last traded at 315.95 \u00a2/lb on 23-Jan-26 (Barchart). 2) Barchart lists support at 312.90 \u00a2/lb (S1) and 309.85 \u00a2/lb (S2), resistance at 319.55 \u00a2/lb (R1) and 323.15 \u00a2/lb (R2). 3) The only 200-day SMA provided in the packet is for the active KCH26 contract at 356.84 \u00a2/lb (Investing.com). 4) StoneX notes the active contract briefly tested its 200-day SMA near 344.42 \u00a2/lb earlier in the week. 5) Technical dashboard for KCH26 shows RSI(14)=72.30, i.e., overbought (Investing.com). 6) No 200-day SMA or momentum data is supplied for KCZ26 itself, so its long-term trend cannot be verified from the packet.\n[ANALYSIS]: The earlier view assumed KCZ26 shared the active contract\u2019s 200-day SMA behaviour and concluded the deferred month was in a down-trend. That is speculative: inter-month spreads in coffee can diverge for fundamental (carry, storage, financing) reasons that have nothing to do with each contract\u2019s own moving averages. Lacking a KCZ26 200-day SMA or momentum reading, we cannot assert a definitive long-term bias. What can be said is that KCZ26 remains trapped in a 6\u20137 \u00a2/lb box between 309.85 \u00a2 and 323.15 \u00a2. Support at 310 \u00a2 has held twice in January, suggesting demand under the market, while every test of 320\u2013323 \u00a2 has attracted supply. Overbought conditions in the front month may eventually spill into KCZ26, but that link is correlation, not causation, and therefore not a reliable trading signal on its own. Until KCZ26 closes outside the stated range, the clearest edge is to fade moves at the extremes: initiate cautious longs near 310 \u00a2 with stops below 308 \u00a2, and lighten or reverse into 322\u2013323 \u00a2 unless a settlement above 323 \u00a2 confirms a breakout toward 330\u2013335 \u00a2. Conversely, a daily close under 308 \u00a2 would neutralise range support and expose the psychological 300 \u00a2 handle. In short, evidence points to a sideways, range-bound market rather than a directional trend.\n[CONFIDENCE]: 0.45\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
-        "confidence": 0.45,
-        "sentiment": "NEUTRAL"
+        "data": "[EVIDENCE]: 1) PriceSentinel flagged a +1.58% move in the last hour for KCH6 [Source: PriceSentinel]. 2) 27-Jan-26: March-26 Arabica coffee traded up to ~361.77 \u00a2/lb, extending the prior day\u2019s rally [Source: Trading Economics / Barchart]. 3) 26-Jan-26: the contract settled +5.35\u00a2 at 357.85 \u00a2/lb (+1.52%) [Source: Barchart]. 4) The 200-day SMA for the March-26 contract stood at 346.76 \u00a2/lb on 21-Jan-26\u2014current price is \u224815 \u00a2/lb above it [Source: Barchart].\n[ANALYSIS]: Back-to-back >1.5% up-moves and today\u2019s intraday spike have catapulted March coffee decisively above the 200-day SMA (\u2248346.8 \u00a2/lb), a level that had capped prices for months. This upside breach flips long-term market structure from bearish to bullish and signals that momentum traders are now in control. With price now holding above both the psychological $3.50 level and the long-term average, the path of least resistance points higher unless the market quickly falls back below 346-350 \u00a2/lb. Near-term support rests at the prior settlement zone around 357-358 \u00a2/lb, while the next resistance window is the recent swing high near 365 \u00a2/lb.\n[CONFIDENCE]: 0.67\n[SENTIMENT TAG]: [SENTIMENT: BULLISH]",
+        "confidence": 0.67,
+        "sentiment": "BULLISH"
       },
-      "timestamp": 1769524206.0921993
+      "timestamp": 1769529396.190738
     },
     "volatility": {
       "data": {
@@ -331,7 +298,7 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1769524133.6060405
+      "timestamp": 1769529568.8096898
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
