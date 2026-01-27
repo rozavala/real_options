@@ -1,9 +1,35 @@
-2026-01-27 03:47:45,427 - Orchestrator - INFO - =============================================
-2026-01-27 03:47:45,428 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-01-27 03:47:45,429 - Orchestrator - INFO - =============================================
-2026-01-27 03:47:45,683 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
-2026-01-27 03:47:45,683 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-01-27 03:47:45,683 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-01-27 08:20:00 UTC. Waiting for 4.54 hours.
-2026-01-27 03:47:45,684 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-01-27 03:47:45,684 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
-2026-01-27 03:47:45,990 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-01-27 04:07:39,685 - Orchestrator - INFO - =============================================
+2026-01-27 04:07:39,686 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-01-27 04:07:39,686 - Orchestrator - INFO - =============================================
+2026-01-27 04:07:39,981 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-01-27 04:07:39,981 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-01-27 04:07:39,982 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-01-27 08:20:00 UTC. Waiting for 4.21 hours.
+2026-01-27 04:07:39,982 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-01-27 04:07:39,983 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
+2026-01-27 04:07:40,338 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-01-27 04:07:45,220 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-01-27 04:07:48,881 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 04:07:48,989 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
+2026-01-27 04:07:49,120 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'arabica prices'
+2026-01-27 04:07:49,717 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 04:07:49,796 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
+2026-01-27 04:07:49,871 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 04:07:49,927 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'Brazil coffee harvest'
+2026-01-27 04:07:49,966 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
+2026-01-27 04:07:50,441 - trading_bot.sentinels - INFO - Broad search returned 6 posts for 'coffee futures'
+2026-01-27 04:07:51,707 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 04:07:51,784 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
+2026-01-27 04:07:52,135 - trading_bot.sentinels - INFO - Broad search returned 8 posts for 'Colombia coffee'
+2026-01-27 04:07:52,620 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 04:07:53,045 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 04:07:54,225 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 04:07:54,313 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
+2026-01-27 04:07:54,596 - trading_bot.sentinels - INFO - Broad search returned 5 posts for 'US coffee tariffs'
+2026-01-27 04:07:56,157 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 04:07:59,224 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 04:07:59,892 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 04:07:59,902 - trading_bot.sentinels - WARNING - X volume spike: 22 vs mean 4 (>3.0x)
+2026-01-27 04:07:59,902 - trading_bot.sentinels - INFO - X volume anomaly: z-score=6.1
+2026-01-27 04:07:59,903 - trading_bot.sentinels - WARNING - 🚨 X SENTINEL TRIGGERED: UNUSUAL X ACTIVITY SPIKE (22 posts, 3.0x baseline)
+2026-01-27 04:07:59,906 - trading_bot.state_manager - INFO - Queued deferred trigger from XSentimentSentinel
+2026-01-27 04:07:59,907 - Orchestrator - INFO - Deferred XSentimentSentinel trigger for market open
