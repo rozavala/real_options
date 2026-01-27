@@ -3,5 +3,978 @@
 
   URL: http://0.0.0.0:8501
 
-2026-01-27 07:00:30,415 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-01-27 15:56:41,808 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-27 16:09:52,363 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-01-27 16:09:52,365 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-01-27 16:09:52,365 - OrderManager - INFO - Step 1: Running data pull...
+Setup complete.
+Dynamically determining the next 5 coffee tickers...
+... chronological tickers found: ['KCH26.NYB', 'KCK26.NYB', 'KCN26.NYB', 'KCU26.NYB', 'KCZ26.NYB']
+
+Fetching Coffee Prices...
+
+Fetching weather data...
+
+Fetching economic data from FRED...
+
+Fetching other market data from yfinance...
+
+Processing OHLV and fetching COT data...
+Fetching historical COT data directly from CFTC...
+... Successfully processed and filtered year 1986 (Rows: 24)
+... Successfully processed and filtered year 1987 (Rows: 24)
+... Successfully processed and filtered year 1988 (Rows: 24)
+... Successfully processed and filtered year 1989 (Rows: 24)
+... Successfully processed and filtered year 1990 (Rows: 23)
+... Successfully processed and filtered year 1991 (Rows: 24)
+... Successfully processed and filtered year 1992 (Rows: 31)
+... Successfully processed and filtered year 1993 (Rows: 52)
+... Successfully processed and filtered year 1994 (Rows: 52)
+... Successfully processed and filtered year 1995 (Rows: 52)
+... Successfully processed and filtered year 1996 (Rows: 53)
+... Successfully processed and filtered year 1997 (Rows: 52)
+... Successfully processed and filtered year 1998 (Rows: 52)
+... Successfully processed and filtered year 1999 (Rows: 52)
+... Successfully processed and filtered year 2000 (Rows: 52)
+... Successfully processed and filtered year 2001 (Rows: 52)
+... Successfully processed and filtered year 2002 (Rows: 52)
+... Successfully processed and filtered year 2003 (Rows: 52)
+... Successfully processed and filtered year 2004 (Rows: 52)
+... Successfully processed and filtered year 2005 (Rows: 52)
+... Successfully processed and filtered year 2006 (Rows: 52)
+... Successfully processed and filtered year 2007 (Rows: 53)
+... Successfully processed and filtered year 2008 (Rows: 52)
+... Successfully processed and filtered year 2009 (Rows: 52)
+... Successfully processed and filtered year 2010 (Rows: 52)
+... Successfully processed and filtered year 2011 (Rows: 52)
+... Successfully processed and filtered year 2012 (Rows: 53)
+... Successfully processed and filtered year 2013 (Rows: 52)
+... Successfully processed and filtered year 2014 (Rows: 52)
+... Successfully processed and filtered year 2015 (Rows: 52)
+... Successfully processed and filtered year 2016 (Rows: 52)
+... Successfully processed and filtered year 2017 (Rows: 52)
+... Successfully processed and filtered year 2018 (Rows: 53)
+... Successfully processed and filtered year 2019 (Rows: 52)
+... Successfully processed and filtered year 2020 (Rows: 52)
+... Successfully processed and filtered year 2021 (Rows: 52)
+... Successfully processed and filtered year 2022 (Rows: 52)
+... Successfully processed and filtered year 2023 (Rows: 52)
+... Successfully processed and filtered year 2024 (Rows: 53)
+... Successfully processed and filtered year 2025 (Rows: 52)
+... Successfully processed and filtered year 2026 (Rows: 3)
+Concatenating COT data...
+
+All data fetching complete.
+
+Successfully processed data. Shape: (523, 51)
+
+==============================
+<b>Data Pull Validation Report</b>
+Timestamp: 2026-01-27 16:10:17
+
+<b>Overall Status: ✅ SUCCESS</b>
+(9 checks passed, 0 checks failed)
+
+✅ <b>Coffee Price Fetch:</b> Successfully fetched 5 active contracts.
+✅ <b>Weather Data Fetch:</b> Successfully fetched data for 4 locations.
+✅ <b>FRED Data Fetch:</b> Completed all FRED series requests.
+✅ <b>Other Market Data Fetch:</b> Completed all other yfinance requests.
+✅ <b>Coffee OHLV Processing:</b> Successfully processed OHLV data.
+✅ <b>COT Report Fetch:</b> Successfully fetched CFTC data. Last entry: 2026-01-20
+✅ <b>Pre-Fill Missing Data:</b> Total missing data before fill is 9.03%.
+✅ <b>Data Recency:</b> Most recent data point is from 2026-01-27.
+✅ <b>Price Spike Detection:</b> Max daily change was 8.51%. Threshold is 15%.
+
+<b>Final Output File Stats:</b>
+- Rows: 523
+- Columns: 51
+==============================
+2026-01-27 16:10:18,256 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-27 16:10:18,266 - OrderManager - INFO - Data pull complete.
+2026-01-27 16:10:18,267 - OrderManager - INFO - Step 2: Running local model inference...
+2026-01-27 16:10:18,268 - root - INFO - Loading all production assets...
+2026-01-27 16:10:19,197 - root - INFO - All 10 assets loaded successfully.
+2026-01-27 16:10:19,200 - root - INFO - Macro Trend: BULL (Front Month: 363.85, SMA200: 346.75)
+2026-01-27 16:10:19,200 - root - INFO - Generating features from new data...
+2026-01-27 16:10:24,170 - root - INFO - Feature generation complete.
+2026-01-27 16:10:24,171 - root - INFO - Running hybrid prediction...
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1769530226.203823  392328 device_compiler.h:196] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+[1m1/1[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 2s/step[1m1/1[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m2s[0m 2s/step
+2026-01-27 16:10:26,829 - root - INFO - {
+  "signals": [
+    {
+      "action": "LONG",
+      "predicted_return": 0.005885342319439541,
+      "ml_confidence": 0.5698992771524295,
+      "confidence": 0.5698992771524295,
+      "expected_price": 365.991387942365,
+      "regime": "BULL",
+      "reason": "AI Buy + Bull Trend",
+      "price": 363.8500061035156,
+      "sma_200": 346.7490003967285
+    },
+    {
+      "action": "LONG",
+      "predicted_return": 0.005459387797175884,
+      "ml_confidence": 0.5649330916151908,
+      "confidence": 0.5649330916151908,
+      "expected_price": 345.9785814778453,
+      "regime": "BULL",
+      "reason": "AI Buy + Bull Trend",
+      "price": 344.1000061035156,
+      "sma_200": 346.7490003967285
+    },
+    {
+      "action": "LONG",
+      "predicted_return": 0.005008106086747676,
+      "ml_confidence": 0.5596491268172301,
+      "confidence": 0.5596491268172301,
+      "expected_price": 338.28573464288195,
+      "regime": "BULL",
+      "reason": "AI Buy + Bull Trend",
+      "price": 336.6000061035156,
+      "sma_200": 346.7490003967285
+    },
+    {
+      "action": "NEUTRAL",
+      "predicted_return": 0.004535112454079216,
+      "ml_confidence": 0.5540880280449247,
+      "confidence": 0.5540880280449247,
+      "expected_price": 331.4463726166149,
+      "regime": "BULL",
+      "reason": "Forecast 0.45% vs Threshold 0.50%",
+      "price": 329.95001220703125,
+      "sma_200": 346.7490003967285
+    },
+    {
+      "action": "NEUTRAL",
+      "predicted_return": 0.004208929428555991,
+      "ml_confidence": 0.5502404324240573,
+      "confidence": 0.5502404324240573,
+      "expected_price": 325.61474536720925,
+      "regime": "BULL",
+      "reason": "Forecast 0.42% vs Threshold 0.50%",
+      "price": 324.25,
+      "sma_200": 346.7490003967285
+    }
+  ]
+}
+2026-01-27 16:10:26,832 - OrderManager - INFO - Successfully received predictions from local model: [{'action': 'LONG', 'predicted_return': 0.005885342319439541, 'ml_confidence': 0.5698992771524295, 'confidence': 0.5698992771524295, 'expected_price': 365.991387942365, 'regime': 'BULL', 'reason': 'AI Buy + Bull Trend', 'price': 363.8500061035156, 'sma_200': 346.7490003967285}, {'action': 'LONG', 'predicted_return': 0.005459387797175884, 'ml_confidence': 0.5649330916151908, 'confidence': 0.5649330916151908, 'expected_price': 345.9785814778453, 'regime': 'BULL', 'reason': 'AI Buy + Bull Trend', 'price': 344.1000061035156, 'sma_200': 346.7490003967285}, {'action': 'LONG', 'predicted_return': 0.005008106086747676, 'ml_confidence': 0.5596491268172301, 'confidence': 0.5596491268172301, 'expected_price': 338.28573464288195, 'regime': 'BULL', 'reason': 'AI Buy + Bull Trend', 'price': 336.6000061035156, 'sma_200': 346.7490003967285}, {'action': 'NEUTRAL', 'predicted_return': 0.004535112454079216, 'ml_confidence': 0.5540880280449247, 'confidence': 0.5540880280449247, 'expected_price': 331.4463726166149, 'regime': 'BULL', 'reason': 'Forecast 0.45% vs Threshold 0.50%', 'price': 329.95001220703125, 'sma_200': 346.7490003967285}, {'action': 'NEUTRAL', 'predicted_return': 0.004208929428555991, 'ml_confidence': 0.5502404324240573, 'confidence': 0.5502404324240573, 'expected_price': 325.61474536720925, 'regime': 'BULL', 'reason': 'Forecast 0.42% vs Threshold 0.50%', 'price': 324.25, 'sma_200': 346.7490003967285}]
+2026-01-27 16:10:26,833 - trading_bot.connection_pool - INFO - Connecting IB (order_manager) ID: 141...
+2026-01-27 16:10:26,957 - trading_bot.connection_pool - INFO - IB (order_manager) connected successfully with ID 141
+2026-01-27 16:10:26,968 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-27 16:10:26,968 - OrderManager - INFO - Connected to IB for signal generation.
+2026-01-27 16:10:26,968 - OrderManager - INFO - Step 2.5: Generating structured signals from predictions...
+2026-01-27 16:10:26,969 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
+2026-01-27 16:10:27,153 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-27 16:10:27,153 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'anthropic', 'openai', 'xai']
+2026-01-27 16:10:27,154 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'anthropic', 'openai', 'xai'], 'diversity_score': 1.0}
+2026-01-27 16:10:27,185 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-01-27 16:10:27,384 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-27 16:10:27,384 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-01-27 16:10:27,385 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-27 16:10:27,385 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'anthropic', 'openai', 'xai']
+2026-01-27 16:10:27,385 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-01-27 16:10:27,551 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-01-27 16:10:27,552 - trading_bot.signal_generator - INFO - Convening Council for KCH6 (202603)...
+2026-01-27 16:10:27,552 - trading_bot.signal_generator - INFO - Convening Council for KCK6 (202605)...
+2026-01-27 16:10:27,552 - trading_bot.signal_generator - INFO - Convening Council for KCN6 (202607)...
+2026-01-27 16:10:28,785 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-27 16:10:28,788 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-27 16:10:28,789 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:29,332 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-27 16:10:29,332 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-27 16:10:29,332 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:29,808 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-01-27 16:10:29,808 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-01-27 16:10:29,809 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:30,281 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-01-27 16:10:30,281 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-01-27 16:10:30,281 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:30,677 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-01-27 16:10:30,677 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-01-27 16:10:30,677 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:31,094 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-01-27 16:10:31,094 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-01-27 16:10:31,094 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:31,486 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-01-27 16:10:31,487 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-01-27 16:10:31,487 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:31,850 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-01-27 16:10:31,850 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-01-27 16:10:31,850 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:32,241 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-27 16:10:32,241 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-27 16:10:32,242 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:32,610 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-27 16:10:32,611 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-27 16:10:32,611 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:33,022 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-01-27 16:10:33,023 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-01-27 16:10:33,023 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:33,359 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-01-27 16:10:33,359 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-01-27 16:10:33,360 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:33,767 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-01-27 16:10:33,767 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-01-27 16:10:33,768 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:34,139 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-01-27 16:10:34,139 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-01-27 16:10:34,139 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:34,610 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-01-27 16:10:34,610 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-01-27 16:10:34,611 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:35,082 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-01-27 16:10:35,082 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-01-27 16:10:35,083 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:35,537 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-27 16:10:35,537 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-27 16:10:35,537 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:36,049 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-27 16:10:36,050 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-27 16:10:36,051 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:36,548 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-01-27 16:10:36,548 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-01-27 16:10:36,548 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:37,035 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-01-27 16:10:37,035 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-01-27 16:10:37,035 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:37,519 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-01-27 16:10:37,519 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-01-27 16:10:37,519 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:37,914 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-01-27 16:10:37,915 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-01-27 16:10:37,915 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:38,332 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-01-27 16:10:38,332 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-01-27 16:10:38,332 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:10:38,731 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-01-27 16:10:38,731 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-01-27 16:10:38,731 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:11:14,811 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-01-27 16:11:14,915 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:11:19,903 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:11:20,485 - trading_bot.tms - INFO - TMS: Stored insight from sentiment
+2026-01-27 16:11:21,510 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:11:21,624 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 40.3s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 38.395639552s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'model': 'gemini-3-pro', 'location': 'global'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '38s'}]}}
+2026-01-27 16:11:25,371 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:11:25,915 - trading_bot.tms - INFO - TMS: Stored insight from sentiment
+2026-01-27 16:11:30,485 - trading_bot.tms - INFO - TMS: Stored insight from supply_chain
+2026-01-27 16:11:31,101 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:11:31,185 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 29.5s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 28.83436915s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '28s'}]}}
+2026-01-27 16:11:32,649 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:11:32,744 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 27.9s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 27.274029669s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '27s'}]}}
+2026-01-27 16:11:34,329 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:11:34,699 - trading_bot.tms - INFO - TMS: Stored insight from geopolitical
+2026-01-27 16:11:37,025 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:11:37,118 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 24.4s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 22.900580774s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '22s'}]}}
+2026-01-27 16:11:39,123 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:11:39,590 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:11:40,006 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-27 16:11:40,006 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: [2026-01...' cues -> ['fundamentalist', 'geopolitical', 'technical', 'sentiment']
+2026-01-27 16:11:40,448 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:11:40,835 - trading_bot.tms - INFO - TMS: Stored insight from technical
+2026-01-27 16:11:40,836 - trading_bot.tms - INFO - TMS: technical insight on '[EVIDENCE]: 1) KCH26...' cues -> ['volatility', 'sentiment']
+2026-01-27 16:11:42,351 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:11:42,751 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-27 16:11:42,751 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: [2026-01...' cues -> ['fundamentalist', 'geopolitical']
+2026-01-27 16:11:43,726 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:11:44,104 - trading_bot.tms - INFO - TMS: Stored insight from geopolitical
+2026-01-27 16:11:49,329 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:11:53,125 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:11:54,490 - trading_bot.tms - INFO - TMS: Stored insight from volatility
+2026-01-27 16:11:54,501 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:11:56,047 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:11:56,622 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:11:57,225 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:11:57,228 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:11:57,612 - trading_bot.tms - INFO - TMS: Stored insight from sentiment
+2026-01-27 16:12:00,625 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:12:00,676 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:12:01,517 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:12:01,904 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:12:02,897 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:12:03,328 - trading_bot.tms - INFO - TMS: Stored insight from geopolitical
+2026-01-27 16:12:08,644 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:12:09,104 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-27 16:12:09,105 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: ['[2026-...' cues -> ['fundamentalist', 'geopolitical']
+2026-01-27 16:12:10,454 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-27 16:12:15,102 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-27 16:12:15,102 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:12:19,526 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:12:20,052 - trading_bot.tms - INFO - TMS: Stored insight from technical
+2026-01-27 16:12:22,294 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:12:23,523 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-27 16:12:25,985 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:12:26,853 - trading_bot.tms - INFO - TMS: Stored insight from volatility
+2026-01-27 16:12:30,529 - trading_bot.tms - INFO - TMS: Stored insight from supply_chain
+2026-01-27 16:12:32,145 - trading_bot.tms - INFO - TMS: Stored insight from supply_chain
+2026-01-27 16:12:41,417 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-01-27 16:12:41,452 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.57 -> 0.55
+2026-01-27 16:12:41,453 - trading_bot.weighted_voting - WARNING - Regime=HIGH_VOLATILITY: Zeroing ML weight (structural break risk)
+2026-01-27 16:12:41,453 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.00, Regime=HIGH_VOLATILITY
+2026-01-27 16:12:41,454 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=-0.023, dominant=volatility)
+2026-01-27 16:12:41,454 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.85,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": -0.956
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.95,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.475
+  },
+  {
+    "agent": "inventory",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.5,
+    "final_weight": 0.52,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": -1.012
+  }
+]
+2026-01-27 16:12:41,571 - trading_bot.signal_generator - WARNING - Signal PRICED IN. Market up 3.1% in 24h. Forcing NEUTRAL.
+2026-01-27 16:12:41,572 - trading_bot.signal_generator - INFO - Convening Council for KCU6 (202609)...
+2026-01-27 16:12:42,428 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-27 16:12:42,428 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-27 16:12:42,428 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-01-27 16:12:42,853 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-27 16:12:43,250 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-27 16:12:43,251 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-27 16:12:43,251 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-01-27 16:12:43,655 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-27 16:12:43,655 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: ['[2026-...' cues -> ['fundamentalist', 'geopolitical']
+2026-01-27 16:12:44,023 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-01-27 16:12:44,023 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-01-27 16:12:44,023 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-01-27 16:12:44,332 - trading_bot.tms - INFO - TMS: Stored insight from geopolitical
+2026-01-27 16:12:44,738 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-01-27 16:12:44,738 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-01-27 16:12:44,739 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-01-27 16:12:45,199 - trading_bot.tms - INFO - TMS: Stored insight from supply_chain
+2026-01-27 16:12:45,541 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-01-27 16:12:45,542 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-01-27 16:12:45,542 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-01-27 16:12:45,542 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:12:45,870 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-01-27 16:12:45,870 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-01-27 16:12:45,871 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-01-27 16:12:46,244 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-01-27 16:12:46,244 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-01-27 16:12:46,244 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:12:46,551 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-01-27 16:12:46,551 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-01-27 16:12:46,551 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:12:46,913 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-27 16:12:46,914 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:12:47,356 - trading_bot.tms - INFO - TMS: Stored insight from volatility
+2026-01-27 16:12:49,763 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:12:50,244 - trading_bot.tms - INFO - TMS: Stored insight from sentiment
+2026-01-27 16:12:53,039 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:12:56,650 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:12:57,117 - trading_bot.tms - INFO - TMS: Stored insight from technical
+2026-01-27 16:13:00,053 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-27 16:13:06,649 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-27 16:13:27,926 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:13:27,930 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-01-27 16:13:27,931 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.56 -> 0.54
+2026-01-27 16:13:27,931 - trading_bot.weighted_voting - WARNING - Regime=HIGH_VOLATILITY: Zeroing ML weight (structural break risk)
+2026-01-27 16:13:27,931 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.00, Regime=HIGH_VOLATILITY
+2026-01-27 16:13:27,931 - trading_bot.weighted_voting - INFO - Weighted Vote: BULLISH (score=0.216, dominant=volatility)
+2026-01-27 16:13:27,931 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BULLISH",
+    "confidence": 0.85,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": 0.956
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.637
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": -0.675
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.95,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.475
+  },
+  {
+    "agent": "inventory",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "BULLISH",
+    "confidence": 0.68,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.5,
+    "final_weight": 0.52,
+    "contribution": 0.357
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.95,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": -1.069
+  }
+]
+2026-01-27 16:13:46,241 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 16:13:50,836 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-01-27 16:13:50,837 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.56 -> 0.54
+2026-01-27 16:13:50,837 - trading_bot.weighted_voting - WARNING - Regime=HIGH_VOLATILITY: Zeroing ML weight (structural break risk)
+2026-01-27 16:13:50,837 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.00, Regime=HIGH_VOLATILITY
+2026-01-27 16:13:50,837 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.186, dominant=volatility)
+2026-01-27 16:13:50,837 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.85,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": -0.956
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": -0.637
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.95,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.475
+  },
+  {
+    "agent": "inventory",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.63,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.5,
+    "final_weight": 0.52,
+    "contribution": -0.331
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.95,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": -1.069
+  }
+]
+2026-01-27 16:14:04,393 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:14:09,652 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:14:09,660 - trading_bot.signal_generator - INFO - Council Decision KCK6 (202605): NEUTRAL (0.6)
+2026-01-27 16:14:09,664 - root - INFO - Logged Council decision for KCK6 (202605)
+2026-01-27 16:14:09,665 - trading_bot.signal_generator - INFO - Convening Council for KCZ6 (202612)...
+2026-01-27 16:14:10,556 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-27 16:14:10,556 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-27 16:14:10,556 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-01-27 16:14:10,922 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-27 16:14:11,291 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-27 16:14:11,291 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-27 16:14:11,291 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-01-27 16:14:11,677 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-27 16:14:11,677 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: ['[2026-...' cues -> ['fundamentalist', 'geopolitical']
+2026-01-27 16:14:12,048 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-01-27 16:14:12,049 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-01-27 16:14:12,049 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-01-27 16:14:12,390 - trading_bot.tms - INFO - TMS: Stored insight from geopolitical
+2026-01-27 16:14:12,753 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-01-27 16:14:12,754 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-01-27 16:14:12,754 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-01-27 16:14:13,108 - trading_bot.tms - INFO - TMS: Stored insight from supply_chain
+2026-01-27 16:14:13,424 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-01-27 16:14:13,424 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-01-27 16:14:13,425 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-01-27 16:14:13,784 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-27 16:14:14,095 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-01-27 16:14:14,096 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-01-27 16:14:14,096 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-01-27 16:14:14,438 - trading_bot.tms - INFO - TMS: Stored insight from sentiment
+2026-01-27 16:14:14,769 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-01-27 16:14:14,769 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-01-27 16:14:14,770 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:14:15,076 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-01-27 16:14:15,076 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-01-27 16:14:15,077 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:14:15,079 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 16:14:27,467 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:14:30,957 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:14:39,690 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:14:39,695 - trading_bot.signal_generator - INFO - Council Decision KCN6 (202607): NEUTRAL (0.65)
+2026-01-27 16:14:39,696 - root - INFO - Logged Council decision for KCN6 (202607)
+2026-01-27 16:14:49,328 - trading_bot.tms - INFO - TMS: Stored insight from volatility
+2026-01-27 16:15:03,317 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 16:15:04,142 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:15:04,596 - trading_bot.tms - INFO - TMS: Stored insight from technical
+2026-01-27 16:15:04,597 - trading_bot.tms - INFO - TMS: technical insight on '[EVIDENCE]: 1) KCU26...' cues -> ['fundamentalist']
+2026-01-27 16:15:21,973 - trading_bot.tms - INFO - TMS: Stored insight from volatility
+2026-01-27 16:15:41,563 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:15:41,567 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-01-27 16:15:41,568 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.55 -> 0.54
+2026-01-27 16:15:41,568 - trading_bot.weighted_voting - WARNING - Regime=HIGH_VOLATILITY: Zeroing ML weight (structural break risk)
+2026-01-27 16:15:41,568 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.00, Regime=HIGH_VOLATILITY
+2026-01-27 16:15:41,568 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.186, dominant=volatility)
+2026-01-27 16:15:41,569 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.85,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": -0.956
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": -0.675
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.95,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.475
+  },
+  {
+    "agent": "inventory",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.66,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.5,
+    "final_weight": 0.52,
+    "contribution": -0.346
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": -1.012
+  }
+]
+2026-01-27 16:15:48,927 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:15:49,436 - trading_bot.tms - INFO - TMS: Stored insight from technical
+2026-01-27 16:15:49,437 - trading_bot.tms - INFO - TMS: technical insight on '[EVIDENCE]: 1) KCZ26...' cues -> ['fundamentalist']
+2026-01-27 16:16:00,581 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 16:16:23,609 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:16:29,834 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-01-27 16:16:29,835 - openai._base_client - INFO - Retrying request to /chat/completions in 0.406786 seconds
+2026-01-27 16:16:33,804 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:16:33,809 - trading_bot.signal_generator - INFO - Council Decision KCU6 (202609): NEUTRAL (0.74)
+2026-01-27 16:16:33,813 - root - INFO - Logged Council decision for KCU6 (202609)
+2026-01-27 16:17:08,251 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:17:08,256 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-01-27 16:17:08,257 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.55 -> 0.53
+2026-01-27 16:17:08,257 - trading_bot.weighted_voting - WARNING - Regime=HIGH_VOLATILITY: Zeroing ML weight (structural break risk)
+2026-01-27 16:17:08,257 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.00, Regime=HIGH_VOLATILITY
+2026-01-27 16:17:08,257 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=-0.139, dominant=volatility)
+2026-01-27 16:17:08,257 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.85,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": -0.956
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": -0.675
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.95,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.475
+  },
+  {
+    "agent": "inventory",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.5,
+    "final_weight": 0.52,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.95,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": -1.069
+  }
+]
+2026-01-27 16:17:27,242 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 16:17:45,105 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:17:54,420 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 16:17:54,430 - trading_bot.signal_generator - INFO - Council Decision KCZ6 (202612): NEUTRAL (0.65)
+2026-01-27 16:17:54,431 - root - INFO - Logged Council decision for KCZ6 (202612)
+2026-01-27 16:17:54,441 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-01-27 16:17:54,446 - trading_bot.signal_generator - INFO - Persisted latest ML signals to state.
+2026-01-27 16:17:54,462 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202603, Signal=NEUTRAL
+2026-01-27 16:17:54,466 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202605, Signal=VOLATILITY
+2026-01-27 16:17:54,469 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202607, Signal=VOLATILITY
+2026-01-27 16:17:54,472 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202609, Signal=VOLATILITY
+2026-01-27 16:17:54,476 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202612, Signal=VOLATILITY
+2026-01-27 16:17:54,476 - OrderManager - INFO - Generated 5 signals: [{'action': 'NEUTRAL', 'predicted_return': 0.005885342319439541, 'ml_confidence': 0.5698992771524295, 'confidence': 0.0, 'expected_price': 365.991387942365, 'regime': 'BULL', 'reason': 'Signal Priced In (24h move > 3%)', 'price': 363.8500061035156, 'sma_200': 346.7490003967285, 'contract_month': '202603', 'direction': 'NEUTRAL'}, {'contract_month': '202605', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: High agent conflict signals inflection point', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.6, 'price': 344.1000061035156, 'sma_200': 346.7490003967285, 'expected_price': 347.0, 'predicted_return': 0.005459387797175884}, {'contract_month': '202607', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: High agent conflict signals inflection point', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.65, 'price': 336.6000061035156, 'sma_200': 346.7490003967285, 'expected_price': 338.28573464288195, 'predicted_return': 0.005008106086747676}, {'contract_month': '202609', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Drought conditions developing', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.74, 'price': 329.95001220703125, 'sma_200': 346.7490003967285, 'expected_price': 331.45, 'predicted_return': 0.004535112454079216}, {'contract_month': '202612', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Drought conditions developing', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.65, 'price': 324.25, 'sma_200': 346.7490003967285, 'expected_price': 325.61, 'predicted_return': 0.004208929428555991}]
+2026-01-27 16:17:54,477 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-01-27 16:17:54,541 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-01-27 16:17:54,636 - OrderManager - INFO - Account Value for Sizing: $50,000.00
+2026-01-27 16:17:54,756 - OrderManager - INFO - Requesting snapshot market price for KCK6...
+2026-01-27 16:17:54,901 - OrderManager - INFO - Using bid/ask midpoint for KCK6: 346.675
+2026-01-27 16:17:54,901 - root - INFO - Fetching option chain for future KCK6...
+2026-01-27 16:17:54,905 - root - INFO - --- Defining HIGH Volatility Strategy for KCK6 ---
+2026-01-27 16:17:54,906 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.80) * Vol(0.6) * Heat(1.0) = 0
+2026-01-27 16:17:54,906 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-27 16:17:55,129 - root - INFO - Fetching market data for option: KOK6 C3.475
+2026-01-27 16:17:57,131 - root - INFO - Using IBKR Model Greeks IV: 34.38%
+2026-01-27 16:17:57,134 - root - INFO - Theoretical price calculated for C @ 347.5: {'price': np.float64(22.1683), 'delta': np.float64(0.5452), 'gamma': np.float64(0.0074), 'vega': np.float64(61.4544), 'theta': np.float64(-0.163)}
+2026-01-27 16:17:57,134 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 C3.475 @ 22.17
+2026-01-27 16:17:57,134 - root - INFO - Fetching market data for option: KOK6 P3.475
+2026-01-27 16:17:59,135 - root - INFO - Using IBKR Model Greeks IV: 34.38%
+2026-01-27 16:17:59,137 - root - INFO - Theoretical price calculated for P @ 347.5: {'price': np.float64(20.2244), 'delta': np.float64(-0.4548), 'gamma': np.float64(0.0074), 'vega': np.float64(61.4544), 'theta': np.float64(-0.1642)}
+2026-01-27 16:17:59,138 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 P3.475 @ 20.22
+2026-01-27 16:17:59,138 - root - INFO - Net Theoretical: 42.39, Market Spread: 1.05
+2026-01-27 16:17:59,138 - root - INFO - Adaptive Strategy: Start @ 42.20, Cap/Floor @ 42.89
+2026-01-27 16:17:59,139 - root - INFO - Creating Limit Order for BUY 1 @ 42.20 (Adaptive Cap: 42.89).
+2026-01-27 16:17:59,139 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-01-27 16:17:59,139 - root - INFO - Assigned OrderRef: d8c7469c-77e8-4e91-8ab1-7723d04b07e7
+2026-01-27 16:17:59,139 - OrderManager - INFO - Successfully queued order for KCK6.
+2026-01-27 16:17:59,256 - OrderManager - INFO - Requesting snapshot market price for KCN6...
+2026-01-27 16:17:59,492 - OrderManager - INFO - Using bid/ask midpoint for KCN6: 338.85
+2026-01-27 16:17:59,493 - root - INFO - Fetching option chain for future KCN6...
+2026-01-27 16:17:59,496 - root - INFO - --- Defining HIGH Volatility Strategy for KCN6 ---
+2026-01-27 16:17:59,497 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.82) * Vol(0.6) * Heat(1.0) = 0
+2026-01-27 16:17:59,497 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-27 16:17:59,722 - root - INFO - Fetching market data for option: KON6 C3.4
+2026-01-27 16:18:01,724 - root - ERROR - Insufficient live market data for KON6 C3.4. Bid: 27.49, Ask: 28.45, IV: None
+2026-01-27 16:18:01,724 - root - ERROR - Failed to get market data for KON6 C3.4. Aborting order.
+2026-01-27 16:18:01,939 - OrderManager - INFO - Requesting snapshot market price for KCU6...
+2026-01-27 16:18:02,152 - OrderManager - INFO - Using bid/ask midpoint for KCU6: 332.075
+2026-01-27 16:18:02,153 - root - INFO - Fetching option chain for future KCU6...
+2026-01-27 16:18:02,197 - root - INFO - --- Defining HIGH Volatility Strategy for KCU6 ---
+2026-01-27 16:18:02,202 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.87) * Vol(0.6) * Heat(1.0) = 0
+2026-01-27 16:18:02,202 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-27 16:18:02,427 - root - INFO - Fetching market data for option: KOU6 C3.325
+2026-01-27 16:18:04,428 - root - INFO - Using IBKR Model Greeks IV: 35.13%
+2026-01-27 16:18:04,429 - root - INFO - Theoretical price calculated for C @ 332.5: {'price': np.float64(37.4009), 'delta': np.float64(0.5827), 'gamma': np.float64(0.0045), 'vega': np.float64(95.7096), 'theta': np.float64(-0.1016)}
+2026-01-27 16:18:04,430 - root - INFO -   -> Leg Theoretical Price (BUY): KOU6 C3.325 @ 37.40
+2026-01-27 16:18:04,431 - root - INFO - Fetching market data for option: KOU6 P3.325
+2026-01-27 16:18:06,431 - root - INFO - Using IBKR Model Greeks IV: 35.13%
+2026-01-27 16:18:06,433 - root - INFO - Theoretical price calculated for P @ 332.5: {'price': np.float64(30.6531), 'delta': np.float64(-0.4173), 'gamma': np.float64(0.0045), 'vega': np.float64(95.7096), 'theta': np.float64(-0.103)}
+2026-01-27 16:18:06,433 - root - INFO -   -> Leg Theoretical Price (BUY): KOU6 P3.325 @ 30.65
+2026-01-27 16:18:06,433 - root - INFO - Net Theoretical: 68.05, Market Spread: 4.66
+2026-01-27 16:18:06,433 - root - INFO - Adaptive Strategy: Start @ 65.78, Cap/Floor @ 68.55
+2026-01-27 16:18:06,433 - root - INFO - Creating Limit Order for BUY 1 @ 65.78 (Adaptive Cap: 68.55).
+2026-01-27 16:18:06,433 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-01-27 16:18:06,435 - root - INFO - Assigned OrderRef: 2d003aea-cc66-4a9a-9231-518b77390168
+2026-01-27 16:18:06,436 - OrderManager - INFO - Successfully queued order for KCU6.
+2026-01-27 16:18:06,649 - OrderManager - INFO - Requesting snapshot market price for KCZ6...
+2026-01-27 16:18:06,861 - OrderManager - INFO - Using bid/ask midpoint for KCZ6: 326.225
+2026-01-27 16:18:06,861 - root - INFO - Fetching option chain for future KCZ6...
+2026-01-27 16:18:07,158 - root - INFO - --- Defining HIGH Volatility Strategy for KCZ6 ---
+2026-01-27 16:18:07,161 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.82) * Vol(0.6) * Heat(1.0) = 0
+2026-01-27 16:18:07,161 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-27 16:18:07,430 - root - INFO - Fetching market data for option: KOZ6 C3.25
+2026-01-27 16:18:09,431 - root - INFO - Using IBKR Model Greeks IV: 34.12%
+2026-01-27 16:18:09,433 - root - INFO - Theoretical price calculated for C @ 325.0: {'price': np.float64(44.6161), 'delta': np.float64(0.6058), 'gamma': np.float64(0.0039), 'vega': np.float64(111.7053), 'theta': np.float64(-0.0827)}
+2026-01-27 16:18:09,433 - root - INFO -   -> Leg Theoretical Price (BUY): KOZ6 C3.25 @ 44.62
+2026-01-27 16:18:09,433 - root - INFO - Fetching market data for option: KOZ6 P3.25
+2026-01-27 16:18:11,434 - root - INFO - Using IBKR Model Greeks IV: 34.12%
+2026-01-27 16:18:11,438 - root - INFO - Theoretical price calculated for P @ 325.0: {'price': np.float64(33.2593), 'delta': np.float64(-0.3942), 'gamma': np.float64(0.0039), 'vega': np.float64(111.7053), 'theta': np.float64(-0.0837)}
+2026-01-27 16:18:11,438 - root - INFO -   -> Leg Theoretical Price (BUY): KOZ6 P3.25 @ 33.26
+2026-01-27 16:18:11,438 - root - INFO - Net Theoretical: 77.88, Market Spread: 0.00
+2026-01-27 16:18:11,440 - root - INFO - Adaptive Strategy: Start @ -199.95, Cap/Floor @ 78.38
+2026-01-27 16:18:11,440 - root - INFO - Creating Limit Order for BUY 1 @ -199.95 (Adaptive Cap: 78.38).
+2026-01-27 16:18:11,440 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-01-27 16:18:11,442 - root - INFO - Assigned OrderRef: 4cae6e8f-d3d2-4cbf-ac54-ae1af691e946
+2026-01-27 16:18:11,442 - OrderManager - INFO - Successfully queued order for KCZ6.
+2026-01-27 16:18:11,442 - OrderManager - INFO - --- Order generation complete. 3 orders queued. ---
+2026-01-27 16:18:11,445 - OrderManager - CRITICAL - A critical error occurred during order generation: 'prediction_type'
+Traceback (most recent call last):
+  File "/home/rodrigo/real_options/trading_bot/order_manager.py", line 270, in generate_and_queue_orders
+    if signal['prediction_type'] == 'DIRECTIONAL':
+       ~~~~~~^^^^^^^^^^^^^^^^^^^
+KeyError: 'prediction_type'
+
+2026-01-27 16:18:11,745 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-27 16:18:11,748 - OrderManager - INFO - --- Placing and monitoring 3 orders ---
+2026-01-27 16:18:11,748 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-27 16:18:11,748 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'anthropic', 'openai', 'xai']
+2026-01-27 16:18:11,750 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-27 16:18:11,750 - OrderManager - INFO - Using pooled IB connection for order placement.
+2026-01-27 16:18:11,750 - OrderManager - INFO - Sorted orders by expiration proximity.
+2026-01-27 16:18:11,750 - OrderManager - INFO - Current Available Funds: $50,000.00 | Equity: $50,000.00
+2026-01-27 16:18:13,814 - ib_insync.wrapper - ERROR - Error 162, reqId 40: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=759113412, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=347.5, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 C3.475', tradingClass='KO')
+2026-01-27 16:18:13,862 - trading_bot.compliance - INFO - Resolved underlying future: KCK6 (conId: 634760204)
+2026-01-27 16:18:13,986 - trading_bot.compliance - INFO - Volume from IB (KCK6): 270.0
+2026-01-27 16:18:21,500 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 16:18:21,503 - trading_bot.compliance - ERROR - Compliance Guardian JSON parse failed: Expecting value: line 1 column 1 (char 0). Raw response: I'll review this order against the Constitution, focusing on capital preservation.
+
+**COMPLIANCE REVIEW**
+
+**Article II (Liquidity Safety) Check:**
+- Order Quantity: 1
+- 15-min Average Volume: 270.0
+- 10% of Volume: 27.0
+- Check: 1 ≤ 27.0 ✅ **PASSES**
+
+**Article I (Capital Preservation) Check:**
+- Estimated Notional: $1,582,500.00
+- Portfolio Equity: $50,000.00
+- 5% of Equity: $2,500.00
+- Check: $1,582,500.00 > $2,500.00 ❌ **FAILS**
+- This position represents **3,165%** of equity - a catastrophi
+2026-01-27 16:18:21,503 - OrderManager - WARNING - Order for  blocked by Compliance: Compliance Error: Invalid JSON response (fail-closed)
+2026-01-27 16:18:23,562 - ib_insync.wrapper - ERROR - Error 162, reqId 46: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=760187176, symbol='KC', lastTradeDateOrContractMonth='20260814', strike=332.5, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOU6 C3.325', tradingClass='KO')
+2026-01-27 16:18:23,611 - trading_bot.compliance - INFO - Resolved underlying future: KCU6 (conId: 657732419)
+2026-01-27 16:18:23,728 - trading_bot.compliance - INFO - Volume from IB (KCU6): 39.0
+2026-01-27 16:18:31,795 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 16:18:31,797 - trading_bot.compliance - ERROR - Compliance Guardian JSON parse failed: Expecting value: line 1 column 1 (char 0). Raw response: I need to review this order against the Constitution for capital preservation.
+
+**Review Analysis:**
+
+**Article II (Liquidity Safety) Check:**
+- Order Quantity: 1
+- 15-min Average Volume: 39.0
+- 10% of Volume: 39.0 × 0.10 = 3.9
+- Is 1 > 3.9? **NO** - Order quantity (1) is within the 10% volume limit (3.9)
+- ✅ PASSES Article II
+
+**Article I (Capital Preservation) Check:**
+- Estimated Notional: $2,466,750.00
+- Portfolio Equity: $50,000.00
+- 5% of Equity: $50,000 × 0.05 = $2,500.00
+- Is $2,466,750 
+2026-01-27 16:18:31,798 - OrderManager - WARNING - Order for  blocked by Compliance: Compliance Error: Invalid JSON response (fail-closed)
+2026-01-27 16:18:31,798 - OrderManager - INFO - Refreshing account summary for margin safety...
+2026-01-27 16:18:31,798 - OrderManager - INFO - Refreshed Available Funds: $50,000.00
+2026-01-27 16:18:33,858 - ib_insync.wrapper - ERROR - Error 162, reqId 52: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=760187216, symbol='KC', lastTradeDateOrContractMonth='20261112', strike=325.0, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOZ6 C3.25', tradingClass='KO')
+2026-01-27 16:18:33,866 - trading_bot.compliance - INFO - Resolved underlying future: KCZ6 (conId: 675565688)
+2026-01-27 16:18:33,980 - trading_bot.compliance - INFO - Volume from IB (KCZ6): 39.0
+2026-01-27 16:18:41,341 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 16:18:41,342 - trading_bot.compliance - ERROR - Compliance Guardian JSON parse failed: Expecting value: line 1 column 1 (char 0). Raw response: Looking at this order review request, I need to check against the Constitution.
+
+**Review Analysis:**
+
+**Article II (Liquidity Safety) Check:**
+- Order Quantity: 1
+- 15-min Average Volume: 39.0
+- 10% of Volume = 3.9
+- Is 1 > 3.9? **NO** - This passes.
+
+**Article I (Capital Preservation) Check:**
+- Estimated Notional: -7,498,125.0 (absolute value = 7,498,125.0)
+- Portfolio Equity: 50,000.0
+- 5% of Equity = 2,500.0
+- Is 7,498,125 > 2,500? **YES** - This FAILS.
+
+The notional value of this order (7,
+2026-01-27 16:18:41,343 - OrderManager - WARNING - Order for  blocked by Compliance: Compliance Error: Invalid JSON response (fail-closed)
+2026-01-27 16:18:41,343 - OrderManager - WARNING - No orders fit within available funds or compliance limits. Aborting placement.
+2026-01-27 16:18:41,343 - OrderManager - INFO - Order placement complete. Releasing event handlers.
+2026-01-27 16:18:41,343 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
