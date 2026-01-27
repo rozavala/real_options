@@ -4,16 +4,6 @@
       "data": [
         {
           "source": "WeatherSentinel",
-          "reason": "Drought Risk in Central Highlands (Vietnam): 10 days with < 5.0mm rain",
-          "payload": {
-            "location": "Central Highlands (Vietnam)",
-            "type": "DROUGHT",
-            "days": 10
-          },
-          "timestamp": "2026-01-23T17:24:47.787454+00:00"
-        },
-        {
-          "source": "WeatherSentinel",
           "reason": "Drought Risk in Dak Lak (Vietnam): 10 days with < 5.0mm rain",
           "payload": {
             "location": "Dak Lak (Vietnam)",
@@ -147,9 +137,51 @@
             ]
           },
           "timestamp": "2026-01-26T18:01:12.524416+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (18 posts, 3.0x baseline)",
+          "payload": {
+            "sentiment_score": 4.54,
+            "confidence": 0.26,
+            "top_themes": [
+              "COT net long positions",
+              "Rising coffee futures prices",
+              "Irrelevant/off-topic",
+              "historic highs",
+              "price retreat"
+            ],
+            "post_volume": 18,
+            "volume_baseline": 3.6,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 3,
+                "confidence": 0.2,
+                "top_post": "#COT - Commitments of Traders released by @CFTC - Non-commercial net long position in #sugar, #cocoa, #coffee futures on @ICE_Markets https://t.co/4lXicKi75I"
+              },
+              {
+                "query": "arabica prices",
+                "score": 5.0,
+                "volume": 1,
+                "confidence": 0.2,
+                "top_post": "Coffee prices hit historic highs through 2024-25... Arabica soared past $4.40/lb before retreating to ~$3.56/lb today - still up 9.5% YoY. Is the supercycle over..."
+              },
+              {
+                "query": "Brazil coffee harvest",
+                "score": 4.0,
+                "volume": 2,
+                "confidence": 0.3,
+                "top_post": "Arabica coffee growers in Brazil expect this year's harvest to match or slightly exceed 2025's crop, while canephora growers in Espirito Santo state forecast yields will fall, farmers told Reuters."
+              }
+            ]
+          },
+          "timestamp": "2026-01-27T09:57:42.589436+00:00"
         }
       ],
-      "timestamp": 1769450472.524616
+      "timestamp": 1769507862.589682
     }
   },
   "reports": {
@@ -163,11 +195,11 @@
     },
     "macro": {
       "data": {
-        "data": "[EVIDENCE]: 1. Arabica coffee futures rose to ~355.75 USd/lb, up 1.38% daily [source: Trading Economics / Investing.com, 2026-01-26]. 2. Latest COT report shows managed money reduced Arabica net longs by 2,032 contracts but added 2,865 contracts to Robusta net longs [source: StoneX / CFTC, 2026-01-23]. 3. Brazil Arabica growers forecast 2026 harvest to match or slightly exceed 2025; Conilon/Robusta growers expect yield declines [source: Reuters / WKZO, 2026-01-23]. 4. Coffee prices are approximately 1.37% higher compared to the same time last year [source: Trading Economics, 2026-01-26].\n[ANALYSIS]: The coffee market presents mixed signals. The rise in Arabica futures suggests some positive sentiment potential, possibly linked to concerns about Robusta supply declines. However, managed money's reduction in Arabica net longs may indicate hesitancy, possibly due to expected stable Arabica yields. This suggests a market caught between supply concerns and demand expectations, evidenced by higher year-on-year prices.\n[CONFIDENCE]: 0.7\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
-        "confidence": 0.7,
+        "data": "[EVIDENCE]: 1. March Arabica coffee futures closed up +5.35 cents at roughly $3.56/lb, supported by a falling US dollar (source: Barchart, January 26, 2026). 2. Brazilian Arabica growers expect 2026 production to match or slightly exceed 2025, while Robusta yields are expected to fall (source: Reuters, January 23, 2026). 3. Cecafe reported Brazil's December green coffee exports down 18.4% year-over-year (source: Cecafe / Barchart, January 19, 2026). 4. Managed money reduced net long positions by 2,032 contracts (source: StoneX, January 20, 2026).\n[ANALYSIS]: The initial analysis offers a mixed outlook on coffee prices, taking into account various market dynamics. However, certain areas could be improved. The positive impact of the falling US dollar on Arabica futures is noted, but the analysis could benefit from further exploration of the currency influence on global trade beyond immediate futures pricing. Improved Arabica production expectations suggest a future stabilization or possible decrease in prices due to anticipated supply, yet the analysis might overstate the short-term implications given the time needed for harvests to affect market supply. The Robusta yield decline and decreased Brazilian exports indicate potential supply challenges that could keep prices from falling significantly. However, the analysis could better distinguish between these medium-term influences and immediate market fluctuations. The evaluation of managed money's positioning is sound but would gain depth from contextualizing this within broader hedge fund strategies or comparing with historical data. Overall, while the initial \u2018neutral\u2019 sentiment tag captures the lack of a strong directional momentum, acknowledging the complexity and diversity of factors might adjust the sentiment slightly towards 'bearish'.\n[CONFIDENCE]: 0.75\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
+        "confidence": 0.75,
         "sentiment": "NEUTRAL"
       },
-      "timestamp": 1769450661.8807178
+      "timestamp": 1769507914.0980043
     },
     "geopolitical": {
       "data": {
@@ -298,7 +330,7 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1769497034.3501241
+      "timestamp": 1769507862.5833416
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
