@@ -968,11 +968,17 @@ if price_df is not None and not price_df.empty:
             chart_title += f" | Signals: {', '.join(unique_contracts)}"
 
     # === LAYOUT (CRITICAL: type='category' fixes overlaps) ===
+    # FIXED: Use date axis for candlesticks (more reliable rendering)
+    # Remove gaps using rangebreaks instead of category
     fig.update_xaxes(
-        type='category',
+        type='date',  # Changed from 'category'
         tickformat='%b %d\n%H:%M',
         nticks=15,
         tickangle=0,
+        rangebreaks=[
+            dict(bounds=["sat", "mon"]),  # Hide weekends
+            dict(bounds=[13.5, 3.5], pattern="hour"),  # Hide overnight (13:30-03:30)
+        ],
         row=1, col=1
     )
 
