@@ -2,6 +2,7 @@ import logging
 import json
 import os
 import asyncio
+import re
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole
 
 logger = logging.getLogger(__name__)
@@ -248,14 +249,28 @@ class ComplianceGuardian:
                 return False, "Compliance Error: Empty LLM response (fail-closed)"
 
             text = response.strip()
-            # Clean potential markdown
+
+            # --- FIX: Regex extraction for chatty LLMs ---
+            # Try to find JSON object even if surrounded by prose
+            json_match = re.search(r'\{[^{}]*"approved"[^{}]*\}', text, re.DOTALL)
+            if json_match:
+                text = json_match.group(0)
+            else:
+                # Fallback: try to find ANY JSON object
+                json_match = re.search(r'\{.*\}', text, re.DOTALL)
+                if json_match:
+                    text = json_match.group(0)
+            # --- END Regex extraction ---
+
+            # Clean markdown code blocks (existing logic)
             if text.startswith("```json"): text = text[7:]
             if text.startswith("```"): text = text[3:]
             if text.endswith("```"): text = text[:-3]
+            text = text.strip()
 
             # Validate cleaned text
-            if not text.strip():
-                logger.error(f"Compliance response empty after cleaning for {symbol}. Raw: {response}")
+            if not text:
+                logger.error(f"Compliance response empty after cleaning for {symbol}. Raw: {response[:500]}")
                 return False, "Compliance Error: Empty JSON after cleanup (fail-closed)"
 
             result = json.loads(text)

@@ -274,6 +274,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                                 **ml_signal,
                                 **final_data,
                                 "contract_month": contract.lastTradeDateOrContractMonth[:6],
+                                "prediction_type": "NEUTRAL",  # <-- FIX: Add missing key
                                 "direction": "NEUTRAL",
                                 "confidence": 0.0,
                                 "reason": "Signal Priced In (24h move > 3%)",
@@ -288,6 +289,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                                 **ml_signal,
                                 **final_data,
                                 "contract_month": contract.lastTradeDateOrContractMonth[:6],
+                                "prediction_type": "NEUTRAL",  # <-- FIX: Add missing key
                                 "direction": "NEUTRAL",
                                 "confidence": 0.0,
                                 "reason": "Signal Priced In (24h move < -3%)",

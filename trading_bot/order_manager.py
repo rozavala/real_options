@@ -267,7 +267,7 @@ async def generate_and_queue_orders(config: dict):
                 else:
                     sma_str = str(sma_200)
 
-                if signal['prediction_type'] == 'DIRECTIONAL':
+                if signal.get('prediction_type') == 'DIRECTIONAL':
                     direction = signal.get("direction", "N/A")
                     reason = signal.get("reason", "N/A")
                     signal_summary_parts.append(
@@ -275,7 +275,7 @@ async def generate_and_queue_orders(config: dict):
                         f"    Reason: {reason}<br>"
                         f"    Price: {price_str} | SMA200: {sma_str}"
                     )
-                elif signal['prediction_type'] == 'VOLATILITY':
+                elif signal.get('prediction_type') == 'VOLATILITY':
                     vol_level = signal.get("level", "N/A")
                     signal_summary_parts.append(f"  - <b>{future_month}</b>: {vol_level} Volatility signal")
 
