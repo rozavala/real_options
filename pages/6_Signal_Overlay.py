@@ -802,15 +802,12 @@ if price_df is not None and not price_df.empty:
     )
 
     # 1. Candlestick (Row 1)
-    # EXPLICIT STYLE: Define colors to prevent transparency issues
     fig.add_trace(go.Candlestick(
         x=price_df['str_index'],
         open=price_df['Open'],
         high=price_df['High'],
         low=price_df['Low'],
         close=price_df['Close'],
-        increasing_line_color='#00CC96',
-        decreasing_line_color='#EF553B',
         name="KC Coffee (ET)"
     ), row=1, col=1)
 
@@ -951,32 +948,27 @@ if price_df is not None and not price_df.empty:
 
     # === LAYOUT (CRITICAL: type='category' fixes overlaps) ===
     # FIXED: Use category axis with string values for reliable rendering
-    # Apply to both axes to ensure shared axis works correctly
-    fig.update_xaxes(type='category', nticks=15)
+    fig.update_xaxes(
+        type='category',
+        # tickformat ignored for category, relying on string labels
+        nticks=15,
+        tickangle=0,
+        row=1, col=1
+    )
 
-    # Specific adjustment for bottom axis (Row 2) to ensure labels show
-    fig.update_xaxes(tickangle=0, row=2, col=1)
+    fig.update_xaxes(
+        type='category',
+        nticks=15,
+        row=2, col=1
+    )
 
-    # Row 1 Y-axis: EXPLICIT RANGE to prevent auto-scale from hiding data
-    if not price_df.empty:
-        y_min = price_df['Low'].min()
-        y_max = price_df['High'].max()
-        y_buffer = (y_max - y_min) * 0.1 if y_max != y_min else y_max * 0.01
-        # Ensure we have a valid range
-        if y_buffer == 0: y_buffer = 1.0
-
-        fig.update_yaxes(
-            title_text="Price (¢/lb)",
-            range=[y_min - y_buffer, y_max + y_buffer],
-            row=1, col=1
-        )
-    else:
-        fig.update_yaxes(title_text="Price (¢/lb)", row=1, col=1)
+    # Row 1 Y-axis
+    fig.update_yaxes(title_text="Price (¢/lb)", row=1, col=1)
 
     # Row 2 Primary Y-axis (Confidence) - LEFT
     fig.update_yaxes(
         title_text="Confidence",
-        range=[-0.05, 1.05], # Slight buffer
+        range=[0, 1],
         tickformat='.0%',
         side='left',
         showgrid=True,
