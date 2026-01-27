@@ -271,10 +271,10 @@ with st.sidebar:
 
     lookback_days = st.slider(
         "Lookback Period (Days)",
-        min_value=1,
+        min_value=0,
         max_value=max_days,
         value=default_lookback,
-        help="Default: 3 days (72 hours)"
+        help="0 = Today only. Default: 3 days."
     )
 
     st.markdown("---")
@@ -604,9 +604,8 @@ if selected_contract != 'FRONT_MONTH':
 
 with st.spinner(f"Loading {get_contract_display_name(selected_contract)} data..."):
     # Determine period
-    if lookback_days <= 1: yf_period = "1d"
-    elif lookback_days <= 5: yf_period = "5d"
-    elif lookback_days <= 29: yf_period = "1mo"
+    # FIX: Use 1mo minimum to ensure we catch enough trading days (skipping weekends/holidays)
+    if lookback_days <= 29: yf_period = "1mo"
     elif lookback_days <= 59: yf_period = "2mo"
     else: yf_period = "2y"
 
@@ -641,16 +640,20 @@ if price_df is not None and not price_df.empty:
     # Calculate cutoff by counting back N trading days
     cutoff_dt = current_time_et
     days_counted = 0
-    
-    while days_counted < lookback_days:
-        cutoff_dt -= timedelta(days=1)
-        # Check if weekday (0-4) and not a holiday
-        if cutoff_dt.weekday() < 5 and cutoff_dt.date() not in us_holidays:
-            days_counted += 1
+
+    if lookback_days == 0:
+        # Just start at midnight today
+        cutoff_dt = cutoff_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        while days_counted < lookback_days:
+            cutoff_dt -= timedelta(days=1)
+            # Check if weekday (0-4) and not a holiday
+            if cutoff_dt.weekday() < 5 and cutoff_dt.date() not in us_holidays:
+                days_counted += 1
             
-    # CRITICAL FIX: Force the start time to Midnight (00:00:00)
-    # This prevents the filter from clipping the Morning Session of the first day.
-    cutoff_dt = cutoff_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        # CRITICAL FIX: Force the start time to Midnight (00:00:00)
+        # This prevents the filter from clipping the Morning Session of the first day.
+        cutoff_dt = cutoff_dt.replace(hour=0, minute=0, second=0, microsecond=0)
     
     # Apply the filter (>= Midnight captures the whole day)
     price_df = price_df[price_df.index >= cutoff_dt]
@@ -694,6 +697,10 @@ if price_df is not None and not price_df.empty:
         show_all=show_all_signals
     )
 
+    # === X-AXIS PREPARATION (String Conversion for Category Axis) ===
+    # Convert index to string to ensure reliable plotting on categorical axis (fixes missing candles on short lookbacks)
+    price_df['str_index'] = price_df.index.strftime('%Y-%m-%d %H:%M')
+
     # === ALIGNMENT ENGINE ===
     plot_df = pd.DataFrame()
     if not signals.empty:
@@ -717,6 +724,9 @@ if price_df is not None and not price_df.empty:
 
             plot_df = matched_signals.copy()
             plot_df['plot_x'] = matched_signals['candle_timestamp']
+            # Create string version for plotting to match price_df['str_index']
+            plot_df['plot_x_str'] = plot_df['plot_x'].dt.strftime('%Y-%m-%d %H:%M')
+
             plot_df['candle_high'] = aligned_prices['High'].values
             plot_df['candle_low'] = aligned_prices['Low'].values
 
@@ -792,19 +802,22 @@ if price_df is not None and not price_df.empty:
     )
 
     # 1. Candlestick (Row 1)
+    # EXPLICIT STYLE: Define colors to prevent transparency issues
     fig.add_trace(go.Candlestick(
-        x=price_df.index,
+        x=price_df['str_index'],
         open=price_df['Open'],
         high=price_df['High'],
         low=price_df['Low'],
         close=price_df['Close'],
+        increasing_line_color='#00CC96',
+        decreasing_line_color='#EF553B',
         name="KC Coffee (ET)"
     ), row=1, col=1)
 
     # 2. Signal markers (Row 1)
     if not plot_df.empty:
         fig.add_trace(go.Scatter(
-            x=plot_df['plot_x'],
+            x=plot_df['plot_x_str'],
             y=plot_df['y_pos'],
             mode='markers+text' if show_labels else 'markers',
             text=plot_df['plot_label'] if show_labels else None,
@@ -843,7 +856,7 @@ if price_df is not None and not price_df.empty:
     # 4. Volume (Row 2 - SECONDARY Y-AXIS on RIGHT)
     if 'Volume' in price_df.columns:
         fig.add_trace(go.Bar(
-            x=price_df.index,
+            x=price_df['str_index'],
             y=price_df['Volume'],
             marker_color='rgba(100, 150, 255, 0.4)',  # Slightly more visible
             name='Volume',
@@ -853,7 +866,7 @@ if price_df is not None and not price_df.empty:
     # 5. Confidence (Row 2 - PRIMARY Y-AXIS on LEFT)
     if not plot_df.empty and show_confidence:
         fig.add_trace(go.Scatter(
-            x=plot_df['plot_x'],
+            x=plot_df['plot_x_str'],
             y=plot_df['plot_confidence'],
             mode='markers+lines',
             line=dict(color='#00CC96', width=1.5, dash='dot'),
@@ -871,6 +884,7 @@ if price_df is not None and not price_df.empty:
         
         for idx in day_changes:
             ts = price_df.index[idx]
+            ts_str = price_df['str_index'].iloc[idx] # Use string representation for categorical axis
             current_weekday = weekdays[idx]
             prev_weekday = weekdays[idx - 1] if idx > 0 else current_weekday
 
@@ -879,14 +893,14 @@ if price_df is not None and not price_df.empty:
             if is_week_start:
                 # WEEK SEPARATOR - Prominent orange
                 fig.add_vline(
-                    x=ts,
+                    x=ts_str,
                     line_width=2,
                     line_dash="dash",
                     line_color="rgba(255, 180, 80, 0.8)",
                     row="all"
                 )
                 fig.add_annotation(
-                    x=ts,
+                    x=ts_str,
                     y=1.02,
                     yref="paper",
                     text="📅 Week",
@@ -897,7 +911,7 @@ if price_df is not None and not price_df.empty:
             else:
                 # DAY SEPARATOR - Visible gray
                 fig.add_vline(
-                    x=ts,
+                    x=ts_str,
                     line_width=1,
                     line_dash="dot",
                     line_color="rgba(180, 180, 180, 0.6)",
@@ -911,10 +925,11 @@ if price_df is not None and not price_df.empty:
             date_data = price_df[price_df.index.date == date]
             if not date_data.empty:
                 first_candle = date_data.index[0]
+                first_candle_str = date_data['str_index'].iloc[0]
                 # Market Open marker
                 if first_candle.time() <= time(4, 0):  # Within first 30 min
                     fig.add_annotation(
-                        x=first_candle,
+                        x=first_candle_str,
                         y=date_data.loc[first_candle, 'High'] * 1.003,
                         text="🔔",
                         showarrow=False,
@@ -935,34 +950,33 @@ if price_df is not None and not price_df.empty:
             chart_title += f" | Signals: {', '.join(unique_contracts)}"
 
     # === LAYOUT (CRITICAL: type='category' fixes overlaps) ===
-    # FIXED: Use date axis for candlesticks (more reliable rendering)
-    # Remove gaps using rangebreaks instead of category
-    fig.update_xaxes(
-        type='date',  # Changed from 'category'
-        tickformat='%b %d\n%H:%M',
-        nticks=15,
-        tickangle=0,
-        rangebreaks=[
-            dict(bounds=["sat", "mon"]),  # Hide weekends
-            dict(bounds=[13.5, 3.5], pattern="hour"),  # Hide overnight (13:30-03:30)
-        ],
-        row=1, col=1
-    )
+    # FIXED: Use category axis with string values for reliable rendering
+    # Apply to both axes to ensure shared axis works correctly
+    fig.update_xaxes(type='category', nticks=15)
 
-    fig.update_xaxes(
-        type='category',
-        tickformat='%H:%M',
-        nticks=15,
-        row=2, col=1
-    )
+    # Specific adjustment for bottom axis (Row 2) to ensure labels show
+    fig.update_xaxes(tickangle=0, row=2, col=1)
 
-    # Row 1 Y-axis
-    fig.update_yaxes(title_text="Price (¢/lb)", row=1, col=1)
+    # Row 1 Y-axis: EXPLICIT RANGE to prevent auto-scale from hiding data
+    if not price_df.empty:
+        y_min = price_df['Low'].min()
+        y_max = price_df['High'].max()
+        y_buffer = (y_max - y_min) * 0.1 if y_max != y_min else y_max * 0.01
+        # Ensure we have a valid range
+        if y_buffer == 0: y_buffer = 1.0
+
+        fig.update_yaxes(
+            title_text="Price (¢/lb)",
+            range=[y_min - y_buffer, y_max + y_buffer],
+            row=1, col=1
+        )
+    else:
+        fig.update_yaxes(title_text="Price (¢/lb)", row=1, col=1)
 
     # Row 2 Primary Y-axis (Confidence) - LEFT
     fig.update_yaxes(
         title_text="Confidence",
-        range=[0, 1],
+        range=[-0.05, 1.05], # Slight buffer
         tickformat='.0%',
         side='left',
         showgrid=True,
