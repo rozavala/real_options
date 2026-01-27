@@ -182,11 +182,36 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 # C. Format Reports
                 reports = {}
                 for key, res in zip(tasks.keys(), research_results):
+                    # === FLIGHT DIRECTOR MANDATE: Type Guard for List Results ===
+                    if isinstance(res, list):
+                        # === CRITICAL: Log multi-element lists for investigation ===
+                        if len(res) > 1:
+                            logger.error(
+                                f"🚨 MULTI-REPORT ANOMALY: Agent {key} returned {len(res)} results. "
+                                f"Only using first element. Full list keys: {[r.get('sentiment', 'N/A') if isinstance(r, dict) else type(r) for r in res]}. "
+                                f"INVESTIGATE: LLM may be generating contradictory reports."
+                            )
+                        elif len(res) == 0:
+                            logger.warning(f"Agent {key} returned empty list.")
+                            res = {}
+                        else:
+                            logger.warning(f"Agent {key} returned single-element list instead of dict.")
+
+                        res = res[0] if res else {}
+
                     if isinstance(res, Exception):
                         logger.error(f"Agent {key} failed for {contract_name}: {res}")
                         reports[key] = "Data Unavailable"
                     else:
                         reports[key] = res
+
+                # --- METRICS LOGGING ---
+                successful_agents = sum(1 for r in reports.values() if isinstance(r, dict) and r.get('confidence', 0) != 0.5)
+                total_agents = len(reports)
+                logger.info(f"Agent research complete for {contract_name}: {successful_agents}/{total_agents} returned non-default results")
+
+                if successful_agents < total_agents * 0.5:
+                    logger.warning(f"⚠️ LOW AGENT YIELD for {contract_name}: Only {successful_agents}/{total_agents} agents returned meaningful data")
 
                 # --- SAVE STATE (For Sentinel Context) ---
                 # DISABLED: Moved to post-gather consolidation to prevent race condition

@@ -27,7 +27,7 @@ from trading_bot.tms import TransactiveMemory
 from trading_bot.signal_generator import generate_signals
 from trading_bot.strategy import define_directional_strategy, define_volatility_strategy, validate_iron_condor_risk
 from trading_bot.utils import log_trade_to_ledger, log_order_event, configure_market_data_type, is_market_open
-from trading_bot.compliance import ComplianceGuardian
+from trading_bot.compliance import ComplianceGuardian, calculate_spread_max_risk
 from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.position_sizer import DynamicPositionSizer
 
@@ -35,9 +35,20 @@ from trading_bot.position_sizer import DynamicPositionSizer
 # Structure: [(contract, order, decision_data), ...]
 ORDER_QUEUE = []
 
+# Module-level lock for capital tracking
+_CAPITAL_LOCK = asyncio.Lock()
+
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("OrderManager")
+
+
+def _describe_bag(contract) -> str:
+    """Generate a readable symbol for BAG contracts."""
+    from ib_insync import Bag
+    if isinstance(contract, Bag) and contract.comboLegs:
+        return f"KC-{len(contract.comboLegs)}LEG-BAG"
+    return contract.symbol or "UNKNOWN"
 
 
 async def generate_and_execute_orders(config: dict):
@@ -114,6 +125,14 @@ async def generate_and_queue_orders(config: dict):
             net_liq_tag = next((v for v in account_summary if v.tag == 'NetLiquidation' and v.currency == 'USD'), None)
             account_value = float(net_liq_tag.value) if net_liq_tag else 0.0
             logger.info(f"Account Value for Sizing: ${account_value:,.2f}")
+
+            # Track committed capital to prevent over-leveraging
+            committed_capital = 0.0
+
+            # === FLIGHT DIRECTOR WARNING ===
+            # DO NOT PARALLELIZE THIS LOOP WITH asyncio.gather()
+            # The committed_capital tracking requires sequential execution.
+            # If parallelization is ever needed, use _CAPITAL_LOCK.
 
             for signal in signals:
                 # Skip order generation for NEUTRAL signals
@@ -200,39 +219,59 @@ async def generate_and_queue_orders(config: dict):
                 strategy_def = define_func(config, signal, chain, price, future)
 
                 if strategy_def:
-                    # Calculate Dynamic Quantity
-                    vol_sent = signal.get('volatility_sentiment', 'NEUTRAL')
-                    qty = await sizer.calculate_size(ib, signal, vol_sent, account_value)
-                    strategy_def['quantity'] = qty
+                    async with _CAPITAL_LOCK:
+                        # Calculate available capital after commitments
+                        available_capital = account_value - committed_capital
 
-                    # --- Iron Condor Risk Validation ---
-                    if signal['prediction_type'] == 'VOLATILITY' and signal.get('level') == 'LOW': # Iron Condor
-                        # Calculate Max Risk (Conservative: Width of Wings * Multiplier * Qty)
-                        # legs_def: [(right, action, strike), ...]
-                        # Puts: Buy lp, Sell sp. Calls: Sell sc, Buy lc.
-                        legs = strategy_def.get('legs_def', [])
-                        if len(legs) == 4:
-                            # Assume sorted or find by action/right
-                            puts = sorted([l for l in legs if l[0] == 'P'], key=lambda x: x[2]) # [lp, sp]
-                            calls = sorted([l for l in legs if l[0] == 'C'], key=lambda x: x[2]) # [sc, lc]
+                        # Size the position based on remaining capital
+                        vol_sent = signal.get('volatility_sentiment', 'NEUTRAL')
+                        qty = await sizer.calculate_size(ib, signal, vol_sent, available_capital)
 
-                            width = 0
-                            if len(puts) == 2: width = max(width, abs(puts[1][2] - puts[0][2]))
-                            if len(calls) == 2: width = max(width, abs(calls[1][2] - calls[0][2]))
+                        if qty <= 0:
+                            logger.warning(f"Position sizer returned qty=0 for {signal.get('contract_month')}. Skipping.")
+                            continue
 
-                            multiplier = float(future.multiplier) if future.multiplier else 37500.0 # Default KC
-                            max_loss = width * multiplier * qty
+                        strategy_def['quantity'] = qty
 
-                            if not validate_iron_condor_risk(max_loss, account_value, config.get('catastrophe_protection', {}).get('iron_condor_max_risk_pct_of_equity', 0.02)):
-                                logger.warning(f"Skipping Iron Condor for {future.localSymbol} due to excessive risk.")
-                                continue
+                        # --- Iron Condor Risk Validation ---
+                        if signal['prediction_type'] == 'VOLATILITY' and signal.get('level') == 'LOW': # Iron Condor
+                            # Calculate Max Risk (Conservative: Width of Wings * Multiplier * Qty)
+                            # legs_def: [(right, action, strike), ...]
+                            # Puts: Buy lp, Sell sp. Calls: Sell sc, Buy lc.
+                            legs = strategy_def.get('legs_def', [])
+                            if len(legs) == 4:
+                                # Assume sorted or find by action/right
+                                puts = sorted([l for l in legs if l[0] == 'P'], key=lambda x: x[2]) # [lp, sp]
+                                calls = sorted([l for l in legs if l[0] == 'C'], key=lambda x: x[2]) # [sc, lc]
 
-                    order_objects = await create_combo_order_object(ib, config, strategy_def)
-                    if order_objects:
-                        contract, order = order_objects
-                        # Store signal data with the order
-                        ORDER_QUEUE.append((contract, order, signal))
-                        logger.info(f"Successfully queued order for {future.localSymbol}.")
+                                width = 0
+                                if len(puts) == 2: width = max(width, abs(puts[1][2] - puts[0][2]))
+                                if len(calls) == 2: width = max(width, abs(calls[1][2] - calls[0][2]))
+
+                                multiplier = float(future.multiplier) if future.multiplier else 37500.0 # Default KC
+                                max_loss = width * multiplier * qty
+
+                                if not validate_iron_condor_risk(max_loss, account_value, config.get('catastrophe_protection', {}).get('iron_condor_max_risk_pct_of_equity', 0.02)):
+                                    logger.warning(f"Skipping Iron Condor for {future.localSymbol} due to excessive risk.")
+                                    continue
+
+                        order_objects = await create_combo_order_object(ib, config, strategy_def)
+                        if order_objects:
+                            contract, order = order_objects
+
+                            # Calculate and track committed capital
+                            estimated_risk = await calculate_spread_max_risk(ib, contract, order, config)
+                            committed_capital += estimated_risk
+
+                            logger.info(
+                                f"Capital tracking: Committed ${committed_capital:,.2f} | "
+                                f"Remaining ${account_value - committed_capital:,.2f} | "
+                                f"This order: ${estimated_risk:,.2f}"
+                            )
+
+                            # Store signal data with the order
+                            ORDER_QUEUE.append((contract, order, signal))
+                            logger.info(f"Successfully queued order for {future.localSymbol}.")
         except Exception as e:
             logger.error(f"Error in order generation block: {e}")
             raise e
@@ -634,12 +673,13 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                     logger.error(f"Failed to calculate trend for {contract.localSymbol}: {e}")
 
                 order_context = {
-                    'symbol': contract.localSymbol,
+                    'symbol': contract.localSymbol if contract.localSymbol else _describe_bag(contract),
                     'bid_ask_spread': spread_width * 100 if contract.secType == 'BAG' else spread_width,
                     'total_position_count': current_position_count,
                     'market_trend_pct': trend_pct,
                     'ib': ib,
                     'contract': contract,
+                    'order_object': order,  # NEW: Pass full order for risk calculation
                     'order_quantity': order.totalQuantity,
                     'account_equity': current_equity
                 }

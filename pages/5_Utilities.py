@@ -12,6 +12,7 @@ import socket
 import json
 import asyncio
 import traceback
+import logging
 from datetime import datetime, timezone
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -216,18 +217,36 @@ with manual_cols[0]:
                     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                     from trading_bot.order_manager import generate_and_execute_orders
 
+                    # === FLIGHT DIRECTOR MANDATE: Connection Cleanup ===
+                    async def run_with_cleanup():
+                        """Run order generation with guaranteed connection cleanup."""
+                        try:
+                            await generate_and_execute_orders(config)
+                        finally:
+                            # Ensure pool connections are released before loop closes
+                            try:
+                                from trading_bot.connection_pool import IBConnectionPool
+                                logger = logging.getLogger("Utilities")
+                                await IBConnectionPool.release_all()
+                                logger.info("Connection pool released successfully")
+                            except Exception as e:
+                                print(f"Error releasing connection pool: {e}")
+
                     # Run the async function
                     try:
-                        asyncio.run(generate_and_execute_orders(config))
+                        asyncio.run(run_with_cleanup())
                         st.success("✅ Order generation and execution completed!")
                         st.info("💡 Check Cockpit page for new positions and Council page for decision details")
                     except RuntimeError:
                         # If loop is already running
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
-                        loop.run_until_complete(generate_and_execute_orders(config))
-                        st.success("✅ Order generation and execution completed!")
-                        st.info("💡 Check Cockpit page for new positions and Council page for decision details")
+                        try:
+                            loop.run_until_complete(run_with_cleanup())
+                            st.success("✅ Order generation and execution completed!")
+                            st.info("💡 Check Cockpit page for new positions and Council page for decision details")
+                        finally:
+                            loop.close()
 
                 except Exception as e:
                     st.error(f"❌ Order generation failed: {str(e)}")
