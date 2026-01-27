@@ -826,7 +826,7 @@ if price_df is not None and not price_df.empty:
 
     # 1. Candlestick (Row 1)
     fig.add_trace(go.Candlestick(
-        x=price_df.index,
+        x=price_df.index.strftime('%Y-%m-%d %H:%M'),  # Convert to string for category axis
         open=price_df['Open'],
         high=price_df['High'],
         low=price_df['Low'],
@@ -876,7 +876,7 @@ if price_df is not None and not price_df.empty:
     # 4. Volume (Row 2 - SECONDARY Y-AXIS on RIGHT)
     if 'Volume' in price_df.columns:
         fig.add_trace(go.Bar(
-            x=price_df.index,
+            x=price_df.index.strftime('%Y-%m-%d %H:%M'),
             y=price_df['Volume'],
             marker_color='rgba(100, 150, 255, 0.4)',  # Slightly more visible
             name='Volume',
