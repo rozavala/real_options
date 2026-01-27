@@ -962,8 +962,20 @@ if price_df is not None and not price_df.empty:
         row=2, col=1
     )
 
-    # Row 1 Y-axis
-    fig.update_yaxes(title_text="Price (¢/lb)", row=1, col=1)
+    # Row 1 Y-axis - CRITICAL: Set explicit range to prevent candlestick disappearing on short lookbacks
+    if not price_df.empty:
+        y_min = price_df['Low'].min()
+        y_max = price_df['High'].max()
+        y_range = y_max - y_min
+        # Add 5% buffer on each side, with minimum buffer to prevent zero-range issues
+        y_buffer = max(y_range * 0.05, 0.5)
+        fig.update_yaxes(
+            title_text="Price (¢/lb)",
+            range=[y_min - y_buffer, y_max + y_buffer],
+            row=1, col=1
+        )
+    else:
+        fig.update_yaxes(title_text="Price (¢/lb)", row=1, col=1)
 
     # Row 2 Primary Y-axis (Confidence) - LEFT
     fig.update_yaxes(
