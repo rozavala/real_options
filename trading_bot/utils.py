@@ -23,25 +23,6 @@ from trading_bot.logging_config import setup_logging
 # --- Logging Setup ---
 setup_logging()
 
-_yf_cache_session = None
-
-def get_cached_yf_session():
-    """
-    DEPRECATED: YFinance v0.2.66+ uses curl_cffi which is incompatible
-    with requests_cache sessions. This function is no longer used.
-
-    TODO: Remove in next cleanup sprint.
-    """
-    # FIXME: Remove this import when function is deleted
-    try:
-        from requests_cache import CachedSession
-    except ImportError:
-        pass
-
-    logging.warning("get_cached_yf_session is deprecated and has no effect")
-    return None
-
-
 def get_market_data_cached(tickers: list, period: str = "1d"):
     """
     Fetch market data from YFinance.
@@ -58,17 +39,12 @@ def get_market_data_cached(tickers: list, period: str = "1d"):
     try:
         import yfinance as yf
 
-        # REMOVED: session injection (incompatible with curl_cffi in yfinance 0.2.66+)
-        # session = get_cached_yf_session()
-
         download_kwargs = {
             'tickers': tickers,
             'period': period,
             'progress': False,
             'threads': False
         }
-
-        # REMOVED: if session is not None: download_kwargs['session'] = session
 
         data = yf.download(**download_kwargs)
 

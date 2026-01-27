@@ -7,6 +7,126 @@ from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole
 
 logger = logging.getLogger(__name__)
 
+# Module-level cache for ContractDetails (prevents redundant API calls during multi-signal bursts)
+_CONTRACT_DETAILS_CACHE: dict = {}
+
+async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
+    """
+    Calculate the maximum capital at risk for an option spread.
+
+    ARCHITECTURAL MANDATE (Flight Director):
+    - NO PROXIES for wing width calculation
+    - Must fetch actual ContractDetails for each leg
+    - Calculate true strike differences
+    - Use asyncio.gather() for parallel fetching (latency mitigation)
+    - Cache ContractDetails to prevent redundant API calls
+
+    ⚠️ SERIALIZATION WARNING (Flight Director Final Review):
+    The asyncio.gather() below is ONLY safe because:
+    1. The order_manager loop is sequential (enforced by _CAPITAL_LOCK)
+    2. This function is called one order at a time
+    DO NOT call this function concurrently from multiple tasks on the same `ib` connection.
+
+    For DEBIT spreads (Bull Call, Bear Put): Max Risk = Premium Paid
+    For CREDIT spreads (Iron Condor, Credit Spread): Max Risk = Wing Width - Credit
+
+    Returns the dollar value of maximum loss.
+    """
+    from ib_insync import Bag, Contract
+
+    multiplier = 37500  # Coffee options multiplier (lbs per contract)
+    qty = order.totalQuantity
+    net_price = abs(order.lmtPrice)  # In cents/lb for KC options
+
+    # For non-BAG contracts, max risk = premium paid
+    if not isinstance(contract, Bag) or not contract.comboLegs:
+        return qty * net_price * multiplier
+
+    # === FLIGHT DIRECTOR MANDATE: Calculate TRUE wing width from actual strikes ===
+    try:
+        # === LATENCY MITIGATION: Parallel fetch with caching ===
+        async def get_leg_details(leg):
+            """Fetch leg details with caching."""
+            cache_key = leg.conId
+            if cache_key in _CONTRACT_DETAILS_CACHE:
+                logger.debug(f"Cache hit for conId {cache_key}")
+                return _CONTRACT_DETAILS_CACHE[cache_key]
+
+            details = await ib.reqContractDetailsAsync(Contract(conId=leg.conId))
+            if details:
+                leg_contract = details[0].contract
+                result = {
+                    'conId': leg.conId,
+                    'strike': leg_contract.strike,
+                    'right': leg_contract.right,  # 'C' or 'P'
+                    'action': leg.action  # 'BUY' or 'SELL'
+                }
+                _CONTRACT_DETAILS_CACHE[cache_key] = result
+                return result
+            return None
+
+        # Fetch ALL legs in parallel using asyncio.gather (Flight Director mandate)
+        leg_details_raw = await asyncio.gather(
+            *[get_leg_details(leg) for leg in contract.comboLegs],
+            return_exceptions=True
+        )
+
+        # Filter out failures
+        leg_details = [ld for ld in leg_details_raw if ld and not isinstance(ld, Exception)]
+
+        if len(leg_details) != len(contract.comboLegs):
+            failed_count = len(contract.comboLegs) - len(leg_details)
+            logger.warning(f"Could not resolve {failed_count} leg(s). Using premium-based fallback.")
+            return qty * net_price * multiplier * 2  # Conservative fallback
+
+        # Separate legs by right (Calls vs Puts)
+        calls = [l for l in leg_details if l['right'] == 'C']
+        puts = [l for l in leg_details if l['right'] == 'P']
+
+        # Calculate wing width for each side
+        call_width = 0.0
+        put_width = 0.0
+
+        if len(calls) >= 2:
+            call_strikes = sorted([l['strike'] for l in calls])
+            call_width = call_strikes[-1] - call_strikes[0]
+            logger.debug(f"Call wing width: {call_width} (strikes: {call_strikes})")
+
+        if len(puts) >= 2:
+            put_strikes = sorted([l['strike'] for l in puts])
+            put_width = put_strikes[-1] - put_strikes[0]
+            logger.debug(f"Put wing width: {put_width} (strikes: {put_strikes})")
+
+        # Use the maximum wing width (for Iron Condors, both should be equal)
+        wing_width = max(call_width, put_width)
+
+        if wing_width == 0:
+            # Straddle or single-strike strategy - risk is premium paid
+            logger.info(f"Zero wing width detected (straddle?). Max risk = premium.")
+            return qty * net_price * multiplier
+
+        # Determine if DEBIT or CREDIT spread based on order action
+        if order.action == 'BUY':
+            # DEBIT SPREAD: Max loss = premium paid
+            max_risk = qty * net_price * multiplier
+            logger.info(f"DEBIT spread: Max risk = ${max_risk:,.2f} (premium paid)")
+        else:
+            # CREDIT SPREAD: Max loss = (wing_width - credit) * multiplier
+            # wing_width is in price points (cents/lb for coffee)
+            max_risk = qty * (wing_width - net_price) * multiplier
+            # Floor at zero (can't have negative risk)
+            max_risk = max(max_risk, 0)
+            logger.info(f"CREDIT spread: Wing width={wing_width}, Credit={net_price}, Max risk=${max_risk:,.2f}")
+
+        return max_risk
+
+    except Exception as e:
+        logger.error(f"Error calculating true wing width: {e}. Using conservative fallback.")
+        # Conservative fallback: 2x premium for credit spreads, 1x for debit
+        if order.action == 'SELL':
+            return qty * net_price * multiplier * 3  # Very conservative for credits
+        return qty * net_price * multiplier
+
 class ComplianceGuardian:
     """Constitutional AI-based compliance checker with veto power."""
 
@@ -203,11 +323,28 @@ class ComplianceGuardian:
             return False, f"REJECTED - Article II: Order qty {qty} exceeds {self.limits['max_volume_pct']:.0%} of volume ({volume_15m:.0f})."
 
         # Prepare Review Packet
+        # Calculate actual capital at risk for spreads (not fictitious futures notional)
+        order_obj = order_context.get('order_object')
+        ib = order_context.get('ib')
+
+        if order_obj and ib:
+            actual_capital_at_risk = await calculate_spread_max_risk(
+                ib,
+                contract,
+                order_obj,
+                self.config
+            )
+        else:
+            # Fallback: Use conservative estimate with warning
+            actual_capital_at_risk = qty * 37500 * abs(order_context.get('price', 0.01)) * 2
+            logger.warning(f"No order object or IB connection passed to compliance - using conservative fallback")
+
         review_packet = {
             "proposed_order": {
                 "symbol": symbol,
                 "quantity": qty,
-                "estimated_notional": qty * 37500 * (order_context.get('price', 2.0)), # Estimate
+                "max_capital_at_risk": actual_capital_at_risk,
+                "limit_price": order_context.get('price', 0.0),
             },
             "market_data": {
                 "volume_15min_total": volume_15m,
@@ -220,6 +357,24 @@ class ComplianceGuardian:
             }
         }
 
+        # --- DETERMINISTIC PRE-CHECK (Skip LLM for obvious violations) ---
+        max_allowed = equity * self.limits['max_position_pct']
+
+        # === FLIGHT DIRECTOR MANDATE: Regime Incompatibility Warning ===
+        capital_consumption_pct = actual_capital_at_risk / equity if equity > 0 else 1.0
+        if capital_consumption_pct > 0.25:
+            logger.warning(
+                f"⚠️ REGIME INCOMPATIBILITY WARNING: Trade for {symbol} consumes "
+                f"{capital_consumption_pct:.1%} of equity (${actual_capital_at_risk:,.2f} / ${equity:,.2f}). "
+                f"Account may be under-capitalized for this strategy."
+            )
+
+        if actual_capital_at_risk > max_allowed:
+            return False, (
+                f"REJECTED - Article I: Max capital at risk (${actual_capital_at_risk:,.2f}) "
+                f"exceeds {self.limits['max_position_pct']:.0%} of equity (${max_allowed:,.2f})."
+            )
+
         prompt = f"""
         You are the Chief Compliance Officer. Your ONLY concern is capital preservation.
 
@@ -231,7 +386,9 @@ class ComplianceGuardian:
 
         TASK: Review this order against the Constitution.
         1. Check Article II: Is Quantity ({qty}) > {self.limits['max_volume_pct']:.0%} of Volume ({volume_15m})?
-        2. Check Article I: Is Notional > {self.limits['max_position_pct']:.0%} of Equity ({equity})?
+        2. Check Article I: Is Max Capital at Risk (${actual_capital_at_risk:,.2f}) > {self.limits['max_position_pct']:.0%} of Equity (${equity:,.2f})?
+           - Maximum Allowed: ${equity * self.limits['max_position_pct']:,.2f}
+           - Capital Consumption: {capital_consumption_pct:.1%} of account
 
         OUTPUT JSON: {{"approved": bool, "reason": string}}
         """
@@ -280,7 +437,11 @@ class ComplianceGuardian:
             return True, "Approved"
 
         except json.JSONDecodeError as e:
-            logger.error(f"Compliance Guardian JSON parse failed: {e}. Raw response: {response[:500] if response else 'None'}")
+            logger.error(
+                f"Compliance Guardian JSON parse failed for {symbol}. "
+                f"Error at position {e.pos}: {e.msg}. "
+                f"Response preview: {response[:500] if response else 'None'}..."
+            )
             return False, f"Compliance Error: Invalid JSON response (fail-closed)"
         except Exception as e:
             logger.error(f"Compliance Guardian failed: {e}", exc_info=True)
