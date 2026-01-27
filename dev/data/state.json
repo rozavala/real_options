@@ -3,16 +3,6 @@
     "events": {
       "data": [
         {
-          "source": "WeatherSentinel",
-          "reason": "Drought Risk in Honduras Copan: 10 days with < 5.0mm rain",
-          "payload": {
-            "location": "Honduras Copan",
-            "type": "DROUGHT",
-            "days": 10
-          },
-          "timestamp": "2026-01-27T10:56:46.785119+00:00"
-        },
-        {
           "source": "XSentimentSentinel",
           "reason": "UNUSUAL X ACTIVITY SPIKE (18 posts, 3.0x baseline)",
           "payload": {
@@ -146,9 +136,51 @@
             ]
           },
           "timestamp": "2026-01-27T16:58:50.609206+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (14 posts, 3.0x baseline)",
+          "payload": {
+            "sentiment_score": 4.7,
+            "confidence": 0.2,
+            "top_themes": [
+              "historic highs",
+              "price retreat",
+              "supercycle pause",
+              "Arabica harvest stable/slightly larger",
+              "Robusta yields declining"
+            ],
+            "post_volume": 14,
+            "volume_baseline": 3.8,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              },
+              {
+                "query": "arabica prices",
+                "score": 5.0,
+                "volume": 1,
+                "confidence": 0.2,
+                "top_post": "Coffee prices hit historic highs... Arabica soared past $4.40/lb before retreating to ~$3.56/lb today - still up 9.5% YoY. Is the supercycle over...?"
+              },
+              {
+                "query": "Brazil coffee harvest",
+                "score": 4.0,
+                "volume": 2,
+                "confidence": 0.3,
+                "top_post": "Arabica coffee growers in Brazil expect this year's harvest to match or slightly exceed 2025's crop, while canephora growers..."
+              }
+            ]
+          },
+          "timestamp": "2026-01-27T18:34:53.587156+00:00"
         }
       ],
-      "timestamp": 1769533130.6094258
+      "timestamp": 1769538893.5873766
     }
   },
   "reports": {
@@ -162,11 +194,11 @@
     },
     "macro": {
       "data": {
-        "data": "[EVIDENCE]: [2026-01-27] The USD/BRL exchange rate is trading around 5.25, reflecting a strengthening of the Brazilian Real. (source: Wise / Trading Economics), [2026-01-27] Copom is expected to keep the Selic rate unchanged at 15.00% in its upcoming Wednesday meeting. (source: StoneX / MNI Market News), [2026-01-26] Soybean prices paid to farmers dropped 0.9% recently, and the USD fell 1.5% against the BRL, pressuring local values. (source: ADMIS / Cepea)\n[ANALYSIS]: The strengthening of the Brazilian Real to around 5.25 discourages farmer selling due to the reduced profitability of exporting commodities priced in USD. The unchanged Selic rate at 15.00% sustains a strong BRL as carry trade remains attractive. This reduced incentive for farmer selling points to potential constraints in coffee supply, as farmers may hold off on selling at these currency levels. With the expectation of possible Selic rate cuts only starting from March, the current environment suggests a BULLISH sentiment for coffee prices due to supply constraints stemming from delayed farmer sales.\n[CONFIDENCE]: 0.9\n[SENTIMENT TAG]: [SENTIMENT: BULLISH]",
-        "confidence": 0.9,
-        "sentiment": "BULLISH"
+        "data": "[EVIDENCE]: [2026-01-27] Arabica coffee futures (March '26) traded around $3.61/lb, rebounding slightly but remaining well below the 2025 peak of >$4.40/lb. (source: Trading Economics / Barchart); [2026-01-27] Sucden forecasts Brazil's 2026/27 Arabica production at 47.5 million bags (vs 39m in 2025/26), though local agronomists expect output only 'in line with last year'. (source: ADM Investor Services / Reuters); [2026-01-26] Brazil's December Robusta coffee exports fell 61% year-over-year to 222,147 bags. (source: Barchart / Cecafe); [2026-01-27] The Brazilian Real rallied to a 20-month high, discouraging export sales and supporting global coffee prices. (source: Nasdaq / Barchart); UNUSUAL X ACTIVITY SPIKE with themes such as 'historic highs', 'price retreat', 'supercycle pause', 'Arabica harvest stable/slightly larger', 'Robusta yields declining'.\n[ANALYSIS]: The initial analysis contains elements of confirmation bias, as it selectively highlights a bullish outlook based on the Brazilian Real's strength and the forecasted Arabica production increase, while less emphasis is placed on local agronomists' conservative production estimates. Moreover, there is some recency bias through focusing heavily on near-term price changes without considering longer-term trends. The evidence is well-cited, specifying sources for each point. However, the sentiment tag as 'BULLISH' is overstated given the mixed signals from both the Arabica and Robusta markets. The analysis should present a more balanced view, acknowledging the potential for stable-to-slightly increased Arabica production and significant Robusta export declines, which may lead to a cautious outlook on price stability or growth.\n[CONFIDENCE]: 0.6\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
+        "confidence": 0.6,
+        "sentiment": "NEUTRAL"
       },
-      "timestamp": 1769533950.4492364
+      "timestamp": 1769538957.0616112
     },
     "geopolitical": {
       "data": {
@@ -297,7 +329,7 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1769533469.2059855
+      "timestamp": 1769538893.5805798
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",

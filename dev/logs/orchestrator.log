@@ -56,3 +56,159 @@
 2026-01-27 18:20:00,365 - OrderManager - INFO - No open positions found in the IB account. Nothing to close.
 2026-01-27 18:20:00,694 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
 2026-01-27 18:20:00,697 - Orchestrator - INFO - Next task 'cancel_and_stop_monitoring' scheduled for 2026-01-27 18:35:00 UTC. Waiting for 0.25 hours.
+2026-01-27 18:34:43,328 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:34:43,413 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
+2026-01-27 18:34:43,741 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'coffee futures'
+2026-01-27 18:34:44,983 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:34:45,007 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:34:45,066 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
+2026-01-27 18:34:45,087 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
+2026-01-27 18:34:45,205 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:34:45,219 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'arabica prices'
+2026-01-27 18:34:45,267 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'Brazil coffee harvest'
+2026-01-27 18:34:47,367 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:34:47,471 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
+2026-01-27 18:34:47,781 - trading_bot.sentinels - INFO - Broad search returned 10 posts for 'Colombia coffee'
+2026-01-27 18:34:48,908 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:34:48,924 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:34:48,995 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
+2026-01-27 18:34:49,301 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'US coffee tariffs'
+2026-01-27 18:34:50,356 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:34:53,353 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:34:53,578 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:34:53,584 - trading_bot.sentinels - WARNING - X volume spike: 14 vs mean 4 (>3.0x)
+2026-01-27 18:34:53,584 - trading_bot.sentinels - INFO - X volume anomaly: z-score=2.6
+2026-01-27 18:34:53,584 - trading_bot.sentinels - WARNING - 🚨 X SENTINEL TRIGGERED: UNUSUAL X ACTIVITY SPIKE (14 posts, 3.0x baseline)
+2026-01-27 18:34:53,590 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
+2026-01-27 18:34:53,590 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by XSentimentSentinel: UNUSUAL X ACTIVITY SPIKE (14 posts, 3.0x baseline)
+2026-01-27 18:34:53,910 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-27 18:34:53,932 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-01-27 18:34:54,028 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-27 18:34:54,166 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-27 18:34:54,166 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'anthropic', 'openai', 'xai']
+2026-01-27 18:34:54,166 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'anthropic', 'openai', 'xai'], 'diversity_score': 1.0}
+2026-01-27 18:34:54,171 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-27 18:34:54,171 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-01-27 18:34:54,171 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-01-27 18:34:54,232 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-01-27 18:34:54,233 - Orchestrator - INFO - Targeting contract: KCH6 (202603)
+2026-01-27 18:34:58,352 - trading_bot.agents - INFO - Running Specialized Cycle triggered by XSentimentSentinel...
+2026-01-27 18:34:58,353 - trading_bot.agents - INFO - Routing to macro (Reason: Default routing)
+2026-01-27 18:34:58,353 - trading_bot.agents - INFO - Waking up macro...
+2026-01-27 18:34:58,708 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-27 18:34:58,709 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-27 18:34:58,709 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-27 18:35:00,003 - Orchestrator - INFO - --- Running scheduled task: cancel_and_stop_monitoring ---
+2026-01-27 18:35:00,004 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
+2026-01-27 18:35:00,005 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
+2026-01-27 18:35:00,007 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-27 18:35:00,007 - OrderManager - INFO - Connected to IB for canceling open orders.
+2026-01-27 18:35:00,010 - OrderManager - INFO - No open orders found to cancel.
+2026-01-27 18:35:00,010 - Orchestrator - WARNING - Monitoring process is not running or has already terminated.
+2026-01-27 18:35:00,010 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
+2026-01-27 18:35:00,010 - Orchestrator - INFO - Next task 'log_equity_snapshot' scheduled for 2026-01-27 18:55:00 UTC. Waiting for 0.33 hours.
+2026-01-27 18:35:38,352 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:35:38,722 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-27 18:35:38,722 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: ["[2026-...' cues -> ['geopolitical', 'fundamentalist']
+2026-01-27 18:35:57,045 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:35:57,179 - trading_bot.weighted_voting - INFO - Market Regime Detected: TRENDING
+2026-01-27 18:35:57,192 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.50 -> 0.50
+2026-01-27 18:35:57,193 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=TRENDING
+2026-01-27 18:35:57,193 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-27 18:35:57,193 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.6,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "latest_ml_signals",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  }
+]
+2026-01-27 18:36:15,771 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-27 18:36:27,861 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:36:35,164 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-27 18:36:35,170 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.7)
+2026-01-27 18:36:35,172 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-01-27 18:36:35,173 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-27 18:55:00,002 - Orchestrator - INFO - --- Running scheduled task: log_equity_snapshot ---
+2026-01-27 18:55:00,002 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
+2026-01-27 18:55:00,003 - EquityLogger - INFO - Connecting to IB at 127.0.0.1:7497 with clientId 7133...
+2026-01-27 18:55:00,117 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-27 18:55:00,311 - EquityLogger - INFO - Fetched NetLiquidation: $50,000.00
+2026-01-27 18:55:00,323 - EquityLogger - INFO - Updated data/daily_equity.csv with value $50,000.00
+2026-01-27 18:55:03,327 - EquityLogger - INFO - Disconnected from IB.
+2026-01-27 18:55:03,328 - Orchestrator - INFO - Next task 'reconcile_and_analyze' scheduled for 2026-01-27 19:05:00 UTC. Waiting for 0.17 hours.
