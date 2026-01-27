@@ -632,7 +632,7 @@ with st.spinner(f"Loading {get_contract_display_name(selected_contract)} data...
 
 if price_df is not None and not price_df.empty:
 
-    # 1. Filter Date Range (UPDATED TO USE TRADING DAYS)
+    # 1. Filter Date Range (UPDATED & FIXED)
     current_time_et = datetime.now().astimezone(pytz.timezone('America/New_York'))
     
     # Initialize US Holidays
@@ -648,11 +648,14 @@ if price_df is not None and not price_df.empty:
         if cutoff_dt.weekday() < 5 and cutoff_dt.date() not in us_holidays:
             days_counted += 1
             
-    # Apply the date filter with a small buffer
-    price_df = price_df[price_df.index >= (cutoff_dt - timedelta(hours=4))]
+    # CRITICAL FIX: Force the start time to Midnight (00:00:00)
+    # This prevents the filter from clipping the Morning Session of the first day.
+    cutoff_dt = cutoff_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Apply the filter (>= Midnight captures the whole day)
+    price_df = price_df[price_df.index >= cutoff_dt]
 
-    # 2. Remove non-trading days (weekends/holidays) - NEW
-    # We define the variable here so the subsequent check works
+    # 2. Remove non-trading days (weekends/holidays)
     pre_filter_count = len(price_df)
     price_df = filter_non_trading_days(price_df)
 
@@ -662,9 +665,9 @@ if price_df is not None and not price_df.empty:
         removed_pct = (removed_count / pre_filter_count) * 100
         st.caption(f"🗓️ Filtered {removed_count} candles ({removed_pct:.1f}%) - weekends/holidays/invalid data")
 
-    # OPTIONAL: Warn if we ended up with no data after filtering
+    # Warn if we ended up with no data after filtering
     if price_df.empty:
-        st.warning(f"⚠️ No trading data available for the selected {lookback_days}-day lookback period.")
+        st.warning(f"⚠️ No trading data available for the selected {lookback_days}-day lookback period. Try increasing the lookback.")
 
     if len(price_df) < pre_filter_count:
         removed_count = pre_filter_count - len(price_df)
@@ -1015,6 +1018,30 @@ if price_df is not None and not price_df.empty:
             if graded > 0:
                 win_rate = wins / graded * 100
                 st.caption(f"📈 Win Rate: **{win_rate:.1f}%** ({wins}W / {losses}L from {graded} graded signals)")
+
+    # === DOWNLOAD SECTION ===
+    st.markdown("---")
+    with st.expander("💾 Download Chart Data"):
+        # Prepare data for download
+        download_df = price_df.copy()
+        download_df.index.name = "Date_ET"
+        
+        # Merge signal info if it exists and matches timestamps
+        if 'plot_df' in locals() and not plot_df.empty:
+            # Create a simplified signal frame
+            sig_export = plot_df.set_index('plot_x')[['plot_label', 'plot_confidence', 'strategy_type', 'outcome']]
+            # Merge left to keep all price rows
+            download_df = download_df.join(sig_export, how='left')
+        
+        # Convert to CSV
+        csv = download_df.to_csv().encode('utf-8')
+        
+        st.download_button(
+            label="Download Data as CSV",
+            data=csv,
+            file_name=f"coffee_data_{lookback_days}d_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+            mime='text/csv',
+        )
 
     # === RAW SIGNAL LOG ===
     with st.expander("📝 Raw Signal Log", expanded=False):
