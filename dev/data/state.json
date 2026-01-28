@@ -3,15 +3,6 @@
     "events": {
       "data": [
         {
-          "source": "PriceSentinel",
-          "reason": "Price moved 1.58% in last hour (Threshold: 1.5%)",
-          "payload": {
-            "contract": "KCH6",
-            "change": 1.5848741832337123
-          },
-          "timestamp": "2026-01-27T15:55:12.498879+00:00"
-        },
-        {
           "source": "XSentimentSentinel",
           "reason": "UNUSUAL X ACTIVITY SPIKE (19 posts, 3.0x baseline)",
           "payload": {
@@ -178,9 +169,51 @@
             ]
           },
           "timestamp": "2026-01-28T11:05:21.526155+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (11 posts, 3.0x baseline)",
+          "payload": {
+            "sentiment_score": 4.75,
+            "confidence": 0.16,
+            "top_themes": [
+              "Historic price highs",
+              "Recent retreat",
+              "Ongoing YoY gains & supercycle debate",
+              "Arabica harvest steady/higher",
+              "Canephora yields declining"
+            ],
+            "post_volume": 11,
+            "volume_baseline": 1.8,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              },
+              {
+                "query": "arabica prices",
+                "score": 6.0,
+                "volume": 1,
+                "confidence": 0.2,
+                "top_post": "Coffee prices hit historic highs... Arabica soared past $4.40/lb before retreating to ~$3.56/lb today - still up 9.5% YoY. Is the supercycle over...?"
+              },
+              {
+                "query": "Brazil coffee harvest",
+                "score": 3.0,
+                "volume": 2,
+                "confidence": 0.2,
+                "top_post": "Arabica coffee growers in Brazil expect this year's harvest to match or slightly exceed 2025's crop, while canephora growers in Espirito Santo state forecast yields will fall..."
+              }
+            ]
+          },
+          "timestamp": "2026-01-28T12:35:43.524956+00:00"
         }
       ],
-      "timestamp": 1769598321.5264072
+      "timestamp": 1769603743.525316
     }
   },
   "reports": {
@@ -194,11 +227,11 @@
     },
     "macro": {
       "data": {
-        "data": "[EVIDENCE]: [2026-01-28] Arabica coffee futures rose to 370.14 USd/Lbs, up 0.14% from the previous day. (source: Trading Economics)\n[ANALYSIS]: The increase in Arabica coffee futures to 370.14 USd/Lbs, marking a 0.14% rise from the previous day, suggests a slight positive movement in the market. Given the modest change, it indicates that investor sentiment regarding the coffee market is stable but leaning slightly towards the positive side. However, this single data point does not provide enough context on broader market trends or underlying factors causing the rise. Therefore, while the sentiment is slightly positive, it should be reviewed in conjunction with additional market data to determine if this is part of a larger trend.\n[CONFIDENCE]: 0.7\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
-        "confidence": 0.7,
+        "data": "[EVIDENCE]: [EVIDENCE]: [2026-01-28] Arabica coffee futures traded around $3.70/lb, up ~5% over the past month. (source: Trading Economics)\n[ANALYSIS]: The initial analysis considered multiple factors influencing coffee prices, though some claims may not have been sufficiently supported. While predictions of improved Arabica productivity and declining Robusta yields were noted, the specific sources of these data were not cited, which weakens the argument. Also, the analysis did not present evidence to support expectations for the Brazilian Real's rally impact on export sales, potentially leading to overreliance on assumed correlations. A more structured approach to causation and less reliance on potentially vague market predictions would be ideal. The sentiment tag might have been too strongly bullish given the mention of both upward and downward pressures. A more cautious sentiment might be appropriate, considering the mixed signals.\n[CONFIDENCE]: 0.6\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
+        "confidence": 0.6,
         "sentiment": "NEUTRAL"
       },
-      "timestamp": 1769598371.5710125
+      "timestamp": 1769603867.280469
     },
     "geopolitical": {
       "data": {
@@ -329,7 +362,7 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1769598321.519732
+      "timestamp": 1769603743.5181458
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",

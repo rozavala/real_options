@@ -420,3 +420,143 @@
 2026-01-28 11:06:59,124 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.65)
 2026-01-28 11:06:59,130 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
 2026-01-28 11:06:59,130 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-01-28 12:30:21,985 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-01-28 12:30:22,064 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-01-28 12:30:22,064 - Orchestrator - INFO - Refreshed contract cache: KCH6
+2026-01-28 12:35:32,903 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:35:32,992 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
+2026-01-28 12:35:33,128 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'Brazil coffee harvest'
+2026-01-28 12:35:34,498 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:35:34,578 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
+2026-01-28 12:35:34,678 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:35:34,766 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
+2026-01-28 12:35:34,897 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'arabica prices'
+2026-01-28 12:35:34,917 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'coffee futures'
+2026-01-28 12:35:36,052 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:35:36,135 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
+2026-01-28 12:35:36,486 - trading_bot.sentinels - INFO - Broad search returned 7 posts for 'Colombia coffee'
+2026-01-28 12:35:37,592 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:35:37,936 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:35:38,030 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
+2026-01-28 12:35:38,346 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'US coffee tariffs'
+2026-01-28 12:35:38,951 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:35:41,180 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:35:43,181 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:35:43,515 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:35:43,521 - trading_bot.sentinels - WARNING - X volume spike: 11 vs mean 2 (>3.0x)
+2026-01-28 12:35:43,522 - trading_bot.sentinels - INFO - X volume anomaly: z-score=5.9
+2026-01-28 12:35:43,522 - trading_bot.sentinels - WARNING - 🚨 X SENTINEL TRIGGERED: UNUSUAL X ACTIVITY SPIKE (11 posts, 3.0x baseline)
+2026-01-28 12:35:43,528 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
+2026-01-28 12:35:43,528 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by XSentimentSentinel: UNUSUAL X ACTIVITY SPIKE (11 posts, 3.0x baseline)
+2026-01-28 12:35:43,816 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-28 12:35:43,825 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-28 12:35:43,943 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-28 12:35:43,943 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'xai', 'openai', 'anthropic']
+2026-01-28 12:35:43,943 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'xai', 'openai', 'anthropic'], 'diversity_score': 1.0}
+2026-01-28 12:35:43,949 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-28 12:35:43,950 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-01-28 12:35:43,950 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-01-28 12:35:44,037 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-01-28 12:35:44,037 - Orchestrator - INFO - Targeting contract: KCH6 (202603)
+2026-01-28 12:35:48,538 - trading_bot.agents - INFO - Running Specialized Cycle triggered by XSentimentSentinel...
+2026-01-28 12:35:48,540 - trading_bot.agents - INFO - Routing to macro (Reason: Default routing)
+2026-01-28 12:35:48,540 - trading_bot.agents - INFO - Waking up macro...
+2026-01-28 12:35:48,877 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-28 12:35:48,878 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-28 12:35:48,878 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-28 12:37:42,431 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:37:42,744 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-28 12:37:47,275 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:37:47,405 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-28 12:37:47,406 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.50 -> 0.50
+2026-01-28 12:37:47,406 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=0.50, DynamicWeight=0.15, Regime=RANGE_BOUND
+2026-01-28 12:37:47,406 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=None)
+2026-01-28 12:37:47,406 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.6,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.5,
+    "final_weight": 1.12,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.5,
+    "final_weight": 0.52,
+    "contribution": 0.0
+  },
+  {
+    "agent": "latest_ml_signals",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.0
+  }
+]
+2026-01-28 12:38:07,162 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-28 12:38:29,565 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:38:34,340 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 12:38:34,343 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.75)
+2026-01-28 12:38:34,344 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-01-28 12:38:34,345 - Orchestrator - INFO - Post-cycle debounce set for 1800s
