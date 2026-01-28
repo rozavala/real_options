@@ -1,71 +1,46 @@
-2026-01-28 16:04:09,845 - Orchestrator - INFO - =============================================
-2026-01-28 16:04:09,845 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-01-28 16:04:09,845 - Orchestrator - INFO - =============================================
-2026-01-28 16:04:10,062 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-01-28 16:04:10,062 - Orchestrator - INFO - Processing 5 deferred triggers from overnight
-2026-01-28 16:04:10,064 - trading_bot.connection_pool - INFO - Connecting IB (deferred) ID: 207...
-2026-01-28 16:04:10,280 - trading_bot.connection_pool - INFO - IB (deferred) connected successfully with ID 207
-2026-01-28 16:04:10,293 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-01-28 16:08:36.160188. Skipping XSentimentSentinel
-2026-01-28 16:04:10,293 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): XSentimentSentinel
-2026-01-28 16:04:10,293 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-01-28 16:08:36.160188. Skipping LogisticsSentinel
-2026-01-28 16:04:10,293 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): LogisticsSentinel
-2026-01-28 16:04:10,293 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-01-28 16:08:36.160188. Skipping WeatherSentinel
-2026-01-28 16:04:10,293 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
-2026-01-28 16:04:10,293 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-01-28 16:08:36.160188. Skipping XSentimentSentinel
-2026-01-28 16:04:10,293 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): XSentimentSentinel
-2026-01-28 16:04:10,293 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-01-28 16:08:36.160188. Skipping WeatherSentinel
-2026-01-28 16:04:10,293 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
-2026-01-28 16:04:10,293 - Orchestrator - INFO - Deferred triggers complete: 0 processed, 5 skipped
-2026-01-28 16:04:10,293 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-01-28 16:04:10,293 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-01-28 18:20:00 UTC. Waiting for 2.26 hours.
-2026-01-28 16:04:10,293 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-01-28 16:04:10,294 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
-2026-01-28 16:04:10,548 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-01-28 16:04:10,550 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
-2026-01-28 16:04:10,550 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 119...
-2026-01-28 16:04:10,664 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 119
-2026-01-28 16:04:10,670 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-01-28 16:04:10,670 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
-2026-01-28 16:04:10,670 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
-2026-01-28 16:04:10,870 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-01-28 16:04:10,870 - Orchestrator - INFO - Refreshed contract cache: KCH6
-2026-01-28 16:04:10,870 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-01-28 16:04:10,871 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 205...
-2026-01-28 16:04:11,279 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 205
-2026-01-28 16:04:11,284 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-01-28 16:04:11,284 - trading_bot.microstructure_sentinel - INFO - MicrostructureSentinel initialized
-2026-01-28 16:04:13,287 - trading_bot.microstructure_sentinel - INFO - Subscribed to microstructure for KCH6
-2026-01-28 16:04:22,408 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
-2026-01-28 16:04:26,252 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-01-28 16:04:30,465 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-28 16:04:30,602 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
-2026-01-28 16:04:30,768 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'Brazil coffee harvest'
-2026-01-28 16:04:31,900 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-28 16:04:31,986 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
-2026-01-28 16:04:32,280 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'coffee futures'
-2026-01-28 16:04:32,793 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-28 16:04:32,874 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
-2026-01-28 16:04:33,008 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'arabica prices'
-2026-01-28 16:04:34,010 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-28 16:04:34,095 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
-2026-01-28 16:04:34,376 - trading_bot.sentinels - INFO - Broad search returned 4 posts for 'Colombia coffee'
-2026-01-28 16:04:35,957 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-28 16:04:36,054 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
-2026-01-28 16:04:36,361 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'US coffee tariffs'
-2026-01-28 16:04:37,687 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-28 16:04:38,232 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-28 16:04:42,086 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-28 16:04:43,060 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-28 16:04:44,734 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-28 16:04:44,743 - trading_bot.sentinels - WARNING - X volume spike: 10 vs mean 2 (>3.0x)
-2026-01-28 16:04:44,744 - trading_bot.sentinels - INFO - X volume anomaly: z-score=6.5
-2026-01-28 16:04:44,744 - trading_bot.sentinels - WARNING - 🚨 X SENTINEL TRIGGERED: UNUSUAL X ACTIVITY SPIKE (10 posts, 3.0x baseline)
-2026-01-28 16:04:44,744 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-01-28 16:08:36.160188. Skipping XSentimentSentinel
-2026-01-28 16:19:46,654 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 48% of average
-2026-01-28 16:19:46,975 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-28 16:30:48,258 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 35% of average
-2026-01-28 16:30:48,500 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-28 17:00:52,077 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 44% of average
-2026-01-28 17:00:52,424 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-28 17:16:54,278 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 36% of average
-2026-01-28 17:16:54,607 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-28 17:44:19,611 - Orchestrator - INFO - =============================================
+2026-01-28 17:44:19,611 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-01-28 17:44:19,612 - Orchestrator - INFO - =============================================
+2026-01-28 17:44:19,896 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-01-28 17:44:19,897 - Orchestrator - INFO - No deferred triggers to process.
+2026-01-28 17:44:19,897 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-01-28 17:44:19,897 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-01-28 18:20:00 UTC. Waiting for 0.59 hours.
+2026-01-28 17:44:19,898 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-01-28 17:44:19,899 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
+2026-01-28 17:44:20,326 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-01-28 17:44:20,329 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-01-28 17:44:20,330 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 119...
+2026-01-28 17:44:20,482 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 119
+2026-01-28 17:44:20,527 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-28 17:44:20,528 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
+2026-01-28 17:44:20,528 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-01-28 17:44:20,739 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-01-28 17:44:20,739 - Orchestrator - INFO - Refreshed contract cache: KCH6
+2026-01-28 17:44:20,739 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-01-28 17:44:20,741 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 209...
+2026-01-28 17:44:21,057 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 209
+2026-01-28 17:44:21,062 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-28 17:44:21,062 - trading_bot.microstructure_sentinel - INFO - MicrostructureSentinel initialized
+2026-01-28 17:44:23,065 - trading_bot.microstructure_sentinel - INFO - Subscribed to microstructure for KCH6
+2026-01-28 17:44:32,123 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-28 17:44:36,146 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-01-28 17:44:40,284 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 17:44:40,380 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
+2026-01-28 17:44:40,719 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'coffee futures'
+2026-01-28 17:44:41,018 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 17:44:41,110 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
+2026-01-28 17:44:41,230 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 17:44:41,239 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'Brazil coffee harvest'
+2026-01-28 17:44:41,315 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
+2026-01-28 17:44:41,441 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'arabica prices'
+2026-01-28 17:44:44,285 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 17:44:44,379 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
+2026-01-28 17:44:44,777 - trading_bot.sentinels - INFO - Broad search returned 14 posts for 'Colombia coffee'
+2026-01-28 17:44:46,217 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 17:44:46,300 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
+2026-01-28 17:44:46,563 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'US coffee tariffs'
+2026-01-28 17:44:47,862 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 17:44:48,078 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 17:44:48,232 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 17:44:53,083 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 17:45:00,275 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
