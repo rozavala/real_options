@@ -89,3 +89,37 @@
 2026-01-28 04:34:23,787 - trading_bot.state_manager - INFO - Queued deferred trigger from XSentimentSentinel
 2026-01-28 04:34:23,787 - Orchestrator - INFO - Deferred XSentimentSentinel trigger for market open
 2026-01-28 05:34:33,130 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-28 06:33:49,172 - Orchestrator - INFO - =============================================
+2026-01-28 06:33:49,172 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-01-28 06:33:49,172 - Orchestrator - INFO - =============================================
+2026-01-28 06:33:49,395 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-01-28 06:33:49,395 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-01-28 06:33:49,395 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-01-28 08:20:00 UTC. Waiting for 1.77 hours.
+2026-01-28 06:33:49,396 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-01-28 06:33:49,396 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
+2026-01-28 06:33:49,679 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-01-28 06:33:52,682 - trading_bot.sentinels - WARNING - WEATHER SENTINEL DETECTED: Drought Risk in Central Highlands (Vietnam): 10 days with < 5.0mm rain
+2026-01-28 06:33:52,684 - trading_bot.state_manager - INFO - Queued deferred trigger from WeatherSentinel
+2026-01-28 06:33:52,685 - Orchestrator - INFO - Deferred WeatherSentinel trigger for market open
+2026-01-28 06:33:56,812 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-01-28 06:34:01,000 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 06:34:01,114 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
+2026-01-28 06:34:01,245 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'arabica prices'
+2026-01-28 06:34:01,909 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 06:34:01,993 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 06:34:02,007 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
+2026-01-28 06:34:02,071 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
+2026-01-28 06:34:02,132 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'Brazil coffee harvest'
+2026-01-28 06:34:02,393 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'coffee futures'
+2026-01-28 06:34:03,465 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 06:34:03,552 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
+2026-01-28 06:34:03,958 - trading_bot.sentinels - INFO - Broad search returned 14 posts for 'Colombia coffee'
+2026-01-28 06:34:04,409 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 06:34:05,756 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 06:34:06,189 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 06:34:06,280 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
+2026-01-28 06:34:06,532 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'US coffee tariffs'
+2026-01-28 06:34:07,384 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 06:34:10,498 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 06:34:15,391 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 06:34:15,392 - trading_bot.sentinels - ERROR - Invalid JSON from Grok: Unterminated string starting at: line 1 column 735 (char 734)
