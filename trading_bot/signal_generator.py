@@ -580,23 +580,28 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
 
         if final_direction == 'NEUTRAL':
             # Check if we should deploy a volatility strategy instead of sitting idle
-
-            # HIGH VOLATILITY SIGNAL: Deploy Long Straddle
-            # Conditions: Agents are conflicted OR imminent catalyst detected
             agent_conflict_score = _calculate_agent_conflict(agent_data)
             imminent_catalyst = _detect_imminent_catalyst(agent_data)
 
-            if imminent_catalyst or agent_conflict_score > 0.6:
+            # HIGH VOLATILITY SIGNAL: Deploy Long Straddle
+            # Conditions: Specific catalysts OR extreme agent conflict (> 0.8)
+            if imminent_catalyst or agent_conflict_score > 0.8:
                 prediction_type = "VOLATILITY"
                 vol_level = "HIGH"
-                reason = f"Volatility Play: {imminent_catalyst or 'High agent conflict signals inflection point'}"
+                reason = f"Volatility Play: {imminent_catalyst or 'Extreme agent conflict (>0.8)'}"
 
             # LOW VOLATILITY SIGNAL: Deploy Iron Condor
-            # Conditions: Market is calm, vol is cheap, no catalysts
-            elif regime == 'RANGE_BOUND' and vol_sentiment == 'BULLISH':  # BULLISH = cheap options
+            # Conditions: Range-bound regime OR Volatility is not cheap (Bearish/Neutral Vol Sentiment)
+            # We want to SELL premium when it's expensive (Bearish Vol) or Fair (Neutral) in a range.
+            elif regime == 'RANGE_BOUND' or vol_sentiment in ['BEARISH', 'NEUTRAL']:
                 prediction_type = "VOLATILITY"
                 vol_level = "LOW"
-                reason = "Premium Harvest: Range-bound market with cheap options"
+                reason = "Premium Harvest: Range-bound/Uncertain with expensive/fair options"
+
+            # DEFAULT: Stand Down (NO_TRADE)
+            else:
+                prediction_type = "NEUTRAL"
+                reason = "No Trade: Neutral direction with low conviction"
 
         # Construct final signal object
         if prediction_type == "VOLATILITY":

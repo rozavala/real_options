@@ -145,7 +145,8 @@ async def generate_and_queue_orders(config: dict):
 
                 # --- FIX: Early Liquidity Gate (inline) ---
                 try:
-                    min_vol = config.get('strategy', {}).get('min_underlying_volume', 50)
+                    # Issue #3: Lower threshold to 20
+                    min_vol = config.get('strategy', {}).get('min_underlying_volume', 20)
                     # REQUEST 2 DAYS to capture yesterday's full session if today is just starting
                     bars = await ib.reqHistoricalDataAsync(
                         future,
@@ -262,6 +263,11 @@ async def generate_and_queue_orders(config: dict):
                             # Calculate and track committed capital
                             estimated_risk = await calculate_spread_max_risk(ib, contract, order, config)
                             committed_capital += estimated_risk
+
+                            # Issue #4: Early abort if capital exhausted
+                            if committed_capital > account_value:
+                                logger.warning(f"Capital exhausted (${committed_capital:,.2f} committed vs ${account_value:,.2f} available). Stopping order generation.")
+                                break
 
                             logger.info(
                                 f"Capital tracking: Committed ${committed_capital:,.2f} | "
@@ -673,7 +679,7 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                     logger.error(f"Failed to calculate trend for {contract.localSymbol}: {e}")
 
                 order_context = {
-                    'symbol': contract.localSymbol if contract.localSymbol else _describe_bag(contract),
+                    'symbol': _describe_bag(contract) if isinstance(contract, Bag) else contract.localSymbol,
                     'bid_ask_spread': spread_width * 100 if contract.secType == 'BAG' else spread_width,
                     'total_position_count': current_position_count,
                     'market_trend_pct': trend_pct,
