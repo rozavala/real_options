@@ -38,9 +38,13 @@ async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
     qty = order.totalQuantity
     net_price = abs(order.lmtPrice)  # In cents/lb for KC options
 
+    # FIX: Convert multiplier to dollars (cents/lb -> dollars/contract)
+    # 37,500 lbs * (1/100 dollars/cent) = 375 dollars per cent move
+    dollar_multiplier = multiplier / 100
+
     # For non-BAG contracts, max risk = premium paid
     if not isinstance(contract, Bag) or not contract.comboLegs:
-        return qty * net_price * multiplier
+        return qty * net_price * dollar_multiplier
 
     # === FLIGHT DIRECTOR MANDATE: Calculate TRUE wing width from actual strikes ===
     try:
@@ -77,7 +81,7 @@ async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
         if len(leg_details) != len(contract.comboLegs):
             failed_count = len(contract.comboLegs) - len(leg_details)
             logger.warning(f"Could not resolve {failed_count} leg(s). Using premium-based fallback.")
-            return qty * net_price * multiplier * 2  # Conservative fallback
+            return qty * net_price * dollar_multiplier * 2  # Conservative fallback
 
         # Separate legs by right (Calls vs Puts)
         calls = [l for l in leg_details if l['right'] == 'C']
@@ -103,17 +107,17 @@ async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
         if wing_width == 0:
             # Straddle or single-strike strategy - risk is premium paid
             logger.info(f"Zero wing width detected (straddle?). Max risk = premium.")
-            return qty * net_price * multiplier
+            return qty * net_price * dollar_multiplier
 
         # Determine if DEBIT or CREDIT spread based on order action
         if order.action == 'BUY':
             # DEBIT SPREAD: Max loss = premium paid
-            max_risk = qty * net_price * multiplier
+            max_risk = qty * net_price * dollar_multiplier
             logger.info(f"DEBIT spread: Max risk = ${max_risk:,.2f} (premium paid)")
         else:
             # CREDIT SPREAD: Max loss = (wing_width - credit) * multiplier
             # wing_width is in price points (cents/lb for coffee)
-            max_risk = qty * (wing_width - net_price) * multiplier
+            max_risk = qty * (wing_width - net_price) * dollar_multiplier
             # Floor at zero (can't have negative risk)
             max_risk = max(max_risk, 0)
             logger.info(f"CREDIT spread: Wing width={wing_width}, Credit={net_price}, Max risk=${max_risk:,.2f}")
@@ -124,8 +128,8 @@ async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
         logger.error(f"Error calculating true wing width: {e}. Using conservative fallback.")
         # Conservative fallback: 2x premium for credit spreads, 1x for debit
         if order.action == 'SELL':
-            return qty * net_price * multiplier * 3  # Very conservative for credits
-        return qty * net_price * multiplier
+            return qty * net_price * dollar_multiplier * 3  # Very conservative for credits
+        return qty * net_price * dollar_multiplier
 
 class ComplianceGuardian:
     """Constitutional AI-based compliance checker with veto power."""
@@ -274,7 +278,11 @@ class ComplianceGuardian:
                         logger.info(f"Volume from {source}: {total_vol}")
                         return float(total_vol)
             except Exception as e:
-                logger.warning(f"IB volume fetch failed: {e}")
+                # Issue #5: Suppress "No data of type EODChart" for FOPs
+                if "No data of type EODChart" in str(e):
+                    logger.debug(f"IB EOD data unavailable for {target_contract.localSymbol}, attempting fallback.")
+                else:
+                    logger.warning(f"IB volume fetch failed: {e}")
 
         # === SECONDARY: YFinance (fallback) ===
         try:
