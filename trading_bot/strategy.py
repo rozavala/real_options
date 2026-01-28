@@ -166,8 +166,14 @@ def define_volatility_strategy(config: dict, signal: dict, chain: dict, underlyi
     if signal['level'] == 'HIGH':  # Long Straddle
         legs_def, order_action = [('C', 'BUY', atm_strike), ('P', 'BUY', atm_strike)], 'BUY'
     elif signal['level'] == 'LOW':  # Iron Condor
-        short_dist = tuning.get('iron_condor_short_strikes_from_atm', 2)
-        wing_width = tuning.get('iron_condor_wing_strikes_apart', 2)
+        short_dist = int(tuning.get('iron_condor_short_strikes_from_atm', 2))
+        wing_width = int(tuning.get('iron_condor_wing_strikes_apart', 2))
+
+        # Sanity check
+        if short_dist < 1 or wing_width < 1:
+            logging.error(f"Invalid Iron Condor params: short_dist={short_dist}, wing_width={wing_width}. Must be >= 1.")
+            return None
+
         try:
             atm_idx = strikes.index(atm_strike)
             if not (atm_idx - short_dist - wing_width >= 0 and atm_idx + short_dist + wing_width < len(strikes)):

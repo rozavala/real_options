@@ -545,6 +545,9 @@ OUTPUT FORMAT (JSON ONLY):
         """
         Run Pre-Mortem analysis on a tentative decision.
         Returns: {'proceed': bool, 'risks': list, 'recommendation': str}
+
+        CRITICAL: This function is FAIL-SAFE. If anything goes wrong,
+        it returns proceed=False to block the trade.
         """
         if decision.get('direction') == 'NEUTRAL':
             return {'proceed': True, 'risks': [], 'recommendation': 'No trade proposed'}
@@ -574,10 +577,46 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
 
         try:
             response = await self._route_call(AgentRole.PERMABEAR, prompt, response_json=True)
-            return json.loads(self._clean_json_text(response))
+
+            # Guard: Empty response check
+            if not response or not str(response).strip():
+                logger.error("Devil's Advocate returned empty response - BLOCKING TRADE (fail-safe)")
+                return {
+                    'proceed': False,
+                    'risks': ['DA returned empty response - system failure'],
+                    'recommendation': 'BLOCK: Devil\'s Advocate system failure. Trade blocked for safety.'
+                }
+
+            # Parse response
+            cleaned = self._clean_json_text(response)
+            result = json.loads(cleaned)
+
+            # Validate required fields
+            if 'proceed' not in result:
+                logger.warning("DA response missing 'proceed' field - defaulting to BLOCK")
+                result['proceed'] = False
+                result['risks'] = result.get('risks', []) + ['Missing proceed field']
+                result['recommendation'] = result.get('recommendation', 'BLOCK: Malformed DA response')
+
+            return result
+
+        except json.JSONDecodeError as e:
+            logger.error(
+                f"Devil's Advocate JSON parse failed - BLOCKING TRADE (fail-safe). "
+                f"Error: {e}. Response preview: {str(response)[:300] if response else 'None'}"
+            )
+            return {
+                'proceed': False,
+                'risks': ['DA JSON parse failure - could not validate trade safety'],
+                'recommendation': 'BLOCK: Devil\'s Advocate returned invalid JSON. Trade blocked for safety.'
+            }
         except Exception as e:
-            logger.error(f"Devil's Advocate failed: {e}")
-            return {'proceed': True, 'risks': ['DA Failed'], 'recommendation': 'Proceed with caution (DA Error)'}
+            logger.error(f"Devil's Advocate system error - BLOCKING TRADE (fail-safe): {e}")
+            return {
+                'proceed': False,
+                'risks': [f'DA system error: {str(e)[:100]}'],
+                'recommendation': 'BLOCK: Devil\'s Advocate system error. Trade blocked for safety.'
+            }
 
     async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict, market_context: str, trigger_reason: str = None) -> dict:
         """
