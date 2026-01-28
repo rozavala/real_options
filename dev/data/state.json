@@ -3,48 +3,6 @@
     "events": {
       "data": [
         {
-          "source": "XSentimentSentinel",
-          "reason": "UNUSUAL X ACTIVITY SPIKE (22 posts, 3.0x baseline)",
-          "payload": {
-            "sentiment_score": 4.36,
-            "confidence": 0.28,
-            "top_themes": [
-              "COT net long positions",
-              "Coffee futures price rise",
-              "Negative trading experiences",
-              "historic highs",
-              "price retreat"
-            ],
-            "post_volume": 22,
-            "volume_baseline": 3.7,
-            "volume_spike": true,
-            "query_results": [
-              {
-                "query": "coffee futures",
-                "score": 5.0,
-                "volume": 5,
-                "confidence": 0.3,
-                "top_post": "#COT - Commitments of Traders released by @CFTC - Non-commercial net long position in #sugar, #cocoa, #coffee futures on @ICE_Markets https://t.co/4lXicKi75I"
-              },
-              {
-                "query": "arabica prices",
-                "score": 5.0,
-                "volume": 1,
-                "confidence": 0.2,
-                "top_post": "Coffee prices hit historic highs... Arabica soared past $4.40/lb before retreating to ~$3.56/lb today - still up 9.5% YoY. Is the supercycle over, or just pausing?"
-              },
-              {
-                "query": "Brazil coffee harvest",
-                "score": 3.0,
-                "volume": 2,
-                "confidence": 0.3,
-                "top_post": "Arabica coffee growers in Brazil expect this year's harvest to match or slightly exceed 2025's crop, while canephora growers..."
-              }
-            ]
-          },
-          "timestamp": "2026-01-27T14:28:53.930002+00:00"
-        },
-        {
           "source": "PriceSentinel",
           "reason": "Price moved 1.58% in last hour (Threshold: 1.5%)",
           "payload": {
@@ -178,9 +136,51 @@
             ]
           },
           "timestamp": "2026-01-28T09:34:51.950922+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (5 posts, 3.0x baseline)",
+          "payload": {
+            "sentiment_score": 4.75,
+            "confidence": 0.16,
+            "top_themes": [
+              "Historic price highs",
+              "Recent retreat",
+              "Supercycle uncertainty",
+              "Arabica harvest steady/higher",
+              "Canephora yields declining"
+            ],
+            "post_volume": 5,
+            "volume_baseline": 1.5,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              },
+              {
+                "query": "arabica prices",
+                "score": 5.0,
+                "volume": 1,
+                "confidence": 0.2,
+                "top_post": "Coffee prices hit historic highs... Arabica soared past $4.40/lb before retreating to ~$3.56/lb today - still up 9.5% YoY. Is the supercycle over...?"
+              },
+              {
+                "query": "Brazil coffee harvest",
+                "score": 4.0,
+                "volume": 2,
+                "confidence": 0.2,
+                "top_post": "Arabica coffee growers in Brazil expect this year's harvest to match or slightly exceed 2025's crop, while canephora growers..."
+              }
+            ]
+          },
+          "timestamp": "2026-01-28T11:05:21.526155+00:00"
         }
       ],
-      "timestamp": 1769592891.9511318
+      "timestamp": 1769598321.5264072
     }
   },
   "reports": {
@@ -194,11 +194,11 @@
     },
     "macro": {
       "data": {
-        "data": "[EVIDENCE]: 1) Brazilian Arabica growers expect the 2026 harvest to match or slightly exceed 2025 levels, while Canephora (Robusta) yields are expected to fall [Source: Reuters / The Star]. 2) COT data showed managed money reduced Arabica net longs by 2,032 contracts but added 2,865 contracts to Robusta net longs [Source: StoneX / CFTC]. 3) Arabica futures faced resistance at the 20-day moving average of 355.56 cents/lb, confirming the price retreat [Source: StoneX].\n[ANALYSIS]: The anticipated increase in Arabica supply and the reduction in Robusta yields present a complex picture for the coffee market. The cutback in Arabica net long positions suggests bearish sentiment among speculators, possibly due to expected supply growth. Conversely, increased interest in Robusta positions indicates bullish sentiment, likely driven by concerns over supply constraints. These factors imply potential downward pressure on Arabica prices with speculated supply increases, while Robusta markets may experience upward price pressure. However, price movements could still depend on broader market conditions and demand factors, which are not covered in the evidence provided.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
-        "confidence": 0.8,
+        "data": "[EVIDENCE]: [2026-01-28] Arabica coffee futures rose to 370.14 USd/Lbs, up 0.14% from the previous day. (source: Trading Economics)\n[ANALYSIS]: The increase in Arabica coffee futures to 370.14 USd/Lbs, marking a 0.14% rise from the previous day, suggests a slight positive movement in the market. Given the modest change, it indicates that investor sentiment regarding the coffee market is stable but leaning slightly towards the positive side. However, this single data point does not provide enough context on broader market trends or underlying factors causing the rise. Therefore, while the sentiment is slightly positive, it should be reviewed in conjunction with additional market data to determine if this is part of a larger trend.\n[CONFIDENCE]: 0.7\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
+        "confidence": 0.7,
         "sentiment": "NEUTRAL"
       },
-      "timestamp": 1769593019.9523697
+      "timestamp": 1769598371.5710125
     },
     "geopolitical": {
       "data": {
@@ -329,7 +329,7 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1769592891.94338
+      "timestamp": 1769598321.519732
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
