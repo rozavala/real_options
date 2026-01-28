@@ -92,6 +92,35 @@ class TestStrategy(unittest.TestCase):
         self.assertIn(('C', 'SELL', 102), strategy_def['legs_def']) # Short Call
         self.assertIn(('C', 'BUY', 104), strategy_def['legs_def'])  # Long Call (protection)
 
+    def test_iron_condor_config_values_are_integers(self):
+        """
+        Ensure Iron Condor config values are integers.
+
+        This test prevents regression of the bug where iron_condor_wing_strikes_apart
+        was set to 0.5 (float) causing TypeError: list indices must be integers.
+        """
+        from config_loader import load_config
+
+        config = load_config()
+        tuning = config.get('strategy_tuning', {})
+
+        short_dist = tuning.get('iron_condor_short_strikes_from_atm', 2)
+        wing_width = tuning.get('iron_condor_wing_strikes_apart', 2)
+
+        # Type checks
+        self.assertIsInstance(short_dist, int,
+            f"iron_condor_short_strikes_from_atm must be int, got {type(short_dist).__name__}: {short_dist}")
+        self.assertIsInstance(wing_width, int,
+            f"iron_condor_wing_strikes_apart must be int, got {type(wing_width).__name__}: {wing_width}")
+
+        # Value checks
+        self.assertGreaterEqual(short_dist, 1, "iron_condor_short_strikes_from_atm must be >= 1")
+        self.assertGreaterEqual(wing_width, 1, "iron_condor_wing_strikes_apart must be >= 1")
+
+        # Sanity upper bound (shouldn't be selecting strikes 20 away from ATM)
+        self.assertLessEqual(short_dist, 10, "iron_condor_short_strikes_from_atm seems too large")
+        self.assertLessEqual(wing_width, 10, "iron_condor_wing_strikes_apart seems too large")
+
 
 if __name__ == '__main__':
     unittest.main()

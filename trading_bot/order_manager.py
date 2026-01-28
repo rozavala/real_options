@@ -43,6 +43,35 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("OrderManager")
 
 
+def _get_order_display_name(contract, strategy_def: dict = None) -> str:
+    """Generate a readable display name for orders, especially BAG/combo contracts."""
+    from ib_insync import Bag
+
+    # If localSymbol exists and is meaningful, use it
+    if contract.localSymbol and contract.localSymbol.strip():
+        return contract.localSymbol
+
+    # For BAG contracts, build from strategy definition or legs
+    if isinstance(contract, Bag):
+        if strategy_def and 'legs_def' in strategy_def:
+            legs = strategy_def['legs_def']
+            # Format: KC-C352.5+P352.5 (for straddle) or KC-4LEG-IC (for Iron Condor)
+            if len(legs) == 2:
+                # Straddle or vertical spread
+                leg_str = "+".join([f"{l[0]}{l[2]}" for l in legs])
+                return f"KC-{leg_str}"
+            elif len(legs) == 4:
+                return f"KC-IRON_CONDOR"
+            else:
+                return f"KC-{len(legs)}LEG"
+
+        if contract.comboLegs:
+            return f"KC-{len(contract.comboLegs)}LEG-BAG"
+
+    # Fallback
+    return contract.symbol or "UNKNOWN"
+
+
 def _describe_bag(contract) -> str:
     """Generate a readable symbol for BAG contracts."""
     from ib_insync import Bag
@@ -276,6 +305,7 @@ async def generate_and_queue_orders(config: dict):
                             )
 
                             # Store signal data with the order
+                            signal['strategy_def'] = strategy_def
                             ORDER_QUEUE.append((contract, order, signal))
                             logger.info(f"Successfully queued order for {future.localSymbol}.")
         except Exception as e:
@@ -704,7 +734,7 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                 margin_impact = float(what_if.initMarginChange)
 
                 if margin_impact < current_available_funds:
-                    orders_to_place.append((contract, order))
+                    orders_to_place.append((contract, order, decision_data))
                     current_available_funds -= margin_impact
                     current_position_count += 1 # Increment for next check
                     logger.info(f"Approved {contract.localSymbol}: Margin ${margin_impact:,.2f} | Remaining: ${current_available_funds:,.2f}")
@@ -728,7 +758,7 @@ async def place_queued_orders(config: dict, orders_list: list = None):
         adaptive_pct = tuning.get('adaptive_step_percentage', 0.05)
         
         # --- PLACEMENT LOOP (ENHANCED LOGGING & NOTIFICATIONS) ---
-        for contract, order in orders_to_place:
+        for contract, order, decision_data in orders_to_place:
             
             # --- 1. Get BAG (Spread) Market Data with a robust polling loop ---
             bag_ticker = ib.reqMktData(contract, '', False, False)
@@ -759,8 +789,9 @@ async def place_queued_orders(config: dict, orders_list: list = None):
 
             # --- 3. Create Enhanced Log and Place Order ---
             price_info_log = f"Limit: {order.lmtPrice:.2f}" if order.orderType == "LMT" else "Market Order"
+            display_name = _get_order_display_name(contract, strategy_def=decision_data.get('strategy_def'))
             market_state_message = (
-                f"Placing Order for {contract.localSymbol}. {price_info_log}. "
+                f"Placing Order for {display_name}. {price_info_log}. "
                 f"{bag_state_str}. "
                 f"LEGs: {leg_state_for_log}"
             )
