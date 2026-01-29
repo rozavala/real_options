@@ -64,7 +64,7 @@ def load_trade_data():
     try:
         df = get_trade_ledger_df()
         if not df.empty:
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
         return df
     except Exception as e:
         st.error(f"Failed to load trade_ledger.csv: {e}")
@@ -78,7 +78,7 @@ def load_council_history():
         if os.path.exists(COUNCIL_HISTORY_PATH):
             df = pd.read_csv(COUNCIL_HISTORY_PATH)
             if not df.empty:
-                df['timestamp'] = pd.to_datetime(df['timestamp'])
+                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
             return df
         return pd.DataFrame()
     except Exception as e:
@@ -93,7 +93,7 @@ def load_equity_data():
         if os.path.exists(DAILY_EQUITY_PATH):
             df = pd.read_csv(DAILY_EQUITY_PATH)
             if not df.empty:
-                df['timestamp'] = pd.to_datetime(df['timestamp'])
+                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
                 df = df.sort_values('timestamp')
             return df
         return pd.DataFrame()
