@@ -171,6 +171,8 @@ class CoffeeCouncil:
 
     def _clean_json_text(self, text: str) -> str:
         """Helper to strip markdown code blocks from JSON strings."""
+        if not text:
+            return "{}"  # Safe default for empty/None responses
         text = text.strip()
         if text.startswith("```json"):
             text = text[7:]

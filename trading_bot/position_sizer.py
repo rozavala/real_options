@@ -1,5 +1,6 @@
 from ib_insync import IB
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +52,11 @@ class DynamicPositionSizer:
             logger.warning(f"Portfolio Heat {heat_ratio:.1%} > {self.max_portfolio_heat:.1%}. Reducing size.")
 
         raw_qty = self.base_qty * confidence_multiplier * vol_multiplier * heat_multiplier
-        final_qty = int(raw_qty)
+        # Use ceiling to be slightly more aggressive on sizing (strategy upgrade)
+        final_qty = max(1, math.ceil(raw_qty))
 
-        logger.info(f"Dynamic Sizing: Base={self.base_qty} * Conf({confidence_multiplier:.2f}) * Vol({vol_multiplier}) * Heat({heat_multiplier}) = {final_qty}")
-
-        return max(1, final_qty)  # Minimum 1 contract
+        logger.info(
+            f"Dynamic Sizing: Base={self.base_qty} * Conf({confidence_multiplier:.2f}) "
+            f"* Vol({vol_multiplier}) * Heat({heat_multiplier}) = {final_qty} (raw: {raw_qty:.3f})"
+        )
+        return final_qty

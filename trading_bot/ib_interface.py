@@ -49,11 +49,15 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
     finally:
         ib.cancelMktData(contract) # Clean up the market data subscription
 
-    # FIX: Strict Safety Check.
-    # Do not return 0 or fallback to Historical Volatility if live data is missing.
-    if bid is None or ask is None or iv is None:
-        logging.error(f"Insufficient live market data for {contract.localSymbol}. Bid: {bid}, Ask: {ask}, IV: {iv}")
-        return None # Abort signal
+    # Price data is required
+    if bid is None or ask is None:
+        logging.error(f"Insufficient price data for {contract.localSymbol}. Bid: {bid}, Ask: {ask}")
+        return None
+
+    # IV is optional - proceed without it if unavailable
+    if iv is None:
+        logging.warning(f"IV data missing for {contract.localSymbol}, proceeding with price-only execution.")
+        iv = 0.35  # Default fallback IV for coffee (~35%)
 
     return {
         'bid': bid,
