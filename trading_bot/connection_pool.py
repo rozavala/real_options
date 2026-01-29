@@ -224,11 +224,21 @@ class IBConnectionPool:
 
     @classmethod
     async def release_all(cls):
+        """Release all pooled connections with proper cleanup."""
         for name, ib in list(cls._instances.items()):
-            if ib and ib.isConnected():
-                logger.info(f"Disconnecting IB ({name})...")
-                ib.disconnect()
-                # === NEW: Give Gateway time to cleanup each connection ===
-                await asyncio.sleep(2.0)  # 2s per connection (shorter for batch operation)
+            try:
+                if ib and ib.isConnected():
+                    # Disconnect synchronously to avoid async cleanup issues
+                    ib.disconnect()
+                    await asyncio.sleep(0.1)  # Small delay for transport cleanup
+            except Exception as e:
+                logger.debug(f"Connection cleanup for {name}: {e}")  # Debug level, not error
+            finally:
+                cls._instances.pop(name, None)
+
         cls._instances.clear()
         cls._reconnect_backoff.clear()
+
+        # Force garbage collection to clean up any orphaned references
+        import gc
+        gc.collect()
