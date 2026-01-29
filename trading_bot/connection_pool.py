@@ -1,6 +1,5 @@
 import asyncio
 import random
-import socket
 from typing import Dict, Optional
 from datetime import datetime, timezone
 from ib_insync import IB
@@ -26,33 +25,16 @@ class IBConnectionPool:
         "emergency": 120,
         "monitor": 130,
         "order_manager": 140,
-        "microstructure": 200,
+        "microstructure": 200,    # Range: 200-209
+        "test_utilities": 220,    # Range: 220-229 (Dashboard IB test button)
+        "audit": 230,             # Range: 230-239 (Position audit cycle)
         # Note: position_monitor.py uses 300-399
         # Note: reconciliation uses random 5000-9999
+        # DEFAULT for unknown purposes: 200-209 (avoid adding new purposes without explicit ID)
     }
 
     MAX_RECONNECT_BACKOFF = 600  # 10 minutes
     DISCONNECT_SETTLE_TIME = 3.0  # Seconds to wait after disconnect (allows Gateway cleanup)
-
-    @classmethod
-    async def _check_gateway_health(cls, host: str, port: int, timeout: float = 5.0) -> bool:
-        """Quick TCP check if Gateway is accepting connections."""
-        try:
-            loop = asyncio.get_running_loop()
-            # Run socket check in executor to avoid blocking
-            def _tcp_check():
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(timeout)
-                try:
-                    result = sock.connect_ex((host, port))
-                    return result == 0
-                finally:
-                    sock.close()
-
-            return await loop.run_in_executor(None, _tcp_check)
-        except Exception as e:
-            logger.warning(f"Gateway health check failed: {e}")
-            return False
 
     @classmethod
     async def _force_reset_connection(cls, purpose: str):

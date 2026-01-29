@@ -282,14 +282,10 @@ def fetch_live_dashboard_data(_config):
     finally:
         if ib.isConnected():
             ib.disconnect()
-            # === NEW: Give Gateway time to cleanup ===
-            # Note: This function uses loop.run_until_complete, so we need to schedule the sleep
-            import asyncio
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.ensure_future(asyncio.sleep(3.0))
-            else:
-                loop.run_until_complete(asyncio.sleep(3.0))
+            # FLIGHT DIRECTOR FIX: Force blocking sleep for Gateway cleanup
+            # Streamlit runs in a thread, so time.sleep is safe and necessary here.
+            import time
+            time.sleep(3.0)
 
     return data
 
