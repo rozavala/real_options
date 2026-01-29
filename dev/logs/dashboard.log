@@ -1093,3 +1093,16 @@ I0000 00:00:1769696997.437910  461654 device_compiler.h:196] Compiled cluster us
 2026-01-29 15:08:55,105 - OrderManager - INFO - Order placement complete. Releasing event handlers.
 2026-01-29 15:08:55,105 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
 2026-01-29 15:08:55,105 - trading_bot.connection_pool - INFO - Disconnecting IB (test_utilities)...
+Exception ignored in: <function IB.__del__ at 0x7c9a0cc1fba0>
+Traceback (most recent call last):
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py", line 243, in __del__
+    self.disconnect()
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py", line 297, in disconnect
+    self.client.disconnect()
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/client.py", line 232, in disconnect
+    self.conn.disconnect()
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/connection.py", line 44, in disconnect
+    self.transport.write_eof()
+  File "uvloop/handles/stream.pyx", line 700, in uvloop.loop.UVStream.write_eof
+  File "uvloop/handles/handle.pyx", line 159, in uvloop.loop.UVHandle._ensure_alive
+RuntimeError: unable to perform operation on <TCPTransport closed=True reading=False 0x7c99460e7fe0>; the handler is closed
