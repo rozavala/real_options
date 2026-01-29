@@ -31,12 +31,13 @@
   "strategy": {
     "quantity": 1,
     "signal_threshold": 0.005,
-    "min_underlying_volume": 20
+    "min_underlying_volume": 20,
+    "max_days_to_expiry": 180
   },
   "strategy_tuning": {
     "spread_width_percentage": 0.5,
-    "adaptive_step_interval_seconds": 60,
-    "adaptive_step_percentage": 0.01,
+    "adaptive_step_interval_seconds": 15,
+    "adaptive_step_percentage": 0.08,
     "iron_condor_short_strikes_from_atm": 2,
     "iron_condor_wing_strikes_apart": 2,
     "slippage_spread_percentage": 0.5,
@@ -211,6 +212,7 @@
     }
   },
   "compliance": {
+    "var_limit_pct": 0.03,
     "max_position_pct": 0.40,
     "max_straddle_pct": 0.55,
     "max_positions": 5,

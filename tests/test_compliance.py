@@ -20,11 +20,15 @@ async def test_compliance_veto(mock_config):
 
         guardian = ComplianceGuardian(mock_config)
 
-        context = {'symbol': 'KC', 'order_quantity': 1}
-        approved, reason = await guardian.review_order(context)
+        # Mock fetch volume stats to return a valid volume
+        with patch.object(guardian, '_fetch_volume_stats', new_callable=AsyncMock) as mock_vol:
+            mock_vol.return_value = 1000.0
 
-        assert approved is False
-        assert "Vetoed: Position Limit" in reason
+            context = {'symbol': 'KC', 'order_quantity': 1}
+            approved, reason = await guardian.review_order(context)
+
+            assert approved is False
+            assert "Vetoed: Position Limit" in reason
 
 @pytest.mark.asyncio
 async def test_compliance_approval(mock_config):
@@ -34,11 +38,16 @@ async def test_compliance_approval(mock_config):
         mock_router_instance.route.return_value = '{"approved": true, "reason": "Approved"}'
 
         guardian = ComplianceGuardian(mock_config)
-        context = {'symbol': 'KC', 'order_quantity': 1}
 
-        approved, reason = await guardian.review_order(context)
-        assert approved is True
-        assert "Approved" in reason
+        # Mock fetch volume stats to return a valid volume
+        with patch.object(guardian, '_fetch_volume_stats', new_callable=AsyncMock) as mock_vol:
+            mock_vol.return_value = 1000.0
+
+            context = {'symbol': 'KC', 'order_quantity': 1}
+
+            approved, reason = await guardian.review_order(context)
+            assert approved is True
+            assert "Approved" in reason
 
 @pytest.mark.asyncio
 async def test_audit_decision(mock_config):

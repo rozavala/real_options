@@ -393,6 +393,12 @@ class ComplianceGuardian:
                 f"exceeds {limit_pct:.0%} of equity (${max_allowed:,.2f})."
             )
 
+        # === FIX-003: Align LLM instructions with deterministic code logic ===
+        # The limit_pct variable already contains the correct limit (40% standard or 55% for straddles)
+        # We MUST pass this to the LLM so both "brains" use the same threshold
+
+        limit_type_desc = "straddle/high-premium override" if limit_pct > self.limits['max_position_pct'] else "standard position limit"
+
         prompt = f"""
         You are the Chief Compliance Officer. Your ONLY concern is capital preservation.
 
@@ -402,11 +408,16 @@ class ComplianceGuardian:
         REVIEW PACKET:
         {json.dumps(review_packet, indent=2)}
 
+        APPLICABLE LIMIT FOR THIS TRADE: {limit_pct:.0%} of equity ({limit_type_desc})
+        - Maximum Allowed Capital at Risk: ${max_allowed:,.2f}
+
         TASK: Review this order against the Constitution.
-        1. Check Article II: Is Quantity ({qty}) > {self.limits['max_volume_pct']:.0%} of Volume ({volume_15m})?
-        2. Check Article I: Is Max Capital at Risk (${actual_capital_at_risk:,.2f}) > {self.limits['max_position_pct']:.0%} of Equity (${equity:,.2f})?
-           - Maximum Allowed: ${equity * self.limits['max_position_pct']:,.2f}
-           - Capital Consumption: {capital_consumption_pct:.1%} of account
+        1. Check Article II (Liquidity): Is Quantity ({qty}) > {self.limits['max_volume_pct']:.0%} of Volume ({volume_15m})?
+        2. Check Article I (Capital Preservation): Is Max Capital at Risk (${actual_capital_at_risk:,.2f}) > {limit_pct:.0%} of Equity (${equity:,.2f})?
+           - This trade consumes {capital_consumption_pct:.1%} of account equity
+           - The applicable limit is {limit_pct:.0%} (NOT the base {self.limits['max_position_pct']:.0%})
+
+        IMPORTANT: Use {limit_pct:.0%} as the threshold for Article I, not {self.limits['max_position_pct']:.0%}.
 
         OUTPUT JSON: {{"approved": bool, "reason": string}}
         """
