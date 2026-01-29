@@ -38,6 +38,9 @@ ORDER_QUEUE = []
 # Module-level lock for capital tracking
 _CAPITAL_LOCK = asyncio.Lock()
 
+# Module-level set for TMS thesis deduplication
+_recorded_thesis_positions = set()
+
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("OrderManager")
@@ -522,30 +525,39 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
         await log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=corrected_fill, combo_id=combo_id, position_id=position_uuid)
         logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId}, Position ID: {position_uuid})")
 
-        # --- NEW: Record Trade Thesis to TMS ---
-        if decision_data:
-            logger.info(f"Recording thesis for trade {position_uuid}...")
-            # We determine strategy type from contract or decision?
-            # Decision has 'prediction_type' and 'direction', not strategy name directly usually, unless added.
-            # But we can infer.
-            strategy_type = 'UNKNOWN'
-            if isinstance(trade.contract, Bag):
-                 if 'IRON' in trade.contract.localSymbol: strategy_type = 'IRON_CONDOR'
-                 elif trade.contract.localSymbol.startswith('STRDL'): strategy_type = 'LONG_STRADDLE'
-                 # Or use legs to infer
-                 # Simple inference:
-                 if decision_data.get('prediction_type') == 'DIRECTIONAL':
-                     strategy_type = 'BULL_CALL_SPREAD' if decision_data.get('direction') == 'BULLISH' else 'BEAR_PUT_SPREAD'
-                 elif decision_data.get('prediction_type') == 'VOLATILITY':
-                     strategy_type = 'LONG_STRADDLE' if decision_data.get('level') == 'HIGH' else 'IRON_CONDOR'
+        # --- NEW: Record Trade Thesis to TMS (DEDUPLICATED) ---
+        if decision_data and position_uuid:
+            if position_uuid not in _recorded_thesis_positions:
+                logger.info(f"Recording thesis for trade {position_uuid}...")
+                _recorded_thesis_positions.add(position_uuid)
 
-            await record_entry_thesis_for_trade(
-                position_id=position_uuid,
-                strategy_type=strategy_type,
-                decision=decision_data,
-                entry_price=fill.execution.avgPrice, # Use fill price
-                config=config or {}
-            )
+                # We determine strategy type from contract or decision?
+                # Decision has 'prediction_type' and 'direction', not strategy name directly usually, unless added.
+                # But we can infer.
+                strategy_type = 'UNKNOWN'
+                if isinstance(trade.contract, Bag):
+                    if 'IRON' in trade.contract.localSymbol: strategy_type = 'IRON_CONDOR'
+                    elif trade.contract.localSymbol.startswith('STRDL'): strategy_type = 'LONG_STRADDLE'
+                    # Or use legs to infer
+                    # Simple inference:
+                    if decision_data.get('prediction_type') == 'DIRECTIONAL':
+                        strategy_type = 'BULL_CALL_SPREAD' if decision_data.get('direction') == 'BULLISH' else 'BEAR_PUT_SPREAD'
+                    elif decision_data.get('prediction_type') == 'VOLATILITY':
+                        strategy_type = 'LONG_STRADDLE' if decision_data.get('level') == 'HIGH' else 'IRON_CONDOR'
+
+                try:
+                    await record_entry_thesis_for_trade(
+                        position_id=position_uuid,
+                        strategy_type=strategy_type,
+                        decision=decision_data,
+                        entry_price=fill.execution.avgPrice, # Use fill price
+                        config=config or {}
+                    )
+                    logger.info(f"TMS: Successfully recorded entry thesis for trade {position_uuid}")
+                except Exception as e:
+                    logger.error(f"TMS: Failed to record thesis for {position_uuid}: {e}")
+            else:
+                logger.debug(f"TMS: Thesis already recorded for {position_uuid}, skipping duplicate.")
 
     except Exception as e:
         logger.error(f"Error processing and logging fill for order {trade.order.orderId}: {e}\n{traceback.format_exc()}")
@@ -955,6 +967,8 @@ async def place_queued_orders(config: dict, orders_list: list = None):
         # --- Monitoring Loop ---
         start_time = time.time()
         monitoring_duration = 1800  # 30 minutes
+        PRICE_TOLERANCE = 0.001  # $0.001 tolerance for floating point comparison
+
         logger.info(f"Monitoring orders for up to {monitoring_duration / 60} minutes...")
         while time.time() - start_time < monitoring_duration:
             if not live_orders: break
@@ -977,6 +991,7 @@ async def place_queued_orders(config: dict, orders_list: list = None):
 
                 # --- Adaptive "Walking" Logic ---
                 if trade.order.orderType == 'LMT' and details['adaptive_ceiling_price'] is not None:
+                    # Check if enough time has passed for an update
                     if (time.time() - details['last_update_time']) >= adaptive_interval:
                         current_limit = trade.order.lmtPrice
                         ceiling = details['adaptive_ceiling_price']
@@ -1003,15 +1018,32 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                                 if new_price >= current_limit and current_limit > ceiling:
                                      new_price = max(current_limit - 0.05, ceiling)
 
-                        if new_price is not None and new_price != current_limit:
-                            logger.info(f"Adaptive Update for Order {order_id} ({trade.contract.localSymbol}): {current_limit} -> {new_price} (Cap/Floor: {ceiling})")
-                            trade.order.lmtPrice = new_price
-                            ib.placeOrder(trade.contract, trade.order) # Update the order
-                            details['last_update_time'] = time.time()
-                            log_order_event(trade, "Updated", f"Adaptive Walk: Price updated to {new_price}")
-                        elif new_price is not None and new_price == current_limit:
-                             # Reached cap/floor
-                             pass
+                        # FIX-001: Floating Point Comparison Bug
+                        if new_price is not None:
+                            price_actually_changed = abs(new_price - current_limit) > PRICE_TOLERANCE
+
+                            if price_actually_changed:
+                                logger.info(f"Adaptive Update for Order {order_id} ({trade.contract.localSymbol}): {current_limit} -> {new_price} (Cap/Floor: {ceiling})")
+                                trade.order.lmtPrice = new_price
+                                ib.placeOrder(trade.contract, trade.order)
+                                details['last_update_time'] = time.time()
+                                log_order_event(trade, "Updated", f"Adaptive Walk: Price updated to {new_price}")
+                            else:
+                                # Price at or very near cap/floor - log once then stop checking
+                                if not details.get('cap_reached_logged', False):
+                                    logger.info(f"Order {order_id} ({trade.contract.localSymbol}): Reached cap/floor at {ceiling:.2f}. Waiting for fill or timeout.")
+                                    details['cap_reached_logged'] = True
+                                    details['cap_reached_time'] = time.time()
+
+                    # FIX-003: Periodic status report for orders at cap (every 5 minutes)
+                    if details.get('cap_reached_logged', False):
+                        time_at_cap = time.time() - details.get('cap_reached_time', time.time())
+                        if time_at_cap > 0 and int(time_at_cap) % 300 == 0:  # Every 5 minutes
+                            logger.info(
+                                f"Order {order_id} ({details.get('display_name', 'UNKNOWN')}): "
+                                f"Still at cap {ceiling:.2f} for {int(time_at_cap/60)} minutes. "
+                                f"Current market: {trade.orderStatus.status}"
+                            )
 
             if active_orders_count == 0:
                 logger.info("All orders have reached a terminal state. Concluding monitoring.")
@@ -1123,6 +1155,9 @@ async def place_queued_orders(config: dict, orders_list: list = None):
         logger.critical(msg)
         send_pushover_notification(config.get('notifications', {}), "Order Placement CRITICAL", msg)
     finally:
+        # Clear thesis tracking for next run (FIX-005)
+        _recorded_thesis_positions.clear()
+
         if ib.isConnected():
             ib.orderStatusEvent -= on_order_status
             ib.execDetailsEvent -= on_exec_details

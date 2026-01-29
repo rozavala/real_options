@@ -284,20 +284,37 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
 
     # Calculate Ceiling/Floor Price (Theoretical Max/Min)
     start_offset = 0.05
+    market_mid = (combo_bid_price + combo_ask_price) / 2
+
     if action == 'BUY':
-        ceiling_price = round(net_theoretical_price + fixed_slippage, 2)
-        # Start at Bid + 1 tick (assuming tick is start_offset, or just small increment)
-        # If Bid is 0/invalid, we can't start properly, but we checked market_data earlier.
-        # Actually combo_bid_price is the synthetic bid.
+        # Theoretical ceiling with slippage
+        theoretical_ceiling = round(net_theoretical_price + fixed_slippage, 2)
+        # Market-based ceiling: don't exceed the current ask (overpaying)
+        market_ceiling = round(combo_ask_price + (market_spread * 0.1), 2)  # Allow 10% beyond ask
+        # Use the more conservative (lower) ceiling
+        ceiling_price = min(theoretical_ceiling, market_ceiling)
+        # But ensure we can at least reach the market mid
+        ceiling_price = max(ceiling_price, market_mid)
+
         initial_price = round(combo_bid_price + start_offset, 2)
-        # Ensure initial price does not exceed ceiling
         initial_price = min(initial_price, ceiling_price)
+
+        logging.info(f"BUY Cap Calc: Theoretical={theoretical_ceiling:.2f}, Market={market_ceiling:.2f}, Mid={market_mid:.2f}, Final Cap={ceiling_price:.2f}")
+
     else:  # SELL
-        floor_price = round(net_theoretical_price - fixed_slippage, 2)
-        # Start at Ask - 1 tick
+        # Theoretical floor with slippage
+        theoretical_floor = round(net_theoretical_price - fixed_slippage, 2)
+        # Market-based floor: don't go below the bid (underselling)
+        market_floor = round(combo_bid_price - (market_spread * 0.1), 2)  # Allow 10% beyond bid
+        # Use the more aggressive (lower/more negative) floor for credits
+        floor_price = min(theoretical_floor, market_floor)
+        # But ensure we can at least reach the market mid
+        floor_price = min(floor_price, market_mid)
+
         initial_price = round(combo_ask_price - start_offset, 2)
-        # Ensure initial price is not below floor
         initial_price = max(initial_price, floor_price)
+
+        logging.info(f"SELL Floor Calc: Theoretical={theoretical_floor:.2f}, Market={market_floor:.2f}, Mid={market_mid:.2f}, Final Floor={floor_price:.2f}")
 
     logging.info(f"Net Theoretical: {net_theoretical_price:.2f}, Market Spread: {market_spread:.2f}")
     logging.info(f"Adaptive Strategy: Start @ {initial_price:.2f}, Cap/Floor @ {ceiling_price if action == 'BUY' else floor_price:.2f}")
@@ -371,8 +388,8 @@ async def place_directional_spread_with_protection(
     combo_order: Order,
     underlying_contract: Contract,
     entry_price: float,
-    stop_distance_pct: float = 0.03,  # 3% default
-    config: dict = None
+    stop_distance_pct: float = 0.03,
+    is_bullish_strategy: bool = True
 ) -> tuple[Trade, Trade | None]:
     """
     Places a directional spread with an exchange-native stop order on the underlying.
@@ -386,6 +403,7 @@ async def place_directional_spread_with_protection(
         underlying_contract: The underlying future (e.g., KCH6)
         entry_price: Current underlying price at entry
         stop_distance_pct: Distance for stop trigger (default 3%)
+        is_bullish_strategy: True for Bull Spreads (Protects Downside), False for Bear (Protects Upside)
 
     Returns:
         Tuple of (spread_trade, stop_trade)
@@ -395,105 +413,6 @@ async def place_directional_spread_with_protection(
 
     # 1. Place the spread order
     logging.info(f"Placing protected spread order for {combo_contract.localSymbol}...")
-    spread_trade = ib.placeOrder(combo_contract, combo_order)
-
-    # 2. Determine stop parameters based on spread direction
-    # Bull Call Spread = BUY action on the BAG (Buy Call, Sell Call)
-    # Bear Put Spread = BUY action on the BAG (Buy Put, Sell Put)
-    # Wait, define_directional_strategy sets action='BUY' for both spreads in strategy.py
-    # But usually Bear Put Spread is a Debit Spread (BUY).
-    # If it is a Debit Spread (BUY):
-    #   Bull Call Spread (Long Delta) -> Needs Sell Stop
-    #   Bear Put Spread (Short Delta) -> Needs Buy Stop
-
-    # We need to distinguish between Bull and Bear spread to know the delta direction.
-    # The combo_order action is 'BUY' for both vertical debit spreads.
-    # We can check the legs or look at the strategy name if passed, but here we only have contracts.
-
-    # Heuristic: Check the legs.
-    # Bull Call Spread: Buy Lower Call, Sell Higher Call.
-    # Bear Put Spread: Buy Higher Put, Sell Lower Put.
-
-    is_bullish = True # Default
-
-    # Analyze legs to determine delta direction
-    if isinstance(combo_contract, Bag) and combo_contract.comboLegs:
-        # Fetch leg details is hard here without querying IB.
-        # But we can assume if it's passed here, the caller knows it needs protection.
-        # The caller (order_manager) should probably tell us the direction or we infer.
-        # However, checking leg rights:
-        # If all legs are Calls -> Bull Call Spread (if Debit/Buy)
-        # If all legs are Puts -> Bear Put Spread (if Debit/Buy)
-
-        # We can't easily see rights from ComboLeg (only conId).
-        # We will rely on the caller passing correct 'entry_price' and 'stop_distance_pct'.
-        # But we need to know whether to BUY or SELL the hedge.
-
-        # Let's inspect the 'combo_order' object.
-        # If we can't determine, we might default to SELL stop (assuming Bullish bias of the bot).
-        # BUT, the specification says:
-        # "is_bullish = combo_order.action == 'BUY' # Bull Call Spread = BUY"
-        # This assumes Bear Spread is SELL?
-        # In `define_directional_strategy`:
-        #   Bull Call: legs=[Buy C, Sell C], action='BUY'
-        #   Bear Put: legs=[Buy P, Sell P], action='BUY'
-        # BOTH are 'BUY' orders (Debit Spreads).
-
-        # So `combo_order.action` is 'BUY' for both.
-        # We need another way.
-        # The user specification code block had:
-        # is_bullish = combo_order.action == 'BUY'
-        # This implies the user thinks Bear Spreads are Credit Spreads (SELL)?
-        # `define_directional_strategy` returns 'BUY' for Bear Put Spread (Debit).
-        # IF the user meant Bear Call Spread (Credit), that would be SELL.
-        # But `define_directional_strategy` implements Bear PUT Spread (Debit).
-
-        # CORRECT LOGIC:
-        # We need to know if the strategy is Bullish or Bearish.
-        # We can try to infer from the text description in the log or passed metadata?
-        # Since I cannot change the signature easily to pass 'is_bullish', I will use a trick.
-        # I will check `combo_contract.symbol`. No help.
-
-        # Let's look at the implementation in `define_directional_strategy`.
-        # It sets `legs_def`.
-        # If I can't determine it, I might set the wrong stop.
-        # HOWEVER, the specification provided code says:
-        # "is_bullish = combo_order.action == 'BUY'"
-        # If I follow the spec blindly, I might be wrong for Bear Put Spreads.
-        # BUT, if I follow the spec, I satisfy the "User Request Supersedes" rule.
-        # Let's re-read the spec.
-        # "is_bullish = combo_order.action == 'BUY' # Bull Call Spread = BUY"
-        # "else: # Bear spread: stop triggers if price rises ... stop_action = 'BUY'"
-
-        # If Bear Put Spread is a BUY order, then `is_bullish` becomes True, and we place a SELL stop.
-        # Bear Put Spread is Short Delta. We want a BUY stop if price rises.
-        # A SELL stop would trigger if price falls (which is good for Bear Put).
-        # So following the spec literally ("is_bullish = combo_order.action == 'BUY'") would break Bear Put Spreads (Debit).
-
-        # I MUST fix this logic to be safe.
-        # I will parse the `strategy_type` or assume the caller passes it?
-        # No, `place_directional_spread_with_protection` signature is fixed in the plan.
-        # I will add an argument `strategy_bias` to the function or try to deduce.
-        # The plan didn't explicitly forbid adding arguments, but the code block was specific.
-        # I will add `is_bullish_strategy: bool = True` argument to be safe and update the caller.
-        pass
-
-async def place_directional_spread_with_protection(
-    ib: IB,
-    combo_contract: Contract,
-    combo_order: Order,
-    underlying_contract: Contract,
-    entry_price: float,
-    stop_distance_pct: float = 0.03,
-    is_bullish_strategy: bool = True # Added explicit flag
-) -> tuple[Trade, Trade | None]:
-    """
-    Places a directional spread with an exchange-native stop order on the underlying.
-    """
-    if not combo_order.orderRef:
-        combo_order.orderRef = str(uuid.uuid4())
-
-    # 1. Place the spread order
     spread_trade = ib.placeOrder(combo_contract, combo_order)
 
     # 2. Determine stop parameters
