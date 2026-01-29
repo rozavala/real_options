@@ -154,6 +154,18 @@ class IBConnectionPool:
                 return ib
 
             except Exception as e:
+                # === FIX: Clean up failed connection to prevent CLOSE-WAIT accumulation ===
+                # The IB() instance may have opened a TCP socket even if the API handshake
+                # failed (TimeoutError). Without explicit disconnect(), the socket enters
+                # CLOSE-WAIT state and accumulates over repeated retry attempts.
+                try:
+                    logger.debug(f"Cleaning up failed connection attempt for {purpose}")
+                    ib.disconnect()
+                    await asyncio.sleep(0.5)  # Brief settle for socket cleanup
+                except Exception as cleanup_err:
+                    logger.debug(f"Cleanup disconnect for {purpose} raised: {cleanup_err}")
+                    pass  # Ignore cleanup errors - socket may not have been fully established
+
                 cls._reconnect_backoff[purpose] = min(
                     cls._reconnect_backoff[purpose] * 2,
                     cls.MAX_RECONNECT_BACKOFF
