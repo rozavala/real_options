@@ -30,7 +30,7 @@ def generate_performance_charts(
     output_paths = []
 
     # --- Data Prep ---
-    trade_df['timestamp'] = pd.to_datetime(trade_df['timestamp'])
+    trade_df['timestamp'] = pd.to_datetime(trade_df['timestamp'], utc=True)
 
     # --- Dynamic Granularity (Determine from trade_df or equity_df) ---
     # Default to Daily
@@ -51,7 +51,7 @@ def generate_performance_charts(
     # --- Prepare Series for Charts 1 & 2 ---
     if equity_df is not None and not equity_df.empty:
         # Use Equity Data (Net Liquidation Value)
-        equity_df['timestamp'] = pd.to_datetime(equity_df['timestamp'])
+        equity_df['timestamp'] = pd.to_datetime(equity_df['timestamp'], utc=True)
 
         # Ensure sorted by date
         equity_df = equity_df.sort_values('timestamp')
@@ -114,7 +114,7 @@ def generate_performance_charts(
     # --- Chart 3: P&L by Model Signal (Life-to-Date) ---
     # This always uses the Trade Ledger because signals match to specific trades
     if not signals_df.empty and not trade_df.empty:
-        signals_df['timestamp'] = pd.to_datetime(signals_df['timestamp'])
+        signals_df['timestamp'] = pd.to_datetime(signals_df['timestamp'], utc=True)
         merged_df = pd.merge_asof(trade_df.sort_values('timestamp'), signals_df.sort_values('timestamp'), on='timestamp', direction='backward')
         pnl_by_signal = merged_df.groupby('signal')['total_value_usd'].sum()
 

@@ -16,7 +16,8 @@ class TestDashboardUtils(unittest.TestCase):
             'actual_trend_direction': ['UP', 'DOWN', 'UP', 'DOWN'],
             'ml_signal': ['LONG', 'SHORT', 'NEUTRAL', 'LONG'],
             'master_decision': ['BULLISH', 'BEARISH', 'NEUTRAL', 'BULLISH'],
-            'meteorologist_sentiment': ['BULLISH', 'BEARISH', 'BULLISH', 'BEARISH']
+            'meteorologist_sentiment': ['BULLISH', 'BEARISH', 'BULLISH', 'BEARISH'],
+            'prediction_type': ['DIRECTIONAL', 'DIRECTIONAL', 'DIRECTIONAL', 'DIRECTIONAL']
         }
         df = pd.DataFrame(data)
 
