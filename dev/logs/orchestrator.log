@@ -396,3 +396,197 @@ Traceback (most recent call last):
 TimeoutError
 
 2026-01-29 13:20:15,028 - Orchestrator - INFO - Next task 'generate_and_execute_orders' scheduled for 2026-01-29 13:50:00 UTC. Waiting for 0.50 hours.
+2026-01-29 13:50:00,001 - Orchestrator - INFO - --- Running scheduled task: generate_and_execute_orders ---
+2026-01-29 13:50:00,004 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-01-29 13:50:00,004 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-01-29 13:50:00,004 - OrderManager - INFO - Step 1: Running data pull...
+Setup complete.
+Dynamically determining the next 5 coffee tickers...
+... chronological tickers found: ['KCH26.NYB', 'KCK26.NYB', 'KCN26.NYB', 'KCU26.NYB', 'KCZ26.NYB']
+
+Fetching Coffee Prices...
+
+Fetching weather data...
+
+Fetching economic data from FRED...
+
+Fetching other market data from yfinance...
+
+Processing OHLV and fetching COT data...
+Fetching historical COT data directly from CFTC...
+... Successfully processed and filtered year 1986 (Rows: 24)
+... Successfully processed and filtered year 1987 (Rows: 24)
+... Successfully processed and filtered year 1988 (Rows: 24)
+... Successfully processed and filtered year 1989 (Rows: 24)
+... Successfully processed and filtered year 1990 (Rows: 23)
+... Successfully processed and filtered year 1991 (Rows: 24)
+... Successfully processed and filtered year 1992 (Rows: 31)
+... Successfully processed and filtered year 1993 (Rows: 52)
+... Successfully processed and filtered year 1994 (Rows: 52)
+... Successfully processed and filtered year 1995 (Rows: 52)
+... Successfully processed and filtered year 1996 (Rows: 53)
+... Successfully processed and filtered year 1997 (Rows: 52)
+... Successfully processed and filtered year 1998 (Rows: 52)
+... Successfully processed and filtered year 1999 (Rows: 52)
+... Successfully processed and filtered year 2000 (Rows: 52)
+... Successfully processed and filtered year 2001 (Rows: 52)
+... Successfully processed and filtered year 2002 (Rows: 52)
+... Successfully processed and filtered year 2003 (Rows: 52)
+... Successfully processed and filtered year 2004 (Rows: 52)
+... Successfully processed and filtered year 2005 (Rows: 52)
+... Successfully processed and filtered year 2006 (Rows: 52)
+... Successfully processed and filtered year 2007 (Rows: 53)
+... Successfully processed and filtered year 2008 (Rows: 52)
+... Successfully processed and filtered year 2009 (Rows: 52)
+... Successfully processed and filtered year 2010 (Rows: 52)
+... Successfully processed and filtered year 2011 (Rows: 52)
+... Successfully processed and filtered year 2012 (Rows: 53)
+... Successfully processed and filtered year 2013 (Rows: 52)
+... Successfully processed and filtered year 2014 (Rows: 52)
+... Successfully processed and filtered year 2015 (Rows: 52)
+... Successfully processed and filtered year 2016 (Rows: 52)
+... Successfully processed and filtered year 2017 (Rows: 52)
+... Successfully processed and filtered year 2018 (Rows: 53)
+... Successfully processed and filtered year 2019 (Rows: 52)
+... Successfully processed and filtered year 2020 (Rows: 52)
+... Successfully processed and filtered year 2021 (Rows: 52)
+... Successfully processed and filtered year 2022 (Rows: 52)
+... Successfully processed and filtered year 2023 (Rows: 52)
+... Successfully processed and filtered year 2024 (Rows: 53)
+... Successfully processed and filtered year 2025 (Rows: 52)
+... Successfully processed and filtered year 2026 (Rows: 3)
+Concatenating COT data...
+
+All data fetching complete.
+
+Successfully processed data. Shape: (525, 51)
+
+==============================
+<b>Data Pull Validation Report</b>
+Timestamp: 2026-01-29 13:50:37
+
+<b>Overall Status: ✅ SUCCESS</b>
+(9 checks passed, 0 checks failed)
+
+✅ <b>Coffee Price Fetch:</b> Successfully fetched 5 active contracts.
+✅ <b>Weather Data Fetch:</b> Successfully fetched data for 4 locations.
+✅ <b>FRED Data Fetch:</b> Completed all FRED series requests.
+✅ <b>Other Market Data Fetch:</b> Completed all other yfinance requests.
+✅ <b>Coffee OHLV Processing:</b> Successfully processed OHLV data.
+✅ <b>COT Report Fetch:</b> Successfully fetched CFTC data. Last entry: 2026-01-20
+✅ <b>Pre-Fill Missing Data:</b> Total missing data before fill is 9.03%.
+✅ <b>Data Recency:</b> Most recent data point is from 2026-01-29.
+✅ <b>Price Spike Detection:</b> Max daily change was 8.51%. Threshold is 15%.
+
+<b>Final Output File Stats:</b>
+- Rows: 525
+- Columns: 51
+==============================
+2026-01-29 13:50:38,111 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-29 13:50:38,119 - OrderManager - INFO - Data pull complete.
+2026-01-29 13:50:38,120 - OrderManager - INFO - Step 2: Running local model inference...
+2026-01-29 13:50:38,120 - root - INFO - Loading all production assets...
+2026-01-29 13:50:39,403 - root - INFO - All 10 assets loaded successfully.
+2026-01-29 13:50:39,405 - root - INFO - Macro Trend: BULL (Front Month: 349.70, SMA200: 346.76)
+2026-01-29 13:50:39,405 - root - INFO - Generating features from new data...
+2026-01-29 13:50:45,244 - root - INFO - Feature generation complete.
+2026-01-29 13:50:45,245 - root - INFO - Running hybrid prediction...
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1769694646.717157  460737 device_compiler.h:196] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+[1m1/1[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 1s/step[1m1/1[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 1s/step
+2026-01-29 13:50:46,809 - root - INFO - {
+  "signals": [
+    {
+      "action": "LONG",
+      "predicted_return": 0.00604355428686565,
+      "ml_confidence": 0.571738305933747,
+      "confidence": 0.571738305933747,
+      "expected_price": 351.8134432149221,
+      "regime": "BULL",
+      "reason": "AI Buy + Bull Trend",
+      "price": 349.70001220703125,
+      "sma_200": 346.7627503967285
+    },
+    {
+      "action": "LONG",
+      "predicted_return": 0.005613465832808087,
+      "ml_confidence": 0.5667319424351943,
+      "confidence": 0.5667319424351943,
+      "expected_price": 334.76871663796436,
+      "regime": "BULL",
+      "reason": "AI Buy + Bull Trend",
+      "price": 332.8999938964844,
+      "sma_200": 346.7627503967285
+    },
+    {
+      "action": "LONG",
+      "predicted_return": 0.005148356171789667,
+      "ml_confidence": 0.5612936603680024,
+      "confidence": 0.5612936603680024,
+      "expected_price": 327.32655605240467,
+      "regime": "BULL",
+      "reason": "AI Buy + Bull Trend",
+      "price": 325.6499938964844,
+      "sma_200": 346.7627503967285
+    },
+    {
+      "action": "NEUTRAL",
+      "predicted_return": 0.0046718664640824385,
+      "ml_confidence": 0.5556981682046089,
+      "confidence": 0.5556981682046089,
+      "expected_price": 320.38985208336544,
+      "regime": "BULL",
+      "reason": "Forecast 0.47% vs Threshold 0.50%",
+      "price": 318.8999938964844,
+      "sma_200": 346.7627503967285
+    },
+    {
+      "action": "NEUTRAL",
+      "predicted_return": 0.004338710665523496,
+      "ml_confidence": 0.5517724817519418,
+      "confidence": 0.5517724817519418,
+      "expected_price": 314.40822111384813,
+      "regime": "BULL",
+      "reason": "Forecast 0.43% vs Threshold 0.50%",
+      "price": 313.04998779296875,
+      "sma_200": 346.7627503967285
+    }
+  ]
+}
+2026-01-29 13:50:46,810 - OrderManager - INFO - Successfully received predictions from local model: [{'action': 'LONG', 'predicted_return': 0.00604355428686565, 'ml_confidence': 0.571738305933747, 'confidence': 0.571738305933747, 'expected_price': 351.8134432149221, 'regime': 'BULL', 'reason': 'AI Buy + Bull Trend', 'price': 349.70001220703125, 'sma_200': 346.7627503967285}, {'action': 'LONG', 'predicted_return': 0.005613465832808087, 'ml_confidence': 0.5667319424351943, 'confidence': 0.5667319424351943, 'expected_price': 334.76871663796436, 'regime': 'BULL', 'reason': 'AI Buy + Bull Trend', 'price': 332.8999938964844, 'sma_200': 346.7627503967285}, {'action': 'LONG', 'predicted_return': 0.005148356171789667, 'ml_confidence': 0.5612936603680024, 'confidence': 0.5612936603680024, 'expected_price': 327.32655605240467, 'regime': 'BULL', 'reason': 'AI Buy + Bull Trend', 'price': 325.6499938964844, 'sma_200': 346.7627503967285}, {'action': 'NEUTRAL', 'predicted_return': 0.0046718664640824385, 'ml_confidence': 0.5556981682046089, 'confidence': 0.5556981682046089, 'expected_price': 320.38985208336544, 'regime': 'BULL', 'reason': 'Forecast 0.47% vs Threshold 0.50%', 'price': 318.8999938964844, 'sma_200': 346.7627503967285}, {'action': 'NEUTRAL', 'predicted_return': 0.004338710665523496, 'ml_confidence': 0.5517724817519418, 'confidence': 0.5517724817519418, 'expected_price': 314.40822111384813, 'regime': 'BULL', 'reason': 'Forecast 0.43% vs Threshold 0.50%', 'price': 313.04998779296875, 'sma_200': 346.7627503967285}]
+2026-01-29 13:50:46,811 - trading_bot.connection_pool - INFO - Connecting IB (order_manager) ID: 148...
+2026-01-29 13:51:01,814 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-01-29 13:51:01,822 - trading_bot.connection_pool - ERROR - IB (order_manager) connection failed: . Next retry backoff: 10.0s
+2026-01-29 13:51:01,822 - OrderManager - ERROR - Error in order generation block: 
+2026-01-29 13:51:01,825 - OrderManager - CRITICAL - A critical error occurred during order generation: 
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/asyncio/tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/rodrigo/real_options/trading_bot/order_manager.py", line 319, in generate_and_queue_orders
+    raise e
+  File "/home/rodrigo/real_options/trading_bot/order_manager.py", line 137, in generate_and_queue_orders
+    ib = await IBConnectionPool.get_connection("order_manager", config)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rodrigo/real_options/trading_bot/connection_pool.py", line 151, in get_connection
+    await ib.connectAsync(
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py", line 1748, in connectAsync
+    await self.client.connectAsync(host, port, clientId, timeout)
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/client.py", line 217, in connectAsync
+    await asyncio.wait_for(self.apiStart, timeout)
+  File "/usr/lib/python3.12/asyncio/tasks.py", line 519, in wait_for
+    async with timeouts.timeout(timeout):
+  File "/usr/lib/python3.12/asyncio/timeouts.py", line 115, in __aexit__
+    raise TimeoutError from exc_val
+TimeoutError
+
+2026-01-29 13:51:02,049 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-29 13:51:02,300 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-29 13:51:02,303 - OrderManager - INFO - No orders were queued. Skipping placement step.
+2026-01-29 13:51:02,303 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-01-29 13:51:02,304 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-01-29 18:20:00 UTC. Waiting for 4.48 hours.
