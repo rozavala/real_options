@@ -142,9 +142,89 @@ async def generate_and_queue_orders(config: dict):
             signals = await generate_signals(ib, predictions, config)
             logger.info(f"Generated {len(signals)} signals: {signals}")
 
-            active_futures = await get_active_futures(ib, config['symbol'], config['exchange'])
-            if not active_futures:
-                raise ConnectionError("Could not find any active futures contracts.")
+            futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=5)
+
+            # ==========================================================================
+            # FLIGHT DIRECTOR OPTIMIZATION: Consolidated Pre-Signal Filtering
+            # Implements FIX-002 (Deferred Month) and FIX-006 (Volume) with parallel I/O
+            # ==========================================================================
+            from datetime import datetime
+
+            if not futures:
+                logger.warning("No active futures found.")
+                return
+
+            # --- FILTER 1: Deferred Month (FIX-002) ---
+            max_days = config.get('strategy', {}).get('max_days_to_expiry', 180)
+            date_filtered = []
+
+            for f in futures:
+                try:
+                    # Handle both YYYYMM and YYYYMMDD formats
+                    d_str = f.lastTradeDateOrContractMonth
+                    fmt = '%Y%m' if len(d_str) == 6 else '%Y%m%d'
+                    exp_date = datetime.strptime(d_str, fmt)
+                    days_out = (exp_date - datetime.now()).days
+
+                    if days_out <= max_days:
+                        date_filtered.append(f)
+                    else:
+                        logger.info(
+                            f"Skipping {f.localSymbol}: Too deferred "
+                            f"({days_out} days > {max_days} max)"
+                        )
+                except Exception as e:
+                    logger.warning(f"Date parse error for {f.localSymbol}: {e}. Keeping contract (fail-safe).")
+                    date_filtered.append(f)  # Fail-safe: keep on parse error
+
+            if not date_filtered:
+                logger.warning("No futures remaining after Deferred Month Filter.")
+                return
+
+            logger.info(f"Date filter passed: {len(date_filtered)}/{len(futures)} contracts within {max_days} days.")
+
+            # --- FILTER 2: Parallel Volume Check (FIX-006 Optimized) ---
+            min_vol = config.get('strategy', {}).get('min_underlying_volume', 20)
+
+            # Request market data for ALL candidates simultaneously (non-blocking)
+            tickers = [ib.reqMktData(f, '', True, False) for f in date_filtered]
+
+            logger.info(f"Checking liquidity for {len(tickers)} contracts (parallel)...")
+            await asyncio.sleep(2.0)  # Single wait for all feeds to populate
+
+            volume_filtered = []
+            for f, t in zip(date_filtered, tickers):
+                # Safely extract volume (handle NaN, None, missing)
+                vol = 0
+                try:
+                    if t.volume is not None and not util.isNan(t.volume):
+                        vol = int(t.volume)
+                except (TypeError, ValueError):
+                    vol = 0
+
+                if vol >= min_vol:
+                    volume_filtered.append(f)
+                    logger.debug(f"{f.localSymbol}: Volume {vol} >= {min_vol} (PASS)")
+                else:
+                    logger.info(
+                        f"Skipping {f.localSymbol}: Insufficient volume "
+                        f"({vol} < {min_vol} minimum)"
+                    )
+
+                # CRITICAL: Cancel subscription to prevent feed accumulation
+                ib.cancelMktData(f)
+
+            futures = volume_filtered
+
+            if not futures:
+                logger.warning("No futures remaining after Volume Filter.")
+                return
+
+            logger.info(f"Volume filter passed: {len(futures)} liquid candidates proceeding to signal generation.")
+            active_futures = futures
+            # ==========================================================================
+            # END CONSOLIDATED FILTERING
+            # ==========================================================================
 
             # Initialize Sizer
             sizer = DynamicPositionSizer(config)
@@ -171,30 +251,6 @@ async def generate_and_queue_orders(config: dict):
                 future = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal.get("contract_month", ""))), None)
                 if not future:
                     logger.warning(f"No active future for signal month {signal.get('contract_month')}."); continue
-
-                # --- FIX: Early Liquidity Gate (inline) ---
-                try:
-                    # Issue #3: Lower threshold to 20
-                    min_vol = config.get('strategy', {}).get('min_underlying_volume', 20)
-                    # REQUEST 2 DAYS to capture yesterday's full session if today is just starting
-                    bars = await ib.reqHistoricalDataAsync(
-                        future,
-                        endDateTime='',
-                        durationStr='2 D',
-                        barSizeSetting='1 day',
-                        whatToShow='TRADES',
-                        useRTH=True
-                    )
-
-                    # Check MAX volume of the last 2 days (Yesterday OR Today)
-                    recent_vol = max([b.volume for b in bars]) if bars else 0
-
-                    if recent_vol < min_vol:
-                        logger.info(f"Skipping {future.localSymbol}: Max Recent Volume {recent_vol} < Threshold {min_vol}")
-                        continue
-                except Exception as e:
-                    logger.warning(f"Volume pre-check failed for {future.localSymbol}: {e}. Proceeding cautiously.")
-                # --- END FIX ---
 
                 logger.info(f"Requesting snapshot market price for {future.localSymbol}...")
 
@@ -648,6 +704,10 @@ async def place_queued_orders(config: dict, orders_list: list = None):
         orders_checked_count = 0
 
         for contract, order, decision_data in target_queue:
+            # === FIX-004: Capture display name for consistent logging ===
+            strategy_def = decision_data.get('strategy_def') if isinstance(decision_data, dict) else None
+            display_name = _get_order_display_name(contract, strategy_def)
+
             orders_checked_count += 1
 
             # --- Margin Safety Update: Force Refresh Every 3 Trades ---
@@ -732,7 +792,7 @@ async def place_queued_orders(config: dict, orders_list: list = None):
 
                 approved, reason = await compliance.review_order(order_context)
                 if not approved:
-                    logger.warning(f"Order for {contract.localSymbol} blocked by Compliance: {reason}")
+                    logger.warning(f"Order for {display_name} blocked by Compliance: {reason}")
                     continue
 
                 # 3. Margin Check
@@ -743,12 +803,12 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                     orders_to_place.append((contract, order, decision_data))
                     current_available_funds -= margin_impact
                     current_position_count += 1 # Increment for next check
-                    logger.info(f"Approved {contract.localSymbol}: Margin ${margin_impact:,.2f} | Remaining: ${current_available_funds:,.2f}")
+                    logger.info(f"Approved {display_name}: Margin ${margin_impact:,.2f} | Remaining: ${current_available_funds:,.2f}")
                 else:
-                    logger.warning(f"Skipping {contract.localSymbol}: Margin ${margin_impact:,.2f} exceeds Available Funds.")
+                    logger.warning(f"Skipping {display_name}: Margin ${margin_impact:,.2f} exceeds Available Funds.")
 
             except Exception as e:
-                logger.error(f"Pre-trade check failed for {contract.localSymbol}: {e}. Skipping safely.")
+                logger.error(f"Pre-trade check failed for {display_name}: {e}. Skipping safely.")
 
         if not orders_to_place:
             logger.warning("No orders fit within available funds or compliance limits. Aborting placement.")
@@ -866,6 +926,7 @@ async def place_queued_orders(config: dict, orders_list: list = None):
             live_orders[trade.order.orderId] = {
                 'trade': trade,
                 'status': trade.orderStatus.status,
+                'display_name': display_name,  # FIX-004: Store for timeout logging
                 'is_filled': False,
                 'total_legs': len(contract.comboLegs) if isinstance(contract, Bag) else 1,
                 'filled_legs': set(),
@@ -1011,8 +1072,9 @@ async def place_queued_orders(config: dict, orders_list: list = None):
 
                 # --- 3. Create Enhanced Log and Cancel Order ---
                 price_info_log = f"Original Limit: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "Original Order: MKT"
+                stored_display_name = details.get('display_name', 'UNKNOWN')
                 log_message = (
-                    f"Order {trade.order.orderId} ({trade.contract.localSymbol}) TIMED OUT. "
+                    f"Order {trade.order.orderId} ({stored_display_name}) TIMED OUT. "
                     f"{price_info_log}. "
                     f"Final {final_bag_state}. "
                     f"Final LEGs: {final_leg_state_for_log}"
