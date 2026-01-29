@@ -366,7 +366,17 @@ class ComplianceGuardian:
         }
 
         # --- DETERMINISTIC PRE-CHECK (Skip LLM for obvious violations) ---
-        max_allowed = equity * self.limits['max_position_pct']
+        limit_pct = self.limits.get('max_position_pct', 0.40)
+
+        # FLIGHT DIRECTOR FIX: Use higher limit for defined-risk strategies (straddles)
+        # Heuristic: If risk per contract > $10,000, it's likely a straddle/premium trade
+        if actual_capital_at_risk > 0 and qty > 0:
+            risk_per_contract = actual_capital_at_risk / qty
+            if risk_per_contract > 10000:  # Likely straddle or large premium
+                limit_pct = self.limits.get('max_straddle_pct', 0.55)
+                logger.info(f"Using straddle limit ({limit_pct:.0%}) for high-premium trade")
+
+        max_allowed = equity * limit_pct
 
         # === FLIGHT DIRECTOR MANDATE: Regime Incompatibility Warning ===
         capital_consumption_pct = actual_capital_at_risk / equity if equity > 0 else 1.0
@@ -380,7 +390,7 @@ class ComplianceGuardian:
         if actual_capital_at_risk > max_allowed:
             return False, (
                 f"REJECTED - Article I: Max capital at risk (${actual_capital_at_risk:,.2f}) "
-                f"exceeds {self.limits['max_position_pct']:.0%} of equity (${max_allowed:,.2f})."
+                f"exceeds {limit_pct:.0%} of equity (${max_allowed:,.2f})."
             )
 
         prompt = f"""

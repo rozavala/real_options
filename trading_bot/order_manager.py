@@ -279,7 +279,13 @@ async def generate_and_queue_orders(config: dict):
                                 if len(calls) == 2: width = max(width, abs(calls[1][2] - calls[0][2]))
 
                                 multiplier = float(future.multiplier) if future.multiplier else 37500.0 # Default KC
-                                max_loss = width * multiplier * qty
+                                # FLIGHT DIRECTOR FIX: Divide by 100 to convert cents to dollars
+                                # width is in strike points (e.g., 5.0), multiplier is 37500 lbs
+                                # Dollar risk = width_cents × (lbs/100) = width × 375
+                                dollar_multiplier = multiplier / 100.0
+                                max_loss = width * dollar_multiplier * qty
+
+                                logger.info(f"Iron Condor risk calc: width={width}, multiplier={dollar_multiplier}, qty={qty}, max_loss=${max_loss:,.2f}")
 
                                 if not validate_iron_condor_risk(max_loss, account_value, config.get('catastrophe_protection', {}).get('iron_condor_max_risk_pct_of_equity', 0.02)):
                                     logger.warning(f"Skipping Iron Condor for {future.localSymbol} due to excessive risk.")
