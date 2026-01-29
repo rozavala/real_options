@@ -1,272 +1,35 @@
-2026-01-29 17:34:17,467 - Orchestrator - INFO - =============================================
-2026-01-29 17:34:17,467 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-01-29 17:34:17,467 - Orchestrator - INFO - =============================================
-2026-01-29 17:34:17,647 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-01-29 17:34:17,648 - Orchestrator - INFO - No deferred triggers to process.
-2026-01-29 17:34:17,648 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-01-29 17:34:17,648 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-01-29 18:20:00 UTC. Waiting for 0.76 hours.
-2026-01-29 17:34:17,648 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-01-29 17:34:17,649 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
-2026-01-29 17:34:17,883 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-01-29 17:34:17,885 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
-2026-01-29 17:34:17,885 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 110...
-2026-01-29 17:34:20,094 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 110
-2026-01-29 17:34:20,099 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-01-29 17:34:20,099 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
-2026-01-29 17:34:20,099 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
-2026-01-29 17:34:20,348 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-01-29 17:34:20,348 - Orchestrator - INFO - Refreshed contract cache: KCH6
-2026-01-29 17:34:20,348 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-01-29 17:34:20,348 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 203...
-2026-01-29 17:34:20,519 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 203
-2026-01-29 17:34:20,528 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-01-29 17:34:20,529 - trading_bot.microstructure_sentinel - INFO - MicrostructureSentinel initialized
-2026-01-29 17:34:22,530 - trading_bot.microstructure_sentinel - INFO - Subscribed to microstructure for KCH6
-2026-01-29 17:34:34,278 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
-2026-01-29 17:34:37,648 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-01-29 17:34:41,730 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 17:34:41,862 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
-2026-01-29 17:34:42,127 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'coffee futures'
-2026-01-29 17:34:42,754 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 17:34:42,844 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
-2026-01-29 17:34:42,987 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 17:34:43,008 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'Brazil coffee harvest'
-2026-01-29 17:34:43,083 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
-2026-01-29 17:34:43,215 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'arabica prices'
-2026-01-29 17:34:44,762 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 17:34:44,857 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
-2026-01-29 17:34:45,286 - trading_bot.sentinels - INFO - Broad search returned 14 posts for 'Colombia coffee'
-2026-01-29 17:34:46,018 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 17:34:46,111 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
-2026-01-29 17:34:46,169 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 17:34:46,409 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'US coffee tariffs'
-2026-01-29 17:34:49,942 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 17:34:51,742 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 17:34:54,655 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 17:34:54,656 - trading_bot.sentinels - ERROR - Invalid JSON from Grok: Unterminated string starting at: line 1 column 968 (char 967)
-2026-01-29 17:35:01,681 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 17:56:04,386 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 31% of average
-2026-01-29 17:56:04,596 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-29 18:01:05,225 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 43% of average
-2026-01-29 18:01:05,572 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-29 18:06:06,170 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 33% of average
-2026-01-29 18:06:06,521 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-29 18:20:00,009 - Orchestrator - INFO - --- Running scheduled task: close_stale_positions ---
-2026-01-29 18:20:00,010 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
-2026-01-29 18:20:00,040 - trading_bot.connection_pool - INFO - Connecting IB (order_manager) ID: 145...
-2026-01-29 18:20:08,282 - trading_bot.connection_pool - INFO - IB (order_manager) connected successfully with ID 145
-2026-01-29 18:20:08,287 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-01-29 18:20:08,288 - OrderManager - INFO - Connected to IB for closing positions.
-2026-01-29 18:20:08,539 - OrderManager - INFO - Found 4 live position legs in the IB account.
-2026-01-29 18:20:08,561 - OrderManager - INFO - Reconstruction: KOH6 C3.5 | Trade Date: 2026-01-29 | Age: 1 | Qty: 1.0
-2026-01-29 18:20:08,563 - OrderManager - INFO - Reconstruction: KOH6 C3.55 | Trade Date: 2026-01-29 | Age: 1 | Qty: 1.0
-2026-01-29 18:20:08,566 - OrderManager - INFO - Reconstruction: KOH6 P3.35 | Trade Date: 2026-01-29 | Age: 1 | Qty: 1.0
-2026-01-29 18:20:08,568 - OrderManager - INFO - Reconstruction: KOH6 P3.4 | Trade Date: 2026-01-29 | Age: 1 | Qty: 1.0
-2026-01-29 18:20:08,860 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-29 18:20:08,863 - Orchestrator - INFO - Next task 'cancel_and_stop_monitoring' scheduled for 2026-01-29 18:35:00 UTC. Waiting for 0.25 hours.
-2026-01-29 18:22:08,694 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 32% of average
-2026-01-29 18:22:09,014 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-29 18:35:00,034 - Orchestrator - INFO - --- Running scheduled task: cancel_and_stop_monitoring ---
-2026-01-29 18:35:00,035 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
-2026-01-29 18:35:00,035 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
-2026-01-29 18:35:00,036 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-01-29 18:35:00,036 - OrderManager - INFO - Connected to IB for canceling open orders.
-2026-01-29 18:35:00,039 - OrderManager - INFO - No open orders found to cancel.
-2026-01-29 18:35:00,039 - Orchestrator - WARNING - Monitoring process is not running or has already terminated.
-2026-01-29 18:35:00,039 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
-2026-01-29 18:35:00,040 - Orchestrator - INFO - Next task 'log_equity_snapshot' scheduled for 2026-01-29 18:55:00 UTC. Waiting for 0.33 hours.
-2026-01-29 18:55:00,017 - Orchestrator - INFO - --- Running scheduled task: log_equity_snapshot ---
-2026-01-29 18:55:00,017 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
-2026-01-29 18:55:00,018 - EquityLogger - INFO - Connecting to IB at 127.0.0.1:7497 with clientId 7760...
-2026-01-29 18:55:00,412 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-01-29 18:55:00,512 - EquityLogger - INFO - Fetched NetLiquidation: $49,839.66
-2026-01-29 18:55:00,521 - EquityLogger - INFO - Updated data/daily_equity.csv with value $49,839.66
-2026-01-29 18:55:03,526 - EquityLogger - INFO - Disconnected from IB.
-2026-01-29 18:55:03,527 - Orchestrator - INFO - Next task 'reconcile_and_analyze' scheduled for 2026-01-29 19:05:00 UTC. Waiting for 0.17 hours.
-2026-01-29 19:00:15,109 - Orchestrator - INFO - Market Closed: Disconnecting Sentinel IB to prevent zombie state.
-2026-01-29 19:00:18,115 - Orchestrator - INFO - Market Closed: Disengaging Microstructure Sentinel
-2026-01-29 19:00:18,115 - trading_bot.connection_pool - INFO - Disconnecting IB (microstructure)...
-2026-01-29 19:04:25,306 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 19:04:25,394 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
-2026-01-29 19:04:25,846 - trading_bot.sentinels - INFO - Broad search returned 3 posts for 'coffee futures'
-2026-01-29 19:04:26,714 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 19:04:26,734 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 19:04:26,800 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
-2026-01-29 19:04:26,863 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
-2026-01-29 19:04:26,925 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'arabica prices'
-2026-01-29 19:04:27,006 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'Brazil coffee harvest'
-2026-01-29 19:04:29,186 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 19:04:29,263 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
-2026-01-29 19:04:29,553 - trading_bot.sentinels - INFO - Broad search returned 5 posts for 'Colombia coffee'
-2026-01-29 19:04:30,767 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 19:04:30,844 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
-2026-01-29 19:04:31,136 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 19:04:31,141 - trading_bot.sentinels - INFO - Broad search returned 3 posts for 'US coffee tariffs'
-2026-01-29 19:04:33,871 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 19:04:35,098 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 19:04:38,582 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 19:04:40,786 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
-2026-01-29 19:04:40,793 - trading_bot.sentinels - WARNING - X volume spike: 15 vs mean 2 (>3.0x)
-2026-01-29 19:04:40,793 - trading_bot.sentinels - INFO - X volume anomaly: z-score=11.1
-2026-01-29 19:04:40,793 - trading_bot.sentinels - WARNING - 🚨 X SENTINEL TRIGGERED: UNUSUAL X ACTIVITY SPIKE (15 posts, 3.0x baseline)
-2026-01-29 19:04:40,794 - trading_bot.state_manager - INFO - Queued deferred trigger from XSentimentSentinel
-2026-01-29 19:04:40,794 - Orchestrator - INFO - Deferred XSentimentSentinel trigger for market open
-2026-01-29 19:05:00,018 - Orchestrator - INFO - --- Running scheduled task: reconcile_and_analyze ---
-2026-01-29 19:05:00,019 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
-2026-01-29 19:05:00,019 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
-2026-01-29 19:05:00,053 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1341111)...
-2026-01-29 19:05:00,293 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1341111&v=3 "HTTP/1.1 200 OK"
-2026-01-29 19:05:00,294 - TradeReconciler - INFO - Successfully requested report. Reference Code: 6325886862
-2026-01-29 19:05:10,296 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-01-29 19:05:10,828 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=6325886862&v=3 "HTTP/1.1 200 OK"
-2026-01-29 19:05:10,829 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-01-29 19:05:10,837 - EquityLogger - INFO - Preserving 6 local equity records not present in Flex Query.
-2026-01-29 19:05:10,839 - EquityLogger - INFO - Successfully synced 10 equity records to data/daily_equity.csv.
-2026-01-29 19:05:10,839 - Orchestrator - INFO - --- Starting trade reconciliation ---
-2026-01-29 19:05:10,839 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
-2026-01-29 19:05:10,840 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
-2026-01-29 19:05:10,868 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1328326)...
-2026-01-29 19:05:14,449 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1328326&v=3 "HTTP/1.1 200 OK"
-2026-01-29 19:05:14,450 - TradeReconciler - INFO - Successfully requested report. Reference Code: 1350326749
-2026-01-29 19:05:24,456 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-01-29 19:05:24,626 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=1350326749&v=3 "HTTP/1.1 200 OK"
-2026-01-29 19:05:24,627 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-01-29 19:05:24,630 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
-2026-01-29 19:05:24,630 - TradeReconciler - WARNING - Flex Query report contained no data.
-2026-01-29 19:05:24,631 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
-2026-01-29 19:05:24,677 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1331422)...
-2026-01-29 19:05:24,823 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1331422&v=3 "HTTP/1.1 200 OK"
-2026-01-29 19:05:24,823 - TradeReconciler - INFO - Successfully requested report. Reference Code: 6384432686
-2026-01-29 19:05:34,828 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-01-29 19:05:34,946 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=6384432686&v=3 "HTTP/1.1 200 OK"
-2026-01-29 19:05:34,947 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-01-29 19:05:34,951 - TradeReconciler - INFO - Parsed 4 executions from the Flex Query report.
-2026-01-29 19:05:34,969 - TradeReconciler - INFO - Successfully processed 4 trades into the reconciliation DataFrame.
-2026-01-29 19:05:34,972 - TradeReconciler - INFO - Consolidated to 4 unique trades from all reports.
-2026-01-29 19:05:34,975 - TradeReconciler - INFO - Loaded 4 trades from the main ledger.
-2026-01-29 19:05:34,975 - TradeReconciler - INFO - Found 0 archived ledger files.
-2026-01-29 19:05:34,977 - TradeReconciler - INFO - Consolidated a total of 4 trades from all ledgers.
-2026-01-29 19:05:34,978 - TradeReconciler - INFO - Filtered IB trades from 4 to 4 records within the last 33 days.
-2026-01-29 19:05:34,978 - TradeReconciler - INFO - Filtered local ledger from 4 to 4 records within the last 33 days.
-2026-01-29 19:05:34,991 - TradeReconciler - INFO - Reconciliation complete. Found 0 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
-2026-01-29 19:05:34,992 - TradeReconciler - INFO - No discrepancies found. The local ledger is perfectly in sync with the IB report.
-2026-01-29 19:05:34,992 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
-2026-01-29 19:05:34,992 - TradeReconciler - INFO - Starting Active Position Reconciliation...
-2026-01-29 19:05:35,026 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1341164)...
-2026-01-29 19:05:35,239 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1341164&v=3 "HTTP/1.1 200 OK"
-2026-01-29 19:05:35,240 - TradeReconciler - INFO - Successfully requested report. Reference Code: 1923138484
-2026-01-29 19:05:45,242 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-01-29 19:05:45,393 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=1923138484&v=3 "HTTP/1.1 200 OK"
-2026-01-29 19:05:45,394 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-01-29 19:05:45,398 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
-2026-01-29 19:05:45,400 - TradeReconciler - INFO - Loaded 4 trades from the main ledger.
-2026-01-29 19:05:45,401 - TradeReconciler - INFO - Found 0 archived ledger files.
-2026-01-29 19:05:45,402 - TradeReconciler - INFO - Consolidated a total of 4 trades from all ledgers.
-2026-01-29 19:05:45,406 - TradeReconciler - INFO - Skipping reconciliation for recently traded symbols: {'KOH6 P3.35', 'KOH6 P3.4', 'KOH6 C3.55', 'KOH6 C3.5'}
-2026-01-29 19:05:45,409 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
-2026-01-29 19:05:45,410 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
-2026-01-29 19:05:45,917 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-27 16:14:09: KCK6 (202605) (NEUTRAL)
-2026-01-29 19:05:46,098 - trading_bot.reconciliation - INFO - STRADDLE WIN: 2.85% move exceeds 1.80% threshold. Net P&L: 3.61
-2026-01-29 19:05:46,099 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 344.10 -> Exit 334.30 (2.85% move) | Strategy: LONG_STRADDLE | Outcome: BIG_MOVE | P&L: 3.6062
-2026-01-29 19:05:46,106 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual BIG_MOVE -> CORRECT
-2026-01-29 19:05:46,208 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-27 16:14:39: KCN6 (202607) (NEUTRAL)
-2026-01-29 19:05:46,381 - trading_bot.reconciliation - INFO - STRADDLE WIN: 2.85% move exceeds 1.80% threshold. Net P&L: 3.54
-2026-01-29 19:05:46,382 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 336.60 -> Exit 327.00 (2.85% move) | Strategy: LONG_STRADDLE | Outcome: BIG_MOVE | P&L: 3.5412
-2026-01-29 19:05:46,382 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual BIG_MOVE -> CORRECT
-2026-01-29 19:05:46,483 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-27 16:16:33: KCU6 (202609) (NEUTRAL)
-2026-01-29 19:05:46,656 - trading_bot.reconciliation - INFO - STRADDLE WIN: 2.83% move exceeds 1.80% threshold. Net P&L: 3.41
-2026-01-29 19:05:46,656 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 329.95 -> Exit 320.60 (2.83% move) | Strategy: LONG_STRADDLE | Outcome: BIG_MOVE | P&L: 3.4109
-2026-01-29 19:05:46,657 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual BIG_MOVE -> CORRECT
-2026-01-29 19:05:46,757 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-27 16:17:54: KCZ6 (202612) (NEUTRAL)
-2026-01-29 19:05:46,927 - trading_bot.reconciliation - INFO - STRADDLE WIN: 2.87% move exceeds 1.80% threshold. Net P&L: 3.46
-2026-01-29 19:05:46,927 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 324.25 -> Exit 314.95 (2.87% move) | Strategy: LONG_STRADDLE | Outcome: BIG_MOVE | P&L: 3.4635
-2026-01-29 19:05:46,927 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual BIG_MOVE -> CORRECT
-2026-01-29 19:05:47,028 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-27 17:08:53: KCN6 (202607) (NEUTRAL)
-2026-01-29 19:05:47,200 - trading_bot.reconciliation - INFO - STRADDLE WIN: 3.74% move exceeds 1.80% threshold. Net P&L: 6.59
-2026-01-29 19:05:47,200 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 339.70 -> Exit 327.00 (3.74% move) | Strategy: LONG_STRADDLE | Outcome: BIG_MOVE | P&L: 6.5854
-2026-01-29 19:05:47,203 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual BIG_MOVE -> CORRECT
-2026-01-29 19:05:47,305 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-27 17:09:01: KCK6 (202605) (NEUTRAL)
-2026-01-29 19:05:47,482 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 347.40 -> Exit 334.30 (3.77% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
-2026-01-29 19:05:47,482 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
-2026-01-29 19:05:47,583 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-27 17:12:06: KCU6 (202609) (BULLISH)
-2026-01-29 19:05:47,752 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 332.95 -> Exit 320.60 (3.71% move) | Strategy: BULL_CALL_SPREAD | Outcome: BEARISH | P&L: -12.3500
-2026-01-29 19:05:47,752 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BULLISH vs Actual BEARISH
-2026-01-29 19:05:47,853 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-27 17:12:30: KCZ6 (202612) (NEUTRAL)
-2026-01-29 19:05:48,025 - trading_bot.reconciliation - INFO - STRADDLE WIN: 3.54% move exceeds 1.80% threshold. Net P&L: 5.67
-2026-01-29 19:05:48,025 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 326.50 -> Exit 314.95 (3.54% move) | Strategy: LONG_STRADDLE | Outcome: BIG_MOVE | P&L: 5.6730
-2026-01-29 19:05:48,025 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual BIG_MOVE -> CORRECT
-2026-01-29 19:05:48,128 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 13:57:35: KCN6 (202607) (NEUTRAL)
-2026-01-29 19:05:48,301 - trading_bot.reconciliation - INFO - STRADDLE WIN: 3.04% move exceeds 1.80% threshold. Net P&L: 4.13
-2026-01-29 19:05:48,303 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 331.75 -> Exit 321.65 (3.04% move) | Strategy: LONG_STRADDLE | Outcome: BIG_MOVE | P&L: 4.1285
-2026-01-29 19:05:48,303 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual BIG_MOVE -> CORRECT
-2026-01-29 19:05:48,404 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 14:01:53: KCK6 (202605) (NEUTRAL)
-2026-01-29 19:05:48,570 - trading_bot.reconciliation - INFO - STRADDLE WIN: 3.24% move exceeds 1.80% threshold. Net P&L: 4.89
-2026-01-29 19:05:48,570 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 339.20 -> Exit 328.20 (3.24% move) | Strategy: LONG_STRADDLE | Outcome: BIG_MOVE | P&L: 4.8944
-2026-01-29 19:05:48,571 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual BIG_MOVE -> CORRECT
-2026-01-29 19:05:48,671 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 14:04:53: KCH6 (202603) (NEUTRAL)
-2026-01-29 19:05:48,841 - trading_bot.reconciliation - INFO - STRADDLE WIN: 3.59% move exceeds 1.80% threshold. Net P&L: 6.41
-2026-01-29 19:05:48,841 - trading_bot.reconciliation - INFO - Reconciled KCH6 (202603): Entry 357.85 -> Exit 345.00 (3.59% move) | Strategy: LONG_STRADDLE | Outcome: BIG_MOVE | P&L: 6.4087
-2026-01-29 19:05:48,842 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual BIG_MOVE -> CORRECT
-2026-01-29 19:05:48,943 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 14:04:57: KCU6 (202609) (NEUTRAL)
-2026-01-29 19:05:49,112 - trading_bot.reconciliation - INFO - STRADDLE WIN: 2.95% move exceeds 1.80% threshold. Net P&L: 3.75
-2026-01-29 19:05:49,113 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 325.00 -> Exit 315.40 (2.95% move) | Strategy: LONG_STRADDLE | Outcome: BIG_MOVE | P&L: 3.7500
-2026-01-29 19:05:49,113 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual BIG_MOVE -> CORRECT
-2026-01-29 19:05:49,214 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 14:10:21: KCZ6 (202612) (NEUTRAL)
-2026-01-29 19:05:49,384 - trading_bot.reconciliation - INFO - STRADDLE WIN: 2.91% move exceeds 1.80% threshold. Net P&L: 3.55
-2026-01-29 19:05:49,384 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 319.40 -> Exit 310.10 (2.91% move) | Strategy: LONG_STRADDLE | Outcome: BIG_MOVE | P&L: 3.5508
-2026-01-29 19:05:49,384 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual BIG_MOVE -> CORRECT
-2026-01-29 19:05:49,485 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 16:20:36: KCH6 (202603) (NEUTRAL)
-2026-01-29 19:05:49,540 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 16:20:41: KCN6 (202607) (NEUTRAL)
-2026-01-29 19:05:49,596 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 16:20:57: KCK6 (202605) (NEUTRAL)
-2026-01-29 19:05:49,655 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 16:24:35: KCU6 (202609) (BEARISH)
-2026-01-29 19:05:49,750 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 16:25:16: KCZ6 (202612) (NEUTRAL)
-2026-01-29 19:05:49,845 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 17:49:17: KCN6 (202607) (NEUTRAL)
-2026-01-29 19:05:49,899 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 17:50:01: KCK6 (202605) (NEUTRAL)
-2026-01-29 19:05:49,995 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 17:52:00: KCU6 (202609) (NEUTRAL)
-2026-01-29 19:05:50,090 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 17:52:38: KCH6 (202603) (NEUTRAL)
-2026-01-29 19:05:50,144 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-01-28 17:58:51: KCZ6 (202612) (NEUTRAL)
-2026-01-29 19:05:50,223 - trading_bot.reconciliation - INFO - Successfully updated council_history.csv with reconciliation results.
-2026-01-29 19:05:50,243 - trading_bot.brier_scoring - INFO - Found 451 pending predictions to check
-2026-01-29 19:05:50,857 - trading_bot.brier_scoring - INFO - Updated 9 predictions in data/agent_accuracy_structured.csv
-2026-01-29 19:05:50,860 - trading_bot.brier_scoring - INFO - Appended 9 resolved predictions to data/agent_accuracy.csv
-2026-01-29 19:05:50,861 - trading_bot.reconciliation - INFO - Feedback Loop: Resolved 9 individual agent predictions
-2026-01-29 19:05:53,865 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
-2026-01-29 19:05:53,865 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
-2026-01-29 19:05:53,865 - PerformanceAnalyzer - INFO - Loading main trade ledger: trade_ledger.csv
-2026-01-29 19:05:53,868 - PerformanceAnalyzer - INFO - No archived trade ledgers found.
-2026-01-29 19:05:53,869 - PerformanceAnalyzer - INFO - Consolidated a total of 4 trade records.
-2026-01-29 19:05:53,873 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
-2026-01-29 19:05:54,181 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $49,839.66
-2026-01-29 19:05:56,189 - PerformanceAnalyzer - INFO - Successfully fetched 5 execution(s) for today from IB.
-2026-01-29 19:05:59,193 - PerformanceAnalyzer - INFO - Loading daily_equity.csv for equity curve.
-2026-01-29 19:05:59,196 - PerformanceAnalyzer - INFO - Dynamic Starting Capital from History: $50,000.00
-2026-01-29 19:05:59,198 - PerformanceAnalyzer - INFO - Calculated LTD Total P&L (Equity): $-160.34
-2026-01-29 19:05:59,637 - PerformanceAnalyzer - ERROR - An error occurred during performance analysis: incompatible merge keys [0] dtype('<M8[ns]') and datetime64[ns, UTC], must be the same type
-Traceback (most recent call last):
-  File "/home/rodrigo/real_options/performance_analyzer.py", line 435, in analyze_performance
-    chart_paths = generate_performance_charts(trade_df, signals_df, equity_df, starting_capital)
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/rodrigo/real_options/trading_bot/performance_graphs.py", line 118, in generate_performance_charts
-    merged_df = pd.merge_asof(trade_df.sort_values('timestamp'), signals_df.sort_values('timestamp'), on='timestamp', direction='backward')
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/reshape/merge.py", line 691, in merge_asof
-    op = _AsOfMerge(
-         ^^^^^^^^^^^
-  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/reshape/merge.py", line 2000, in __init__
-    _OrderedMerge.__init__(
-  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/reshape/merge.py", line 1912, in __init__
-    _MergeOperation.__init__(
-  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/reshape/merge.py", line 802, in __init__
-    self._maybe_require_matching_dtypes(self.left_join_keys, self.right_join_keys)
-  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/reshape/merge.py", line 2125, in _maybe_require_matching_dtypes
-    _check_dtype_match(lk, rk, i)
-  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/pandas/core/reshape/merge.py", line 2121, in _check_dtype_match
-    raise MergeError(msg)
-pandas.errors.MergeError: incompatible merge keys [0] dtype('<M8[ns]') and datetime64[ns, UTC], must be the same type
-2026-01-29 19:05:59,938 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-01-29 19:05:59,940 - root - INFO - Successfully archived 'trade_ledger.csv' to '/home/rodrigo/real_options/archive_ledger/trade_ledger_20260129_190559.csv'
-2026-01-29 19:05:59,940 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
-2026-01-29 19:05:59,940 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
-2026-01-29 19:05:59,941 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-01-30 08:20:00 UTC. Waiting for 13.23 hours.
-2026-01-29 19:34:45,096 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
-2026-01-29 20:00:01,076 - ib_insync.client - ERROR - Peer closed connection.
+2026-01-29 20:58:48,444 - Orchestrator - INFO - =============================================
+2026-01-29 20:58:48,444 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-01-29 20:58:48,445 - Orchestrator - INFO - =============================================
+2026-01-29 20:58:48,722 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-01-29 20:58:48,722 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-01-29 20:58:48,723 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-01-30 08:20:00 UTC. Waiting for 11.35 hours.
+2026-01-29 20:58:48,723 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-01-29 20:58:48,723 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
+2026-01-29 20:58:49,127 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-01-29 20:58:57,510 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-01-29 20:59:01,859 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-29 20:59:01,963 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
+2026-01-29 20:59:02,292 - trading_bot.sentinels - INFO - Broad search returned 1 posts for 'coffee futures'
+2026-01-29 20:59:03,917 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-29 20:59:04,000 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-29 20:59:04,016 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
+2026-01-29 20:59:04,103 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
+2026-01-29 20:59:04,182 - trading_bot.sentinels - INFO - Broad search returned 3 posts for 'arabica prices'
+2026-01-29 20:59:04,250 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'Brazil coffee harvest'
+2026-01-29 20:59:04,689 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-29 20:59:04,782 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
+2026-01-29 20:59:05,071 - trading_bot.sentinels - INFO - Broad search returned 5 posts for 'Colombia coffee'
+2026-01-29 20:59:06,551 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-29 20:59:06,652 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
+2026-01-29 20:59:06,974 - trading_bot.sentinels - INFO - Broad search returned 3 posts for 'US coffee tariffs'
+2026-01-29 20:59:08,762 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-29 20:59:11,499 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-29 20:59:13,900 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-29 20:59:14,051 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-29 20:59:20,358 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-29 20:59:20,368 - trading_bot.sentinels - WARNING - X volume spike: 14 vs mean 3 (>3.0x)
+2026-01-29 20:59:20,368 - trading_bot.sentinels - INFO - X volume anomaly: z-score=7.6
+2026-01-29 20:59:20,369 - trading_bot.sentinels - WARNING - 🚨 X SENTINEL TRIGGERED: UNUSUAL X ACTIVITY SPIKE (14 posts, 3.0x baseline)
+2026-01-29 20:59:20,369 - trading_bot.state_manager - INFO - Queued deferred trigger from XSentimentSentinel
+2026-01-29 20:59:20,370 - Orchestrator - INFO - Deferred XSentimentSentinel trigger for market open
