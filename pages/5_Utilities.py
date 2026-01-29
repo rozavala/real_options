@@ -372,6 +372,10 @@ with diag_cols[0]:
                             return False, "Connection failed"
                         except Exception as e:
                             return False, str(e)
+                        finally:
+                            # FLIGHT DIRECTOR FIX: Guaranteed cleanup
+                            # This prevents the "CLOSE-WAIT" zombie accumulation
+                            await IBConnectionPool.release_connection("test_utilities")
 
                     try:
                         success, message = asyncio.run(test_connection())
