@@ -17,3 +17,1094 @@ Converting to PeriodArray/Index representation will drop timezone information.
 2026-01-30 09:44:45,617 - trading_bot.tms - INFO - TMS initialized at ./data/tms
 2026-01-30 09:44:45,844 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
 2026-01-30 09:44:45,846 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'openai', 'gemini']
+2026-01-30 09:49:26,167 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-01-30 09:49:26,168 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-01-30 09:49:26,168 - OrderManager - INFO - Step 1: Running data pull...
+Setup complete.
+Dynamically determining the next 5 coffee tickers...
+... chronological tickers found: ['KCH26.NYB', 'KCK26.NYB', 'KCN26.NYB', 'KCU26.NYB', 'KCZ26.NYB']
+
+Fetching Coffee Prices...
+
+Fetching weather data...
+
+Fetching economic data from FRED...
+
+Fetching other market data from yfinance...
+
+Processing OHLV and fetching COT data...
+Fetching historical COT data directly from CFTC...
+... Successfully processed and filtered year 1986 (Rows: 24)
+... Successfully processed and filtered year 1987 (Rows: 24)
+... Successfully processed and filtered year 1988 (Rows: 24)
+... Successfully processed and filtered year 1989 (Rows: 24)
+... Successfully processed and filtered year 1990 (Rows: 23)
+... Successfully processed and filtered year 1991 (Rows: 24)
+... Successfully processed and filtered year 1992 (Rows: 31)
+... Successfully processed and filtered year 1993 (Rows: 52)
+... Successfully processed and filtered year 1994 (Rows: 52)
+... Successfully processed and filtered year 1995 (Rows: 52)
+... Successfully processed and filtered year 1996 (Rows: 53)
+... Successfully processed and filtered year 1997 (Rows: 52)
+... Successfully processed and filtered year 1998 (Rows: 52)
+... Successfully processed and filtered year 1999 (Rows: 52)
+... Successfully processed and filtered year 2000 (Rows: 52)
+... Successfully processed and filtered year 2001 (Rows: 52)
+... Successfully processed and filtered year 2002 (Rows: 52)
+... Successfully processed and filtered year 2003 (Rows: 52)
+... Successfully processed and filtered year 2004 (Rows: 52)
+... Successfully processed and filtered year 2005 (Rows: 52)
+... Successfully processed and filtered year 2006 (Rows: 52)
+... Successfully processed and filtered year 2007 (Rows: 53)
+... Successfully processed and filtered year 2008 (Rows: 52)
+... Successfully processed and filtered year 2009 (Rows: 52)
+... Successfully processed and filtered year 2010 (Rows: 52)
+... Successfully processed and filtered year 2011 (Rows: 52)
+... Successfully processed and filtered year 2012 (Rows: 53)
+... Successfully processed and filtered year 2013 (Rows: 52)
+... Successfully processed and filtered year 2014 (Rows: 52)
+... Successfully processed and filtered year 2015 (Rows: 52)
+... Successfully processed and filtered year 2016 (Rows: 52)
+... Successfully processed and filtered year 2017 (Rows: 52)
+... Successfully processed and filtered year 2018 (Rows: 53)
+... Successfully processed and filtered year 2019 (Rows: 52)
+... Successfully processed and filtered year 2020 (Rows: 52)
+... Successfully processed and filtered year 2021 (Rows: 52)
+... Successfully processed and filtered year 2022 (Rows: 52)
+... Successfully processed and filtered year 2023 (Rows: 52)
+... Successfully processed and filtered year 2024 (Rows: 53)
+... Successfully processed and filtered year 2025 (Rows: 52)
+... Successfully processed and filtered year 2026 (Rows: 3)
+Concatenating COT data...
+
+All data fetching complete.
+
+Successfully processed data. Shape: (526, 51)
+
+==============================
+<b>Data Pull Validation Report</b>
+Timestamp: 2026-01-30 09:49:58
+
+<b>Overall Status: ✅ SUCCESS</b>
+(9 checks passed, 0 checks failed)
+
+✅ <b>Coffee Price Fetch:</b> Successfully fetched 5 active contracts.
+✅ <b>Weather Data Fetch:</b> Successfully fetched data for 4 locations.
+✅ <b>FRED Data Fetch:</b> Completed all FRED series requests.
+✅ <b>Other Market Data Fetch:</b> Completed all other yfinance requests.
+✅ <b>Coffee OHLV Processing:</b> Successfully processed OHLV data.
+✅ <b>COT Report Fetch:</b> Successfully fetched CFTC data. Last entry: 2026-01-20
+✅ <b>Pre-Fill Missing Data:</b> Total missing data before fill is 9.03%.
+✅ <b>Data Recency:</b> Most recent data point is from 2026-01-30.
+✅ <b>Price Spike Detection:</b> Max daily change was 8.51%. Threshold is 15%.
+
+<b>Final Output File Stats:</b>
+- Rows: 526
+- Columns: 51
+==============================
+2026-01-30 09:49:58,591 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-30 09:49:58,603 - OrderManager - INFO - Data pull complete.
+2026-01-30 09:49:58,603 - OrderManager - INFO - Step 2: Running local model inference...
+2026-01-30 09:49:58,606 - root - INFO - Loading all production assets...
+2026-01-30 09:49:59,688 - root - INFO - All 10 assets loaded successfully.
+2026-01-30 09:49:59,689 - root - INFO - Macro Trend: BEAR (Front Month: 341.55, SMA200: 346.69)
+2026-01-30 09:49:59,689 - root - INFO - Generating features from new data...
+2026-01-30 09:50:05,276 - root - INFO - Feature generation complete.
+2026-01-30 09:50:05,276 - root - INFO - Running hybrid prediction...
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1769766606.989307  491579 device_compiler.h:196] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+[1m1/1[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 2s/step[1m1/1[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m2s[0m 2s/step
+2026-01-30 09:50:07,053 - root - INFO - {
+  "signals": [
+    {
+      "action": "NEUTRAL",
+      "predicted_return": 0.006121795459995522,
+      "ml_confidence": 0.5726466165374066,
+      "confidence": 0.5726466165374066,
+      "expected_price": 343.64088695760125,
+      "regime": "BEAR",
+      "reason": "AI Buy blocked by Bear Trend",
+      "price": 341.54998779296875,
+      "sma_200": 346.6875003051758
+    },
+    {
+      "action": "NEUTRAL",
+      "predicted_return": 0.005685235498051532,
+      "ml_confidence": 0.5675689063947079,
+      "confidence": 0.5675689063947079,
+      "expected_price": 327.09912284574125,
+      "regime": "BEAR",
+      "reason": "AI Buy blocked by Bear Trend",
+      "price": 325.25,
+      "sma_200": 346.6875003051758
+    },
+    {
+      "action": "NEUTRAL",
+      "predicted_return": 0.005213702872452224,
+      "ml_confidence": 0.5620591771945141,
+      "confidence": 0.5620591771945141,
+      "expected_price": 320.8642262275618,
+      "regime": "BEAR",
+      "reason": "AI Buy blocked by Bear Trend",
+      "price": 319.20001220703125,
+      "sma_200": 346.6875003051758
+    },
+    {
+      "action": "NEUTRAL",
+      "predicted_return": 0.004732250630511278,
+      "ml_confidence": 0.5564085485623929,
+      "confidence": 0.5564085485623929,
+      "expected_price": 315.03378492039883,
+      "regime": "BEAR",
+      "reason": "Forecast 0.47% vs Threshold 0.50%",
+      "price": 313.54998779296875,
+      "sma_200": 346.6875003051758
+    },
+    {
+      "action": "NEUTRAL",
+      "predicted_return": 0.004393512376724345,
+      "ml_confidence": 0.5524189473951306,
+      "confidence": 0.5524189473951306,
+      "expected_price": 309.6545076050811,
+      "regime": "BEAR",
+      "reason": "Forecast 0.44% vs Threshold 0.50%",
+      "price": 308.29998779296875,
+      "sma_200": 346.6875003051758
+    }
+  ]
+}
+2026-01-30 09:50:07,056 - OrderManager - INFO - Successfully received predictions from local model: [{'action': 'NEUTRAL', 'predicted_return': 0.006121795459995522, 'ml_confidence': 0.5726466165374066, 'confidence': 0.5726466165374066, 'expected_price': 343.64088695760125, 'regime': 'BEAR', 'reason': 'AI Buy blocked by Bear Trend', 'price': 341.54998779296875, 'sma_200': 346.6875003051758}, {'action': 'NEUTRAL', 'predicted_return': 0.005685235498051532, 'ml_confidence': 0.5675689063947079, 'confidence': 0.5675689063947079, 'expected_price': 327.09912284574125, 'regime': 'BEAR', 'reason': 'AI Buy blocked by Bear Trend', 'price': 325.25, 'sma_200': 346.6875003051758}, {'action': 'NEUTRAL', 'predicted_return': 0.005213702872452224, 'ml_confidence': 0.5620591771945141, 'confidence': 0.5620591771945141, 'expected_price': 320.8642262275618, 'regime': 'BEAR', 'reason': 'AI Buy blocked by Bear Trend', 'price': 319.20001220703125, 'sma_200': 346.6875003051758}, {'action': 'NEUTRAL', 'predicted_return': 0.004732250630511278, 'ml_confidence': 0.5564085485623929, 'confidence': 0.5564085485623929, 'expected_price': 315.03378492039883, 'regime': 'BEAR', 'reason': 'Forecast 0.47% vs Threshold 0.50%', 'price': 313.54998779296875, 'sma_200': 346.6875003051758}, {'action': 'NEUTRAL', 'predicted_return': 0.004393512376724345, 'ml_confidence': 0.5524189473951306, 'confidence': 0.5524189473951306, 'expected_price': 309.6545076050811, 'regime': 'BEAR', 'reason': 'Forecast 0.44% vs Threshold 0.50%', 'price': 308.29998779296875, 'sma_200': 346.6875003051758}]
+2026-01-30 09:50:07,057 - trading_bot.connection_pool - INFO - Connecting IB (order_manager) ID: 142...
+2026-01-30 09:50:07,415 - trading_bot.connection_pool - INFO - IB (order_manager) connected successfully with ID 142
+2026-01-30 09:50:07,423 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-30 09:50:07,423 - OrderManager - INFO - Connected to IB for signal generation.
+2026-01-30 09:50:07,424 - OrderManager - INFO - Step 2.5: Generating structured signals from predictions...
+2026-01-30 09:50:07,424 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
+2026-01-30 09:50:07,581 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-30 09:50:07,581 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'openai', 'gemini']
+2026-01-30 09:50:07,581 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'anthropic', 'openai', 'gemini'], 'diversity_score': 1.0}
+2026-01-30 09:50:07,623 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-30 09:50:07,623 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-01-30 09:50:07,623 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-30 09:50:07,624 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'openai', 'gemini']
+2026-01-30 09:50:07,624 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-01-30 09:50:08,274 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-01-30 09:50:08,275 - trading_bot.signal_generator - INFO - Convening Council for KCH6 (202603)...
+2026-01-30 09:50:08,275 - trading_bot.signal_generator - INFO - Convening Council for KCK6 (202605)...
+2026-01-30 09:50:08,276 - trading_bot.signal_generator - INFO - Convening Council for KCN6 (202607)...
+2026-01-30 09:50:09,582 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-30 09:50:09,582 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-30 09:50:09,585 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:10,064 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-30 09:50:10,065 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-30 09:50:10,065 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:10,492 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-01-30 09:50:10,492 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-01-30 09:50:10,492 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:11,022 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-01-30 09:50:11,022 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-01-30 09:50:11,022 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:11,476 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-01-30 09:50:11,476 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-01-30 09:50:11,476 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:11,934 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-01-30 09:50:11,934 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-01-30 09:50:11,935 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:12,425 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-01-30 09:50:12,425 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-01-30 09:50:12,426 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:12,847 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-01-30 09:50:12,847 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-01-30 09:50:12,847 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:13,290 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-30 09:50:13,290 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-30 09:50:13,291 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:14,148 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-30 09:50:14,148 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-30 09:50:14,148 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:14,629 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-01-30 09:50:14,629 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-01-30 09:50:14,629 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:15,060 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-01-30 09:50:15,060 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-01-30 09:50:15,060 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:15,481 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-01-30 09:50:15,481 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-01-30 09:50:15,482 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:15,939 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-01-30 09:50:15,939 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-01-30 09:50:15,939 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:16,324 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-01-30 09:50:16,324 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-01-30 09:50:16,325 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:16,723 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-01-30 09:50:16,724 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-01-30 09:50:16,724 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:17,146 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-30 09:50:17,146 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-30 09:50:17,146 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:17,550 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-30 09:50:17,551 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-30 09:50:17,551 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:17,974 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-01-30 09:50:17,974 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-01-30 09:50:17,974 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:18,426 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-01-30 09:50:18,426 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-01-30 09:50:18,427 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:18,848 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-01-30 09:50:18,848 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-01-30 09:50:18,849 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:19,363 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-01-30 09:50:19,363 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-01-30 09:50:19,364 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:19,864 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-01-30 09:50:19,864 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-01-30 09:50:19,865 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:20,367 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-01-30 09:50:20,367 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-01-30 09:50:20,368 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:41,620 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-01-30 09:50:48,628 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:48,634 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:48,888 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:50:49,547 - trading_bot.tms - INFO - TMS: Stored insight from sentiment
+2026-01-30 09:50:50,362 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:50,394 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:50:50,935 - trading_bot.tms - INFO - TMS: Stored insight from geopolitical
+2026-01-30 09:50:50,939 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.8s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 9.556465267s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '9s'}]}}
+2026-01-30 09:50:51,065 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:50:51,587 - trading_bot.tms - INFO - TMS: Stored insight from geopolitical
+2026-01-30 09:50:54,217 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:50:54,727 - trading_bot.tms - INFO - TMS: Stored insight from sentiment
+2026-01-30 09:50:57,512 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:50:58,089 - trading_bot.tms - INFO - TMS: Stored insight from sentiment
+2026-01-30 09:50:58,973 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:50:59,044 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 976.880384ms.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '0s'}]}}
+2026-01-30 09:51:00,369 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:51:00,456 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 61.5s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 59.56573786s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '59s'}]}}
+2026-01-30 09:51:00,577 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:51:01,160 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-30 09:51:01,160 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: [2026-01...' cues -> ['fundamentalist', 'geopolitical']
+2026-01-30 09:51:01,709 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:51:01,789 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 59.1s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 58.232668979s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '58s'}]}}
+2026-01-30 09:51:02,707 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:51:02,790 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 59.2s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 57.231114423s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'model': 'gemini-3-pro', 'location': 'global'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57s'}]}}
+2026-01-30 09:51:06,338 - trading_bot.tms - INFO - TMS: Stored insight from supply_chain
+2026-01-30 09:51:06,805 - trading_bot.tms - INFO - TMS: Stored insight from supply_chain
+2026-01-30 09:51:06,810 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:51:06,881 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 53.8s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 53.140590682s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '53s'}]}}
+2026-01-30 09:51:07,120 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:51:07,591 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-30 09:51:07,591 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: ['[2026-...' cues -> ['fundamentalist', 'geopolitical', 'technical', 'sentiment']
+2026-01-30 09:51:07,717 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:51:08,276 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-30 09:51:08,277 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: [2026-01...' cues -> ['fundamentalist', 'geopolitical']
+2026-01-30 09:51:09,046 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:51:09,130 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 52.1s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 50.891905518s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'model': 'gemini-3-pro', 'location': 'global'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '50s'}]}}
+2026-01-30 09:51:11,017 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:51:11,588 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:51:11,670 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 49.5s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 48.35247816s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '48s'}]}}
+2026-01-30 09:51:12,497 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:51:12,576 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 48.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 47.444986106s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '47s'}]}}
+2026-01-30 09:51:15,986 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:51:16,066 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 45.8s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 43.955403865s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '43s'}]}}
+2026-01-30 09:51:16,520 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:51:17,100 - trading_bot.tms - INFO - TMS: Stored insight from geopolitical
+2026-01-30 09:51:22,930 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-30 09:51:30,425 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:51:33,043 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:51:33,570 - trading_bot.tms - INFO - TMS: Stored insight from technical
+2026-01-30 09:51:33,570 - trading_bot.tms - INFO - TMS: technical insight on '[EVIDENCE]: 1) The 2...' cues -> ['fundamentalist']
+2026-01-30 09:51:37,895 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:51:38,323 - trading_bot.tms - INFO - TMS: Stored insight from technical
+2026-01-30 09:51:38,323 - trading_bot.tms - INFO - TMS: technical insight on '[EVIDENCE]: 1) March...' cues -> ['fundamentalist']
+2026-01-30 09:51:46,697 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:51:53,600 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:51:58,002 - trading_bot.tms - INFO - TMS: Stored insight from volatility
+2026-01-30 09:52:00,559 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:52:00,652 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:52:00,865 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:52:01,200 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:52:01,272 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:52:01,877 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:52:01,954 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:52:01,970 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:52:08,480 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:52:08,979 - trading_bot.tms - INFO - TMS: Stored insight from technical
+2026-01-30 09:52:08,979 - trading_bot.tms - INFO - TMS: technical insight on '[EVIDENCE]: 1) March...' cues -> ['fundamentalist']
+2026-01-30 09:52:14,569 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-30 09:52:14,570 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:52:15,840 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-30 09:52:17,138 - trading_bot.tms - INFO - TMS: Stored insight from supply_chain
+2026-01-30 09:52:18,551 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-30 09:52:18,553 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:52:19,146 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-30 09:52:19,612 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-30 09:52:19,613 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:52:21,312 - trading_bot.tms - INFO - TMS: Stored insight from volatility
+2026-01-30 09:52:26,054 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:52:31,890 - trading_bot.signal_generator - INFO - Agent research complete for KCK6 (202605): 8/8 returned non-default results
+2026-01-30 09:52:31,891 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-30 09:52:31,927 - trading_bot.brier_scoring - INFO - Loaded Brier scores for 12 agents: {'agronomist': 0.6, 'geopolitical': 0.6, 'inventory': 0.0, 'latest_ml_signals': 0.2, 'macro': 0.2, 'master_decision': 0.0, 'ml_model': 0.5, 'sentiment': 0.0, 'strategy_long_straddle': 0.0, 'supply_chain': 0.0, 'technical': 0.2, 'volatility': 0.4}
+2026-01-30 09:52:31,927 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.57 -> 0.55
+2026-01-30 09:52:31,927 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=1.25, DynamicWeight=0.38, Regime=RANGE_BOUND
+2026-01-30 09:52:31,928 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=-0.128, dominant=agronomist)
+2026-01-30 09:52:31,928 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.4,
+    "final_weight": 2.1,
+    "contribution": -1.89
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.8,
+    "final_weight": 1.2,
+    "contribution": 1.08
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.4,
+    "final_weight": 2.1,
+    "contribution": -1.785
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.95,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.475
+  },
+  {
+    "agent": "inventory",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": -0.675
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.55,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.8,
+    "final_weight": 1.8,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.0,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.1,
+    "final_weight": 1.15,
+    "contribution": 0.0
+  }
+]
+2026-01-30 09:52:36,103 - trading_bot.signal_generator - INFO - Agent research complete for KCH6 (202603): 8/8 returned non-default results
+2026-01-30 09:52:36,105 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-01-30 09:52:36,106 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.57 -> 0.55
+2026-01-30 09:52:36,107 - trading_bot.weighted_voting - WARNING - Regime=HIGH_VOLATILITY: Zeroing ML weight (structural break risk)
+2026-01-30 09:52:36,107 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=1.25, DynamicWeight=0.00, Regime=HIGH_VOLATILITY
+2026-01-30 09:52:36,107 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.394, dominant=agronomist)
+2026-01-30 09:52:36,107 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.4,
+    "final_weight": 3.15,
+    "contribution": -2.835
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.8,
+    "final_weight": 1.2,
+    "contribution": 1.08
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.4,
+    "final_weight": 2.1,
+    "contribution": -1.785
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.95,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.475
+  },
+  {
+    "agent": "inventory",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.68,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.8,
+    "final_weight": 0.84,
+    "contribution": -0.571
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.95,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.1,
+    "final_weight": 2.48,
+    "contribution": -2.351
+  }
+]
+2026-01-30 09:52:38,207 - trading_bot.signal_generator - INFO - Agent research complete for KCN6 (202607): 8/8 returned non-default results
+2026-01-30 09:52:38,213 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-01-30 09:52:38,215 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.56 -> 0.54
+2026-01-30 09:52:38,216 - trading_bot.weighted_voting - WARNING - Regime=HIGH_VOLATILITY: Zeroing ML weight (structural break risk)
+2026-01-30 09:52:38,216 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=1.25, DynamicWeight=0.00, Regime=HIGH_VOLATILITY
+2026-01-30 09:52:38,216 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.462, dominant=agronomist)
+2026-01-30 09:52:38,217 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.4,
+    "final_weight": 3.15,
+    "contribution": -2.835
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.8,
+    "final_weight": 1.2,
+    "contribution": 1.02
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.4,
+    "final_weight": 2.1,
+    "contribution": -1.89
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.95,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.475
+  },
+  {
+    "agent": "inventory",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.63,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.8,
+    "final_weight": 0.84,
+    "contribution": -0.529
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.95,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.1,
+    "final_weight": 2.48,
+    "contribution": -2.351
+  }
+]
+2026-01-30 09:52:57,149 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-30 09:52:57,509 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-30 09:52:57,561 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-30 09:53:14,160 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:53:20,368 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:53:20,374 - trading_bot.signal_generator - INFO - Council Decision KCH6 (202603): NEUTRAL (0.72)
+2026-01-30 09:53:20,384 - root - INFO - Schema mismatch detected. Migrating council_history.csv in-place.
+2026-01-30 09:53:20,384 - root - INFO -   Old columns: 31, New columns: 35
+2026-01-30 09:53:20,397 - root - INFO -   Added new column: vote_breakdown
+2026-01-30 09:53:20,398 - root - INFO -   Added new column: dominant_agent
+2026-01-30 09:53:20,398 - root - INFO -   Added new column: weighted_score
+2026-01-30 09:53:20,399 - root - INFO -   Added new column: trigger_type
+2026-01-30 09:53:20,429 - root - INFO - Schema migration complete. 63 records preserved.
+2026-01-30 09:53:20,430 - root - INFO - Logged council decision for KCH6 (202603)
+2026-01-30 09:53:20,430 - trading_bot.signal_generator - INFO - Convening Council for KCU6 (202609)...
+2026-01-30 09:53:21,442 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-30 09:53:21,442 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-30 09:53:21,442 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-01-30 09:53:22,099 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-30 09:53:22,692 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-30 09:53:22,693 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-30 09:53:22,693 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-01-30 09:53:23,430 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-30 09:53:23,431 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: [2026-01...' cues -> ['fundamentalist', 'geopolitical']
+2026-01-30 09:53:23,961 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-01-30 09:53:23,961 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-01-30 09:53:23,961 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-01-30 09:53:24,387 - trading_bot.tms - INFO - TMS: Stored insight from geopolitical
+2026-01-30 09:53:24,804 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-01-30 09:53:24,804 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-01-30 09:53:24,804 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-01-30 09:53:25,248 - trading_bot.tms - INFO - TMS: Stored insight from supply_chain
+2026-01-30 09:53:25,735 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-01-30 09:53:25,735 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-01-30 09:53:25,735 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-01-30 09:53:26,306 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-30 09:53:26,818 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-01-30 09:53:26,818 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-01-30 09:53:26,818 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-01-30 09:53:27,348 - trading_bot.tms - INFO - TMS: Stored insight from sentiment
+2026-01-30 09:53:27,816 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-01-30 09:53:27,816 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-01-30 09:53:27,817 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:53:28,242 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-01-30 09:53:28,242 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-01-30 09:53:28,243 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:53:28,247 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:53:28,993 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:53:33,410 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:53:33,836 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:53:51,662 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-30 09:53:51,668 - trading_bot.signal_generator - WARNING - Devil's Advocate VETOED trade: DO NOT PROCEED. The trade exhibits classic 'late to the party' characteristics - entering a bearish position after a 4% decline into oversold territory with a 0.78 confidence that is contradicted by 4 out of 7 agents being bullish or neutral. CRITICAL FLAWS: (1) Confirmation bias - we are overweighting the weather improvement narrative while ignoring the supply chain agent's 0.95 confidence bullish call based on structural export failures that physically constrain supply; (2) Recency bias - the 1.37% daily and 4.09% 5-day declines suggest the bearish move is extended, not beginning; (3) Crowded trade risk - Managed Money already reducing longs suggests the easy money in being bearish has been made. The inventory drawdown (440,312 bags, down 21,500 from peak), steep backwardation, and commercial short-covering are all BULLISH signals we are dismissing. If we must trade, wait for either (a) a relief rally to 350+ to establish shorts with better risk-reward, or (b) a decisive break below 343 with volume confirmation. Current entry point is the worst of both worlds - chasing weakness into support with asymmetric upside risk.
+2026-01-30 09:53:51,669 - trading_bot.signal_generator - INFO - Council Decision KCN6 (202607): NEUTRAL (0.78)
+2026-01-30 09:53:51,692 - root - INFO - Logged council decision for KCN6 (202607)
+2026-01-30 09:53:51,693 - trading_bot.signal_generator - INFO - Convening Council for KCZ6 (202612)...
+2026-01-30 09:53:52,634 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-01-30 09:53:52,634 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-01-30 09:53:52,634 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-01-30 09:53:53,184 - trading_bot.tms - INFO - TMS: Stored insight from agronomist
+2026-01-30 09:53:53,631 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-01-30 09:53:53,632 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-01-30 09:53:53,632 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-01-30 09:53:54,124 - trading_bot.tms - INFO - TMS: Stored insight from macro
+2026-01-30 09:53:54,124 - trading_bot.tms - INFO - TMS: macro insight on '[EVIDENCE]: [2026-01...' cues -> ['fundamentalist', 'geopolitical']
+2026-01-30 09:53:54,556 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-01-30 09:53:54,557 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-01-30 09:53:54,557 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-01-30 09:53:55,061 - trading_bot.tms - INFO - TMS: Stored insight from geopolitical
+2026-01-30 09:53:55,490 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-01-30 09:53:55,491 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-01-30 09:53:55,491 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-01-30 09:53:55,974 - trading_bot.tms - INFO - TMS: Stored insight from supply_chain
+2026-01-30 09:53:56,322 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-01-30 09:53:56,323 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-01-30 09:53:56,323 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-01-30 09:53:56,801 - trading_bot.tms - INFO - TMS: Stored insight from inventory
+2026-01-30 09:53:57,232 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-01-30 09:53:57,233 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-01-30 09:53:57,233 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-01-30 09:53:57,660 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-01-30 09:53:57,661 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-01-30 09:53:57,661 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:53:58,057 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-01-30 09:53:58,058 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-01-30 09:53:58,058 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:53:59,989 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:54:00,515 - trading_bot.tms - INFO - TMS: Stored insight from sentiment
+2026-01-30 09:54:05,193 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-30 09:54:05,197 - trading_bot.agents - ERROR - Devil's Advocate JSON parse failed - BLOCKING TRADE (fail-safe). Error: Expecting value: line 1 column 1 (char 0). Response preview: # DEVIL'S ADVOCATE: PRE-MORTEM ANALYSIS
+
+## ATTACK ON BEARISH COFFEE TRADE (0.85 Confidence)
+
+---
+
+### 1. THREE CATASTROPHIC FAILURE SCENARIOS
+
+**SCENARIO A: The "Logistics Trap" - Supply Squeeze Materializes**
+
+Five days from now, the 486,300 bags trapped at Santos (documented by Cecafé) become the
+2026-01-30 09:54:05,197 - trading_bot.signal_generator - WARNING - Devil's Advocate VETOED trade: BLOCK: Devil's Advocate returned invalid JSON. Trade blocked for safety.
+2026-01-30 09:54:05,198 - trading_bot.signal_generator - INFO - Council Decision KCK6 (202605): NEUTRAL (0.85)
+2026-01-30 09:54:05,206 - root - INFO - Logged council decision for KCK6 (202605)
+2026-01-30 09:54:29,477 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:54:30,048 - trading_bot.tms - INFO - TMS: Stored insight from technical
+2026-01-30 09:54:30,048 - trading_bot.tms - INFO - TMS: technical insight on '[EVIDENCE]: 1) KCU6 ...' cues -> ['fundamentalist']
+2026-01-30 09:54:34,570 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:54:41,811 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:54:49,980 - trading_bot.tms - INFO - TMS: Stored insight from volatility
+2026-01-30 09:54:49,981 - trading_bot.signal_generator - INFO - Agent research complete for KCU6 (202609): 8/8 returned non-default results
+2026-01-30 09:54:49,981 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-01-30 09:54:49,982 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.56 -> 0.54
+2026-01-30 09:54:49,982 - trading_bot.weighted_voting - WARNING - Regime=HIGH_VOLATILITY: Zeroing ML weight (structural break risk)
+2026-01-30 09:54:49,982 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=1.25, DynamicWeight=0.00, Regime=HIGH_VOLATILITY
+2026-01-30 09:54:49,982 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.000, dominant=agronomist)
+2026-01-30 09:54:49,983 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.4,
+    "final_weight": 3.15,
+    "contribution": -2.835
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.8,
+    "final_weight": 1.2,
+    "contribution": 1.02
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.4,
+    "final_weight": 2.1,
+    "contribution": -1.785
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.95,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.475
+  },
+  {
+    "agent": "inventory",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.68,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.8,
+    "final_weight": 0.84,
+    "contribution": -0.571
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.95,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.1,
+    "final_weight": 2.48,
+    "contribution": 2.351
+  }
+]
+2026-01-30 09:54:59,841 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-01-30 09:55:12,551 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-30 09:55:15,803 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:55:16,467 - trading_bot.tms - INFO - TMS: Stored insight from technical
+2026-01-30 09:55:16,468 - trading_bot.tms - INFO - TMS: technical insight on '[EVIDENCE]: 1) KCZ6 ...' cues -> ['fundamentalist']
+2026-01-30 09:55:18,003 - trading_bot.tms - INFO - TMS: Stored insight from volatility
+2026-01-30 09:55:27,210 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:55:27,213 - trading_bot.signal_generator - INFO - Agent research complete for KCZ6 (202612): 8/8 returned non-default results
+2026-01-30 09:55:27,214 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-01-30 09:55:27,215 - trading_bot.weighted_voting - INFO - ML confidence normalized: 0.55 -> 0.53
+2026-01-30 09:55:27,215 - trading_bot.weighted_voting - INFO - ML Blend: Reliability=1.25, DynamicWeight=0.38, Regime=RANGE_BOUND
+2026-01-30 09:55:27,215 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=-0.047, dominant=agronomist)
+2026-01-30 09:55:27,216 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.4,
+    "final_weight": 2.1,
+    "contribution": -1.89
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.8,
+    "final_weight": 1.2,
+    "contribution": 1.02
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.4,
+    "final_weight": 2.1,
+    "contribution": -1.785
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.95,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.5,
+    "final_weight": 0.5,
+    "contribution": 0.475
+  },
+  {
+    "agent": "inventory",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "final_weight": 0.75,
+    "contribution": 0.675
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.55,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.8,
+    "final_weight": 1.8,
+    "contribution": -0.99
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.1,
+    "final_weight": 1.15,
+    "contribution": 1.039
+  }
+]
+2026-01-30 09:55:31,781 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:55:36,250 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:55:36,257 - trading_bot.signal_generator - INFO - Council Decision KCU6 (202609): NEUTRAL (0.75)
+2026-01-30 09:55:36,267 - root - INFO - Logged council decision for KCU6 (202609)
+2026-01-30 09:55:48,918 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-30 09:56:04,599 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:56:12,158 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 09:56:36,797 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-30 09:56:36,802 - trading_bot.signal_generator - WARNING - Devil's Advocate VETOED trade: REJECT THIS TRADE. The bearish thesis relies almost entirely on weather relief, but physical supply constraints from port bottlenecks, declining certified stocks, and strong backwardation create asymmetric upside risk. If any supply disruption scenario materializes, losses could be severe. Wait for: (1) confirmed inventory stabilization, (2) resolution of Santos port congestion, (3) price to rise back above key moving averages before considering bearish positions. Alternatively, consider the opposite - a cautious BULLISH position aligned with the majority of agent signals.
+2026-01-30 09:56:36,802 - trading_bot.signal_generator - INFO - Council Decision KCZ6 (202612): NEUTRAL (0.8)
+2026-01-30 09:56:36,813 - root - INFO - Logged council decision for KCZ6 (202612)
+2026-01-30 09:56:36,822 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-01-30 09:56:36,827 - trading_bot.signal_generator - INFO - Persisted latest ML signals to state.
+2026-01-30 09:56:36,842 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202603, Signal=VOLATILITY
+2026-01-30 09:56:36,848 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202605, Signal=VOLATILITY
+2026-01-30 09:56:36,853 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202607, Signal=VOLATILITY
+2026-01-30 09:56:36,858 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202609, Signal=VOLATILITY
+2026-01-30 09:56:36,863 - trading_bot.model_signals - INFO - Successfully logged signal: Contract=202612, Signal=VOLATILITY
+2026-01-30 09:56:36,864 - OrderManager - INFO - Generated 5 signals: [{'contract_month': '202603', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Extreme agent conflict (>0.8)', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.72, 'price': 341.54998779296875, 'sma_200': 346.6875003051758, 'expected_price': 341.5, 'predicted_return': 0.006121795459995522}, {'contract_month': '202605', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Drought conditions developing', 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.85, 'price': 325.25, 'sma_200': 346.6875003051758, 'expected_price': 327.09912284574125, 'predicted_return': 0.005685235498051532}, {'contract_month': '202607', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Drought conditions developing', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.78, 'price': 319.20001220703125, 'sma_200': 346.6875003051758, 'expected_price': 320.8642262275618, 'predicted_return': 0.005213702872452224}, {'contract_month': '202609', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Drought conditions developing', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.75, 'price': 313.54998779296875, 'sma_200': 346.6875003051758, 'expected_price': 315.03378492039883, 'predicted_return': 0.004732250630511278}, {'contract_month': '202612', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Volatility Play: Drought conditions developing', 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'BULLISH', 'confidence': 0.8, 'price': 308.29998779296875, 'sma_200': 346.6875003051758, 'expected_price': 309.6545076050811, 'predicted_return': 0.004393512376724345}]
+2026-01-30 09:56:36,864 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-01-30 09:56:36,959 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-01-30 09:56:36,959 - OrderManager - INFO - Skipping KCU6: Too deferred (230 days > 180 max)
+2026-01-30 09:56:36,960 - OrderManager - INFO - Skipping KCZ6: Too deferred (321 days > 180 max)
+2026-01-30 09:56:36,960 - OrderManager - INFO - Date filter passed: 3/5 contracts within 180 days.
+2026-01-30 09:56:36,960 - OrderManager - INFO - Checking liquidity for 3 contracts (parallel)...
+2026-01-30 09:56:38,961 - OrderManager - INFO - Volume filter passed: 3 liquid candidates proceeding to signal generation.
+2026-01-30 09:56:38,984 - ib_insync.wrapper - ERROR - Error 300, reqId 10: Can't find EId with tickerId:10
+2026-01-30 09:56:39,063 - ib_insync.wrapper - ERROR - Error 300, reqId 11: Can't find EId with tickerId:11
+2026-01-30 09:56:39,163 - ib_insync.wrapper - ERROR - Error 300, reqId 12: Can't find EId with tickerId:12
+2026-01-30 09:56:39,337 - OrderManager - INFO - Account Value for Sizing: $49,789.35
+2026-01-30 09:56:39,338 - OrderManager - INFO - Requesting snapshot market price for KCH6...
+2026-01-30 09:56:39,382 - OrderManager - INFO - Using bid/ask midpoint for KCH6: 340.04999999999995
+2026-01-30 09:56:39,382 - root - INFO - Fetching option chain for future KCH6...
+2026-01-30 09:56:39,677 - root - INFO - --- Defining HIGH Volatility Strategy for KCH6 ---
+2026-01-30 09:56:39,682 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.86) * Vol(0.6) * Heat(1.0) = 1 (raw: 0.516)
+2026-01-30 09:56:39,682 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-30 09:56:39,961 - root - INFO - Fetching market data for option: KOH6 C3.4
+2026-01-30 09:56:41,963 - root - WARNING - IV data missing for KOH6 C3.4, proceeding with price-only execution.
+2026-01-30 09:56:41,970 - root - INFO - Theoretical price calculated for C @ 340.0: {'price': np.float64(8.8522), 'delta': np.float64(0.5218), 'gamma': np.float64(0.0185), 'vega': np.float64(24.561), 'theta': np.float64(-0.3767)}
+2026-01-30 09:56:41,971 - root - INFO -   -> Leg Theoretical Price (BUY): KOH6 C3.4 @ 8.85
+2026-01-30 09:56:41,971 - root - INFO - Fetching market data for option: KOH6 P3.4
+2026-01-30 09:56:43,973 - root - WARNING - IV data missing for KOH6 P3.4, proceeding with price-only execution.
+2026-01-30 09:56:43,976 - root - INFO - Theoretical price calculated for P @ 340.0: {'price': np.float64(8.3554), 'delta': np.float64(-0.4782), 'gamma': np.float64(0.0185), 'vega': np.float64(24.561), 'theta': np.float64(-0.3769)}
+2026-01-30 09:56:43,977 - root - INFO -   -> Leg Theoretical Price (BUY): KOH6 P3.4 @ 8.36
+2026-01-30 09:56:43,977 - root - INFO - BUY Cap Calc: Theoretical=17.71, Market=19.86, Mid=18.80, Final Cap=18.80
+2026-01-30 09:56:43,977 - root - INFO - Net Theoretical: 17.21, Market Spread: 1.75
+2026-01-30 09:56:43,977 - root - INFO - Adaptive Strategy: Start @ 17.98, Cap/Floor @ 18.80
+2026-01-30 09:56:43,977 - root - INFO - Creating Limit Order for BUY 1 @ 17.98 (Adaptive Cap: 18.80).
+2026-01-30 09:56:43,977 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-01-30 09:56:43,978 - root - INFO - Assigned OrderRef: c6fcb915-f622-46cc-8854-4978b81cde75
+2026-01-30 09:56:44,188 - trading_bot.compliance - INFO - Zero wing width detected (straddle?). Max risk = premium.
+2026-01-30 09:56:44,189 - OrderManager - INFO - Capital tracking: Committed $6,742.50 | Remaining $43,046.85 | This order: $6,742.50
+2026-01-30 09:56:44,189 - OrderManager - INFO - Successfully queued order for KCH6.
+2026-01-30 09:56:44,189 - OrderManager - INFO - Requesting snapshot market price for KCK6...
+2026-01-30 09:56:44,338 - OrderManager - INFO - Using bid/ask midpoint for KCK6: 323.825
+2026-01-30 09:56:44,338 - root - INFO - Fetching option chain for future KCK6...
+2026-01-30 09:56:44,407 - root - INFO - --- Defining HIGH Volatility Strategy for KCK6 ---
+2026-01-30 09:56:44,417 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.93) * Vol(1.0) * Heat(1.0) = 1 (raw: 0.925)
+2026-01-30 09:56:44,417 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-30 09:56:44,694 - root - INFO - Fetching market data for option: KOK6 C3.25
+2026-01-30 09:56:46,694 - root - INFO - Using IBKR Model Greeks IV: 35.97%
+2026-01-30 09:56:46,695 - root - INFO - Theoretical price calculated for C @ 325.0: {'price': np.float64(20.9491), 'delta': np.float64(0.5416), 'gamma': np.float64(0.0078), 'vega': np.float64(56.2669), 'theta': np.float64(-0.1615)}
+2026-01-30 09:56:46,696 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 C3.25 @ 20.95
+2026-01-30 09:56:46,696 - root - INFO - Fetching market data for option: KOK6 P3.25
+2026-01-30 09:56:48,696 - root - INFO - Using IBKR Model Greeks IV: 35.97%
+2026-01-30 09:56:48,699 - root - INFO - Theoretical price calculated for P @ 325.0: {'price': np.float64(19.6405), 'delta': np.float64(-0.4584), 'gamma': np.float64(0.0078), 'vega': np.float64(56.2669), 'theta': np.float64(-0.163)}
+2026-01-30 09:56:48,699 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 P3.25 @ 19.64
+2026-01-30 09:56:48,700 - root - INFO - BUY Cap Calc: Theoretical=41.09, Market=43.21, Mid=41.41, Final Cap=41.41
+2026-01-30 09:56:48,700 - root - INFO - Net Theoretical: 40.59, Market Spread: 3.01
+2026-01-30 09:56:48,700 - root - INFO - Adaptive Strategy: Start @ 39.95, Cap/Floor @ 41.41
+2026-01-30 09:56:48,701 - root - INFO - Creating Limit Order for BUY 1 @ 39.95 (Adaptive Cap: 41.41).
+2026-01-30 09:56:48,702 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-01-30 09:56:48,702 - root - INFO - Assigned OrderRef: c43eb5ff-bc89-4c4d-835d-40be5b4ef146
+2026-01-30 09:56:48,921 - trading_bot.compliance - INFO - Zero wing width detected (straddle?). Max risk = premium.
+2026-01-30 09:56:48,921 - OrderManager - INFO - Capital tracking: Committed $21,723.75 | Remaining $28,065.60 | This order: $14,981.25
+2026-01-30 09:56:48,921 - OrderManager - INFO - Successfully queued order for KCK6.
+2026-01-30 09:56:48,921 - OrderManager - INFO - Requesting snapshot market price for KCN6...
+2026-01-30 09:56:49,068 - OrderManager - INFO - Using bid/ask midpoint for KCN6: 317.4
+2026-01-30 09:56:49,068 - root - INFO - Fetching option chain for future KCN6...
+2026-01-30 09:56:49,132 - root - INFO - --- Defining HIGH Volatility Strategy for KCN6 ---
+2026-01-30 09:56:49,177 - trading_bot.position_sizer - WARNING - Portfolio Heat 34.0% > 25.0%. Reducing size.
+2026-01-30 09:56:49,177 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.89) * Vol(0.6) * Heat(0.5) = 1 (raw: 0.267)
+2026-01-30 09:56:49,177 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-01-30 09:56:49,476 - root - INFO - Fetching market data for option: KON6 C3.175
+2026-01-30 09:56:51,478 - root - INFO - Using IBKR Model Greeks IV: 35.97%
+2026-01-30 09:56:51,481 - root - INFO - Theoretical price calculated for C @ 317.5: {'price': np.float64(29.5504), 'delta': np.float64(0.5692), 'gamma': np.float64(0.0057), 'vega': np.float64(75.2842), 'theta': np.float64(-0.1184)}
+2026-01-30 09:56:51,482 - root - INFO -   -> Leg Theoretical Price (BUY): KON6 C3.175 @ 29.55
+2026-01-30 09:56:51,483 - root - INFO - Fetching market data for option: KON6 P3.175
+2026-01-30 09:56:53,485 - root - INFO - Using IBKR Model Greeks IV: 36.15%
+2026-01-30 09:56:53,488 - root - INFO - Theoretical price calculated for P @ 317.5: {'price': np.float64(25.1951), 'delta': np.float64(-0.4308), 'gamma': np.float64(0.0057), 'vega': np.float64(75.2813), 'theta': np.float64(-0.1201)}
+2026-01-30 09:56:53,488 - root - INFO -   -> Leg Theoretical Price (BUY): KON6 P3.175 @ 25.20
+2026-01-30 09:56:53,489 - root - INFO - BUY Cap Calc: Theoretical=55.25, Market=57.64, Mid=54.62, Final Cap=55.25
+2026-01-30 09:56:53,490 - root - INFO - Net Theoretical: 54.75, Market Spread: 5.04
+2026-01-30 09:56:53,490 - root - INFO - Adaptive Strategy: Start @ 52.15, Cap/Floor @ 55.25
+2026-01-30 09:56:53,490 - root - INFO - Creating Limit Order for BUY 1 @ 52.15 (Adaptive Cap: 55.25).
+2026-01-30 09:56:53,490 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-01-30 09:56:53,490 - root - INFO - Assigned OrderRef: d6c4c080-15d7-45e5-9ccd-7056d324ed40
+2026-01-30 09:56:53,600 - trading_bot.compliance - INFO - Zero wing width detected (straddle?). Max risk = premium.
+2026-01-30 09:56:53,600 - OrderManager - INFO - Capital tracking: Committed $41,280.00 | Remaining $8,509.35 | This order: $19,556.25
+2026-01-30 09:56:53,600 - OrderManager - INFO - Successfully queued order for KCN6.
+2026-01-30 09:56:53,601 - OrderManager - WARNING - No active future for signal month 202609.
+2026-01-30 09:56:53,601 - OrderManager - WARNING - No active future for signal month 202612.
+2026-01-30 09:56:53,601 - OrderManager - INFO - --- Order generation complete. 3 orders queued. ---
+2026-01-30 09:56:53,916 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-30 09:56:53,919 - OrderManager - INFO - --- Placing and monitoring 3 orders ---
+2026-01-30 09:56:53,919 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-30 09:56:53,919 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'openai', 'gemini']
+2026-01-30 09:56:53,923 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-30 09:56:53,923 - OrderManager - INFO - Using pooled IB connection for order placement.
+2026-01-30 09:56:53,924 - OrderManager - INFO - Sorted orders by expiration proximity.
+2026-01-30 09:56:53,924 - OrderManager - INFO - Current Available Funds: $49,222.24 | Equity: $49,789.35
+2026-01-30 09:56:56,143 - ib_insync.wrapper - ERROR - Error 162, reqId 40: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=742750180, symbol='KC', lastTradeDateOrContractMonth='20260211', strike=340.0, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOH6 C3.4', tradingClass='KO')
+2026-01-30 09:56:56,203 - trading_bot.compliance - INFO - Resolved underlying future: KCH6 (conId: 624024277)
+2026-01-30 09:56:56,344 - trading_bot.compliance - INFO - Volume from IB (KCH6): 646.0
+2026-01-30 09:56:56,345 - trading_bot.compliance - INFO - Zero wing width detected (straddle?). Max risk = premium.
+2026-01-30 09:57:00,620 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-30 09:57:01,153 - OrderManager - INFO - Approved KC-C340.0+P340.0: Margin $2,615.61 | Remaining: $46,606.63
+2026-01-30 09:57:03,221 - ib_insync.wrapper - ERROR - Error 162, reqId 47: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=745191385, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=325.0, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 C3.25', tradingClass='KO')
+2026-01-30 09:57:03,317 - trading_bot.compliance - INFO - Resolved underlying future: KCK6 (conId: 634760204)
+2026-01-30 09:57:03,449 - trading_bot.compliance - INFO - Volume from IB (KCK6): 250.0
+2026-01-30 09:57:03,449 - trading_bot.compliance - INFO - Zero wing width detected (straddle?). Max risk = premium.
+2026-01-30 09:57:03,449 - trading_bot.compliance - INFO - Using straddle limit (55%) for high-premium trade
+2026-01-30 09:57:03,449 - trading_bot.compliance - WARNING - ⚠️ REGIME INCOMPATIBILITY WARNING: Trade for KC-2LEG-BAG consumes 30.1% of equity ($14,981.25 / $49,789.35). Account may be under-capitalized for this strategy.
+2026-01-30 09:57:07,499 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-30 09:57:07,603 - OrderManager - INFO - Approved KC-C325.0+P325.0: Margin $5,190.88 | Remaining: $41,415.75
+2026-01-30 09:57:07,603 - OrderManager - INFO - Refreshing account summary for margin safety...
+2026-01-30 09:57:07,603 - OrderManager - INFO - Refreshed Available Funds: $49,228.70
+2026-01-30 09:57:09,687 - ib_insync.wrapper - ERROR - Error 162, reqId 54: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=758032327, symbol='KC', lastTradeDateOrContractMonth='20260612', strike=317.5, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KON6 C3.175', tradingClass='KO')
+2026-01-30 09:57:09,790 - trading_bot.compliance - INFO - Resolved underlying future: KCN6 (conId: 646040490)
+2026-01-30 09:57:09,928 - trading_bot.compliance - INFO - Volume from IB (KCN6): 94.0
+2026-01-30 09:57:09,929 - trading_bot.compliance - INFO - Zero wing width detected (straddle?). Max risk = premium.
+2026-01-30 09:57:09,930 - trading_bot.compliance - INFO - Using straddle limit (55%) for high-premium trade
+2026-01-30 09:57:09,930 - trading_bot.compliance - WARNING - ⚠️ REGIME INCOMPATIBILITY WARNING: Trade for KC-2LEG-BAG consumes 39.3% of equity ($19,556.25 / $49,789.35). Account may be under-capitalized for this strategy.
+2026-01-30 09:57:14,285 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-01-30 09:57:14,395 - OrderManager - INFO - Approved KC-C317.5+P317.5: Margin $5,306.66 | Remaining: $43,922.04
+2026-01-30 09:57:18,644 - OrderManager - INFO - Placing Order for KC-C340.0+P340.0. Limit: 17.98. BAG: 18.03x19.59, V:0.0, L:N/A@09:57:14. LEGs: Leg KOH6 C3.4: 8.92x9.82, V:0.0, L:N/A, Leg KOH6 P3.4: 9.01x9.86, V:298.0, L:8.35
+2026-01-30 09:57:18,645 - root - INFO - Placing BUY order for ...
+2026-01-30 09:57:18,645 - root - INFO - Successfully placed order ID 64 for .
+2026-01-30 09:57:20,066 - OrderManager - INFO - Order 64 status update: Submitted
+2026-01-30 09:57:23,354 - OrderManager - INFO - Placing Order for KC-C325.0+P325.0. Limit: 39.95. BAG: 39.9x42.91, V:0.0, L:N/A@09:57:19. LEGs: Leg KOK6 C3.25: 19.32x20.84, V:0.0, L:N/A, Leg KOK6 P3.25: 20.58x22.07, V:0.0, L:N/A
+2026-01-30 09:57:23,354 - root - INFO - Placing BUY order for ...
+2026-01-30 09:57:23,356 - root - INFO - Successfully placed order ID 70 for .
+2026-01-30 09:57:25,042 - OrderManager - INFO - Order 70 status update: Submitted
+2026-01-30 09:57:28,106 - OrderManager - INFO - Placing Order for KC-C317.5+P317.5. Limit: 52.15. BAG: 52.1x57.14, V:0.0, L:N/A@09:57:24. LEGs: Leg KON6 C3.175: 26.02x28.57, V:0.0, L:N/A, Leg KON6 P3.175: 26.08x28.57, V:0.0, L:N/A
+2026-01-30 09:57:28,106 - root - INFO - Placing BUY order for ...
+2026-01-30 09:57:28,107 - root - INFO - Successfully placed order ID 76 for .
+2026-01-30 09:57:28,966 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-30 09:57:28,969 - OrderManager - INFO - Monitoring orders for up to 30.0 minutes...
+2026-01-30 09:57:30,040 - OrderManager - INFO - Order 76 status update: Submitted
+2026-01-30 09:57:33,975 - OrderManager - INFO - Adaptive Update for Order 64 (): 17.98 -> 18.805 (Cap/Floor: 18.805)
+2026-01-30 09:57:34,092 - ib_insync.wrapper - ERROR - Error 201, reqId 64: Order rejected - reason:Invalid Price
+2026-01-30 09:57:34,093 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=742750180, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=742750187, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=64, clientId=142, permId=1698922394, action='BUY', totalQuantity=1.0, lmtPrice=17.98, auxPrice=0.0, tif='DAY', orderRef='c6fcb915-f622-46cc-8854-4978b81cde75'), orderStatus=OrderStatus(orderId=64, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922394, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 18, 645432, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 20, 65452, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 33, 976901, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 77985, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:57:34,093 - OrderManager - INFO - Order 64 status update: Cancelled
+2026-01-30 09:57:34,094 - OrderManager - INFO - Order 64 status update: Submitted
+2026-01-30 09:57:38,983 - OrderManager - INFO - Adaptive Update for Order 70 (): 39.95 -> 41.405 (Cap/Floor: 41.405)
+2026-01-30 09:57:39,068 - ib_insync.wrapper - ERROR - Error 201, reqId 70: Order rejected - reason:Invalid Price
+2026-01-30 09:57:39,068 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=745191385, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=745191388, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=70, clientId=142, permId=1698922395, action='BUY', totalQuantity=1.0, lmtPrice=39.95, auxPrice=0.0, tif='DAY', orderRef='c43eb5ff-bc89-4c4d-835d-40be5b4ef146'), orderStatus=OrderStatus(orderId=70, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922395, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 23, 356512, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 25, 41709, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 38, 984227, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 60399, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 68366, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:57:39,069 - OrderManager - INFO - Order 70 status update: Cancelled
+2026-01-30 09:57:39,072 - OrderManager - INFO - Order 70 status update: Submitted
+2026-01-30 09:57:43,990 - OrderManager - INFO - Adaptive Update for Order 76 (): 52.15 -> 55.25 (Cap/Floor: 55.25)
+2026-01-30 09:57:48,997 - OrderManager - INFO - Adaptive Update for Order 64 (): 17.98 -> 18.805 (Cap/Floor: 18.805)
+2026-01-30 09:57:49,071 - ib_insync.wrapper - ERROR - Error 201, reqId 64: Order rejected - reason:Invalid Price
+2026-01-30 09:57:49,071 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=742750180, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=742750187, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=64, clientId=142, permId=1698922394, action='BUY', totalQuantity=1.0, lmtPrice=17.98, auxPrice=0.0, tif='DAY', orderRef='c6fcb915-f622-46cc-8854-4978b81cde75'), orderStatus=OrderStatus(orderId=64, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922394, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 18, 645432, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 20, 65452, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 33, 976901, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 77985, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 48, 998293, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:57:49,071 - OrderManager - INFO - Order 64 status update: Cancelled
+2026-01-30 09:57:49,073 - OrderManager - INFO - Order 64 status update: Submitted
+2026-01-30 09:57:54,004 - OrderManager - INFO - Adaptive Update for Order 70 (): 39.95 -> 41.405 (Cap/Floor: 41.405)
+2026-01-30 09:57:54,082 - ib_insync.wrapper - ERROR - Error 201, reqId 70: Order rejected - reason:Invalid Price
+2026-01-30 09:57:54,084 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=745191385, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=745191388, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=70, clientId=142, permId=1698922395, action='BUY', totalQuantity=1.0, lmtPrice=39.95, auxPrice=0.0, tif='DAY', orderRef='c43eb5ff-bc89-4c4d-835d-40be5b4ef146'), orderStatus=OrderStatus(orderId=70, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922395, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 23, 356512, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 25, 41709, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 38, 984227, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 60399, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 68366, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 71293, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 5257, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 79789, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:57:54,084 - OrderManager - INFO - Order 70 status update: Cancelled
+2026-01-30 09:57:54,088 - OrderManager - INFO - Order 70 status update: Submitted
+2026-01-30 09:58:04,016 - OrderManager - INFO - Adaptive Update for Order 64 (): 17.98 -> 18.805 (Cap/Floor: 18.805)
+2026-01-30 09:58:04,097 - ib_insync.wrapper - ERROR - Error 201, reqId 64: Order rejected - reason:Invalid Price
+2026-01-30 09:58:04,098 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=742750180, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=742750187, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=64, clientId=142, permId=1698922394, action='BUY', totalQuantity=1.0, lmtPrice=17.98, auxPrice=0.0, tif='DAY', orderRef='c6fcb915-f622-46cc-8854-4978b81cde75'), orderStatus=OrderStatus(orderId=64, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922394, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 18, 645432, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 20, 65452, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 33, 976901, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 77985, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 48, 998293, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 72932, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 16499, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 92756, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:58:04,098 - OrderManager - INFO - Order 64 status update: Cancelled
+2026-01-30 09:58:04,100 - OrderManager - INFO - Order 64 status update: Submitted
+2026-01-30 09:58:09,025 - OrderManager - INFO - Adaptive Update for Order 70 (): 39.95 -> 41.405 (Cap/Floor: 41.405)
+2026-01-30 09:58:09,096 - ib_insync.wrapper - ERROR - Error 201, reqId 70: Order rejected - reason:Invalid Price
+2026-01-30 09:58:09,097 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=745191385, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=745191388, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=70, clientId=142, permId=1698922395, action='BUY', totalQuantity=1.0, lmtPrice=39.95, auxPrice=0.0, tif='DAY', orderRef='c43eb5ff-bc89-4c4d-835d-40be5b4ef146'), orderStatus=OrderStatus(orderId=70, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922395, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 23, 356512, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 25, 41709, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 38, 984227, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 60399, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 68366, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 71293, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 5257, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 79789, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 25347, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:58:09,098 - OrderManager - INFO - Order 70 status update: Cancelled
+2026-01-30 09:58:09,104 - OrderManager - INFO - Order 70 status update: Submitted
+2026-01-30 09:58:19,037 - OrderManager - INFO - Adaptive Update for Order 64 (): 17.98 -> 18.805 (Cap/Floor: 18.805)
+2026-01-30 09:58:19,120 - ib_insync.wrapper - ERROR - Error 201, reqId 64: Order rejected - reason:Invalid Price
+2026-01-30 09:58:19,121 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=742750180, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=742750187, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=64, clientId=142, permId=1698922394, action='BUY', totalQuantity=1.0, lmtPrice=17.98, auxPrice=0.0, tif='DAY', orderRef='c6fcb915-f622-46cc-8854-4978b81cde75'), orderStatus=OrderStatus(orderId=64, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922394, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 18, 645432, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 20, 65452, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 33, 976901, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 77985, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 48, 998293, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 72932, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 16499, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 92756, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 37573, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 107382, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 120318, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:58:19,122 - OrderManager - INFO - Order 64 status update: Cancelled
+2026-01-30 09:58:19,124 - OrderManager - INFO - Order 64 status update: Submitted
+2026-01-30 09:58:24,044 - OrderManager - INFO - Adaptive Update for Order 70 (): 39.95 -> 41.405 (Cap/Floor: 41.405)
+2026-01-30 09:58:24,125 - ib_insync.wrapper - ERROR - Error 201, reqId 70: Order rejected - reason:Invalid Price
+2026-01-30 09:58:24,125 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=745191385, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=745191388, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=70, clientId=142, permId=1698922395, action='BUY', totalQuantity=1.0, lmtPrice=39.95, auxPrice=0.0, tif='DAY', orderRef='c43eb5ff-bc89-4c4d-835d-40be5b4ef146'), orderStatus=OrderStatus(orderId=70, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922395, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 23, 356512, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 25, 41709, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 38, 984227, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 60399, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 68366, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 71293, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 5257, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 79789, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 25347, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 103562, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 44560, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 124294, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 125062, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:58:24,126 - OrderManager - INFO - Order 70 status update: Cancelled
+2026-01-30 09:58:24,127 - OrderManager - INFO - Order 70 status update: Submitted
+2026-01-30 09:58:34,054 - OrderManager - INFO - Adaptive Update for Order 64 (): 17.98 -> 18.805 (Cap/Floor: 18.805)
+2026-01-30 09:58:34,131 - ib_insync.wrapper - ERROR - Error 201, reqId 64: Order rejected - reason:Invalid Price
+2026-01-30 09:58:34,132 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=742750180, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=742750187, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=64, clientId=142, permId=1698922394, action='BUY', totalQuantity=1.0, lmtPrice=17.98, auxPrice=0.0, tif='DAY', orderRef='c6fcb915-f622-46cc-8854-4978b81cde75'), orderStatus=OrderStatus(orderId=64, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922394, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 18, 645432, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 20, 65452, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 33, 976901, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 77985, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 48, 998293, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 72932, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 16499, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 92756, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 37573, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 107382, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 120318, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 123815, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 54730, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 128479, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 131593, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:58:34,132 - OrderManager - INFO - Order 64 status update: Cancelled
+2026-01-30 09:58:34,135 - OrderManager - INFO - Order 64 status update: Submitted
+2026-01-30 09:58:39,059 - OrderManager - INFO - Adaptive Update for Order 70 (): 39.95 -> 41.405 (Cap/Floor: 41.405)
+2026-01-30 09:58:39,149 - ib_insync.wrapper - ERROR - Error 201, reqId 70: Order rejected - reason:Invalid Price
+2026-01-30 09:58:39,150 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=745191385, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=745191388, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=70, clientId=142, permId=1698922395, action='BUY', totalQuantity=1.0, lmtPrice=39.95, auxPrice=0.0, tif='DAY', orderRef='c43eb5ff-bc89-4c4d-835d-40be5b4ef146'), orderStatus=OrderStatus(orderId=70, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922395, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 23, 356512, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 25, 41709, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 38, 984227, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 60399, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 68366, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 71293, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 5257, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 79789, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 25347, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 103562, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 44560, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 124294, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 125062, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 125062, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 62703, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 139432, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 149310, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:58:39,150 - OrderManager - INFO - Order 70 status update: Cancelled
+2026-01-30 09:58:39,151 - OrderManager - INFO - Order 70 status update: Submitted
+2026-01-30 09:58:49,075 - OrderManager - INFO - Adaptive Update for Order 64 (): 17.98 -> 18.805 (Cap/Floor: 18.805)
+2026-01-30 09:58:49,156 - ib_insync.wrapper - ERROR - Error 201, reqId 64: Order rejected - reason:Invalid Price
+2026-01-30 09:58:49,156 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=742750180, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=742750187, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=64, clientId=142, permId=1698922394, action='BUY', totalQuantity=1.0, lmtPrice=17.98, auxPrice=0.0, tif='DAY', orderRef='c6fcb915-f622-46cc-8854-4978b81cde75'), orderStatus=OrderStatus(orderId=64, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922394, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 18, 645432, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 20, 65452, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 33, 976901, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 77985, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 48, 998293, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 72932, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 16499, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 92756, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 37573, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 107382, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 120318, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 123815, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 54730, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 128479, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 131593, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 134553, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 76199, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 152433, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 156282, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:58:49,157 - OrderManager - INFO - Order 64 status update: Cancelled
+2026-01-30 09:58:49,161 - OrderManager - INFO - Order 64 status update: Submitted
+2026-01-30 09:58:54,084 - OrderManager - INFO - Adaptive Update for Order 70 (): 39.95 -> 41.405 (Cap/Floor: 41.405)
+2026-01-30 09:58:54,174 - ib_insync.wrapper - ERROR - Error 201, reqId 70: Order rejected - reason:Invalid Price
+2026-01-30 09:58:54,175 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=745191385, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=745191388, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=70, clientId=142, permId=1698922395, action='BUY', totalQuantity=1.0, lmtPrice=39.95, auxPrice=0.0, tif='DAY', orderRef='c43eb5ff-bc89-4c4d-835d-40be5b4ef146'), orderStatus=OrderStatus(orderId=70, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922395, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 23, 356512, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 25, 41709, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 38, 984227, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 60399, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 68366, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 71293, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 5257, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 79789, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 25347, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 103562, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 44560, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 124294, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 125062, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 125062, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 62703, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 139432, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 149310, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 151286, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 84611, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 163254, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 174353, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:58:54,175 - OrderManager - INFO - Order 70 status update: Cancelled
+2026-01-30 09:58:54,177 - OrderManager - INFO - Order 70 status update: Submitted
+2026-01-30 09:59:04,097 - OrderManager - INFO - Adaptive Update for Order 64 (): 17.98 -> 18.805 (Cap/Floor: 18.805)
+2026-01-30 09:59:04,177 - ib_insync.wrapper - ERROR - Error 201, reqId 64: Order rejected - reason:Invalid Price
+2026-01-30 09:59:04,178 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=742750180, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=742750187, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=64, clientId=142, permId=1698922394, action='BUY', totalQuantity=1.0, lmtPrice=17.98, auxPrice=0.0, tif='DAY', orderRef='c6fcb915-f622-46cc-8854-4978b81cde75'), orderStatus=OrderStatus(orderId=64, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922394, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 18, 645432, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 20, 65452, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 33, 976901, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 77985, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 48, 998293, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 72932, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 16499, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 92756, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 37573, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 107382, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 120318, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 123815, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 54730, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 128479, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 131593, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 134553, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 76199, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 152433, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 156282, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 161249, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 98124, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 175368, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 177506, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:59:04,178 - OrderManager - INFO - Order 64 status update: Cancelled
+2026-01-30 09:59:04,179 - OrderManager - INFO - Order 64 status update: Submitted
+2026-01-30 09:59:09,103 - OrderManager - INFO - Adaptive Update for Order 70 (): 39.95 -> 41.405 (Cap/Floor: 41.405)
+2026-01-30 09:59:09,185 - ib_insync.wrapper - ERROR - Error 201, reqId 70: Order rejected - reason:Invalid Price
+2026-01-30 09:59:09,185 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=745191385, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=745191388, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=70, clientId=142, permId=1698922395, action='BUY', totalQuantity=1.0, lmtPrice=39.95, auxPrice=0.0, tif='DAY', orderRef='c43eb5ff-bc89-4c4d-835d-40be5b4ef146'), orderStatus=OrderStatus(orderId=70, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922395, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 23, 356512, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 25, 41709, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 38, 984227, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 60399, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 68366, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 71293, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 5257, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 79789, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 25347, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 103562, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 44560, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 124294, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 125062, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 125062, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 62703, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 139432, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 149310, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 151286, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 84611, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 163254, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 174353, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 174353, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 104246, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 181352, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 185056, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:59:09,185 - OrderManager - INFO - Order 70 status update: Cancelled
+2026-01-30 09:59:09,187 - OrderManager - INFO - Order 70 status update: Submitted
+2026-01-30 09:59:19,120 - OrderManager - INFO - Adaptive Update for Order 64 (): 17.98 -> 18.805 (Cap/Floor: 18.805)
+2026-01-30 09:59:19,200 - ib_insync.wrapper - ERROR - Error 201, reqId 64: Order rejected - reason:Invalid Price
+2026-01-30 09:59:19,202 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=742750180, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=742750187, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=64, clientId=142, permId=1698922394, action='BUY', totalQuantity=1.0, lmtPrice=17.98, auxPrice=0.0, tif='DAY', orderRef='c6fcb915-f622-46cc-8854-4978b81cde75'), orderStatus=OrderStatus(orderId=64, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922394, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 18, 645432, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 20, 65452, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 33, 976901, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 77985, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 48, 998293, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 72932, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 16499, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 92756, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 37573, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 107382, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 120318, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 123815, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 54730, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 128479, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 131593, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 134553, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 76199, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 152433, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 156282, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 161249, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 98124, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 175368, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 177506, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 177506, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 19, 120678, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 19, 199878, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 19, 199878, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:59:19,202 - OrderManager - INFO - Order 64 status update: Cancelled
+2026-01-30 09:59:19,203 - OrderManager - INFO - Order 64 status update: Submitted
+2026-01-30 09:59:24,123 - OrderManager - INFO - Adaptive Update for Order 70 (): 39.95 -> 41.405 (Cap/Floor: 41.405)
+2026-01-30 09:59:24,208 - ib_insync.wrapper - ERROR - Error 201, reqId 70: Order rejected - reason:Invalid Price
+2026-01-30 09:59:24,208 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=745191385, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=745191388, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=70, clientId=142, permId=1698922395, action='BUY', totalQuantity=1.0, lmtPrice=39.95, auxPrice=0.0, tif='DAY', orderRef='c43eb5ff-bc89-4c4d-835d-40be5b4ef146'), orderStatus=OrderStatus(orderId=70, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922395, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 23, 356512, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 25, 41709, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 38, 984227, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 60399, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 68366, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 71293, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 5257, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 79789, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 25347, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 103562, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 44560, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 124294, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 125062, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 125062, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 62703, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 139432, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 149310, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 151286, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 84611, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 163254, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 174353, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 174353, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 104246, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 181352, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 185056, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 187159, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 24, 125102, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 24, 201851, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 24, 207733, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:59:24,208 - OrderManager - INFO - Order 70 status update: Cancelled
+2026-01-30 09:59:24,210 - OrderManager - INFO - Order 70 status update: Submitted
+2026-01-30 09:59:34,136 - OrderManager - INFO - Adaptive Update for Order 64 (): 17.98 -> 18.805 (Cap/Floor: 18.805)
+2026-01-30 09:59:34,234 - ib_insync.wrapper - ERROR - Error 201, reqId 64: Order rejected - reason:Invalid Price
+2026-01-30 09:59:34,235 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=742750180, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=742750187, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=64, clientId=142, permId=1698922394, action='BUY', totalQuantity=1.0, lmtPrice=17.98, auxPrice=0.0, tif='DAY', orderRef='c6fcb915-f622-46cc-8854-4978b81cde75'), orderStatus=OrderStatus(orderId=64, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922394, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 18, 645432, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 20, 65452, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 33, 976901, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 77985, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 48, 998293, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 72932, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 16499, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 92756, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 37573, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 107382, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 120318, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 123815, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 54730, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 128479, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 131593, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 134553, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 76199, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 152433, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 156282, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 161249, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 98124, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 175368, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 177506, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 177506, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 19, 120678, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 19, 199878, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 19, 199878, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 19, 202998, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 34, 137042, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 34, 233603, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 34, 233603, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:59:34,235 - OrderManager - INFO - Order 64 status update: Cancelled
+2026-01-30 09:59:34,236 - OrderManager - INFO - Order 64 status update: Submitted
+2026-01-30 09:59:39,143 - OrderManager - INFO - Adaptive Update for Order 70 (): 39.95 -> 41.405 (Cap/Floor: 41.405)
+2026-01-30 09:59:39,231 - ib_insync.wrapper - ERROR - Error 201, reqId 70: Order rejected - reason:Invalid Price
+2026-01-30 09:59:39,231 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=745191385, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=745191388, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=70, clientId=142, permId=1698922395, action='BUY', totalQuantity=1.0, lmtPrice=39.95, auxPrice=0.0, tif='DAY', orderRef='c43eb5ff-bc89-4c4d-835d-40be5b4ef146'), orderStatus=OrderStatus(orderId=70, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922395, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 23, 356512, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 25, 41709, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 38, 984227, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 60399, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 68366, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 71293, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 5257, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 79789, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 25347, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 103562, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 44560, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 124294, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 125062, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 125062, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 62703, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 139432, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 149310, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 151286, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 84611, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 163254, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 174353, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 174353, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 104246, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 181352, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 185056, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 187159, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 24, 125102, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 24, 201851, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 24, 207733, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 24, 209877, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 39, 145343, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 39, 226198, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 39, 231176, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:59:39,231 - OrderManager - INFO - Order 70 status update: Cancelled
+2026-01-30 09:59:39,233 - OrderManager - INFO - Order 70 status update: Submitted
+2026-01-30 09:59:49,157 - OrderManager - INFO - Adaptive Update for Order 64 (): 17.98 -> 18.805 (Cap/Floor: 18.805)
+2026-01-30 09:59:49,230 - ib_insync.wrapper - ERROR - Error 201, reqId 64: Order rejected - reason:Invalid Price
+2026-01-30 09:59:49,230 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=742750180, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=742750187, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=64, clientId=142, permId=1698922394, action='BUY', totalQuantity=1.0, lmtPrice=17.98, auxPrice=0.0, tif='DAY', orderRef='c6fcb915-f622-46cc-8854-4978b81cde75'), orderStatus=OrderStatus(orderId=64, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922394, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 18, 645432, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 20, 65452, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 33, 976901, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 77985, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 34, 92126, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 48, 998293, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 70891, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 49, 72932, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 16499, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 92756, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 4, 97889, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 37573, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 107382, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 120318, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 19, 123815, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 54730, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 128479, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 131593, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 34, 134553, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 76199, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 152433, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 156282, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 49, 161249, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 98124, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 175368, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 177506, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 4, 177506, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 19, 120678, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 19, 199878, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 19, 199878, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 19, 202998, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 34, 137042, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 34, 233603, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 34, 233603, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 34, 233603, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 49, 158213, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 49, 223302, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 49, 230178, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 64: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:59:49,231 - OrderManager - INFO - Order 64 status update: Cancelled
+2026-01-30 09:59:49,233 - OrderManager - INFO - Order 64 status update: Submitted
+2026-01-30 09:59:54,163 - OrderManager - INFO - Adaptive Update for Order 70 (): 39.95 -> 41.405 (Cap/Floor: 41.405)
+2026-01-30 09:59:54,242 - ib_insync.wrapper - ERROR - Error 201, reqId 70: Order rejected - reason:Invalid Price
+2026-01-30 09:59:54,244 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=745191385, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=745191388, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)]), order=LimitOrder(orderId=70, clientId=142, permId=1698922395, action='BUY', totalQuantity=1.0, lmtPrice=39.95, auxPrice=0.0, tif='DAY', orderRef='c43eb5ff-bc89-4c4d-835d-40be5b4ef146'), orderStatus=OrderStatus(orderId=70, status='Cancelled', filled=0.0, remaining=1.0, avgFillPrice=0.0, permId=1698922395, parentId=0, lastFillPrice=0.0, clientId=142, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 23, 356512, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 25, 41709, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 38, 984227, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 60399, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 68366, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 39, 71293, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 5257, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 79789, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 57, 54, 82453, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 25347, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 95429, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 9, 103562, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 44560, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 124294, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 125062, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 24, 125062, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 62703, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 139432, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 149310, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 39, 151286, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 84611, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 163254, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 174353, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 58, 54, 174353, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 104246, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 181352, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 185056, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 9, 187159, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 24, 125102, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 24, 201851, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 24, 207733, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 24, 209877, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 39, 145343, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 39, 226198, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 39, 231176, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 39, 231176, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 54, 165956, tzinfo=datetime.timezone.utc), status='Submitted', message='Modify', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 54, 237877, tzinfo=datetime.timezone.utc), status='Submitted', message='Modified', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 1, 30, 9, 59, 54, 242241, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 201, reqId 70: Order rejected - reason:Invalid Price', errorCode=201)], advancedError='')
+2026-01-30 09:59:54,244 - OrderManager - INFO - Order 70 status update: Cancelled
+2026-01-30 09:59:54,245 - OrderManager - INFO - Order 70 status update: Submitted
