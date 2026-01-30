@@ -64,7 +64,7 @@ def load_trade_data():
     try:
         df = get_trade_ledger_df()
         if not df.empty:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, format='mixed')
         return df
     except Exception as e:
         st.error(f"Failed to load trade_ledger.csv: {e}")
@@ -110,7 +110,7 @@ def load_council_history():
 
         # Normalize timestamp
         if 'timestamp' in combined_df.columns:
-            combined_df['timestamp'] = pd.to_datetime(combined_df['timestamp'], utc=True)
+            combined_df['timestamp'] = pd.to_datetime(combined_df['timestamp'], utc=True, format='mixed')
 
         # Remove duplicates (same timestamp + contract)
         if 'timestamp' in combined_df.columns and 'contract' in combined_df.columns:
@@ -130,7 +130,7 @@ def load_equity_data():
         if os.path.exists(DAILY_EQUITY_PATH):
             df = pd.read_csv(DAILY_EQUITY_PATH)
             if not df.empty:
-                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, format='mixed')
                 df = df.sort_values('timestamp')
             return df
         return pd.DataFrame()
