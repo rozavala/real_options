@@ -26,7 +26,10 @@ from trading_bot.ib_interface import (
 from trading_bot.tms import TransactiveMemory
 from trading_bot.signal_generator import generate_signals
 from trading_bot.strategy import define_directional_strategy, define_volatility_strategy, validate_iron_condor_risk
-from trading_bot.utils import log_trade_to_ledger, log_order_event, configure_market_data_type, is_market_open
+from trading_bot.utils import (
+    log_trade_to_ledger, log_order_event, configure_market_data_type,
+    is_market_open, round_to_tick, COFFEE_OPTIONS_TICK_SIZE
+)
 from trading_bot.compliance import ComplianceGuardian, calculate_spread_max_risk
 from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.position_sizer import DynamicPositionSizer
@@ -683,6 +686,34 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                 logger.info(f"All {order_details['total_legs']} legs of combo order {order_id} are now filled.")
                 order_details['is_filled'] = True # Mark the entire order as filled
 
+    def on_error(reqId: int, errorCode: int, errorString: str, contract):
+        """
+        Handle IB API errors, specifically Error 201 (Invalid Price).
+        When a modification is rejected, revert to the last known good price.
+        """
+        if errorCode == 201 and reqId in live_orders:
+            details = live_orders[reqId]
+            details['modification_error_count'] += 1
+
+            trade = details['trade']
+            last_good = details['last_known_good_price']
+
+            logger.warning(
+                f"⚠️ Error 201 for Order {reqId}: Modification rejected. "
+                f"Reverting internal tracking from {trade.order.lmtPrice:.2f} to {last_good:.2f}. "
+                f"Error count: {details['modification_error_count']}/{details['max_modification_errors']}"
+            )
+
+            # Sync our view with IB's reverted state
+            trade.order.lmtPrice = last_good
+
+            if details['modification_error_count'] >= details['max_modification_errors']:
+                logger.error(
+                    f"🚫 Order {reqId} ({details['display_name']}): Max modification errors reached. "
+                    f"Disabling adaptive walking - order will sit at {last_good:.2f} until fill or timeout."
+                )
+                details['adaptive_ceiling_price'] = last_good
+
     try:
         # Note: Connection already established above via Pool
         logger.info("Using pooled IB connection for order placement.")
@@ -829,6 +860,7 @@ async def place_queued_orders(config: dict, orders_list: list = None):
         # Attach event handlers
         ib.orderStatusEvent += on_order_status
         ib.execDetailsEvent += on_exec_details
+        ib.errorEvent += on_error  # Error 201 handler
 
         placed_trades_summary = []
         tuning = config.get('strategy_tuning', {})
@@ -945,7 +977,11 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                 'fill_prices': {}, # Stores fill prices by conId
                 'last_update_time': time.time(),
                 'adaptive_ceiling_price': getattr(order, 'adaptive_limit_price', None), # Store ceiling/floor
-                'decision_data': decision_data
+                'decision_data': decision_data,
+                # === FIX: Error tracking fields ===
+                'last_known_good_price': order.lmtPrice,
+                'modification_error_count': 0,
+                'max_modification_errors': 3,
             }
 
             # --- 5. Build Notification String (ENHANCED FOR ALL DATA) ---
@@ -1000,23 +1036,33 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                         new_price = None
                         step_amount = abs(current_limit) * adaptive_pct
 
+                        # Skip if max errors reached
+                        if details['modification_error_count'] >= details['max_modification_errors']:
+                            continue
+
                         if action == 'BUY':
                             if current_limit < ceiling:
-                                # Increase price
                                 proposed_price = current_limit + step_amount
-                                # Round to 2 decimals and ensure we don't exceed ceiling
-                                new_price = min(round(proposed_price, 2), ceiling)
-                                # Ensure we actually move by at least 0.05 or 1 tick if calculated change is too small
+                                new_price = round_to_tick(proposed_price, COFFEE_OPTIONS_TICK_SIZE, 'BUY')
+                                new_price = min(new_price, ceiling)
+
                                 if new_price <= current_limit and current_limit < ceiling:
-                                     new_price = min(current_limit + 0.05, ceiling)
+                                    new_price = min(
+                                        round_to_tick(current_limit + COFFEE_OPTIONS_TICK_SIZE, COFFEE_OPTIONS_TICK_SIZE, 'BUY'),
+                                        ceiling
+                                    )
 
                         else: # SELL
                             if current_limit > ceiling: # Here 'ceiling' is actually floor
-                                # Decrease price
                                 proposed_price = current_limit - step_amount
-                                new_price = max(round(proposed_price, 2), ceiling)
+                                new_price = round_to_tick(proposed_price, COFFEE_OPTIONS_TICK_SIZE, 'SELL')
+                                new_price = max(new_price, ceiling)
+
                                 if new_price >= current_limit and current_limit > ceiling:
-                                     new_price = max(current_limit - 0.05, ceiling)
+                                    new_price = max(
+                                        round_to_tick(current_limit - COFFEE_OPTIONS_TICK_SIZE, COFFEE_OPTIONS_TICK_SIZE, 'SELL'),
+                                        ceiling
+                                    )
 
                         # FIX-001: Floating Point Comparison Bug
                         if new_price is not None:
@@ -1027,6 +1073,8 @@ async def place_queued_orders(config: dict, orders_list: list = None):
                                 trade.order.lmtPrice = new_price
                                 ib.placeOrder(trade.contract, trade.order)
                                 details['last_update_time'] = time.time()
+                                details['last_known_good_price'] = new_price  # Track for rollback
+                                details['modification_error_count'] = 0  # Reset on attempt
                                 log_order_event(trade, "Updated", f"Adaptive Walk: Price updated to {new_price}")
                             else:
                                 # Price at or very near cap/floor - log once then stop checking
@@ -1161,6 +1209,7 @@ async def place_queued_orders(config: dict, orders_list: list = None):
         if ib.isConnected():
             ib.orderStatusEvent -= on_order_status
             ib.execDetailsEvent -= on_exec_details
+            ib.errorEvent -= on_error
             # Do NOT disconnect pooled connection
             logger.info("Order placement complete. Releasing event handlers.")
 

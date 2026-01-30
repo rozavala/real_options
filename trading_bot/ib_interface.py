@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from ib_insync import *
 
 from trading_bot.logging_config import setup_logging
-from trading_bot.utils import price_option_black_scholes, log_trade_to_ledger
+from trading_bot.utils import price_option_black_scholes, log_trade_to_ledger, round_to_tick, COFFEE_OPTIONS_TICK_SIZE
 
 # --- Logging Setup ---
 setup_logging()
@@ -287,31 +287,32 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
     market_mid = (combo_bid_price + combo_ask_price) / 2
 
     if action == 'BUY':
-        # Theoretical ceiling with slippage
-        theoretical_ceiling = round(net_theoretical_price + fixed_slippage, 2)
-        # Market-based ceiling: don't exceed the current ask (overpaying)
-        market_ceiling = round(combo_ask_price + (market_spread * 0.1), 2)  # Allow 10% beyond ask
+        # Theoretical ceiling with slippage - TICK ALIGNED
+        theoretical_ceiling = round_to_tick(net_theoretical_price + fixed_slippage, COFFEE_OPTIONS_TICK_SIZE, 'BUY')
+        # Market-based ceiling: don't exceed the current ask - TICK ALIGNED
+        market_ceiling = round_to_tick(combo_ask_price + (market_spread * 0.1), COFFEE_OPTIONS_TICK_SIZE, 'BUY')
         # Use the more conservative (lower) ceiling
         ceiling_price = min(theoretical_ceiling, market_ceiling)
-        # But ensure we can at least reach the market mid
-        ceiling_price = max(ceiling_price, market_mid)
+        # But ensure we can at least reach the market mid - TICK ALIGNED
+        ceiling_price = max(ceiling_price, round_to_tick(market_mid, COFFEE_OPTIONS_TICK_SIZE, 'BUY'))
 
-        initial_price = round(combo_bid_price + start_offset, 2)
+        # Initial price - TICK ALIGNED (round down for buys)
+        initial_price = round_to_tick(combo_bid_price + start_offset, COFFEE_OPTIONS_TICK_SIZE, 'BUY')
         initial_price = min(initial_price, ceiling_price)
 
         logging.info(f"BUY Cap Calc: Theoretical={theoretical_ceiling:.2f}, Market={market_ceiling:.2f}, Mid={market_mid:.2f}, Final Cap={ceiling_price:.2f}")
 
     else:  # SELL
-        # Theoretical floor with slippage
-        theoretical_floor = round(net_theoretical_price - fixed_slippage, 2)
-        # Market-based floor: don't go below the bid (underselling)
-        market_floor = round(combo_bid_price - (market_spread * 0.1), 2)  # Allow 10% beyond bid
-        # Use the more aggressive (lower/more negative) floor for credits
+        # Theoretical floor with slippage - TICK ALIGNED (round up for sells)
+        theoretical_floor = round_to_tick(net_theoretical_price - fixed_slippage, COFFEE_OPTIONS_TICK_SIZE, 'SELL')
+        # Market-based floor - TICK ALIGNED
+        market_floor = round_to_tick(combo_bid_price - (market_spread * 0.1), COFFEE_OPTIONS_TICK_SIZE, 'SELL')
+        # Use the more aggressive floor
         floor_price = min(theoretical_floor, market_floor)
-        # But ensure we can at least reach the market mid
-        floor_price = min(floor_price, market_mid)
+        floor_price = min(floor_price, round_to_tick(market_mid, COFFEE_OPTIONS_TICK_SIZE, 'SELL'))
 
-        initial_price = round(combo_ask_price - start_offset, 2)
+        # Initial price - TICK ALIGNED (round up for sells)
+        initial_price = round_to_tick(combo_ask_price - start_offset, COFFEE_OPTIONS_TICK_SIZE, 'SELL')
         initial_price = max(initial_price, floor_price)
 
         logging.info(f"SELL Floor Calc: Theoretical={theoretical_floor:.2f}, Market={market_floor:.2f}, Mid={market_mid:.2f}, Final Floor={floor_price:.2f}")
