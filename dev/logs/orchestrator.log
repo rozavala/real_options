@@ -192,3 +192,32 @@
 2026-01-30 12:30:36,030 - Orchestrator - INFO - Post-cycle debounce set for 1800s
 2026-01-30 12:59:22,533 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
 2026-01-30 12:59:26,571 - Orchestrator - ERROR - Error in Sentinel Loop: 'list' object has no attribute 'get'
+2026-01-30 13:20:00,023 - Orchestrator - INFO - --- Running scheduled task: run_position_audit_cycle ---
+2026-01-30 13:20:00,024 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-01-30 13:20:00,027 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 234...
+2026-01-30 13:20:00,393 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 234
+2026-01-30 13:20:00,398 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-01-30 13:20:00,515 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-30 13:20:00,636 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-01-30 13:20:00,636 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
+2026-01-30 13:20:00,636 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'gemini', 'anthropic', 'openai'], 'diversity_score': 1.0}
+2026-01-30 13:20:00,645 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-01-30 13:20:00,645 - trading_bot.agents - INFO - Coffee Council initialized. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-01-30 13:20:00,675 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-01-30 13:20:00,755 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-01-30 13:20:02,909 - ib_insync.wrapper - ERROR - Error 321, reqId 6: Error validating request.-'bQ' : cause - Please enter exchange, contract: FuturesOption(conId=745575680, symbol='KC', lastTradeDateOrContractMonth='20260211', strike=3.45, right='C', multiplier='37500', currency='USD', localSymbol='KOH6 C3.45', tradingClass='KO')
+2026-01-30 13:20:03,813 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-01-30 13:20:03,813 - ib_insync.wrapper - ERROR - Error 300, reqId 6: Can't find EId with tickerId:6
+2026-01-30 13:20:03,914 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-01-30 13:20:06,061 - ib_insync.wrapper - ERROR - Error 321, reqId 10: Error validating request.-'bQ' : cause - Please enter exchange, contract: FuturesOption(conId=731667756, symbol='KC', lastTradeDateOrContractMonth='20260211', strike=3.3, right='P', multiplier='37500', currency='USD', localSymbol='KOH6 P3.3', tradingClass='KO')
+2026-01-30 13:20:06,965 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-01-30 13:20:06,966 - ib_insync.wrapper - ERROR - Error 300, reqId 10: Can't find EId with tickerId:10
+2026-01-30 13:20:07,065 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-01-30 13:20:09,212 - ib_insync.wrapper - ERROR - Error 321, reqId 14: Error validating request.-'bQ' : cause - Please enter exchange, contract: FuturesOption(conId=757830272, symbol='KC', lastTradeDateOrContractMonth='20260211', strike=3.55, right='C', multiplier='37500', currency='USD', localSymbol='KOH6 C3.55', tradingClass='KO')
+2026-01-30 13:20:10,117 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-01-30 13:20:10,117 - ib_insync.wrapper - ERROR - Error 300, reqId 14: Can't find EId with tickerId:14
+2026-01-30 13:20:10,221 - root - INFO - Found 11 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-01-30 13:20:12,325 - ib_insync.wrapper - ERROR - Error 321, reqId 18: Error validating request.-'bQ' : cause - Please enter exchange, contract: FuturesOption(conId=742750187, symbol='KC', lastTradeDateOrContractMonth='20260211', strike=3.4, right='P', multiplier='37500', currency='USD', localSymbol='KOH6 P3.4', tradingClass='KO')
+2026-01-30 13:20:13,227 - Orchestrator - INFO - Position audit complete. All theses remain valid.
+2026-01-30 13:20:13,228 - Orchestrator - INFO - Next task 'generate_and_execute_orders' scheduled for 2026-01-30 13:50:00 UTC. Waiting for 0.50 hours.
+2026-01-30 13:20:13,234 - ib_insync.wrapper - ERROR - Error 300, reqId 18: Can't find EId with tickerId:18
