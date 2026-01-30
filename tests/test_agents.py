@@ -10,7 +10,7 @@ from trading_bot.agents import CoffeeCouncil
 @pytest.fixture
 def mock_genai_client():
     with patch("google.genai.Client") as mock_client_cls:
-        # Create a mock client instance
+        # Create a mock client instance.
         mock_client_instance = MagicMock()
         mock_client_cls.return_value = mock_client_instance
 
