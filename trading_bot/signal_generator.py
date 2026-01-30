@@ -496,11 +496,11 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         agent_conflict_score_log = _calculate_agent_conflict(agent_data)
                         imminent_catalyst_log = _detect_imminent_catalyst(agent_data)
 
-                        if imminent_catalyst_log or agent_conflict_score_log > 0.6:
+                        if imminent_catalyst_log or agent_conflict_score_log > 0.8:
                             prediction_type_log = "VOLATILITY"
                             vol_level_log = "HIGH"
                             strategy_type_log = "LONG_STRADDLE"
-                        elif regime_log == 'RANGE_BOUND' and vol_sentiment_log == 'BULLISH':
+                        elif regime_log == 'RANGE_BOUND' or vol_sentiment_log in ['BEARISH', 'NEUTRAL']:
                             prediction_type_log = "VOLATILITY"
                             vol_level_log = "LOW"
                             strategy_type_log = "IRON_CONDOR"
