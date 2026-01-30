@@ -168,11 +168,12 @@ def extract_sentiment_from_report(report_text: str) -> tuple[str, float]:
         # 1. Exact format from research_topic: [SENTIMENT TAG]: [SENTIMENT: BULLISH]
         r'\[SENTIMENT TAG\]:\s*\[SENTIMENT:\s*(\w+)\]',
 
-        # 2. Standard format: [SENTIMENT: BULLISH] (requires COLON, not space)
+        # 2. Standard format: [SENTIMENT: BULLISH]
         r'\[SENTIMENT:\s*(\w+)\]',
 
-        # 3. JSON format: "sentiment": "BULLISH"
-        r'"sentiment"\s*:\s*"?(\w+)"?',
+        # 3. JSON format with BOTH single AND double quotes (FIX ADDENDUM A)
+        # Handles: "sentiment": "BULLISH" AND 'sentiment': 'BULLISH'
+        r'[\'"]sentiment[\'"]\s*:\s*[\'"]?(\w+)[\'"]?',
 
         # 4. Loose fallback: SENTIMENT: BULLISH
         r'SENTIMENT:\s*(\w+)',
@@ -338,10 +339,38 @@ async def calculate_weighted_decision(
     votes: list[AgentVote] = []
 
     for agent_name, report in agent_reports.items():
+        # === EARLY SKIP: Explicitly unavailable data ===
         if not report or report in ["Data Unavailable", "N/A"]:
+            logger.debug(f"Agent {agent_name}: Skipping - Data Unavailable")
             continue
 
+        # === NEW: Track stale/failure state for abstention logic ===
+        is_stale = False
+        is_failure = False
+
+        # === FIX #4: Handle STALE prefix from StateManager ===
+        if isinstance(report, str) and report.startswith('STALE'):
+            is_stale = True
+            # Extract the actual data after the prefix
+            # Format: "STALE (Xmin old) - <actual_data>"
+            stale_match = re.match(r'STALE \([^)]+\) - (.+)', report, re.DOTALL)
+            if stale_match:
+                report = stale_match.group(1)
+                logger.debug(f"Agent {agent_name}: Extracting sentiment from stale data ({stale_match.group(0)[:50]}...)")
+            else:
+                logger.warning(f"Agent {agent_name}: Unparseable STALE format, skipping")
+                continue
+
+        # === Check for error messages ===
+        if isinstance(report, str) and ('Error conducting research' in report or 'All providers exhausted' in report):
+            is_failure = True
+            logger.warning(f"Agent {agent_name}: Research failed - {report[:100]}")
+            continue  # Skip failed agents entirely
+
         # === PRIORITY 1: Use structured dict fields if available ===
+        sentiment_tag = None
+        confidence = 0.5
+
         if isinstance(report, dict) and report.get('sentiment'):
             sentiment_tag = str(report['sentiment']).upper().strip()
             if sentiment_tag in ['BULLISH', 'BEARISH', 'NEUTRAL']:
@@ -354,9 +383,6 @@ async def calculate_weighted_decision(
                 # Invalid sentiment value, fall through to text parsing
                 sentiment_tag = None
                 confidence = 0.5
-        else:
-            sentiment_tag = None
-            confidence = 0.5
 
         # === PRIORITY 2: Parse from text (with fixed regex) ===
         if sentiment_tag is None:
@@ -366,6 +392,20 @@ async def calculate_weighted_decision(
 
         confidence = max(0.0, min(1.0, float(confidence)))  # Defensive clamp
         direction = parse_sentiment_to_direction(sentiment_tag)
+
+        # === FIX #7 (ADDENDUM B): ABSTENTION LOGIC ===
+        # If extraction resulted in default values AND source suggests failure/staleness,
+        # the agent should ABSTAIN rather than vote NEUTRAL and dilute the signal
+        if direction == Direction.NEUTRAL and confidence == 0.5:
+            if is_stale or is_failure:
+                logger.warning(f"Agent {agent_name}: ABSTAINING due to stale/failed data (would dilute signal)")
+                continue  # Skip this vote entirely; do not add to total_weight
+
+        # Log default value occurrences for monitoring
+        if direction == Direction.NEUTRAL and confidence == 0.5:
+            logger.warning(f"Agent {agent_name}: Using DEFAULT values (NEUTRAL/0.5). "
+                          f"Report type: {type(report).__name__}, is_stale: {is_stale}, "
+                          f"Report preview: {str(report)[:100]}...")
 
         votes.append(AgentVote(
             agent_name=agent_name,

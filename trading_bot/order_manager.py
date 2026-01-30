@@ -549,12 +549,45 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
                         strategy_type = 'LONG_STRADDLE' if decision_data.get('level') == 'HIGH' else 'IRON_CONDOR'
 
                 try:
+                    # === FIX: Fetch Underlying Price for Thesis ===
+                    underlying_price = None
+                    contract_month = decision_data.get('contract_month')
+
+                    if contract_month:
+                        try:
+                            # Reconstruct Future contract
+                            future_contract = Future(
+                                symbol=config.get('symbol', 'KC'),
+                                lastTradeDateOrContractMonth=contract_month,
+                                exchange=config.get('exchange', 'NYBOT')
+                            )
+                            # Define a quick fetch with timeout
+                            async def _quick_fetch(c):
+                                ticker = ib.reqMktData(c, '', True, False)
+                                start_t = time.time()
+                                while util.isNan(ticker.last) and util.isNan(ticker.close):
+                                    if time.time() - start_t > 2.0: # 2s Timeout
+                                        break
+                                    await asyncio.sleep(0.1)
+                                price = ticker.last if not util.isNan(ticker.last) else ticker.close
+                                ib.cancelMktData(c)
+                                return price if price and price > 0 else None
+
+                            # Wrap in wait_for to be absolutely sure
+                            underlying_price = await asyncio.wait_for(_quick_fetch(future_contract), timeout=2.5)
+
+                        except Exception as ex:
+                            logger.warning(f"Failed to fetch underlying price for thesis: {ex}")
+                            underlying_price = decision_data.get('price') # Fallback to signal price
+
                     await record_entry_thesis_for_trade(
                         position_id=position_uuid,
                         strategy_type=strategy_type,
                         decision=decision_data,
                         entry_price=fill.execution.avgPrice, # Use fill price
-                        config=config or {}
+                        config=config or {},
+                        underlying_price=underlying_price,
+                        contract_month=contract_month
                     )
                     logger.info(f"TMS: Successfully recorded entry thesis for trade {position_uuid}")
                 except Exception as e:
@@ -1639,9 +1672,21 @@ async def record_entry_thesis_for_trade(
     strategy_type: str,
     decision: dict,
     entry_price: float,
-    config: dict
+    config: dict,
+    underlying_price: float = None,  # NEW: Underlying future price
+    contract_month: str = None       # NEW: For contract reconstruction
 ):
-    """Records the entry thesis for a newly opened position."""
+    """Records the entry thesis for a newly opened position.
+
+    Args:
+        position_id: Unique identifier for the position
+        strategy_type: Type of strategy (IRON_CONDOR, LONG_STRADDLE, etc.)
+        decision: Council decision dict
+        entry_price: Spread credit/debit (for options strategies)
+        config: Application config
+        underlying_price: Current underlying future price (CRITICAL for Iron Condor)
+        contract_month: Contract month for underlying (e.g., '202603')
+    """
     tms = TransactiveMemory()
 
     # Determine guardian agent based on the primary driver
@@ -1651,13 +1696,20 @@ async def record_entry_thesis_for_trade(
     # Build invalidation triggers
     invalidation_triggers = _build_invalidation_triggers(strategy_type, decision)
 
+    # === CRITICAL FIX: Store underlying price for Iron Condor validation ===
+    # For volatility strategies, we need the underlying price for breach calculations
+    effective_entry_price = underlying_price if underlying_price else entry_price
+
     thesis_data = {
         'strategy_type': strategy_type,
         'guardian_agent': guardian,
         'primary_rationale': reason,
         'invalidation_triggers': invalidation_triggers,
         'supporting_data': {
-            'entry_price': entry_price,
+            'entry_price': effective_entry_price,  # Underlying price for breach calc
+            'spread_credit': entry_price,           # Original spread value
+            'underlying_symbol': config.get('symbol', 'KC'),
+            'contract_month': contract_month,
             'entry_regime': decision.get('regime', 'UNKNOWN'),
             'volatility_sentiment': decision.get('volatility_sentiment', 'NEUTRAL'),
             'confidence': decision.get('confidence', 0.5)
@@ -1667,6 +1719,7 @@ async def record_entry_thesis_for_trade(
     }
 
     tms.record_trade_thesis(position_id, thesis_data)
+    logger.info(f"Recorded thesis for {position_id}: underlying_price=${effective_entry_price:.2f}, spread=${entry_price:.2f}")
 
 
 def _determine_guardian_from_reason(reason: str) -> str:

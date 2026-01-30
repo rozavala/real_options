@@ -20,13 +20,79 @@ from ib_insync import *
 from ib_insync import util
 
 from trading_bot.logging_config import setup_logging
-from trading_bot.utils import get_position_details, log_trade_to_ledger
+from trading_bot.utils import get_position_details, log_trade_to_ledger, get_active_futures
 from trading_bot.order_manager import get_trade_ledger_df
 from trading_bot.ib_interface import place_order
 from notifications import send_pushover_notification
+from trading_bot.tms import TransactiveMemory
 
 # --- Logging Setup ---
 setup_logging()
+
+
+async def check_iron_condor_theses(ib: IB, config: dict):
+    """
+    Checks all active Iron Condor theses for price breach invalidation.
+
+    This runs every 15 minutes during market hours to catch intraday breaches.
+    Sends immediate Pushover alert if 2% threshold exceeded.
+    """
+    try:
+        tms = TransactiveMemory()
+
+        # Get all active theses from VolatilityAnalyst (Iron Condors)
+        active_theses = tms.get_active_theses_by_guardian('VolatilityAnalyst')
+
+        if not active_theses:
+            return
+
+        # Get current underlying price once (efficiency)
+        futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=1)
+        if not futures:
+            logging.warning("IC thesis check: No active futures found")
+            return
+
+        underlying = futures[0]
+        ticker = ib.reqMktData(underlying, '', True, False)
+        await asyncio.sleep(1)
+        current_price = ticker.last if not util.isNan(ticker.last) else ticker.close
+        ib.cancelMktData(underlying)
+
+        if not current_price or current_price <= 0:
+            logging.warning(f"IC thesis check: Invalid underlying price {current_price}")
+            return
+
+        # Check each Iron Condor thesis
+        for thesis in active_theses:
+            if thesis.get('strategy_type') != 'IRON_CONDOR':
+                continue
+
+            entry_price = thesis.get('supporting_data', {}).get('entry_price', 0)
+
+            if entry_price <= 0:
+                logging.warning(f"IC thesis has invalid entry_price: {entry_price}")
+                continue
+
+            move_pct = abs((current_price - entry_price) / entry_price) * 100
+
+            # Tiered alerting
+            if move_pct > 2.0:
+                logging.critical(f"🚨 IRON CONDOR BREACH: {move_pct:.2f}% move exceeds 2% threshold!")
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    "🚨 IRON CONDOR BREACH - CLOSE IMMEDIATELY",
+                    f"Underlying has moved {move_pct:.1f}% from entry.\n"
+                    f"Entry: ${entry_price:.2f}\n"
+                    f"Current: ${current_price:.2f}\n"
+                    f"Threshold: 2%\n\n"
+                    f"MANUAL INTERVENTION REQUIRED"
+                )
+            elif move_pct > 1.5:
+                logging.warning(f"⚠️ Iron Condor approaching breach: {move_pct:.2f}% (threshold: 2%)")
+                # Optional: Send warning notification at 1.5%
+
+    except Exception as e:
+        logging.error(f"IC thesis check failed: {e}", exc_info=True)
 
 
 async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlying_price: float, future_contract: Contract) -> bool:
@@ -411,6 +477,9 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
     await ib.reqAllOpenOrdersAsync()
 
     closed_ids = set()
+    ic_check_counter = 0
+    IC_CHECK_INTERVAL = 15  # Check IC theses every 15 minutes (assuming 60s interval)
+
     try:
         while True:
             try:
@@ -419,6 +488,13 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
                 if target_capture_pct or max_risk_loss_pct:
                     # Arguments are ignored inside _check_risk_once but required by signature
                     await _check_risk_once(ib, config, closed_ids, 0.0, 0.0)
+
+                # === NEW: Iron Condor Thesis Validation ===
+                ic_check_counter += 1
+                if ic_check_counter >= IC_CHECK_INTERVAL:
+                    logging.info("Running Iron Condor thesis validation check...")
+                    await check_iron_condor_theses(ib, config)
+                    ic_check_counter = 0
 
                 logging.debug(f"P&L monitor cycle complete. Waiting {interval} seconds.")
                 await asyncio.sleep(interval)
