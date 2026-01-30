@@ -447,8 +447,11 @@ def archive_trade_ledger():
 def log_council_decision(decision_data):
     """
     Appends a row to 'data/council_history.csv' with the FULL details of the decision.
-    Handles schema migration by archiving old files if headers mismatch.
+
+    UPDATED: Uses in-place schema migration instead of archiving to preserve history.
     """
+    import pandas as pd
+
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     data_dir = os.path.join(base_dir, 'data')
     if not os.path.exists(data_dir):
@@ -456,7 +459,7 @@ def log_council_decision(decision_data):
 
     file_path = os.path.join(data_dir, "council_history.csv")
 
-    # Schema: Capture Sentiment (for stats) AND Summary (for reading) + entry_price
+    # UPDATED SCHEMA v2: Added weighted voting fields
     fieldnames = [
         "timestamp", "contract", "entry_price",
         "ml_signal", "ml_confidence",
@@ -468,48 +471,71 @@ def log_council_decision(decision_data):
         "technical_sentiment", "technical_summary",
         "volatility_sentiment", "volatility_summary",
         "master_decision", "master_confidence", "master_reasoning",
-
         "prediction_type",
         "volatility_level",
         "strategy_type",
-
         "compliance_approved",
         "exit_price", "exit_timestamp", "pnl_realized", "actual_trend_direction",
-
-        "volatility_outcome"
+        "volatility_outcome",
+        # NEW COLUMNS (v2)
+        "vote_breakdown",     # JSON string of agent contributions
+        "dominant_agent",     # Agent with highest contribution
+        "weighted_score",     # Final weighted score (-1 to 1)
+        "trigger_type"        # What triggered the decision (scheduled, weather, news, etc.)
     ]
 
-    # Check for schema mismatch and migrate if necessary
+    # Prepare the new row
+    row_data = {field: decision_data.get(field, '') for field in fieldnames}
+
+    # Ensure timestamp exists
+    if not row_data.get('timestamp'):
+        row_data['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    # === IN-PLACE SCHEMA MIGRATION (replaces archive approach) ===
     if os.path.exists(file_path):
         try:
-            with open(file_path, 'r', newline='', encoding='utf-8') as f:
-                reader = csv.reader(f)
-                header = next(reader, None)
+            existing_df = pd.read_csv(file_path, nrows=0)  # Just read headers
+            existing_cols = list(existing_df.columns)
 
-            if header != fieldnames:
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                legacy_path = os.path.join(data_dir, f"council_history_legacy_{timestamp}.csv")
-                shutil.move(file_path, legacy_path)
-                logging.info(f"Schema mismatch detected. Archived old history to {legacy_path}")
+            if existing_cols != fieldnames:
+                logging.info(f"Schema mismatch detected. Migrating council_history.csv in-place.")
+                logging.info(f"  Old columns: {len(existing_cols)}, New columns: {len(fieldnames)}")
+
+                # Read full existing data
+                full_df = pd.read_csv(file_path)
+
+                # Add any missing columns with empty values
+                for col in fieldnames:
+                    if col not in full_df.columns:
+                        full_df[col] = ''
+                        logging.info(f"  Added new column: {col}")
+
+                # Reorder columns to match new schema
+                full_df = full_df[fieldnames]
+
+                # Write back migrated data
+                full_df.to_csv(file_path, index=False)
+                logging.info(f"Schema migration complete. {len(full_df)} records preserved.")
+
+        except pd.errors.EmptyDataError:
+            logging.info("Council history file exists but is empty. Will create with new schema.")
         except Exception as e:
-            logging.error(f"Error checking CSV schema: {e}")
+            logging.error(f"Error during schema migration: {e}")
+            # Fall back to archive approach as safety net
+            timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+            legacy_path = os.path.join(data_dir, f"council_history_legacy_{timestamp_str}.csv")
+            shutil.move(file_path, legacy_path)
+            logging.warning(f"Archived old file to {legacy_path} due to migration error.")
 
-    file_exists = os.path.isfile(file_path)
-
+    # === APPEND NEW ROW ===
+    file_exists = os.path.exists(file_path)
     try:
         with open(file_path, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
             if not file_exists:
                 writer.writeheader()
-
-            # Filter data to match fieldnames and ensure timestamp is string
-            row = {k: decision_data.get(k, '') for k in fieldnames}
-            if isinstance(row.get('timestamp'), datetime):
-                row['timestamp'] = row['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
-
-            writer.writerow(row)
-            logging.info(f"Logged Council decision for {decision_data.get('contract')}")
-
+            writer.writerow(row_data)
+        logging.info(f"Logged council decision for {row_data.get('contract', 'Unknown')}")
     except Exception as e:
         logging.error(f"Failed to log council decision: {e}")
 

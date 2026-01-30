@@ -3,6 +3,7 @@ import logging
 import asyncio
 import traceback
 import re
+import json
 from datetime import datetime, timezone
 from ib_insync import IB
 from trading_bot.agents import CoffeeCouncil
@@ -549,7 +550,13 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         "strategy_type": strategy_type_log,
 
                         "compliance_approved": compliance_approved,
-                        "compliance_reason": compliance_reason if not compliance_approved else "N/A"
+                        "compliance_reason": compliance_reason if not compliance_approved else "N/A",
+
+                        # [NEW] Weighted Voting Data
+                        "vote_breakdown": json.dumps(weighted_result.get('vote_breakdown', [])),
+                        "dominant_agent": weighted_result.get('dominant_agent', 'Unknown'),
+                        "weighted_score": weighted_result.get('weighted_score', 0.0),
+                        "trigger_type": weighted_result.get('trigger_type', 'scheduled'),
                     }
                     log_council_decision(council_log_entry)
                 except Exception as log_e:

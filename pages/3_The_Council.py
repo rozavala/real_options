@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 import numpy as np
 import sys
 import os
+from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import load_council_history, get_status_color
@@ -40,20 +41,118 @@ st.markdown("---")
 # === Decision Selector ===
 st.subheader("🔍 Select Decision to Analyze")
 
-council_df['display'] = council_df.apply(
-    lambda r: f"{r['timestamp']} | {r.get('contract', 'Unknown')} | {r.get('master_decision', 'N/A')}",
-    axis=1
-)
+# CRITICAL FIX: Sort by timestamp descending BEFORE slicing
+council_df['timestamp'] = pd.to_datetime(council_df['timestamp'])
+council_df = council_df.sort_values('timestamp', ascending=False).reset_index(drop=True)
 
-selected = st.selectbox(
-    "Choose a decision:",
-    options=council_df['display'].tolist()[:50],  # Last 50 decisions
-    index=0
-)
+# Selection mode toggle
+col_sel, col_mode = st.columns([3, 1])
+with col_mode:
+    mode = st.radio("Mode", ["Recent", "Calendar"], label_visibility="collapsed", horizontal=True)
 
-# Get selected row
-selected_idx = council_df[council_df['display'] == selected].index[0]
+if mode == "Calendar":
+    date_col, decision_col = st.columns([1, 2])
+
+    with date_col:
+        min_date = council_df['timestamp'].min().date()
+        max_date = council_df['timestamp'].max().date()
+
+        selected_date = st.date_input(
+            "Select Date:",
+            value=max_date,  # Default to most recent
+            min_value=min_date,
+            max_value=max_date
+        )
+
+        # Show recent activity sparkline
+        decisions_per_day = council_df.groupby(council_df['timestamp'].dt.date).size()
+        recent_days = decisions_per_day.tail(7)
+        st.caption("Recent: " + " | ".join([f"{d.strftime('%m/%d')}:{c}" for d, c in recent_days.items()]))
+
+    with decision_col:
+        mask = council_df['timestamp'].dt.date == selected_date
+        daily_decisions = council_df[mask].copy()
+
+        if daily_decisions.empty:
+            st.warning(f"No decisions recorded for {selected_date}")
+            st.stop()
+
+        daily_decisions['display'] = daily_decisions.apply(
+            lambda r: f"{r['timestamp'].strftime('%H:%M:%S')} | {r.get('contract', 'Unknown')} | {r.get('master_decision', 'N/A')}",
+            axis=1
+        )
+
+        selected = st.selectbox(
+            f"Decisions on {selected_date} ({len(daily_decisions)} total):",
+            options=daily_decisions['display'].tolist(),
+            index=0
+        )
+        selected_idx = daily_decisions[daily_decisions['display'] == selected].index[0]
+else:
+    # Traditional sorted dropdown
+    council_df['display'] = council_df.apply(
+        lambda r: f"{r['timestamp'].strftime('%Y-%m-%d %H:%M')} | {r.get('contract', 'Unknown')} | {r.get('master_decision', 'N/A')}",
+        axis=1
+    )
+
+    selected = st.selectbox(
+        "Choose a decision:",
+        options=council_df['display'].tolist()[:100],
+        index=0
+    )
+    selected_idx = council_df[council_df['display'] == selected].index[0]
+
 row = council_df.loc[selected_idx]
+
+# === SIDEBAR: Consensus Meter ===
+with st.sidebar:
+    st.markdown("### 🎯 Consensus Meter")
+
+    weighted_score = row.get('weighted_score', None)
+
+    if weighted_score and pd.notna(weighted_score):
+        ws = float(weighted_score)
+
+        # Determine conviction level
+        if ws >= 0.6:
+            level, color = "STRONG BULL", "#00CC96"
+        elif ws >= 0.2:
+            level, color = "WEAK BULL", "#90EE90"
+        elif ws > -0.2:
+            level, color = "DEADLOCK", "#888888"
+        elif ws > -0.6:
+            level, color = "WEAK BEAR", "#FFB347"
+        else:
+            level, color = "STRONG BEAR", "#EF553B"
+
+        # Display gauge
+        fig_gauge = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=ws,
+            domain={'x': [0, 1], 'y': [0, 1]},
+            title={'text': level, 'font': {'size': 14}},
+            gauge={
+                'axis': {'range': [-1, 1], 'tickwidth': 1},
+                'bar': {'color': color},
+                'bgcolor': "white",
+                'steps': [
+                    {'range': [-1, -0.6], 'color': '#EF553B'},
+                    {'range': [-0.6, -0.2], 'color': '#FFB347'},
+                    {'range': [-0.2, 0.2], 'color': '#E8E8E8'},
+                    {'range': [0.2, 0.6], 'color': '#90EE90'},
+                    {'range': [0.6, 1], 'color': '#00CC96'}
+                ],
+                'threshold': {
+                    'line': {'color': "black", 'width': 2},
+                    'thickness': 0.75,
+                    'value': ws
+                }
+            }
+        ))
+        fig_gauge.update_layout(height=200, margin=dict(l=20, r=20, t=40, b=20))
+        st.plotly_chart(fig_gauge, use_container_width=True)
+    else:
+        st.info("No consensus data for this decision")
 
 st.markdown("---")
 
@@ -169,31 +268,54 @@ st.subheader("⚖️ Weighted Vote Calculation")
 
 import json
 
-if 'vote_breakdown' in row and row['vote_breakdown']:
+vote_breakdown_raw = row.get('vote_breakdown', None)
+
+if vote_breakdown_raw and pd.notna(vote_breakdown_raw) and str(vote_breakdown_raw).strip() not in ['', '[]']:
     try:
-        vote_data = json.loads(row['vote_breakdown']) if isinstance(row['vote_breakdown'], str) else row['vote_breakdown']
+        vote_data = json.loads(vote_breakdown_raw) if isinstance(vote_breakdown_raw, str) else vote_breakdown_raw
 
-        vote_df = pd.DataFrame(vote_data)
+        if vote_data and isinstance(vote_data, list) and len(vote_data) > 0:
+            vote_df = pd.DataFrame(vote_data)
 
-        fig_vote = px.bar(
-            vote_df,
-            x='agent',
-            y='contribution',
-            color='direction',
-            color_discrete_map={'BULLISH': '#00CC96', 'BEARISH': '#EF553B', 'NEUTRAL': '#888'},
-            title='Agent Contribution to Final Decision',
-            text_auto='.3f'
-        )
-        st.plotly_chart(fig_vote, width="stretch")
+            fig_vote = px.bar(
+                vote_df,
+                x='agent',
+                y='contribution',
+                color='direction',
+                color_discrete_map={'BULLISH': '#00CC96', 'BEARISH': '#EF553B', 'NEUTRAL': '#888'},
+                title='Agent Contribution to Final Decision',
+                text_auto='.3f'
+            )
+            fig_vote.update_layout(height=350)
+            st.plotly_chart(fig_vote, use_container_width=True)
 
-        # Show dominant agent
-        dominant = row.get('dominant_agent', 'Unknown')
-        st.metric("Dominant Agent", dominant)
+            # Metrics row
+            metric_cols = st.columns(4)
+            with metric_cols[0]:
+                st.metric("Dominant Agent", row.get('dominant_agent', 'Unknown'))
+            with metric_cols[1]:
+                ws = row.get('weighted_score', 0)
+                st.metric("Weighted Score", f"{float(ws):.4f}" if ws else "N/A")
+            with metric_cols[2]:
+                active = len([v for v in vote_data if v.get('direction') != 'NEUTRAL'])
+                st.metric("Active Voters", f"{active}/{len(vote_data)}")
+            with metric_cols[3]:
+                trigger = row.get('trigger_type', 'scheduled')
+                st.metric("Trigger", trigger.replace('_', ' ').title())
+        else:
+            st.info("ℹ️ Vote breakdown is empty for this decision")
 
+    except json.JSONDecodeError as e:
+        st.warning(f"⚠️ Could not parse vote breakdown: {e}")
     except Exception as e:
-        st.info(f"Vote breakdown data not available for this decision: {e}")
+        st.error(f"❌ Error displaying votes: {e}")
 else:
-    st.info("Weighted voting data not recorded for this decision")
+    st.warning("""
+    ⚠️ **Weighted voting data not recorded for this decision.**
+
+    Historical decisions before the schema update will show this message.
+    New decisions will have full weighted vote data.
+    """)
 
 st.markdown("---")
 
@@ -235,6 +357,51 @@ with master_cols[2]:
 st.markdown("**Master Reasoning:**")
 reasoning = row.get('master_reasoning', 'No reasoning recorded.')
 st.info(reasoning)
+
+st.markdown("---")
+
+# === SECTION: Decision Outcome ===
+actual_trend = row.get('actual_trend_direction', None)
+
+if pd.notna(actual_trend) and actual_trend:
+    st.subheader("📊 Decision Outcome")
+
+    outcome_cols = st.columns(4)
+
+    with outcome_cols[0]:
+        master = row.get('master_decision', 'NEUTRAL')
+        is_correct = (
+            (master == 'BULLISH' and actual_trend == 'UP') or
+            (master == 'BEARISH' and actual_trend == 'DOWN')
+        )
+        if master == 'NEUTRAL':
+            st.info("➖ NO POSITION")
+        elif is_correct:
+            st.success("✅ CORRECT")
+        else:
+            st.error("❌ INCORRECT")
+
+    with outcome_cols[1]:
+        trend_icon = "📈" if actual_trend == "UP" else "📉"
+        st.metric("Market Move", f"{trend_icon} {actual_trend}")
+
+    with outcome_cols[2]:
+        exit_price = row.get('exit_price', None)
+        if pd.notna(exit_price):
+            st.metric("Exit Price", f"${float(exit_price):.2f}")
+        else:
+            st.metric("Exit Price", "Pending")
+
+    with outcome_cols[3]:
+        pnl = row.get('pnl_realized', None)
+        if pd.notna(pnl):
+            pnl_val = float(pnl)
+            delta_color = "normal" if pnl_val >= 0 else "inverse"
+            st.metric("P&L", f"${pnl_val:.2f}", delta_color=delta_color)
+        else:
+            st.metric("P&L", "Pending")
+else:
+    st.info("⏳ Decision pending reconciliation (T+1)")
 
 st.markdown("---")
 
