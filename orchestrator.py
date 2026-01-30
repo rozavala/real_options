@@ -19,7 +19,7 @@ from collections import deque
 import time as time_module
 from datetime import datetime, time, timedelta, timezone
 import pytz
-from ib_insync import IB, util, Contract, MarketOrder, OrderStatus
+from ib_insync import IB, util, Contract, MarketOrder, OrderStatus, Future
 
 from config_loader import load_config
 from trading_bot.logging_config import setup_logging
@@ -236,17 +236,54 @@ async def _validate_thesis(thesis: dict, position, council, config: dict, ib: IB
                 'reason': f"REGIME BREACH: Entered as RANGE_BOUND, now HIGH_VOLATILITY. Iron Condor invalid."
             }
 
-        # Check price breach
-        entry_price = thesis.get('supporting_data', {}).get('entry_price', 0)
-        if entry_price:
-            current_price = await _get_current_price(ib, position.contract)
-            if current_price > 0:
-                move_pct = abs((current_price - entry_price) / entry_price) * 100
-                if move_pct > 2.0:
-                    return {
-                        'action': 'CLOSE',
-                        'reason': f"GAMMA BREACH: Price moved {move_pct:.1f}% since entry. Condor structurally compromised."
-                    }
+        # === PRICE BREACH CHECK ===
+        # FIX: Get underlying future price, NOT combo contract price
+        supporting_data = thesis.get('supporting_data', {})
+        underlying_symbol = supporting_data.get('underlying_symbol', config.get('symbol', 'KC'))
+        contract_month = supporting_data.get('contract_month')
+
+        underlying_contract = None
+
+        if contract_month:
+            # Build underlying future contract from stored metadata
+            underlying_contract = Future(
+                symbol=underlying_symbol,
+                lastTradeDateOrContractMonth=contract_month,
+                exchange=config.get('exchange', 'NYBOT')
+            )
+            try:
+                await ib.qualifyContractsAsync(underlying_contract)
+            except Exception as e:
+                logger.warning(f"Failed to qualify stored underlying contract: {e}")
+                underlying_contract = None
+
+        if not underlying_contract:
+            # Fallback: Get front-month future
+            try:
+                futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=1)
+                underlying_contract = futures[0] if futures else None
+            except Exception as e:
+                logger.warning(f"Failed to get active futures for IC validation: {e}")
+
+        if not underlying_contract:
+            logger.error(f"Cannot validate IC thesis - no underlying contract available")
+            return {'action': 'HOLD', 'reason': 'Unable to fetch underlying price for validation'}
+
+        # Fetch current underlying price
+        current_price = await _get_current_price(ib, underlying_contract)
+        entry_price = supporting_data.get('entry_price', 0)
+
+        if entry_price > 0 and current_price > 0:
+            move_pct = abs((current_price - entry_price) / entry_price) * 100
+
+            if move_pct > 2.0:
+                return {
+                    'action': 'CLOSE',
+                    'reason': f"PRICE BREACH: Underlying moved {move_pct:.2f}% from entry (threshold: 2%). "
+                              f"Entry: ${entry_price:.2f}, Current: ${current_price:.2f}"
+                }
+        else:
+            logger.warning(f"Invalid prices for IC validation: entry={entry_price}, current={current_price}")
 
     elif strategy_type == 'LONG_STRADDLE':
         # Check theta efficiency
@@ -1294,6 +1331,18 @@ async def run_sentinels(config: dict):
             if sentinel_ib and sentinel_ib.isConnected():
                 trigger = await price_sentinel.check(cached_contract=cached_contract)
                 trigger = validate_trigger(trigger)
+
+                # === NEW: Price Move Triggers Position Audit ===
+                # If PriceSentinel detects significant move, proactively check theses
+                if trigger and trigger.source == 'PriceSentinel':
+                    price_change = abs(trigger.payload.get('change', 0))
+                    if price_change >= 1.5:  # Pre-emptive at 1.5% (before 2% breach)
+                        logger.info(f"PriceSentinel detected {price_change:.1f}% move - triggering position audit")
+                        asyncio.create_task(run_position_audit_cycle(
+                            config,
+                            f"PriceSentinel trigger ({price_change:.1f}% move)"
+                        ))
+
                 if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                     asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
                     GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
@@ -1407,6 +1456,8 @@ schedule = {
     time(3, 31): process_deferred_triggers,  # 1 min after Open (Retry deferred)
     time(8, 30): run_position_audit_cycle,   # NEW: Morning Roll Call (Defense before Offense)
     time(9, 0): generate_and_execute_orders, # Morning Trading
+    time(11, 0): run_position_audit_cycle,   # 11:00 ET - Midday audit (NEW)
+    time(13, 0): run_position_audit_cycle,   # 13:00 ET - Pre-close audit (NEW)
     time(13, 30): close_stale_positions,     # 30 mins before Close
     time(13, 45): cancel_and_stop_monitoring,# 15 mins before Close
     time(14, 5): log_equity_snapshot,        # After Close
