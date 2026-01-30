@@ -65,6 +65,20 @@ class TestUtils:
         details = get_expiration_details(chain, '202512')
         assert details['exp_date'] == '20251220'
 
+    def test_round_to_tick(self):
+        """Test tick size rounding for ICE Coffee options."""
+        from trading_bot.utils import round_to_tick, COFFEE_OPTIONS_TICK_SIZE
+
+        # BUY rounding (round DOWN)
+        assert round_to_tick(17.98, COFFEE_OPTIONS_TICK_SIZE, 'BUY') == 17.95
+        assert round_to_tick(18.805, COFFEE_OPTIONS_TICK_SIZE, 'BUY') == 18.80
+        assert round_to_tick(41.405, COFFEE_OPTIONS_TICK_SIZE, 'BUY') == 41.40
+        assert round_to_tick(39.95, COFFEE_OPTIONS_TICK_SIZE, 'BUY') == 39.95
+
+        # SELL rounding (round UP)
+        assert round_to_tick(17.98, COFFEE_OPTIONS_TICK_SIZE, 'SELL') == 18.00
+        assert round_to_tick(18.801, COFFEE_OPTIONS_TICK_SIZE, 'SELL') == 18.85
+
     @patch('csv.DictWriter')
     @patch('builtins.open', new_callable=mock_open)
     @patch('os.path.isfile', return_value=True)

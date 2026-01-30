@@ -616,3 +616,35 @@ def is_trading_day() -> bool:
         return False
 
     return True
+
+# === TICK SIZE CONFIGURATION ===
+# ICE Coffee (KC) Options: 0.05 cents/lb minimum tick
+# Reference: ICE Exchange Rule 10.05
+COFFEE_OPTIONS_TICK_SIZE = 0.05
+
+
+def round_to_tick(price: float, tick_size: float = COFFEE_OPTIONS_TICK_SIZE, action: str = 'BUY') -> float:
+    """
+    Round a price to the nearest valid tick increment.
+
+    For BUY orders: round DOWN to avoid overpaying
+    For SELL orders: round UP to avoid underselling
+
+    Args:
+        price: The price to round
+        tick_size: Minimum price increment (default: 0.05 for KC options)
+        action: 'BUY' or 'SELL' to determine rounding direction
+
+    Returns:
+        Price rounded to valid tick increment
+    """
+    import math
+
+    if action == 'BUY':
+        # Round down for buys (don't overpay)
+        val = math.floor(price / tick_size) * tick_size
+    else:
+        # Round up for sells (don't undersell)
+        val = math.ceil(price / tick_size) * tick_size
+
+    return round(val, 2)
