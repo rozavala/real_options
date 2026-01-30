@@ -73,14 +73,51 @@ def load_trade_data():
 
 @st.cache_data(ttl=60)
 def load_council_history():
-    """Loads council_history.csv for decision analysis."""
+    """
+    Loads council_history.csv for decision analysis.
+    Also loads any archived legacy files and concatenates them.
+    """
     try:
+        dataframes = []
+        data_dir = os.path.dirname(COUNCIL_HISTORY_PATH)
+
+        # Load main file
         if os.path.exists(COUNCIL_HISTORY_PATH):
             df = pd.read_csv(COUNCIL_HISTORY_PATH)
             if not df.empty:
-                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
-            return df
-        return pd.DataFrame()
+                dataframes.append(df)
+
+        # Load any legacy/archived files (safety net)
+        if os.path.exists(data_dir):
+            legacy_files = [
+                os.path.join(data_dir, f)
+                for f in os.listdir(data_dir)
+                if f.startswith('council_history_legacy') and f.endswith('.csv')
+            ]
+            for legacy_file in legacy_files:
+                try:
+                    legacy_df = pd.read_csv(legacy_file)
+                    if not legacy_df.empty:
+                        dataframes.append(legacy_df)
+                except Exception as e:
+                    logger.warning(f"Could not load legacy file {legacy_file}: {e}")
+
+        if not dataframes:
+            return pd.DataFrame()
+
+        # Concatenate all dataframes
+        combined_df = pd.concat(dataframes, ignore_index=True)
+
+        # Normalize timestamp
+        if 'timestamp' in combined_df.columns:
+            combined_df['timestamp'] = pd.to_datetime(combined_df['timestamp'], utc=True)
+
+        # Remove duplicates (same timestamp + contract)
+        if 'timestamp' in combined_df.columns and 'contract' in combined_df.columns:
+            combined_df = combined_df.drop_duplicates(subset=['timestamp', 'contract'], keep='last')
+
+        return combined_df.sort_values('timestamp', ascending=False).reset_index(drop=True)
+
     except Exception as e:
         st.error(f"Failed to load council_history.csv: {e}")
         return pd.DataFrame()
