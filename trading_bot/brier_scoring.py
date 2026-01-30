@@ -24,43 +24,86 @@ class BrierScoreTracker:
         self.scores = self._load_history()
 
     def _load_history(self) -> dict:
-        """Load historical accuracy scores."""
+        """
+        Load historical accuracy scores from agent_accuracy.csv.
+
+        Returns dict of canonical_agent_name -> accuracy (0.0 to 1.0)
+        """
         try:
             if not os.path.exists(self.history_file):
+                logger.info("No accuracy history file found")
                 return {}
 
             df = pd.read_csv(self.history_file)
+
             if df.empty:
+                logger.info("Accuracy history file is empty")
                 return {}
 
-            # Calculate simple accuracy (Brier score inverse)
-            # 1.0 = Perfect, 0.0 = Wrong
-            # We use a simplified rolling accuracy for now
-            return df.groupby('agent').apply(
-                lambda x: x['correct'].sum() / len(x)
+            # Validate expected columns
+            expected_cols = ['timestamp', 'agent', 'predicted', 'actual', 'correct']
+            if not all(col in df.columns for col in expected_cols):
+                logger.warning(f"Accuracy file has unexpected schema: {list(df.columns)}")
+                # Try to work with what we have
+                if 'agent' not in df.columns or 'correct' not in df.columns:
+                    return {}
+
+            # Normalize agent names
+            from trading_bot.agent_names import normalize_agent_name
+            df['agent_normalized'] = df['agent'].apply(normalize_agent_name)
+
+            # Ensure 'correct' is numeric
+            df['correct'] = pd.to_numeric(df['correct'], errors='coerce').fillna(0)
+
+            # Calculate accuracy per agent
+            scores = df.groupby('agent_normalized').apply(
+                lambda x: x['correct'].sum() / len(x) if len(x) > 0 else 0.5
             ).to_dict()
+
+            logger.info(f"Loaded Brier scores for {len(scores)} agents: {scores}")
+            return scores
+
         except Exception as e:
             logger.error(f"Failed to load Brier scores: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return {}
 
     def record_prediction(self, agent: str, predicted: str, actual: str, timestamp: Optional[datetime] = None):
-        """Record a prediction for later scoring (Legacy Method)."""
+        """
+        Record a prediction outcome to agent_accuracy.csv.
+
+        This is the "legacy" method used by reconciliation for master_decision and ml_model.
+        Agent names are normalized before writing.
+        """
         if timestamp is None:
             timestamp = datetime.now(timezone.utc)
 
-        # Normalize directions
+        from trading_bot.agent_names import normalize_agent_name
+
+        # Normalize
+        agent = normalize_agent_name(agent)
         predicted = predicted.upper()
         actual = actual.upper()
 
         correct = 1 if predicted == actual else 0
 
         try:
-            # Append to CSV
             exists = os.path.exists(self.history_file)
             with open(self.history_file, 'a') as f:
                 if not exists:
                     f.write("timestamp,agent,predicted,actual,correct\n")
                 f.write(f"{timestamp},{agent},{predicted},{actual},{correct}\n")
+
+            logger.debug(f"Recorded prediction: {agent} predicted {predicted}, actual {actual} -> {'CORRECT' if correct else 'INCORRECT'}")
+
+            # Update in-memory scores
+            if agent not in self.scores:
+                self.scores[agent] = correct
+            else:
+                # Simple moving average approximation
+                self.scores[agent] = (self.scores[agent] * 0.9) + (correct * 0.1)
+
         except Exception as e:
             logger.error(f"Failed to record prediction for {agent}: {e}")
 
@@ -121,47 +164,25 @@ class BrierScoreTracker:
         if timestamp is None:
             timestamp = datetime.now(timezone.utc)
 
-        # Normalize
         predicted_direction = predicted_direction.upper()
-
-        # Convert to probability based on direction
-        # BULLISH with 0.8 conf -> prob_bullish = 0.8
-        # BEARISH with 0.8 conf -> prob_bullish = 0.2 (Assuming binary for now, or just recording raw)
-        # We record the raw confidence and direction to calculate Brier later properly.
-        # Brier = (prob - outcome)^2.
-        # We store enough data to calc it.
 
         prob_bullish = predicted_confidence if predicted_direction == 'BULLISH' else (1.0 - predicted_confidence)
         if predicted_direction == 'NEUTRAL':
-            prob_bullish = 0.5 # Center
+            prob_bullish = 0.5
 
         try:
-            exists = os.path.exists(self.history_file)
-            with open(self.history_file, 'a') as f:
-                if not exists:
-                    # Extended header if creating new, or append to existing (might cause schema drift if mixed, but CSV tolerates extra cols if ignored)
-                    # Ideally we use a new file or handle migration. For now we append to same file but with extra cols?
-                    # The legacy method wrote 5 cols. We need to be careful.
-                    # Let's check if we can add columns safely.
-                    # If we write extra commas, old readers might break.
-                    # We will use a NEW file for structured history to be safe.
-                    f.write("timestamp,agent,predicted,confidence,prob_bullish,actual,correct\n")
-
-                # Check if we are writing to the legacy file format?
-                # The issue description suggested one file.
-                # "f.write(f"{timestamp},{agent},{predicted_direction},{predicted_confidence},{prob_bullish},{actual},\n")"
-                # If we share the file, we must respect the header.
-                # Legacy header: timestamp,agent,predicted,actual,correct
-                # If we want to add confidence, we should probably add it to the end or use a new file.
-                # I will use a separate file for structured scoring to avoid breaking legacy tools.
-                pass
+            # REMOVED: The dead code that writes wrong header to self.history_file
+            # We ONLY write to the structured file
 
             structured_file = self.history_file.replace(".csv", "_structured.csv")
             exists_struct = os.path.exists(structured_file)
+
             with open(structured_file, 'a') as f:
                 if not exists_struct:
                     f.write("timestamp,agent,direction,confidence,prob_bullish,actual\n")
                 f.write(f"{timestamp},{agent},{predicted_direction},{predicted_confidence},{prob_bullish},{actual}\n")
+
+            logger.debug(f"Recorded structured prediction: {agent} -> {predicted_direction}")
 
         except Exception as e:
             logger.error(f"Failed to record structured prediction: {e}")
@@ -206,51 +227,76 @@ class BrierScoreTracker:
             logger.error(f"Failed to get calibration curve: {e}")
             return {}
 
-    def get_agent_weight_multiplier(self, agent: str, base_weight: float = 1.0) -> float:
-        """Get accuracy-adjusted weight multiplier for agent."""
-        if agent not in self.scores:
-            return 1.0 # Neutral multiplier
+    def get_agent_weight_multiplier(self, agent: str, min_samples: int = 5) -> float:
+        """
+        Get accuracy-adjusted weight multiplier for an agent.
 
-        accuracy = self.scores[agent]
+        Formula: multiplier = 0.5 + (accuracy * 1.5)
+        - 0% accuracy -> 0.5x (heavily penalized)
+        - 50% accuracy -> 1.25x (slight boost for being better than random)
+        - 100% accuracy -> 2.0x (maximum boost)
 
-        # Scale weight:
-        # < 50% accuracy -> < 1.0x (Penalty)
-        # > 50% accuracy -> > 1.0x (Boost)
-        # 50% accuracy = 0.5x, 75% = 1.5x, 90% = 2x
-        # Formula: 0.5 + (Accuracy * 1.5)
-        # Acc 0.4 -> 0.5 + 0.6 = 1.1? No.
-        # Let's use the formula from the spec or the one I derived?
-        # Spec says: "50% accuracy = 0.5x, 75% = 1.5x, 90% = 2x"
-        # Let's check linear fit: y = mx + c
-        # 0.5 = 0.5m + c
-        # 1.5 = 0.75m + c
-        # -> 1.0 = 0.25m -> m = 4.
-        # 0.5 = 4(0.5) + c -> 0.5 = 2 + c -> c = -1.5
-        # y = 4x - 1.5
-        # Test 0.9: 4(0.9) - 1.5 = 3.6 - 1.5 = 2.1 (Close to 2x)
+        Args:
+            agent: Agent name (will be normalized)
+            min_samples: Minimum samples required before adjusting from baseline
 
-        # Alternative simple formula: Multiplier = Accuracy / 0.5 (Base baseline)
-        # 0.5 -> 1.0
-        # 0.75 -> 1.5
-        # 0.9 -> 1.8
+        Returns:
+            Weight multiplier (0.5 to 2.0)
+        """
+        from trading_bot.agent_names import normalize_agent_name
 
-        # I'll stick to the one I proposed in the plan doc:
-        # return base_weight * (0.5 + accuracy * 1.5)
-        # 0.5 -> 0.5 + 0.75 = 1.25 (Wait, 50% should probably be neutral 1.0?)
+        # Normalize the agent name
+        normalized = normalize_agent_name(agent)
 
-        # Let's adjust:
-        # Neutral (1.0) should be at expected random baseline?
-        # For 3 classes (Bull/Bear/Neutral), baseline is 33%.
-        # For Directional (Bull/Bear), baseline is 50%.
+        if normalized not in self.scores:
+            logger.debug(f"No accuracy data for {agent} (normalized: {normalized}), using 1.0x")
+            return 1.0
 
-        # Requested Formula: weight_multiplier = 0.5 + (accuracy_score * 1.5)
-        # 0.0 accuracy -> 0.5x
-        # 0.5 accuracy -> 1.25x
-        # 1.0 accuracy -> 2.0x
+        accuracy = self.scores[normalized]
 
+        # Apply formula
         multiplier = 0.5 + (accuracy * 1.5)
 
+        # Clamp to reasonable range
+        multiplier = max(0.5, min(2.0, multiplier))
+
+        logger.debug(f"Agent {normalized}: accuracy={accuracy:.2%}, multiplier={multiplier:.2f}x")
         return multiplier
+
+    def get_diagnostics(self) -> dict:
+        """
+        Return diagnostic information about the Brier score system.
+        Useful for debugging and dashboard display.
+        """
+        diagnostics = {
+            'history_file': self.history_file,
+            'history_file_exists': os.path.exists(self.history_file),
+            'structured_file_exists': os.path.exists(self.history_file.replace('.csv', '_structured.csv')),
+            'agents_tracked': list(self.scores.keys()),
+            'agent_scores': dict(self.scores),
+            'total_agents': len(self.scores),
+        }
+
+        # Count records in files
+        if os.path.exists(self.history_file):
+            try:
+                df = pd.read_csv(self.history_file)
+                diagnostics['legacy_record_count'] = len(df)
+                diagnostics['legacy_agents'] = df['agent'].unique().tolist() if 'agent' in df.columns else []
+            except:
+                diagnostics['legacy_record_count'] = 'ERROR'
+
+        structured_file = self.history_file.replace('.csv', '_structured.csv')
+        if os.path.exists(structured_file):
+            try:
+                df = pd.read_csv(structured_file)
+                diagnostics['structured_record_count'] = len(df)
+                diagnostics['pending_count'] = len(df[df['actual'] == 'PENDING'])
+                diagnostics['resolved_count'] = len(df[df['actual'] != 'PENDING'])
+            except:
+                diagnostics['structured_record_count'] = 'ERROR'
+
+        return diagnostics
 
 # Singleton
 _tracker: Optional[BrierScoreTracker] = None
@@ -361,24 +407,26 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
 
 def _append_to_legacy_accuracy(resolved_df: pd.DataFrame):
     """
-    Append ONLY newly resolved rows to the legacy agent_accuracy.csv file.
+    Append newly resolved predictions to agent_accuracy.csv.
 
-    This maintains compatibility with existing dashboard and scoring logic
-    that reads from agent_accuracy.csv.
-
-    Args:
-        resolved_df: DataFrame containing only the newly resolved predictions
+    Normalizes agent names before writing to ensure consistency.
     """
     accuracy_file = "data/agent_accuracy.csv"
 
     try:
-        # Calculate correctness for each row
+        from trading_bot.agent_names import normalize_agent_name
+
         resolved_df = resolved_df.copy()
+
+        # Normalize agent names
+        resolved_df['agent'] = resolved_df['agent'].apply(normalize_agent_name)
+
+        # Calculate correctness
         resolved_df['correct'] = (
             resolved_df['direction'].str.upper() == resolved_df['actual'].str.upper()
         ).astype(int)
 
-        # Check if file exists to determine if we need header
+        # Check if file exists for header
         file_exists = os.path.exists(accuracy_file)
 
         with open(accuracy_file, 'a') as f:
@@ -386,7 +434,6 @@ def _append_to_legacy_accuracy(resolved_df: pd.DataFrame):
                 f.write("timestamp,agent,predicted,actual,correct\n")
 
             for _, row in resolved_df.iterrows():
-                # Write in legacy format: timestamp,agent,predicted,actual,correct
                 f.write(f"{row['timestamp']},{row['agent']},{row['direction']},{row['actual']},{row['correct']}\n")
 
         logger.info(f"Appended {len(resolved_df)} resolved predictions to {accuracy_file}")
