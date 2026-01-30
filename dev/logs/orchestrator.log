@@ -157,3 +157,89 @@
 2026-01-30 18:55:00,432 - EquityLogger - INFO - Updated data/daily_equity.csv with value $47,384.16
 2026-01-30 18:55:03,436 - EquityLogger - INFO - Disconnected from IB.
 2026-01-30 18:55:03,437 - Orchestrator - INFO - Next task 'reconcile_and_analyze' scheduled for 2026-01-30 19:05:00 UTC. Waiting for 0.17 hours.
+2026-01-30 19:00:09,775 - Orchestrator - INFO - Market Closed: Disconnecting Sentinel IB to prevent zombie state.
+2026-01-30 19:00:12,779 - Orchestrator - INFO - Market Closed: Disengaging Microstructure Sentinel
+2026-01-30 19:00:12,780 - trading_bot.connection_pool - INFO - Disconnecting IB (microstructure)...
+2026-01-30 19:05:00,039 - Orchestrator - INFO - --- Running scheduled task: reconcile_and_analyze ---
+2026-01-30 19:05:00,039 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-01-30 19:05:00,040 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
+2026-01-30 19:05:00,105 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1341111)...
+2026-01-30 19:05:00,334 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1341111&v=3 "HTTP/1.1 200 OK"
+2026-01-30 19:05:00,335 - TradeReconciler - INFO - Successfully requested report. Reference Code: 8916781766
+2026-01-30 19:05:10,344 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-01-30 19:05:10,561 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=8916781766&v=3 "HTTP/1.1 200 OK"
+2026-01-30 19:05:10,562 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-01-30 19:05:10,571 - EquityLogger - INFO - Preserving 7 local equity records not present in Flex Query.
+2026-01-30 19:05:10,574 - EquityLogger - INFO - Successfully synced 11 equity records to data/daily_equity.csv.
+2026-01-30 19:05:10,574 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-01-30 19:05:10,574 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-01-30 19:05:10,576 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-01-30 19:05:10,613 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1328326)...
+2026-01-30 19:05:12,931 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1328326&v=3 "HTTP/1.1 200 OK"
+2026-01-30 19:05:12,932 - TradeReconciler - INFO - Successfully requested report. Reference Code: 9871455120
+2026-01-30 19:05:22,938 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-01-30 19:05:23,080 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=9871455120&v=3 "HTTP/1.1 200 OK"
+2026-01-30 19:05:23,081 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-01-30 19:05:23,084 - TradeReconciler - INFO - Parsed 4 executions from the Flex Query report.
+2026-01-30 19:05:23,110 - TradeReconciler - INFO - Successfully processed 4 trades into the reconciliation DataFrame.
+2026-01-30 19:05:23,110 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-01-30 19:05:23,169 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1331422)...
+2026-01-30 19:05:23,350 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1331422&v=3 "HTTP/1.1 200 OK"
+2026-01-30 19:05:23,351 - TradeReconciler - INFO - Successfully requested report. Reference Code: 2500293972
+2026-01-30 19:05:33,354 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-01-30 19:05:33,483 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=2500293972&v=3 "HTTP/1.1 200 OK"
+2026-01-30 19:05:33,484 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-01-30 19:05:33,486 - TradeReconciler - INFO - Parsed 28 executions from the Flex Query report.
+2026-01-30 19:05:33,499 - TradeReconciler - INFO - Successfully processed 28 trades into the reconciliation DataFrame.
+2026-01-30 19:05:33,501 - TradeReconciler - INFO - Consolidated to 32 unique trades from all reports.
+2026-01-30 19:05:33,503 - TradeReconciler - INFO - Loaded 28 trades from the main ledger.
+2026-01-30 19:05:33,503 - TradeReconciler - INFO - Found 1 archived ledger files.
+2026-01-30 19:05:33,508 - TradeReconciler - INFO - Consolidated a total of 32 trades from all ledgers.
+2026-01-30 19:05:33,509 - TradeReconciler - INFO - Filtered IB trades from 32 to 32 records within the last 33 days.
+2026-01-30 19:05:33,509 - TradeReconciler - INFO - Filtered local ledger from 32 to 32 records within the last 33 days.
+2026-01-30 19:05:33,566 - TradeReconciler - INFO - Reconciliation complete. Found 0 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
+2026-01-30 19:05:33,567 - TradeReconciler - INFO - No discrepancies found. The local ledger is perfectly in sync with the IB report.
+2026-01-30 19:05:33,567 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
+2026-01-30 19:05:33,567 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-01-30 19:05:33,598 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1341164)...
+2026-01-30 19:05:33,757 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t=919200949761516752736221&q=1341164&v=3 "HTTP/1.1 200 OK"
+2026-01-30 19:05:33,757 - TradeReconciler - INFO - Successfully requested report. Reference Code: 9623488701
+2026-01-30 19:05:43,760 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-01-30 19:05:43,893 - httpx - INFO - HTTP Request: GET https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?t=919200949761516752736221&q=9623488701&v=3 "HTTP/1.1 200 OK"
+2026-01-30 19:05:43,894 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-01-30 19:05:43,897 - TradeReconciler - INFO - Parsed 4 positions from the Flex Query report.
+2026-01-30 19:05:43,900 - TradeReconciler - INFO - Loaded 28 trades from the main ledger.
+2026-01-30 19:05:43,900 - TradeReconciler - INFO - Found 1 archived ledger files.
+2026-01-30 19:05:43,905 - TradeReconciler - INFO - Consolidated a total of 32 trades from all ledgers.
+2026-01-30 19:05:43,910 - TradeReconciler - INFO - Skipping reconciliation for recently traded symbols: {'KOH6 P3.35', 'KON6 C3.25', 'KOH6 P3.4', 'KOH6 C3.5', 'KON6 P3.15', 'KOK6 P3.2', 'KON6 C3.3', 'KOH6 C3.55', 'KOH6 C3.45', 'KOK6 P3.15', 'KON6 P3.1', 'KOH6 P3.3', 'KOK6 C3.35', 'KOK6 C3.3'}
+2026-01-30 19:05:43,915 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-01-30 19:05:43,915 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-01-30 19:05:44,335 - trading_bot.reconciliation - ERROR - Error parsing timestamps: unconverted data remains when parsing with format "%Y-%m-%d %H:%M:%S": ".374747+00:00", at position 63. You might want to try:
+    - passing `format` if your strings have a consistent format;
+    - passing `format='ISO8601'` if your strings are all ISO8601 but not necessarily in exactly the same format;
+    - passing `format='mixed'`, and the format will be inferred for each element individually. You might want to use `dayfirst` alongside this.
+2026-01-30 19:05:47,339 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-01-30 19:05:47,340 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-01-30 19:05:47,340 - PerformanceAnalyzer - INFO - Loading main trade ledger: trade_ledger.csv
+2026-01-30 19:05:47,343 - PerformanceAnalyzer - INFO - Found 1 archived trade ledger(s).
+2026-01-30 19:05:47,344 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260129_190559.csv
+2026-01-30 19:05:47,348 - PerformanceAnalyzer - INFO - Consolidated a total of 32 trade records.
+2026-01-30 19:05:47,353 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-01-30 19:05:47,907 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $47,384.16
+2026-01-30 19:05:49,930 - PerformanceAnalyzer - INFO - Successfully fetched 36 execution(s) for today from IB.
+2026-01-30 19:05:52,936 - PerformanceAnalyzer - INFO - Loading daily_equity.csv for equity curve.
+2026-01-30 19:05:52,941 - PerformanceAnalyzer - INFO - Dynamic Starting Capital from History: $50,000.00
+2026-01-30 19:05:52,944 - PerformanceAnalyzer - INFO - Calculated LTD Total P&L (Equity): $-2,615.84
+2026-01-30 19:05:53,615 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-01-30 19:05:53,924 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-30 19:05:54,117 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-30 19:05:55,322 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-30 19:05:56,515 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-30 19:05:57,831 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-01-30 19:05:59,122 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
+2026-01-30 19:06:00,392 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
+2026-01-30 19:06:01,661 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
+2026-01-30 19:06:02,667 - root - INFO - Successfully archived 'trade_ledger.csv' to '/home/rodrigo/real_options/archive_ledger/trade_ledger_20260130_190602.csv'
+2026-01-30 19:06:02,668 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-01-30 19:06:02,668 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-01-30 19:06:02,669 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-02 08:20:00 UTC. Waiting for 61.23 hours.
