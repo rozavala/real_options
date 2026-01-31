@@ -358,17 +358,43 @@ Return JSON: {{"verdict": "HOLD" or "CLOSE", "confidence": 0.0-1.0, "reasoning":
 
 def _find_position_id_for_contract(position, trade_ledger) -> str | None:
     """Maps a live position contract to a position_id from the ledger."""
-    # Logic: Look for open trades with same symbol and reasonable match
-    # Since we don't have perfect link from IB Position -> Ledger Position ID (unless we used custom tags perfectly everywhere)
-    # We rely on matching symbol.
     symbol = position.contract.localSymbol
-    # Filter ledger for this symbol
-    matches = trade_ledger[trade_ledger['local_symbol'] == symbol]
-    if not matches.empty:
-        # Return the most recent position_id?
-        # Ideally, we track unique position IDs.
-        return matches.iloc[-1]['position_id']
-    return None
+    position_direction = 'BUY' if position.position > 0 else 'SELL'
+
+    matches = trade_ledger[trade_ledger['local_symbol'] == symbol].copy()
+
+    if matches.empty:
+        logger.debug(f"No ledger entries found for symbol {symbol}")
+        return None
+
+    direction_matches = matches[matches['action'] == position_direction]
+    if direction_matches.empty:
+        direction_matches = matches
+
+    # Find OPEN positions (net quantity != 0)
+    open_positions = []
+    for pos_id in direction_matches['position_id'].unique():
+        pos_entries = trade_ledger[trade_ledger['position_id'] == pos_id]
+        net_qty = 0
+        for _, row in pos_entries.iterrows():
+            net_qty += row['quantity'] if row['action'] == 'BUY' else -row['quantity']
+
+        if net_qty != 0:
+            entry_time = pos_entries['timestamp'].min()
+            open_positions.append((pos_id, entry_time, net_qty))
+
+    if open_positions:
+        # Match by direction sign (FIFO)
+        matching_sign = [p for p in open_positions
+                        if (p[2] > 0 and position.position > 0) or (p[2] < 0 and position.position < 0)]
+        if matching_sign:
+            matching_sign.sort(key=lambda x: x[1])
+            return matching_sign[0][0]
+        open_positions.sort(key=lambda x: x[1])
+        return open_positions[0][0]
+
+    logger.warning(f"No open position found for {symbol}, using most recent")
+    return matches.iloc[-1]['position_id']
 
 def _build_thesis_invalidation_notification(
     position_id: str,
@@ -1458,7 +1484,7 @@ schedule = {
     time(9, 0): generate_and_execute_orders, # Morning Trading
     time(11, 0): run_position_audit_cycle,   # 11:00 ET - Midday audit (NEW)
     time(13, 0): run_position_audit_cycle,   # 13:00 ET - Pre-close audit (NEW)
-    time(13, 30): close_stale_positions,     # 30 mins before Close
+    time(12, 45): close_stale_positions,     # MOVED: Better liquidity
     time(13, 45): cancel_and_stop_monitoring,# 15 mins before Close
     time(14, 5): log_equity_snapshot,        # After Close
     time(14, 15): reconcile_and_analyze      # After Close
