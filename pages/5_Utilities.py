@@ -205,7 +205,13 @@ with manual_cols[0]:
     st.warning("⚠️ **Generate & Execute Orders**")
     st.caption("Runs full order generation cycle: data pull → ML inference → signals → order placement")
 
-    if st.button("🚀 Force Generate & Execute Orders", type="primary"):
+    # Safety Interlock
+    confirm_exec = st.checkbox("I confirm I want to execute live trades", key="confirm_exec_orders")
+    confirm_text = st.text_input("Type 'EXECUTE' to confirm:", key="confirm_text_orders")
+
+    is_authorized = confirm_exec and confirm_text == "EXECUTE"
+
+    if st.button("🚀 Force Generate & Execute Orders", type="primary", disabled=not is_authorized):
         if not config:
             st.error("❌ Config not loaded")
         else:

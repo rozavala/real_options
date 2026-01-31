@@ -9,6 +9,8 @@ import os
 import glob
 import random
 import json
+import re
+import time
 import logging
 from datetime import datetime, timedelta, timezone
 import yfinance as yf
@@ -56,6 +58,30 @@ def get_config():
         st.error("Fatal: Could not load config.json.")
         return {}
     return config
+
+
+def get_commodity_profile(config: dict = None) -> dict:
+    """
+    Returns the commodity profile for the active symbol.
+    Falls back to Coffee (KC) defaults if not configured.
+
+    EXTENSIBILITY: Add new commodities to config.json when needed.
+    """
+    if config is None:
+        config = get_config()
+
+    symbol = config.get('symbol', 'KC')
+    profiles = config.get('commodity_profile', {})
+
+    # KC defaults — the only commodity we need right now
+    default_profile = {
+        'name': 'Coffee C Arabica',
+        'price_unit': 'cents/lb',
+        'stop_parse_range': [80, 800],
+        'typical_price_range': [100, 600]
+    }
+
+    return profiles.get(symbol, default_profile)
 
 
 @st.cache_data(ttl=60)
@@ -234,6 +260,52 @@ def get_ib_connection_health() -> dict:
         }
 
 
+def extract_sentinel_status(report: any, sentinel_name: str) -> dict:
+    """
+    Safely extracts sentinel status from various report formats.
+    Handles: None, str, dict, nested dict with 'data' key
+    """
+    result = {
+        'data': None,
+        'is_stale': True,
+        'stale_minutes': 999,
+        'sentiment': 'NEUTRAL',
+        'confidence': 0.5,
+        'error': None
+    }
+
+    try:
+        if report is None:
+            result['error'] = 'No data'
+            return result
+
+        if isinstance(report, str):
+            result['data'] = report
+            result['is_stale'] = 'STALE' in report.upper()
+            match = re.search(r'STALE.*?(\d+)\s*min', report, re.IGNORECASE)
+            if match:
+                result['stale_minutes'] = int(match.group(1))
+            return result
+
+        if isinstance(report, dict):
+            result['data'] = report.get('data', report)
+            result['is_stale'] = report.get('is_stale', False)
+            result['stale_minutes'] = report.get('stale_minutes', 0)
+            result['sentiment'] = report.get('sentiment', 'NEUTRAL')
+            result['confidence'] = report.get('confidence', 0.5)
+
+            if 'STALE' in str(result['data']).upper() and not result['is_stale']:
+                result['is_stale'] = True
+            return result
+
+        result['data'] = str(report)
+        return result
+
+    except Exception as e:
+        result['error'] = str(e)
+        return result
+
+
 def get_sentinel_status():
     """
     Parses state.json to determine which Sentinels are active.
@@ -325,6 +397,95 @@ def fetch_live_dashboard_data(_config):
             time.sleep(3.0)
 
     return data
+
+
+@st.cache_data(ttl=60)
+def fetch_all_live_data(_config: dict) -> dict:
+    """
+    Single consolidated IB data fetch for ALL dashboard pages.
+
+    FLIGHT DIRECTOR AMENDMENTS:
+    1. Creates FRESH event loop for thread safety
+    2. Uses RANDOM ClientID to prevent tab collisions
+    3. Proper cleanup with blocking sleep for Gateway
+    """
+    result = {
+        'net_liquidation': 0.0,
+        'unrealized_pnl': 0.0,
+        'realized_pnl': 0.0,
+        'daily_pnl': 0.0,
+        'maint_margin': 0.0,
+        'open_positions': [],
+        'pending_orders': [],
+        'portfolio_items': [],
+        'account_summary': {},
+        'connection_status': 'DISCONNECTED',
+        'last_fetch_time': datetime.now(timezone.utc),
+        'error': None
+    }
+
+    loop = _ensure_event_loop()
+    ib = IB()
+
+    try:
+        # Random ClientID prevents collision if two browser tabs refresh simultaneously
+        client_id = random.randint(1000, 9999)
+
+        loop.run_until_complete(ib.connectAsync(
+            _config.get('connection', {}).get('host', '127.0.0.1'),
+            _config.get('connection', {}).get('port', 7497),
+            clientId=client_id,
+            timeout=15
+        ))
+
+        if not ib.isConnected():
+            result['connection_status'] = 'FAILED'
+            result['error'] = 'Connection timeout'
+            return result
+
+        result['connection_status'] = 'CONNECTED'
+
+        # Configure market data type
+        configure_market_data_type(ib)
+
+        # Account Summary
+        for av in ib.accountSummary():
+            result['account_summary'][av.tag] = av.value
+            if av.tag == 'NetLiquidation':
+                result['net_liquidation'] = float(av.value)
+            elif av.tag == 'UnrealizedPnL':
+                result['unrealized_pnl'] = float(av.value)
+            elif av.tag == 'RealizedPnL':
+                result['realized_pnl'] = float(av.value)
+            elif av.tag == 'MaintMarginReq':
+                result['maint_margin'] = float(av.value)
+
+        # Daily P&L
+        accounts = ib.managedAccounts()
+        if accounts:
+            ib.reqPnL(accounts[0])
+            ib.sleep(1)
+            pnl_data = ib.pnl()
+            if pnl_data:
+                result['daily_pnl'] = pnl_data[0].dailyPnL or 0.0
+
+        # Positions & Portfolio
+        result['open_positions'] = ib.positions()
+        result['portfolio_items'] = ib.portfolio()
+        result['pending_orders'] = ib.openOrders()
+
+    except Exception as e:
+        result['connection_status'] = 'ERROR'
+        result['error'] = str(e)
+        logger.error(f"IB fetch failed: {e}")
+
+    finally:
+        if ib.isConnected():
+            ib.disconnect()
+            # CRITICAL: Blocking sleep allows Gateway to cleanup TCP state
+            time.sleep(3.0)
+
+    return result
 
 
 @st.cache_data(ttl=300)
