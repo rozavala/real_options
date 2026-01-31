@@ -471,6 +471,53 @@ async def check_logistics_sentinel(config: dict) -> CheckResult:
         return CheckResult("Logistics Sentinel", CheckStatus.FAIL, str(e))
 
 @timed_check
+async def check_prediction_market_sentinel(config: dict) -> CheckResult:
+    """Test Prediction Market Sentinel v2.0 initialization and configuration."""
+    try:
+        from trading_bot.sentinels import PredictionMarketSentinel
+
+        pm_config = config.get('sentinels', {}).get('prediction_markets', {})
+
+        if not pm_config.get('enabled', False):
+            return CheckResult(
+                "Prediction Market Sentinel",
+                CheckStatus.WARN,
+                "Disabled in config"
+            )
+
+        sentinel = PredictionMarketSentinel(config)
+
+        # Check topics (v2.0) instead of targets (v1.x)
+        topics = len(sentinel.topics)
+
+        if topics == 0:
+            return CheckResult(
+                "Prediction Market Sentinel",
+                CheckStatus.WARN,
+                "No topics configured (check topics_to_watch)"
+            )
+
+        # Validate thresholds
+        liq = sentinel.min_liquidity
+        vol = sentinel.min_volume
+        hwm_decay = sentinel.hwm_decay_hours
+
+        if liq < 10000:
+            return CheckResult(
+                "Prediction Market Sentinel",
+                CheckStatus.WARN,
+                f"Low liquidity threshold (${liq:,}) - risk of false positives"
+            )
+
+        return CheckResult(
+            "Prediction Market Sentinel",
+            CheckStatus.PASS,
+            f"v2.0 | {topics} topics | liq=${liq:,} | HWM decay={hwm_decay}h"
+        )
+    except Exception as e:
+        return CheckResult("Prediction Market Sentinel", CheckStatus.FAIL, str(e))
+
+@timed_check
 async def check_microstructure_sentinel(config: dict) -> CheckResult:
     try:
         micro_config = config.get('sentinels', {}).get('microstructure', {})
@@ -733,6 +780,7 @@ async def run_diagnostics(
         report.checks.append(await check_news_sentinel(config))
         report.checks.append(await check_logistics_sentinel(config))
         report.checks.append(await check_microstructure_sentinel(config))
+        report.checks.append(await check_prediction_market_sentinel(config))
 
         # 6. AI
         report.checks.append(await check_heterogeneous_router(config))

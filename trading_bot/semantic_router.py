@@ -21,6 +21,11 @@ class SemanticRouter:
         ("LogisticsSentinel", "strike"): ("supply_chain", ["geopolitical"]),
         ("LogisticsSentinel", "port"): ("supply_chain", ["inventory"]),
         ("NewsSentinel", "default"): ("sentiment", ["macro", "geopolitical"]),
+        ("PredictionMarketSentinel", "fed"): ("macro", ["sentiment", "technical"]),
+        ("PredictionMarketSentinel", "brazil"): ("macro", ["agronomist", "supply_chain"]),
+        ("PredictionMarketSentinel", "election"): ("geopolitical", ["macro", "sentiment"]),
+        ("PredictionMarketSentinel", "tariff"): ("geopolitical", ["macro", "supply_chain"]),
+        ("PredictionMarketSentinel", "default"): ("macro", ["geopolitical", "sentiment"]),
     }
 
     def __init__(self, config: dict):
@@ -45,7 +50,8 @@ class SemanticRouter:
             "WeatherSentinel": "agronomist",
             "LogisticsSentinel": "supply_chain",
             "PriceSentinel": "technical",
-            "NewsSentinel": "sentiment"
+            "NewsSentinel": "sentiment",
+            "PredictionMarketSentinel": "macro"
         }
         return RouteDecision(
             primary_agent=defaults.get(trigger.source, "macro"),

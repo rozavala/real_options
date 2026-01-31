@@ -30,6 +30,88 @@ from dashboard_utils import (
     get_strategy_color
 )
 
+def render_prediction_markets():
+    """
+    Prediction Market Radar Panel.
+
+    CRITICAL: This provides visibility into Dynamic Discovery auto-selection.
+    Without this, you have no idea what markets the sentinel is actually tracking.
+    """
+    st.subheader("🔮 Prediction Markets (Macro Radar)")
+
+    try:
+        from trading_bot.state_manager import StateManager
+
+        # Load the sentinel's state cache
+        state = StateManager.load_state(namespace="prediction_market_state")
+
+        if not state:
+            st.info("No prediction market data active. Sentinel may not have run yet.")
+            return
+
+        # Handle varying number of topics (1-6)
+        num_topics = len(state)
+        cols_per_row = min(3, num_topics)
+
+        # Create responsive columns
+        cols = st.columns(cols_per_row)
+
+        for i, (topic, data) in enumerate(state.items()):
+            col_idx = i % cols_per_row
+
+            with cols[col_idx]:
+                # Extract state data
+                title = data.get('title', topic)[:50]  # Truncate long titles
+                price = data.get('price', 0)
+                slug = data.get('slug', 'N/A')
+                hwm = data.get('severity_hwm', 0)
+                tag = data.get('tag', topic[:10])
+                timestamp = data.get('timestamp', 'Unknown')
+
+                # Color-code based on alert state
+                # "off" = red (alerting), "normal" = green (stable)
+                delta_color = "off" if hwm > 0 else "normal"
+
+                # Display metric card
+                st.metric(
+                    label=f"{tag}: {price*100:.0f}%",
+                    value=f"{price:.2f}",
+                    delta=f"HWM: {hwm}" if hwm > 0 else "Stable",
+                    delta_color=delta_color
+                )
+
+                # Market title (what the sentinel actually picked!)
+                st.caption(f"*{title}*")
+
+                # Link to Polymarket for verification
+                if slug and slug != 'N/A':
+                    st.markdown(f"[View Market ↗](https://polymarket.com/event/{slug})")
+
+                # Show last update time
+                if timestamp and timestamp != 'Unknown':
+                    try:
+                        from datetime import datetime
+                        ts = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                        age_min = (datetime.now(ts.tzinfo) - ts).total_seconds() / 60
+                        if age_min < 60:
+                            st.caption(f"Updated {age_min:.0f}m ago")
+                        else:
+                            st.caption(f"Updated {age_min/60:.1f}h ago")
+                    except:
+                        pass
+
+                st.divider()
+
+        # Add refresh hint
+        st.caption("💡 Data refreshes every 5 minutes via sentinel polling")
+
+    except FileNotFoundError:
+        st.info("Prediction market state file not found. Sentinel may not have run yet.")
+    except Exception as e:
+        st.error(f"Radar Error: {e}")
+        import traceback
+        st.code(traceback.format_exc())
+
 st.set_page_config(layout="wide", page_title="Cockpit | Coffee Bot")
 
 st.title("🦅 The Cockpit")
@@ -274,6 +356,12 @@ if config:
 
 else:
     st.error("Configuration not loaded. Cannot fetch live data.")
+
+st.markdown("---")
+
+# === SECTION: Prediction Markets (Macro Radar) ===
+with st.expander("🔮 Prediction Markets (Macro Radar)", expanded=True):
+    render_prediction_markets()
 
 st.markdown("---")
 
