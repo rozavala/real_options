@@ -11,6 +11,8 @@ from datetime import datetime
 import sys
 import os
 import asyncio
+import json
+import re
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import (
@@ -18,7 +20,7 @@ from dashboard_utils import (
     get_system_heartbeat,
     get_sentinel_status,
     get_ib_connection_health,
-    fetch_live_dashboard_data,
+    fetch_all_live_data,
     fetch_todays_benchmark_data,
     load_council_history,
     grade_decision_quality,
@@ -27,8 +29,186 @@ from dashboard_utils import (
     get_active_theses,
     get_current_market_regime,
     get_guardian_icon,
-    get_strategy_color
+    get_strategy_color,
+    get_commodity_profile
 )
+
+def load_deduplicator_metrics() -> dict:
+    """Load trigger deduplication metrics."""
+    try:
+        with open('data/deduplicator_state.json', 'r') as f:
+            data = json.load(f)
+            metrics = data.get('metrics', {})
+            total = metrics.get('total_triggers', 0)
+            processed = metrics.get('processed', 0)
+
+            return {
+                'total_triggers': total,
+                'processed': processed,
+                'filtered': total - processed,
+                'efficiency': processed / total if total > 0 else 1.0,
+            }
+    except Exception:
+        return {'total_triggers': 0, 'processed': 0, 'efficiency': 1.0}
+
+
+def _parse_price_from_text(text: str, entry_price: float, min_price: float, max_price: float) -> float | None:
+    """Helper to extract price from trigger text."""
+    text_upper = text.upper()
+
+    # Look for price keywords
+    if any(kw in text_upper for kw in ['STOP', 'CLOSE', 'EXIT', 'PRICE <', 'PRICE >', 'BELOW', 'ABOVE', 'BREACH']):
+        match = re.search(r'\$?(\d+(?:\.\d{1,2})?)', text)
+        if match:
+            price = float(match.group(1))
+            if min_price <= price <= max_price:
+                return price
+
+    # Check for percentage-based stops
+    pct_match = re.search(r'(\d+(?:\.\d+)?)\s*%', text)
+    if pct_match and entry_price and entry_price > 0:
+        pct = float(pct_match.group(1)) / 100
+        calculated_stop = entry_price * (1 - pct)
+        if min_price <= calculated_stop <= max_price:
+            return calculated_stop
+
+    return None
+
+
+def extract_stop_price_from_triggers(
+    triggers: any,
+    entry_price: float,
+    config: dict = None
+) -> float | None:
+    """
+    Extracts stop/invalidation price from various trigger formats.
+
+    Handles:
+    - Dict: {'stop_loss_price': 320.0}
+    - List: ['Close if price < 320', 'Monitor frost']
+    - String: 'Stop at 5% loss'
+
+    Uses config-driven price bounds to filter false positives.
+    """
+    if triggers is None:
+        return None
+
+    # Get commodity-specific bounds (defaults to KC)
+    profile = get_commodity_profile(config)
+    min_price, max_price = profile.get('stop_parse_range', [80, 800])
+
+    # === Dict format ===
+    if isinstance(triggers, dict):
+        for key in ['stop_loss_price', 'stop_price', 'invalidation_price', 'exit_price']:
+            if key in triggers:
+                price = float(triggers[key])
+                if min_price <= price <= max_price:
+                    return price
+        return None
+
+    # === List format ===
+    if isinstance(triggers, list):
+        for trigger in triggers:
+            if isinstance(trigger, str):
+                price = _parse_price_from_text(trigger, entry_price, min_price, max_price)
+                if price is not None:
+                    return price
+        return None
+
+    # === String format ===
+    if isinstance(triggers, str):
+        return _parse_price_from_text(triggers, entry_price, min_price, max_price)
+
+    return None
+
+
+def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = None):
+    """Renders thesis card with live P&L and distance to invalidation."""
+    position_id = thesis.get('position_id', 'UNKNOWN')
+    strategy = thesis.get('strategy_type', 'DIRECTIONAL')
+    entry_price = thesis.get('entry_price', 0) or thesis.get('supporting_data', {}).get('entry_price', 0)
+
+    # Find matching position in portfolio
+    unrealized_pnl = None
+    for item in live_data.get('portfolio_items', []):
+        if hasattr(item, 'contract') and position_id in str(item.contract.localSymbol):
+            unrealized_pnl = getattr(item, 'unrealizedPNL', None)
+            break
+
+    # Extract stop price from triggers
+    triggers = thesis.get('invalidation_triggers', [])
+    stop_price = extract_stop_price_from_triggers(triggers, entry_price, config)
+
+    # Calculate distance to stop
+    distance_pct = None
+    if stop_price and entry_price and entry_price != 0:
+        distance_pct = abs(entry_price - stop_price) / entry_price
+
+    # Render
+    with st.container():
+        st.markdown(f"### 📋 {position_id}")
+        st.caption(f"Strategy: **{strategy}** | Guardian: {thesis.get('guardian_agent', 'Master')}")
+
+        cols = st.columns(4)
+
+        with cols[0]:
+            st.metric("Entry", f"${entry_price:.2f}" if entry_price else "N/A")
+
+        with cols[1]:
+            if unrealized_pnl is not None:
+                st.metric("Unrealized P&L", f"${unrealized_pnl:+,.2f}")
+            else:
+                st.metric("Unrealized P&L", "N/A")
+
+        with cols[2]:
+            st.metric("Stop Price", f"${stop_price:.2f}" if stop_price else "N/A")
+
+        with cols[3]:
+            if distance_pct is not None:
+                if distance_pct < 0.05:
+                    st.error(f"⚠️ {distance_pct:.1%} to stop")
+                elif distance_pct < 0.10:
+                    st.warning(f"🔶 {distance_pct:.1%} to stop")
+                else:
+                    st.success(f"✅ {distance_pct:.1%} to stop")
+            else:
+                st.info("No stop defined")
+
+        with st.expander("📜 Invalidation Triggers"):
+            if isinstance(triggers, list):
+                for t in triggers:
+                    st.write(f"• {t}")
+            else:
+                st.write(str(triggers) if triggers else "None defined")
+
+
+def render_portfolio_risk_summary(live_data: dict):
+    """Portfolio risk using margin/P&L proxies (not live Greeks)."""
+    st.subheader("📊 Portfolio Risk")
+
+    net_liq = live_data.get('net_liquidation', 0)
+    margin = live_data.get('maint_margin', 0)
+    daily_pnl = live_data.get('daily_pnl', 0)
+
+    cols = st.columns(4)
+
+    with cols[0]:
+        st.metric("Net Liquidation", f"${net_liq:,.0f}")
+
+    with cols[1]:
+        if net_liq > 0:
+            margin_util = (margin / net_liq) * 100
+            st.metric("Margin Util", f"{margin_util:.1f}%")
+        else:
+            st.metric("Margin Util", "N/A")
+
+    with cols[2]:
+        st.metric("Daily P&L", f"${daily_pnl:+,.0f}")
+
+    with cols[3]:
+        pos_count = len([p for p in live_data.get('open_positions', []) if p.position != 0])
+        st.metric("Open Positions", pos_count)
+
 
 def render_prediction_markets():
     """
@@ -190,6 +370,21 @@ with hb_cols[3]:
     if ib_health.get("reconnect_backoff", 0) > 0:
         st.caption(f"⏳ Backoff: {ib_health['reconnect_backoff']}s")
 
+# Deduplicator Metrics
+dedup_metrics = load_deduplicator_metrics()
+if dedup_metrics.get('total_triggers', 0) > 0:
+    st.markdown("---")
+    st.caption("🛡️ Trigger Deduplicator")
+    d_cols = st.columns(4)
+    with d_cols[0]:
+        st.metric("Total Triggers", dedup_metrics['total_triggers'])
+    with d_cols[1]:
+        st.metric("Processed", dedup_metrics['processed'])
+    with d_cols[2]:
+        st.metric("Filtered", dedup_metrics['filtered'])
+    with d_cols[3]:
+        st.metric("Efficiency", f"{dedup_metrics['efficiency']:.1%}")
+
 # Sentinel Details Expander
 with st.expander("🔍 Sentinel Details"):
     sentinel_cols = st.columns(4)
@@ -268,60 +463,19 @@ with st.expander("🔍 Sentinel Details"):
 st.markdown("---")
 
 # === SECTION 2: Financial HUD ===
-st.subheader("💰 Financial HUD")
-
 if config:
-    live_data = fetch_live_dashboard_data(config)
+    live_data = fetch_all_live_data(config)
     benchmarks = fetch_todays_benchmark_data()
 
-    fin_cols = st.columns(5)
+    # Render Portfolio Risk
+    render_portfolio_risk_summary(live_data)
 
-    with fin_cols[0]:
-        st.metric(
-            "Net Liquidation",
-            f"${live_data['NetLiquidation']:,.0f}",
-            help="Total account value"
-        )
-
-    with fin_cols[1]:
-        daily_pnl = live_data['DailyPnL']
-        daily_pct = live_data['DailyPnLPct']
-
-        # Handle NaN/None values from IB when market is closed or no data
-        import math
-        is_invalid = (
-            daily_pnl is None or
-            (isinstance(daily_pnl, float) and math.isnan(daily_pnl))
-        )
-
-        if is_invalid:
-            st.metric(
-                "Daily P&L",
-                "$0.00",
-                "N/A",
-                help="No P&L data available - market may be closed or no positions"
-            )
-        else:
-            st.metric(
-                "Daily P&L",
-                f"${daily_pnl:,.2f}",
-                f"{daily_pct:+.2f}%"
-            )
-
-    with fin_cols[2]:
-        margin_util = 0.0
-        if live_data['NetLiquidation'] > 0:
-            margin_util = (live_data['MaintMarginReq'] / live_data['NetLiquidation']) * 100
-        st.metric(
-            "Margin Utilization",
-            f"{margin_util:.1f}%",
-            delta_color="inverse" if margin_util > 50 else "normal"
-        )
-
-    with fin_cols[3]:
+    # Render Benchmarks
+    st.caption("Market Benchmarks")
+    bench_cols = st.columns(6)
+    with bench_cols[0]:
         st.metric("S&P 500", f"{benchmarks.get('SPY', 0):+.2f}%")
-
-    with fin_cols[4]:
+    with bench_cols[1]:
         st.metric("Coffee", f"{benchmarks.get('KC=F', 0):+.2f}%")
 
     # Rolling Win Rate Sparkline
@@ -416,30 +570,7 @@ if active_theses:
 
     # Detailed thesis cards
     for thesis in active_theses:
-        strategy_color = get_strategy_color(thesis['strategy_type'])
-        guardian_icon = get_guardian_icon(thesis['guardian_agent'])
-
-        with st.expander(
-            f"{guardian_icon} **{thesis['position_id']}** | {thesis['strategy_type'].replace('_', ' ')} | Age: {thesis['age_hours']:.1f}h",
-            expanded=False
-        ):
-            detail_cols = st.columns([2, 1, 1])
-
-            with detail_cols[0]:
-                st.markdown(f"**Rationale:** {thesis['primary_rationale']}")
-                st.markdown(f"**Guardian Agent:** {guardian_icon} {thesis['guardian_agent']}")
-                st.markdown(f"**Entry Regime:** {thesis['entry_regime']}")
-
-            with detail_cols[1]:
-                st.metric("Entry Price", f"${thesis['entry_price']:.2f}")
-                st.metric("Confidence", f"{thesis['confidence']:.0%}")
-
-            with detail_cols[2]:
-                st.markdown("**Kill Triggers:**")
-                for trigger in thesis['invalidation_triggers'][:3]:  # Show top 3
-                    st.markdown(f"- `{trigger}`")
-                if len(thesis['invalidation_triggers']) > 3:
-                    st.caption(f"+{len(thesis['invalidation_triggers']) - 3} more")
+        render_thesis_card_enhanced(thesis, live_data, config)
 
 else:
     st.info("No active position theses. The system has no open positions or theses haven't been recorded yet.")

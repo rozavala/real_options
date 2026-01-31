@@ -23,6 +23,76 @@ from dashboard_utils import (
     get_config
 )
 
+def create_process_outcome_matrix(df: pd.DataFrame):
+    """
+    Creates a 2x2 matrix separating process quality from outcome quality.
+
+    Process Score = master_confidence * |weighted_score| (Signal Strength)
+    Outcome = pnl_realized
+    """
+    st.subheader("🎯 Process vs Outcome Analysis")
+    st.caption("Distinguishing Skill (Good Process + Win) from Luck (Bad Process + Win)")
+
+    # Filter to resolved trades with P&L
+    if 'pnl_realized' not in df.columns:
+        st.info("No P&L data available.")
+        return
+
+    resolved = df[df['pnl_realized'].notna()].copy()
+
+    if resolved.empty:
+        st.info("Need resolved trades with P&L to analyze process vs outcome.")
+        return
+
+    # Calculate Process Score (Higher = stronger conviction signal)
+    # Handle missing weighted_score by defaulting to 0
+    w_score = resolved['weighted_score'].abs() if 'weighted_score' in resolved.columns else 0
+    resolved['process_score'] = resolved['master_confidence'].fillna(0.5) * w_score
+
+    # Normalize Process Score to 0-1 for plotting
+    max_process = resolved['process_score'].max()
+    if max_process > 0:
+        resolved['process_score_norm'] = resolved['process_score'] / max_process
+    else:
+        resolved['process_score_norm'] = 0.5
+
+    # Classify Quadrants
+    # Thresholds: Median for process, 0 for P&L
+    process_threshold = resolved['process_score_norm'].median()
+
+    def classify(row):
+        good_process = row['process_score_norm'] >= process_threshold
+        good_outcome = row['pnl_realized'] > 0
+
+        if good_process and good_outcome: return 'SKILL'
+        if not good_process and good_outcome: return 'LUCK'
+        if good_process and not good_outcome: return 'BAD LUCK'
+        return 'NO SKILL'
+
+    resolved['quadrant'] = resolved.apply(classify, axis=1)
+
+    # Plot
+    fig = px.scatter(
+        resolved,
+        x='process_score_norm',
+        y='pnl_realized',
+        color='quadrant',
+        color_discrete_map={
+            'SKILL': '#00CC96',     # Green
+            'LUCK': '#FFA15A',      # Orange
+            'BAD LUCK': '#636EFA',  # Blue
+            'NO SKILL': '#EF553B'   # Red
+        },
+        hover_data=['contract', 'strategy_type', 'master_decision'],
+        title='Process Quality vs Trade Outcome'
+    )
+
+    # Add quadrant lines
+    fig.add_hline(y=0, line_dash="dash", line_color="gray")
+    fig.add_vline(x=process_threshold, line_dash="dash", line_color="gray")
+
+    st.plotly_chart(fig, use_container_width=True)
+
 st.set_page_config(layout="wide", page_title="Scorecard | Coffee Bot")
 
 st.title("⚖️ The Scorecard")
@@ -136,6 +206,11 @@ with matrix_cols[1]:
             f"📊 Includes **{confusion['vol_total']}** volatility trades: "
             f"**{confusion['vol_wins']}** wins, **{confusion['vol_losses']}** losses"
         )
+
+st.markdown("---")
+
+# === SECTION 2: Process vs Outcome ===
+create_process_outcome_matrix(graded_df)
 
 # === NEW SECTION: Volatility Trade Performance ===
 st.markdown("---")
