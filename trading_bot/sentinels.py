@@ -1301,3 +1301,400 @@ If the x_search tool returns no results or errors, provide neutral sentiment wit
             payload=payload,
             severity=severity
         )
+
+class PredictionMarketSentinel(Sentinel):
+    """
+    Monitors Prediction Markets via Dynamic Market Discovery.
+    Automatically follows liquidity to the most active relevant market.
+
+    ARCHITECTURE v2.0:
+    - Frequency: Every 5 Minutes (24/7)
+    - No LLM calls (pure API + threshold logic)
+    - Zero maintenance: auto-discovers markets by topic/query
+
+    KEY MECHANISMS:
+    1. Dynamic Discovery: Searches by query, picks highest-liquidity active market
+    2. Slug Consistency: Detects market rollover (June→July), resets baseline
+    3. High-Water Mark: Prevents alert flapping on severity oscillation
+    4. HWM Decay: Resets HWM after 24h to allow re-alerting on persistent situations
+
+    COFFEE RELEVANCE:
+    - Fed Policy → USD strength → Coffee export pricing
+    - Brazil Rates → BRL/USD → Export competitiveness
+    - Elections → Trade policy → Tariff risk
+    """
+
+    def __init__(self, config: dict):
+        super().__init__(config)
+        self.sentinel_config = config.get('sentinels', {}).get('prediction_markets', {})
+
+        # API Configuration
+        polymarket_config = self.sentinel_config.get('providers', {}).get('polymarket', {})
+        self.api_url = polymarket_config.get('api_url', "https://gamma-api.polymarket.com/events")
+        self.search_limit = polymarket_config.get('search_limit', 10)
+
+        # Topics to watch (queries, not slugs)
+        self.topics = self.sentinel_config.get('topics_to_watch', [])
+
+        # Liquidity Filters
+        self.min_liquidity = self.sentinel_config.get('min_liquidity_usd', 50000)
+        self.min_volume = self.sentinel_config.get('min_volume_usd', 10000)
+
+        # High-Water Mark Decay (hours)
+        self.hwm_decay_hours = self.sentinel_config.get('hwm_decay_hours', 24)
+
+        # State Cache: { topic_query: { slug, price, timestamp, severity_hwm, hwm_timestamp } }
+        self.state_cache: Dict[str, Dict[str, Any]] = {}
+        self._load_state_cache()
+
+        # Polling interval (internal rate limiting)
+        self.poll_interval = self.sentinel_config.get('poll_interval_seconds', 300)
+        self._last_poll_time = 0
+
+        # Severity mapping
+        self.severity_map = self.sentinel_config.get('severity_mapping', {
+            '10_to_20_pct': 6,
+            '20_to_30_pct': 7,
+            '30_plus_pct': 9
+        })
+
+        # Track topics that persistently fail to find markets
+        self._topic_failure_counts: Dict[str, int] = {}
+
+        logger.info(
+            f"PredictionMarketSentinel v2.0 initialized: "
+            f"{len(self.topics)} topics | "
+            f"min_liq=${self.min_liquidity:,} | "
+            f"HWM decay={self.hwm_decay_hours}h"
+        )
+
+    def _load_state_cache(self):
+        """Load state cache from StateManager for persistence across restarts."""
+        try:
+            cached = StateManager.load_state(namespace="prediction_market_state")
+            if cached and isinstance(cached, dict):
+                self.state_cache = cached
+                logger.info(f"Loaded state for {len(self.state_cache)} prediction market topics")
+        except Exception as e:
+            logger.warning(f"Failed to load prediction market state: {e}")
+
+    def _save_state_cache(self):
+        """Persist state cache for restart resilience."""
+        try:
+            StateManager.save_state(self.state_cache, namespace="prediction_market_state")
+        except Exception as e:
+            logger.warning(f"Failed to save prediction market state: {e}")
+
+    def _calculate_severity(self, delta_pct: float) -> int:
+        """Map probability swing magnitude to severity level."""
+        abs_delta = abs(delta_pct)
+        if abs_delta >= 30:
+            return self.severity_map.get('30_plus_pct', 9)
+        elif abs_delta >= 20:
+            return self.severity_map.get('20_to_30_pct', 7)
+        else:
+            return self.severity_map.get('10_to_20_pct', 6)
+
+    def _should_decay_hwm(self, hwm_timestamp: Optional[str]) -> bool:
+        """Check if High-Water Mark should decay (reset) based on time."""
+        if not hwm_timestamp:
+            return False
+
+        try:
+            hwm_time = datetime.fromisoformat(hwm_timestamp)
+            age_hours = (datetime.now(timezone.utc) - hwm_time).total_seconds() / 3600
+            return age_hours >= self.hwm_decay_hours
+        except (ValueError, TypeError):
+            return False
+
+    async def _resolve_active_market(self, query: str) -> Optional[Dict[str, Any]]:
+        """
+        DYNAMIC MARKET DISCOVERY:
+        Searches Polymarket for the query, filters by liquidity/volume,
+        and returns the single most relevant ACTIVE market.
+
+        This is the core mechanism that eliminates "slug rot" - we follow
+        the liquidity, which naturally flows to the current active market.
+        """
+        params = {
+            "q": query,
+            "closed": "false",
+            "active": "true",
+            "limit": str(self.search_limit)
+        }
+
+        try:
+            async with aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=15)
+            ) as session:
+                async with session.get(self.api_url, params=params) as response:
+                    if response.status != 200:
+                        logger.warning(
+                            f"Polymarket search failed for '{query}': HTTP {response.status}"
+                        )
+                        return None
+
+                    data = await response.json()
+
+                    if not data:
+                        logger.debug(f"No markets found for query: '{query}'")
+                        return None
+
+                    # Filter and sort candidates by liquidity
+                    candidates = []
+                    for event in data:
+                        markets = event.get('markets', [])
+                        if not markets:
+                            continue
+
+                        # Primary market (usually the main Yes/No question)
+                        # NOTE: markets[0] heuristic is intentional per v2.0 design review.
+                        # 95% of Polymarket events have the primary binary at index 0.
+                        # If we find "Side Bet" lock-on issues later, add market['question'] filter.
+                        market = markets[0]
+
+                        # Parse liquidity and volume safely
+                        try:
+                            liquidity = float(market.get('liquidity', 0) or 0)
+                            volume = float(market.get('volume', 0) or 0)
+                        except (ValueError, TypeError):
+                            continue
+
+                        # Apply filters
+                        if liquidity < self.min_liquidity:
+                            logger.debug(
+                                f"Skipping '{event.get('slug')}': "
+                                f"Low liquidity (${liquidity:,.0f} < ${self.min_liquidity:,})"
+                            )
+                            continue
+
+                        if volume < self.min_volume:
+                            logger.debug(
+                                f"Skipping '{event.get('slug')}': "
+                                f"Low volume (${volume:,.0f} < ${self.min_volume:,})"
+                            )
+                            continue
+
+                        candidates.append({
+                            'slug': event.get('slug'),
+                            'title': event.get('title', ''),
+                            'market': market,
+                            'liquidity': liquidity,
+                            'volume': volume
+                        })
+
+                    # Sort by liquidity (descending) - highest liquidity = crowd consensus
+                    candidates.sort(key=lambda x: x['liquidity'], reverse=True)
+
+                    if candidates:
+                        winner = candidates[0]
+                        logger.debug(
+                            f"Resolved '{query}' → '{winner['slug']}' "
+                            f"(liq=${winner['liquidity']:,.0f})"
+                        )
+                        return winner
+
+                    return None
+
+        except asyncio.TimeoutError:
+            logger.warning(f"Polymarket API timeout for query: '{query}'")
+        except aiohttp.ClientError as e:
+            logger.warning(f"Polymarket network error for '{query}': {e}")
+        except Exception as e:
+            logger.error(f"Polymarket fetch error for '{query}': {e}")
+
+        return None
+
+    async def check(self) -> Optional[SentinelTrigger]:
+        """
+        Check prediction markets for significant probability swings.
+
+        OPERATIONAL SAFEGUARDS:
+        1. Dynamic Discovery: Auto-finds current active market per topic
+        2. Slug Consistency: Resets baseline on market rollover
+        3. High-Water Mark: Prevents alert flapping
+        4. HWM Decay: Allows re-alerting after 24h
+        """
+        if not self.sentinel_config.get('enabled', True):
+            return None
+
+        if not self.topics:
+            return None
+
+        # Internal rate limiting
+        import time as time_module
+        now = time_module.time()
+        if (now - self._last_poll_time) < self.poll_interval:
+            return None
+        self._last_poll_time = now
+
+        triggers = []
+
+        for topic in self.topics:
+            query = topic.get('query')
+            if not query:
+                continue
+
+            threshold = topic.get('trigger_threshold_pct', 10.0) / 100.0
+            display_name = topic.get('display_name', query)
+            tag = topic.get('tag', 'Unknown')
+            importance = topic.get('importance', 'macro')
+            coffee_impact = topic.get('coffee_impact', 'Potential macro impact on coffee')
+
+            # === DYNAMIC MARKET RESOLUTION ===
+            market_data = await self._resolve_active_market(query)
+
+            if not market_data:
+                # Track persistent failures for alerting
+                self._topic_failure_counts[query] = self._topic_failure_counts.get(query, 0) + 1
+                if self._topic_failure_counts[query] == 10:  # Alert after ~50 min of failures
+                    logger.warning(
+                        f"⚠️ No markets found for topic '{display_name}' "
+                        f"after {self._topic_failure_counts[query]} attempts. "
+                        f"Consider reviewing query: '{query}'"
+                    )
+                continue
+
+            # Reset failure count on success
+            self._topic_failure_counts[query] = 0
+
+            current_slug = market_data['slug']
+            current_title = market_data['title']
+
+            # Parse price safely
+            try:
+                outcomes = market_data['market'].get('outcomePrices', [])
+                if isinstance(outcomes, str):
+                    try:
+                        outcomes = json.loads(outcomes)
+                    except json.JSONDecodeError:
+                        logger.warning(f"Failed to parse outcomePrices JSON for '{query}'")
+                        continue
+
+                if not outcomes:
+                    continue
+                current_price = float(outcomes[0])  # Index 0 is typically "Yes"
+            except (ValueError, TypeError, IndexError) as e:
+                logger.warning(f"Failed to parse price for '{query}': {e}")
+                continue
+
+            # === COMPARE AGAINST CACHED STATE ===
+            if query in self.state_cache:
+                cached = self.state_cache[query]
+                last_slug = cached.get('slug')
+                last_price = cached.get('price', current_price)
+                severity_hwm = cached.get('severity_hwm', 0)
+                hwm_timestamp = cached.get('hwm_timestamp')
+
+                # === SLUG CONSISTENCY CHECK ===
+                # If the resolved market changed (June → July rollover),
+                # reset the baseline and DO NOT trigger an alert
+                if last_slug and last_slug != current_slug:
+                    logger.info(
+                        f"📅 Market Rollover Detected for '{display_name}': "
+                        f"'{last_slug}' → '{current_slug}'. Resetting baseline."
+                    )
+
+                    # Notify (informational, not alert)
+                    send_pushover_notification(
+                        self.config.get('notifications', {}),
+                        f"Market Rollover: {display_name}",
+                        f"Now tracking: {current_title[:50]}...",
+                        priority=-1  # Low priority (informational)
+                    )
+
+                    # Reset state for this topic
+                    self.state_cache[query] = {
+                        'slug': current_slug,
+                        'title': current_title,
+                        'price': current_price,
+                        'timestamp': datetime.now(timezone.utc).isoformat(),
+                        'severity_hwm': 0,
+                        'hwm_timestamp': None
+                    }
+                    continue  # Skip trigger evaluation this cycle
+
+                # === HIGH-WATER MARK DECAY ===
+                # Reset HWM if enough time has passed (allows re-alerting)
+                if self._should_decay_hwm(hwm_timestamp):
+                    logger.debug(
+                        f"HWM decay for '{display_name}': "
+                        f"Resetting from {severity_hwm} to 0 (>{self.hwm_decay_hours}h old)"
+                    )
+                    severity_hwm = 0
+                    cached['severity_hwm'] = 0
+                    cached['hwm_timestamp'] = None
+
+                # === RATE OF CHANGE DETECTION ===
+                delta = current_price - last_price
+                delta_pct = abs(delta) * 100
+
+                if abs(delta) >= threshold:
+                    current_severity = self._calculate_severity(delta_pct)
+
+                    # === HIGH-WATER MARK FLAPPING PROTECTION ===
+                    # Only alert if severity INCREASES beyond the high-water mark
+                    # This prevents: 15% alert → 21% alert → 19% RE-ALERT (bad)
+                    if current_severity > severity_hwm:
+                        direction = "JUMPED" if delta > 0 else "CRASHED"
+
+                        msg = (
+                            f"Prediction Market Alert: '{display_name}' {direction} "
+                            f"{delta_pct:.1f}% (Now: {current_price*100:.0f}% → "
+                            f"Was: {last_price*100:.0f}%)"
+                        )
+
+                        logger.warning(f"🎯 PREDICTION SENTINEL: {msg}")
+
+                        triggers.append(SentinelTrigger(
+                            source="PredictionMarketSentinel",
+                            reason=msg,
+                            payload={
+                                "topic": query,
+                                "tag": tag,
+                                "display_name": display_name,
+                                "slug": current_slug,
+                                "title": current_title,
+                                "prev_price": round(last_price, 4),
+                                "curr_price": round(current_price, 4),
+                                "delta_pct": round(delta * 100, 2),
+                                "importance": importance,
+                                "coffee_impact": coffee_impact,
+                                "volume": market_data.get('volume', 0),
+                                "liquidity": market_data.get('liquidity', 0)
+                            },
+                            severity=current_severity
+                        ))
+
+                        # Update High-Water Mark
+                        cached['severity_hwm'] = current_severity
+                        cached['hwm_timestamp'] = datetime.now(timezone.utc).isoformat()
+                    else:
+                        logger.debug(
+                            f"Suppressed alert for '{display_name}': "
+                            f"severity {current_severity} <= HWM {severity_hwm}"
+                        )
+
+            # === UPDATE STATE CACHE ===
+            if query not in self.state_cache:
+                self.state_cache[query] = {
+                    'severity_hwm': 0,
+                    'hwm_timestamp': None
+                }
+
+            self.state_cache[query].update({
+                'slug': current_slug,
+                'title': current_title,
+                'price': current_price,
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            })
+
+        # Persist state
+        self._save_state_cache()
+
+        # Return the most severe trigger (if multiple)
+        if triggers:
+            triggers.sort(key=lambda t: t.severity, reverse=True)
+            return triggers[0]
+
+        return None

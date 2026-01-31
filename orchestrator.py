@@ -37,7 +37,7 @@ from trading_bot.order_manager import (
 )
 from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
-from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, SentinelTrigger
+from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, PredictionMarketSentinel, SentinelTrigger
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
 from trading_bot.agents import CoffeeCouncil
 from trading_bot.ib_interface import (
@@ -898,7 +898,8 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     'LogisticsSentinel': 'Logistics',
                     'NewsSentinel': 'Fundamentalist',
                     'PriceSentinel': 'VolatilityAnalyst',
-                    'XSentimentSentinel': 'Sentiment'
+                    'XSentimentSentinel': 'Sentiment',
+                    'PredictionMarketSentinel': 'Macro'
                 }
 
                 guardian = guardian_map.get(trigger.source)
@@ -1208,6 +1209,7 @@ async def run_sentinels(config: dict):
     logistics_sentinel = LogisticsSentinel(config)
     news_sentinel = NewsSentinel(config)
     x_sentinel = XSentimentSentinel(config)
+    prediction_market_sentinel = PredictionMarketSentinel(config)
 
     # Microstructure variables (also lazy)
     micro_sentinel = None
@@ -1227,6 +1229,7 @@ async def run_sentinels(config: dict):
     last_logistics = 0
     last_news = 0
     last_x_sentiment = 0
+    last_prediction_market = 0
 
     # Contract Cache
     cached_contract = None
@@ -1444,7 +1447,24 @@ async def run_sentinels(config: dict):
 
                 last_x_sentiment = now
 
-            # 6. Microstructure Sentinel (Every 1 min with Price Sentinel)
+            # 6. Prediction Market Sentinel (Every 5 minutes) - Runs 24/7, no IB needed
+            prediction_config = config.get('sentinels', {}).get('prediction_markets', {})
+            prediction_interval = prediction_config.get('poll_interval_seconds', 300)
+
+            if (now - last_prediction_market) > prediction_interval:
+                trigger = await prediction_market_sentinel.check()
+                trigger = validate_trigger(trigger)
+                if trigger:
+                    if market_open and sentinel_ib and sentinel_ib.isConnected():
+                        if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                            asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                            GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 1800)  # 30 min cooldown
+                    else:
+                        StateManager.queue_deferred_trigger(trigger)
+                        logger.info(f"Deferred {trigger.source} trigger for market open")
+                last_prediction_market = now
+
+            # 7. Microstructure Sentinel (Every 1 min with Price Sentinel)
             if micro_sentinel and micro_ib and micro_ib.isConnected():
                 micro_trigger = await micro_sentinel.check()
                 if micro_trigger:

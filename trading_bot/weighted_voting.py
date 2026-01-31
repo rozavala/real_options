@@ -25,6 +25,7 @@ class TriggerType(Enum):
     PRICE_SPIKE = "price"
     NEWS_SENTIMENT = "news"
     MICROSTRUCTURE = "microstructure"
+    PREDICTION_MARKET = "prediction_market"
     SCHEDULED = "scheduled"
     MANUAL = "manual"
 
@@ -91,6 +92,15 @@ DOMAIN_WEIGHTS = {
         "technical": 2.5,
         "volatility": 3.0,
         "inventory": 1.0,
+    },
+    TriggerType.PREDICTION_MARKET: {
+        "agronomist": 0.5,
+        "macro": 3.0,
+        "geopolitical": 2.5,
+        "sentiment": 2.0,
+        "technical": 1.0,
+        "volatility": 2.0,
+        "inventory": 0.5,
     },
     TriggerType.SCHEDULED: {
         "agronomist": 1.5,
@@ -533,4 +543,6 @@ def determine_trigger_type(trigger_source: Optional[str]) -> TriggerType:
         return TriggerType.NEWS_SENTIMENT
     elif "microstructure" in source_lower:
         return TriggerType.MICROSTRUCTURE
+    elif "prediction" in source_lower:
+        return TriggerType.PREDICTION_MARKET
     return TriggerType.MANUAL

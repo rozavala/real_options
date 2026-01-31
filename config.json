@@ -209,6 +209,59 @@
       "volume_spike_pct": 5.0,
       "depth_drop_pct": 0.5,
       "cooldown_seconds": 300
+    },
+    "prediction_markets": {
+      "enabled": true,
+      "poll_interval_seconds": 300,
+      "min_liquidity_usd": 50000,
+      "min_volume_usd": 10000,
+      "hwm_decay_hours": 24,
+      "providers": {
+        "polymarket": {
+          "api_url": "https://gamma-api.polymarket.com/events",
+          "search_limit": 10,
+          "enabled": true
+        }
+      },
+      "topics_to_watch": [
+        {
+          "query": "Federal Reserve Interest Rate",
+          "tag": "Fed",
+          "display_name": "Fed Policy",
+          "trigger_threshold_pct": 10.0,
+          "importance": "macro",
+          "coffee_impact": "USD strength affects coffee exports"
+        },
+        {
+          "query": "Brazil Selic",
+          "tag": "Brazil",
+          "display_name": "Brazil Rates",
+          "trigger_threshold_pct": 10.0,
+          "importance": "forex",
+          "coffee_impact": "BRL/USD affects Brazilian export competitiveness"
+        },
+        {
+          "query": "Presidential Election Winner",
+          "tag": "Politics",
+          "display_name": "US Election",
+          "trigger_threshold_pct": 5.0,
+          "importance": "macro",
+          "coffee_impact": "Trade policy, tariffs, USD strength"
+        },
+        {
+          "query": "US tariffs coffee",
+          "tag": "Trade",
+          "display_name": "Coffee Tariffs",
+          "trigger_threshold_pct": 8.0,
+          "importance": "geopolitical",
+          "coffee_impact": "Direct import cost impact"
+        }
+      ],
+      "severity_mapping": {
+        "10_to_20_pct": 6,
+        "20_to_30_pct": 7,
+        "30_plus_pct": 9
+      }
     }
   },
   "compliance": {
