@@ -1517,55 +1517,203 @@ async def close_stale_positions(config: dict):
                 if len(final_legs_list) == 1:
                     bag_action = final_legs_list[0]['action']
 
-                # Fetch Market Data for Limit Order
-                ticker = ib.reqMktData(contract, '', False, False)
-                try:
-                    await asyncio.sleep(2) # Give it a moment to populate
-                    start_time = time.time()
-                    # Wait for valid bid/ask
-                    while util.isNan(ticker.bid) and util.isNan(ticker.ask):
-                        await asyncio.sleep(0.1)
-                        if (time.time() - start_time) > 10: # 10s timeout
+                # === IMPROVED: Leg-Based Price Calculation for Combo ===
+                # IB's native BAG pricing is unreliable - calculate from legs
+                lmt_price = 0.0
+                MINIMUM_TICK = COFFEE_OPTIONS_TICK_SIZE  # $0.05 for KC options
+
+                if contract.secType == "BAG" and contract.comboLegs:
+                    # Calculate combo price from individual leg prices
+                    logger.info(f"Calculating combo price from {len(contract.comboLegs)} legs...")
+                    leg_prices_valid = True
+                    calculated_combo_price = 0.0
+
+                    for combo_leg in contract.comboLegs:
+                        try:
+                            # Fetch individual leg contract
+                            leg_contract = Contract(conId=combo_leg.conId)
+                            await ib.qualifyContractsAsync(leg_contract)
+
+                            leg_ticker = ib.reqMktData(leg_contract, '', True, False)
+                            await asyncio.sleep(1.5)  # Slightly longer wait for leg data
+
+                            # Get leg price (prefer mid, fallback to last)
+                            leg_bid = leg_ticker.bid if not util.isNan(leg_ticker.bid) else 0
+                            leg_ask = leg_ticker.ask if not util.isNan(leg_ticker.ask) else 0
+                            leg_last = leg_ticker.last if not util.isNan(leg_ticker.last) else 0
+
+                            ib.cancelMktData(leg_contract)
+
+                            if leg_bid > 0 and leg_ask > 0:
+                                leg_mid = (leg_bid + leg_ask) / 2
+                            elif leg_last > 0:
+                                leg_mid = leg_last
+                            else:
+                                logger.warning(f"Leg {combo_leg.conId} ({leg_contract.localSymbol}): No valid price data")
+                                leg_prices_valid = False
+                                break
+
+                            # Aggregate: BUY legs add to cost, SELL legs subtract
+                            if combo_leg.action == 'BUY':
+                                calculated_combo_price += leg_mid
+                            else:  # SELL
+                                calculated_combo_price -= leg_mid
+
+                            logger.debug(f"Leg {leg_contract.localSymbol}: {combo_leg.action} @ {leg_mid:.2f}")
+
+                        except Exception as e:
+                            logger.warning(f"Failed to price leg {combo_leg.conId}: {e}")
+                            leg_prices_valid = False
                             break
 
-                    # Determine Price
-                    lmt_price = 0.0
-                    if bag_action == 'BUY':
-                        if not util.isNan(ticker.ask) and ticker.ask > 0:
-                            lmt_price = ticker.ask
-                        elif not util.isNan(ticker.last) and ticker.last > 0:
-                            lmt_price = ticker.last
-                        else:
-                            lmt_price = ticker.close if not util.isNan(ticker.close) else 0.0
-                    else: # SELL
-                        if not util.isNan(ticker.bid) and ticker.bid > 0:
-                            lmt_price = ticker.bid
-                        elif not util.isNan(ticker.last) and ticker.last > 0:
-                            lmt_price = ticker.last
-                        else:
-                            lmt_price = ticker.close if not util.isNan(ticker.close) else 0.0
-                finally:
-                    ib.cancelMktData(contract)
+                    if leg_prices_valid:
+                        # Add slippage buffer for execution (2% of combo value, minimum 1 tick)
+                        slippage_buffer = max(abs(calculated_combo_price) * 0.02, MINIMUM_TICK)
 
-                if util.isNan(lmt_price) or lmt_price == 0.0:
-                    logger.warning(f"Could not determine limit price for {contract.symbol}. Using Market Order.")
+                        # === UNIVERSAL AGGRESSION LOGIC ===
+                        # BUY: Always ADD buffer (Higher mathematical value = Aggressive)
+                        # SELL: Always SUBTRACT buffer (Lower mathematical value = Aggressive)
+                        if bag_action == 'BUY':
+                            lmt_price = calculated_combo_price + slippage_buffer
+                        else:
+                            lmt_price = calculated_combo_price - slippage_buffer
+
+                        # Round to tick
+                        lmt_price = round(lmt_price / MINIMUM_TICK) * MINIMUM_TICK
+                        logger.info(f"Calculated combo limit price: {lmt_price:.2f} (raw: {calculated_combo_price:.2f}, slippage: {slippage_buffer:.2f})")
+                else:
+                    # Single leg - use standard price fetch
+                    ticker = ib.reqMktData(contract, '', True, False)
+                    try:
+                        await asyncio.sleep(2)
+                        if bag_action == 'BUY':
+                            lmt_price = ticker.ask if not util.isNan(ticker.ask) and ticker.ask > 0 else ticker.last
+                        else:
+                            lmt_price = ticker.bid if not util.isNan(ticker.bid) and ticker.bid > 0 else ticker.last
+
+                        # Apply minimum tick for single legs (always positive)
+                        if lmt_price and not util.isNan(lmt_price):
+                            lmt_price = max(lmt_price, MINIMUM_TICK)
+                    finally:
+                        ib.cancelMktData(contract)
+
+                # === PRICE VALIDATION (Handles both Credit and Debit) ===
+                is_invalid_price = False
+
+                if util.isNan(lmt_price):
+                    is_invalid_price = True
+                    logger.warning(f"Limit price is NaN for {contract.symbol}")
+                elif lmt_price == 0.0:
+                    is_invalid_price = True
+                    logger.warning(f"Limit price is zero for {contract.symbol}")
+                elif abs(lmt_price) < MINIMUM_TICK:
+                    # Price magnitude too small (whether credit or debit)
+                    is_invalid_price = True
+                    logger.warning(f"Limit price magnitude {abs(lmt_price):.4f} below minimum tick {MINIMUM_TICK}")
+
+                if is_invalid_price:
+                    logger.warning(f"Invalid limit price for {contract.symbol}. Using Market Order.")
                     order = MarketOrder(bag_action, order_size)
                 else:
-                    logger.info(f"Placing LIMIT order for {contract.symbol}. Price: {lmt_price}")
-                    order = LimitOrder(bag_action, order_size, lmt_price)
+                    price_type = 'CREDIT' if lmt_price < 0 else 'DEBIT'
+                    logger.info(f"Placing LIMIT order for {contract.symbol}. Price: {lmt_price:.2f} ({price_type})")
+                    order = LimitOrder(bag_action, order_size, round(lmt_price, 2))
 
                 order.outsideRth = True
 
                 trade = place_order(ib, contract, order)
                 logger.info(f"Placed close order {trade.order.orderId} for Pos ID {pos_id}. Waiting for fill...")
 
-                # Poll for fill
+                # === CUSTOM ADAPTIVE PRICE WALKING FOR CLOSING ORDERS ===
+                # IB Algo does NOT support BAG orders - must use custom logic
+
                 fill_detected = False
-                for _ in range(30):
+                INITIAL_TIMEOUT_SECONDS = 45
+                PRICE_WALK_INTERVAL = 5  # Walk price every 5 seconds
+                MAX_WALKS = 6  # Maximum price adjustments
+                WALK_INCREMENT_PCT = 0.01  # 1% per walk
+
+                is_limit_order = isinstance(order, LimitOrder)
+                initial_price = order.lmtPrice if is_limit_order else 0.0
+
+                # === UNIVERSAL CEILING/FLOOR CALCULATION ===
+                # BUY: Ceiling is HIGHER (more aggressive), Floor is LOWER (passive)
+                # SELL: Floor is LOWER (more aggressive), Ceiling is HIGHER (passive)
+                price_range = abs(initial_price) * 0.10 if initial_price != 0 else MINIMUM_TICK * 10
+
+                if bag_action == 'BUY':
+                    ceiling_price = initial_price + price_range  # Max we'll pay (aggressive limit)
+                    floor_price = initial_price - price_range    # Not used for BUY
+                else:
+                    floor_price = initial_price - price_range    # Min we'll accept (aggressive limit)
+                    ceiling_price = initial_price + price_range  # Not used for SELL
+
+                walk_count = 0
+                elapsed = 0
+
+                while elapsed < INITIAL_TIMEOUT_SECONDS:
                     await asyncio.sleep(1)
-                    if trade.orderStatus.status in [OrderStatus.Filled, OrderStatus.Cancelled, OrderStatus.Inactive]:
+                    elapsed += 1
+
+                    # Check for fill
+                    if trade.orderStatus.status == OrderStatus.Filled:
                         fill_detected = True
                         break
+                    elif trade.orderStatus.status in [OrderStatus.Cancelled, OrderStatus.Inactive]:
+                        logger.warning(f"Order {trade.order.orderId} cancelled/inactive before fill")
+                        break
+
+                    # === UNIVERSAL PRICE WALKING LOGIC ===
+                    if is_limit_order and elapsed % PRICE_WALK_INTERVAL == 0 and walk_count < MAX_WALKS:
+                        current_price = trade.order.lmtPrice
+
+                        # Calculate walk amount (1% of absolute price, minimum 1 tick)
+                        walk_amount = max(abs(current_price) * WALK_INCREMENT_PCT, MINIMUM_TICK) if current_price != 0 else MINIMUM_TICK
+
+                        # BUY: Walk UP (add) towards ceiling
+                        # SELL: Walk DOWN (subtract) towards floor
+                        if bag_action == 'BUY':
+                            new_price = current_price + walk_amount
+                            new_price = min(new_price, ceiling_price)  # Don't exceed ceiling
+                        else:
+                            new_price = current_price - walk_amount
+                            new_price = max(new_price, floor_price)    # Don't go below floor
+
+                        # Round to tick
+                        new_price = round(new_price / MINIMUM_TICK) * MINIMUM_TICK
+
+                        if new_price != current_price:
+                            walk_count += 1
+                            price_type = 'CREDIT' if new_price < 0 else 'DEBIT'
+                            logger.info(f"Price walk #{walk_count}: {current_price:.2f} -> {new_price:.2f} ({price_type})")
+
+                            trade.order.lmtPrice = new_price
+                            ib.placeOrder(trade.contract, trade.order)  # Modify existing order
+
+                # If still not filled after adaptive walking, convert to Market
+                if not fill_detected and trade.orderStatus.status == OrderStatus.Submitted:
+                    logger.warning(f"Order {trade.order.orderId} not filled after {elapsed}s and {walk_count} walks. Converting to Market.")
+
+                    # Cancel the limit order
+                    ib.cancelOrder(trade.order)
+                    await asyncio.sleep(2)
+
+                    # Place market order
+                    market_order = MarketOrder(trade.order.action, trade.order.totalQuantity)
+                    market_order.outsideRth = True
+                    market_trade = place_order(ib, trade.contract, market_order)
+
+                    # Brief wait for market fill
+                    for _ in range(15):
+                        await asyncio.sleep(1)
+                        if market_trade.orderStatus.status == OrderStatus.Filled:
+                            trade = market_trade
+                            fill_detected = True
+                            logger.info(f"Market order filled at {market_trade.orderStatus.avgFillPrice:.2f}")
+                            break
+
+                    if not fill_detected:
+                        logger.error(f"CRITICAL: Market order {market_trade.order.orderId} also failed to fill!")
 
                 if fill_detected and trade.orderStatus.status == OrderStatus.Filled:
                     # Log to ledger.
@@ -1598,6 +1746,15 @@ async def close_stale_positions(config: dict):
                         "pnl": pnl
                     })
                     logger.info(f"Successfully closed {desc} (Pos ID: {pos_id}). P&L: {pnl}")
+
+                    # === CRITICAL: Invalidate thesis in TMS ===
+                    try:
+                        tms = TransactiveMemory()
+                        close_reason = weekly_close_reason if is_weekly_close else f"Stale position (>{max_holding_days} days)"
+                        tms.invalidate_thesis(pos_id, close_reason)
+                        logger.info(f"TMS: Invalidated thesis for {pos_id}: {close_reason}")
+                    except Exception as thesis_err:
+                        logger.warning(f"TMS: Failed to invalidate thesis for {pos_id}: {thesis_err}")
 
                     # --- CLEANUP: Cancel Orphaned Catastrophe Stops ---
                     # The stop order has orderRef = CATASTROPHE_{pos_id}
