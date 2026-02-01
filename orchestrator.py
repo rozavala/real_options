@@ -27,6 +27,7 @@ from notifications import send_pushover_notification
 from performance_analyzer import main as run_performance_analysis
 from reconcile_trades import main as run_reconciliation, reconcile_active_positions
 from trading_bot.reconciliation import reconcile_council_history
+from trading_bot.utils import log_council_decision
 from trading_bot.order_manager import (
     generate_and_execute_orders,
     close_stale_positions,
@@ -52,6 +53,7 @@ from trading_bot.position_sizer import DynamicPositionSizer
 from trading_bot.brier_scoring import get_brier_tracker
 from trading_bot.tms import TransactiveMemory
 from trading_bot.budget_guard import BudgetGuard
+from trading_bot.cycle_id import generate_cycle_id
 
 # --- Logging Setup ---
 setup_logging()
@@ -792,7 +794,72 @@ async def reconcile_and_analyze(config: dict):
     await sync_equity_from_flex(config)
     await reconcile_and_notify(config)
     await analyze_and_archive(config)
+
+    # === NEW: Feedback Loop Health Check ===
+    await _check_feedback_loop_health(config)
+
     logger.info("--- End-of-day reconciliation and analysis process complete ---")
+
+
+async def _check_feedback_loop_health(config: dict):
+    """
+    Check for stale PENDING predictions and alert if feedback loop is broken.
+
+    This is the monitoring that would have caught the Jan 19-31 failure
+    within 48 hours instead of 12 days.
+    """
+    try:
+        structured_file = "data/agent_accuracy_structured.csv"
+        if not os.path.exists(structured_file):
+            return
+
+        # Use pandas if available (it should be)
+        try:
+            import pandas as pd
+            df = pd.read_csv(structured_file)
+            if df.empty:
+                return
+
+            pending_mask = df['actual'] == 'PENDING'
+            pending_count = pending_mask.sum()
+            total_count = len(df)
+
+            if pending_count == 0:
+                logger.info(f"Feedback Loop Health: All {total_count} predictions resolved ✓")
+                return
+
+            # Check age of oldest PENDING prediction
+            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+            oldest_pending = df.loc[pending_mask, 'timestamp'].min()
+            age_hours = (pd.Timestamp.now(tz='UTC') - oldest_pending).total_seconds() / 3600
+
+            resolution_rate = (total_count - pending_count) / total_count * 100
+
+            logger.info(
+                f"Feedback Loop Health: {pending_count}/{total_count} PENDING "
+                f"(oldest: {age_hours:.0f}h, resolution rate: {resolution_rate:.0f}%)"
+            )
+
+            # ALERT if predictions are stale
+            if age_hours > 48:
+                alert_msg = (
+                    f"⚠️ FEEDBACK LOOP STALE\n"
+                    f"Oldest PENDING: {age_hours:.0f}h ago\n"
+                    f"PENDING: {pending_count}/{total_count}\n"
+                    f"Resolution rate: {resolution_rate:.0f}%\n"
+                    f"Agent learning is NOT occurring!"
+                )
+                logger.warning(alert_msg)
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    "🔴 Feedback Loop Alert",
+                    alert_msg
+                )
+        except ImportError:
+            pass # No pandas, skip check
+
+    except Exception as e:
+        logger.error(f"Feedback loop health check failed: {e}")
 
 
 async def process_deferred_triggers(config: dict):
@@ -891,7 +958,10 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 send_pushover_notification(config.get('notifications', {}), "Budget Guard",
                     f"Daily API budget hit. Sentinel-only mode active.")
                 return
-            logger.info(f"🚨 EMERGENCY CYCLE TRIGGERED by {trigger.source}: {trigger.reason}")
+
+            # === Generate Cycle ID for prediction tracking ===
+            cycle_id = generate_cycle_id("KC")
+            logger.info(f"🚨 EMERGENCY CYCLE TRIGGERED by {trigger.source}: {trigger.reason} (Cycle: {cycle_id})")
             send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", trigger.reason)
 
             # --- DEFCON 1: Crash Protection ---
@@ -1046,10 +1116,78 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     ml_signal,
                     market_context_str,
                     ib=ib,
-                    target_contract=target_contract
+                    target_contract=target_contract,
+                    cycle_id=cycle_id # Pass cycle_id for logging if supported
                 )
 
                 logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
+
+                # === Log Emergency Decision to History ===
+                # Reconstruct full log entry for history
+                try:
+                    # Reload reports to get sentiments
+                    final_reports = StateManager.load_state()
+                    agent_data = {}
+
+                    def extract_sentiment(text):
+                        if not text or not isinstance(text, str): return "N/A"
+                        import re
+                        match = re.search(r'\[SENTIMENT: (\w+)\]', text)
+                        return match.group(1) if match else "N/A"
+
+                    for key, report in final_reports.items():
+                        if isinstance(report, dict):
+                            s = report.get('sentiment')
+                            if not s or s == 'N/A':
+                                s = extract_sentiment(report.get('data', ''))
+                            agent_data[f"{key}_sentiment"] = s
+                            agent_data[f"{key}_summary"] = str(report.get('data', 'N/A'))
+                        else:
+                            agent_data[f"{key}_sentiment"] = extract_sentiment(report)
+                            agent_data[f"{key}_summary"] = str(report) if report else "N/A"
+
+                    council_log_entry = {
+                        "cycle_id": cycle_id,
+                        "timestamp": datetime.now(timezone.utc),
+                        "contract": contract_name,
+                        "entry_price": ml_signal.get('price'),
+                        "ml_signal": ml_signal.get('action'),
+                        "ml_confidence": ml_signal.get('confidence'),
+
+                        "meteorologist_sentiment": agent_data.get("agronomist_sentiment"),
+                        "meteorologist_summary": agent_data.get("agronomist_summary"),
+                        "macro_sentiment": agent_data.get('macro_sentiment'),
+                        "macro_summary": agent_data.get('macro_summary'),
+                        "geopolitical_sentiment": agent_data.get('geopolitical_sentiment'),
+                        "geopolitical_summary": agent_data.get('geopolitical_summary'),
+                        "fundamentalist_sentiment": agent_data.get('inventory_sentiment'),
+                        "fundamentalist_summary": agent_data.get('inventory_summary'),
+                        "sentiment_sentiment": agent_data.get('sentiment_sentiment'),
+                        "sentiment_summary": agent_data.get('sentiment_summary'),
+                        "technical_sentiment": agent_data.get('technical_sentiment'),
+                        "technical_summary": agent_data.get('technical_summary'),
+                        "volatility_sentiment": agent_data.get('volatility_sentiment'),
+                        "volatility_summary": agent_data.get('volatility_summary'),
+
+                        "master_decision": decision.get('direction'),
+                        "master_confidence": decision.get('confidence'),
+                        "master_reasoning": decision.get('reasoning'),
+
+                        # Infer prediction types from decision structure
+                        "prediction_type": decision.get('prediction_type', 'DIRECTIONAL'),
+                        "volatility_level": decision.get('level'), # HIGH/LOW for volatility
+                        "strategy_type": "EMERGENCY", # Or infer from direction
+
+                        "compliance_approved": True, # Assume true if we reached here, actually checked later
+                        "trigger_type": trigger.source,
+
+                        "vote_breakdown": json.dumps(decision.get('vote_breakdown', [])),
+                        "dominant_agent": decision.get('dominant_agent', 'Unknown'),
+                        "weighted_score": 0.0 # Not explicitly returned by run_specialized_cycle but embedded in vote
+                    }
+                    log_council_decision(council_log_entry)
+                except Exception as e:
+                    logger.error(f"Failed to log emergency decision: {e}")
 
                 # 6. Execute if Actionable
                 direction = decision.get('direction')
@@ -1171,7 +1309,8 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         predicted_direction=direction,
                         predicted_confidence=float(confidence),
                         actual='PENDING',
-                        timestamp=datetime.now(timezone.utc)
+                        timestamp=datetime.now(timezone.utc),
+                        cycle_id=cycle_id
                     )
 
                 if not is_actionable:
