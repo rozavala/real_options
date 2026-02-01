@@ -225,7 +225,7 @@
     "prediction_markets": {
       "enabled": true,
       "poll_interval_seconds": 300,
-      "min_liquidity_usd": 50000,
+      "min_liquidity_usd": 10000,
       "min_volume_usd": 10000,
       "hwm_decay_hours": 24,
       "providers": {
@@ -237,7 +237,7 @@
       },
       "topics_to_watch": [
         {
-          "query": "Federal Reserve Interest Rate",
+          "query": "Fed",
           "tag": "Fed",
           "display_name": "Fed Policy",
           "trigger_threshold_pct": 10.0,
@@ -245,28 +245,28 @@
           "coffee_impact": "USD strength affects coffee exports"
         },
         {
-          "query": "Brazil Selic",
+          "query": "Brazil",
           "tag": "Brazil",
-          "display_name": "Brazil Rates",
+          "display_name": "Brazil Macro",
           "trigger_threshold_pct": 10.0,
           "importance": "forex",
           "coffee_impact": "BRL/USD affects Brazilian export competitiveness"
         },
         {
-          "query": "Presidential Election Winner",
+          "query": "Trump",
           "tag": "Politics",
-          "display_name": "US Election",
+          "display_name": "US Policy Risk",
           "trigger_threshold_pct": 5.0,
-          "importance": "macro",
-          "coffee_impact": "Trade policy, tariffs, USD strength"
+          "importance": "geopolitical",
+          "coffee_impact": "General market volatility/Risk-off sentiment"
         },
         {
-          "query": "US tariffs coffee",
+          "query": "Tariff",
           "tag": "Trade",
-          "display_name": "Coffee Tariffs",
-          "trigger_threshold_pct": 8.0,
+          "display_name": "Trade War Risk",
+          "trigger_threshold_pct": 10.0,
           "importance": "geopolitical",
-          "coffee_impact": "Direct import cost impact"
+          "coffee_impact": "Global logistics & Import costs"
         }
       ],
       "severity_mapping": {
