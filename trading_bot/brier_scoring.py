@@ -411,23 +411,23 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
         logger.info(f"Found {pending_count} pending predictions to check")
 
         # --- BUILD RESOLUTION LOOKUP ---
-        # Only use reconciled rows (have actual_trend_direction)
-        reconciled = council_df[
-            (council_df['actual_trend_direction'].notna()) &
-            (council_df['actual_trend_direction'] != '') &
-            (council_df['actual_trend_direction'].astype(str).str.strip() != '')
-        ].copy()
+        # Sort ALL council decisions (not just reconciled) for cycle matching
+        all_decisions_sorted = council_df.sort_values('timestamp').reset_index(drop=True)
 
-        if reconciled.empty:
-            logger.info("No reconciled council decisions available")
-            return 0
+        # Build reconciled mask
+        reconciled_mask = (
+            all_decisions_sorted['actual_trend_direction'].notna() &
+            (all_decisions_sorted['actual_trend_direction'] != '') &
+            (all_decisions_sorted['actual_trend_direction'].astype(str).str.strip() != '')
+        )
 
-        logger.info(f"Found {len(reconciled)} reconciled council decisions")
+        logger.info(f"Council decisions: {len(all_decisions_sorted)} total, "
+                    f"{reconciled_mask.sum()} reconciled")
 
         # Build cycle_id → actual_direction lookup (PRIMARY strategy)
         from trading_bot.cycle_id import is_valid_cycle_id
         cycle_id_lookup = {}
-        for _, row in reconciled.iterrows():
+        for i, row in all_decisions_sorted[reconciled_mask].iterrows():
             cid = str(row.get('cycle_id', '')).strip()
             if is_valid_cycle_id(cid):
                 direction = _normalize_direction(str(row['actual_trend_direction']))
@@ -435,9 +435,6 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
                     cycle_id_lookup[cid] = direction
 
         logger.info(f"Built cycle_id lookup with {len(cycle_id_lookup)} entries")
-
-        # Build timestamp-sorted list for FALLBACK nearest-match
-        reconciled_sorted = reconciled.sort_values('timestamp').reset_index(drop=True)
 
         # --- RESOLVE PREDICTIONS ---
         newly_resolved_indices = []
@@ -455,12 +452,13 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
                 actual_direction = cycle_id_lookup[pred_cycle_id]
                 resolved_by_cycle_id += 1
 
-            # STRATEGY 2: Nearest-match for legacy data (no cycle_id)
+            # STRATEGY 2: Cycle-aware match for legacy data (no cycle_id)
             elif not is_valid_cycle_id(pred_cycle_id):
-                actual_direction = _nearest_match_resolve(
+                actual_direction = _cycle_aware_resolve(
                     pred_row['timestamp'],
-                    reconciled_sorted,
-                    max_distance_minutes=120  # Safety cap: 2 hours max
+                    all_decisions_sorted,       # Searches ALL decisions
+                    reconciled_mask,            # Then checks if reconciled
+                    max_distance_minutes=120
                 )
                 if actual_direction:
                     resolved_by_nearest += 1
@@ -511,37 +509,40 @@ def _normalize_direction(raw: str) -> str:
     return mapping.get(raw, None)
 
 
-def _nearest_match_resolve(
+def _cycle_aware_resolve(
     pred_timestamp,
-    reconciled_sorted_df: pd.DataFrame,
+    all_decisions_sorted_df: pd.DataFrame,
+    reconciled_mask: pd.Series,
     max_distance_minutes: int = 120
-) -> str:
+) -> Optional[str]:
     """
-    FALLBACK: Find the nearest reconciled council decision by timestamp.
+    Cycle-aware resolution for legacy data without cycle_id.
 
-    This handles legacy data that doesn't have cycle_id.
-    Uses nearest-match instead of a fixed window, which was the
-    root cause of failure in attempts 1-3.
+    Unlike _nearest_match_resolve which searches only reconciled decisions
+    (risking cross-cycle contamination), this function:
+    1. Finds the nearest council decision (any status) — this is the prediction's own cycle
+    2. Checks if that cycle's decision is reconciled
+    3. Returns the direction only if reconciled, None otherwise
 
-    The algorithm:
-    1. Find the council decision with the smallest absolute timestamp gap
-    2. Only accept if the gap is < max_distance_minutes (safety cap)
-    3. Return the normalized direction or None
+    This prevents predictions from being graded against the wrong cycle's outcome.
     """
-    if reconciled_sorted_df.empty:
+    if all_decisions_sorted_df.empty:
         return None
 
     try:
-        # Calculate absolute time differences
-        time_diffs = abs(reconciled_sorted_df['timestamp'] - pred_timestamp)
-        min_idx = time_diffs.idxmin()
-        min_gap = time_diffs[min_idx]
+        time_diffs = abs(all_decisions_sorted_df['timestamp'] - pred_timestamp)
+        nearest_idx = time_diffs.idxmin()
+        nearest_gap = time_diffs[nearest_idx]
 
-        # Safety cap: don't match across unreasonable gaps
-        if min_gap > pd.Timedelta(minutes=max_distance_minutes):
+        # Safety cap
+        if nearest_gap > pd.Timedelta(minutes=max_distance_minutes):
             return None
 
-        raw_direction = str(reconciled_sorted_df.loc[min_idx, 'actual_trend_direction'])
+        # Check if THIS cycle's decision is reconciled
+        if not reconciled_mask.iloc[nearest_idx]:
+            return None  # Own cycle not yet reconciled — don't guess
+
+        raw_direction = str(all_decisions_sorted_df.loc[nearest_idx, 'actual_trend_direction'])
         return _normalize_direction(raw_direction)
 
     except Exception:
