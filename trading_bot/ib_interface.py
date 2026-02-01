@@ -13,7 +13,10 @@ from datetime import datetime, timedelta
 from ib_insync import *
 
 from trading_bot.logging_config import setup_logging
-from trading_bot.utils import price_option_black_scholes, log_trade_to_ledger, round_to_tick, COFFEE_OPTIONS_TICK_SIZE
+from trading_bot.utils import (
+    price_option_black_scholes, log_trade_to_ledger, round_to_tick,
+    get_tick_size, get_contract_multiplier
+)
 
 # --- Logging Setup ---
 setup_logging()
@@ -191,6 +194,11 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
     chain = strategy_def['chain']
     underlying_price = strategy_def['underlying_price']
 
+    # Get profile-driven specs
+    tick_size = get_tick_size(config)
+    # IBKR expects multiplier as string (e.g. "37500")
+    contract_multiplier = str(get_contract_multiplier(config))
+
     # 1. Create all leg contract objects first
     leg_contracts = []
     for right, _, strike in legs_def:
@@ -203,7 +211,7 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
             # FIX: Use the dynamically fetched tradingClass instead of a hardcoded value.
             # The tradingClass for Coffee (KC) options is 'OKC', not 'OK'.
             tradingClass=chain['tradingClass'],
-            multiplier="37500"
+            multiplier=contract_multiplier
         )
         leg_contracts.append(contract)
 
@@ -283,36 +291,36 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         return None
 
     # Calculate Ceiling/Floor Price (Theoretical Max/Min)
-    start_offset = 0.05
+    start_offset = tick_size  # Start 1 tick into the book
     market_mid = (combo_bid_price + combo_ask_price) / 2
 
     if action == 'BUY':
         # Theoretical ceiling with slippage - TICK ALIGNED
-        theoretical_ceiling = round_to_tick(net_theoretical_price + fixed_slippage, COFFEE_OPTIONS_TICK_SIZE, 'BUY')
+        theoretical_ceiling = round_to_tick(net_theoretical_price + fixed_slippage, tick_size, 'BUY')
         # Market-based ceiling: don't exceed the current ask - TICK ALIGNED
-        market_ceiling = round_to_tick(combo_ask_price + (market_spread * 0.1), COFFEE_OPTIONS_TICK_SIZE, 'BUY')
+        market_ceiling = round_to_tick(combo_ask_price + (market_spread * 0.1), tick_size, 'BUY')
         # Use the more conservative (lower) ceiling
         ceiling_price = min(theoretical_ceiling, market_ceiling)
         # But ensure we can at least reach the market mid - TICK ALIGNED
-        ceiling_price = max(ceiling_price, round_to_tick(market_mid, COFFEE_OPTIONS_TICK_SIZE, 'BUY'))
+        ceiling_price = max(ceiling_price, round_to_tick(market_mid, tick_size, 'BUY'))
 
         # Initial price - TICK ALIGNED (round down for buys)
-        initial_price = round_to_tick(combo_bid_price + start_offset, COFFEE_OPTIONS_TICK_SIZE, 'BUY')
+        initial_price = round_to_tick(combo_bid_price + start_offset, tick_size, 'BUY')
         initial_price = min(initial_price, ceiling_price)
 
         logging.info(f"BUY Cap Calc: Theoretical={theoretical_ceiling:.2f}, Market={market_ceiling:.2f}, Mid={market_mid:.2f}, Final Cap={ceiling_price:.2f}")
 
     else:  # SELL
         # Theoretical floor with slippage - TICK ALIGNED (round up for sells)
-        theoretical_floor = round_to_tick(net_theoretical_price - fixed_slippage, COFFEE_OPTIONS_TICK_SIZE, 'SELL')
+        theoretical_floor = round_to_tick(net_theoretical_price - fixed_slippage, tick_size, 'SELL')
         # Market-based floor - TICK ALIGNED
-        market_floor = round_to_tick(combo_bid_price - (market_spread * 0.1), COFFEE_OPTIONS_TICK_SIZE, 'SELL')
+        market_floor = round_to_tick(combo_bid_price - (market_spread * 0.1), tick_size, 'SELL')
         # Use the more aggressive floor
         floor_price = min(theoretical_floor, market_floor)
-        floor_price = min(floor_price, round_to_tick(market_mid, COFFEE_OPTIONS_TICK_SIZE, 'SELL'))
+        floor_price = min(floor_price, round_to_tick(market_mid, tick_size, 'SELL'))
 
         # Initial price - TICK ALIGNED (round up for sells)
-        initial_price = round_to_tick(combo_ask_price - start_offset, COFFEE_OPTIONS_TICK_SIZE, 'SELL')
+        initial_price = round_to_tick(combo_ask_price - start_offset, tick_size, 'SELL')
         initial_price = max(initial_price, floor_price)
 
         logging.info(f"SELL Floor Calc: Theoretical={theoretical_floor:.2f}, Market={market_floor:.2f}, Mid={market_mid:.2f}, Final Floor={floor_price:.2f}")

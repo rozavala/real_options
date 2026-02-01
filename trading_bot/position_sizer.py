@@ -6,6 +6,7 @@ logger = logging.getLogger(__name__)
 
 class DynamicPositionSizer:
     def __init__(self, config: dict):
+        self.config = config
         self.base_qty = config.get('strategy', {}).get('quantity', 1)
         # Default max heat 25% if not set
         self.max_portfolio_heat = config.get('risk_management', {}).get('max_heat_pct', 0.25)
@@ -36,12 +37,14 @@ class DynamicPositionSizer:
         }.get(volatility_sentiment, 1.0)
 
         # Portfolio heat check
-        # We define exposure as total value of KC/KO positions
+        # We define exposure as total value of active commodity positions
+        _active_symbol = self.config.get('commodity', {}).get('ticker', self.config.get('symbol', 'KC'))
+
         positions = await ib.reqPositionsAsync()
         current_exposure = sum(
             abs(p.position * p.avgCost)
             for p in positions
-            if 'KC' in p.contract.symbol or 'KO' in p.contract.symbol
+            if _active_symbol in p.contract.symbol
         )
 
         heat_ratio = current_exposure / account_value if account_value > 0 else 0

@@ -28,7 +28,8 @@ from trading_bot.signal_generator import generate_signals
 from trading_bot.strategy import define_directional_strategy, define_volatility_strategy, validate_iron_condor_risk
 from trading_bot.utils import (
     log_trade_to_ledger, log_order_event, configure_market_data_type,
-    is_market_open, round_to_tick, COFFEE_OPTIONS_TICK_SIZE
+    is_market_open, round_to_tick, COFFEE_OPTIONS_TICK_SIZE,
+    get_tick_size, get_contract_multiplier, get_dollar_multiplier
 )
 from trading_bot.compliance import ComplianceGuardian, calculate_spread_max_risk
 from trading_bot.connection_pool import IBConnectionPool
@@ -340,14 +341,12 @@ async def generate_and_queue_orders(config: dict):
                                 if len(puts) == 2: width = max(width, abs(puts[1][2] - puts[0][2]))
                                 if len(calls) == 2: width = max(width, abs(calls[1][2] - calls[0][2]))
 
-                                multiplier = float(future.multiplier) if future.multiplier else 37500.0 # Default KC
-                                # FLIGHT DIRECTOR FIX: Divide by 100 to convert cents to dollars
-                                # width is in strike points (e.g., 5.0), multiplier is 37500 lbs
-                                # Dollar risk = width_cents × (lbs/100) = width × 375
-                                dollar_multiplier = multiplier / 100.0
+                                # MECE FIX: Use profile-driven multipliers (handles KC/CC logic)
+                                # multiplier = float(future.multiplier) if future.multiplier else 37500.0
+                                dollar_multiplier = get_dollar_multiplier(config)
                                 max_loss = width * dollar_multiplier * qty
 
-                                logger.info(f"Iron Condor risk calc: width={width}, multiplier={dollar_multiplier}, qty={qty}, max_loss=${max_loss:,.2f}")
+                                logger.info(f"Iron Condor risk calc: width={width}, dollar_mult={dollar_multiplier}, qty={qty}, max_loss=${max_loss:,.2f}")
 
                                 if not validate_iron_condor_risk(max_loss, account_value, config.get('catastrophe_protection', {}).get('iron_condor_max_risk_pct_of_equity', 0.02)):
                                     logger.warning(f"Skipping Iron Condor for {future.localSymbol} due to excessive risk.")
@@ -1520,7 +1519,7 @@ async def close_stale_positions(config: dict):
                 # === IMPROVED: Leg-Based Price Calculation for Combo ===
                 # IB's native BAG pricing is unreliable - calculate from legs
                 lmt_price = 0.0
-                MINIMUM_TICK = COFFEE_OPTIONS_TICK_SIZE  # $0.05 for KC options
+                MINIMUM_TICK = get_tick_size(config)  # Profile-driven tick size
 
                 if contract.secType == "BAG" and contract.comboLegs:
                     # Calculate combo price from individual leg prices

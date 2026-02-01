@@ -23,6 +23,51 @@ from trading_bot.logging_config import setup_logging
 # --- Logging Setup ---
 setup_logging()
 
+# --- COMMODITY PROFILE HELPERS (MECE Phase 0) ---
+CENTS_INDICATORS = ('cent', '¢', 'usc', 'pence', 'pennies')
+
+def get_contract_multiplier(config: dict) -> float:
+    """Get the contract size (e.g. 37500 lbs for KC)."""
+    from config.commodity_profiles import get_commodity_profile
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    profile = get_commodity_profile(ticker)
+    return float(profile.contract.contract_size)
+
+def get_dollar_multiplier(config: dict) -> float:
+    """Get the P&L multiplier per 1.0 price unit move."""
+    from config.commodity_profiles import get_commodity_profile
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    profile = get_commodity_profile(ticker)
+
+    raw_multiplier = float(profile.contract.contract_size)
+    unit = profile.contract.unit.lower()
+
+    # Check for any cents-based pricing (need /100 conversion)
+    if any(indicator in unit for indicator in CENTS_INDICATORS):
+        return raw_multiplier / 100.0
+    else:
+        return raw_multiplier
+
+def get_tick_size(config: dict) -> float:
+    """Get minimum tick size."""
+    from config.commodity_profiles import get_commodity_profile
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    profile = get_commodity_profile(ticker)
+    return float(profile.contract.tick_size)
+
+def get_ibkr_exchange(config: dict) -> str:
+    """Get the exchange for IBKR contracts."""
+    from config.commodity_profiles import get_commodity_profile
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    profile = get_commodity_profile(ticker)
+
+    exch = profile.contract.exchange
+    # Mapping for IBKR: ICE US Softs -> NYBOT
+    if exch == 'ICE':
+        return 'NYBOT'
+    return exch
+
+
 def get_market_data_cached(tickers: list, period: str = "1d"):
     """
     Fetch market data from YFinance.
