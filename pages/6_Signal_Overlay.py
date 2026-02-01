@@ -593,7 +593,7 @@ def build_hover_text(row):
 # === MAIN EXECUTION ===
 
 end_date = datetime.now()
-start_date = end_date - timedelta(days=lookback_days)
+# start_date for signals is computed later alongside the price cutoff (after anchor normalization)
 
 # Determine yfinance ticker based on contract selection
 yf_ticker = contract_to_yfinance_ticker(selected_contract)
@@ -638,24 +638,31 @@ if price_df is not None and not price_df.empty:
     # Initialize US Holidays
     us_holidays = holidays.US(years=[current_time_et.year, current_time_et.year - 1], observed=True)
     
-    # Calculate cutoff by counting back N trading days
-    cutoff_dt = current_time_et
-    days_counted = 0
+    # Calculate cutoff by counting back N trading days.
+    #
+    # Step 1: Find the "anchor" trading day. On weekdays this is today; on weekends
+    # or holidays it's the most recent trading day (e.g. Friday when viewed on Sunday).
+    # This ensures lookback=N always yields N+1 trading days regardless of the day
+    # of the week (the anchor day + N prior trading days).
+    #
+    # Step 2: Count back N additional trading days from that anchor.
+    anchor_dt = current_time_et
+    while anchor_dt.weekday() >= 5 or anchor_dt.date() in us_holidays:
+        anchor_dt -= timedelta(days=1)
 
-    if lookback_days == 0:
-        # Just start at midnight today
-        cutoff_dt = cutoff_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-    else:
-        while days_counted < lookback_days:
-            cutoff_dt -= timedelta(days=1)
-            # Check if weekday (0-4) and not a holiday
-            if cutoff_dt.weekday() < 5 and cutoff_dt.date() not in us_holidays:
-                days_counted += 1
-            
-        # CRITICAL FIX: Force the start time to Midnight (00:00:00)
-        # This prevents the filter from clipping the Morning Session of the first day.
-        cutoff_dt = cutoff_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-    
+    cutoff_dt = anchor_dt
+    days_counted = 0
+    while days_counted < lookback_days:
+        cutoff_dt -= timedelta(days=1)
+        if cutoff_dt.weekday() < 5 and cutoff_dt.date() not in us_holidays:
+            days_counted += 1
+
+    # Force start time to midnight so we capture the full first trading day
+    cutoff_dt = cutoff_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Align signal start_date with price cutoff so signals match the visible price window
+    start_date = cutoff_dt
+
     # Apply the filter (>= Midnight captures the whole day)
     price_df = price_df[price_df.index >= cutoff_dt]
 
