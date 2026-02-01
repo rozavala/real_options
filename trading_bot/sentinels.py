@@ -1436,6 +1436,8 @@ class PredictionMarketSentinel(Sentinel):
 
                     data = await response.json()
 
+                    logger.info(f"Dynamic Discovery: '{query}' found {len(data)} markets. Top result: {[e.get('title') for e in data[:1]]}")
+
                     if not data:
                         logger.debug(f"No markets found for query: '{query}'")
                         return None
