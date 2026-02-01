@@ -9,7 +9,10 @@ from ib_insync import IB
 from trading_bot.agents import CoffeeCouncil
 from trading_bot.ib_interface import get_active_futures # CORRECTED IMPORT
 from trading_bot.model_signals import log_model_signal # Keep existing logging
-from trading_bot.utils import log_council_decision
+from trading_bot.utils import (
+    log_council_decision,
+    get_active_ticker
+)
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager # Import StateManager
 from trading_bot.compliance import ComplianceGuardian
@@ -143,7 +146,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
             }
 
         # === Generate Cycle ID for this contract's decision ===
-        cycle_id = generate_cycle_id("KC")
+        cycle_id = generate_cycle_id(get_active_ticker(config))
 
         agent_data = {} # Initialize outside try/except to avoid UnboundLocalError
         regime_for_voting = 'UNKNOWN' # Initialize here to avoid scope issues
