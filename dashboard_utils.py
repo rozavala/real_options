@@ -36,7 +36,7 @@ from ib_insync import IB
 # Path setup for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 from performance_analyzer import get_trade_ledger_df
-from trading_bot.model_signals import get_model_signals_df
+# ML model_signals module removed (see archive/ml_pipeline/).
 from config_loader import load_config
 from trading_bot.utils import configure_market_data_type
 from trading_bot.timestamps import parse_ts_column

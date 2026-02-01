@@ -297,6 +297,11 @@ class BrierScoreTracker:
         Returns:
             0.5 to 2.0 multiplier (1.0 = baseline/unknown)
         """
+        # Skip deprecated agents
+        DEPRECATED_AGENTS = {'ml_model'}
+        if agent in DEPRECATED_AGENTS:
+            return 1.0  # Neutral multiplier — no influence
+
         from trading_bot.agent_names import normalize_agent_name
         agent = normalize_agent_name(agent)
 

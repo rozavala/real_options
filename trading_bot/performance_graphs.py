@@ -13,11 +13,11 @@ def generate_performance_charts(
     Generates a series of life-to-date performance charts.
     - Chart 1: Cumulative P&L (Line Chart) - Uses Net Liquidation if available, else Cash Flow.
     - Chart 2: Daily P&L (Bar Chart) - Uses Daily Change in Net Liquidation if available, else Cash Flow.
-    - Chart 3: P&L by Model Signal (Bar Chart) - Uses Trade Ledger (Realized P&L).
+    - Chart 3: REMOVED (was P&L by ML Signal — signals_df param kept for compat)
 
     Args:
         trade_df (pd.DataFrame): DataFrame with all trade data (ledger).
-        signals_df (pd.DataFrame): DataFrame with all model signal data.
+        signals_df (pd.DataFrame): DEPRECATED: always empty since ML removal
         equity_df (pd.DataFrame, optional): DataFrame with 'timestamp' and 'total_value_usd' (NetLiq).
         starting_capital (float): The starting capital for calculating return from NetLiq.
 
