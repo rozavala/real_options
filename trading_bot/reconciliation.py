@@ -6,11 +6,12 @@ import csv
 import logging
 import os
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pytz
 import pandas as pd
 from ib_insync import IB, Contract, util
 from trading_bot.brier_scoring import get_brier_tracker
+from trading_bot.timestamps import parse_ts_column, parse_ts_single
 
 logger = logging.getLogger(__name__)
 
@@ -82,12 +83,12 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
 
     # Identify candidates for reconciliation
     try:
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        df['timestamp'] = parse_ts_column(df['timestamp'])
     except Exception as e:
         logger.error(f"Error parsing timestamps: {e}")
         return
 
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     updates_made = False
 
     # Filter for rows that need processing
@@ -136,10 +137,9 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                 exit_price = float(row['exit_price'])
                 # Try to use existing exit timestamp if valid
                 if pd.notna(row.get('exit_timestamp')):
-                    try:
-                        target_exit_time = pd.to_datetime(row['exit_timestamp'])
-                    except:
-                        pass
+                    parsed_exit = parse_ts_single(str(row['exit_timestamp']))
+                    if parsed_exit:
+                        target_exit_time = parsed_exit
                 logger.info(f"Force-recalculating broken volatility row: {contract_str}")
 
             else:

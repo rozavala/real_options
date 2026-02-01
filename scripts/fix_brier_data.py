@@ -28,6 +28,10 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
+# Add to imports section:
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + '/..')
+from trading_bot.timestamps import parse_ts_column
+
 # Paths
 DATA_DIR = "data"
 STRUCTURED_FILE = os.path.join(DATA_DIR, "agent_accuracy_structured.csv")
@@ -172,9 +176,9 @@ def resolve_with_nearest_match(dry_run: bool = False):
     if predictions_df.empty or council_df.empty:
         return 0
 
-    # Parse timestamps
-    predictions_df['timestamp'] = pd.to_datetime(predictions_df['timestamp'], utc=True)
-    council_df['timestamp'] = pd.to_datetime(council_df['timestamp'], utc=True)
+    # Parse timestamps (handles mixed formats from different eras of the codebase)
+    predictions_df['timestamp'] = parse_ts_column(predictions_df['timestamp'])
+    council_df['timestamp'] = parse_ts_column(council_df['timestamp'])
 
     # Filter to PENDING
     pending_mask = predictions_df['actual'] == 'PENDING'

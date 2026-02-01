@@ -10,6 +10,7 @@ import os
 import logging
 from datetime import datetime, timezone
 from typing import Optional
+from trading_bot.timestamps import parse_ts_column
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +56,11 @@ class BrierScoreTracker:
             # Ensure 'correct' is numeric
             df['correct'] = pd.to_numeric(df['correct'], errors='coerce').fillna(0)
 
-            # Parse timestamps for time-weighting
-            df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce', utc=True)
+            # Parse timestamps for time-weighting (handles mixed formats)
+            df['timestamp'] = parse_ts_column(df['timestamp'])
+            # Drop rows where timestamp couldn't be parsed (formerly errors='coerce')
+            df = df.dropna(subset=['timestamp'])
+
             now = pd.Timestamp.now(tz='UTC')
 
             # Exponential decay: half-life = 14 days
@@ -386,9 +390,9 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
             logger.info("Empty dataframes — nothing to resolve")
             return 0
 
-        # Ensure timestamp columns are datetime with UTC
-        predictions_df['timestamp'] = pd.to_datetime(predictions_df['timestamp'], utc=True)
-        council_df['timestamp'] = pd.to_datetime(council_df['timestamp'], utc=True)
+        # Ensure timestamp columns are datetime with UTC (handles mixed formats)
+        predictions_df['timestamp'] = parse_ts_column(predictions_df['timestamp'])
+        council_df['timestamp'] = parse_ts_column(council_df['timestamp'])
 
         # Ensure cycle_id column exists (backward compat)
         if 'cycle_id' not in predictions_df.columns:
