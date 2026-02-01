@@ -371,6 +371,49 @@ else:
 
 st.markdown("---")
 
+# === FEEDBACK LOOP HEALTH ===
+st.subheader("🔄 Feedback Loop Health")
+
+# Locate data directory relative to this file
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+data_dir = os.path.join(base_dir, 'data')
+structured_file = os.path.join(data_dir, "agent_accuracy_structured.csv")
+
+if os.path.exists(structured_file):
+    struct_df = pd.read_csv(structured_file)
+
+    if not struct_df.empty:
+        total = len(struct_df)
+        pending = (struct_df['actual'] == 'PENDING').sum()
+        resolved = total - pending
+        rate = resolved / total * 100 if total > 0 else 0
+
+        health_cols = st.columns(4)
+        health_cols[0].metric("Total Predictions", total)
+        health_cols[1].metric("Resolved", resolved)
+        health_cols[2].metric("Pending", pending)
+        health_cols[3].metric("Resolution Rate", f"{rate:.0f}%")
+
+        # Color-coded status
+        if rate >= 80:
+            st.success(f"✅ Feedback loop healthy — {rate:.0f}% resolution rate")
+        elif rate >= 50:
+            st.warning(f"⚠️ Feedback loop degraded — {rate:.0f}% resolution rate")
+        else:
+            st.error(f"🔴 Feedback loop broken — {rate:.0f}% resolution rate. Agent learning not occurring!")
+
+        # Show cycle_id coverage
+        if 'cycle_id' in struct_df.columns:
+            has_cycle_id = struct_df['cycle_id'].notna() & (struct_df['cycle_id'] != '')
+            cycle_id_pct = has_cycle_id.sum() / total * 100
+            st.caption(f"cycle_id coverage: {cycle_id_pct:.0f}% (new system) / {100-cycle_id_pct:.0f}% (legacy)")
+    else:
+        st.info("No prediction data yet.")
+else:
+    st.info("Structured prediction file not found.")
+
+st.markdown("---")
+
 # === SECTION 4: Decision History Table ===
 st.subheader("📜 Recent Decisions")
 

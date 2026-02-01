@@ -704,7 +704,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                 'recommendation': 'BLOCK: Devil\'s Advocate system error. Trade blocked for safety.'
             }
 
-    async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict, market_context: str, trigger_reason: str = None) -> dict:
+    async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict, market_context: str, trigger_reason: str = None, cycle_id: str = "") -> dict:
         """
         The Hegelian Loop: Thesis (Reports) -> Antithesis (Bear/Bull) -> Synthesis (Master).
         """
@@ -794,7 +794,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                 "reasoning": f"Master Error: {str(e)}"
             }
 
-    async def run_specialized_cycle(self, trigger: SentinelTrigger, contract_name: str, ml_signal: dict, market_context: str, ib=None, target_contract=None) -> dict:
+    async def run_specialized_cycle(self, trigger: SentinelTrigger, contract_name: str, ml_signal: dict, market_context: str, ib=None, target_contract=None, cycle_id: str = "") -> dict:
         """
         Runs a Triggered Cycle (Hybrid Decision Model).
         1. Wake up the RELEVANT agent based on Semantic Router.
@@ -867,7 +867,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         enriched_context = market_context + weighted_context
 
         # Run Decision Loop with Context Injection
-        decision = await self.decide(contract_name, ml_signal, final_reports, enriched_context, trigger_reason=trigger.reason)
+        decision = await self.decide(contract_name, ml_signal, final_reports, enriched_context, trigger_reason=trigger.reason, cycle_id=cycle_id)
 
         # === NEW: Weighted Vote Override Logic ===
         master_dir = decision.get('direction', 'NEUTRAL')
@@ -933,7 +933,8 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                         prob_bullish=prob_bullish,
                         prob_neutral=prob_neutral,
                         prob_bearish=prob_bearish,
-                        contract=contract_name
+                        contract=contract_name,
+                        cycle_id=cycle_id  # NEW — must be passed to decide()
                     )
             except Exception as e:
                 logger.error(f"Failed to record Brier prediction (non-fatal): {e}")

@@ -506,6 +506,7 @@ def log_council_decision(decision_data):
 
     # UPDATED SCHEMA v2: Added weighted voting fields
     fieldnames = [
+        "cycle_id",  # NEW: Deterministic foreign key for prediction matching
         "timestamp", "contract", "entry_price",
         "ml_signal", "ml_confidence",
         "meteorologist_sentiment", "meteorologist_summary",

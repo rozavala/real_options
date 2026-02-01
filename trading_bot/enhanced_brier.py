@@ -45,6 +45,7 @@ class ProbabilisticPrediction:
     # Metadata
     regime: MarketRegime = MarketRegime.NORMAL
     contract: str = ""
+    cycle_id: str = ""  # NEW: Deterministic foreign key
 
     # Outcome (filled after resolution)
     actual_outcome: Optional[str] = None
@@ -160,7 +161,8 @@ class EnhancedBrierTracker:
         prob_bearish: float,
         regime: MarketRegime = MarketRegime.NORMAL,
         contract: str = "",
-        timestamp: Optional[datetime] = None
+        timestamp: Optional[datetime] = None,
+        cycle_id: str = ""  # NEW
     ) -> str:
         """
         Record a new prediction.
@@ -175,7 +177,8 @@ class EnhancedBrierTracker:
             prob_neutral=prob_neutral,
             prob_bearish=prob_bearish,
             regime=regime,
-            contract=contract
+            contract=contract,
+            cycle_id=cycle_id  # NEW
         )
 
         self.predictions.append(pred)
@@ -196,18 +199,34 @@ class EnhancedBrierTracker:
     def resolve_prediction(
         self,
         agent: str,
-        timestamp: datetime,
-        actual_outcome: str
+        timestamp: datetime = None,
+        actual_outcome: str = None,
+        cycle_id: str = ""  # NEW: preferred lookup key
     ) -> Optional[float]:
         """
         Resolve a prediction with actual outcome.
 
+        Uses cycle_id for lookup if provided (preferred),
+        falls back to agent+timestamp matching (legacy).
+
         Returns:
             Brier score for this prediction
         """
+        from trading_bot.cycle_id import is_valid_cycle_id
+
         # Find matching prediction
         for pred in self.predictions:
-            if pred.agent == agent and pred.timestamp == timestamp and pred.actual_outcome is None:
+            # PRIMARY: match on cycle_id
+            is_match = False
+
+            if is_valid_cycle_id(cycle_id) and pred.cycle_id == cycle_id and pred.agent == agent:
+                is_match = True
+            # FALLBACK: match on agent + timestamp (legacy)
+            elif not is_valid_cycle_id(cycle_id) and timestamp:
+                if pred.agent == agent and pred.timestamp == timestamp:
+                    is_match = True
+
+            if is_match and pred.actual_outcome is None:
                 pred.actual_outcome = actual_outcome
                 pred.resolved_at = datetime.now(timezone.utc)
 
@@ -228,7 +247,7 @@ class EnhancedBrierTracker:
 
                 return brier
 
-        logger.warning(f"No matching prediction found for {agent} at {timestamp}")
+        logger.warning(f"No matching prediction found for {agent} (cycle={cycle_id})")
         return None
 
     def get_agent_reliability(self, agent: str, regime: str = "NORMAL") -> float:
@@ -349,6 +368,7 @@ class EnhancedBrierTracker:
                     'prob_bearish': p.prob_bearish,
                     'regime': p.regime.value,
                     'contract': p.contract,
+                    'cycle_id': p.cycle_id,  # NEW
                     'actual_outcome': p.actual_outcome,
                     'resolved_at': p.resolved_at.isoformat() if p.resolved_at else None
                 }
@@ -406,6 +426,7 @@ class EnhancedBrierTracker:
                     prob_bearish=p['prob_bearish'],
                     regime=MarketRegime(p.get('regime', 'NORMAL')),
                     contract=p.get('contract', ''),
+                    cycle_id=p.get('cycle_id', ''),  # NEW
                     actual_outcome=p.get('actual_outcome'),
                     resolved_at=datetime.fromisoformat(p['resolved_at']) if p.get('resolved_at') else None
                 )

@@ -14,6 +14,8 @@ from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager # Import StateManager
 from trading_bot.compliance import ComplianceGuardian
 from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type, TriggerType, detect_market_regime_simple
+from trading_bot.cycle_id import generate_cycle_id
+from trading_bot.brier_scoring import get_brier_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -140,13 +142,16 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 "_agent_reports": {}
             }
 
+        # === Generate Cycle ID for this contract's decision ===
+        cycle_id = generate_cycle_id("KC")
+
         agent_data = {} # Initialize outside try/except to avoid UnboundLocalError
         regime_for_voting = 'UNKNOWN' # Initialize here to avoid scope issues
         reports = {} # Initialize here to ensure scope for return
 
         async with sem:
             try:
-                logger.info(f"Convening Council for {contract_name}...")
+                logger.info(f"Convening Council for {contract_name} (Cycle: {cycle_id})...")
 
                 # A. Define Research Tasks
                 # Note: We use specific keywords to guide the Flash model search
@@ -511,6 +516,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                             strategy_type_log = 'BEAR_PUT_SPREAD'
 
                     council_log_entry = {
+                        "cycle_id": cycle_id,
                         "timestamp": datetime.now(timezone.utc),
                         "contract": contract_name,
                         "entry_price": ml_signal.get('price'),
@@ -559,6 +565,55 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         "trigger_type": weighted_result.get('trigger_type', 'scheduled'),
                     }
                     log_council_decision(council_log_entry)
+
+                    # === NEW: Record Structured Predictions for Brier Scoring ===
+                    try:
+                        tracker = get_brier_tracker()
+                        timestamp_now = datetime.now(timezone.utc)
+
+                        # Record each agent's prediction
+                        for agent_name, report in reports.items():
+                            # Default
+                            direction = 'NEUTRAL'
+                            confidence = 0.5
+
+                            if isinstance(report, dict):
+                                # Structured report
+                                direction = report.get('sentiment', 'NEUTRAL')
+                                confidence = report.get('confidence', 0.5)
+                                # Fallback parsing if sentiment missing or raw string inside dict
+                                if not direction or direction == 'N/A':
+                                    report_str = str(report.get('data', '')).upper()
+                                    if 'BULLISH' in report_str: direction = 'BULLISH'
+                                    elif 'BEARISH' in report_str: direction = 'BEARISH'
+                            else:
+                                # Legacy string report
+                                report_str = str(report).upper()
+                                if 'BULLISH' in report_str: direction = 'BULLISH'
+                                elif 'BEARISH' in report_str: direction = 'BEARISH'
+
+                            tracker.record_prediction_structured(
+                                agent=agent_name,
+                                predicted_direction=direction,
+                                predicted_confidence=float(confidence),
+                                actual='PENDING',
+                                timestamp=timestamp_now,
+                                cycle_id=cycle_id
+                            )
+
+                        # Also record Master Decision
+                        tracker.record_prediction_structured(
+                            agent='master',
+                            predicted_direction=decision.get('direction', 'NEUTRAL'),
+                            predicted_confidence=float(decision.get('confidence', 0.5)),
+                            actual='PENDING',
+                            timestamp=timestamp_now,
+                            cycle_id=cycle_id
+                        )
+
+                    except Exception as brier_e:
+                        logger.error(f"Failed to record Brier predictions for {contract_name}: {brier_e}")
+
                 except Exception as log_e:
                     logger.error(f"Failed to log council decision for {contract_name}: {log_e}")
 
