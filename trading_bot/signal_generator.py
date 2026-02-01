@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from ib_insync import IB
 from trading_bot.agents import CoffeeCouncil
 from trading_bot.ib_interface import get_active_futures # CORRECTED IMPORT
-from trading_bot.model_signals import log_model_signal # Keep existing logging
+from trading_bot.market_data_provider import build_all_market_contexts
 from trading_bot.utils import (
     log_council_decision,
     get_active_ticker
@@ -77,41 +77,54 @@ def _detect_imminent_catalyst(agent_data: dict) -> str | None:
 
     return None
 
-async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
+async def generate_signals(ib: IB, config: dict) -> list:
     """
-    Generates trading signals by combining the existing ML signals (signals_list)
-    with the Gemini Coffee Council's qualitative analysis.
-    """
-    # 1. Validation
-    if not signals_list or not isinstance(signals_list, list) or len(signals_list) != 5:
-        logger.error(f"Invalid signals list from inference engine: {signals_list}")
-        return []
+    Generates trading signals via the Council's multi-agent analysis.
 
+    Market data is fetched directly from IBKR for each active contract.
+    The Council (8 specialized agents + adversarial debate + weighted voting)
+    is the sole decision-maker — no ML prior or anchoring bias.
+
+    Args:
+        ib: Connected IB instance
+        config: Application config with commodity, strategy, and agent settings
+
+    Returns:
+        List of signal dicts, one per active contract
+    """
     logger.info("--- Starting Multi-Agent Signal Generation (Council) ---")
 
-    # 2. Initialize Council & Compliance
+    # 1. Initialize Council & Compliance
     council = None
     compliance = None
     try:
         council = CoffeeCouncil(config)
         compliance = ComplianceGuardian(config)
     except Exception as e:
-        logger.error(f"Failed to initialize Coffee Council: {e}. Falling back to raw ML signals.")
+        logger.error(f"Failed to initialize Coffee Council: {e}. Cannot proceed without Council.")
         send_pushover_notification(
             config.get('notifications', {}),
             "Coffee Council Startup Failed",
-            f"Error: {e}. Bot will use raw ML signals."
+            f"Error: {e}. No ML fallback — aborting signal generation."
         )
-        # We proceed; logic below handles council=None by skipping agent calls
+        return []  # No ML fallback — Council is required
 
-    # 3. Get Active Futures (using passed-in IB instance)
+    # 2. Get Active Futures
     active_futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=5)
-
-    # Sort chronologically to match the assumed order of signals_list
     sorted_contracts = sorted(active_futures, key=lambda c: c.lastTradeDateOrContractMonth)
 
-    if len(sorted_contracts) < len(signals_list):
-        logger.warning(f"Mismatch: {len(signals_list)} signals but only {len(sorted_contracts)} active contracts found.")
+    if not sorted_contracts:
+        logger.error("No active futures found. Cannot generate signals.")
+        return []
+
+    # 3. Build Market Context for All Contracts (replaces ML inference)
+    market_contexts = await build_all_market_contexts(ib, sorted_contracts, config)
+
+    if not market_contexts:
+        logger.error("Failed to build market context. Cannot proceed.")
+        return []
+
+    logger.info(f"Market context built for {len(market_contexts)} contracts")
 
     final_signals = []
 
@@ -119,31 +132,20 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
     sem = asyncio.Semaphore(3)
 
     # 4. Define the async processor for a single contract
-    async def process_contract(contract, ml_signal):
+    async def process_contract(contract, market_ctx):
         contract_name = f"{contract.localSymbol} ({contract.lastTradeDateOrContractMonth[:6]})"
 
-        # Default values (Fallback to ML)
+        # Default values
         final_data = {
             "action": "NEUTRAL",
-            "confidence": ml_signal.get('confidence', 0.0),
-            "expected_price": ml_signal.get('expected_price'),
-            "reason": ml_signal.get('reason', 'N/A')
+            "confidence": market_ctx.get('confidence', 0.5),
+            "expected_price": market_ctx.get('expected_price'),
+            "reason": market_ctx.get('reason', 'N/A')
         }
 
-        # Map ML 'LONG'/'SHORT' to Council's 'BULLISH'/'BEARISH'
-        raw_action = ml_signal.get('action', 'NEUTRAL')
-        if raw_action == "LONG": final_data["action"] = "BULLISH"
-        elif raw_action == "SHORT": final_data["action"] = "BEARISH"
-
-        # If Council is offline, return ML defaults immediately
+        # If Council is offline, we already aborted above, but keeping safety check logic if reused
         if not council:
-            return {
-                **ml_signal,
-                **final_data,
-                "contract_month": contract.lastTradeDateOrContractMonth[:6],
-                "direction": final_data["action"],  # Ensure 'direction' key exists for logging
-                "_agent_reports": {}
-            }
+            return {}
 
         # === Generate Cycle ID for this contract's decision ===
         cycle_id = generate_cycle_id(get_active_ticker(config))
@@ -233,14 +235,11 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 trigger_type = determine_trigger_type(trigger_source)
 
                 # Detect Regime for Voting
-                # Estimate price change from ML signal
+                # Use volatility from market context directly
                 price_change = 0.0
-                if ml_signal and 'price' in ml_signal and 'expected_price' in ml_signal:
-                    try:
-                        curr = ml_signal['price']
-                        exp = ml_signal['expected_price']
-                        if curr: price_change = (exp - curr) / curr
-                    except: pass
+                if market_ctx and 'volatility_5d' in market_ctx:
+                    # Use actual measured volatility instead of ML prediction delta
+                    price_change = market_ctx.get('volatility_5d', 0.0) or 0.0
 
                 vol_report = reports.get('volatility', '')
                 vol_report_str = vol_report.get('data', vol_report) if isinstance(vol_report, dict) else str(vol_report)
@@ -250,7 +249,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 weighted_result = await calculate_weighted_decision(
                     agent_reports=reports,
                     trigger_type=trigger_type,
-                    ml_signal=ml_signal,
+                    ml_signal=market_ctx,
                     ib=ib,
                     contract=contract,
                     regime=regime_for_voting
@@ -305,7 +304,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                             final_data["action"] = "NEUTRAL"
                             final_data["reason"] = "Signal Priced In (24h move > 3%)"
                             return {
-                                **ml_signal,
+                                **market_ctx,
                                 **final_data,
                                 "contract_month": contract.lastTradeDateOrContractMonth[:6],
                                 "prediction_type": "NEUTRAL",  # <-- FIX: Add missing key
@@ -320,7 +319,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                             final_data["action"] = "NEUTRAL"
                             final_data["reason"] = "Signal Priced In (24h move < -3%)"
                             return {
-                                **ml_signal,
+                                **market_ctx,
                                 **final_data,
                                 "contract_month": contract.lastTradeDateOrContractMonth[:6],
                                 "prediction_type": "NEUTRAL",  # <-- FIX: Add missing key
@@ -349,7 +348,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                     logger.warning(f"Failed to check sensor status: {e}")
 
                 # Call decided (which now includes the Hegelian Loop)
-                decision = await council.decide(contract_name, ml_signal, reports, market_context_str)
+                decision = await council.decide(contract_name, market_ctx, reports, market_context_str)
 
                 # Ensure decision confidence is valid
                 try:
@@ -424,8 +423,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 # Robust extraction of price
                 proj_price = decision.get('projected_price_5_day') or decision.get('projection_price_5_day')
 
-                # Use Live Price if available, else ML signal price (stale fallback)
-                current_price = live_price_val if live_price_val is not None else ml_signal.get('price')
+                # Use Live Price if available, else signal price
+                current_price = live_price_val if live_price_val is not None else market_ctx.get('price')
 
                 if proj_price and current_price:
                     # Calculate percent change
@@ -498,7 +497,7 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                     # Moved inside logging block to capture state for DB
                     final_direction_log = final_data["action"]
                     vol_sentiment_log = agent_data.get('volatility_sentiment', 'NEUTRAL')
-                    regime_log = regime_for_voting if regime_for_voting != 'UNKNOWN' else ml_signal.get('regime', 'UNKNOWN')
+                    regime_log = regime_for_voting if regime_for_voting != 'UNKNOWN' else market_ctx.get('regime', 'UNKNOWN')
 
                     if final_direction_log == 'NEUTRAL':
                         agent_conflict_score_log = _calculate_agent_conflict(agent_data)
@@ -522,9 +521,9 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                         "cycle_id": cycle_id,
                         "timestamp": datetime.now(timezone.utc),
                         "contract": contract_name,
-                        "entry_price": ml_signal.get('price'),
-                        "ml_signal": raw_action,
-                        "ml_confidence": ml_signal.get('confidence'),
+                        "entry_price": market_ctx.get('price'),
+                        "ml_signal": None,
+                        "ml_confidence": None,
 
                         # Unpack agent data (FULL TEXT, NO TRUNCATION)
                         # NOTE: Agent keys map to UI-friendly names
@@ -636,8 +635,8 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
 
         final_direction = final_data["action"]
         vol_sentiment = agent_data.get('volatility_sentiment', 'NEUTRAL')
-        # Use regime_for_voting calculated earlier if available, else ML signal fallback
-        regime = regime_for_voting if regime_for_voting != 'UNKNOWN' else ml_signal.get('regime', 'UNKNOWN')
+        # Use regime_for_voting calculated earlier if available, else fallback
+        regime = regime_for_voting if regime_for_voting != 'UNKNOWN' else market_ctx.get('regime', 'UNKNOWN')
 
         prediction_type = "DIRECTIONAL"
         vol_level = None
@@ -679,10 +678,10 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 "regime": regime,
                 "volatility_sentiment": vol_sentiment,
                 "confidence": final_data["confidence"],
-                "price": ml_signal.get('price'),
-                "sma_200": ml_signal.get('sma_200'),
+                "price": market_ctx.get('price'),
+                "sma_200": market_ctx.get('sma_200'),
                 "expected_price": final_data["expected_price"],
-                "predicted_return": ml_signal.get('predicted_return'),
+                "predicted_return": market_ctx.get('predicted_return'),
                 "_agent_reports": reports
             }
         else:
@@ -694,20 +693,18 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
                 "regime": regime,
                 "volatility_sentiment": vol_sentiment,
                 "confidence": final_data["confidence"],
-                "price": ml_signal.get('price'),
-                "sma_200": ml_signal.get('sma_200'),
+                "price": market_ctx.get('price'),
+                "sma_200": market_ctx.get('sma_200'),
                 "expected_price": final_data["expected_price"],
-                "predicted_return": ml_signal.get('predicted_return'),
+                "predicted_return": market_ctx.get('predicted_return'),
                 "_agent_reports": reports
             }
 
     # 5. Execute for all contracts
     tasks = []
     for i, contract in enumerate(sorted_contracts):
-        # Match contract to the corresponding ML signal by index
-        # (Assuming signals_list is sorted chronologically like active_futures)
-        ml_signal = signals_list[i] if i < len(signals_list) else {}
-        tasks.append(process_contract(contract, ml_signal))
+        market_ctx = market_contexts[i] if i < len(market_contexts) else {}
+        tasks.append(process_contract(contract, market_ctx))
 
     final_signals_list = await asyncio.gather(*tasks)
 
@@ -732,27 +729,5 @@ async def generate_signals(ib: IB, signals_list: list, config: dict) -> list:
             logger.info(f"Persisted {len(consolidated_reports)} agent reports to state.")
         except Exception as e:
             logger.error(f"Failed to persist agent reports: {e}")
-
-    # --- Persist Latest ML Signals to State ---
-    # Store with a specific key "latest_ml_signals" to avoid conflict with agents
-    # StateManager merges updates, so this works nicely.
-    try:
-        StateManager.save_state({"latest_ml_signals": final_signals_list})
-        logger.info("Persisted latest ML signals to state.")
-    except Exception as e:
-        logger.error(f"Failed to persist ML signals: {e}")
-
-    # 6. Logging & Return
-    for sig in final_signals_list:
-        # Log to CSV/File using existing utility
-        log_model_signal(
-            sig['contract_month'],
-            sig['direction'],
-            price=sig.get('price'),
-            sma_200=sig.get('sma_200'),
-            expected_price=sig.get('expected_price'),
-            confidence=sig.get('confidence'),
-            predicted_return=sig.get('predicted_return')
-        )
 
     return final_signals_list

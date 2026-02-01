@@ -20,9 +20,9 @@ from ib_insync import *
 from ib_insync import util
 
 from trading_bot.logging_config import setup_logging
-from trading_bot.utils import get_position_details, log_trade_to_ledger, get_active_futures, get_dollar_multiplier
+from trading_bot.utils import get_position_details, log_trade_to_ledger, get_dollar_multiplier
 from trading_bot.order_manager import get_trade_ledger_df
-from trading_bot.ib_interface import place_order
+from trading_bot.ib_interface import place_order, get_active_futures
 from notifications import send_pushover_notification
 from trading_bot.tms import TransactiveMemory
 

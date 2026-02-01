@@ -11,22 +11,19 @@ from ib_insync import util
 
 class TestOrderManager(unittest.TestCase):
 
-    @patch('trading_bot.order_manager.run_data_pull')
-    @patch('trading_bot.order_manager.get_model_predictions')
+    @patch('trading_bot.order_manager.generate_signals')
     @patch('trading_bot.order_manager.IBConnectionPool')
-    def test_generate_orders_aborts_on_data_pull_failure(self, mock_pool, mock_get_predictions, mock_run_data_pull):
+    def test_generate_and_queue_orders_calls_signal_generator(self, mock_pool, mock_generate_signals):
         async def run_test():
-            mock_run_data_pull.return_value = None
-            mock_get_predictions.return_value = {'price_changes': [1.0]}
             mock_ib_instance = AsyncMock()
             mock_pool.get_connection = AsyncMock(return_value=mock_ib_instance)
+            mock_generate_signals.return_value = [] # Return empty list to stop early
 
-            config = {}
+            config = {'strategy': {'signal_threshold': 0.5}}
             await generate_and_queue_orders(config)
 
-            mock_run_data_pull.assert_called_once()
-            mock_get_predictions.assert_not_called()
-            mock_pool.get_connection.assert_not_called()
+            mock_generate_signals.assert_called_once()
+            mock_pool.get_connection.assert_called_once()
 
         asyncio.run(run_test())
 

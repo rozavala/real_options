@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from ib_insync import *
+from ib_insync import Order # Explicit import to fix NameError in type hints
 
 from trading_bot.logging_config import setup_logging
 from trading_bot.utils import (

@@ -18,6 +18,7 @@ from google.genai import types
 from trading_bot.state_manager import StateManager
 from trading_bot.sentinels import SentinelTrigger
 from trading_bot.semantic_router import SemanticRouter
+from trading_bot.market_data_provider import format_market_context_for_prompt
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole, get_router
 from trading_bot.tms import TransactiveMemory
 from trading_bot.reliability_scorer import ReliabilityScorer
@@ -596,10 +597,12 @@ OUTPUT FORMAT (JSON ONLY):
         if opponent_argument:
             context_prompt = f"\n\n--- OPPONENT ARGUMENT ---\n{opponent_argument}\n\nTASK: The Bear has argued X. You must explicitly refute this point with evidence."
 
+        market_data_str = format_market_context_for_prompt(ml_signal)
+
         prompt = (
             f"{persona_prompt}\n\n"
             f"--- DESK REPORTS ---\n{reports_text}\n\n"
-            f"--- ML SIGNAL ---\n{json.dumps(ml_signal, indent=2)}\n"
+            f"--- MARKET DATA ---\n{market_data_str}\n"
             f"{context_prompt}\n\n"
             f"Generate your response following the specified format:\n"
             f"{DEBATE_OUTPUT_SCHEMA}"
@@ -750,19 +753,22 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         if trigger_reason:
             urgent_context = f"*** URGENT TRIGGER: {trigger_reason} ***\n\n"
 
+        # Format market data context (replaces ML signal injection)
+        market_data_str = format_market_context_for_prompt(ml_signal)
+
         full_prompt = (
             f"{master_persona}\n\n"
             f"{urgent_context}"
             f"You have received structured reports regarding {contract_name}.\n"
             f"{market_context}\n\n"
-            f"QUANT MODEL SIGNAL:\n{json.dumps(ml_signal, indent=2)}\n\n"
+            f"MARKET DATA:\n{market_data_str}\n\n"
             f"--- DESK REPORTS (THESIS) ---\n{reports_text}\n\n"
             f"--- PERMABEAR CRITIQUE (ANTITHESIS) ---\n{bear_json}\n\n"
             f"--- PERMABULL DEFENSE (ANTITHESIS) ---\n{bull_json}\n\n"
             f"SYNTHESIS RULES:\n"
             f"1. If Bear and Bull BOTH acknowledge a risk -> Weight it 2x\n"
-            f"2. If ML confidence > 0.75 and both debaters cite it -> Follow ML\n"
-            f"3. If ML confidence < 0.5 -> Require unanimous agent agreement for action\n\n"
+            f"2. If agent consensus confidence > 0.85 -> Strong signal, consider action\n"
+            f"3. If agent conflict score is high -> Consider volatility play\n\n"
             f"TASK: Synthesize the evidence. Judge the debate. Render a verdict.\n"
             f"NEGATIVE CONSTRAINT: DO NOT output specific numerical price projections unless explicitly provided in reports.\n"
             f"OUTPUT FORMAT: Valid JSON object ONLY.\n"
