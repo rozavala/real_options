@@ -51,6 +51,7 @@ from trading_bot.compliance import ComplianceGuardian
 from trading_bot.position_sizer import DynamicPositionSizer
 from trading_bot.brier_scoring import get_brier_tracker
 from trading_bot.tms import TransactiveMemory
+from trading_bot.budget_guard import BudgetGuard
 
 # --- Logging Setup ---
 setup_logging()
@@ -58,6 +59,7 @@ logger = logging.getLogger("Orchestrator")
 
 # --- Global Process Handle for the monitor ---
 monitor_process = None
+GLOBAL_BUDGET_GUARD = None
 
 class TriggerDeduplicator:
     def __init__(self, window_seconds: int = 7200, state_file="data/deduplicator_state.json"):
@@ -524,6 +526,11 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
     """
     logger.info(f"--- POSITION AUDIT CYCLE ({trigger_source}) ---")
 
+    # Check Budget
+    if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
+        logger.warning("Budget hit — skipping Position Audit (LLM disabled)")
+        return
+
     try:
         ib = await IBConnectionPool.get_connection("audit", config)
         configure_market_data_type(ib)
@@ -878,6 +885,12 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 
     async with EMERGENCY_LOCK:
         try:
+            # Check Budget
+            if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
+                logger.warning("Budget hit — skipping Emergency Cycle (Sentinel-only mode)")
+                send_pushover_notification(config.get('notifications', {}), "Budget Guard",
+                    f"Daily API budget hit. Sentinel-only mode active.")
+                return
             logger.info(f"🚨 EMERGENCY CYCLE TRIGGERED by {trigger.source}: {trigger.reason}")
             send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", trigger.reason)
 
@@ -1497,11 +1510,17 @@ async def run_sentinels(config: dict):
 # IMPORTANT: Keys are New York Local Time.
 # The orchestrator dynamically converts these to UTC based on DST.
 
+async def guarded_generate_orders(config: dict):
+    if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
+        logger.warning("Budget hit - skipping scheduled orders.")
+        return
+    await generate_and_execute_orders(config)
+
 schedule = {
     time(3, 30): start_monitoring,           # Market Open
     time(3, 31): process_deferred_triggers,  # 1 min after Open (Retry deferred)
     time(8, 30): run_position_audit_cycle,   # NEW: Morning Roll Call (Defense before Offense)
-    time(9, 0): generate_and_execute_orders, # Morning Trading
+    time(9, 0): guarded_generate_orders,     # Morning Trading (Guarded)
     time(11, 0): run_position_audit_cycle,   # 11:00 ET - Midday audit (NEW)
     time(13, 0): run_position_audit_cycle,   # 13:00 ET - Pre-close audit (NEW)
     time(12, 45): close_stale_positions,     # MOVED: Better liquidity
@@ -1529,6 +1548,11 @@ async def main():
     if not config:
         logger.critical("Orchestrator cannot start without a valid configuration."); return
     
+    # Initialize Budget Guard
+    global GLOBAL_BUDGET_GUARD
+    GLOBAL_BUDGET_GUARD = BudgetGuard(config)
+    logger.info(f"Budget Guard initialized. Daily limit: ${GLOBAL_BUDGET_GUARD.daily_budget}")
+
     # Process deferred triggers from overnight - ONLY if market is open
     if is_market_open():
         await process_deferred_triggers(config)
