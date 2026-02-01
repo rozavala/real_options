@@ -11,7 +11,8 @@ from ib_insync import IB, PortfolioItem
 
 from trading_bot.logging_config import setup_logging
 from notifications import send_pushover_notification
-from trading_bot.model_signals import get_model_signals_df
+# ML model_signals module removed (see archive/ml_pipeline/).
+# Signal data now comes from Council decisions logged in council_history.csv.
 from trading_bot.performance_graphs import generate_performance_charts
 from config_loader import load_config
 
@@ -213,15 +214,25 @@ def generate_executive_summary(
     return report, final_pnl_for_title
 
 def generate_morning_signals_report(signals_df: pd.DataFrame, today_date: datetime.date) -> str:
-    """Creates a report of the signals generated this morning."""
-    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date]
+    """Creates a report of morning trading signals.
+
+    NOTE: ML model signals were removed in v4.0. This function now operates
+    on council_history data if provided, or returns a placeholder message.
+    Future enhancement: pull today's council decisions from council_history.csv.
+    """
+    if signals_df.empty:
+        return "Council-driven signals (see Council History for today's decisions).\n"
+
+    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date] if 'timestamp' in signals_df.columns else signals_df
     if today_signals.empty:
-        return "No model signals for today.\n"
+        return "No signals generated today yet.\n"
 
     report = f"{'Contract':<12} {'Signal':<10}\n"
     report += "-" * 22 + "\n"
     for _, row in today_signals.iterrows():
-        report += f"{row['contract']:<12} {row['signal']:<10}\n"
+        contract_col = 'contract' if 'contract' in row.index else 'symbol'
+        signal_col = 'signal' if 'signal' in row.index else 'master_decision'
+        report += f"{row.get(contract_col, 'N/A'):<12} {row.get(signal_col, 'N/A'):<10}\n"
     return report
 
 def generate_open_positions_report(portfolio: list) -> tuple[str, float]:
@@ -365,7 +376,9 @@ async def analyze_performance(config: dict) -> dict | None:
     """
     # Ledger is still needed for LTD stats and charts
     trade_df = get_trade_ledger_df()
-    signals_df = get_model_signals_df()
+    # ML signals removed — morning signal report now uses council_history.csv
+    signals_df = pd.DataFrame(columns=['timestamp', 'contract', 'signal', 'price', 'confidence'])
+    signals_df['timestamp'] = pd.to_datetime(signals_df['timestamp'])
 
     logger.info("--- Starting Daily Performance Analysis ---")
 

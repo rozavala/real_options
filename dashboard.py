@@ -6,18 +6,24 @@ Streamlit's native multi-page support handles routing via the pages/ directory.
 """
 
 import streamlit as st
+from config_loader import load_config
+
+# Dynamic configuration for commodity-aware branding
+_cfg = load_config()
+_commodity_name = _cfg.get('commodity', {}).get('name', 'Coffee') if _cfg else 'Coffee'
+_commodity_emoji = {'Coffee': '☕', 'Cocoa': '🍫', 'Sugar': '🍬'}.get(_commodity_name.split()[0], '📊')
 
 st.set_page_config(
     layout="wide",
-    page_title="Coffee Bot Mission Control",
-    page_icon="☕",
+    page_title=f"{_commodity_name} Mission Control",
+    page_icon=_commodity_emoji,
     initial_sidebar_state="expanded"
 )
 
 # The presence of files in pages/ directory enables multi-page mode automatically.
 # This file becomes the "home" page or can redirect.
 
-st.title("☕ Coffee Bot Mission Control")
+st.title(f"{_commodity_emoji} {_commodity_name} Mission Control")
 st.markdown("---")
 
 st.markdown("""

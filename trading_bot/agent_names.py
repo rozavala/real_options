@@ -16,7 +16,7 @@ CANONICAL_AGENTS = [
     'technical',       # Technical Analyst
     'volatility',      # Volatility Analyst
     'master_decision', # Master Strategist
-    'ml_model',        # ML Model
+    # 'ml_model' removed in v4.0 — ML pipeline archived
 ]
 
 # Map various names to canonical names
@@ -66,7 +66,7 @@ NAME_ALIASES = {
     'master_decision': 'master_decision',
     'master_strategist': 'master_decision',
 
-    # ML
+    # ML (archived v4.0 — aliases kept for backward compat with historical data)
     'ml_model': 'ml_model',
     'ml': 'ml_model',
     'ml_signal': 'ml_model',

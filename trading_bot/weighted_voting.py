@@ -137,32 +137,13 @@ def parse_sentiment_to_direction(sentiment_tag: str) -> Direction:
 
 def normalize_ml_confidence(raw_confidence: float, calibration_data: dict = None) -> float:
     """
-    Normalize ML confidence to be comparable with agent confidence.
+    DEPRECATED: ML pipeline removed in v4.0.
 
-    ML models are typically overconfident. We apply Platt scaling or
-    temperature scaling based on historical calibration.
-
-    Args:
-        raw_confidence: Raw model confidence (0-1)
-        calibration_data: Historical accuracy at each confidence level
-
-    Returns:
-        Calibrated confidence that better reflects actual accuracy
+    Retained for backward compatibility with any external callers.
+    Will be removed in v5.0.
     """
-    # Default: Apply conservative dampening (Linear Scaling)
-    # We want to pull confidence towards 0.5 (neutral) to reduce overconfidence.
-    # Formula: 0.5 + (raw - 0.5) / damping_factor
-
-    # Ensure raw_confidence is within [0, 1]
     raw_confidence = max(0.0, min(1.0, raw_confidence))
-
-    damping_factor = 1.5 # Divisor
-
-    # Example (T=1.5):
-    #   0.90 -> 0.5 + 0.40/1.5 = 0.77
-    #   0.10 -> 0.5 - 0.40/1.5 = 0.23
-    #   0.50 -> 0.50
-
+    damping_factor = 1.5
     return 0.5 + ((raw_confidence - 0.5) / damping_factor)
 
 def extract_sentiment_from_report(report_text: str) -> tuple[str, float]:
@@ -469,36 +450,14 @@ async def calculate_weighted_decision(
 
     normalized_score = total_weighted_score / total_weight if total_weight > 0 else 0.0
 
-    # DYNAMIC ML BLENDING (replaces hardcoded 30%)
+    # NOTE: ML blending removed in v4.0 (ML pipeline archived).
+    # The ml_signal parameter is retained in the function signature for backward
+    # compatibility (market_data_provider passes context data through it),
+    # but it no longer influences the weighted score.
+    # Agents now operate at 100% weight — no ML dampening.
     if ml_signal:
-        ml_dir = ml_signal.get('direction', 'NEUTRAL')
-        raw_ml_conf = ml_signal.get('confidence', 0.5)
-
-        # === NEW: Normalize ML confidence before blending ===
-        ml_conf = normalize_ml_confidence(raw_ml_conf)
-        logger.info(f"ML confidence normalized: {raw_ml_conf:.2f} -> {ml_conf:.2f}")
-
-        ml_val = {'BULLISH': 1, 'BEARISH': -1, 'NEUTRAL': 0}.get(ml_dir, 0)
-
-        # Get ML model's Brier-adjusted weight
-        ml_base_weight = 0.30  # Configurable base weight
-        ml_reliability = tracker.get_agent_weight_multiplier('ml_model')
-
-        # REGIME OVERRIDE: Zero out ML during crisis (Black Swan protection)
-        if regime in ('HIGH_VOLATILITY', 'CRISIS', 'HIGH_VOL'):
-            logger.warning(f"Regime={regime}: Zeroing ML weight (structural break risk)")
-            ml_dynamic_weight = 0.0
-        else:
-            # Apply same formula as other agents: base * reliability
-            ml_dynamic_weight = ml_base_weight * ml_reliability
-            # Cap at 40% max to prevent ML domination even with high accuracy
-            ml_dynamic_weight = min(0.40, ml_dynamic_weight)
-
-        # Blend: (1 - ml_weight) * agents + ml_weight * ML
-        agent_weight = 1.0 - ml_dynamic_weight
-        normalized_score = (agent_weight * normalized_score) + (ml_dynamic_weight * ml_val * ml_conf)
-
-        logger.info(f"ML Blend: Reliability={ml_reliability:.2f}, DynamicWeight={ml_dynamic_weight:.2f}, Regime={regime}")
+        logger.debug(f"Market context received (informational only, not blended): "
+                     f"regime={ml_signal.get('regime')}, price={ml_signal.get('price')}")
 
     if normalized_score > 0.15:
         final_direction = 'BULLISH'

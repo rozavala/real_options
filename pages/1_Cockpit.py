@@ -476,7 +476,11 @@ if config:
     with bench_cols[0]:
         st.metric("S&P 500", f"{benchmarks.get('SPY', 0):+.2f}%")
     with bench_cols[1]:
-        st.metric("Coffee", f"{benchmarks.get('KC=F', 0):+.2f}%")
+        # Dynamic commodity from config
+        ticker = config.get('commodity', {}).get('ticker', 'KC')
+        name = config.get('commodity', {}).get('name', 'Coffee')
+        yf_ticker = f"{ticker}=F"
+        st.metric(name, f"{benchmarks.get(yf_ticker, 0):+.2f}%")
 
     # Rolling Win Rate Sparkline
     st.markdown("---")

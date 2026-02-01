@@ -65,7 +65,7 @@ Each environment folder contains:
   - `data/tms/` - Transactive Memory System data (ChromaDB files)
 - `archive_ledger/` - Archived trading ledgers
 - `trade_ledger.csv` - Current trade ledger
-- `model_signals.csv` - ML model signals
+# model_signals.csv removed — ML pipeline archived v4.0
 - `config.json` - Configuration snapshot (sanitized)
 - `state.json` - System state
 - `system_snapshot.txt` - System health at time of collection

@@ -58,7 +58,6 @@ class TestPerformanceAnalyzer:
         # Realized P&L from ledger will be small (e.g. 30), but Equity P&L will be NetLiq - 300,000.
 
         with patch('performance_analyzer.generate_performance_charts') as mock_generate_charts, \
-             patch('performance_analyzer.get_model_signals_df') as mock_get_signals, \
              patch('performance_analyzer.get_trade_ledger_df') as mock_get_ledger, \
              patch('performance_analyzer.datetime') as mock_datetime, \
              patch('performance_analyzer.IB') as mock_ib_class, \
@@ -87,14 +86,6 @@ class TestPerformanceAnalyzer:
             mock_read_csv.return_value = mock_equity_df
 
             mock_get_ledger.return_value = mock_ledger_df
-
-            # Signals DF - Ensure timestamp is datetime
-            mock_signals_df = pd.DataFrame({
-                'timestamp': pd.to_datetime([test_date]),
-                'contract': ['202512'],
-                'signal': ['NEUTRAL']
-            })
-            mock_get_signals.return_value = mock_signals_df
 
             # 3. Mock IB
             mock_ib_instance = AsyncMock()

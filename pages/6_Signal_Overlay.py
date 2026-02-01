@@ -32,13 +32,13 @@ from trading_bot.timestamps import parse_ts_column
 st.set_page_config(layout="wide", page_title="Signal Analysis | Coffee Bot")
 
 st.title("🎯 Signal Overlay Analysis")
-st.caption("Forensic analysis of Council decisions against Coffee Futures price action")
+st.caption("Forensic analysis of Council decisions against futures price action")
 
 # === CONFIGURATION CONSTANTS ===
 
 AGENT_MAPPING = {
     "👑 Master Decision": "master_decision",
-    "🤖 ML Signal": "ml_signal",
+    # "🤖 ML Signal" removed — ML pipeline archived in v4.0
     "🌱 Agronomist (Weather)": "meteorologist_sentiment",
     "💹 Macro Economist": "macro_sentiment",
     "📈 Fundamentalist": "fundamentalist_sentiment",
@@ -812,13 +812,14 @@ if price_df is not None and not price_df.empty:
 
     # 1. Candlestick (Row 1)
     # CRITICAL: Use numerical x-axis for reliable candlestick rendering
+    chart_commodity_label = f"{actual_ticker_display or 'Futures'} (ET)"
     fig.add_trace(go.Candlestick(
         x=price_df['num_index'],
         open=price_df['Open'],
         high=price_df['High'],
         low=price_df['Low'],
         close=price_df['Close'],
-        name="KC Coffee (ET)",
+        name=chart_commodity_label,
         increasing=dict(line=dict(color='#00CC96', width=1), fillcolor='#00CC96'),
         decreasing=dict(line=dict(color='#EF553B', width=1), fillcolor='#EF553B'),
     ), row=1, col=1)
