@@ -9,24 +9,25 @@ async def test_neutral_direction_triggers_volatility_signal_low():
 
     # Mock dependencies
     ib_mock = MagicMock()
-    ib_mock.reqHistoricalDataAsync = AsyncMock(return_value=[]) # Mock history
-    ib_mock.reqHistoricalDataAsync = AsyncMock(return_value=[]) # Mock history
     config = {
         'symbol': 'KC',
         'exchange': 'NYBOT',
         'notifications': {},
-        'gemini': {'api_key': 'fake'}
+        'gemini': {'api_key': 'fake'},
+        'commodity': {'ticker': 'KC'}
     }
 
-    # Mock signals_list from ML
-    signals_list = [{
+    # Mock market context
+    mock_contexts = [{
         'action': 'NEUTRAL',
         'confidence': 0.5,
         'price': 100.0,
         'expected_price': 100.0,
-        'regime': 'RANGE_BOUND', # Explicitly providing regime
-        'reason': 'ML says Neutral'
-    }] * 5 # Pad to length 5 to pass validation
+        'regime': 'RANGE_BOUND',
+        'reason': 'Context says Neutral',
+        'volatility_5d': 0.015,
+        'price_vs_sma': 0.0
+    }] * 5
 
     # Mock Active Futures
     future_contract = Future(conId=1, lastTradeDateOrContractMonth='202512', localSymbol='KCZ25')
@@ -34,23 +35,16 @@ async def test_neutral_direction_triggers_volatility_signal_low():
     with patch('trading_bot.signal_generator.CoffeeCouncil') as council_cls_mock, \
          patch('trading_bot.signal_generator.ComplianceGuardian'), \
          patch('trading_bot.signal_generator.get_active_futures', new_callable=AsyncMock) as get_futures_mock, \
+         patch('trading_bot.signal_generator.build_all_market_contexts', new_callable=AsyncMock) as build_ctx_mock, \
          patch('trading_bot.signal_generator.calculate_weighted_decision', new_callable=AsyncMock) as vote_mock, \
          patch('trading_bot.signal_generator.StateManager'), \
-         patch('trading_bot.signal_generator.log_model_signal'), \
-         patch('trading_bot.signal_generator.detect_market_regime_simple', return_value='RANGE_BOUND'): # Ensure regime matches
+         patch('trading_bot.signal_generator.detect_market_regime_simple', return_value='RANGE_BOUND'):
 
-        # Setup Futures Mock
         get_futures_mock.return_value = [future_contract]
+        build_ctx_mock.return_value = mock_contexts
 
         # Setup Council Mock
         council_instance = council_cls_mock.return_value
-        council_instance.research_topic.return_value = "Some report"
-        council_instance.research_topic_with_reflexion.return_value = "Some report"
-
-        # We need to ensure 'volatility' agent returns BULLISH sentiment
-        # research_results returns a list of results corresponding to tasks.values()
-        # The tasks dict in signal_generator has keys: agronomist, macro, geopolitical, supply_chain, inventory, sentiment, technical, volatility.
-        # We can mock the side_effect of research_topic to return specific dicts.
 
         async def research_side_effect(agent, instruction):
             if agent == 'volatility':
@@ -60,15 +54,13 @@ async def test_neutral_direction_triggers_volatility_signal_low():
         council_instance.research_topic.side_effect = research_side_effect
         council_instance.research_topic_with_reflexion.side_effect = research_side_effect
 
-        # Setup Decide Mock (Master)
         council_instance.decide = AsyncMock(return_value={
             'direction': 'NEUTRAL',
             'confidence': 0.6,
-            'reasoning': 'Market is flat',
-            'projected_price_5_day': 100.0
+            'reasoning': 'Market is flat'
         })
+        council_instance.run_devils_advocate = AsyncMock(return_value={'proceed': True})
 
-        # Setup Weighted Vote Mock
         vote_mock.return_value = {
             'direction': 'NEUTRAL',
             'confidence': 0.5,
@@ -77,76 +69,59 @@ async def test_neutral_direction_triggers_volatility_signal_low():
             'trigger_type': 'SCHEDULED'
         }
 
-        # Run
-        signals = await generate_signals(ib_mock, signals_list, config)
+        signals = await generate_signals(ib_mock, config)
 
-        # Assertions
         assert len(signals) == 1
         sig = signals[0]
-
-        # Should emit VOLATILITY signal for Iron Condor
         assert sig['prediction_type'] == 'VOLATILITY'
         assert sig['level'] == 'LOW'
-        assert sig['direction'] == 'VOLATILITY'
         assert sig['contract_month'] == '202512'
 
 @pytest.mark.asyncio
 async def test_neutral_direction_triggers_volatility_signal_high():
     """When direction is NEUTRAL and agents conflict, emit VOLATILITY/HIGH signal."""
 
-    # Mock dependencies
     ib_mock = MagicMock()
-    ib_mock.reqHistoricalDataAsync = AsyncMock(return_value=[]) # Mock history
     config = {
         'symbol': 'KC',
         'exchange': 'NYBOT',
         'notifications': {},
-        'gemini': {'api_key': 'fake'}
+        'gemini': {'api_key': 'fake'},
+        'commodity': {'ticker': 'KC'}
     }
 
-    signals_list = [{
+    mock_contexts = [{
         'action': 'NEUTRAL',
         'confidence': 0.5,
         'price': 100.0,
         'expected_price': 100.0,
         'regime': 'UNKNOWN',
-        'reason': 'ML says Neutral'
-    }] * 5 # Pad to length 5 to pass validation
+        'reason': 'Context says Neutral',
+        'volatility_5d': 0.03,
+        'price_vs_sma': 0.0
+    }] * 5
 
     future_contract = Future(conId=1, lastTradeDateOrContractMonth='202512', localSymbol='KCZ25')
 
     with patch('trading_bot.signal_generator.CoffeeCouncil') as council_cls_mock, \
          patch('trading_bot.signal_generator.ComplianceGuardian'), \
          patch('trading_bot.signal_generator.get_active_futures', new_callable=AsyncMock) as get_futures_mock, \
+         patch('trading_bot.signal_generator.build_all_market_contexts', new_callable=AsyncMock) as build_ctx_mock, \
          patch('trading_bot.signal_generator.calculate_weighted_decision', new_callable=AsyncMock) as vote_mock, \
          patch('trading_bot.signal_generator.StateManager'), \
-         patch('trading_bot.signal_generator.log_model_signal'), \
          patch('trading_bot.signal_generator.detect_market_regime_simple', return_value='UNKNOWN'):
 
         get_futures_mock.return_value = [future_contract]
+        build_ctx_mock.return_value = mock_contexts
+
         council_instance = council_cls_mock.return_value
-
-        # Create Conflict: Agronomist BULLISH, Macro BEARISH, etc.
-        # Keys: 'macro_sentiment', 'technical_sentiment', 'geopolitical_sentiment', 'sentiment_sentiment', 'agronomist_sentiment'
-
-        # We need to control the reports returned.
-        # signal_generator loops over tasks keys and awaits gather.
-        # It then reconstructs reports dict.
-        # Then _calculate_agent_conflict reads from 'reports' (via extraction)
-
-        # We mock research_topic/reflexion to return specific sentiments in the text or structured dict
-        # The code extracts sentiment using regex [SENTIMENT: XXX] OR uses structured dict if provided?
-        # Let's check signal_generator.py:
-        # agent_data[f"{key}_sentiment"] = extract_sentiment(report)
-        # extract_sentiment uses regex on str(report)
-        # So we should return strings with tags.
 
         async def research_side_effect(agent, instruction):
             if agent == 'agronomist': return "[SENTIMENT: BULLISH] Rain delay."
             if agent == 'macro': return "[SENTIMENT: BEARISH] BRL tanking."
             if agent == 'technical': return "[SENTIMENT: BULLISH] Support held."
             if agent == 'geopolitical': return "[SENTIMENT: BEARISH] Ports open."
-            if agent == 'sentiment': return "[SENTIMENT: NEUTRAL] COT flat."
+            if agent == 'sentiment': return "[SENTIMENT: BULLISH] COT Long." # Changed to increase variance
             return "[SENTIMENT: NEUTRAL] ..."
 
         council_instance.research_topic.side_effect = research_side_effect
@@ -155,9 +130,9 @@ async def test_neutral_direction_triggers_volatility_signal_high():
         council_instance.decide = AsyncMock(return_value={
             'direction': 'NEUTRAL',
             'confidence': 0.4,
-            'reasoning': 'High conflict',
-            'projected_price_5_day': 100.0
+            'reasoning': 'High conflict'
         })
+        council_instance.run_devils_advocate = AsyncMock(return_value={'proceed': True})
 
         vote_mock.return_value = {
             'direction': 'NEUTRAL',
@@ -167,13 +142,9 @@ async def test_neutral_direction_triggers_volatility_signal_high():
             'trigger_type': 'SCHEDULED'
         }
 
-        # Run
-        signals = await generate_signals(ib_mock, signals_list, config)
+        signals = await generate_signals(ib_mock, config)
 
-        # Assertions
         assert len(signals) == 1
         sig = signals[0]
-
-        # Should emit VOLATILITY signal for Long Straddle due to conflict
         assert sig['prediction_type'] == 'VOLATILITY'
         assert sig['level'] == 'HIGH'

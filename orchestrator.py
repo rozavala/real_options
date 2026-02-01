@@ -1123,31 +1123,11 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     f"Note: If IV data shows N/A, analyst should search Barchart for KC IV Rank.\n"
                 )
 
-                # 4. Load Cached ML Signal (Fix Dummy Signal Blindness)
-                cached_state = StateManager.load_state()
-                cached_ml_signals_raw = cached_state.get('latest_ml_signals', {})
-                if isinstance(cached_ml_signals_raw, dict):
-                    cached_ml_signals = cached_ml_signals_raw.get('data', [])
-                elif isinstance(cached_ml_signals_raw, list):
-                    cached_ml_signals = cached_ml_signals_raw
-                else:
-                    cached_ml_signals = []
-
-                ml_signal = {
-                    "action": "NEUTRAL",
-                    "confidence": 0.5,
-                    "price": ticker.last,
-                    "reason": "Emergency Cycle: ML Signal unavailable/stale.",
-                    "regime": "UNKNOWN"
-                }
-
-                if cached_ml_signals:
-                    # Try to find signal for this contract month
-                    target_month = target_contract.lastTradeDateOrContractMonth[:6]
-                    found_signal = next((s for s in cached_ml_signals if s.get('contract_month') == target_month), None)
-                    if found_signal:
-                        ml_signal = found_signal
-                        logger.info(f"Loaded cached ML signal for {target_month}: {ml_signal.get('direction')}")
+                # 4. Build live market context from IBKR (replaces cached ML signal)
+                from trading_bot.market_data_provider import build_market_context
+                ml_signal = await build_market_context(ib, target_contract, config)
+                ml_signal['reason'] = f"Emergency Cycle triggered by {trigger.source}"
+                logger.info(f"Emergency market context: price={ml_signal.get('price')}, regime={ml_signal.get('regime')}")
 
                 # 5. Run Specialized Cycle
                 decision = await council.run_specialized_cycle(
@@ -1191,8 +1171,8 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         "timestamp": datetime.now(timezone.utc),
                         "contract": contract_name,
                         "entry_price": ml_signal.get('price'),
-                        "ml_signal": ml_signal.get('action'),
-                        "ml_confidence": ml_signal.get('confidence'),
+                        "ml_signal": None,
+                        "ml_confidence": None,
 
                         "meteorologist_sentiment": agent_data.get("agronomist_sentiment"),
                         "meteorologist_summary": agent_data.get("agronomist_summary"),

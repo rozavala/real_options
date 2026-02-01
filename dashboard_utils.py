@@ -745,8 +745,7 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
         'sentiment_sentiment',
         'technical_sentiment',
         'volatility_sentiment',
-        'master_decision',
-        'ml_signal'
+        'master_decision'
     ]
 
     scores = {agent: {'correct': 0, 'total': 0, 'accuracy': 0.0} for agent in agents}

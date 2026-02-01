@@ -15,8 +15,6 @@ from ib_insync import *
 from datetime import timezone
 
 from config_loader import load_config
-from coffee_factors_data_pull_new import main as run_data_pull
-from trading_bot.inference import get_model_predictions
 from notifications import send_pushover_notification
 
 from trading_bot.ib_interface import (
@@ -143,34 +141,14 @@ async def generate_and_queue_orders(config: dict):
     ORDER_QUEUE.clear()  # Clear queue at the start of each day
 
     try:
-        logger.info("Step 1: Running data pull...")
-        data_df = run_data_pull(config)
-        if data_df is None:
-            logger.error("Data pull failed. Cannot proceed with order generation.")
-            send_pushover_notification(config.get('notifications', {}), "Order Generation Failure", "Data pull failed. Aborting.")
-            return
-        logger.info("Data pull complete.")
-
-        logger.info("Step 2: Running local model inference...")
-        signal_threshold = config.get('strategy', {}).get('signal_threshold', 0.015)
-
-        # Run heavy ML inference in a separate thread to avoid blocking the Event Loop
-        loop = asyncio.get_running_loop()
-        predictions = await loop.run_in_executor(None, get_model_predictions, data_df, signal_threshold)
-
-        if not predictions:
-            send_pushover_notification(config.get('notifications', {}), "Order Generation Failure", "Failed to get predictions from local model.")
-            return
-        logger.info(f"Successfully received predictions from local model: {predictions}")
-
         # Use Connection Pool
         try:
             ib = await IBConnectionPool.get_connection("order_manager", config)
             configure_market_data_type(ib)
             logger.info("Connected to IB for signal generation.")
 
-            logger.info("Step 2.5: Generating structured signals from predictions...")
-            signals = await generate_signals(ib, predictions, config)
+            logger.info("Step 1: Generating structured signals via Council...")
+            signals = await generate_signals(ib, config)
             logger.info(f"Generated {len(signals)} signals: {signals}")
 
             futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=5)
@@ -445,7 +423,7 @@ async def generate_and_queue_orders(config: dict):
                     vol_level = signal.get("level", "N/A")
                     signal_summary_parts.append(f"  - <b>{future_month}</b>: {vol_level} Volatility signal")
 
-        signal_summary = "<b>Signals from Two-Brain Model:</b>\n" + "\n".join(signal_summary_parts)
+        signal_summary = "<b>Signals from Council:</b>\n" + "\n".join(signal_summary_parts)
 
         # 2. Summarize the queued orders
         order_summary_parts = []
