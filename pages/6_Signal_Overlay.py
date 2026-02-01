@@ -805,68 +805,15 @@ if price_df is not None and not price_df.empty:
 
     # 1. Candlestick (Row 1)
     # CRITICAL: Use numerical x-axis for reliable candlestick rendering
-    # Manual candlestick rendering using Bar (bodies) + Scatter (wicks).
-    # go.Candlestick silently fails to render on small datasets with numerical x-axes,
-    # so we draw candles from reliable primitives instead.
-    bullish_mask = price_df['Close'] >= price_df['Open']
-
-    # Wick lines (Low→High vertical segments) per candle, split by direction for color
-    for color, mask in [('#00CC96', bullish_mask), ('#EF553B', ~bullish_mask)]:
-        subset = price_df[mask]
-        if subset.empty:
-            continue
-        ns = len(subset)
-        wx = np.empty(ns * 3)
-        wx[0::3] = subset['num_index'].values
-        wx[1::3] = subset['num_index'].values
-        wx[2::3] = np.nan
-        wy = np.empty(ns * 3)
-        wy[0::3] = subset['Low'].values
-        wy[1::3] = subset['High'].values
-        wy[2::3] = np.nan
-        fig.add_trace(go.Scatter(
-            x=wx, y=wy, mode='lines',
-            line=dict(color=color, width=1),
-            showlegend=False, hoverinfo='skip',
-        ), row=1, col=1)
-
-    # Candle bodies (bars from min(O,C) with height |C-O|)
-    price_range = price_df['High'].max() - price_df['Low'].min()
-    min_body = max(price_range * 0.001, 0.01)  # visible doji minimum
-
-    for color, mask in [('#00CC96', bullish_mask), ('#EF553B', ~bullish_mask)]:
-        subset = price_df[mask]
-        if subset.empty:
-            continue
-        body_base = np.minimum(subset['Open'].values, subset['Close'].values)
-        body_height = np.maximum(np.abs(subset['Close'].values - subset['Open'].values), min_body)
-        fig.add_trace(go.Bar(
-            x=subset['num_index'],
-            y=body_height,
-            base=body_base,
-            marker_color=color,
-            marker_line_width=0,
-            width=0.8,
-            showlegend=False,
-            hoverinfo='skip',
-        ), row=1, col=1)
-
-    # Invisible hover trace for OHLC tooltip + legend entry
-    fig.add_trace(go.Scatter(
+    fig.add_trace(go.Candlestick(
         x=price_df['num_index'],
-        y=price_df['Close'],
-        mode='markers',
-        marker=dict(size=0.1, opacity=0),
+        open=price_df['Open'],
+        high=price_df['High'],
+        low=price_df['Low'],
+        close=price_df['Close'],
         name="KC Coffee (ET)",
-        showlegend=True,
-        customdata=np.stack([
-            price_df['Open'].values, price_df['High'].values,
-            price_df['Low'].values, price_df['Close'].values
-        ], axis=-1),
-        hovertemplate=(
-            'O: %{customdata[0]:.2f}<br>H: %{customdata[1]:.2f}<br>'
-            'L: %{customdata[2]:.2f}<br>C: %{customdata[3]:.2f}<extra></extra>'
-        ),
+        increasing=dict(line=dict(color='#00CC96', width=1), fillcolor='#00CC96'),
+        decreasing=dict(line=dict(color='#EF553B', width=1), fillcolor='#EF553B'),
     ), row=1, col=1)
 
     # 2. Signal markers (Row 1)
@@ -1072,9 +1019,14 @@ if price_df is not None and not price_df.empty:
         secondary_y=True
     )
 
+    # CRITICAL: Fully disable candlestick rangeslider to prevent it from eating row 1's space.
+    # go.Candlestick auto-creates a rangeslider that reserves vertical space even when hidden.
+    # With fewer data points the effect is more pronounced, squishing the price chart to near-zero.
     fig.update_layout(
         height=800,
-        barmode='overlay',  # Prevent bar grouping between candle bodies (row 1) and volume (row 2)
+        xaxis=dict(
+            rangeslider=dict(visible=False, thickness=0),
+        ),
         template="plotly_dark",
         title=chart_title,
         hovermode="x unified",
