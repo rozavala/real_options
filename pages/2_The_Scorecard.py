@@ -385,18 +385,30 @@ if os.path.exists(structured_file):
     if not struct_df.empty:
         total = len(struct_df)
         pending = (struct_df['actual'] == 'PENDING').sum()
-        resolved = total - pending
-        rate = resolved / total * 100 if total > 0 else 0
+        orphaned = (struct_df['actual'] == 'ORPHANED').sum() if 'actual' in struct_df.columns else 0
+        resolved = total - pending - orphaned
+        resolvable = total - orphaned
+        rate = resolved / resolvable * 100 if resolvable > 0 else 0
 
-        health_cols = st.columns(4)
+        health_cols = st.columns(5)
         health_cols[0].metric("Total Predictions", total)
         health_cols[1].metric("Resolved", resolved)
         health_cols[2].metric("Pending", pending)
-        health_cols[3].metric("Resolution Rate", f"{rate:.0f}%")
+        health_cols[3].metric(
+            "Orphaned", orphaned,
+            help="Legacy predictions (Jan 19-27) with no matching council decision"
+        )
+        health_cols[4].metric(
+            "Resolution Rate", f"{rate:.0f}%",
+            help="Excludes orphaned predictions"
+        )
 
         # Color-coded status
         if rate >= 80:
-            st.success(f"✅ Feedback loop healthy — {rate:.0f}% resolution rate")
+            st.success(
+                f"✅ Feedback loop healthy — {rate:.0f}% resolution rate"
+                + (f" ({orphaned} legacy orphans excluded)" if orphaned > 0 else "")
+            )
         elif rate >= 50:
             st.warning(f"⚠️ Feedback loop degraded — {rate:.0f}% resolution rate")
         else:

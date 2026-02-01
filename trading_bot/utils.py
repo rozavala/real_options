@@ -534,6 +534,13 @@ def log_council_decision(decision_data):
     # Prepare the new row
     row_data = {field: decision_data.get(field, '') for field in fieldnames}
 
+    # Fix precision for entry_price
+    if row_data.get('entry_price'):
+        try:
+             row_data['entry_price'] = round(float(row_data['entry_price']), 2)
+        except (ValueError, TypeError):
+             pass
+
     # Ensure timestamp exists
     if not row_data.get('timestamp'):
         row_data['timestamp'] = format_ts()

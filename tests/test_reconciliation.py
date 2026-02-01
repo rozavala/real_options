@@ -41,9 +41,15 @@ async def test_reconcile_council_history_success():
     config = {'symbol': 'KC', 'exchange': 'NYBOT'}
 
     # Run Function with patched pandas IO and os.path.exists
+    original_exists = os.path.exists
+    def exists_side_effect(path):
+        if 'council_history.csv' in str(path):
+            return True
+        return original_exists(path)
+
     with patch('pandas.read_csv', return_value=mock_csv_data), \
          patch('pandas.DataFrame.to_csv') as mock_to_csv, \
-         patch('os.path.exists', return_value=True):
+         patch('os.path.exists', side_effect=exists_side_effect):
 
         await reconcile_council_history(config, ib=mock_ib)
 
@@ -73,9 +79,15 @@ async def test_reconcile_council_history_skip_recent():
 
     mock_ib = MagicMock()
 
+    original_exists = os.path.exists
+    def exists_side_effect(path):
+        if 'council_history.csv' in str(path):
+            return True
+        return original_exists(path)
+
     with patch('pandas.read_csv', return_value=mock_csv_data), \
          patch('pandas.DataFrame.to_csv') as mock_to_csv, \
-         patch('os.path.exists', return_value=True):
+         patch('os.path.exists', side_effect=exists_side_effect):
 
         await reconcile_council_history({}, ib=mock_ib)
 
@@ -105,9 +117,15 @@ async def test_reconcile_council_history_pnl_calc():
     mock_bar.close = 145.0
     mock_ib.reqHistoricalDataAsync = AsyncMock(return_value=[mock_bar])
 
+    original_exists = os.path.exists
+    def exists_side_effect(path):
+        if 'council_history.csv' in str(path):
+            return True
+        return original_exists(path)
+
     with patch('pandas.read_csv', return_value=mock_csv_data), \
          patch('pandas.DataFrame.to_csv') as mock_to_csv, \
-         patch('os.path.exists', return_value=True):
+         patch('os.path.exists', side_effect=exists_side_effect):
 
         await reconcile_council_history({'symbol': 'KC'}, ib=mock_ib)
 

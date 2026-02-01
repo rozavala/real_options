@@ -833,11 +833,17 @@ async def _check_feedback_loop_health(config: dict):
             oldest_pending = df.loc[pending_mask, 'timestamp'].min()
             age_hours = (pd.Timestamp.now(tz='UTC') - oldest_pending).total_seconds() / 3600
 
-            resolution_rate = (total_count - pending_count) / total_count * 100
+            orphaned_count = (df['actual'] == 'ORPHANED').sum() if 'actual' in df.columns else 0
+            resolvable_count = total_count - orphaned_count
+            resolution_rate = (
+                (resolvable_count - pending_count) / resolvable_count * 100
+                if resolvable_count > 0 else 0
+            )
 
             logger.info(
-                f"Feedback Loop Health: {pending_count}/{total_count} PENDING "
-                f"(oldest: {age_hours:.0f}h, resolution rate: {resolution_rate:.0f}%)"
+                f"Feedback Loop Health: {pending_count}/{resolvable_count} PENDING "
+                f"({orphaned_count} orphans excluded, "
+                f"resolution rate: {resolution_rate:.0f}%)"
             )
 
             # ALERT if predictions are stale
