@@ -664,21 +664,15 @@ if price_df is not None and not price_df.empty:
     price_df = filter_non_trading_days(price_df)
 
     # Check for filtered rows
-    if len(price_df) < pre_filter_count:
+    if pre_filter_count > 0 and len(price_df) < pre_filter_count:
         removed_count = pre_filter_count - len(price_df)
         removed_pct = (removed_count / pre_filter_count) * 100
         st.caption(f"🗓️ Filtered {removed_count} candles ({removed_pct:.1f}%) - weekends/holidays/invalid data")
 
-    # Warn if we ended up with no data after filtering
+    # Early exit if no data after filtering (e.g., lookback=0 on a weekend)
     if price_df.empty:
         st.warning(f"⚠️ No trading data available for the selected {lookback_days}-day lookback period. Try increasing the lookback.")
-
-    if len(price_df) < pre_filter_count:
-        removed_count = pre_filter_count - len(price_df)
-        removed_pct = (removed_count / pre_filter_count) * 100
-        st.caption(f"🗓️ Filtered {removed_count} candles ({removed_pct:.1f}%) - weekends/holidays/invalid data")
-    elif len(price_df) == 0:
-        st.warning("⚠️ No valid trading data available for the selected period.")
+        st.stop()
 
     # 3. Optionally filter to market hours
     original_count = len(price_df)
@@ -968,10 +962,14 @@ if price_df is not None and not price_df.empty:
         tick_vals = []
         tick_text = []
 
+    # Set explicit x-axis range to prevent autorange issues with small datasets
+    x_range = [-0.5, max(len(price_df) - 0.5, 0.5)]
+
     fig.update_xaxes(
         tickvals=tick_vals,
         ticktext=tick_text,
         tickangle=45,
+        range=x_range,
         row=1, col=1
     )
 
@@ -979,6 +977,7 @@ if price_df is not None and not price_df.empty:
         tickvals=tick_vals,
         ticktext=tick_text,
         tickangle=45,
+        range=x_range,
         row=2, col=1
     )
 
@@ -1020,9 +1019,14 @@ if price_df is not None and not price_df.empty:
         secondary_y=True
     )
 
+    # CRITICAL: Fully disable candlestick rangeslider to prevent it from eating row 1's space.
+    # go.Candlestick auto-creates a rangeslider that reserves vertical space even when hidden.
+    # With fewer data points the effect is more pronounced, squishing the price chart to near-zero.
     fig.update_layout(
         height=800,
-        xaxis_rangeslider_visible=False,
+        xaxis=dict(
+            rangeslider=dict(visible=False, thickness=0),
+        ),
         template="plotly_dark",
         title=chart_title,
         hovermode="x unified",
