@@ -958,6 +958,39 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 
     async with EMERGENCY_LOCK:
         try:
+            # --- WEEKLY CLOSE WINDOW GUARD ---
+            ny_tz = pytz.timezone('America/New_York')
+            now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
+            weekday = now_ny.weekday()
+
+            # After Friday 12:30 ET (15 min before close_stale_positions) → block new positions
+            WEEKLY_CLOSE_CUTOFF_HOUR = 12
+            WEEKLY_CLOSE_CUTOFF_MINUTE = 30
+
+            is_in_close_window = False
+            if weekday == 4:  # Friday
+                close_cutoff = now_ny.replace(
+                    hour=WEEKLY_CLOSE_CUTOFF_HOUR,
+                    minute=WEEKLY_CLOSE_CUTOFF_MINUTE,
+                    second=0
+                )
+                is_in_close_window = now_ny >= close_cutoff
+
+            if is_in_close_window:
+                logger.warning(
+                    f"Emergency cycle blocked: Inside Friday close window "
+                    f"({now_ny.strftime('%H:%M')} ET >= {WEEKLY_CLOSE_CUTOFF_HOUR}:{WEEKLY_CLOSE_CUTOFF_MINUTE:02d} ET). "
+                    f"Trigger: {trigger.source} — {trigger.reason}"
+                )
+                # Still log the trigger for Monday analysis
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    f"⏸️ Deferred: {trigger.source}",
+                    f"Trigger deferred to Monday (Friday close window):\n{trigger.reason}"
+                )
+                StateManager.queue_deferred_trigger(trigger)
+                return
+
             # Check Budget
             if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
                 logger.warning("Budget hit — skipping Emergency Cycle (Sentinel-only mode)")
@@ -1664,11 +1697,11 @@ async def guarded_generate_orders(config: dict):
 schedule = {
     time(3, 30): start_monitoring,           # Market Open
     time(3, 31): process_deferred_triggers,  # 1 min after Open (Retry deferred)
-    time(8, 30): run_position_audit_cycle,   # NEW: Morning Roll Call (Defense before Offense)
-    time(9, 0): guarded_generate_orders,     # Morning Trading (Guarded)
-    time(11, 0): run_position_audit_cycle,   # 11:00 ET - Midday audit (NEW)
-    time(13, 0): run_position_audit_cycle,   # 13:00 ET - Pre-close audit (NEW)
-    time(12, 45): close_stale_positions,     # MOVED: Better liquidity
+    time(8, 30): run_position_audit_cycle,   # Morning Roll Call (Defense before Offense)
+    time(9, 0): guarded_generate_orders,     # Morning Trading (has holding-time gate)
+    time(11, 0): run_position_audit_cycle,   # 11:00 ET - Midday audit
+    time(12, 45): close_stale_positions,     # Weekly close (w/ post-close verification)
+    time(13, 0): run_position_audit_cycle,   # 13:00 ET - Pre-close audit
     time(13, 45): cancel_and_stop_monitoring,# 15 mins before Close
     time(14, 5): log_equity_snapshot,        # After Close
     time(14, 15): reconcile_and_analyze      # After Close

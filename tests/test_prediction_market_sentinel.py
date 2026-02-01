@@ -124,7 +124,9 @@ async def test_slug_consistency_check_resets_baseline(mock_config):
         mock_ctx.__aexit__ = AsyncMock(return_value=None)
         mock_get.return_value = mock_ctx
 
-        with patch('trading_bot.sentinels.send_pushover_notification') as mock_notify:
+        with patch('trading_bot.sentinels.send_pushover_notification') as mock_notify, \
+             patch('trading_bot.utils.is_trading_day', return_value=True), \
+             patch('trading_bot.utils.is_market_open', return_value=True):
             trigger = await sentinel.check()
 
     # Should NOT trigger (rollover detected)
@@ -172,7 +174,9 @@ async def test_high_water_mark_prevents_flapping(mock_config):
         mock_ctx.__aexit__ = AsyncMock(return_value=None)
         mock_get.return_value = mock_ctx
 
-        trigger1 = await sentinel.check()
+        with patch('trading_bot.utils.is_trading_day', return_value=True), \
+             patch('trading_bot.utils.is_market_open', return_value=True):
+            trigger1 = await sentinel.check()
 
     assert trigger1 is not None
     assert trigger1.severity == 6
@@ -191,7 +195,9 @@ async def test_high_water_mark_prevents_flapping(mock_config):
         mock_ctx.__aexit__ = AsyncMock(return_value=None)
         mock_get.return_value = mock_ctx
 
-        trigger2 = await sentinel.check()
+        with patch('trading_bot.utils.is_trading_day', return_value=True), \
+             patch('trading_bot.utils.is_market_open', return_value=True):
+            trigger2 = await sentinel.check()
 
     assert trigger2 is not None
     assert trigger2.severity == 7  # Escalation alerts
@@ -210,7 +216,9 @@ async def test_high_water_mark_prevents_flapping(mock_config):
         mock_ctx.__aexit__ = AsyncMock(return_value=None)
         mock_get.return_value = mock_ctx
 
-        trigger3 = await sentinel.check()
+        with patch('trading_bot.utils.is_trading_day', return_value=True), \
+             patch('trading_bot.utils.is_market_open', return_value=True):
+            trigger3 = await sentinel.check()
 
     # Should be SUPPRESSED (severity 6 <= HWM 7)
     assert trigger3 is None
@@ -246,7 +254,9 @@ async def test_hwm_decay_allows_re_alerting(mock_config):
         mock_ctx.__aexit__ = AsyncMock(return_value=None)
         mock_get.return_value = mock_ctx
 
-        trigger = await sentinel.check()
+        with patch('trading_bot.utils.is_trading_day', return_value=True), \
+             patch('trading_bot.utils.is_market_open', return_value=True):
+            trigger = await sentinel.check()
 
     # Should trigger because HWM decayed
     assert trigger is not None
@@ -307,7 +317,9 @@ async def test_no_trigger_on_small_move(mock_config):
         mock_ctx.__aexit__ = AsyncMock(return_value=None)
         mock_get.return_value = mock_ctx
 
-        trigger = await sentinel.check()
+        with patch('trading_bot.utils.is_trading_day', return_value=True), \
+             patch('trading_bot.utils.is_market_open', return_value=True):
+            trigger = await sentinel.check()
 
     assert trigger is None
 

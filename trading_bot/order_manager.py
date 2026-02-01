@@ -29,7 +29,8 @@ from trading_bot.strategy import define_directional_strategy, define_volatility_
 from trading_bot.utils import (
     log_trade_to_ledger, log_order_event, configure_market_data_type,
     is_market_open, round_to_tick, COFFEE_OPTIONS_TICK_SIZE,
-    get_tick_size, get_contract_multiplier, get_dollar_multiplier
+    get_tick_size, get_contract_multiplier, get_dollar_multiplier,
+    hours_until_weekly_close
 )
 from trading_bot.compliance import ComplianceGuardian, calculate_spread_max_risk
 from trading_bot.connection_pool import IBConnectionPool
@@ -96,6 +97,25 @@ async def generate_and_execute_orders(config: dict):
     # === EARLY EXIT: Skip entirely on non-trading days ===
     if not is_market_open():
         logger.info("Market is closed (weekend/holiday). Skipping order generation cycle.")
+        return
+
+    # === HOLDING-TIME GATE: Skip if insufficient time before forced close ===
+    min_holding_hours = config.get('risk_management', {}).get(
+        'min_holding_hours', 6.0
+    )
+    remaining_hours = hours_until_weekly_close()
+
+    if remaining_hours < min_holding_hours:
+        logger.info(
+            f"Holding-time gate: Only {remaining_hours:.1f}h until weekly close "
+            f"(minimum: {min_holding_hours}h). Skipping order generation."
+        )
+        send_pushover_notification(
+            config.get('notifications', {}),
+            "📅 Order Gen Skipped",
+            f"Weekly close in {remaining_hours:.1f}h — below {min_holding_hours}h minimum. "
+            f"No new positions today."
+        )
         return
 
     logger.info(">>> Starting combined task: Generate and Execute Orders <<<")
@@ -1396,7 +1416,25 @@ async def close_stale_positions(config: dict):
             ].copy()
 
             if symbol_ledger.empty:
-                orphaned_positions.append(f"{symbol} (Qty: {pos.position})")
+                if is_weekly_close:
+                    # WEEKLY CLOSE OVERRIDE: Close orphaned positions too
+                    # Safety > accuracy — we can't leave unknown positions open over the weekend
+                    close_action = 'SELL' if live_action_sign > 0 else 'BUY'
+                    positions_to_close[f"ORPHAN_{symbol}"].append({
+                        'conId': pos.contract.conId,
+                        'symbol': symbol,
+                        'exchange': pos.contract.exchange or 'SMART',
+                        'action': close_action,
+                        'quantity': live_qty,
+                        'multiplier': pos.contract.multiplier,
+                        'currency': pos.contract.currency
+                    })
+                    logger.warning(
+                        f"WEEKLY CLOSE OVERRIDE: Closing orphaned position {symbol} "
+                        f"(Qty: {pos.position}) — no ledger match found"
+                    )
+                else:
+                    orphaned_positions.append(f"{symbol} (Qty: {pos.position})")
                 continue
 
             # Reconstruct the stack (Newest -> Oldest)
@@ -1772,7 +1810,69 @@ async def close_stale_positions(config: dict):
                 logger.error(f"Error closing position {pos_id}: {ex}")
                 failed_closes.append(f"Pos ID {pos_id}: Error {ex}")
 
-        # --- 6. Build and send a comprehensive notification ---
+        # --- 6. POST-CLOSE VERIFICATION (Weekly Close Only) ---
+        if is_weekly_close and (closed_position_details or positions_to_close):
+            logger.info("--- Post-Close Verification: Re-checking IB positions ---")
+            await asyncio.sleep(5)  # Allow IB to settle
+
+            try:
+                verify_positions = await ib.reqPositionsAsync()
+                remaining = [p for p in (verify_positions or []) if p.position != 0]
+
+                if remaining:
+                    remaining_symbols = [p.contract.localSymbol for p in remaining]
+                    logger.critical(
+                        f"⚠️ POST-CLOSE VERIFICATION FAILED: "
+                        f"{len(remaining)} positions still open: {remaining_symbols}"
+                    )
+
+                    # RETRY: Attempt individual market orders for each remaining leg
+                    for pos in remaining:
+                        try:
+                            close_action = 'SELL' if pos.position > 0 else 'BUY'
+                            qty = abs(pos.position)
+                            order = MarketOrder(close_action, qty)
+                            trade = ib.placeOrder(pos.contract, order)
+                            logger.warning(
+                                f"RETRY: Sent {close_action} {qty} {pos.contract.localSymbol}"
+                            )
+                            await asyncio.sleep(2)
+                        except Exception as retry_e:
+                            logger.critical(
+                                f"RETRY FAILED for {pos.contract.localSymbol}: {retry_e}"
+                            )
+                            failed_closes.append(
+                                f"{pos.contract.localSymbol} (RETRY FAILED: {retry_e})"
+                            )
+
+                    # Re-verify after retries
+                    await asyncio.sleep(5)
+                    final_check = await ib.reqPositionsAsync()
+                    final_remaining = [p for p in (final_check or []) if p.position != 0]
+
+                    if final_remaining:
+                        final_symbols = [p.contract.localSymbol for p in final_remaining]
+                        alert_msg = (
+                            f"🚨 CRITICAL: {len(final_remaining)} positions STILL OPEN "
+                            f"after weekly close + retry!\n"
+                            f"Symbols: {', '.join(final_symbols)}\n"
+                            f"MANUAL INTERVENTION REQUIRED"
+                        )
+                        logger.critical(alert_msg)
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "🚨 WEEKLY CLOSE FAILED",
+                            alert_msg
+                        )
+                    else:
+                        logger.info("✅ Post-close retry successful — all positions now flat.")
+                else:
+                    logger.info("✅ Post-close verification passed — all positions flat.")
+
+            except Exception as verify_e:
+                logger.error(f"Post-close verification failed: {verify_e}")
+
+        # --- 7. Build and send a comprehensive notification ---
         message_parts = []
         total_pnl = 0
         if closed_position_details:

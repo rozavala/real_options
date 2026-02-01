@@ -1436,7 +1436,10 @@ class PredictionMarketSentinel(Sentinel):
 
                     data = await response.json()
 
-                    logger.info(f"Dynamic Discovery: '{query}' found {len(data)} markets. Top result: {[e.get('title') for e in data[:1]]}")
+                    logger.debug(
+                        f"Dynamic Discovery: '{query}' found {len(data)} markets. "
+                        f"Top result: {[e.get('title') for e in data[:1]]}"
+                    )
 
                     if not data:
                         logger.debug(f"No markets found for query: '{query}'")
@@ -1528,6 +1531,26 @@ class PredictionMarketSentinel(Sentinel):
         now = time_module.time()
         if (now - self._last_poll_time) < self.poll_interval:
             return None
+
+        # --- NON-TRADING-DAY FREQUENCY REDUCTION ---
+        from trading_bot.utils import is_market_open, is_trading_day
+
+        if not is_trading_day():
+            # Weekend/holiday: check every 2 hours instead of every 5 minutes
+            if not hasattr(self, '_last_non_trading_check'):
+                self._last_non_trading_check = 0
+            if (now - self._last_non_trading_check) < 7200:  # 2 hours
+                return None
+            self._last_non_trading_check = now
+            logger.debug("Non-trading day: Running reduced-frequency prediction market check")
+        elif not is_market_open():
+            # Trading day but outside hours: check every 30 minutes
+            if not hasattr(self, '_last_closed_market_check_pm'):
+                self._last_closed_market_check_pm = 0
+            if (now - self._last_closed_market_check_pm) < 1800:  # 30 min
+                return None
+            self._last_closed_market_check_pm = now
+
         self._last_poll_time = now
 
         triggers = []
@@ -1693,6 +1716,27 @@ class PredictionMarketSentinel(Sentinel):
 
         # Persist state
         self._save_state_cache()
+
+        # --- CYCLE SUMMARY (single INFO log replaces per-topic spam) ---
+        active_topics = [
+            topic.get('tag', topic.get('query', '?'))
+            for topic in self.topics
+            if topic.get('query') in self.state_cache
+            and self.state_cache[topic['query']].get('slug')
+        ]
+        stale_topics = [
+            topic.get('tag', topic.get('query', '?'))
+            for topic in self.topics
+            if topic.get('query') not in self.state_cache
+            or not self.state_cache[topic['query']].get('slug')
+        ]
+
+        if active_topics or stale_topics:
+            logger.info(
+                f"PredictionMarket: {len(active_topics)} tracking, "
+                f"{len(stale_topics)} unresolved | "
+                f"Active: {', '.join(active_topics) if active_topics else 'none'}"
+            )
 
         # Return the most severe trigger (if multiple)
         if triggers:
