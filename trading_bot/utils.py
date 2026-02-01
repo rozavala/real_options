@@ -19,6 +19,7 @@ import numpy as np
 from scipy.stats import norm
 
 from trading_bot.logging_config import setup_logging
+from trading_bot.timestamps import format_ts
 
 # --- Logging Setup ---
 setup_logging()
@@ -535,7 +536,7 @@ def log_council_decision(decision_data):
 
     # Ensure timestamp exists
     if not row_data.get('timestamp'):
-        row_data['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        row_data['timestamp'] = format_ts()
 
     # === IN-PLACE SCHEMA MIGRATION (replaces archive approach) ===
     if os.path.exists(file_path):

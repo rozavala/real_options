@@ -27,6 +27,7 @@ import re
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import load_council_history, grade_decision_quality
+from trading_bot.timestamps import parse_ts_column
 
 st.set_page_config(layout="wide", page_title="Signal Analysis | Coffee Bot")
 
@@ -467,8 +468,8 @@ def process_signals_for_agent(history_df, agent_col, start_date, contract_filter
 
     df = history_df.copy()
 
-    # Timestamp cleaning
-    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+    # Timestamp cleaning (handles mixed formats)
+    df['timestamp'] = parse_ts_column(df['timestamp'])
     df = df.dropna(subset=['timestamp'])
 
     # Timezone: Convert to NY to match price data
