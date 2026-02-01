@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Data Migration Script v4: Agent Accuracy Feedback Loop Repair
+Data Migration Script v5: Cycle-Aware Brier Resolution
 
 WHAT THIS DOES:
 1. Backs up all data files
 2. Migrates agent_accuracy_structured.csv to include cycle_id column
 3. Migrates council_history.csv to include cycle_id column
-4. Resolves PENDING predictions using nearest-match algorithm
+4. Resolves PENDING predictions using cycle-aware matching algorithm
 5. Fixes legacy agent_accuracy.csv schema corruption
 
 SAFE TO RUN MULTIPLE TIMES (idempotent).
@@ -46,7 +46,7 @@ def backup_files():
 
     for filepath in [STRUCTURED_FILE, COUNCIL_FILE, ACCURACY_FILE]:
         if os.path.exists(filepath):
-            backup_path = filepath.replace('.csv', f'_pre_v4_migration_{timestamp}.csv')
+            backup_path = filepath.replace('.csv', f'_pre_v5_migration_{timestamp}.csv')
             shutil.copy2(filepath, backup_path)
             backed_up.append(backup_path)
             logger.info(f"Backed up: {filepath} → {backup_path}")
@@ -154,17 +154,19 @@ def fix_legacy_accuracy_file():
     logger.info(f"Wrote clean {ACCURACY_FILE}")
 
 
-def resolve_with_nearest_match(dry_run: bool = False):
+def resolve_with_cycle_aware_match(dry_run: bool = False):
     """
-    Resolve PENDING predictions using nearest-match algorithm.
+    Resolve PENDING predictions using cycle-aware matching.
 
-    THIS IS THE KEY IMPROVEMENT OVER PRIOR ATTEMPTS:
-    - Attempt 1 (Jan 22): ±5 minute window → 5% resolution rate
-    - Attempt 2 (Jan 30): ±30 minute window → 20-30% resolution rate
-    - THIS (v4): Nearest council decision → expected ~90%+ resolution rate
+    IMPROVEMENT OVER v4 nearest-match:
+    - v4 matched predictions to nearest RECONCILED decision (cross-cycle risk)
+    - v5 matches predictions to nearest decision (ANY), then checks if reconciled
+    - This prevents cross-cycle contamination of accuracy scores
 
-    The algorithm finds the closest reconciled council decision for each
-    PENDING prediction by absolute timestamp distance, with a 2-hour safety cap.
+    Steps:
+    1. Match each prediction to its own cycle (nearest council decision, any status)
+    2. Check if that cycle's council decision has been reconciled
+    3. Only resolve if reconciled; otherwise classify as "awaiting reconciliation"
     """
     if not os.path.exists(STRUCTURED_FILE) or not os.path.exists(COUNCIL_FILE):
         logger.info("Missing required files for resolution")
@@ -176,7 +178,7 @@ def resolve_with_nearest_match(dry_run: bool = False):
     if predictions_df.empty or council_df.empty:
         return 0
 
-    # Parse timestamps (handles mixed formats from different eras of the codebase)
+    # Parse timestamps
     predictions_df['timestamp'] = parse_ts_column(predictions_df['timestamp'])
     council_df['timestamp'] = parse_ts_column(council_df['timestamp'])
 
@@ -190,52 +192,77 @@ def resolve_with_nearest_match(dry_run: bool = False):
 
     logger.info(f"Found {pending_count} pending predictions")
 
-    # Get reconciled council decisions
-    reconciled = council_df[
-        (council_df['actual_trend_direction'].notna()) &
-        (council_df['actual_trend_direction'] != '') &
-        (council_df['actual_trend_direction'].astype(str).str.strip() != '')
-    ].copy().sort_values('timestamp').reset_index(drop=True)
+    # === KEY CHANGE: Use ALL council decisions for cycle matching ===
+    all_decisions = council_df.sort_values('timestamp').reset_index(drop=True)
+    logger.info(f"Total council decisions: {len(all_decisions)}")
 
-    logger.info(f"Found {len(reconciled)} reconciled council decisions")
-
-    if reconciled.empty:
-        logger.warning("No reconciled decisions available — cannot resolve")
-        return 0
+    # Identify reconciled decisions (have actual_trend_direction)
+    reconciled_mask = (
+        all_decisions['actual_trend_direction'].notna() &
+        (all_decisions['actual_trend_direction'] != '') &
+        (all_decisions['actual_trend_direction'].astype(str).str.strip() != '')
+    )
+    reconciled_count = reconciled_mask.sum()
+    logger.info(f"Reconciled council decisions: {reconciled_count}/{len(all_decisions)}")
 
     # Direction normalization
-    direction_map = {'UP': 'BULLISH', 'DOWN': 'BEARISH', 'BULLISH': 'BULLISH',
-                     'BEARISH': 'BEARISH', 'NEUTRAL': 'NEUTRAL', 'FLAT': 'NEUTRAL'}
+    direction_map = {
+        'UP': 'BULLISH', 'DOWN': 'BEARISH', 'BULLISH': 'BULLISH',
+        'BEARISH': 'BEARISH', 'NEUTRAL': 'NEUTRAL', 'FLAT': 'NEUTRAL'
+    }
 
+    # === PHASE 1: Match each prediction to its own cycle ===
     resolved_count = 0
+    awaiting_reconciliation = 0
+    orphaned = 0
     gap_stats = []
 
     for idx in predictions_df[pending_mask].index:
         pred_time = predictions_df.loc[idx, 'timestamp']
 
-        # Find nearest reconciled decision
-        time_diffs = abs(reconciled['timestamp'] - pred_time)
-        min_idx = time_diffs.idxmin()
-        min_gap = time_diffs[min_idx]
+        # Find nearest council decision (ANY status)
+        time_diffs = abs(all_decisions['timestamp'] - pred_time)
+        nearest_idx = time_diffs.idxmin()
+        nearest_gap = time_diffs[nearest_idx]
 
-        # Safety cap: 2 hours max
-        if min_gap > pd.Timedelta(hours=2):
+        # Safety cap: 2 hours max (prevents matching to totally unrelated cycles)
+        if nearest_gap > pd.Timedelta(hours=2):
+            orphaned += 1
             continue
 
-        raw_actual = str(reconciled.loc[min_idx, 'actual_trend_direction']).upper().strip()
+        # === PHASE 2: Check if this cycle's decision is reconciled ===
+        if not reconciled_mask.iloc[nearest_idx]:
+            # This prediction's own cycle hasn't been reconciled yet
+            awaiting_reconciliation += 1
+            continue
+
+        # === PHASE 3: Resolve with correct cycle's outcome ===
+        raw_actual = str(all_decisions.loc[nearest_idx, 'actual_trend_direction']).upper().strip()
         actual = direction_map.get(raw_actual)
 
         if actual:
             predictions_df.loc[idx, 'actual'] = actual
             resolved_count += 1
-            gap_stats.append(min_gap.total_seconds() / 60)
+            gap_stats.append(nearest_gap.total_seconds() / 60)
+
+    # === DIAGNOSTICS ===
+    logger.info(f"\n{'='*50}")
+    logger.info(f"RESOLUTION BREAKDOWN:")
+    logger.info(f"  Total pending:              {pending_count}")
+    logger.info(f"  ✅ Resolved:                 {resolved_count}")
+    logger.info(f"  ⏳ Awaiting reconciliation:  {awaiting_reconciliation}")
+    logger.info(f"  ❌ Orphaned (>2h gap):       {orphaned}")
+    logger.info(f"{'='*50}")
 
     if gap_stats:
-        logger.info(f"Timestamp gap stats (minutes): "
-                   f"min={min(gap_stats):.1f}, max={max(gap_stats):.1f}, "
-                   f"mean={np.mean(gap_stats):.1f}, median={np.median(gap_stats):.1f}")
+        logger.info(f"Match gap stats (minutes): "
+                    f"min={min(gap_stats):.1f}, max={max(gap_stats):.1f}, "
+                    f"mean={np.mean(gap_stats):.1f}, median={np.median(gap_stats):.1f}")
 
-    logger.info(f"Resolved {resolved_count}/{pending_count} predictions")
+    # Estimate potential from running reconciliation
+    if awaiting_reconciliation > 0:
+        logger.info(f"\n💡 Running 'python backfill_council_history.py' could unlock "
+                    f"up to {awaiting_reconciliation} more predictions")
 
     if resolved_count > 0 and not dry_run:
         predictions_df.to_csv(STRUCTURED_FILE, index=False)
@@ -285,12 +312,12 @@ def print_summary():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Brier Score Data Migration v4")
+    parser = argparse.ArgumentParser(description="Brier Score Data Migration v5")
     parser.add_argument('--dry-run', action='store_true', help="Preview changes without writing")
     args = parser.parse_args()
 
     logger.info("=" * 60)
-    logger.info("BRIER SCORE DATA MIGRATION v4 — DEFINITIVE")
+    logger.info("BRIER SCORE DATA MIGRATION v5 — DEFINITIVE")
     logger.info("=" * 60)
 
     if args.dry_run:
@@ -308,7 +335,7 @@ def main():
         fix_legacy_accuracy_file()
 
     # Step 3: Resolve pending predictions
-    resolved = resolve_with_nearest_match(dry_run=args.dry_run)
+    resolved = resolve_with_cycle_aware_match(dry_run=args.dry_run)
 
     # Step 4: Summary
     if not args.dry_run:
