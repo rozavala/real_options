@@ -292,9 +292,13 @@ async def check_ibkr_market_data(config: dict) -> CheckResult:
     """
     MARKET DATA TEST (SMART):
     Skips request if market is closed to avoid timeouts.
+
+    ⚠️ OPERATIONAL NOTE: If this check fails with Error 162 after switching
+    to a new commodity, it means you need to purchase the market data subscription
+    in IBKR Account Management -> Market Data Subscriptions.
     """
     try:
-        from trading_bot.utils import is_market_open
+        from trading_bot.utils import is_market_open, get_ibkr_exchange
 
         if not is_market_open():
             return CheckResult("Market Data", CheckStatus.PASS, "Market Closed - Request Skipped", "Skipping data request to avoid expected timeout.")
@@ -303,30 +307,66 @@ async def check_ibkr_market_data(config: dict) -> CheckResult:
         from ib_insync import IB
         from trading_bot.ib_interface import get_active_futures
 
+        ticker_sym = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+        exchange = get_ibkr_exchange(config)
+
         ib = IB()
         host = config.get('connection', {}).get('host', '127.0.0.1')
         port = config.get('connection', {}).get('port', 7497)
 
         await ib.connectAsync(host, port, clientId=998)
 
-        futures = await get_active_futures(ib, 'KC', 'NYBOT', count=1)
+        # Request market data for the front-month future
+        futures = await get_active_futures(ib, ticker_sym, exchange, count=1)
         if not futures:
             ib.disconnect()
-            return CheckResult("Market Data", CheckStatus.FAIL, "No Active Futures Found")
+            return CheckResult(
+                "Market Data", CheckStatus.FAIL,
+                f"No futures found for {ticker_sym} on {exchange}. "
+                f"Verify IBKR market data subscription in Account Management."
+            )
 
-        ticker = ib.reqMktData(futures[0], '', False, False)
+        # === NEW: Async error collection (Fix B) ===
+        # IBKR sends permission errors (162, 354) asynchronously.
+        # We must wait briefly and check the error queue.
+        collected_errors = []
 
-        # Wait for data (up to 5 seconds)
-        start = time.time()
-        has_data = False
-        while (time.time() - start) < 5:
-            await asyncio.sleep(0.2)
-            if ticker.last or ticker.close or ticker.bid:
-                has_data = True
-                break
+        def _on_error(reqId, errorCode, errorString, contract):
+            if errorCode in (162, 354, 10167):
+                collected_errors.append((errorCode, errorString))
 
-        price = ticker.last or ticker.close or ticker.bid
-        ib.disconnect()
+        ib.errorEvent += _on_error
+
+        try:
+            # Request a snapshot to trigger permission check
+            contract = futures[0]
+            ticker = ib.reqMktData(contract, '', True, False)
+
+            # Wait for async errors to arrive
+            await asyncio.sleep(3.0)
+
+            if collected_errors:
+                error_codes = [str(e[0]) for e in collected_errors]
+                return CheckResult(
+                    "Market Data", CheckStatus.FAIL,
+                    f"IBKR data permission errors for {ticker_sym}: {', '.join(error_codes)}. "
+                    f"Purchase market data subscription in IBKR Account Management."
+                )
+
+            # Check for data
+            has_data = False
+            start = time.time()
+            while (time.time() - start) < 2: # Already waited 3s, wait a bit more if needed
+                if ticker.last or ticker.close or ticker.bid:
+                    has_data = True
+                    break
+                await asyncio.sleep(0.2)
+
+            price = ticker.last or ticker.close or ticker.bid
+
+        finally:
+            ib.errorEvent -= _on_error
+            ib.disconnect()
 
         # === NEW: Give Gateway time to cleanup connection ===
         await asyncio.sleep(3.0)

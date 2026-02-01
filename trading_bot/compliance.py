@@ -4,6 +4,7 @@ import os
 import asyncio
 import re
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole
+from trading_bot.utils import get_dollar_multiplier
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +35,11 @@ async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
     """
     from ib_insync import Bag, Contract
 
-    multiplier = 37500  # Coffee options multiplier (lbs per contract)
     qty = order.totalQuantity
     net_price = abs(order.lmtPrice)  # In cents/lb for KC options
 
-    # FIX: Convert multiplier to dollars (cents/lb -> dollars/contract)
-    # 37,500 lbs * (1/100 dollars/cent) = 375 dollars per cent move
-    dollar_multiplier = multiplier / 100
+    # MECE FIX: Use profile-driven dollar multiplier (handles KC/CC logic)
+    dollar_multiplier = get_dollar_multiplier(config)
 
     # For non-BAG contracts, max risk = premium paid
     if not isinstance(contract, Bag) or not contract.comboLegs:
@@ -344,7 +343,8 @@ class ComplianceGuardian:
             )
         else:
             # Fallback: Use conservative estimate with warning
-            actual_capital_at_risk = qty * 37500 * abs(order_context.get('price', 0.01)) * 2
+            dollar_mult = get_dollar_multiplier(self.config)
+            actual_capital_at_risk = qty * dollar_mult * abs(order_context.get('price', 0.01)) * 2
             logger.warning(f"No order object or IB connection passed to compliance - using conservative fallback")
 
         review_packet = {

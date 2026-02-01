@@ -20,7 +20,7 @@ from ib_insync import *
 from ib_insync import util
 
 from trading_bot.logging_config import setup_logging
-from trading_bot.utils import get_position_details, log_trade_to_ledger, get_active_futures
+from trading_bot.utils import get_position_details, log_trade_to_ledger, get_active_futures, get_dollar_multiplier
 from trading_bot.order_manager import get_trade_ledger_df
 from trading_bot.ib_interface import place_order
 from notifications import send_pushover_notification
@@ -271,16 +271,16 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
         max_profit_potential = 0.0
         max_loss_potential = 0.0
 
+        # Get profile-driven dollar multiplier
+        dollar_mult = get_dollar_multiplier(config)
+
         if total_entry_cost > 0:
             # DEBIT SPREAD (Bull Call / Bear Put)
             # Max Risk = What we paid (Entry Cost)
             max_loss_potential = total_entry_cost
             # Max Profit = (Width * Size * Multiplier) - Cost.
-            # Simplified approximation: For 1 lot, Max Profit = Width - Cost.
-            # But since we don't have the multiplier handy easily, we rely on Cost logic:
-            # If we paid $500 for a spread that can be worth $1500:
-            # It's safer to assume for Debit Spreads: Stop Loss based on Cost.
-            max_profit_potential = (spread_width * abs(combo_legs[0].position) * 37500) - total_entry_cost # Approx for KC
+            # MECE FIX: Use profile-driven multiplier
+            max_profit_potential = (spread_width * abs(combo_legs[0].position) * dollar_mult) - total_entry_cost
             # Fallback if huge multiplier makes this weird:
             if max_profit_potential < 0: max_profit_potential = total_entry_cost * 2 # Fallback logic
 
@@ -289,7 +289,7 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
             # Entry Cost is negative (e.g. -500).
             max_profit_potential = abs(total_entry_cost) # We keep the credit
             # Max Loss = Width - Credit
-            max_loss_potential = (spread_width * abs(combo_legs[0].position) * 37500) - max_profit_potential
+            max_loss_potential = (spread_width * abs(combo_legs[0].position) * dollar_mult) - max_profit_potential
 
         # C. Calculate "Capture" and "Risk" Metrics
         capture_pct = 0.0
