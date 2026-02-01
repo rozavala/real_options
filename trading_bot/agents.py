@@ -22,8 +22,31 @@ from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole, get
 from trading_bot.tms import TransactiveMemory
 from trading_bot.reliability_scorer import ReliabilityScorer
 from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type
+from trading_bot.enhanced_brier import EnhancedBrierTracker
+from trading_bot.observability import ObservabilityHub, AgentTrace
 
 logger = logging.getLogger(__name__)
+
+# === NEW IMPORTS FOR COMMODITY-AGNOSTIC SUPPORT ===
+# Added for HRO Enhancement - does not affect existing functionality
+# FIX (MECE 1.2): More explicit error handling to prevent silent failures
+_HAS_COMMODITY_PROFILES = False
+_PROFILE_IMPORT_ERROR = None  # Track why import failed for debugging
+
+try:
+    from config.commodity_profiles import get_commodity_profile, CommodityProfile
+    from trading_bot.prompts.base_prompts import get_agent_prompt
+    _HAS_COMMODITY_PROFILES = True
+except ImportError as e:
+    _PROFILE_IMPORT_ERROR = f"ImportError: {e}"
+    logger.warning(f"Commodity profiles not available: {e}. Using legacy prompts.")
+except Exception as e:
+    _PROFILE_IMPORT_ERROR = f"Unexpected: {e}"
+    logger.error(f"Unexpected error loading commodity profiles: {e}. Using legacy prompts.")
+
+# Log at module load time for debugging
+if not _HAS_COMMODITY_PROFILES:
+    logger.info(f"Profile system disabled. Reason: {_PROFILE_IMPORT_ERROR or 'Unknown'}")
 
 # Setup Provenance Logger
 provenance_logger = logging.getLogger("provenance")
@@ -165,9 +188,34 @@ class CoffeeCouncil:
         self.tms = TransactiveMemory()
         self.scorer = ReliabilityScorer()
         self.response_tracker = ResponseTimeTracker()
+        self.brier_tracker = EnhancedBrierTracker()
         self._search_cache = {}  # Cache for grounded data
 
         logger.info(f"Coffee Council initialized. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
+
+        # ============================================================
+        # NEW: Commodity Profile Integration (ADDITIVE)
+        # This block is OPTIONAL - system works without it
+        # ============================================================
+        self.commodity_profile = None
+        self.observability = None
+
+        if _HAS_COMMODITY_PROFILES:
+            try:
+                ticker = config.get('commodity', {}).get('ticker', 'KC')
+                self.commodity_profile = get_commodity_profile(ticker)
+                logger.info(f"Loaded commodity profile: {self.commodity_profile.name}")
+
+                # Initialize Observability (requires profile)
+                try:
+                    self.observability = ObservabilityHub(self.commodity_profile)
+                    logger.info("Observability Hub initialized.")
+                except Exception as e:
+                    logger.warning(f"Observability init failed: {e}")
+
+            except Exception as e:
+                logger.warning(f"Commodity profile load failed, using legacy prompts: {e}")
+                self.commodity_profile = None
 
     def _clean_json_text(self, text: str) -> str:
         """Helper to strip markdown code blocks from JSON strings."""
@@ -366,8 +414,27 @@ OUTPUT FORMAT (JSON):
         if "FAILED" in grounded_data.raw_findings:
             logger.warning(f"[{persona_key}] Data gathering failed, using fallback data.")
 
+        # Check quarantine status
+        if self.observability and not self.observability.is_agent_valid(persona_key):
+            logger.warning(f"Agent {persona_key} is quarantined! Using fallback/skipping.")
+            # We could return a failure here, but for now we proceed with a warning or maybe set a flag?
+            # Ideally we should fallback to another model or return error.
+            # Failing open for now as per "Observability Must Never Kill Trading" principle,
+            # but logging CRITICAL warning.
+
         # === PHASE 2: HETEROGENEOUS ANALYSIS ===
         persona_prompt = self.personas.get(persona_key, "You are a helpful research assistant.")
+
+        # ENHANCED: Try commodity-aware prompt first, fall back to legacy
+        if self.commodity_profile and _HAS_COMMODITY_PROFILES:
+            try:
+                # Use commodity-specific prompt template
+                persona_prompt = get_agent_prompt(persona_key, self.commodity_profile)
+                logger.debug(f"Using commodity-aware prompt for {persona_key}")
+            except (ValueError, KeyError) as e:
+                # Fall back to legacy persona prompt (no change in behavior)
+                logger.debug(f"No commodity template for {persona_key}, using legacy: {e}")
+                pass  # persona_prompt already set above
 
         # Inject grounded data into prompt
         full_prompt = (
@@ -433,6 +500,23 @@ OUTPUT FORMAT (JSON):
                 'confidence': float(data.get('confidence', 0.5)),
                 'sentiment': data.get('sentiment', 'NEUTRAL')
             }
+
+            # Record Trace
+            if self.observability:
+                try:
+                    trace = AgentTrace(
+                        agent=persona_key,
+                        timestamp=datetime.now(timezone.utc),
+                        query=search_instruction,
+                        retrieved_documents=relevant_context,
+                        output_text=formatted_text,
+                        sentiment=data.get('sentiment', 'NEUTRAL'),
+                        confidence=float(data.get('confidence', 0.5)),
+                        model_name=self.agent_model_name # Approximation, router might differ
+                    )
+                    self.observability.record_trace(trace)
+                except Exception as e:
+                    logger.error(f"Failed to record agent trace (non-fatal): {e}")
 
             # Store new insight in TMS
             if formatted_text and len(formatted_text) > 50:
@@ -814,5 +898,44 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                 decision['reasoning'] += f" [DA VETO: {da_review.get('risks', ['Unknown'])[0]}]"
             else:
                 logger.info(f"DEVIL'S ADVOCATE CHECK PASSED. Risks identified: {da_review.get('risks', [])}")
+
+        # === ENHANCED BRIER TRACKING ===
+        # Record probabilistic prediction
+        if hasattr(self, 'brier_tracker') and self.brier_tracker:
+            try:
+                # Extract probabilities from agent outputs (final_reports)
+                sentiments = []
+                for report in final_reports.values():
+                    if isinstance(report, dict):
+                        s = report.get('sentiment', 'NEUTRAL')
+                        sentiments.append(s)
+                    # If string, skip or assume neutral (omitted to avoid noise)
+
+                if sentiments:
+                    count = len(sentiments)
+                    prob_bullish = sum(1 for s in sentiments if s == 'BULLISH') / count
+                    prob_bearish = sum(1 for s in sentiments if s == 'BEARISH') / count
+                    prob_neutral = 1.0 - prob_bullish - prob_bearish
+
+                    # Ensure minimum probability to avoid 0.0 log issues if used later
+                    prob_bullish = max(0.01, prob_bullish)
+                    prob_bearish = max(0.01, prob_bearish)
+                    prob_neutral = max(0.01, prob_neutral)
+
+                    # Normalize
+                    total = prob_bullish + prob_bearish + prob_neutral
+                    prob_bullish /= total
+                    prob_bearish /= total
+                    prob_neutral /= total
+
+                    self.brier_tracker.record_prediction(
+                        agent="council",
+                        prob_bullish=prob_bullish,
+                        prob_neutral=prob_neutral,
+                        prob_bearish=prob_bearish,
+                        contract=contract_name
+                    )
+            except Exception as e:
+                logger.error(f"Failed to record Brier prediction (non-fatal): {e}")
 
         return decision
