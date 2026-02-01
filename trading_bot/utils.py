@@ -12,7 +12,7 @@ import csv
 import logging
 import os
 import shutil
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 import pytz
 from ib_insync import *
 import numpy as np
@@ -670,6 +670,69 @@ def is_trading_day() -> bool:
         return False
 
     return True
+
+def hours_until_weekly_close() -> float:
+    """
+    Calculate hours remaining until the next forced position close.
+
+    Returns float('inf') if no forced close is imminent (Mon-Thu with no
+    holiday concerns). Returns the actual hours remaining on weekly-close
+    days (Friday, or Thursday before a Friday holiday).
+
+    This is commodity-agnostic — it uses the exchange calendar to determine
+    when positions would be force-closed, enabling a minimum-holding-time
+    gate for order generation.
+    """
+    import pytz
+    from pandas.tseries.holiday import USFederalHolidayCalendar
+    import holidays as holidays_lib
+
+    ny_tz = pytz.timezone('America/New_York')
+    now_utc = datetime.now(timezone.utc)
+    now_ny = now_utc.astimezone(ny_tz)
+    today = now_ny.date()
+    weekday = today.weekday()  # 0=Mon, 4=Fri
+
+    # Position close time (must match close_stale_positions schedule)
+    CLOSE_HOUR = 12
+    CLOSE_MINUTE = 45
+
+    # Build holiday set
+    us_holidays = set()
+    for year in {today.year, today.year + 1}:
+        us_holidays.update(holidays_lib.US(years=year, observed=True).keys())
+        try:
+            nyse = holidays_lib.financial_holidays('NYSE', years=year)
+            us_holidays.update(nyse.keys())
+        except (AttributeError, TypeError):
+            pass
+
+    is_weekly_close_day = False
+
+    # Friday → always weekly close
+    if weekday == 4:
+        is_weekly_close_day = True
+
+    # Thursday → check if Friday is holiday
+    elif weekday == 3:
+        friday = today + timedelta(days=1)
+        if friday in us_holidays or friday.weekday() >= 5:
+            is_weekly_close_day = True
+
+    if not is_weekly_close_day:
+        return float('inf')  # No forced close imminent
+
+    # Calculate hours until close time today
+    close_time_ny = now_ny.replace(
+        hour=CLOSE_HOUR, minute=CLOSE_MINUTE, second=0, microsecond=0
+    )
+
+    if now_ny >= close_time_ny:
+        return 0.0  # Already past close time
+
+    delta = (close_time_ny - now_ny).total_seconds() / 3600
+    return round(delta, 2)
+
 
 # === TICK SIZE CONFIGURATION ===
 # ICE Coffee (KC) Options: 0.05 cents/lb minimum tick
