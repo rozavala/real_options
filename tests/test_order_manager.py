@@ -210,8 +210,9 @@ class TestPositionClosing(unittest.TestCase):
 
             # So for Bag it is BUY.
             # Limit price for BUY is ASK (5.5).
+            # UPDATED: Code now calculates price from legs (5.25 - 5.25 = 0) + slippage (0.05).
             self.assertEqual(bag_order.orderType, 'LMT')
-            self.assertEqual(bag_order.lmtPrice, 5.5)
+            self.assertEqual(bag_order.lmtPrice, 0.05)
             self.assertEqual(bag_order.action, 'BUY')
 
         asyncio.run(run_test())

@@ -999,7 +999,8 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 return
 
             # === Generate Cycle ID for prediction tracking ===
-            cycle_id = generate_cycle_id("KC")
+            active_ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+            cycle_id = generate_cycle_id(active_ticker)
             logger.info(f"🚨 EMERGENCY CYCLE TRIGGERED by {trigger.source}: {trigger.reason} (Cycle: {cycle_id})")
             send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", trigger.reason)
 

@@ -55,6 +55,9 @@ def _get_order_display_name(contract, strategy_def: dict = None) -> str:
     """Generate a readable display name for orders, especially BAG/combo contracts."""
     from ib_insync import Bag
 
+    # Derive ticker from contract (commodity-agnostic)
+    ticker = contract.symbol or "UNK"
+
     # If localSymbol exists and is meaningful, use it
     if contract.localSymbol and contract.localSymbol.strip():
         return contract.localSymbol
@@ -67,25 +70,26 @@ def _get_order_display_name(contract, strategy_def: dict = None) -> str:
             if len(legs) == 2:
                 # Straddle or vertical spread
                 leg_str = "+".join([f"{l[0]}{l[2]}" for l in legs])
-                return f"KC-{leg_str}"
+                return f"{ticker}-{leg_str}"
             elif len(legs) == 4:
-                return f"KC-IRON_CONDOR"
+                return f"{ticker}-IRON_CONDOR"
             else:
-                return f"KC-{len(legs)}LEG"
+                return f"{ticker}-{len(legs)}LEG"
 
         if contract.comboLegs:
-            return f"KC-{len(contract.comboLegs)}LEG-BAG"
+            return f"{ticker}-{len(contract.comboLegs)}LEG-BAG"
 
     # Fallback
-    return contract.symbol or "UNKNOWN"
+    return ticker
 
 
 def _describe_bag(contract) -> str:
     """Generate a readable symbol for BAG contracts."""
     from ib_insync import Bag
+    ticker = contract.symbol or "UNK"
     if isinstance(contract, Bag) and contract.comboLegs:
-        return f"KC-{len(contract.comboLegs)}LEG-BAG"
-    return contract.symbol or "UNKNOWN"
+        return f"{ticker}-{len(contract.comboLegs)}LEG-BAG"
+    return ticker
 
 
 async def generate_and_execute_orders(config: dict):

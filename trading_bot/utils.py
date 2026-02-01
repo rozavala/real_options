@@ -69,6 +69,24 @@ def get_ibkr_exchange(config: dict) -> str:
     return exch
 
 
+def get_active_ticker(config: dict) -> str:
+    """
+    Get the active commodity ticker from config.
+
+    This is THE canonical way to get the trading ticker symbol.
+    All modules should use this instead of hardcoding 'KC'.
+
+    Lookup order:
+    1. config['commodity']['ticker']  (preferred - commodity profile system)
+    2. config['symbol']               (legacy fallback)
+    3. 'KC'                           (ultimate fallback for backward compat)
+
+    Returns:
+        Ticker string like 'KC', 'CC', 'CL', etc.
+    """
+    return config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+
+
 def get_market_data_cached(tickers: list, period: str = "1d"):
     """
     Fetch market data from YFinance.
