@@ -437,12 +437,54 @@ async def check_compliance_volume(config: dict) -> CheckResult:
 
 @timed_check
 async def check_yfinance() -> CheckResult:
+    """
+    Test YFinance data fallback.
+
+    Commodity-agnostic: reads ticker from commodity profile.
+    Market-aware: returns WARN (not FAIL) during off-hours/weekends,
+    since empty data is expected when markets are closed.
+    """
     try:
-        from trading_bot.utils import get_market_data_cached
-        df = get_market_data_cached(['KC=F'], period="1d")
+        from trading_bot.utils import get_market_data_cached, is_market_open, is_trading_day
+
+        # Commodity-agnostic: derive YFinance ticker from profile
+        try:
+            from config.commodity_profiles import get_commodity_profile
+            import json
+            with open("config.json", "r") as f:
+                cfg = json.load(f)
+            ticker_symbol = cfg.get('commodity', {}).get('ticker', 'KC')
+            profile = get_commodity_profile(ticker_symbol)
+            yf_ticker = f"{profile.contract.symbol}=F"
+        except Exception:
+            yf_ticker = "KC=F"  # Safe fallback
+
+        df = get_market_data_cached([yf_ticker], period="1d")
+
         if df is not None and not df.empty:
-            return CheckResult("YFinance Fallback", CheckStatus.PASS, f"Data OK | Rows: {len(df)}")
-        return CheckResult("YFinance Fallback", CheckStatus.FAIL, "No data returned")
+            return CheckResult(
+                "YFinance Fallback", CheckStatus.PASS,
+                f"Data OK ({yf_ticker}) | Rows: {len(df)}"
+            )
+
+        # Empty data — severity depends on whether market is open
+        if not is_trading_day():
+            return CheckResult(
+                "YFinance Fallback", CheckStatus.WARN,
+                f"No data for {yf_ticker} (expected: weekend/holiday)"
+            )
+        elif not is_market_open():
+            return CheckResult(
+                "YFinance Fallback", CheckStatus.WARN,
+                f"No data for {yf_ticker} (expected: market closed)"
+            )
+        else:
+            # Market IS open and we got no data — this is a real problem
+            return CheckResult(
+                "YFinance Fallback", CheckStatus.FAIL,
+                f"No data for {yf_ticker} during market hours"
+            )
+
     except Exception as e:
         return CheckResult("YFinance Fallback", CheckStatus.FAIL, str(e))
 

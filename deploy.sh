@@ -45,6 +45,11 @@ rollback_and_restart() {
         fi
         pip install -r requirements.txt --quiet
 
+        # Ensure log directory exists and is writable before restarting
+        mkdir -p logs
+        chmod 755 logs 2>/dev/null || true
+        touch logs/orchestrator.log logs/dashboard.log 2>/dev/null || true
+
         # Restart with old code
         if [ -f "scripts/start_orchestrator.sh" ]; then
             chmod +x scripts/start_orchestrator.sh

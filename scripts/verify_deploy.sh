@@ -177,11 +177,11 @@ fi
 echo "  [5/5] Running system readiness check..."
 if [ -f "verify_system_readiness.py" ]; then
     # Quick mode, skip IBKR (Gateway may not be ready during deploy)
-    python verify_system_readiness.py --quick --skip-ibkr --skip-llm 2>/dev/null
-    if [ $? -ne 0 ]; then
+    # CRITICAL: Use `if !` pattern so set -e doesn't abort on non-zero exit.
+    # The readiness check is NON-BLOCKING because IBKR/LLM/YFinance
+    # may not be reachable during deploy but will be at runtime.
+    if ! python verify_system_readiness.py --quick --skip-ibkr --skip-llm 2>/dev/null; then
         echo "    ⚠️  System readiness check had failures (non-blocking)"
-        # Note: This is a WARNING, not a hard failure, because IBKR/LLM
-        # may not be reachable during deploy but will be at runtime.
     else
         echo "    ✅ System readiness OK"
     fi
