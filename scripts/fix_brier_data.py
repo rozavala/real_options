@@ -214,7 +214,7 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
     # === PHASE 1: Match each prediction to its own cycle ===
     resolved_count = 0
     awaiting_reconciliation = 0
-    orphaned = 0
+    orphaned_indices = []
     gap_stats = []
 
     for idx in predictions_df[pending_mask].index:
@@ -227,7 +227,7 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
 
         # Safety cap: 2 hours max (prevents matching to totally unrelated cycles)
         if nearest_gap > pd.Timedelta(hours=2):
-            orphaned += 1
+            orphaned_indices.append(idx)
             continue
 
         # === PHASE 2: Check if this cycle's decision is reconciled ===
@@ -245,13 +245,32 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
             resolved_count += 1
             gap_stats.append(nearest_gap.total_seconds() / 60)
 
+    # === ORPHAN HANDLING ===
+    if orphaned_indices and not dry_run:
+        predictions_df.loc[orphaned_indices, 'actual'] = 'ORPHANED'
+        logger.info(f"Classified {len(orphaned_indices)} predictions as ORPHANED (no council decision within 2h)")
+
+    orphaned_count = len(orphaned_indices)
+
     # === DIAGNOSTICS ===
+    total = len(predictions_df)
+    orphaned_total = (predictions_df['actual'] == 'ORPHANED').sum()
+    if dry_run: orphaned_total += orphaned_count
+
+    still_pending = (predictions_df['actual'] == 'PENDING').sum()
+    if dry_run: still_pending -= resolved_count
+
+    resolved_total = total - orphaned_total - still_pending
+    resolvable = total - orphaned_total
+    effective_rate = (resolved_total / resolvable * 100) if resolvable > 0 else 0
+
     logger.info(f"\n{'='*50}")
     logger.info(f"RESOLUTION BREAKDOWN:")
-    logger.info(f"  Total pending:              {pending_count}")
-    logger.info(f"  ✅ Resolved:                 {resolved_count}")
-    logger.info(f"  ⏳ Awaiting reconciliation:  {awaiting_reconciliation}")
-    logger.info(f"  ❌ Orphaned (>2h gap):       {orphaned}")
+    logger.info(f"  Total predictions:            {total}")
+    logger.info(f"  ✅ Resolved:                   {resolved_total} (+{resolved_count} new)")
+    logger.info(f"  ⏳ Awaiting reconciliation:    {still_pending} (potential: {awaiting_reconciliation})")
+    logger.info(f"  🗑️  Orphaned (no council):     {orphaned_total} (+{orphaned_count} new)")
+    logger.info(f"  📊 Effective resolution rate:  {effective_rate:.0f}% (excl. orphans)")
     logger.info(f"{'='*50}")
 
     if gap_stats:
@@ -264,27 +283,30 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
         logger.info(f"\n💡 Running 'python backfill_council_history.py' could unlock "
                     f"up to {awaiting_reconciliation} more predictions")
 
-    if resolved_count > 0 and not dry_run:
+    # Save changes if any (resolved or orphaned)
+    if (resolved_count > 0 or orphaned_count > 0) and not dry_run:
         predictions_df.to_csv(STRUCTURED_FILE, index=False)
         logger.info(f"Saved updated {STRUCTURED_FILE}")
 
-        # Sync to legacy file
-        newly_resolved = predictions_df[
-            (predictions_df['actual'] != 'PENDING') &
-            predictions_df.index.isin(predictions_df[pending_mask].index)
-        ].copy()
+        # Sync to legacy file (only resolved ones, orphans don't go to legacy)
+        if resolved_count > 0:
+            newly_resolved = predictions_df[
+                (predictions_df['actual'] != 'PENDING') &
+                (predictions_df['actual'] != 'ORPHANED') &
+                predictions_df.index.isin(predictions_df[pending_mask].index)
+            ].copy()
 
-        if not newly_resolved.empty:
-            newly_resolved['correct'] = (
-                newly_resolved['direction'].str.upper() == newly_resolved['actual'].str.upper()
-            ).astype(int)
+            if not newly_resolved.empty:
+                newly_resolved['correct'] = (
+                    newly_resolved['direction'].str.upper() == newly_resolved['actual'].str.upper()
+                ).astype(int)
 
-            with open(ACCURACY_FILE, 'a') as f:
-                for _, row in newly_resolved.iterrows():
-                    agent = str(row.get('agent', '')).lower()
-                    f.write(f"{row['timestamp']},{agent},{row['direction']},{row['actual']},{row['correct']}\n")
+                with open(ACCURACY_FILE, 'a') as f:
+                    for _, row in newly_resolved.iterrows():
+                        agent = str(row.get('agent', '')).lower()
+                        f.write(f"{row['timestamp']},{agent},{row['direction']},{row['actual']},{row['correct']}\n")
 
-            logger.info(f"Appended {len(newly_resolved)} rows to {ACCURACY_FILE}")
+                logger.info(f"Appended {len(newly_resolved)} rows to {ACCURACY_FILE}")
 
     return resolved_count
 
@@ -296,9 +318,10 @@ def print_summary():
     if os.path.exists(STRUCTURED_FILE):
         df = pd.read_csv(STRUCTURED_FILE)
         pending = (df['actual'] == 'PENDING').sum() if 'actual' in df.columns else 'N/A'
-        resolved = len(df) - pending if isinstance(pending, int) else 'N/A'
+        orphaned = (df['actual'] == 'ORPHANED').sum() if 'actual' in df.columns else 0
+        resolved = len(df) - pending - orphaned if isinstance(pending, int) else 'N/A'
         has_cycle_id = ('cycle_id' in df.columns)
-        logger.info(f"Structured predictions: {len(df)} total, {resolved} resolved, {pending} pending, cycle_id column: {has_cycle_id}")
+        logger.info(f"Structured predictions: {len(df)} total, {resolved} resolved, {pending} pending, {orphaned} orphaned")
 
     if os.path.exists(COUNCIL_FILE):
         df = pd.read_csv(COUNCIL_FILE)

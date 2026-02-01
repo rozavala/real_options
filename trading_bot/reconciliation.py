@@ -72,6 +72,122 @@ async def reconcile_council_history(config: dict, ib: IB = None):
             await asyncio.sleep(3.0)
 
 
+def _calculate_actual_exit_time(entry_time: datetime, config: dict) -> datetime:
+    """
+    Calculate the actual exit time for a council decision, respecting
+    the weekly close policy (close all positions before weekends/holidays).
+
+    This is commodity-agnostic — it uses the exchange calendar rather than
+    hardcoded dates. The function answers: "Given this entry time, when would
+    the position actually have been closed?"
+
+    Rules (matching close_stale_positions logic):
+    1. Default exit: entry + 27 hours (next session close)
+    2. Friday entries: exit at CLOSE_TIME on same Friday (weekly close)
+    3. Thursday entries when Friday is holiday: exit at CLOSE_TIME Thursday
+    4. Any entry where default exit lands on non-trading day:
+       exit at CLOSE_TIME on the last trading day before the weekend/holiday
+
+    Args:
+        entry_time: Timezone-aware datetime of the council decision
+        config: System config (unused now, available for future exchange config)
+
+    Returns:
+        Timezone-aware datetime of the actual exit
+    """
+    import pytz
+    from pandas.tseries.holiday import USFederalHolidayCalendar
+    import holidays as holidays_lib
+
+    ny_tz = pytz.timezone('America/New_York')
+
+    # Position close time from schedule (12:45 ET = close_stale_positions)
+    CLOSE_HOUR = 12
+    CLOSE_MINUTE = 45
+
+    # Convert entry to NY time for calendar logic
+    if entry_time.tzinfo is None:
+        entry_time = pytz.UTC.localize(entry_time)
+    entry_ny = entry_time.astimezone(ny_tz)
+
+    # Default: entry + 27 hours
+    default_exit = entry_time + timedelta(hours=27)
+    default_exit_ny = default_exit.astimezone(ny_tz)
+
+    # Build holiday set for the relevant year(s)
+    years_to_check = {entry_ny.year, default_exit_ny.year}
+    us_holidays = set()
+    for year in years_to_check:
+        us_holidays.update(holidays_lib.US(years=year, observed=True).keys())
+        try:
+            nyse = holidays_lib.financial_holidays('NYSE', years=year)
+            us_holidays.update(nyse.keys())
+        except (AttributeError, TypeError):
+            pass
+
+    def is_trading_day(d):
+        """Check if a date is a trading day (weekday + not holiday)."""
+        return d.weekday() < 5 and d not in us_holidays
+
+    def last_trading_day_close(from_date):
+        """Roll backward from from_date to find the last trading day's close."""
+        check_date = from_date
+        while not is_trading_day(check_date):
+            check_date -= timedelta(days=1)
+        return ny_tz.localize(
+            datetime.combine(check_date, datetime.min.time()).replace(
+                hour=CLOSE_HOUR, minute=CLOSE_MINUTE, second=0, microsecond=0
+            )
+        ).astimezone(pytz.UTC)
+
+    # --- RULE: Check if entry day itself triggers weekly close ---
+    entry_date = entry_ny.date()
+    entry_weekday = entry_date.weekday()  # 0=Mon, 4=Fri
+
+    # Friday entry → weekly close same day
+    if entry_weekday == 4:
+        friday_close_ny = entry_ny.replace(
+            hour=CLOSE_HOUR, minute=CLOSE_MINUTE, second=0, microsecond=0
+        )
+        friday_close_utc = friday_close_ny.astimezone(pytz.UTC)
+        # Only use Friday close if entry is BEFORE close time
+        if entry_time < friday_close_utc:
+            return friday_close_utc
+
+    # Thursday entry when Friday is a holiday → weekly close same day
+    if entry_weekday == 3:
+        friday_date = entry_date + timedelta(days=1)
+        if friday_date in us_holidays or friday_date.weekday() >= 5:
+            thursday_close_ny = entry_ny.replace(
+                hour=CLOSE_HOUR, minute=CLOSE_MINUTE, second=0, microsecond=0
+            )
+            thursday_close_utc = thursday_close_ny.astimezone(pytz.UTC)
+            if entry_time < thursday_close_utc:
+                return thursday_close_utc
+
+    # --- RULE: Check if default exit (entry+27h) lands on non-trading period ---
+    default_exit_date = default_exit_ny.date()
+
+    if not is_trading_day(default_exit_date):
+        # Roll backward to the last trading day's close
+        return last_trading_day_close(default_exit_date)
+
+    # --- RULE: Check if default exit is after close time on a weekly-close day ---
+    default_exit_weekday = default_exit_date.weekday()
+
+    if default_exit_weekday == 4:  # Exits on a Friday
+        friday_close_ny = default_exit_ny.replace(
+            hour=CLOSE_HOUR, minute=CLOSE_MINUTE, second=0, microsecond=0
+        )
+        friday_close_utc = friday_close_ny.astimezone(pytz.UTC)
+        # Cap at Friday close (won't be held over the weekend)
+        if default_exit > friday_close_utc:
+            return friday_close_utc
+
+    # Default case: use entry + 27h (standard weekday exit)
+    return default_exit
+
+
 async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_path: str):
     """Internal helper to process the DataFrame rows using the active IB connection."""
 
@@ -125,8 +241,18 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
 
         logger.info(f"Reconciling trade from {entry_time}: {contract_str} ({decision})")
 
-        # Determine Target Exit Time (Default)
-        target_exit_time = entry_time + timedelta(hours=27)
+        # Determine Target Exit Time (respects weekly close policy)
+        target_exit_time = _calculate_actual_exit_time(entry_time, config)
+
+        # Log if exit time was adjusted from default
+        default_exit = entry_time + timedelta(hours=27)
+        if abs((target_exit_time - default_exit).total_seconds()) > 3600:
+            logger.info(
+                f"Exit time adjusted for {contract_str}: "
+                f"default {default_exit.strftime('%a %H:%M UTC')} → "
+                f"actual {target_exit_time.strftime('%a %H:%M UTC')} "
+                f"(weekly close policy)"
+            )
 
         try:
             exit_price = 0.0
@@ -175,7 +301,8 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                     continue
 
                 # Fetch Historical Data
-                end_str = (target_exit_time + timedelta(days=2)).strftime('%Y%m%d %H:%M:%S')
+                # Use IB's preferred UTC format to suppress Warning 2174
+                end_str = (target_exit_time + timedelta(days=2)).strftime('%Y%m%d-%H:%M:%S') + ' UTC'
                 bars = await ib.reqHistoricalDataAsync(
                     qualified_contract,
                     endDateTime=end_str,
@@ -190,21 +317,75 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                     logger.warning(f"No historical data found for {contract_str}")
                     continue
 
-                # Find bar
+                # ================================================================
+                # BAR MATCHING — BACKWARD-ROLLING (Weekly Close Aware)
+                # ================================================================
+                # Since positions are closed before weekends/holidays,
+                # target_exit_time is always on a trading day. But we still
+                # need robust fallback for edge cases and data gaps.
+                #
+                # Strategy (commodity-agnostic — adapts to any trading calendar):
+                # 1. Exact target date (ideal — should always work now)
+                # 2. Last available bar ON or BEFORE target (backward roll)
+                # 3. First bar AFTER entry date (minimum viable)
+                # 4. Skip if no valid bar (data not yet available)
+                # ================================================================
                 target_date = target_exit_time.date()
+                entry_date = entry_time.date()
                 matched_bar = None
-                for bar in bars:
+
+                # Sort bars by date for reliable matching
+                sorted_bars = sorted(bars, key=lambda b: b.date)
+
+                if not sorted_bars:
+                    logger.warning(f"No historical bars returned for {contract_str}")
+                    continue
+
+                # Strategy 1: Exact target date (should work for all properly
+                # calculated exit times since _calculate_actual_exit_time
+                # always returns a trading day)
+                for bar in sorted_bars:
                     if bar.date == target_date:
                         matched_bar = bar
                         break
-                if not matched_bar:
-                     entry_date = entry_time.date()
-                     post_entry_bars = [b for b in bars if b.date > entry_date]
-                     if post_entry_bars:
-                         matched_bar = post_entry_bars[0]
 
+                # Strategy 2: Last available bar on or before target date
+                # (backward roll — correct for weekly close policy)
                 if not matched_bar:
-                    logger.warning(f"Could not find a valid exit bar for {contract_str}")
+                    on_or_before = [b for b in sorted_bars if b.date <= target_date]
+                    if on_or_before:
+                        matched_bar = on_or_before[-1]  # last (most recent) bar
+                        logger.info(
+                            f"Bar date adjusted for {contract_str}: "
+                            f"target {target_date} → actual {matched_bar.date} "
+                            f"(backward roll to last trading session)"
+                        )
+
+                # Strategy 3: First bar after entry (minimum viable — at least
+                # captures some directional movement)
+                if not matched_bar:
+                    post_entry = [b for b in sorted_bars if b.date > entry_date]
+                    if post_entry:
+                        matched_bar = post_entry[0]
+                        logger.info(
+                            f"Using first post-entry bar for {contract_str}: "
+                            f"{matched_bar.date} (fallback)"
+                        )
+
+                # Strategy 4: Data not yet available
+                if not matched_bar:
+                    last_bar_date = sorted_bars[-1].date if sorted_bars else None
+                    if last_bar_date and last_bar_date < target_date:
+                        logger.info(
+                            f"Exit bar for {contract_str} not yet available "
+                            f"(target: {target_date}, latest bar: {last_bar_date}). "
+                            f"Will retry next reconciliation run."
+                        )
+                    else:
+                        logger.warning(
+                            f"Could not find valid exit bar for {contract_str} "
+                            f"despite bars through {last_bar_date}"
+                        )
                     continue
 
                 exit_price = matched_bar.close
