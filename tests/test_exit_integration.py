@@ -288,12 +288,15 @@ class TestPositionIdMapping(unittest.TestCase):
         # Create mock position
         mock_position = MagicMock()
         mock_position.contract.localSymbol = "KCH6 C350"
+        mock_position.position = 1
 
         # Create mock trade ledger
         trade_ledger = pd.DataFrame({
             'local_symbol': ['KCH6 C350', 'KCH6 P340'],
             'position_id': ['POS_001', 'POS_002'],
-            'action': ['BUY', 'BUY']
+            'action': ['BUY', 'BUY'],
+            'quantity': [1, 1],
+            'timestamp': [datetime.now(), datetime.now()]
         })
 
         result = _find_position_id_for_contract(mock_position, trade_ledger)
@@ -305,6 +308,7 @@ class TestPositionIdMapping(unittest.TestCase):
         """Test when no matching position exists."""
         mock_position = MagicMock()
         mock_position.contract.localSymbol = "KCZ6 C400"
+        mock_position.position = 1
 
         trade_ledger = pd.DataFrame({
             'local_symbol': ['KCH6 C350'],

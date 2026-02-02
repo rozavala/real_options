@@ -69,6 +69,15 @@ async def check_iron_condor_theses(ib: IB, config: dict):
 
             entry_price = thesis.get('supporting_data', {}).get('entry_price', 0)
 
+            # SANITY CHECK: Detect legacy theses where entry_price is a spread premium
+            price_floor = config.get('validation', {}).get('underlying_price_floor', 100.0)
+            if 0 < entry_price < price_floor:
+                logging.warning(
+                    f"IC thesis check: entry_price ${entry_price:.2f} < floor "
+                    f"${price_floor:.2f}. Skipping — likely spread premium."
+                )
+                continue  # Skip this thesis entirely
+
             if entry_price <= 0:
                 logging.warning(f"IC thesis has invalid entry_price: {entry_price}")
                 continue
