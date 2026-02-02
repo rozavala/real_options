@@ -67,3 +67,115 @@ TimeoutError
 2026-02-02 17:35:16,102 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
 2026-02-02 17:35:16,105 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-02 17:50:00 UTC. Waiting for 0.25 hours.
 2026-02-02 17:36:05,745 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 17:41:07,083 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 17:46:08,196 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'US Recession Risk' (attempt 5).
+2026-02-02 17:46:08,696 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'Fed Rate Path 2026' (attempt 5).
+2026-02-02 17:46:08,702 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 17:50:00,003 - Orchestrator - INFO - --- Running scheduled task: run_position_audit_cycle ---
+2026-02-02 17:50:00,004 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-02 17:50:00,005 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 234...
+2026-02-02 17:50:00,204 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 234
+2026-02-02 17:50:00,209 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-02 17:50:00,278 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-02 17:50:00,397 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-02 17:50:00,553 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-02 17:50:00,553 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['anthropic', 'xai', 'gemini', 'openai']
+2026-02-02 17:50:00,553 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['anthropic', 'xai', 'gemini', 'openai'], 'diversity_score': 1.0}
+2026-02-02 17:50:00,558 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-02 17:50:00,559 - trading_bot.agents - INFO - Loaded commodity profile: Coffee Arabica
+2026-02-02 17:50:00,559 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee Arabica: 9 port tokens, 24 producer tokens
+2026-02-02 17:50:00,559 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee Arabica
+2026-02-02 17:50:00,559 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-02 17:50:00,559 - trading_bot.agents - INFO - Trading Council initialized for Coffee Arabica. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-02 17:50:00,575 - Orchestrator - WARNING - No open position found for KOK6 P3.15, using most recent
+2026-02-02 17:50:00,616 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-02 17:50:00,687 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 17:50:00,687 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-02 17:50:02,692 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-02 17:50:02,854 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 17:50:02,855 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-02 17:50:03,856 - Orchestrator - WARNING - THESIS INVALIDATED: e8fcdc8a-6507-4b60-a3dc-37b22843036b - PRICE BREACH: Underlying moved 1980.42% from entry (threshold: 2%). Entry: $15.17, Current: $315.60
+2026-02-02 17:50:03,860 - Orchestrator - WARNING - No open position found for KOK6 P3.075, using most recent
+2026-02-02 17:50:03,862 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-02 17:50:03,862 - ib_insync.wrapper - ERROR - Error 300, reqId 7: Can't find EId with tickerId:7
+2026-02-02 17:50:03,959 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 17:50:03,960 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-02 17:50:07,164 - Orchestrator - WARNING - No open position found for KOK6 C3.225, using most recent
+2026-02-02 17:50:07,166 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-02 17:50:07,166 - ib_insync.wrapper - ERROR - Error 300, reqId 12: Can't find EId with tickerId:12
+2026-02-02 17:50:07,263 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 17:50:07,263 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-02 17:50:10,426 - Orchestrator - WARNING - No open position found for KOK6 C3.275, using most recent
+2026-02-02 17:50:10,429 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-02 17:50:10,429 - ib_insync.wrapper - ERROR - Error 300, reqId 17: Can't find EId with tickerId:17
+2026-02-02 17:50:10,527 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 17:50:10,527 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-02 17:50:13,695 - Orchestrator - WARNING - No open position found for KOK6 P3.125, using most recent
+2026-02-02 17:50:13,699 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-02 17:50:13,700 - ib_insync.wrapper - ERROR - Error 300, reqId 22: Can't find EId with tickerId:22
+2026-02-02 17:50:13,796 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 17:50:13,796 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-02 17:50:17,002 - Orchestrator - WARNING - No open position found for KOK6 C3.3, using most recent
+2026-02-02 17:50:17,006 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-02 17:50:17,007 - ib_insync.wrapper - ERROR - Error 300, reqId 27: Can't find EId with tickerId:27
+2026-02-02 17:50:17,104 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 17:50:17,105 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-02 17:50:19,154 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-02 17:50:19,314 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 17:50:19,314 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-02 17:50:20,317 - Orchestrator - WARNING - THESIS INVALIDATED: e8fcdc8a-6507-4b60-a3dc-37b22843036b - PRICE BREACH: Underlying moved 1980.09% from entry (threshold: 2%). Entry: $15.17, Current: $315.55
+2026-02-02 17:50:20,319 - Orchestrator - WARNING - No open position found for KOK6 C3.35, using most recent
+2026-02-02 17:50:20,322 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-02 17:50:20,322 - ib_insync.wrapper - ERROR - Error 300, reqId 32: Can't find EId with tickerId:32
+2026-02-02 17:50:20,421 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 17:50:20,421 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-02 17:50:22,426 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-02 17:50:22,588 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 17:50:22,589 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-02 17:50:23,593 - Orchestrator - WARNING - THESIS INVALIDATED: e8fcdc8a-6507-4b60-a3dc-37b22843036b - PRICE BREACH: Underlying moved 1980.09% from entry (threshold: 2%). Entry: $15.17, Current: $315.55
+2026-02-02 17:50:23,598 - Orchestrator - WARNING - No open position found for KOK6 P3.2, using most recent
+2026-02-02 17:50:23,600 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-02 17:50:23,602 - ib_insync.wrapper - ERROR - Error 300, reqId 37: Can't find EId with tickerId:37
+2026-02-02 17:50:23,696 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 17:50:23,697 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-02 17:50:25,703 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-02 17:50:25,861 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 17:50:25,861 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-02 17:50:26,864 - Orchestrator - WARNING - THESIS INVALIDATED: e8fcdc8a-6507-4b60-a3dc-37b22843036b - PRICE BREACH: Underlying moved 1980.09% from entry (threshold: 2%). Entry: $15.17, Current: $315.55
+2026-02-02 17:50:26,864 - Orchestrator - INFO - Executing THESIS CLOSE for e8fcdc8a-6507-4b60-a3dc-37b22843036b: PRICE BREACH: Underlying moved 1980.42% from entry (threshold: 2%). Entry: $15.17, Current: $315.60
+2026-02-02 17:50:26,865 - root - INFO - Assigned new unique OrderRef for tracking: 1bb01988-b5ae-41c8-9383-a1a47fb24331
+2026-02-02 17:50:26,865 - root - INFO - Placing BUY order for KOK6 P3.15...
+2026-02-02 17:50:26,865 - root - INFO - Successfully placed order ID 43 for KOK6 P3.15.
+2026-02-02 17:50:26,868 - ib_insync.wrapper - ERROR - Error 300, reqId 42: Can't find EId with tickerId:42
+2026-02-02 17:50:26,966 - ib_insync.wrapper - ERROR - Error 321, reqId 43: Error validating request.-'bH' : cause - Missing order exchange.
+2026-02-02 17:50:26,967 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=FuturesOption(conId=743955683, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=3.15, right='P', multiplier='37500', currency='USD', localSymbol='KOK6 P3.15', tradingClass='KO'), order=MarketOrder(orderId=43, clientId=234, action='BUY', totalQuantity=1.0, orderRef='1bb01988-b5ae-41c8-9383-a1a47fb24331'), orderStatus=OrderStatus(orderId=43, status='Cancelled', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 2, 2, 17, 50, 26, 865531, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 2, 2, 17, 50, 26, 966835, tzinfo=datetime.timezone.utc), status='Cancelled', message="Error 321, reqId 43: Error validating request.-'bH' : cause - Missing order exchange.", errorCode=321)], advancedError='')
+2026-02-02 17:50:29,180 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-02 17:50:29,226 - trading_bot.tms - INFO - TMS: Invalidated thesis for e8fcdc8a-6507-4b60-a3dc-37b22843036b: PRICE BREACH: Underlying moved 1980.42% from entry (threshold: 2%). Entry: $15.17, Current: $315.60
+2026-02-02 17:50:29,226 - Orchestrator - INFO - Executing THESIS CLOSE for e8fcdc8a-6507-4b60-a3dc-37b22843036b: PRICE BREACH: Underlying moved 1980.09% from entry (threshold: 2%). Entry: $15.17, Current: $315.55
+2026-02-02 17:50:29,226 - root - INFO - Assigned new unique OrderRef for tracking: fb075d3c-6ab3-40fe-8508-2dae6fe9e5f0
+2026-02-02 17:50:29,226 - root - INFO - Placing SELL order for KOK6 C3.3...
+2026-02-02 17:50:29,227 - root - INFO - Successfully placed order ID 92 for KOK6 C3.3.
+2026-02-02 17:50:29,229 - ib_insync.wrapper - ERROR - Error 321, reqId 92: Error validating request.-'bH' : cause - Missing order exchange.
+2026-02-02 17:50:29,229 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=FuturesOption(conId=732415567, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=3.3, right='C', multiplier='37500', currency='USD', localSymbol='KOK6 C3.3', tradingClass='KO'), order=MarketOrder(orderId=92, clientId=234, action='SELL', totalQuantity=1.0, orderRef='fb075d3c-6ab3-40fe-8508-2dae6fe9e5f0'), orderStatus=OrderStatus(orderId=92, status='Cancelled', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 2, 2, 17, 50, 29, 226971, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 2, 2, 17, 50, 29, 229565, tzinfo=datetime.timezone.utc), status='Cancelled', message="Error 321, reqId 92: Error validating request.-'bH' : cause - Missing order exchange.", errorCode=321)], advancedError='')
+2026-02-02 17:50:31,518 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-02 17:50:31,566 - trading_bot.tms - INFO - TMS: Invalidated thesis for e8fcdc8a-6507-4b60-a3dc-37b22843036b: PRICE BREACH: Underlying moved 1980.09% from entry (threshold: 2%). Entry: $15.17, Current: $315.55
+2026-02-02 17:50:31,566 - Orchestrator - INFO - Executing THESIS CLOSE for e8fcdc8a-6507-4b60-a3dc-37b22843036b: PRICE BREACH: Underlying moved 1980.09% from entry (threshold: 2%). Entry: $15.17, Current: $315.55
+2026-02-02 17:50:31,566 - root - INFO - Assigned new unique OrderRef for tracking: a9099d6b-c66a-4d49-b78e-beb4b75b4656
+2026-02-02 17:50:31,566 - root - INFO - Placing BUY order for KOK6 C3.35...
+2026-02-02 17:50:31,567 - root - INFO - Successfully placed order ID 93 for KOK6 C3.35.
+2026-02-02 17:50:31,569 - ib_insync.wrapper - ERROR - Error 321, reqId 93: Error validating request.-'bH' : cause - Missing order exchange.
+2026-02-02 17:50:31,570 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=FuturesOption(conId=745575714, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=3.35, right='C', multiplier='37500', currency='USD', localSymbol='KOK6 C3.35', tradingClass='KO'), order=MarketOrder(orderId=93, clientId=234, action='BUY', totalQuantity=1.0, orderRef='a9099d6b-c66a-4d49-b78e-beb4b75b4656'), orderStatus=OrderStatus(orderId=93, status='Cancelled', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 2, 2, 17, 50, 31, 566920, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 2, 2, 17, 50, 31, 569716, tzinfo=datetime.timezone.utc), status='Cancelled', message="Error 321, reqId 93: Error validating request.-'bH' : cause - Missing order exchange.", errorCode=321)], advancedError='')
+2026-02-02 17:50:33,812 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-02 17:50:33,853 - trading_bot.tms - INFO - TMS: Invalidated thesis for e8fcdc8a-6507-4b60-a3dc-37b22843036b: PRICE BREACH: Underlying moved 1980.09% from entry (threshold: 2%). Entry: $15.17, Current: $315.55
+2026-02-02 17:50:33,853 - Orchestrator - INFO - Executing THESIS CLOSE for e8fcdc8a-6507-4b60-a3dc-37b22843036b: PRICE BREACH: Underlying moved 1980.09% from entry (threshold: 2%). Entry: $15.17, Current: $315.55
+2026-02-02 17:50:33,854 - root - INFO - Assigned new unique OrderRef for tracking: aebfda62-a698-444a-b420-142d6ef52252
+2026-02-02 17:50:33,854 - root - INFO - Placing SELL order for KOK6 P3.2...
+2026-02-02 17:50:33,854 - root - INFO - Successfully placed order ID 94 for KOK6 P3.2.
+2026-02-02 17:50:33,857 - ib_insync.wrapper - ERROR - Error 321, reqId 94: Error validating request.-'bH' : cause - Missing order exchange.
+2026-02-02 17:50:33,857 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=FuturesOption(conId=725781080, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=3.2, right='P', multiplier='37500', currency='USD', localSymbol='KOK6 P3.2', tradingClass='KO'), order=MarketOrder(orderId=94, clientId=234, action='SELL', totalQuantity=1.0, orderRef='aebfda62-a698-444a-b420-142d6ef52252'), orderStatus=OrderStatus(orderId=94, status='Cancelled', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 2, 2, 17, 50, 33, 854500, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 2, 2, 17, 50, 33, 857120, tzinfo=datetime.timezone.utc), status='Cancelled', message="Error 321, reqId 94: Error validating request.-'bH' : cause - Missing order exchange.", errorCode=321)], advancedError='')
+2026-02-02 17:50:36,073 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-02 17:50:36,107 - trading_bot.tms - INFO - TMS: Invalidated thesis for e8fcdc8a-6507-4b60-a3dc-37b22843036b: PRICE BREACH: Underlying moved 1980.09% from entry (threshold: 2%). Entry: $15.17, Current: $315.55
+2026-02-02 17:50:36,323 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-02 17:50:36,325 - Orchestrator - INFO - Next task 'cancel_and_stop_monitoring' scheduled for 2026-02-02 18:35:00 UTC. Waiting for 0.74 hours.
+2026-02-02 17:51:09,778 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 17:56:11,147 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
