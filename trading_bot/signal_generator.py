@@ -247,14 +247,33 @@ async def generate_signals(ib: IB, config: dict) -> list:
                 regime_for_voting = detect_market_regime_simple(vol_report_str, price_change)
 
                 # Calculate weighted consensus
+                min_quorum = config.get('strategy', {}).get('min_voter_quorum', 3)
                 weighted_result = await calculate_weighted_decision(
                     agent_reports=reports,
                     trigger_type=trigger_type,
                     ml_signal=market_ctx,
                     ib=ib,
                     contract=contract,
-                    regime=regime_for_voting
+                    regime=regime_for_voting,
+                    min_quorum=min_quorum
                 )
+
+                if weighted_result.get('quorum_failure'):
+                    logger.warning(
+                        f"Quorum failure for {contract_name}: "
+                        f"Only {weighted_result.get('voters_present', [])} voted. "
+                        f"Skipping council for this contract."
+                    )
+                    return {
+                        **market_ctx,
+                        **final_data,
+                        "contract_month": contract.lastTradeDateOrContractMonth[:6],
+                        "prediction_type": "NEUTRAL",
+                        "direction": "NEUTRAL",
+                        "confidence": 0.0,
+                        "reason": f"Quorum Failure: Insufficient agent participation (Need {min_quorum})",
+                        "_agent_reports": reports
+                    }
 
                 # Inject weighted result into market context for Master
                 weighted_context = (
@@ -583,10 +602,15 @@ async def generate_signals(ib: IB, config: dict) -> list:
 
                     # === BRIER SCORE RECORDING (Dual-Write: Legacy CSV + Enhanced JSON) ===
                     try:
+                        from trading_bot.agent_names import CANONICAL_AGENTS, DEPRECATED_AGENTS
+                        BRIER_ELIGIBLE_AGENTS = set(CANONICAL_AGENTS) - {'master_decision'} - DEPRECATED_AGENTS
                         timestamp_now = datetime.now(timezone.utc)
 
                         # Record each agent's prediction
                         for agent_name, report in reports.items():
+                            if agent_name not in BRIER_ELIGIBLE_AGENTS:
+                                continue
+
                             # Default
                             direction = 'NEUTRAL'
                             confidence = 0.5
