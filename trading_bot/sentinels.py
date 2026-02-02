@@ -71,6 +71,28 @@ class Sentinel:
         self._cache_file = Path(self.CACHE_DIR) / f"{self.__class__.__name__}_seen.json"
         self._seen_links = self._load_seen_cache()
 
+    def _validate_ai_response(self, data: Any, context: str = "") -> Optional[dict]:
+        """
+        Validate that an AI response is a dict.
+
+        Use after any _analyze_with_ai() call that expects JSON objects.
+        Returns the data if valid, None if not.
+
+        Args:
+            data: Response from _analyze_with_ai()
+            context: Description for logging (e.g., "sentiment analysis")
+        """
+        if data is None:
+            return None
+        if not isinstance(data, dict):
+            logger.warning(
+                f"{self.__class__.__name__} AI returned {type(data).__name__} "
+                f"instead of dict{f' for {context}' if context else ''}: "
+                f"{str(data)[:100]}"
+            )
+            return None
+        return data
+
     def _load_seen_cache(self) -> set:
         """Load seen links from disk."""
         if self._cache_file.exists():
@@ -521,7 +543,10 @@ class NewsSentinel(Sentinel):
             "Output JSON: {'score': int, 'summary': string}"
         )
 
-        data = await self._analyze_with_ai(prompt)
+        data = self._validate_ai_response(
+            await self._analyze_with_ai(prompt),
+            context="headline sentiment"
+        )
 
         if data is None:
             # AI failed even after retries
@@ -1371,9 +1396,22 @@ class PredictionMarketSentinel(Sentinel):
     def _load_state_cache(self):
         """Load state cache from StateManager for persistence across restarts."""
         try:
-            cached = StateManager.load_state(namespace="prediction_market_state")
+            # CRITICAL: Use load_state_raw() to avoid STALE string substitution
+            # load_state() converts stale dicts to strings, which crashes
+            # cached.get('slug') later in check()
+            cached = StateManager.load_state_raw(namespace="prediction_market_state")
             if cached and isinstance(cached, dict):
-                self.state_cache = cached
+                # Validate each entry is actually a dict (defense-in-depth)
+                validated = {}
+                for key, value in cached.items():
+                    if isinstance(value, dict):
+                        validated[key] = value
+                    else:
+                        logger.warning(
+                            f"Skipping invalid state entry for '{key}': "
+                            f"expected dict, got {type(value).__name__}"
+                        )
+                self.state_cache = validated
                 logger.info(f"Loaded state for {len(self.state_cache)} prediction market topics")
         except Exception as e:
             logger.warning(f"Failed to load prediction market state: {e}")
@@ -1407,7 +1445,7 @@ class PredictionMarketSentinel(Sentinel):
         except (ValueError, TypeError):
             return False
 
-    async def _resolve_active_market(self, query: str) -> Optional[Dict[str, Any]]:
+    async def _resolve_active_market(self, query: str, **kwargs) -> Optional[Dict[str, Any]]:
         """
         DYNAMIC MARKET DISCOVERY:
         Searches Polymarket for the query, filters by liquidity/volume,
@@ -1436,9 +1474,17 @@ class PredictionMarketSentinel(Sentinel):
 
                     data = await response.json()
 
+                    # Type guard: API should return a list of events
+                    if not isinstance(data, list):
+                        logger.warning(
+                            f"Polymarket API returned {type(data).__name__} instead of list "
+                            f"for query '{query}'"
+                        )
+                        return None
+
                     logger.debug(
                         f"Dynamic Discovery: '{query}' found {len(data)} markets. "
-                        f"Top result: {[e.get('title') for e in data[:1]]}"
+                        f"Top result: {[e.get('title') for e in data[:1] if isinstance(e, dict)]}"
                     )
 
                     if not data:
@@ -1448,6 +1494,10 @@ class PredictionMarketSentinel(Sentinel):
                     # Filter and sort candidates by liquidity
                     candidates = []
                     for event in data:
+                        if not isinstance(event, dict):
+                            logger.debug(f"Skipping non-dict event: {type(event).__name__}")
+                            continue
+
                         markets = event.get('markets', [])
                         if not markets:
                             continue
@@ -1458,11 +1508,19 @@ class PredictionMarketSentinel(Sentinel):
                         # If we find "Side Bet" lock-on issues later, add market['question'] filter.
                         market = markets[0]
 
+                        if not isinstance(market, dict):
+                            logger.debug(f"Skipping non-dict market: {type(market).__name__}")
+                            continue
+
                         # Parse liquidity and volume safely
                         try:
                             liquidity = float(market.get('liquidity', 0) or 0)
                             volume = float(market.get('volume', 0) or 0)
-                        except (ValueError, TypeError):
+                        except (ValueError, TypeError, AttributeError):
+                            logger.warning(
+                                f"Skipping malformed market data for '{query}': "
+                                f"type={type(market).__name__}"
+                            )
                             continue
 
                         # Apply filters
@@ -1488,18 +1546,50 @@ class PredictionMarketSentinel(Sentinel):
                             'volume': volume
                         })
 
-                    # Sort by liquidity (descending) - highest liquidity = crowd consensus
-                    candidates.sort(key=lambda x: x['liquidity'], reverse=True)
+                    if not candidates:
+                        return None
 
-                    if candidates:
+                    # --- RELEVANCE SCORING ---
+                    # Get keywords from topic config (passed via new parameter)
+                    relevance_keywords = kwargs.get('relevance_keywords', [])
+
+                    if relevance_keywords:
+                        for candidate in candidates:
+                            title_lower = candidate['title'].lower()
+                            # Count keyword matches in event title
+                            match_count = sum(
+                                1 for kw in relevance_keywords
+                                if kw.lower() in title_lower
+                            )
+                            candidate['relevance_score'] = match_count
+
+                        # Prefer relevant candidates
+                        relevant = [c for c in candidates if c.get('relevance_score', 0) > 0]
+
+                        if relevant:
+                            # Among relevant: pick highest liquidity
+                            relevant.sort(key=lambda x: x['liquidity'], reverse=True)
+                            winner = relevant[0]
+                            logger.debug(
+                                f"Resolved '{query}' → '{winner['slug']}' "
+                                f"(relevance={winner['relevance_score']}, "
+                                f"liq=${winner['liquidity']:,.0f})"
+                            )
+                        else:
+                            # No relevant candidates — use highest liquidity but warn
+                            candidates.sort(key=lambda x: x['liquidity'], reverse=True)
+                            winner = candidates[0]
+                            logger.warning(
+                                f"⚠️ No relevant markets for '{query}' "
+                                f"(keywords: {relevance_keywords[:3]}). "
+                                f"Using highest liquidity: '{winner['title'][:60]}'"
+                            )
+                    else:
+                        # No keywords configured — fall back to pure liquidity
+                        candidates.sort(key=lambda x: x['liquidity'], reverse=True)
                         winner = candidates[0]
-                        logger.debug(
-                            f"Resolved '{query}' → '{winner['slug']}' "
-                            f"(liq=${winner['liquidity']:,.0f})"
-                        )
-                        return winner
 
-                    return None
+                    return winner
 
         except asyncio.TimeoutError:
             logger.warning(f"Polymarket API timeout for query: '{query}'")
@@ -1560,159 +1650,190 @@ class PredictionMarketSentinel(Sentinel):
             if not query:
                 continue
 
-            threshold = topic.get('trigger_threshold_pct', 10.0) / 100.0
-            display_name = topic.get('display_name', query)
-            tag = topic.get('tag', 'Unknown')
-            importance = topic.get('importance', 'macro')
-            coffee_impact = topic.get('coffee_impact', 'Potential macro impact on coffee')
-
-            # === DYNAMIC MARKET RESOLUTION ===
-            market_data = await self._resolve_active_market(query)
-
-            if not market_data:
-                # Track persistent failures for alerting
-                self._topic_failure_counts[query] = self._topic_failure_counts.get(query, 0) + 1
-                if self._topic_failure_counts[query] == 10:  # Alert after ~50 min of failures
-                    logger.warning(
-                        f"⚠️ No markets found for topic '{display_name}' "
-                        f"after {self._topic_failure_counts[query]} attempts. "
-                        f"Consider reviewing query: '{query}'"
-                    )
-                continue
-
-            # Reset failure count on success
-            self._topic_failure_counts[query] = 0
-
-            current_slug = market_data['slug']
-            current_title = market_data['title']
-
-            # Parse price safely
             try:
-                outcomes = market_data['market'].get('outcomePrices', [])
-                if isinstance(outcomes, str):
-                    try:
-                        outcomes = json.loads(outcomes)
-                    except json.JSONDecodeError:
-                        logger.warning(f"Failed to parse outcomePrices JSON for '{query}'")
-                        continue
+                threshold = topic.get('trigger_threshold_pct', 10.0) / 100.0
+                display_name = topic.get('display_name', query)
+                tag = topic.get('tag', 'Unknown')
+                importance = topic.get('importance', 'macro')
+                coffee_impact = topic.get('coffee_impact', 'Potential macro impact on coffee')
 
-                if not outcomes:
+                # === DYNAMIC MARKET RESOLUTION ===
+                relevance_keywords = topic.get('relevance_keywords', [])
+                market_data = await self._resolve_active_market(
+                    query,
+                    relevance_keywords=relevance_keywords
+                )
+
+                if not market_data:
+                    # Track persistent failures for alerting
+                    self._topic_failure_counts[query] = self._topic_failure_counts.get(query, 0) + 1
+                    if self._topic_failure_counts[query] == 10:  # Alert after ~50 min of failures
+                        logger.warning(
+                            f"⚠️ No markets found for topic '{display_name}' "
+                            f"after {self._topic_failure_counts[query]} attempts. "
+                            f"Consider reviewing query: '{query}'"
+                        )
                     continue
-                current_price = float(outcomes[0])  # Index 0 is typically "Yes"
-            except (ValueError, TypeError, IndexError) as e:
-                logger.warning(f"Failed to parse price for '{query}': {e}")
-                continue
 
-            # === COMPARE AGAINST CACHED STATE ===
-            if query in self.state_cache:
-                cached = self.state_cache[query]
-                last_slug = cached.get('slug')
-                last_price = cached.get('price', current_price)
-                severity_hwm = cached.get('severity_hwm', 0)
-                hwm_timestamp = cached.get('hwm_timestamp')
+                # Reset failure count on success
+                self._topic_failure_counts[query] = 0
 
-                # === SLUG CONSISTENCY CHECK ===
-                # If the resolved market changed (June → July rollover),
-                # reset the baseline and DO NOT trigger an alert
-                if last_slug and last_slug != current_slug:
-                    logger.info(
-                        f"📅 Market Rollover Detected for '{display_name}': "
-                        f"'{last_slug}' → '{current_slug}'. Resetting baseline."
-                    )
+                current_slug = market_data['slug']
+                current_title = market_data['title']
 
-                    # Notify (informational, not alert)
-                    send_pushover_notification(
-                        self.config.get('notifications', {}),
-                        f"Market Rollover: {display_name}",
-                        f"Now tracking: {current_title[:50]}...",
-                        priority=-1  # Low priority (informational)
-                    )
+                # Parse price safely
+                try:
+                    outcomes = market_data['market'].get('outcomePrices', [])
+                    if isinstance(outcomes, str):
+                        try:
+                            outcomes = json.loads(outcomes)
+                        except json.JSONDecodeError:
+                            logger.warning(f"Failed to parse outcomePrices JSON for '{query}'")
+                            continue
 
-                    # Reset state for this topic
+                    if not outcomes:
+                        continue
+                    current_price = float(outcomes[0])  # Index 0 is typically "Yes"
+                except (ValueError, TypeError, IndexError) as e:
+                    logger.warning(f"Failed to parse price for '{query}': {e}")
+                    continue
+
+                # === COMPARE AGAINST CACHED STATE ===
+                if query in self.state_cache:
+                    cached = self.state_cache[query]
+                    last_slug = cached.get('slug')
+                    last_price = cached.get('price', current_price)
+                    severity_hwm = cached.get('severity_hwm', 0)
+                    hwm_timestamp = cached.get('hwm_timestamp')
+
+                    # === SLUG CONSISTENCY CHECK ===
+                    # If the resolved market changed (June → July rollover),
+                    # reset the baseline and DO NOT trigger an alert
+                    if last_slug and last_slug != current_slug:
+                        logger.info(
+                            f"📅 Market Rollover Detected for '{display_name}': "
+                            f"'{last_slug}' → '{current_slug}'. Resetting baseline."
+                        )
+
+                        # Notify (informational, not alert)
+                        send_pushover_notification(
+                            self.config.get('notifications', {}),
+                            f"Market Rollover: {display_name}",
+                            f"Now tracking: {current_title[:50]}...",
+                            priority=-1  # Low priority (informational)
+                        )
+
+                        # Reset state for this topic
+                        self.state_cache[query] = {
+                            'slug': current_slug,
+                            'title': current_title,
+                            'price': current_price,
+                            'timestamp': datetime.now(timezone.utc).isoformat(),
+                            'severity_hwm': 0,
+                            'hwm_timestamp': None
+                        }
+                        continue  # Skip trigger evaluation this cycle
+
+                    # === HIGH-WATER MARK DECAY ===
+                    # Reset HWM if enough time has passed (allows re-alerting)
+                    if self._should_decay_hwm(hwm_timestamp):
+                        logger.debug(
+                            f"HWM decay for '{display_name}': "
+                            f"Resetting from {severity_hwm} to 0 (>{self.hwm_decay_hours}h old)"
+                        )
+                        severity_hwm = 0
+                        cached['severity_hwm'] = 0
+                        cached['hwm_timestamp'] = None
+
+                    # === RATE OF CHANGE DETECTION ===
+                    delta = current_price - last_price
+                    delta_pct = abs(delta) * 100
+
+                    if abs(delta) >= threshold:
+                        current_severity = self._calculate_severity(delta_pct)
+
+                        # === HIGH-WATER MARK FLAPPING PROTECTION ===
+                        # Only alert if severity INCREASES beyond the high-water mark
+                        # This prevents: 15% alert → 21% alert → 19% RE-ALERT (bad)
+                        if current_severity > severity_hwm:
+                            direction = "JUMPED" if delta > 0 else "CRASHED"
+
+                            msg = (
+                                f"Prediction Market Alert: '{display_name}' {direction} "
+                                f"{delta_pct:.1f}% (Now: {current_price*100:.0f}% → "
+                                f"Was: {last_price*100:.0f}%)"
+                            )
+
+                            logger.warning(f"🎯 PREDICTION SENTINEL: {msg}")
+
+                            triggers.append(SentinelTrigger(
+                                source="PredictionMarketSentinel",
+                                reason=msg,
+                                payload={
+                                    "topic": query,
+                                    "tag": tag,
+                                    "display_name": display_name,
+                                    "slug": current_slug,
+                                    "title": current_title,
+                                    "prev_price": round(last_price, 4),
+                                    "curr_price": round(current_price, 4),
+                                    "delta_pct": round(delta * 100, 2),
+                                    "importance": importance,
+                                    "coffee_impact": coffee_impact,
+                                    "volume": market_data.get('volume', 0),
+                                    "liquidity": market_data.get('liquidity', 0)
+                                },
+                                severity=current_severity
+                            ))
+
+                            # Update High-Water Mark
+                            cached['severity_hwm'] = current_severity
+                            cached['hwm_timestamp'] = datetime.now(timezone.utc).isoformat()
+                        else:
+                            logger.debug(
+                                f"Suppressed alert for '{display_name}': "
+                                f"severity {current_severity} <= HWM {severity_hwm}"
+                            )
+
+                # === UPDATE STATE CACHE ===
+                if query not in self.state_cache:
                     self.state_cache[query] = {
-                        'slug': current_slug,
-                        'title': current_title,
-                        'price': current_price,
-                        'timestamp': datetime.now(timezone.utc).isoformat(),
                         'severity_hwm': 0,
                         'hwm_timestamp': None
                     }
-                    continue  # Skip trigger evaluation this cycle
 
-                # === HIGH-WATER MARK DECAY ===
-                # Reset HWM if enough time has passed (allows re-alerting)
-                if self._should_decay_hwm(hwm_timestamp):
-                    logger.debug(
-                        f"HWM decay for '{display_name}': "
-                        f"Resetting from {severity_hwm} to 0 (>{self.hwm_decay_hours}h old)"
-                    )
-                    severity_hwm = 0
-                    cached['severity_hwm'] = 0
-                    cached['hwm_timestamp'] = None
+                self.state_cache[query].update({
+                    'slug': current_slug,
+                    'title': current_title,
+                    'price': current_price,
+                    'timestamp': datetime.now(timezone.utc).isoformat()
+                })
 
-                # === RATE OF CHANGE DETECTION ===
-                delta = current_price - last_price
-                delta_pct = abs(delta) * 100
+            except Exception as topic_error:
+                logger.warning(
+                    f"Error processing prediction market topic '{query}': "
+                    f"{type(topic_error).__name__}: {topic_error}"
+                )
+                self._topic_failure_counts[query] = self._topic_failure_counts.get(query, 0) + 1
+                continue
 
-                if abs(delta) >= threshold:
-                    current_severity = self._calculate_severity(delta_pct)
+        # --- DUPLICATE SLUG DETECTION ---
+        # Alert if multiple topics resolve to the same market (indicates query failure)
+        slug_map = {}
+        for topic in self.topics:
+            query = topic.get('query', '')
+            cached = self.state_cache.get(query, {})
+            slug = cached.get('slug') if isinstance(cached, dict) else None
+            if slug:
+                slug_map.setdefault(slug, []).append(topic.get('tag', query))
 
-                    # === HIGH-WATER MARK FLAPPING PROTECTION ===
-                    # Only alert if severity INCREASES beyond the high-water mark
-                    # This prevents: 15% alert → 21% alert → 19% RE-ALERT (bad)
-                    if current_severity > severity_hwm:
-                        direction = "JUMPED" if delta > 0 else "CRASHED"
-
-                        msg = (
-                            f"Prediction Market Alert: '{display_name}' {direction} "
-                            f"{delta_pct:.1f}% (Now: {current_price*100:.0f}% → "
-                            f"Was: {last_price*100:.0f}%)"
-                        )
-
-                        logger.warning(f"🎯 PREDICTION SENTINEL: {msg}")
-
-                        triggers.append(SentinelTrigger(
-                            source="PredictionMarketSentinel",
-                            reason=msg,
-                            payload={
-                                "topic": query,
-                                "tag": tag,
-                                "display_name": display_name,
-                                "slug": current_slug,
-                                "title": current_title,
-                                "prev_price": round(last_price, 4),
-                                "curr_price": round(current_price, 4),
-                                "delta_pct": round(delta * 100, 2),
-                                "importance": importance,
-                                "coffee_impact": coffee_impact,
-                                "volume": market_data.get('volume', 0),
-                                "liquidity": market_data.get('liquidity', 0)
-                            },
-                            severity=current_severity
-                        ))
-
-                        # Update High-Water Mark
-                        cached['severity_hwm'] = current_severity
-                        cached['hwm_timestamp'] = datetime.now(timezone.utc).isoformat()
-                    else:
-                        logger.debug(
-                            f"Suppressed alert for '{display_name}': "
-                            f"severity {current_severity} <= HWM {severity_hwm}"
-                        )
-
-            # === UPDATE STATE CACHE ===
-            if query not in self.state_cache:
-                self.state_cache[query] = {
-                    'severity_hwm': 0,
-                    'hwm_timestamp': None
-                }
-
-            self.state_cache[query].update({
-                'slug': current_slug,
-                'title': current_title,
-                'price': current_price,
-                'timestamp': datetime.now(timezone.utc).isoformat()
-            })
+        duplicates = {slug: tags for slug, tags in slug_map.items() if len(tags) > 1}
+        if duplicates:
+            for slug, tags in duplicates.items():
+                logger.warning(
+                    f"⚠️ TOPIC COLLISION: {', '.join(tags)} all resolved to "
+                    f"'{slug}'. Dynamic Discovery is failing to differentiate topics."
+                )
 
         # Persist state
         self._save_state_cache()

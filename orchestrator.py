@@ -1543,125 +1543,150 @@ async def run_sentinels(config: dict):
 
             # 1. Price Sentinel (Every 1 min) - ONLY if IB connected
             if sentinel_ib and sentinel_ib.isConnected():
-                trigger = await price_sentinel.check(cached_contract=cached_contract)
-                trigger = validate_trigger(trigger)
+                try:
+                    trigger = await price_sentinel.check(cached_contract=cached_contract)
+                    trigger = validate_trigger(trigger)
 
-                # === NEW: Price Move Triggers Position Audit ===
-                # If PriceSentinel detects significant move, proactively check theses
-                if trigger and trigger.source == 'PriceSentinel':
-                    price_change = abs(trigger.payload.get('change', 0))
-                    if price_change >= 1.5:  # Pre-emptive at 1.5% (before 2% breach)
-                        logger.info(f"PriceSentinel detected {price_change:.1f}% move - triggering position audit")
-                        asyncio.create_task(run_position_audit_cycle(
-                            config,
-                            f"PriceSentinel trigger ({price_change:.1f}% move)"
-                        ))
+                    # === NEW: Price Move Triggers Position Audit ===
+                    # If PriceSentinel detects significant move, proactively check theses
+                    if trigger and trigger.source == 'PriceSentinel':
+                        price_change = abs(trigger.payload.get('change', 0))
+                        if price_change >= 1.5:  # Pre-emptive at 1.5% (before 2% breach)
+                            logger.info(f"PriceSentinel detected {price_change:.1f}% move - triggering position audit")
+                            asyncio.create_task(run_position_audit_cycle(
+                                config,
+                                f"PriceSentinel trigger ({price_change:.1f}% move)"
+                            ))
 
-                if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
-                    asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                    if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
+                        asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                        GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                except Exception as e:
+                    logger.error(f"PriceSentinel check failed: {type(e).__name__}: {e}")
 
             # 2. Weather Sentinel (Every 4 hours) - Runs 24/7, no IB needed
             if (now - last_weather) > 14400:
-                trigger = await weather_sentinel.check()
-                trigger = validate_trigger(trigger)
-                if trigger:
-                    if market_open and sentinel_ib and sentinel_ib.isConnected():
-                        if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                            asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                            GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                    else:
-                        # Defer for market open
-                        StateManager.queue_deferred_trigger(trigger)
-                        logger.info(f"Deferred {trigger.source} trigger for market open")
-                last_weather = now
+                try:
+                    trigger = await weather_sentinel.check()
+                    trigger = validate_trigger(trigger)
+                    if trigger:
+                        if market_open and sentinel_ib and sentinel_ib.isConnected():
+                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                        else:
+                            # Defer for market open
+                            StateManager.queue_deferred_trigger(trigger)
+                            logger.info(f"Deferred {trigger.source} trigger for market open")
+                except Exception as e:
+                    logger.error(f"WeatherSentinel check failed: {type(e).__name__}: {e}")
+                finally:
+                    last_weather = now
 
             # 3. Logistics Sentinel (Every 6 hours) - Runs 24/7, no IB needed
             if (now - last_logistics) > 21600:
-                trigger = await logistics_sentinel.check()
-                trigger = validate_trigger(trigger)
-                if trigger:
-                    if market_open and sentinel_ib and sentinel_ib.isConnected():
-                        if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                            asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                            GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                    else:
-                        StateManager.queue_deferred_trigger(trigger)
-                        logger.info(f"Deferred {trigger.source} trigger for market open")
-                last_logistics = now
+                try:
+                    trigger = await logistics_sentinel.check()
+                    trigger = validate_trigger(trigger)
+                    if trigger:
+                        if market_open and sentinel_ib and sentinel_ib.isConnected():
+                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                        else:
+                            StateManager.queue_deferred_trigger(trigger)
+                            logger.info(f"Deferred {trigger.source} trigger for market open")
+                except Exception as e:
+                    logger.error(f"LogisticsSentinel check failed: {type(e).__name__}: {e}")
+                finally:
+                    last_logistics = now
 
             # 4. News Sentinel (Every 2 hours) - Runs 24/7, no IB needed
             if (now - last_news) > 7200:
-                trigger = await news_sentinel.check()
-                trigger = validate_trigger(trigger)
-                if trigger:
-                    if market_open and sentinel_ib and sentinel_ib.isConnected():
-                        if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                            asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                            GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                    else:
-                        StateManager.queue_deferred_trigger(trigger)
-                        logger.info(f"Deferred {trigger.source} trigger for market open")
-                last_news = now
+                try:
+                    trigger = await news_sentinel.check()
+                    trigger = validate_trigger(trigger)
+                    if trigger:
+                        if market_open and sentinel_ib and sentinel_ib.isConnected():
+                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                        else:
+                            StateManager.queue_deferred_trigger(trigger)
+                            logger.info(f"Deferred {trigger.source} trigger for market open")
+                except Exception as e:
+                    logger.error(f"NewsSentinel check failed: {type(e).__name__}: {e}")
+                finally:
+                    last_news = now
 
             # 5. X Sentiment Sentinel (Every 90 min during trading day)
             if trading_day and (now - last_x_sentiment) > 5400:
-                # Reset daily stats if new day
-                if datetime.now().date() != x_sentinel_stats['last_reset']:
-                    x_sentinel_stats = {
-                        'checks_today': 0,
-                        'triggers_today': 0,
-                        'estimated_tokens': 0,
-                        'estimated_cost_usd': 0.0,
-                        'last_reset': datetime.now().date()
-                    }
+                try:
+                    # Reset daily stats if new day
+                    if datetime.now().date() != x_sentinel_stats['last_reset']:
+                        x_sentinel_stats = {
+                            'checks_today': 0,
+                            'triggers_today': 0,
+                            'estimated_tokens': 0,
+                            'estimated_cost_usd': 0.0,
+                            'last_reset': datetime.now().date()
+                        }
 
-                trigger = await x_sentinel.check()
-                trigger = validate_trigger(trigger)
-                x_sentinel_stats['checks_today'] += 1
+                    trigger = await x_sentinel.check()
+                    trigger = validate_trigger(trigger)
+                    x_sentinel_stats['checks_today'] += 1
 
-                if trigger:
-                    x_sentinel_stats['triggers_today'] += 1
-                    if market_open and sentinel_ib and sentinel_ib.isConnected():
-                        if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                            asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                            GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                    else:
-                        StateManager.queue_deferred_trigger(trigger)
-                        logger.info(f"Deferred {trigger.source} trigger for market open")
-
-                last_x_sentiment = now
+                    if trigger:
+                        x_sentinel_stats['triggers_today'] += 1
+                        if market_open and sentinel_ib and sentinel_ib.isConnected():
+                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                        else:
+                            StateManager.queue_deferred_trigger(trigger)
+                            logger.info(f"Deferred {trigger.source} trigger for market open")
+                except Exception as e:
+                    logger.error(f"XSentimentSentinel check failed: {type(e).__name__}: {e}")
+                finally:
+                    last_x_sentiment = now
 
             # 6. Prediction Market Sentinel (Every 5 minutes) - Runs 24/7, no IB needed
             prediction_config = config.get('sentinels', {}).get('prediction_markets', {})
             prediction_interval = prediction_config.get('poll_interval_seconds', 300)
 
             if (now - last_prediction_market) > prediction_interval:
-                trigger = await prediction_market_sentinel.check()
-                trigger = validate_trigger(trigger)
-                if trigger:
-                    if market_open and sentinel_ib and sentinel_ib.isConnected():
-                        if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                            asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                            GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 1800)  # 30 min cooldown
-                    else:
-                        StateManager.queue_deferred_trigger(trigger)
-                        logger.info(f"Deferred {trigger.source} trigger for market open")
-                last_prediction_market = now
+                try:
+                    trigger = await prediction_market_sentinel.check()
+                    trigger = validate_trigger(trigger)
+                    if trigger:
+                        if market_open and sentinel_ib and sentinel_ib.isConnected():
+                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 1800)  # 30 min cooldown
+                        else:
+                            StateManager.queue_deferred_trigger(trigger)
+                            logger.info(f"Deferred {trigger.source} trigger for market open")
+                except Exception as e:
+                    logger.error(f"PredictionMarketSentinel check failed: {type(e).__name__}: {e}")
+                finally:
+                    last_prediction_market = now
 
             # 7. Microstructure Sentinel (Every 1 min with Price Sentinel)
             if micro_sentinel and micro_ib and micro_ib.isConnected():
-                micro_trigger = await micro_sentinel.check()
-                if micro_trigger:
-                    logger.warning(f"MICROSTRUCTURE ALERT: {micro_trigger.reason}")
-                    if micro_trigger.severity >= 7:
-                        asyncio.create_task(run_emergency_cycle(micro_trigger, config, sentinel_ib))
-                    else:
-                        send_pushover_notification(
-                            config.get('notifications', {}),
-                            "Microstructure Warning",
-                            f"{micro_trigger.reason} (Severity: {micro_trigger.severity:.1f})"
-                        )
+                try:
+                    micro_trigger = await micro_sentinel.check()
+                    if micro_trigger:
+                        logger.warning(f"MICROSTRUCTURE ALERT: {micro_trigger.reason}")
+                        if micro_trigger.severity >= 7:
+                            asyncio.create_task(run_emergency_cycle(micro_trigger, config, sentinel_ib))
+                        else:
+                            send_pushover_notification(
+                                config.get('notifications', {}),
+                                "Microstructure Warning",
+                                f"{micro_trigger.reason} (Severity: {micro_trigger.severity:.1f})"
+                            )
+                except Exception as e:
+                    logger.error(f"MicrostructureSentinel check failed: {type(e).__name__}: {e}")
 
             await asyncio.sleep(60)  # Loop tick
 
