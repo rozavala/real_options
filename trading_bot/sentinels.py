@@ -1552,6 +1552,7 @@ class PredictionMarketSentinel(Sentinel):
                     # --- RELEVANCE SCORING ---
                     # Get keywords from topic config (passed via new parameter)
                     relevance_keywords = kwargs.get('relevance_keywords', [])
+                    min_relevance = kwargs.get('min_relevance_score', 1)
 
                     if relevance_keywords:
                         for candidate in candidates:
@@ -1563,8 +1564,11 @@ class PredictionMarketSentinel(Sentinel):
                             )
                             candidate['relevance_score'] = match_count
 
-                        # Prefer relevant candidates
-                        relevant = [c for c in candidates if c.get('relevance_score', 0) > 0]
+                        # Prefer relevant candidates (must meet minimum score)
+                        relevant = [
+                            c for c in candidates
+                            if c.get('relevance_score', 0) >= min_relevance
+                        ]
 
                         if relevant:
                             # Among relevant: pick highest liquidity
@@ -1576,14 +1580,16 @@ class PredictionMarketSentinel(Sentinel):
                                 f"liq=${winner['liquidity']:,.0f})"
                             )
                         else:
-                            # No relevant candidates — use highest liquidity but warn
-                            candidates.sort(key=lambda x: x['liquidity'], reverse=True)
-                            winner = candidates[0]
+                            # FAIL-SAFE: No relevant candidates → return None
+                            # This prevents tracking irrelevant markets (e.g., deportation
+                            # market when searching for "Federal Reserve interest rate")
                             logger.warning(
                                 f"⚠️ No relevant markets for '{query}' "
-                                f"(keywords: {relevance_keywords[:3]}). "
-                                f"Using highest liquidity: '{winner['title'][:60]}'"
+                                f"(keywords: {relevance_keywords[:5]}, "
+                                f"min_score={min_relevance}). "
+                                f"Skipping topic — will retry next cycle."
                             )
+                            return None
                     else:
                         # No keywords configured — fall back to pure liquidity
                         candidates.sort(key=lambda x: x['liquidity'], reverse=True)
@@ -1655,13 +1661,17 @@ class PredictionMarketSentinel(Sentinel):
                 display_name = topic.get('display_name', query)
                 tag = topic.get('tag', 'Unknown')
                 importance = topic.get('importance', 'macro')
-                coffee_impact = topic.get('coffee_impact', 'Potential macro impact on coffee')
+                commodity_impact = topic.get('commodity_impact',
+                    topic.get('coffee_impact', 'Potential macro impact on commodity'))
 
                 # === DYNAMIC MARKET RESOLUTION ===
                 relevance_keywords = topic.get('relevance_keywords', [])
+                min_relevance = topic.get('min_relevance_score',
+                    self.sentinel_config.get('min_relevance_score', 1))
                 market_data = await self._resolve_active_market(
                     query,
-                    relevance_keywords=relevance_keywords
+                    relevance_keywords=relevance_keywords,
+                    min_relevance_score=min_relevance
                 )
 
                 if not market_data:
@@ -1779,7 +1789,7 @@ class PredictionMarketSentinel(Sentinel):
                                     "curr_price": round(current_price, 4),
                                     "delta_pct": round(delta * 100, 2),
                                     "importance": importance,
-                                    "coffee_impact": coffee_impact,
+                                    "commodity_impact": commodity_impact,
                                     "volume": market_data.get('volume', 0),
                                     "liquidity": market_data.get('liquidity', 0)
                                 },
@@ -1829,11 +1839,31 @@ class PredictionMarketSentinel(Sentinel):
 
         duplicates = {slug: tags for slug, tags in slug_map.items() if len(tags) > 1}
         if duplicates:
+            collision_details = []
             for slug, tags in duplicates.items():
+                detail = f"{', '.join(tags)} → '{slug}'"
+                collision_details.append(detail)
                 logger.warning(
                     f"⚠️ TOPIC COLLISION: {', '.join(tags)} all resolved to "
                     f"'{slug}'. Dynamic Discovery is failing to differentiate topics."
                 )
+
+            # Alert operator on first detection (then suppress for 6 hours)
+            if not hasattr(self, '_last_collision_alert_time'):
+                self._last_collision_alert_time = 0
+
+            import time as time_module
+            now = time_module.time()
+            if (now - self._last_collision_alert_time) > 21600:  # 6 hours
+                send_pushover_notification(
+                    self.config.get('notifications', {}),
+                    "🔮 Prediction Market Topic Collision",
+                    f"{len(duplicates)} collision(s) detected:\n"
+                    + "\n".join(collision_details)
+                    + "\n\nCheck config.json topics_to_watch queries.",
+                    priority=0  # Normal priority
+                )
+                self._last_collision_alert_time = now
 
         # Persist state
         self._save_state_cache()

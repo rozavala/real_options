@@ -492,9 +492,14 @@ def fetch_all_live_data(_config: dict) -> dict:
 
 @st.cache_data(ttl=300)
 def fetch_todays_benchmark_data():
-    """Fetches today's performance for SPY and KC=F from Yahoo Finance."""
+    """Fetches today's performance for SPY and Commodity Futures from Yahoo Finance."""
     try:
-        tickers = ['SPY', 'KC=F']
+        # Commodity-agnostic: derive ticker from config
+        config = get_config()
+        commodity_ticker = config.get('commodity', {}).get('ticker', 'KC')
+        yf_commodity = f"{commodity_ticker}=F"
+        tickers = ['SPY', yf_commodity]
+
         data = yf.download(tickers, period="5d", progress=False, auto_adjust=True)['Close']
         if data.empty:
             return {}
@@ -521,9 +526,14 @@ def fetch_todays_benchmark_data():
 
 @st.cache_data(ttl=3600)
 def fetch_benchmark_data(start_date, end_date):
-    """Fetches S&P 500 (SPY) and Coffee Futures (KC=F) from Yahoo Finance for a date range."""
+    """Fetches S&P 500 (SPY) and Commodity Futures from Yahoo Finance for a date range."""
     try:
-        tickers = ['SPY', 'KC=F']
+        # Commodity-agnostic: derive ticker from config
+        config = get_config()
+        commodity_ticker = config.get('commodity', {}).get('ticker', 'KC')
+        yf_commodity = f"{commodity_ticker}=F"
+        tickers = ['SPY', yf_commodity]
+
         data = yf.download(
             tickers,
             start=start_date,

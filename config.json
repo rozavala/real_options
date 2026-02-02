@@ -228,6 +228,7 @@
       "poll_interval_seconds": 300,
       "min_liquidity_usd": 10000,
       "min_volume_usd": 10000,
+      "min_relevance_score": 1,
       "hwm_decay_hours": 24,
       "providers": {
         "polymarket": {
@@ -238,40 +239,44 @@
       },
       "topics_to_watch": [
         {
-          "query": "Federal Reserve interest rate",
-          "tag": "Fed",
-          "display_name": "Fed Policy",
-          "trigger_threshold_pct": 10.0,
+          "query": "Trump Fed Chair nominee",
+          "tag": "FedChair",
+          "display_name": "Fed Chair Nomination",
+          "trigger_threshold_pct": 8.0,
           "importance": "macro",
-          "coffee_impact": "USD strength affects coffee exports",
-          "relevance_keywords": ["federal reserve", "interest rate", "fomc", "powell", "fed funds", "monetary policy"]
+          "commodity_impact": "New Fed Chair policy direction affects USD, rates, and commodity financing costs",
+          "relevance_keywords": ["fed", "chair", "nominee", "warsh", "rieder", "federal reserve", "trump", "nominate"],
+          "min_relevance_score": 2
         },
         {
-          "query": "Brazil economy Selic",
-          "tag": "Brazil",
-          "display_name": "Brazil Macro",
-          "trigger_threshold_pct": 10.0,
-          "importance": "forex",
-          "coffee_impact": "BRL/USD affects Brazilian export competitiveness",
-          "relevance_keywords": ["brazil", "selic", "lula", "brl", "real", "brazilian"]
-        },
-        {
-          "query": "Trump trade policy tariff",
-          "tag": "Trade",
-          "display_name": "US Trade Policy",
-          "trigger_threshold_pct": 5.0,
+          "query": "Supreme Court Trump tariffs",
+          "tag": "Tariffs",
+          "display_name": "SCOTUS Tariff Ruling",
+          "trigger_threshold_pct": 8.0,
           "importance": "geopolitical",
-          "coffee_impact": "Tariff risk on coffee imports + general market volatility",
-          "relevance_keywords": ["tariff", "trade war", "import duty", "trade policy", "sanctions"]
+          "commodity_impact": "Tariff legality affects import/export costs and trade flow disruption",
+          "relevance_keywords": ["supreme court", "tariff", "scotus", "trump", "trade", "ruling", "favor"],
+          "min_relevance_score": 2
         },
         {
-          "query": "commodity prices agriculture",
-          "tag": "Commodities",
-          "display_name": "Commodity Sentiment",
+          "query": "US recession 2026",
+          "tag": "Recession",
+          "display_name": "US Recession Risk",
+          "trigger_threshold_pct": 5.0,
+          "importance": "macro",
+          "commodity_impact": "Recession fear drives demand destruction across all commodities",
+          "relevance_keywords": ["recession", "us", "economy", "gdp", "2026", "downturn"],
+          "min_relevance_score": 1
+        },
+        {
+          "query": "Fed rate 2026",
+          "tag": "FedRate",
+          "display_name": "Fed Rate Path 2026",
           "trigger_threshold_pct": 10.0,
           "importance": "macro",
-          "coffee_impact": "Broad commodity sentiment correlates with coffee",
-          "relevance_keywords": ["commodity", "agriculture", "crop", "harvest", "food prices", "soft commodity"]
+          "commodity_impact": "Rate trajectory determines USD strength and commodity carry cost",
+          "relevance_keywords": ["fed", "rate", "2026", "cut", "pause", "interest", "fomc", "decision"],
+          "min_relevance_score": 1
         }
       ],
       "severity_mapping": {

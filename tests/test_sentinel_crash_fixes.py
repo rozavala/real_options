@@ -204,3 +204,148 @@ def test_validate_ai_response():
 
     # Integer
     assert sentinel._validate_ai_response(42) is None
+
+# === TEST 7: Relevance gate returns None when no match ===
+@pytest.mark.asyncio
+async def test_relevance_gate_returns_none_on_no_match():
+    """Fix #1: When relevance_keywords exist but no candidates match,
+    _resolve_active_market should return None (not highest liquidity)."""
+    config = {
+        'sentinels': {'prediction_markets': {
+            'enabled': True, 'poll_interval_seconds': 0,
+            'min_liquidity_usd': 1000, 'min_volume_usd': 1000,
+            'min_relevance_score': 1,
+            'topics_to_watch': []
+        }},
+        'notifications': {'enabled': False}
+    }
+
+    sentinel = PredictionMarketSentinel(config)
+
+    # Mock: Only a deportation market (irrelevant to Fed query)
+    mock_response = [
+        {'slug': 'trump-deportation', 'title': 'How many people will Trump deport?', 'markets': [
+            {'outcomePrices': ['0.50'], 'volume': '500000', 'liquidity': '1000000'}
+        ]}
+    ]
+
+    with patch('aiohttp.ClientSession.get') as mock_get:
+        mock_ctx = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value=mock_response)
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_ctx.__aexit__ = AsyncMock(return_value=None)
+        mock_get.return_value = mock_ctx
+
+        result = await sentinel._resolve_active_market(
+            "Federal Reserve interest rate",
+            relevance_keywords=["federal reserve", "interest rate", "fomc"],
+            min_relevance_score=1
+        )
+
+    # Must return None — NOT the deportation market
+    assert result is None
+
+# === TEST 8: Commodity impact field in payload ===
+@pytest.mark.asyncio
+async def test_commodity_impact_field_in_trigger():
+    """Fix #4: Trigger payload should use 'commodity_impact' not 'coffee_impact'."""
+    config = {
+        'sentinels': {'prediction_markets': {
+            'enabled': True, 'poll_interval_seconds': 0,
+            'min_relevance_score': 1,
+            'topics_to_watch': [{
+                'query': 'Test topic',
+                'tag': 'Test',
+                'display_name': 'Test Topic',
+                'trigger_threshold_pct': 5.0,
+                'importance': 'macro',
+                'commodity_impact': 'Generic commodity impact description',
+                'relevance_keywords': ['test']
+            }]
+        }},
+        'notifications': {'enabled': False}
+    }
+
+    sentinel = PredictionMarketSentinel(config)
+
+    # Seed state with baseline
+    sentinel.state_cache['Test topic'] = {
+        'slug': 'test-market',
+        'price': 0.50,
+        'timestamp': '2026-01-01T00:00:00+00:00',
+        'severity_hwm': 0,
+        'hwm_timestamp': None
+    }
+
+    # Mock a 20% swing (big enough to trigger)
+    mock_response = [
+        {'slug': 'test-market', 'title': 'Test Market', 'markets': [
+            {'outcomePrices': ['0.70'], 'volume': '100000', 'liquidity': '50000'}
+        ]}
+    ]
+
+    with patch('aiohttp.ClientSession.get') as mock_get:
+        mock_ctx = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value=mock_response)
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_ctx.__aexit__ = AsyncMock(return_value=None)
+        mock_get.return_value = mock_ctx
+
+        with patch('trading_bot.utils.is_trading_day', return_value=True),              patch('trading_bot.utils.is_market_open', return_value=True):
+            trigger = await sentinel.check()
+
+    assert trigger is not None
+    assert 'commodity_impact' in trigger.payload
+    # coffee_impact might still be there if the sentinel copies it over from topic dict?
+    # Wait, in the code I replaced it.
+    # But wait, if topic dict has coffee_impact as fallback key?
+    # In my code:
+    # commodity_impact = topic.get('commodity_impact', topic.get('coffee_impact', ...))
+    # Payload: "commodity_impact": commodity_impact
+    # So coffee_impact key should NOT be in payload unless I explicitly put it there.
+    # My previous diff removed "coffee_impact": coffee_impact from payload.
+    assert 'coffee_impact' not in trigger.payload
+
+# === TEST 9: Min relevance score filters partial matches ===
+@pytest.mark.asyncio
+async def test_min_relevance_score_filters_partial_matches():
+    """When min_relevance_score=2, a market matching only 1 keyword is rejected."""
+    config = {
+        'sentinels': {'prediction_markets': {
+            'enabled': True, 'poll_interval_seconds': 0,
+            'min_liquidity_usd': 1000, 'min_volume_usd': 1000,
+            'topics_to_watch': []
+        }},
+        'notifications': {'enabled': False}
+    }
+
+    sentinel = PredictionMarketSentinel(config)
+
+    # Market title matches "trump" but NOT "fed", "chair", "nominee"
+    mock_response = [
+        {'slug': 'trump-other', 'title': 'Will Trump visit Mars?', 'markets': [
+            {'outcomePrices': ['0.10'], 'volume': '50000', 'liquidity': '100000'}
+        ]}
+    ]
+
+    with patch('aiohttp.ClientSession.get') as mock_get:
+        mock_ctx = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value=mock_response)
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_ctx.__aexit__ = AsyncMock(return_value=None)
+        mock_get.return_value = mock_ctx
+
+        result = await sentinel._resolve_active_market(
+            "Trump Fed Chair nominee",
+            relevance_keywords=["fed", "chair", "nominee", "trump", "nominate"],
+            min_relevance_score=2  # Needs at least 2 matches
+        )
+
+    # Only 1 keyword ("trump") matches → below threshold → None
+    assert result is None
