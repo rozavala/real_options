@@ -17,14 +17,14 @@ def test_monday_morning():
 
 
 def test_friday_9am():
-    """Friday 9 AM ET → ~3.75h until 12:45."""
+    """Friday 9 AM ET → ~2h until 11:00."""
     ny = pytz.timezone('America/New_York')
     # Friday Jan 30, 2026 at 9:00 AM ET = 14:00 UTC
     mock_now = datetime(2026, 1, 30, 14, 0, 0, tzinfo=timezone.utc)
     with patch('trading_bot.utils.datetime') as mock_dt:
         mock_dt.now.return_value = mock_now
         result = hours_until_weekly_close()
-    assert 3.5 <= result <= 4.0  # ~3.75h
+    assert 1.5 <= result <= 2.5  # ~2h
 
 
 def test_friday_1pm():
@@ -43,7 +43,7 @@ def test_thursday_before_holiday():
     with patch('trading_bot.utils.datetime') as mock_dt:
         mock_dt.now.return_value = mock_now
         result = hours_until_weekly_close()
-    assert 3.5 <= result <= 4.0  # ~3.75h until 12:45 ET
+    assert 1.5 <= result <= 2.5  # ~2h until 11:00 ET
 
 
 def test_wednesday():
@@ -63,7 +63,7 @@ def test_gate_blocks_friday():
     config = {'risk_management': {'min_holding_hours': 6.0}}
 
     with patch('trading_bot.order_manager.is_market_open', return_value=True), \
-         patch('trading_bot.order_manager.hours_until_weekly_close', return_value=3.75), \
+         patch('trading_bot.order_manager.hours_until_weekly_close', return_value=2.0), \
          patch('trading_bot.order_manager.generate_and_queue_orders') as mock_gen, \
          patch('trading_bot.order_manager.send_pushover_notification'):
 

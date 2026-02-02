@@ -22,31 +22,31 @@ def test_exit_time_monday_entry():
 
 
 def test_exit_time_friday_entry():
-    """Friday entry → same Friday 12:45 ET (weekly close)."""
+    """Friday entry → same Friday 11:00 ET (weekly close)."""
     ny = pytz.timezone('America/New_York')
     # Friday Jan 30, 2026 at 4:53 AM ET (09:53 UTC)
     entry = ny.localize(datetime(2026, 1, 30, 4, 53)).astimezone(pytz.UTC)
     exit_time = _calculate_actual_exit_time(entry, {})
     exit_ny = exit_time.astimezone(ny)
-    # Should be Friday Jan 30 at 12:45 ET
+    # Should be Friday Jan 30 at 11:00 ET
     assert exit_ny.weekday() == 4  # Friday
-    assert exit_ny.hour == 12
-    assert exit_ny.minute == 45
+    assert exit_ny.hour == 11
+    assert exit_ny.minute == 0
     assert exit_ny.date() == datetime(2026, 1, 30).date()
 
 
 def test_exit_time_thursday_before_holiday():
-    """Thursday entry before Friday holiday → Thursday 12:45 ET."""
+    """Thursday entry before Friday holiday → Thursday 11:00 ET."""
     ny = pytz.timezone('America/New_York')
     # Jan 1, 2027 is a Friday (New Year's Day)
     # So Thursday Dec 31, 2026 entry should close Thursday
     entry = ny.localize(datetime(2026, 12, 31, 9, 0)).astimezone(pytz.UTC)
     exit_time = _calculate_actual_exit_time(entry, {})
     exit_ny = exit_time.astimezone(ny)
-    # Should be Thursday Dec 31 at 12:45 ET (Friday is holiday)
+    # Should be Thursday Dec 31 at 11:00 ET (Friday is holiday)
     assert exit_ny.date() == datetime(2026, 12, 31).date()
-    assert exit_ny.hour == 12
-    assert exit_ny.minute == 45
+    assert exit_ny.hour == 11
+    assert exit_ny.minute == 0
 
 
 def test_exit_time_thursday_normal():

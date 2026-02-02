@@ -101,9 +101,9 @@ def _calculate_actual_exit_time(entry_time: datetime, config: dict) -> datetime:
 
     ny_tz = pytz.timezone('America/New_York')
 
-    # Position close time from schedule (12:45 ET = close_stale_positions)
-    CLOSE_HOUR = 12
-    CLOSE_MINUTE = 45
+    # Position close time from schedule (11:00 ET = primary close_stale_positions)
+    CLOSE_HOUR = 11
+    CLOSE_MINUTE = 0
 
     # Convert entry to NY time for calendar logic
     if entry_time.tzinfo is None:
@@ -190,6 +190,8 @@ def _calculate_actual_exit_time(entry_time: datetime, config: dict) -> datetime:
 
 async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_path: str):
     """Internal helper to process the DataFrame rows using the active IB connection."""
+    # Ensure pandas is available (module-level import)
+    assert pd is not None, "pandas not imported at module level"
 
     # Ensure columns exist (if migrated recently, they should be there, but good to be safe)
     required_cols = ['exit_price', 'exit_timestamp', 'pnl_realized', 'actual_trend_direction', 'volatility_outcome']
@@ -538,7 +540,7 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             # PHASE 2: Enhanced probabilistic resolution
             try:
                 from trading_bot.brier_bridge import resolve_agent_prediction, reset_enhanced_tracker
-                import pandas as pd
+                # Removed inner import pandas as pd to fix scoping issue
 
                 # Read the just-resolved structured predictions to find what was resolved
                 structured_file = "data/agent_accuracy_structured.csv"

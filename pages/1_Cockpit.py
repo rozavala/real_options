@@ -611,12 +611,12 @@ with ctrl_cols[1]:
 
                     # Create a new loop if needed or run in existing
                     try:
-                        asyncio.run(cancel_all_open_orders(config))
+                        asyncio.run(cancel_all_open_orders(config, connection_purpose="dashboard_orders"))
                     except RuntimeError:
                         # If loop is already running (e.g. streamlit quirk)
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
-                        loop.run_until_complete(cancel_all_open_orders(config))
+                        loop.run_until_complete(cancel_all_open_orders(config, connection_purpose="dashboard_orders"))
 
                     st.success("All open orders cancelled.")
                 except Exception as e:
