@@ -189,3 +189,73 @@ TimeoutError
 2026-02-02 18:24:18,572 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 38% of average (Sev: 6)
 2026-02-02 18:24:18,578 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
 2026-02-02 18:26:19,312 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 18:31:20,404 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 18:35:00,038 - Orchestrator - INFO - --- Running scheduled task: cancel_and_stop_monitoring ---
+2026-02-02 18:35:00,040 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
+2026-02-02 18:35:00,040 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
+2026-02-02 18:35:00,040 - trading_bot.connection_pool - INFO - Connecting IB (order_manager) ID: 149...
+2026-02-02 18:35:00,599 - trading_bot.connection_pool - INFO - IB (order_manager) connected successfully with ID 149
+2026-02-02 18:35:00,605 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-02 18:35:00,606 - OrderManager - INFO - Connected to IB for canceling open orders.
+2026-02-02 18:35:00,608 - OrderManager - INFO - No open orders found to cancel.
+2026-02-02 18:35:00,608 - Orchestrator - WARNING - Monitoring process is not running or has already terminated.
+2026-02-02 18:35:00,608 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
+2026-02-02 18:35:00,609 - Orchestrator - INFO - Next task 'log_equity_snapshot' scheduled for 2026-02-02 18:55:00 UTC. Waiting for 0.33 hours.
+2026-02-02 18:36:21,695 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 18:41:23,145 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 18:46:24,391 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 18:51:26,152 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 18:55:00,016 - Orchestrator - INFO - --- Running scheduled task: log_equity_snapshot ---
+2026-02-02 18:55:00,018 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
+2026-02-02 18:55:00,019 - EquityLogger - INFO - Connecting to IB at 127.0.0.1:7497 with clientId 3392...
+2026-02-02 18:55:00,373 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-02 18:55:00,568 - EquityLogger - INFO - Fetched NetLiquidation: $46,982.35
+2026-02-02 18:55:00,579 - EquityLogger - INFO - Updated data/daily_equity.csv with value $46,982.35
+2026-02-02 18:55:03,583 - EquityLogger - INFO - Disconnected from IB.
+2026-02-02 18:55:03,584 - Orchestrator - INFO - Next task 'reconcile_and_analyze' scheduled for 2026-02-02 19:05:00 UTC. Waiting for 0.17 hours.
+2026-02-02 18:56:46,148 - trading_bot.sentinels - WARNING - X volume spike: 19 vs mean 4 (>3.0x)
+2026-02-02 18:56:46,149 - trading_bot.sentinels - INFO - X volume anomaly: z-score=5.0
+2026-02-02 18:56:46,149 - trading_bot.sentinels - WARNING - 🚨 X SENTINEL TRIGGERED: UNUSUAL X ACTIVITY SPIKE (19 posts, 3.0x baseline)
+2026-02-02 18:56:46,158 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
+2026-02-02 18:56:46,158 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by XSentimentSentinel: UNUSUAL X ACTIVITY SPIKE (19 posts, 3.0x baseline) (Cycle: KC-8a0ef729)
+2026-02-02 18:56:46,477 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-02 18:56:46,484 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-02 18:56:46,577 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-02 18:56:46,578 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['anthropic', 'xai', 'gemini', 'openai']
+2026-02-02 18:56:46,578 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['anthropic', 'xai', 'gemini', 'openai'], 'diversity_score': 1.0}
+2026-02-02 18:56:46,582 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-02 18:56:46,582 - trading_bot.agents - INFO - Loaded commodity profile: Coffee Arabica
+2026-02-02 18:56:46,582 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee Arabica: 9 port tokens, 24 producer tokens
+2026-02-02 18:56:46,582 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee Arabica
+2026-02-02 18:56:46,582 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-02 18:56:46,582 - trading_bot.agents - INFO - Trading Council initialized for Coffee Arabica. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-02 18:56:46,582 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-02 18:56:46,651 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 18:56:46,651 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-02 18:56:46,651 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-02 18:56:47,014 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 18:56:50,770 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-02 18:56:51,165 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=317.15, sma_200=335.8915, regime=TRENDING, vol_5d=0.0279
+2026-02-02 18:56:51,166 - Orchestrator - INFO - Emergency market context: price=317.15, regime=TRENDING
+2026-02-02 18:56:51,166 - trading_bot.agents - INFO - Running Specialized Cycle triggered by XSentimentSentinel...
+2026-02-02 18:56:51,166 - trading_bot.agents - INFO - Routing to macro (Reason: Default routing)
+2026-02-02 18:56:51,167 - trading_bot.agents - INFO - Waking up macro...
+2026-02-02 18:56:51,544 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-02 18:56:51,545 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-02 18:58:07,716 - trading_bot.weighted_voting - INFO - Market Regime Detected: TRENDING
+2026-02-02 18:58:07,717 - trading_bot.weighted_voting - WARNING - Agent agronomist: ABSTAINING due to stale/failed data (would dilute signal)
+2026-02-02 18:58:07,718 - trading_bot.weighted_voting - WARNING - Agent geopolitical: ABSTAINING due to stale/failed data (would dilute signal)
+2026-02-02 18:58:07,718 - trading_bot.weighted_voting - WARNING - Agent supply_chain: ABSTAINING due to stale/failed data (would dilute signal)
+2026-02-02 18:58:07,718 - trading_bot.weighted_voting - WARNING - Agent inventory: ABSTAINING due to stale/failed data (would dilute signal)
+2026-02-02 18:58:07,718 - trading_bot.weighted_voting - WARNING - Agent sentiment: ABSTAINING due to stale/failed data (would dilute signal)
+2026-02-02 18:58:07,718 - trading_bot.weighted_voting - WARNING - Agent technical: ABSTAINING due to stale/failed data (would dilute signal)
+2026-02-02 18:58:07,718 - trading_bot.weighted_voting - WARNING - Agent volatility: ABSTAINING due to stale/failed data (would dilute signal)
+2026-02-02 18:58:07,718 - trading_bot.weighted_voting - WARNING - Agent latest_ml_signals: ABSTAINING due to stale/failed data (would dilute signal)
+2026-02-02 18:58:07,718 - trading_bot.weighted_voting - WARNING - QUORUM FAILURE: Only 1 agents voted (minimum: 3). Returning NEUTRAL to prevent low-confidence decisions.
+2026-02-02 18:58:07,718 - trading_bot.agents - WARNING - Quorum failure for KCK6 (202605): Only ['macro'] voted. Skipping council for this contract.
+2026-02-02 18:58:07,718 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-02 18:58:07,728 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-02 18:58:07,732 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (DIRECTIONAL/EMERGENCY)
+2026-02-02 18:58:07,750 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.19, geopolitical: 0.16, inventory: 0.00, macro: 0.41, master_decision: 0.06, sentiment: 0.00, supply_chain: 0.04, technical: 0.09, volatility: 0.14}
+2026-02-02 18:58:07,772 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-02-02 18:58:07,772 - Orchestrator - INFO - Post-cycle debounce set for 1800s

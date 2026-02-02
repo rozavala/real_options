@@ -4,16 +4,6 @@
       "data": [
         {
           "source": "MicrostructureSentinel",
-          "reason": "Liquidity Depletion: 22% of average",
-          "payload": {
-            "type": "LIQUIDITY_DEPLETION",
-            "contract": "KCK6",
-            "depth_ratio": 0.22499999999999998
-          },
-          "timestamp": "2026-02-02T16:12:07.577383+00:00"
-        },
-        {
-          "source": "MicrostructureSentinel",
           "reason": "Liquidity Depletion: 24% of average",
           "payload": {
             "type": "LIQUIDITY_DEPLETION",
@@ -51,9 +41,51 @@
             "depth_ratio": 0.375
           },
           "timestamp": "2026-02-02T18:24:18.572994+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (19 posts, 3.0x baseline)",
+          "payload": {
+            "sentiment_score": 4.38,
+            "confidence": 0.21,
+            "top_themes": [
+              "COT reports",
+              "General trading chatter",
+              "Irrelevant coffee promos",
+              "Historical price increases",
+              "Forecasted price declines"
+            ],
+            "post_volume": 19,
+            "volume_baseline": 4,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 4,
+                "confidence": 0.2,
+                "top_post": "#COT \n- Commitments of Traders released by @CFTC \n- Non-commercial net long position in #sugar, #cocoa, #coffee futures on @ICE_Markets https://t.co/7wePGW92oq"
+              },
+              {
+                "query": "arabica prices",
+                "score": 3.0,
+                "volume": 2,
+                "confidence": 0.2,
+                "top_post": "Just simply share... Arabica parchment tripled in the last 5years..."
+              },
+              {
+                "query": "Brazil coffee harvest",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              }
+            ]
+          },
+          "timestamp": "2026-02-02T18:56:46.153389+00:00"
         }
       ],
-      "timestamp": 1770056658.5731912
+      "timestamp": 1770058606.1535714
     }
   },
   "reports": {
@@ -67,11 +99,11 @@
     },
     "macro": {
       "data": {
-        "data": "[EVIDENCE]: ['[2026-02-02] USD/BRL exchange rate trading at 5.2911, up 0.64% for the day. (source: Trading Economics)', '[2026-02-02] Over the last four weeks, the USD/BRL rate gained 2.20%, indicating a weakening Brazilian Real. (source: Trading Economics)', \"[2026-01-28] Brazil's Central Bank maintained the Selic rate at 15.00%, citing the need for a prolonged hold. (source: Investing.com / Trading Economics)\"]\n[ANALYSIS]: The recent trend of the Brazilian Real weakening, as shown by the USD/BRL exchange rate increasing by 2.20% over the last four weeks and a daily gain of 0.64%, encourages farmer selling. This rising USD value improves the local currency revenues for export-oriented farmers in Brazil, potentially increasing the supply of Coffee Arabica in the market. Additionally, the high interest rate environment maintained by Brazil's Central Bank provides further incentive for farmers to sell their produce to cover costs and take advantage of the favorable exchange rate.\n[CONFIDENCE]: 0.9\n[SENTIMENT TAG]: [SENTIMENT: BEARISH]",
-        "confidence": 0.9,
-        "sentiment": "BEARISH"
+        "data": "[EVIDENCE]: ['[2026-02-02] March Arabica coffee futures (KCH26) traded up +1.30 (+0.39%) to ~333.78 cents/lb, recovering slightly from a 5.5-month low.', \"[2026-02-02] Somar Meteorologia reported that Minas Gerais, Brazil's key Arabica region, received 69.8 mm of rain last week, which is 117% of the historical average.\", '[2026-02-01] Coffee prices retreated significantly on Friday (Jan 30) due to forecasts of beneficial rains in Brazil, which improve the outlook for the 2026/27 crop.', '[2026-01-30] CFTC Commitments of Traders report released, showing commercials covering net short exposure and speculators holding net longs.']\n[ANALYSIS]: The data presents mixed factors influencing coffee prices. Beneficial rains reported in Minas Gerais, a significant area for Arabica coffee production, suggest a potentially ample 2026/27 Brazilian coffee harvest, carrying a bearish implication for prices given the prospect of increased supply. Meanwhile, the recent recovery of Arabica futures and the CFTC report showing speculators holding net long positions indicate that there is a bullish undertone among traders. This suggests that while the market anticipates increased supply, traders still maintain a degree of optimism, possibly driven by other market dynamics not fully captured in the rain forecasts. Therefore, the combination of these factors results in a neutral sentiment overall, despite the short-term bullish sentiment from position adjustments.\n[CONFIDENCE]: 0.7\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
+        "confidence": 0.7,
+        "sentiment": "NEUTRAL"
       },
-      "timestamp": 1770053716.791012
+      "timestamp": 1770058687.6053076
     },
     "geopolitical": {
       "data": {
@@ -203,15 +235,15 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1770053162.5024827
+      "timestamp": 1770058606.1432793
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
       "timestamp": 1770053132.0139787
     },
     "last_ib_success": {
-      "data": "2026-02-02T17:50:00.204323+00:00",
-      "timestamp": 1770054600.2048278
+      "data": "2026-02-02T18:35:00.599782+00:00",
+      "timestamp": 1770057300.6000917
     },
     "microstructure_ib_status": {
       "data": "CONNECTED",
@@ -222,8 +254,8 @@
       "timestamp": 1770054600.204825
     },
     "order_manager_ib_status": {
-      "data": "DISCONNECTED",
-      "timestamp": 1770053715.523024
+      "data": "CONNECTED",
+      "timestamp": 1770057300.6000896
     },
     "deferred_ib_status": {
       "data": "CONNECTED",
@@ -294,7 +326,7 @@
         "price": 0.007,
         "timestamp": "2026-02-02T15:07:09.852801+00:00"
       },
-      "timestamp": 1770056779.3088913
+      "timestamp": 1770058607.011575
     }
   }
 }
