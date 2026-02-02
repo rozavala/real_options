@@ -1134,7 +1134,7 @@ If the x_search tool returns no results or errors, provide neutral sentiment wit
 
         # === STAGE 2: BROAD SEARCH FALLBACK ===
         if not posts:
-            logger.info(f"Strict search for '{sanitized_query}' returned 0 posts. Trying broad search...")
+            logger.debug(f"Strict search for '{sanitized_query}' returned 0. Trying broad...")
             search_stage = "broad"
             broad_query = self._build_broad_search_query(sanitized_query)
             logger.debug(f"Stage 2 (broad) query: {broad_query}")
@@ -1145,11 +1145,11 @@ If the x_search tool returns no results or errors, provide neutral sentiment wit
             posts = await self._fetch_x_posts(broad_query, limit, sort_order, min_likes=broad_threshold)
 
             if posts:
-                logger.info(f"Broad search returned {len(posts)} posts for '{sanitized_query}'")
+                logger.debug(f"Broad search returned {len(posts)} posts")
             else:
-                logger.warning(f"Both strict and broad search returned 0 posts for '{sanitized_query}'")
+                logger.debug(f"Both strict and broad search returned 0 posts for '{sanitized_query}'")
         else:
-            logger.info(f"X API returned {len(posts)} posts for '{query}' (sort: {sort_order})")
+            logger.debug(f"X API returned {len(posts)} posts for '{query}'")
 
         # === X EXPERT ENHANCEMENT: Data quality flag ===
         # Grok should reduce confidence when data is sparse
@@ -1675,14 +1675,15 @@ class PredictionMarketSentinel(Sentinel):
                 )
 
                 if not market_data:
-                    # Track persistent failures for alerting
                     self._topic_failure_counts[query] = self._topic_failure_counts.get(query, 0) + 1
-                    if self._topic_failure_counts[query] == 10:  # Alert after ~50 min of failures
-                        logger.warning(
-                            f"⚠️ No markets found for topic '{display_name}' "
-                            f"after {self._topic_failure_counts[query]} attempts. "
-                            f"Consider reviewing query: '{query}'"
-                        )
+                    fail_count = self._topic_failure_counts[query]
+
+                    # Exponential Backoff Logging (1, 5, 25, 125, 625, then every 100)
+                    log_intervals = [1, 5, 25, 125, 625]
+                    if fail_count in log_intervals or fail_count % 100 == 0:
+                        level = logging.WARNING if fail_count <= 5 else logging.INFO
+                        logger.log(level, f"⚠️ No relevant markets for '{display_name}' (attempt {fail_count}).")
+
                     continue
 
                 # Reset failure count on success

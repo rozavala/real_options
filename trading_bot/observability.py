@@ -13,7 +13,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Optional, Set
 from enum import Enum
 
@@ -160,59 +160,76 @@ class HallucinationDetector:
         retrieved_docs: List[str],
         grounded_data: Optional[str] = None
     ) -> List[HallucinationFlag]:
-        """
-        Check agent output for hallucinations.
-
-        Args:
-            agent: Agent name
-            output_text: The agent's output text
-            retrieved_docs: Documents retrieved by RAG
-            grounded_data: Raw grounded data packet
-
-        Returns:
-            List of hallucination flags (empty if clean)
-        """
+        """Check output with per-cycle deduplication, memory pruning, and auto-release logic."""
         flags = []
 
-        # Combine all source material
         source_material = "\n".join(retrieved_docs)
         if grounded_data:
             source_material += "\n" + grounded_data
 
-        # Check 1: Citation verification
-        citation_flags = self._check_citations(output_text, source_material)
-        flags.extend(citation_flags)
+        # Run Checks
+        flags.extend(self._check_citations(output_text, source_material))
+        flags.extend(self._check_numbers(output_text, source_material))
+        flags.extend(self._check_facts(output_text))
 
-        # Check 2: Number grounding
-        number_flags = self._check_numbers(output_text, source_material)
-        flags.extend(number_flags)
+        # --- PER-CYCLE DEDUPLICATION ---
+        # Only count one flag per severity/type per cycle to prevent instant quarantine
+        deduplicated_flags = {}
+        for flag in flags:
+            # Key by severity + generic description type (before the colon)
+            key = (flag.severity, flag.description.split(':')[0])
+            if key not in deduplicated_flags:
+                deduplicated_flags[key] = flag
 
-        # Check 3: Factual verification
-        fact_flags = self._check_facts(output_text)
-        flags.extend(fact_flags)
+        final_flags = list(deduplicated_flags.values())
 
-        # Record flags for this agent
+        # Record flags
         if agent not in self.agent_flags:
             self.agent_flags[agent] = []
 
-        for flag in flags:
+        for flag in final_flags:
             flag.agent = agent
             flag.timestamp = datetime.now(timezone.utc)
             self.agent_flags[agent].append(flag)
-
             logger.warning(f"Hallucination detected [{flag.severity.value}]: {agent} - {flag.description}")
 
-        # Check for quarantine
+        # --- MEMORY SAFETY PRUNING (AMENDMENT 1) ---
+        # Keep only last 30 days of flags to prevent memory leak / OOM crash.
+        # On a 4GB droplet, unbounded growth could reach 100MB+ after 30 days.
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        self.agent_flags[agent] = [f for f in self.agent_flags[agent] if f.timestamp > cutoff]
+
+        # --- QUARANTINE LOGIC (Count Cycles, Not Flags) ---
         recent_flags = [
             f for f in self.agent_flags[agent]
             if (datetime.now(timezone.utc) - f.timestamp).days < 7
         ]
 
-        if len(recent_flags) >= self.quarantine_threshold:
-            self.quarantined_agents.add(agent)
-            logger.error(f"Agent {agent} QUARANTINED: {len(recent_flags)} hallucination flags in 7 days")
+        # Group by 5-second buckets to identify distinct flawed cycles
+        cycles_with_flags = set()
+        for f in recent_flags:
+            bucket = f.timestamp.replace(second=(f.timestamp.second // 5) * 5, microsecond=0)
+            cycles_with_flags.add(bucket)
 
-        return flags
+        if len(cycles_with_flags) >= self.quarantine_threshold:
+            if agent not in self.quarantined_agents:
+                self.quarantined_agents.add(agent)
+                logger.error(f"Agent {agent} QUARANTINED: {len(cycles_with_flags)} flawed cycles in 7 days.")
+
+        # --- AUTO-RELEASE LOGIC (AMENDMENT 2: handles empty recent_flags) ---
+        if agent in self.quarantined_agents:
+            if not recent_flags:
+                # No flags at all in 7-day window → definitely release
+                self.quarantined_agents.discard(agent)
+                logger.info(f"Agent {agent} AUTO-RELEASED from quarantine (no flags in 7-day window)")
+            else:
+                most_recent = max(f.timestamp for f in recent_flags)
+                hours_since = (datetime.now(timezone.utc) - most_recent).total_seconds() / 3600
+                if hours_since > 48:
+                    self.quarantined_agents.discard(agent)
+                    logger.info(f"Agent {agent} AUTO-RELEASED from quarantine (clean for {hours_since:.1f}h)")
+
+        return final_flags
 
     def is_quarantined(self, agent: str) -> bool:
         """Check if agent is quarantined."""
@@ -224,64 +241,96 @@ class HallucinationDetector:
         logger.info(f"Agent {agent} released from quarantine")
 
     def _check_citations(self, output: str, sources: str) -> List[HallucinationFlag]:
-        """Verify that cited sources exist in retrieved documents."""
+        """Verify citations using 3-tier fuzzy matching."""
         flags = []
-
-        # Extract citations from output
         citations = self.SOURCE_PATTERN.findall(output)
         citations = [c[0] or c[1] for c in citations if c[0] or c[1]]
 
-        for citation in citations:
-            # Check if citation appears in sources
-            if citation.lower() not in sources.lower():
-                flags.append(HallucinationFlag(
-                    timestamp=datetime.now(timezone.utc),
-                    agent="",
-                    severity=HallucinationSeverity.HIGH,
-                    description=f"Cited source not found in retrieved documents",
-                    claim=f"Source: {citation}",
-                    evidence="Source not in RAG results"
-                ))
+        source_lower = sources.lower()
+        # Tokenize sources for overlap check
+        source_words = set(re.findall(r'\b[a-zA-Z]{3,}\b', source_lower))
+        known_orgs = {s.lower() for s in self.known_facts.get('organizations', set())}
 
+        for citation in citations:
+            cit_lower = citation.lower().strip()
+
+            # Tier 1: Exact Match
+            if cit_lower in source_lower:
+                continue
+
+            # Tier 2: Known Organization
+            if any(org in cit_lower for org in known_orgs):
+                continue
+
+            # Tier 3: Token Overlap (>60%)
+            cit_words = set(re.findall(r'\b[a-zA-Z]{3,}\b', cit_lower))
+            if cit_words:
+                overlap = len(cit_words & source_words) / len(cit_words)
+                if overlap >= 0.6:
+                    continue
+
+            flags.append(HallucinationFlag(
+                timestamp=datetime.now(timezone.utc),
+                agent="",
+                severity=HallucinationSeverity.MEDIUM,  # Downgraded from HIGH
+                description="Cited source not found in retrieved documents",
+                claim=f"Source: {citation}",
+                evidence="Low semantic overlap with RAG results"
+            ))
         return flags
 
     def _check_numbers(self, output: str, sources: str) -> List[HallucinationFlag]:
-        """Verify that specific numbers are grounded in sources."""
+        """Verify numbers using aggregate checking and widened tolerance."""
         flags = []
-
-        # Extract numbers with units from output
         numbers = self.NUMBER_PATTERN.findall(output)
+        if not numbers:
+            return flags
 
-        for num, unit in numbers:
-            # Check if this number appears in sources
-            num_clean = num.replace(',', '')
-
-            # Allow some variance (within 10%)
+        # Extract all source numbers once
+        source_nums = []
+        for s in re.findall(r'\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\b', sources):
             try:
-                num_float = float(num_clean)
-                found = False
-
-                for source_num in self.NUMBER_PATTERN.findall(sources):
-                    try:
-                        source_float = float(source_num[0].replace(',', ''))
-                        if abs(source_float - num_float) / max(num_float, 1) < 0.10:
-                            found = True
-                            break
-                    except ValueError:
-                        continue
-
-                if not found and num_float > 100:  # Only flag significant numbers
-                    flags.append(HallucinationFlag(
-                        timestamp=datetime.now(timezone.utc),
-                        agent="",
-                        severity=HallucinationSeverity.MEDIUM,
-                        description=f"Number not found in source documents",
-                        claim=f"{num} {unit}",
-                        evidence="Number not grounded in RAG"
-                    ))
-            except ValueError:
+                source_nums.append(float(s.replace(',', '')))
+            except (ValueError, OverflowError):
                 continue
 
+        # SAFETY GUARD: If sources contain no numbers, we can't ground anything.
+        # Skip the check rather than flagging all agent numbers as ungrounded.
+        if not source_nums:
+            return flags
+
+        ungrounded_count = 0
+        total_significant = 0
+        examples = []
+
+        for num, unit in numbers:
+            try:
+                val = float(num.replace(',', ''))
+                if val < 100:
+                    continue  # Skip small numbers/percentages
+                total_significant += 1
+
+                # Check 15% tolerance (widened from 10% to handle rounding/conversion)
+                match = any(abs(s - val) / max(val, 1) < 0.15 for s in source_nums)
+                if not match:
+                    ungrounded_count += 1
+                    if len(examples) < 3:
+                        examples.append(f"{num} {unit}")
+            except (ValueError, OverflowError):
+                continue
+
+        # AGGREGATE flagging: only flag if >50% of significant numbers are ungrounded
+        # AND at least 3 ungrounded (safety rail against small-sample false positives)
+        if total_significant > 0 and ungrounded_count >= 3:
+            if (ungrounded_count / total_significant) > 0.5:
+                flags.append(HallucinationFlag(
+                    timestamp=datetime.now(timezone.utc),
+                    agent="",
+                    severity=HallucinationSeverity.MEDIUM,
+                    description=f"{ungrounded_count}/{total_significant} significant numbers not grounded",
+                    claim=f"Examples: {', '.join(examples)}",
+                    evidence="Numbers not found in RAG source text"
+                ))
         return flags
 
     def _check_facts(self, output: str) -> List[HallucinationFlag]:
