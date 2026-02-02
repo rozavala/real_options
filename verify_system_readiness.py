@@ -658,11 +658,11 @@ async def check_heterogeneous_router(config: dict) -> CheckResult:
 @timed_check
 async def check_coffee_council(config: dict) -> CheckResult:
     try:
-        from trading_bot.agents import CoffeeCouncil
-        council = CoffeeCouncil(config)
-        return CheckResult("Coffee Council", CheckStatus.PASS, f"Initialized")
+        from trading_bot.agents import TradingCouncil
+        council = TradingCouncil(config)
+        return CheckResult("Trading Council", CheckStatus.PASS, f"Initialized")
     except Exception as e:
-        return CheckResult("Coffee Council", CheckStatus.FAIL, str(e))
+        return CheckResult("Trading Council", CheckStatus.FAIL, str(e))
 
 @timed_check
 async def check_tms() -> CheckResult:

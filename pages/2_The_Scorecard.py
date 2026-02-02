@@ -93,7 +93,7 @@ def create_process_outcome_matrix(df: pd.DataFrame):
 
     st.plotly_chart(fig, use_container_width=True)
 
-st.set_page_config(layout="wide", page_title="Scorecard | Coffee Bot")
+st.set_page_config(layout="wide", page_title="Scorecard | Mission Control")
 
 st.title("⚖️ The Scorecard")
 st.caption("Decision Quality Analysis - Is the Master Strategist generating alpha or just noise?")

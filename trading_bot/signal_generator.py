@@ -6,13 +6,14 @@ import re
 import json
 from datetime import datetime, timezone
 from ib_insync import IB
-from trading_bot.agents import CoffeeCouncil
+from trading_bot.agents import TradingCouncil
 from trading_bot.ib_interface import get_active_futures # CORRECTED IMPORT
 from trading_bot.market_data_provider import build_all_market_contexts
 from trading_bot.utils import (
     log_council_decision,
     get_active_ticker
 )
+from trading_bot.decision_signals import log_decision_signal
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager # Import StateManager
 from trading_bot.compliance import ComplianceGuardian
@@ -98,13 +99,13 @@ async def generate_signals(ib: IB, config: dict) -> list:
     council = None
     compliance = None
     try:
-        council = CoffeeCouncil(config)
+        council = TradingCouncil(config)
         compliance = ComplianceGuardian(config)
     except Exception as e:
-        logger.error(f"Failed to initialize Coffee Council: {e}. Cannot proceed without Council.")
+        logger.error(f"Failed to initialize Trading Council: {e}. Cannot proceed without Council.")
         send_pushover_notification(
             config.get('notifications', {}),
-            "Coffee Council Startup Failed",
+            "Trading Council Startup Failed",
             f"Error: {e}. No ML fallback — aborting signal generation."
         )
         return []  # No ML fallback — Council is required
@@ -522,8 +523,6 @@ async def generate_signals(ib: IB, config: dict) -> list:
                         "timestamp": datetime.now(timezone.utc),
                         "contract": contract_name,
                         "entry_price": market_ctx.get('price'),
-                        "ml_signal": None,
-                        "ml_confidence": None,
 
                         # Unpack agent data (FULL TEXT, NO TRUNCATION)
                         # NOTE: Agent keys map to UI-friendly names
@@ -567,6 +566,20 @@ async def generate_signals(ib: IB, config: dict) -> list:
                         "trigger_type": weighted_result.get('trigger_type', 'scheduled'),
                     }
                     log_council_decision(council_log_entry)
+
+                    # G. Decision Signal (Lightweight summary for quick-check)
+                    log_decision_signal(
+                        cycle_id=cycle_id,
+                        contract=contract_name,
+                        signal=final_direction_log if final_direction_log != 'NEUTRAL' or prediction_type_log != 'VOLATILITY' else 'VOLATILITY',
+                        prediction_type=prediction_type_log,
+                        strategy=strategy_type_log,
+                        price=market_ctx.get('price'),
+                        sma_200=market_ctx.get('sma_200'),
+                        confidence=final_data.get('confidence'),
+                        regime=regime_log,
+                        trigger_type=trigger_type if trigger_type else 'SCHEDULED',
+                    )
 
                     # === NEW: Record Structured Predictions for Brier Scoring ===
                     try:
@@ -623,7 +636,7 @@ async def generate_signals(ib: IB, config: dict) -> list:
                 logger.error(f"Council execution failed for {contract_name}: {e}")
                 send_pushover_notification(
                     config.get('notifications', {}),
-                    "Coffee Council Error",
+                    "Trading Council Error",
                     f"Council failed for {contract_name}. Using ML fallback. Error: {e}"
                 )
                 # We silently fall back to the ML defaults set at start of function

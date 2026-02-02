@@ -29,7 +29,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import load_council_history, grade_decision_quality
 from trading_bot.timestamps import parse_ts_column
 
-st.set_page_config(layout="wide", page_title="Signal Analysis | Coffee Bot")
+st.set_page_config(layout="wide", page_title="Signal Analysis | Mission Control")
 
 st.title("🎯 Signal Overlay Analysis")
 st.caption("Forensic analysis of Council decisions against futures price action")
@@ -38,7 +38,6 @@ st.caption("Forensic analysis of Council decisions against futures price action"
 
 AGENT_MAPPING = {
     "👑 Master Decision": "master_decision",
-    # "🤖 ML Signal" removed — ML pipeline archived in v4.0
     "🌱 Agronomist (Weather)": "meteorologist_sentiment",
     "💹 Macro Economist": "macro_sentiment",
     "📈 Fundamentalist": "fundamentalist_sentiment",
@@ -950,7 +949,7 @@ if price_df is not None and not price_df.empty:
     if actual_ticker_display:
         chart_title = f"{actual_ticker_display} | {selected_agent_label} | {timeframe} | Last {lookback_days} Days"
     else:
-        chart_title = f"Coffee Analysis (ET) | {selected_agent_label} | {timeframe} | Last {lookback_days} Days"
+        chart_title = f"Market Analysis (ET) | {selected_agent_label} | {timeframe} | Last {lookback_days} Days"
 
     # Add signal contract info if showing multiple
     if show_all_signals and not signals.empty:
