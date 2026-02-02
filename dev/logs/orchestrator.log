@@ -220,3 +220,28 @@
 2026-02-02 16:28:14,714 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'US recession 2026' (keywords: ['recession', 'us', 'economy', 'gdp', '2026'], min_score=1). Skipping topic — will retry next cycle.
 2026-02-02 16:28:14,914 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'Fed rate 2026' (keywords: ['fed', 'rate', '2026', 'cut', 'pause'], min_score=1). Skipping topic — will retry next cycle.
 2026-02-02 16:28:14,919 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 16:32:15,383 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 19% of average
+2026-02-02 16:32:15,394 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-02 16:32:15,394 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by MicrostructureSentinel: Liquidity Depletion: 19% of average (Cycle: KC-0a622adc)
+2026-02-02 16:32:15,721 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-02 16:32:15,938 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-02 16:32:15,939 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'xai', 'anthropic', 'openai']
+2026-02-02 16:32:15,939 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'xai', 'anthropic', 'openai'], 'diversity_score': 1.0}
+2026-02-02 16:32:15,949 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-02 16:32:15,949 - trading_bot.agents - INFO - Loaded commodity profile: Coffee Arabica
+2026-02-02 16:32:15,949 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee Arabica: 9 port tokens, 24 producer tokens
+2026-02-02 16:32:15,949 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee Arabica
+2026-02-02 16:32:15,949 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-02 16:32:15,949 - trading_bot.agents - INFO - Trading Council initialized for Coffee Arabica. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-02 16:32:15,949 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-02 16:32:16,021 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-02 16:32:16,022 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-02 16:32:16,022 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-02 16:32:20,145 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-02 16:32:20,751 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=315.30, sma_200=335.88275, regime=TRENDING, vol_5d=0.0278
+2026-02-02 16:32:20,752 - Orchestrator - INFO - Emergency market context: price=315.3, regime=TRENDING
+2026-02-02 16:32:20,752 - trading_bot.agents - INFO - Running Specialized Cycle triggered by MicrostructureSentinel...
+2026-02-02 16:32:20,754 - trading_bot.agents - INFO - Routing to macro (Reason: Default routing)
+2026-02-02 16:32:20,755 - trading_bot.agents - INFO - Waking up macro...
+2026-02-02 16:32:21,313 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-02 16:32:21,313 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
