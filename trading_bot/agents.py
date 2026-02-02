@@ -222,18 +222,15 @@ class TradingCouncil:
         """
         Rule-based sanity check on agent output.
 
-        Catches common errors:
-        1. Direction contradicts evidence (says BULLISH but cites bearish data)
-        2. Confidence > 0.9 with insufficient evidence
-        3. Cites data not present in grounded packet
-
-        Returns:
-            (is_valid: bool, issues: list[str])
+        Returns (is_valid, issues, confidence_adjustment).
+        confidence_adjustment: If not None, the confidence should be clamped to this value.
         """
         issues = []
+        confidence_adjustment = None
+
         analysis_upper = analysis.upper()
 
-        # Check 1: Direction-evidence consistency
+        # Check 1: Direction-evidence consistency (UNCHANGED)
         bullish_evidence = sum(1 for word in ['INCREASE', 'RISE', 'SURGE', 'SHORTAGE', 'DEFICIT', 'DROUGHT', 'FROST']
                              if word in grounded_data.upper())
         bearish_evidence = sum(1 for word in ['DECREASE', 'FALL', 'DROP', 'SURPLUS', 'BUMPER', 'OVERSUPPLY']
@@ -245,31 +242,32 @@ class TradingCouncil:
         if 'BEARISH' in analysis_upper and bullish_evidence > bearish_evidence + 2:
             issues.append(f"Direction-evidence mismatch: BEARISH call but {bullish_evidence} bullish vs {bearish_evidence} bearish evidence words")
 
-        # Check 2: Over-confidence check
+        # Check 2: Over-confidence (ENHANCED with correction)
         import re
         conf_match = re.search(r'"confidence"\s*:\s*(0\.\d+|1\.0)', analysis)
         if conf_match:
             conf = float(conf_match.group(1))
-            # Flag confidence > 0.9 unless there's very strong evidence
             total_evidence = bullish_evidence + bearish_evidence
             if conf > 0.9 and total_evidence < 3:
-                issues.append(f"Over-confidence: {conf:.2f} with only {total_evidence} evidence indicators")
+                issues.append(f"Over-confidence: {conf} with low evidence")
+                # Clamp confidence proportional to evidence
+                # 0 evidence → max 0.55, 1 → 0.65, 2 → 0.75
+                max_allowed = 0.55 + (total_evidence * 0.10)
+                confidence_adjustment = min(conf, max_allowed)
 
-        # Check 3: Hallucination flag - numbers not in grounded data
-        # (Lightweight version of ObservabilityHub check)
+        # Check 3: Hallucination flag — numbers not in grounded data (UNCHANGED)
         import re as re_mod
-        output_numbers = set(re_mod.findall(r'\b\d{3,}\b', analysis))  # 3+ digit numbers
+        output_numbers = set(re_mod.findall(r'\b\d{3,}\b', analysis))
         source_numbers = set(re_mod.findall(r'\b\d{3,}\b', grounded_data))
         fabricated = output_numbers - source_numbers
         if len(fabricated) > 3:
             issues.append(f"Possible hallucination: {len(fabricated)} numbers not in grounded data: {list(fabricated)[:3]}")
 
         is_valid = len(issues) == 0
-
         if not is_valid:
             logger.warning(f"[{agent_name}] Output validation issues: {issues}")
 
-        return is_valid, issues
+        return is_valid, issues, confidence_adjustment
 
     def _clean_json_text(self, text: str) -> str:
         """Helper to strip markdown code blocks from JSON strings."""
@@ -528,17 +526,23 @@ OUTPUT FORMAT (JSON):
                 # If no heterogeneous, fallback to agent model (Gemini) without tools
                 result_raw = await self._call_model(self.agent_model_name, full_prompt, use_tools=False, response_json=True)
 
-            # Validate Output
-            is_valid, validation_issues = self._validate_agent_output(
+            # Validate Output (New 3-tuple Unpacking)
+            is_valid, issues, conf_adj = self._validate_agent_output(
                 persona_key, result_raw, grounded_data.raw_findings
             )
             if not is_valid:
-                logger.warning(f"Agent {persona_key} output has {len(validation_issues)} validation issues")
-                # Future: Record validation issues for correlation with Brier scores
+                logger.warning(f"[{persona_key}] Validation issues: {issues}")
 
             # Parse JSON
             try:
                 data = json.loads(self._clean_json_text(result_raw))
+                # Apply Confidence Correction
+                if conf_adj is not None:
+                    logger.info(
+                        f"[{persona_key}] Confidence clamped: "
+                        f"{data.get('confidence', 'N/A')} → {conf_adj:.2f}"
+                    )
+                    data['confidence'] = conf_adj
             except json.JSONDecodeError:
                 # Fallback to raw text if JSON fails
                 data = {
@@ -725,48 +729,39 @@ Write a report explaining:
 OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' (string)
 """
 
-        try:
-            response = await self._route_call(AgentRole.PERMABEAR, prompt, response_json=True)
+        # Retry Loop for JSON Parsing
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            try:
+                response = await self._route_call(AgentRole.PERMABEAR, prompt, response_json=True)
+                cleaned = self._clean_json_text(response)
+                if not cleaned:
+                    raise ValueError("Empty response")
 
-            # Guard: Empty response check
-            if not response or not str(response).strip():
-                logger.error("Devil's Advocate returned empty response - BLOCKING TRADE (fail-safe)")
+                result = json.loads(cleaned)
+
+                # Validate required fields
+                if 'proceed' not in result:
+                    logger.warning("DA response missing 'proceed' field - defaulting to BLOCK")
+                    result['proceed'] = False
+                    result['risks'] = result.get('risks', []) + ['Missing proceed field']
+                    result['recommendation'] = result.get('recommendation', 'BLOCK: Malformed DA response')
+
+                return result
+
+            except Exception as e:
+                if attempt < max_retries:
+                    logger.warning(f"DA Parse Fail (Attempt {attempt+1}): {e}. Retrying...")
+                    prompt += "\n\nOUTPUT VALID JSON ONLY. No markdown headers, no explanation, ONLY a JSON object."
+                    continue
+
+                logger.error(f"DA Failed final attempt: {e}")
                 return {
                     'proceed': False,
-                    'risks': ['DA returned empty response - system failure'],
-                    'recommendation': 'BLOCK: Devil\'s Advocate system failure. Trade blocked for safety.'
+                    'risks': [f"System Error: {str(e)}"],
+                    'recommendation': "BLOCK: Devil's Advocate System Failure (Parse Error)",
+                    'da_block_reason': 'PARSE_FAILURE'
                 }
-
-            # Parse response
-            cleaned = self._clean_json_text(response)
-            result = json.loads(cleaned)
-
-            # Validate required fields
-            if 'proceed' not in result:
-                logger.warning("DA response missing 'proceed' field - defaulting to BLOCK")
-                result['proceed'] = False
-                result['risks'] = result.get('risks', []) + ['Missing proceed field']
-                result['recommendation'] = result.get('recommendation', 'BLOCK: Malformed DA response')
-
-            return result
-
-        except json.JSONDecodeError as e:
-            logger.error(
-                f"Devil's Advocate JSON parse failed - BLOCKING TRADE (fail-safe). "
-                f"Error: {e}. Response preview: {str(response)[:300] if response else 'None'}"
-            )
-            return {
-                'proceed': False,
-                'risks': ['DA JSON parse failure - could not validate trade safety'],
-                'recommendation': 'BLOCK: Devil\'s Advocate returned invalid JSON. Trade blocked for safety.'
-            }
-        except Exception as e:
-            logger.error(f"Devil's Advocate system error - BLOCKING TRADE (fail-safe): {e}")
-            return {
-                'proceed': False,
-                'risks': [f'DA system error: {str(e)[:100]}'],
-                'recommendation': 'BLOCK: Devil\'s Advocate system error. Trade blocked for safety.'
-            }
 
     async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict, market_context: str, trigger_reason: str = None, cycle_id: str = "") -> dict:
         """
