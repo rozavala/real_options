@@ -182,6 +182,61 @@ GLOBAL_DEDUPLICATOR = TriggerDeduplicator()
 EMERGENCY_LOCK = asyncio.Lock()
 
 
+def _extract_agent_prediction(report) -> tuple:
+    """
+    Extract direction and confidence from an agent report.
+
+    Handles both structured dict reports and legacy string reports.
+    Returns: (direction: str, confidence: float)
+    """
+    direction = 'NEUTRAL'
+    confidence = 0.5
+
+    if isinstance(report, dict):
+        direction = report.get('sentiment', 'NEUTRAL')
+        confidence = report.get('confidence', 0.5)
+
+        # Fallback parsing if sentiment missing
+        if not direction or direction in ('N/A', ''):
+            report_str = str(report.get('data', '')).upper()
+            if 'BULLISH' in report_str:
+                direction = 'BULLISH'
+            elif 'BEARISH' in report_str:
+                direction = 'BEARISH'
+
+    elif isinstance(report, str):
+        report_str = report.upper()
+        if 'BULLISH' in report_str:
+            direction = 'BULLISH'
+        elif 'BEARISH' in report_str:
+            direction = 'BEARISH'
+
+    return direction, confidence
+
+
+def _detect_market_regime(config: dict, trigger=None) -> str:
+    """
+    Detect current market regime for Brier scoring context.
+
+    Uses trigger source and recent price action to classify regime.
+    Returns MarketRegime string value.
+    """
+    regime = "NORMAL"
+
+    if trigger:
+        source = getattr(trigger, 'source', '').lower()
+
+        if 'weather' in source:
+            regime = "WEATHER_EVENT"
+        elif 'prediction_market' in source or 'macro' in source:
+            regime = "MACRO_SHIFT"
+        elif 'price' in source or 'microstructure' in source:
+            # Could refine this with actual volatility check
+            regime = "HIGH_VOL"
+
+    return regime
+
+
 async def _get_current_regime(ib: IB, config: dict) -> str:
     """Estimates the current market regime based on simple VIX/Price metrics."""
     # Simplified placeholder logic - ideally fetch from Volatility Agent or State
@@ -827,43 +882,75 @@ async def _check_feedback_loop_health(config: dict):
 
             if pending_count == 0:
                 logger.info(f"Feedback Loop Health: All {total_count} predictions resolved ✓")
-                return
+            else:
+                # Check age of oldest PENDING prediction
+                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+                oldest_pending = df.loc[pending_mask, 'timestamp'].min()
+                age_hours = (pd.Timestamp.now(tz='UTC') - oldest_pending).total_seconds() / 3600
 
-            # Check age of oldest PENDING prediction
-            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
-            oldest_pending = df.loc[pending_mask, 'timestamp'].min()
-            age_hours = (pd.Timestamp.now(tz='UTC') - oldest_pending).total_seconds() / 3600
-
-            orphaned_count = (df['actual'] == 'ORPHANED').sum() if 'actual' in df.columns else 0
-            resolvable_count = total_count - orphaned_count
-            resolution_rate = (
-                (resolvable_count - pending_count) / resolvable_count * 100
-                if resolvable_count > 0 else 0
-            )
-
-            logger.info(
-                f"Feedback Loop Health: {pending_count}/{resolvable_count} PENDING "
-                f"({orphaned_count} orphans excluded, "
-                f"resolution rate: {resolution_rate:.0f}%)"
-            )
-
-            # ALERT if predictions are stale
-            if age_hours > 48:
-                alert_msg = (
-                    f"⚠️ FEEDBACK LOOP STALE\n"
-                    f"Oldest PENDING: {age_hours:.0f}h ago\n"
-                    f"PENDING: {pending_count}/{total_count}\n"
-                    f"Resolution rate: {resolution_rate:.0f}%\n"
-                    f"Agent learning is NOT occurring!"
+                orphaned_count = (df['actual'] == 'ORPHANED').sum() if 'actual' in df.columns else 0
+                resolvable_count = total_count - orphaned_count
+                resolution_rate = (
+                    (resolvable_count - pending_count) / resolvable_count * 100
+                    if resolvable_count > 0 else 0
                 )
-                logger.warning(alert_msg)
-                send_pushover_notification(
-                    config.get('notifications', {}),
-                    "🔴 Feedback Loop Alert",
-                    alert_msg
+
+                logger.info(
+                    f"Feedback Loop Health: {pending_count}/{resolvable_count} PENDING "
+                    f"({orphaned_count} orphans excluded, "
+                    f"resolution rate: {resolution_rate:.0f}%)"
                 )
+
+                # ALERT if predictions are stale
+                if age_hours > 48:
+                    alert_msg = (
+                        f"⚠️ FEEDBACK LOOP STALE\n"
+                        f"Oldest PENDING: {age_hours:.0f}h ago\n"
+                        f"PENDING: {pending_count}/{total_count}\n"
+                        f"Resolution rate: {resolution_rate:.0f}%\n"
+                        f"Agent learning is NOT occurring!"
+                    )
+                    logger.warning(alert_msg)
+                    send_pushover_notification(
+                        config.get('notifications', {}),
+                        "🔴 Feedback Loop Alert",
+                        alert_msg
+                    )
+
         except ImportError:
             pass # No pandas, skip check
+
+        # === NEW: Enhanced Brier System Health ===
+        try:
+            from trading_bot.brier_bridge import get_calibration_data
+            cal_data = get_calibration_data()
+
+            if not cal_data:
+                logger.info("Enhanced Brier: No calibration data yet (expected if newly deployed)")
+            else:
+                total_resolved = sum(
+                    d.get('total_predictions', 0)
+                    for d in cal_data.values()
+                )
+                logger.info(f"Enhanced Brier Health: {len(cal_data)} agents tracked, {total_resolved} total resolved predictions")
+
+                # Alert if system has been running >7 days but no resolutions
+                # We reuse age_hours from above if available, else skip check
+                if 'age_hours' in locals() and age_hours > 168 and total_resolved == 0:  # 7 days
+                    alert_msg = (
+                        "⚠️ ENHANCED BRIER STALLED\n"
+                        "7+ days running but 0 predictions resolved.\n"
+                        "Check reconciliation pipeline."
+                    )
+                    logger.warning(alert_msg)
+                    send_pushover_notification(
+                        config.get('notifications', {}),
+                        "🔴 Enhanced Brier Alert",
+                        alert_msg
+                    )
+
+        except Exception as e:
+            logger.debug(f"Enhanced Brier health check skipped: {e}")
 
     except Exception as e:
         logger.error(f"Feedback loop health check failed: {e}")
@@ -1308,43 +1395,28 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                             await place_queued_orders(config, orders_list=emergency_order_list)
                             logger.info(f"Emergency Order Placed (Qty: {qty}).")
 
-                # === NEW: Brier Score Recording ===
-                # Record regardless of action, to track "NEUTRAL" correctness too
-                tracker = get_brier_tracker()
-                # We need the agent reports. Again, we reload state.
-                # Ideally Council returns them.
-                final_reports_for_scoring = StateManager.load_state()
+                # === BRIER SCORE RECORDING (Dual-Write: Legacy CSV + Enhanced JSON) ===
+                try:
+                    from trading_bot.brier_bridge import record_agent_prediction
+                    final_reports_for_scoring = StateManager.load_state()
 
-                for agent_name, report in final_reports_for_scoring.items():
-                    # Default
-                    direction = 'NEUTRAL'
-                    confidence = 0.5
+                    # Determine current regime from council context
+                    current_regime = _detect_market_regime(config, trigger)
 
-                    if isinstance(report, dict):
-                        # Structured report from new research_topic
-                        direction = report.get('sentiment', 'NEUTRAL')
-                        confidence = report.get('confidence', 0.5)
-                        # Fallback parsing if sentiment missing or raw string
-                        if 'data' in report and 'STALE' not in str(report['data']):
-                             # If sentiment is not in top level dict (legacy), try parsing text
-                             if not report.get('sentiment'):
-                                 report_str = str(report.get('data', '')).upper()
-                                 if 'BULLISH' in report_str: direction = 'BULLISH'
-                                 elif 'BEARISH' in report_str: direction = 'BEARISH'
-                    else:
-                        # Legacy string report
-                        report_str = str(report).upper()
-                        if 'BULLISH' in report_str: direction = 'BULLISH'
-                        elif 'BEARISH' in report_str: direction = 'BEARISH'
+                    for agent_name, report in final_reports_for_scoring.items():
+                        direction, confidence = _extract_agent_prediction(report)
 
-                    tracker.record_prediction_structured(
-                        agent=agent_name,
-                        predicted_direction=direction,
-                        predicted_confidence=float(confidence),
-                        actual='PENDING',
-                        timestamp=datetime.now(timezone.utc),
-                        cycle_id=cycle_id
-                    )
+                        record_agent_prediction(
+                            agent=agent_name,
+                            predicted_direction=direction,
+                            predicted_confidence=float(confidence),
+                            cycle_id=cycle_id,
+                            regime=current_regime,
+                            contract=target_contract.lastTradeDateOrContractMonth[:6] if target_contract else "",
+                        )
+
+                except Exception as e:
+                    logger.error(f"Brier recording failed: {e}")
 
                 if not is_actionable:
                     logger.info(f"Emergency Cycle concluded with no action: {direction} ({pred_type})")

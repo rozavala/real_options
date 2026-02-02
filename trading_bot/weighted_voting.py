@@ -13,7 +13,7 @@ import json
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional, Any
-from trading_bot.brier_scoring import get_brier_tracker
+from trading_bot.brier_bridge import get_agent_reliability
 
 logger = logging.getLogger(__name__)
 
@@ -421,13 +421,13 @@ async def calculate_weighted_decision(
     dominant_agent = None
 
     # Brier Score Integration
-    tracker = get_brier_tracker()
+    # Removed legacy tracker initialization
 
     for vote in votes:
         base_domain_weight = weights.get(vote.agent_name, 1.0)
 
-        # Apply Brier Score Multiplier
-        reliability_multiplier = tracker.get_agent_weight_multiplier(vote.agent_name)
+        # Apply Brier Score Multiplier (Enhanced + Legacy Blend)
+        reliability_multiplier = get_agent_reliability(vote.agent_name, regime=regime)
         final_weight = base_domain_weight * reliability_multiplier
 
         contribution = vote.direction.value * vote.confidence * final_weight

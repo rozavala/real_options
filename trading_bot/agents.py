@@ -191,9 +191,6 @@ class TradingCouncil:
         self.brier_tracker = EnhancedBrierTracker()
         self._search_cache = {}  # Cache for grounded data
 
-        commodity_label = self.commodity_profile.name if self.commodity_profile else "General"
-        logger.info(f"Trading Council initialized for {commodity_label}. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
-
         # ============================================================
         # NEW: Commodity Profile Integration (ADDITIVE)
         # This block is OPTIONAL - system works without it
@@ -217,6 +214,62 @@ class TradingCouncil:
             except Exception as e:
                 logger.warning(f"Commodity profile load failed, using legacy prompts: {e}")
                 self.commodity_profile = None
+
+        commodity_label = self.commodity_profile.name if self.commodity_profile else "General"
+        logger.info(f"Trading Council initialized for {commodity_label}. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
+
+    def _validate_agent_output(self, agent_name: str, analysis: str, grounded_data: str) -> tuple:
+        """
+        Rule-based sanity check on agent output.
+
+        Catches common errors:
+        1. Direction contradicts evidence (says BULLISH but cites bearish data)
+        2. Confidence > 0.9 with insufficient evidence
+        3. Cites data not present in grounded packet
+
+        Returns:
+            (is_valid: bool, issues: list[str])
+        """
+        issues = []
+        analysis_upper = analysis.upper()
+
+        # Check 1: Direction-evidence consistency
+        bullish_evidence = sum(1 for word in ['INCREASE', 'RISE', 'SURGE', 'SHORTAGE', 'DEFICIT', 'DROUGHT', 'FROST']
+                             if word in grounded_data.upper())
+        bearish_evidence = sum(1 for word in ['DECREASE', 'FALL', 'DROP', 'SURPLUS', 'BUMPER', 'OVERSUPPLY']
+                             if word in grounded_data.upper())
+
+        if 'BULLISH' in analysis_upper and bearish_evidence > bullish_evidence + 2:
+            issues.append(f"Direction-evidence mismatch: BULLISH call but {bearish_evidence} bearish vs {bullish_evidence} bullish evidence words")
+
+        if 'BEARISH' in analysis_upper and bullish_evidence > bearish_evidence + 2:
+            issues.append(f"Direction-evidence mismatch: BEARISH call but {bullish_evidence} bullish vs {bearish_evidence} bearish evidence words")
+
+        # Check 2: Over-confidence check
+        import re
+        conf_match = re.search(r'"confidence"\s*:\s*(0\.\d+|1\.0)', analysis)
+        if conf_match:
+            conf = float(conf_match.group(1))
+            # Flag confidence > 0.9 unless there's very strong evidence
+            total_evidence = bullish_evidence + bearish_evidence
+            if conf > 0.9 and total_evidence < 3:
+                issues.append(f"Over-confidence: {conf:.2f} with only {total_evidence} evidence indicators")
+
+        # Check 3: Hallucination flag - numbers not in grounded data
+        # (Lightweight version of ObservabilityHub check)
+        import re as re_mod
+        output_numbers = set(re_mod.findall(r'\b\d{3,}\b', analysis))  # 3+ digit numbers
+        source_numbers = set(re_mod.findall(r'\b\d{3,}\b', grounded_data))
+        fabricated = output_numbers - source_numbers
+        if len(fabricated) > 3:
+            issues.append(f"Possible hallucination: {len(fabricated)} numbers not in grounded data: {list(fabricated)[:3]}")
+
+        is_valid = len(issues) == 0
+
+        if not is_valid:
+            logger.warning(f"[{agent_name}] Output validation issues: {issues}")
+
+        return is_valid, issues
 
     def _clean_json_text(self, text: str) -> str:
         """Helper to strip markdown code blocks from JSON strings."""
@@ -474,6 +527,14 @@ OUTPUT FORMAT (JSON):
             else:
                 # If no heterogeneous, fallback to agent model (Gemini) without tools
                 result_raw = await self._call_model(self.agent_model_name, full_prompt, use_tools=False, response_json=True)
+
+            # Validate Output
+            is_valid, validation_issues = self._validate_agent_output(
+                persona_key, result_raw, grounded_data.raw_findings
+            )
+            if not is_valid:
+                logger.warning(f"Agent {persona_key} output has {len(validation_issues)} validation issues")
+                # Future: Record validation issues for correlation with Brier scores
 
             # Parse JSON
             try:

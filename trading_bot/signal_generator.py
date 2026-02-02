@@ -19,7 +19,7 @@ from trading_bot.state_manager import StateManager # Import StateManager
 from trading_bot.compliance import ComplianceGuardian
 from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type, TriggerType, detect_market_regime_simple
 from trading_bot.cycle_id import generate_cycle_id
-from trading_bot.brier_scoring import get_brier_tracker
+from trading_bot.brier_bridge import record_agent_prediction
 
 logger = logging.getLogger(__name__)
 
@@ -581,9 +581,8 @@ async def generate_signals(ib: IB, config: dict) -> list:
                         trigger_type=trigger_type if trigger_type else 'SCHEDULED',
                     )
 
-                    # === NEW: Record Structured Predictions for Brier Scoring ===
+                    # === BRIER SCORE RECORDING (Dual-Write: Legacy CSV + Enhanced JSON) ===
                     try:
-                        tracker = get_brier_tracker()
                         timestamp_now = datetime.now(timezone.utc)
 
                         # Record each agent's prediction
@@ -607,23 +606,25 @@ async def generate_signals(ib: IB, config: dict) -> list:
                                 if 'BULLISH' in report_str: direction = 'BULLISH'
                                 elif 'BEARISH' in report_str: direction = 'BEARISH'
 
-                            tracker.record_prediction_structured(
+                            record_agent_prediction(
                                 agent=agent_name,
                                 predicted_direction=direction,
                                 predicted_confidence=float(confidence),
-                                actual='PENDING',
+                                cycle_id=cycle_id,
+                                regime=regime_log,
+                                contract=contract_name,
                                 timestamp=timestamp_now,
-                                cycle_id=cycle_id
                             )
 
                         # Also record Master Decision
-                        tracker.record_prediction_structured(
+                        record_agent_prediction(
                             agent='master',
                             predicted_direction=decision.get('direction', 'NEUTRAL'),
                             predicted_confidence=float(decision.get('confidence', 0.5)),
-                            actual='PENDING',
+                            cycle_id=cycle_id,
+                            regime=regime_log,
+                            contract=contract_name,
                             timestamp=timestamp_now,
-                            cycle_id=cycle_id
                         )
 
                     except Exception as brier_e:

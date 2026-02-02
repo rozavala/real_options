@@ -526,14 +526,57 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             logger.info("Successfully updated council_history.csv with reconciliation results.")
 
             # === RESOLVE INDIVIDUAL AGENT PREDICTIONS ===
-            # This closes the feedback loop by scoring each agent's prediction
+            # PHASE 1: Legacy CSV resolution (backward compat)
             try:
                 from trading_bot.brier_scoring import resolve_pending_predictions
                 resolved_count = resolve_pending_predictions(file_path)
                 if resolved_count > 0:
-                    logger.info(f"Feedback Loop: Resolved {resolved_count} individual agent predictions")
+                    logger.info(f"Feedback Loop (Legacy): Resolved {resolved_count} agent predictions")
             except Exception as resolve_e:
-                logger.error(f"Failed to resolve agent predictions: {resolve_e}")
+                logger.error(f"Failed to resolve legacy agent predictions: {resolve_e}")
+
+            # PHASE 2: Enhanced probabilistic resolution
+            try:
+                from trading_bot.brier_bridge import resolve_agent_prediction, reset_enhanced_tracker
+                import pandas as pd
+
+                # Read the just-resolved structured predictions to find what was resolved
+                structured_file = "data/agent_accuracy_structured.csv"
+                if os.path.exists(structured_file):
+                    struct_df = pd.read_csv(structured_file)
+
+                    # Find recently resolved predictions (not PENDING, not ORPHANED)
+                    resolved_mask = (
+                        (struct_df['actual'] != 'PENDING') &
+                        (struct_df['actual'] != 'ORPHANED')
+                    )
+
+                    resolved_df = struct_df[resolved_mask]
+
+                    enhanced_resolved = 0
+                    for _, row in resolved_df.iterrows():
+                        cycle_id = str(row.get('cycle_id', ''))
+                        agent = str(row.get('agent', ''))
+                        actual = str(row.get('actual', ''))
+
+                        if not agent or not actual or actual in ('PENDING', 'ORPHANED'):
+                            continue
+
+                        brier = resolve_agent_prediction(
+                            agent=agent,
+                            actual_outcome=actual,
+                            cycle_id=cycle_id,
+                        )
+                        if brier is not None:
+                            enhanced_resolved += 1
+
+                    if enhanced_resolved > 0:
+                        logger.info(f"Feedback Loop (Enhanced): Scored {enhanced_resolved} predictions with Brier scores")
+                        reset_enhanced_tracker()  # Reset singleton so voting picks up new scores
+
+            except Exception as enhanced_e:
+                # Enhanced resolution failure MUST NOT block reconciliation
+                logger.warning(f"Enhanced Brier resolution failed (non-critical): {enhanced_e}")
 
         except Exception as e:
             logger.error(f"Failed to save updated CSV: {e}")
