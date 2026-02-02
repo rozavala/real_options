@@ -154,6 +154,24 @@ class StateManager:
         return result
 
     @classmethod
+    def load_state_raw(cls, namespace: str = "reports") -> Dict[str, Any]:
+        """
+        Load state WITHOUT staleness string substitution.
+        Returns raw data dicts regardless of age, or empty dict if not found.
+
+        Use this for machine consumers (sentinels, agents) that need dict values.
+        Use load_state() for human-facing displays that benefit from STALE warnings.
+        """
+        state = cls._load_raw_sync().get(namespace, {})
+        result = {}
+        for key, entry in state.items():
+            if not isinstance(entry, dict) or 'data' not in entry:
+                continue
+            # Return the raw data without any string substitution
+            result[key] = entry["data"]
+        return result
+
+    @classmethod
     async def load_state_async(cls, namespace: str = "reports", max_age: int = None) -> Dict:
         """Async load wrapper."""
         async with cls._async_lock:
