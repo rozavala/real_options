@@ -113,10 +113,10 @@ if [ -f "$REPO_DIR/trade_ledger.csv" ]; then
     cp "$REPO_DIR/trade_ledger.csv" "$DEST_DIR/"
 fi
 
-# Model signals
-if [ -f "$REPO_DIR/model_signals.csv" ]; then
-    echo "Copying model_signals.csv..."
-    cp "$REPO_DIR/model_signals.csv" "$DEST_DIR/"
+# Decision signals (Council output summary)
+if [ -f "$REPO_DIR/decision_signals.csv" ]; then
+    echo "Copying decision_signals.csv..."
+    cp "$REPO_DIR/decision_signals.csv" "$DEST_DIR/"
 fi
 
 # Archive ledger directory

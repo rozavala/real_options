@@ -16,7 +16,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import load_council_history, get_status_color
 
-st.set_page_config(layout="wide", page_title="Council | Coffee Bot")
+st.set_page_config(layout="wide", page_title="Council | Mission Control")
 
 st.title("🧠 The Council Chamber")
 st.caption("Agent Explainability - Understand the reasoning behind every trade decision")
@@ -31,7 +31,7 @@ if council_df.empty:
 # === CONTRACT CONTEXT INDICATOR ===
 st.info("""
     ℹ️ **Note on Multi-Contract Analysis:** Agent reports shown below represent
-    *general market context* applicable to all Coffee (KC) futures. When multiple
+    *general market context* applicable to all active futures contracts. When multiple
     contracts are analyzed, the most recent analysis is displayed. For contract-specific
     insights, refer to the individual trade thesis in the Position Cards.
 """)

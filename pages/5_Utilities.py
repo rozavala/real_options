@@ -21,7 +21,7 @@ from dashboard_utils import get_config
 # Load config at module level
 config = get_config()
 
-st.set_page_config(layout="wide", page_title="Utilities | Coffee Bot")
+st.set_page_config(layout="wide", page_title="Utilities | Mission Control")
 
 st.title("🔧 Utilities")
 st.caption("System maintenance and operational tools")
@@ -413,7 +413,7 @@ with diag_cols[1]:
                 send_pushover_notification(
                     config.get('notifications', {}),
                     "Test Notification",
-                    f"This is a test notification from Coffee Bot Utilities at {datetime.now(timezone.utc).strftime('%H:%M:%S UTC')}"
+                    f"This is a test notification from Mission Control Utilities at {datetime.now(timezone.utc).strftime('%H:%M:%S UTC')}"
                 )
                 st.success("✅ Test notification sent!")
             except Exception as e:

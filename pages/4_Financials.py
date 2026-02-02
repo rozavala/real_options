@@ -25,7 +25,7 @@ from dashboard_utils import (
     DEFAULT_STARTING_CAPITAL
 )
 
-st.set_page_config(layout="wide", page_title="Financials | Coffee Bot")
+st.set_page_config(layout="wide", page_title="Financials | Mission Control")
 
 st.title("📈 Financial Performance")
 st.caption("ROI & Audit - Institutional-grade reporting on actual dollars gained or lost")
@@ -339,7 +339,7 @@ if not equity_df.empty:
         fig.add_trace(go.Scatter(
             x=bot_returns.index,
             y=bot_returns.values,
-            name='Coffee Bot',
+            name='Mission Control',
             line=dict(color='#636EFA', width=2)
         ))
 

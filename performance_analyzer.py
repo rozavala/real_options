@@ -11,8 +11,8 @@ from ib_insync import IB, PortfolioItem
 
 from trading_bot.logging_config import setup_logging
 from notifications import send_pushover_notification
-# ML model_signals module removed (see archive/ml_pipeline/).
-# Signal data now comes from Council decisions logged in council_history.csv.
+# Decision signals: lightweight summary of Council decisions
+from trading_bot.decision_signals import get_decision_signals_df
 from trading_bot.performance_graphs import generate_performance_charts
 from config_loader import load_config
 
@@ -221,7 +221,7 @@ def generate_morning_signals_report(signals_df: pd.DataFrame, today_date: dateti
     Future enhancement: pull today's council decisions from council_history.csv.
     """
     if signals_df.empty:
-        return "Council-driven signals (see Council History for today's decisions).\n"
+        return "No decision signals recorded yet today.\n"
 
     today_signals = signals_df[signals_df['timestamp'].dt.date == today_date] if 'timestamp' in signals_df.columns else signals_df
     if today_signals.empty:
@@ -376,9 +376,8 @@ async def analyze_performance(config: dict) -> dict | None:
     """
     # Ledger is still needed for LTD stats and charts
     trade_df = get_trade_ledger_df()
-    # ML signals removed — morning signal report now uses council_history.csv
-    signals_df = pd.DataFrame(columns=['timestamp', 'contract', 'signal', 'price', 'confidence'])
-    signals_df['timestamp'] = pd.to_datetime(signals_df['timestamp'])
+    # ML signals removed — morning signal report now uses decision_signals.csv
+    signals_df = get_decision_signals_df()
 
     logger.info("--- Starting Daily Performance Analysis ---")
 

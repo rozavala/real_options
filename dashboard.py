@@ -71,7 +71,7 @@ with col2:
 
 with col3:
     benchmarks = fetch_todays_benchmark_data()
-    st.metric("Coffee Today", f"{benchmarks.get('KC=F', 0):+.2f}%")
+    st.metric("Benchmark Today", f"{benchmarks.get('KC=F', 0):+.2f}%")
 
 st.markdown("---")
 st.caption("Select a page from the sidebar to begin.")

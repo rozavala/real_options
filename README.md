@@ -1,141 +1,100 @@
-# ☕ The Automated Coffee Trading System
+# Mission Control — Algorithmic Commodity Futures Trading
 
-An event-driven, multi-agent AI trading system for Coffee Futures Options (KC). This platform combines quantitative machine learning models with a **"Coffee Council"** of specialized AI agents to analyze market microstructure, agronomy, supply chains, and macroeconomics in real-time.
+An event-driven, multi-agent AI trading system for commodity futures options. Uses a Council of specialized AI analysts with adversarial debate to generate trading decisions, managed by a constitutional compliance framework.
 
----
-
-## 🏗️ System Architecture
-
-The system operates on a "Two-Brain" architecture:
-1.  **Quantitative Brain**: An ensemble of LSTM and XGBoost models processing 60-day windows of price, spread, and economic data.
-2.  **Qualitative Brain (The Council)**: A debate-driven multi-agent system that performs grounded research, challenges assumptions, and synthesizes a final trading decision.
+## Architecture: The Federated Cognitive Lattice
 
 ```mermaid
 graph TD
-    subgraph Inputs
-        Data[Market Data / APIs] --> |Poll| Orchestrator
-        News[News / RSS] --> |Trigger| Sentinels
-        Price[Price Action] --> |Trigger| Sentinels
+    subgraph "Tier 1: Always-On Sentinels"
+        XS[🐦 X Sentiment]
+        WS[🌤️ Weather]
+        NS[📰 News/RSS]
+        PS[📊 Microstructure]
     end
 
-    subgraph "Brain 1: Quantitative"
-        Orchestrator --> |Daily Cycle| ML[Inference Engine]
-        ML --> |Signal: Long/Short/Neutral| Council
+    subgraph "Tier 2: Specialist Analysts"
+        AG[🌱 Agronomist]
+        MA[💹 Macro Economist]
+        FU[📈 Fundamentalist]
+        TE[📐 Technical]
+        VO[📊 Volatility]
+        GE[🌍 Geopolitical]
+        SE[🐦 Sentiment]
     end
 
-    subgraph "Brain 2: The Coffee Council"
-        Sentinels --> |Wake Up| Council
-        ML --> |Context| Council
-
-        Council --> |Research| Agents[Specialized Agents]
-        Agents --> |Debate| BearBull[Permabear vs Permabull]
-        BearBull --> |Synthesis| Master[Master Strategist]
+    subgraph "Tier 3: Decision Council"
+        PB[🐻 Permabear]
+        PL[🐂 Permabull]
+        DA[😈 Devil's Advocate]
+        MS[👑 Master Strategist]
     end
 
-    subgraph Execution
-        Master --> |Decision| Compliance[Compliance Guardian]
-        Compliance --> |Approved?| OrderManager[Order Manager]
-        OrderManager --> |Submit| IB[Interactive Brokers]
-    end
+    XS & WS & NS & PS -->|Emergency Trigger| AG & MA & FU & TE & VO & GE & SE
+    AG & MA & FU & TE & VO & GE & SE -->|Reports| PB & PL
+    PB & PL -->|Debate| MS
+    MS -->|Decision| DA
+    DA -->|Approved| EX[⚡ Order Execution]
+    DA -->|Vetoed| BLOCK[🛑 Trade Blocked]
+    EX --> IB[Interactive Brokers Gateway]
 ```
 
----
+### How It Works
 
-## 🧠 The Coffee Council (Core AI Engine)
+1. **Sentinels** monitor the world 24/7 (weather, news, social sentiment, market microstructure)
+2. When a sentinel detects a significant event, it triggers an **Emergency Council Session**
+3. **Specialist Agents** research using grounded data (Google Search, RSS, API data)
+4. **Permabear attacks** the thesis; **Permabull defends** — Hegelian dialectic debate
+5. **Master Strategist** weighs evidence using weighted voting and renders a verdict
+6. **Devil's Advocate** runs pre-mortem analysis to catch blind spots
+7. **Compliance Guardian** validates position sizing, VaR limits, and margin requirements
+8. Approved trades execute via **Interactive Brokers** as options spreads
 
-At the heart of the system lies **The Coffee Council**, a heterogeneous multi-agent system designed to mimic a professional commodities trading desk. Unlike standard "chat" bots, these agents have distinct personas, specific mandates, and a rigorous decision-making process.
+### Key Design Principles
 
-### 👥 The Personas
-The Council is composed of specialized agents, each powered by Large Language Models (Gemini, OpenAI, Anthropic) routed based on task complexity:
+- **Heterogeneous LLM Routing** — Different AI providers (Gemini, OpenAI, Anthropic, xAI) for different roles, preventing algorithmic monoculture
+- **Constitutional AI Compliance** — Compliance has veto power over all trades
+- **Commodity-Agnostic** — Profile-driven configuration supports any ICE/CME futures contract
+- **Event-Driven** — Sentinels trigger analysis on-demand vs. fixed schedules
+- **Fail-Safe** — All components fail closed (block trades on error)
 
-*   **👨‍🌾 The Agronomist**: Monitors weather patterns in Minas Gerais, flowering reports, and crop disease (Rust/Broca).
-*   **🌍 The Macro Analyst**: Analyzes BRL/USD exchange rates, interest rates (Selic/Fed), and global inflation data.
-*   **🚢 The Supply Chain Analyst**: Tracks shipping container indices, port congestion (Santos/Rotterdam), and export flow reports (Cecafé).
-*   **📊 The Technical Analyst**: Studies chart patterns, RSI divergence, and moving averages on the futures curve.
-*   **📉 The Volatility Analyst**: Examines IV Rank, skew, and option pricing to determine cheap/expensive premiums.
-*   **🐻 The Permabear & 🐂 The Permabull**: Two adversarial agents whose sole job is to attack or defend the investment thesis.
-*   **⚖️ The Master Strategist**: The final decision maker. It reviews all reports, watches the debate, and renders a verdict (Bullish/Bearish/Neutral) with a confidence score.
+## Trading Strategies
 
-### 🔄 The Reflexion Loop
-To prevent hallucinations, critical agents (like the Agronomist) utilize a **Reflexion Loop**.
-1.  **Draft**: The agent generates an initial analysis based on gathered data.
-2.  **Critique**: The agent (or a supervisor model) challenges its own findings: *"Did I cite a specific date? Is this source stale?"*
-3.  **Revise**: The final output is rewritten to be strictly evidence-based.
+| Market Condition | Strategy | Signal Type |
+|-----------------|----------|-------------|
+| Bullish directional | Bull Call Spread | DIRECTIONAL |
+| Bearish directional | Bear Put Spread | DIRECTIONAL |
+| High volatility expected | Long Straddle | VOLATILITY |
+| Low volatility / range-bound | Iron Condor | VOLATILITY |
 
-### ⚔️ The Dialectical Debate
-Before any trade is placed, a **Hegelian Dialectic** process occurs:
-1.  **Thesis**: The specialized agents provide their reports.
-2.  **Antithesis**: The **Permabear** attacks the reports, looking for flaws. The **Permabull** defends the thesis with evidence.
-3.  **Synthesis**: The **Master Strategist** weighs the arguments. If the debate reveals significant risks, the confidence score is lowered, potentially vetoing the trade.
+## Data Files
 
----
+| File | Purpose |
+|------|---------|
+| `decision_signals.csv` | Lightweight decision log (10 columns, one row per contract per cycle) |
+| `data/council_history.csv` | Full forensic record (30+ columns, agent reports, debate text) |
+| `trade_ledger.csv` | Executed trades with fill prices and P&L |
+| `data/agent_accuracy_structured.csv` | Brier scoring for agent prediction accuracy |
 
-## 📡 The Sentinel Array
+## Dashboard
 
-The system is not just time-based; it is **Event-Driven**. A sophisticated array of "Sentinels" runs continuously to monitor the world for specific trigger events.
+Streamlit-based Mission Control with pages:
 
-*   **Price Sentinel**: Watches for sudden >2% moves or microstructure breakdowns.
-*   **News Sentinel**: Scrapes RSS feeds and APIs for keywords like "Frost", "Strike", or "Regulation".
-*   **Weather Sentinel**: Monitors real-time forecasts for critical growing regions.
-*   **Microstructure Sentinel**: Analyzes order book imbalances and liquidity gaps.
+1. **🦅 Cockpit** — Live operations, system health, emergency controls
+2. **⚖️ Scorecard** — Decision quality analysis, win rates
+3. **🧠 Council** — Agent explainability, consensus visualization
+4. **📈 Financials** — ROI, equity curve, strategy performance
+5. **🔧 Utilities** — Log collection, manual overrides
+6. **🎯 Signal Overlay** — Decision forensics against price action
 
-When a Sentinel triggers, it initiates an **Emergency Council Session**, bypassing the standard schedule to react immediately to breaking news.
+## Tech Stack
 
----
+- **Execution:** Interactive Brokers Gateway (ib_insync)
+- **AI:** Google Gemini (research), OpenAI/Anthropic/xAI (analysis), heterogeneous routing
+- **Memory:** ChromaDB (Transactive Memory System for cross-agent knowledge)
+- **Dashboard:** Streamlit
+- **Hosting:** Digital Ocean Droplets
 
-## ⚙️ Quantitative Foundation
+## License
 
-While the AI Agents provide the reasoning, the **Quantitative Engine** provides the anchor.
-*   **Models**: An ensemble of **LSTM (Long Short-Term Memory)** networks for sequence analysis and **XGBoost** for tabular feature importance.
-*   **Features**: 60-day rolling windows of price, volatility (GARCH), term structure (Spreads), and macro indicators.
-*   **Function**: The ML model provides a "Base Signal" (e.g., *Long with 65% confidence*). The Council then treats this as just another input—they can agree with it, or override it if qualitative factors (like a port strike) aren't in the numerical data yet.
-
----
-
-## 🛡️ Execution & Risk Management
-
-A trade decision is only as good as its execution.
-
-### Compliance Guardian
-The **Compliance Guardian** acts as the system's "Constitution". Before any order is submitted, it checks:
-*   **Liquidity**: Is the spread too wide?
-*   **Exposure**: Do we already have too much risk in this expiration?
-*   **Sanity**: Is the target price realistic?
-*   **"Fat Finger" Check**: Prevents erroneous large orders.
-
-### Dynamic Order Manager
-The **Order Manager** handles the lifecycle of the trade:
-*   **Adaptive Sizing**: Position sizes are calculated dynamically based on account equity and signal confidence (Kelly Criterion logic).
-*   **Combo Orders**: Executes complex multi-leg strategies (Spreads, Condors) as atomic "BAG" orders on IBKR to ensure no legging risk.
-*   **Stale Position Closer**: Automatically manages inventory, closing positions that have hit time or profit targets.
-
----
-
-## 🚀 Technical Setup
-
-### Prerequisites
-*   Python 3.10+
-*   Interactive Brokers TWS/Gateway (running and accepting API connections)
-*   API Keys for: Google Gemini, OpenAI, Fred, Pushover (Notifications)
-
-### Configuration
-The system is controlled via `config.json`. Key sections include:
-*   `"model_registry"`: Define which LLM powers which agent (e.g., `gemini-1.5-pro` for Master, `gemini-flash` for Sentinels).
-*   `"risk_management"`: Set hard limits on drawdowns and position sizes.
-*   `"sentinels"`: Configure polling intervals and sensitivity thresholds.
-
-### Running the System
-1.  **Start the Orchestrator**:
-    ```bash
-    python orchestrator.py
-    ```
-    This launches the scheduler and the background event loop.
-
-2.  **View the Dashboard**:
-    ```bash
-    streamlit run dashboard.py
-    ```
-    Provides a real-time view of active agents, debate transcripts, and portfolio performance.
-
----
-*Built for the Coffee Futures Market (KC).*
+Proprietary. All rights reserved.

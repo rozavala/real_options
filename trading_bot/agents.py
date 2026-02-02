@@ -1,4 +1,4 @@
-"""The Coffee Council Module (Updated for google-genai SDK).
+"""The Trading Council Module (Updated for google-genai SDK).
 
 This module implements the '5-headed beast' agent system using Google Gemini models.
 It includes specialized research agents, a Dialectical Debate (Permabear/Permabull),
@@ -102,8 +102,7 @@ Output JSON with this structure:
         {"claim": "...", "evidence": "...", "confidence": 0.0-1.0}
     ],
     "acknowledged_risks": ["..."],
-    "ml_alignment": "AGREES|DISAGREES|NEUTRAL",
-    "ml_confidence_used": 0.0
+    "market_data_alignment": "AGREES|DISAGREES|NEUTRAL"
 }
 """
 
@@ -123,8 +122,8 @@ class ResponseTimeTracker:
             return 0.0
         return sum(self.latencies[provider]) / len(self.latencies[provider])
 
-class CoffeeCouncil:
-    """Manages the tiered Gemini agent system using the new google-genai SDK."""
+class TradingCouncil:
+    """Manages the tiered multi-model agent system for commodity futures trading."""
 
     def __init__(self, config: dict):
         """
@@ -192,7 +191,8 @@ class CoffeeCouncil:
         self.brier_tracker = EnhancedBrierTracker()
         self._search_cache = {}  # Cache for grounded data
 
-        logger.info(f"Coffee Council initialized. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
+        commodity_label = self.commodity_profile.name if self.commodity_profile else "General"
+        logger.info(f"Trading Council initialized for {commodity_label}. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
 
         # ============================================================
         # NEW: Commodity Profile Integration (ADDITIVE)
@@ -643,7 +643,7 @@ OUTPUT FORMAT (JSON ONLY):
 
         prompt = f"""You are the Devil's Advocate. Your job is to ATTACK this trade.
 
-PROPOSED TRADE: {decision.get('direction')} Coffee
+PROPOSED TRADE: {decision.get('direction')} {self.commodity_profile.name if self.commodity_profile else 'Futures'}
 CONFIDENCE: {decision.get('confidence')}
 REASONING: {decision.get('reasoning')}
 
@@ -946,3 +946,6 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                 logger.error(f"Failed to record Brier prediction (non-fatal): {e}")
 
         return decision
+
+# Backward compatibility alias — safe to remove once all imports are updated
+CoffeeCouncil = TradingCouncil

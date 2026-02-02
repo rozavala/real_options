@@ -28,6 +28,7 @@ from performance_analyzer import main as run_performance_analysis
 from reconcile_trades import main as run_reconciliation, reconcile_active_positions
 from trading_bot.reconciliation import reconcile_council_history
 from trading_bot.utils import log_council_decision
+from trading_bot.decision_signals import log_decision_signal
 from trading_bot.order_manager import (
     generate_and_execute_orders,
     close_stale_positions,
@@ -40,7 +41,7 @@ from trading_bot.utils import archive_trade_ledger, configure_market_data_type, 
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, PredictionMarketSentinel, SentinelTrigger
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
-from trading_bot.agents import CoffeeCouncil
+from trading_bot.agents import TradingCouncil
 from trading_bot.ib_interface import (
     get_active_futures, build_option_chain, create_combo_order_object, get_underlying_iv_metrics,
     place_order, close_spread_with_protection_cleanup
@@ -545,7 +546,7 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
 
         # 2. Initialize components
         tms = TransactiveMemory()
-        council = CoffeeCouncil(config)
+        council = TradingCouncil(config)
         positions_to_close = []
 
         # 3. Get trade ledger for position mapping
@@ -1076,7 +1077,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 
             try:
                 # 1. Initialize Council
-                council = CoffeeCouncil(config)
+                council = TradingCouncil(config)
 
                 # 2. Get Active Futures (We need a target contract)
                 # For simplicity, target the Front Month or the one from the trigger payload
@@ -1171,8 +1172,6 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         "timestamp": datetime.now(timezone.utc),
                         "contract": contract_name,
                         "entry_price": ml_signal.get('price'),
-                        "ml_signal": None,
-                        "ml_confidence": None,
 
                         "meteorologist_sentiment": agent_data.get("agronomist_sentiment"),
                         "meteorologist_summary": agent_data.get("agronomist_summary"),
@@ -1206,6 +1205,20 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         "weighted_score": 0.0 # Not explicitly returned by run_specialized_cycle but embedded in vote
                     }
                     log_council_decision(council_log_entry)
+
+                    # Decision Signal (Lightweight)
+                    log_decision_signal(
+                        cycle_id=cycle_id,
+                        contract=contract_name,
+                        signal=council_log_entry.get('master_decision', 'NEUTRAL'),
+                        prediction_type=council_log_entry.get('prediction_type', 'DIRECTIONAL'),
+                        strategy=council_log_entry.get('strategy_type', 'NONE'),
+                        price=council_log_entry.get('entry_price'),
+                        sma_200=None,
+                        confidence=council_log_entry.get('master_confidence'),
+                        regime='UNKNOWN',
+                        trigger_type='EMERGENCY',
+                    )
                 except Exception as e:
                     logger.error(f"Failed to log emergency decision: {e}")
 
