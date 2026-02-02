@@ -259,3 +259,84 @@ TimeoutError
 2026-02-02 18:58:07,750 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.19, geopolitical: 0.16, inventory: 0.00, macro: 0.41, master_decision: 0.06, sentiment: 0.00, supply_chain: 0.04, technical: 0.09, volatility: 0.14}
 2026-02-02 18:58:07,772 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
 2026-02-02 18:58:07,772 - Orchestrator - INFO - Post-cycle debounce set for 1800s
+2026-02-02 19:00:47,540 - Orchestrator - INFO - Market Closed: Disconnecting Sentinel IB to prevent zombie state.
+2026-02-02 19:00:50,543 - Orchestrator - INFO - Market Closed: Disengaging Microstructure Sentinel
+2026-02-02 19:00:50,544 - trading_bot.connection_pool - INFO - Disconnecting IB (microstructure)...
+2026-02-02 19:01:54,046 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 19:05:00,007 - Orchestrator - INFO - --- Running scheduled task: reconcile_and_analyze ---
+2026-02-02 19:05:00,008 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-02-02 19:05:00,009 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
+2026-02-02 19:05:00,053 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1341111)...
+2026-02-02 19:05:00,321 - TradeReconciler - INFO - Successfully requested report. Reference Code: 8155108932
+2026-02-02 19:05:10,324 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-02 19:05:10,460 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-02 19:05:10,468 - EquityLogger - INFO - Preserving 3 local equity records not present in Flex Query.
+2026-02-02 19:05:10,470 - EquityLogger - INFO - Successfully synced 12 equity records to data/daily_equity.csv.
+2026-02-02 19:05:10,471 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-02-02 19:05:10,471 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-02-02 19:05:10,473 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-02-02 19:05:10,503 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1328326)...
+2026-02-02 19:05:10,662 - TradeReconciler - INFO - Successfully requested report. Reference Code: 1225106476
+2026-02-02 19:05:20,672 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-02 19:05:20,823 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-02 19:05:20,826 - TradeReconciler - INFO - Parsed 32 executions from the Flex Query report.
+2026-02-02 19:05:20,843 - TradeReconciler - INFO - Successfully processed 32 trades into the reconciliation DataFrame.
+2026-02-02 19:05:20,843 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-02-02 19:05:20,872 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1331422)...
+2026-02-02 19:05:21,183 - TradeReconciler - INFO - Successfully requested report. Reference Code: 2048255756
+2026-02-02 19:05:31,189 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-02 19:05:31,394 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-02 19:05:31,396 - TradeReconciler - INFO - Parsed 4 executions from the Flex Query report.
+2026-02-02 19:05:31,410 - TradeReconciler - INFO - Successfully processed 4 trades into the reconciliation DataFrame.
+2026-02-02 19:05:31,412 - TradeReconciler - INFO - Consolidated to 36 unique trades from all reports.
+2026-02-02 19:05:31,414 - TradeReconciler - INFO - Loaded 4 trades from the main ledger.
+2026-02-02 19:05:31,414 - TradeReconciler - INFO - Found 2 archived ledger files.
+2026-02-02 19:05:31,419 - TradeReconciler - INFO - Consolidated a total of 36 trades from all ledgers.
+2026-02-02 19:05:31,420 - TradeReconciler - INFO - Filtered IB trades from 36 to 36 records within the last 33 days.
+2026-02-02 19:05:31,421 - TradeReconciler - INFO - Filtered local ledger from 36 to 36 records within the last 33 days.
+2026-02-02 19:05:31,481 - TradeReconciler - INFO - Reconciliation complete. Found 0 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
+2026-02-02 19:05:31,481 - TradeReconciler - INFO - No discrepancies found. The local ledger is perfectly in sync with the IB report.
+2026-02-02 19:05:31,482 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
+2026-02-02 19:05:31,482 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-02-02 19:05:31,511 - TradeReconciler - INFO - Requesting Flex Query report (Query ID: 1341164)...
+2026-02-02 19:05:31,702 - TradeReconciler - INFO - Successfully requested report. Reference Code: 9131951514
+2026-02-02 19:05:41,710 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-02 19:05:41,896 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-02 19:05:41,898 - TradeReconciler - INFO - Parsed 4 positions from the Flex Query report.
+2026-02-02 19:05:41,900 - TradeReconciler - INFO - Loaded 4 trades from the main ledger.
+2026-02-02 19:05:41,901 - TradeReconciler - INFO - Found 2 archived ledger files.
+2026-02-02 19:05:41,905 - TradeReconciler - INFO - Consolidated a total of 36 trades from all ledgers.
+2026-02-02 19:05:41,909 - TradeReconciler - INFO - Skipping reconciliation for recently traded symbols: {'KOK6 C3.275', 'KOK6 C3.225', 'KOK6 P3.075', 'KOK6 P3.125'}
+2026-02-02 19:05:41,913 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-02-02 19:05:41,913 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-02-02 19:05:42,489 - trading_bot.reconciliation - ERROR - Error during reconciliation process: cannot access local variable 'pd' where it is not associated with a value
+2026-02-02 19:05:45,493 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-02-02 19:05:45,493 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-02-02 19:05:45,493 - PerformanceAnalyzer - INFO - Loading main trade ledger: trade_ledger.csv
+2026-02-02 19:05:45,496 - PerformanceAnalyzer - INFO - Found 2 archived trade ledger(s).
+2026-02-02 19:05:45,496 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260129_190559.csv
+2026-02-02 19:05:45,498 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260130_190602.csv
+2026-02-02 19:05:45,501 - PerformanceAnalyzer - INFO - Consolidated a total of 36 trade records.
+2026-02-02 19:05:45,504 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-02-02 19:05:45,956 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $46,982.35
+2026-02-02 19:05:47,962 - PerformanceAnalyzer - INFO - Successfully fetched 5 execution(s) for today from IB.
+2026-02-02 19:05:50,966 - PerformanceAnalyzer - INFO - Loading daily_equity.csv for equity curve.
+2026-02-02 19:05:50,970 - PerformanceAnalyzer - INFO - Dynamic Starting Capital from History: $50,000.00
+2026-02-02 19:05:50,973 - PerformanceAnalyzer - INFO - Calculated LTD Total P&L (Equity): $-3,017.65
+2026-02-02 19:05:51,610 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-02-02 19:05:52,579 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-02 19:05:52,781 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-02 19:05:53,971 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-02 19:05:55,164 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-02 19:05:56,349 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-02 19:05:57,545 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
+2026-02-02 19:05:59,000 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
+2026-02-02 19:06:00,197 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
+2026-02-02 19:06:01,201 - root - INFO - Successfully archived 'trade_ledger.csv' to '/home/rodrigo/real_options/archive_ledger/trade_ledger_20260202_190601.csv'
+2026-02-02 19:06:01,201 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-02-02 19:06:01,207 - Orchestrator - ERROR - Feedback loop health check failed: time data "KC-c0f3b12c" doesn't match format "%Y-%m-%d %H:%M:%S.%f%z", at position 457. You might want to try:
+    - passing `format` if your strings have a consistent format;
+    - passing `format='ISO8601'` if your strings are all ISO8601 but not necessarily in exactly the same format;
+    - passing `format='mixed'`, and the format will be inferred for each element individually. You might want to use `dayfirst` alongside this.
+2026-02-02 19:06:01,207 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-02-02 19:06:01,207 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-03 08:20:00 UTC. Waiting for 13.23 hours.
