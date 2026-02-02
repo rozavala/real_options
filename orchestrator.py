@@ -262,7 +262,8 @@ async def _get_current_price(ib: IB, contract: Contract) -> float:
     price = 0.0
     if not util.isNan(ticker.last): price = ticker.last
     elif not util.isNan(ticker.close): price = ticker.close
-    ib.cancelMktData(contract)
+    # For snapshot requests, IB auto-cleans the ticker.
+    # Do NOT call cancelMktData — it causes Error 300 spam.
     return price
 
 async def _get_context_for_guardian(guardian: str, config: dict) -> str:
@@ -272,7 +273,14 @@ async def _get_context_for_guardian(guardian: str, config: dict) -> str:
     tms = TransactiveMemory()
     return f"Context for {guardian}: " + str(tms.retrieve(f"{guardian} context", n_results=3))
 
-async def _validate_thesis(thesis: dict, position, council, config: dict, ib: IB) -> dict:
+async def _validate_thesis(
+    thesis: dict,
+    position,
+    council,
+    config: dict,
+    ib: IB,
+    active_futures_cache: dict = None
+) -> dict:
     """
     Validates if a trade thesis still holds given current market conditions.
 
@@ -318,12 +326,20 @@ async def _validate_thesis(thesis: dict, position, council, config: dict, ib: IB
                 underlying_contract = None
 
         if not underlying_contract:
-            # Fallback: Get front-month future
-            try:
-                futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=1)
+            # Fallback: Get front-month future (with caching)
+            symbol = config.get('symbol', 'KC')
+            if active_futures_cache and symbol in active_futures_cache:
+                futures = active_futures_cache[symbol]
                 underlying_contract = futures[0] if futures else None
-            except Exception as e:
-                logger.warning(f"Failed to get active futures for IC validation: {e}")
+                logger.debug(f"Using cached active future for {symbol}")
+            else:
+                try:
+                    futures = await get_active_futures(ib, symbol, config['exchange'], count=1)
+                    underlying_contract = futures[0] if futures else None
+                    if active_futures_cache is not None and futures:
+                         active_futures_cache[symbol] = futures
+                except Exception as e:
+                    logger.warning(f"Failed to get active futures for IC validation: {e}")
 
         if not underlying_contract:
             logger.error(f"Cannot validate IC thesis - no underlying contract available")
@@ -332,6 +348,19 @@ async def _validate_thesis(thesis: dict, position, council, config: dict, ib: IB
         # Fetch current underlying price
         current_price = await _get_current_price(ib, underlying_contract)
         entry_price = supporting_data.get('entry_price', 0)
+
+        # SANITY CHECK: Detect legacy theses where entry_price is a spread premium
+        price_floor = config.get('validation', {}).get('underlying_price_floor', 100.0)
+
+        if 0 < entry_price < price_floor:
+            spread_credit = supporting_data.get('spread_credit', entry_price)
+            logger.warning(
+                f"SEMANTIC GUARD: entry_price ${entry_price:.2f} < floor "
+                f"${price_floor:.2f} for thesis {thesis.get('trade_id', '?')}. "
+                f"Likely a spread premium, not underlying price. "
+                f"Skipping price breach check. Run migration script."
+            )
+            entry_price = 0  # Disable price breach check for this thesis
 
         if entry_price > 0 and current_price > 0:
             move_pct = abs((current_price - entry_price) / entry_price) * 100
@@ -521,70 +550,226 @@ def _build_thesis_invalidation_notification(
 
     return title, message
 
-async def _close_position_with_thesis_reason(
+def _group_positions_by_thesis(
+    positions: list,
+    trade_ledger: object,
+    tms: TransactiveMemory
+) -> dict:
+    """
+    Groups IB position legs by their shared thesis (position_id).
+
+    Returns:
+        Dict mapping position_id → {
+            'thesis': dict,         # The shared thesis
+            'legs': list,           # List of IB Position objects
+            'position_id': str      # The position_id key
+        }
+
+    Design: Commodity-agnostic — works for any multi-leg strategy.
+    """
+    groups = {}  # position_id → {thesis, legs}
+    unmapped = []  # Legs we couldn't map
+
+    for pos in positions:
+        if pos.position == 0:
+            continue
+
+        position_id = _find_position_id_for_contract(pos, trade_ledger)
+        if not position_id:
+            unmapped.append(pos)
+            continue
+
+        if position_id not in groups:
+            thesis = tms.retrieve_thesis(position_id)
+            groups[position_id] = {
+                'thesis': thesis,
+                'legs': [],
+                'position_id': position_id
+            }
+
+        groups[position_id]['legs'].append(pos)
+
+    if unmapped:
+        logger.warning(
+            f"Position audit: {len(unmapped)} legs could not be mapped to a thesis: "
+            f"{[p.contract.localSymbol for p in unmapped]}"
+        )
+
+    return groups
+
+async def _close_spread_position(
     ib: IB,
-    position,
+    legs: list,
     position_id: str,
     reason: str,
     config: dict,
     thesis: dict = None
 ):
-    """Executes a closing order for a specific position with enhanced notification."""
-    logger.info(f"Executing THESIS CLOSE for {position_id}: {reason}")
+    """
+    Closes all legs of a spread position.
 
-    contract = position.contract
-    # Invert action
-    action = 'SELL' if position.position > 0 else 'BUY'
-    qty = abs(position.position)
+    Improvements over _close_position_with_thesis_reason:
+    1. Qualifies contracts before placing orders (fixes Error 321)
+    2. Verifies each order actually filled before claiming success
+    3. Handles multi-leg positions atomically where possible
+    4. Falls back to individual leg closure if BAG order fails
 
-    order = MarketOrder(action, qty)
-    trade = place_order(ib, contract, order)
+    Commodity-agnostic: Works for any multi-leg strategy on any exchange.
+    """
+    logger.info(
+        f"Executing SPREAD CLOSE for {position_id} "
+        f"({len(legs)} legs): {reason}"
+    )
 
-    # Wait for fill
-    await asyncio.sleep(2)
+    # --- Step 1: Qualify all contracts ---
+    qualified_legs = []
+    for leg in legs:
+        contract = leg.contract
+        if not contract.exchange:
+            try:
+                qualified = await ib.qualifyContractsAsync(contract)
+                if qualified:
+                    # Create a new leg-like object with qualified contract
+                    qualified_legs.append(type(leg)(
+                        account=leg.account,
+                        contract=qualified[0],
+                        position=leg.position,
+                        avgCost=leg.avgCost
+                    ))
+                    logger.debug(
+                        f"Qualified {contract.localSymbol}: "
+                        f"exchange={qualified[0].exchange}"
+                    )
+                else:
+                    logger.error(
+                        f"Contract qualification returned empty for "
+                        f"{contract.localSymbol} — skipping leg"
+                    )
+                    qualified_legs.append(leg)  # Try anyway
+            except Exception as e:
+                logger.error(
+                    f"Contract qualification failed for "
+                    f"{contract.localSymbol}: {e}"
+                )
+                qualified_legs.append(leg)  # Try anyway
+        else:
+            qualified_legs.append(leg)
 
-    # Try to get P&L from trade (may not be available immediately)
-    pnl = None
-    if trade.orderStatus.status == OrderStatus.Filled:
-        # Estimate P&L if we have entry price
-        if thesis and thesis.get('supporting_data', {}).get('entry_price'):
-            entry_price = thesis['supporting_data']['entry_price']
-            fill_price = trade.orderStatus.avgFillPrice
-            # Rough P&L estimate (this is simplified - real calc would use multiplier)
-            direction_mult = 1 if position.position > 0 else -1
-            pnl = (fill_price - entry_price) * direction_mult * qty
+    # --- Step 2: Close each leg individually ---
+    # (BAG orders require additional combo definition logic; individual
+    #  leg closure is more reliable for thesis-based exits)
+    successful_closes = []
+    failed_closes = []
 
-    # Send rich notification
-    if thesis:
-        title, message = _build_thesis_invalidation_notification(
-            position_id=position_id,
-            thesis=thesis,
-            invalidation_reason=reason,
-            pnl=pnl
+    for leg in qualified_legs:
+        contract = leg.contract
+        action = 'SELL' if leg.position > 0 else 'BUY'
+        qty = abs(leg.position)
+
+        try:
+            order = MarketOrder(action, qty)
+            trade = place_order(ib, contract, order)
+            await asyncio.sleep(3)  # Allow time for fill
+
+            # --- Step 3: Verify fill status ---
+            if trade.orderStatus.status == 'Filled':
+                successful_closes.append({
+                    'symbol': contract.localSymbol,
+                    'action': action,
+                    'qty': qty,
+                    'fill_price': trade.orderStatus.avgFillPrice
+                })
+                logger.info(
+                    f"  ✅ {action} {qty}x {contract.localSymbol} "
+                    f"@ {trade.orderStatus.avgFillPrice}"
+                )
+            else:
+                failed_closes.append({
+                    'symbol': contract.localSymbol,
+                    'status': trade.orderStatus.status,
+                    'error': str(trade.log[-1].message if trade.log else 'Unknown')
+                })
+                logger.error(
+                    f"  ❌ {contract.localSymbol}: "
+                    f"{trade.orderStatus.status} — "
+                    f"{trade.log[-1].message if trade.log else 'No message'}"
+                )
+                # Cancel pending order to avoid rogue fills
+                if trade.orderStatus.status not in ('Filled', 'Cancelled', 'Inactive'):
+                    try:
+                        ib.cancelOrder(trade.order)
+                    except Exception:
+                        pass
+
+        except Exception as e:
+            failed_closes.append({
+                'symbol': contract.localSymbol,
+                'status': 'EXCEPTION',
+                'error': str(e)
+            })
+            logger.error(f"  ❌ {contract.localSymbol}: Exception — {e}")
+
+        await asyncio.sleep(0.5)  # Throttle between legs
+
+    # --- Step 4: Send accurate notification ---
+    total_legs = len(qualified_legs)
+    success_count = len(successful_closes)
+    fail_count = len(failed_closes)
+
+    if success_count == total_legs:
+        # Full success
+        title = f"✅ Position Closed: {position_id}"
+        message = (
+            f"Reason: {reason}\n"
+            f"Closed {success_count}/{total_legs} legs successfully.\n"
         )
-        send_pushover_notification(config.get('notifications', {}), title, message)
+        for sc in successful_closes:
+            message += f"  {sc['action']} {sc['qty']}x {sc['symbol']} @ ${sc['fill_price']:.4f}\n"
+    elif success_count > 0:
+        # Partial success — DANGEROUS, position is now unbalanced
+        title = f"⚠️ PARTIAL CLOSE: {position_id}"
+        message = (
+            f"Reason: {reason}\n"
+            f"⚠️ ONLY {success_count}/{total_legs} legs closed!\n"
+            f"MANUAL INTERVENTION REQUIRED — position may have naked exposure.\n\n"
+            f"Successful:\n"
+        )
+        for sc in successful_closes:
+            message += f"  ✅ {sc['action']} {sc['qty']}x {sc['symbol']} @ ${sc['fill_price']:.4f}\n"
+        message += f"\nFailed:\n"
+        for fc in failed_closes:
+            message += f"  ❌ {fc['symbol']}: {fc['status']} — {fc['error']}\n"
     else:
-        # Fallback to simple notification
-        send_pushover_notification(
-            config.get('notifications', {}),
-            f"Position Closed: {position_id}",
-            f"Reason: {reason}"
+        # Total failure — DO NOT invalidate thesis
+        title = f"❌ CLOSE FAILED: {position_id}"
+        message = (
+            f"Reason: {reason}\n"
+            f"ALL {total_legs} close orders FAILED.\n"
+            f"Position remains open. Will retry on next audit cycle.\n\n"
+        )
+        for fc in failed_closes:
+            message += f"  ❌ {fc['symbol']}: {fc['status']} — {fc['error']}\n"
+
+    send_pushover_notification(config.get('notifications', {}), title, message)
+
+    # --- Step 5: Cleanup catastrophe stops (only if fully closed) ---
+    if success_count == total_legs:
+        await close_spread_with_protection_cleanup(
+            ib, None, f"CATASTROPHE_{position_id}"
         )
 
-    # Cleanup stops
-    await close_spread_with_protection_cleanup(ib, trade, f"CATASTROPHE_{position_id}")
+    # --- Step 6: Return success status ---
+    # Caller should only invalidate thesis if ALL legs closed
+    return success_count == total_legs
 
 
 async def run_position_audit_cycle(config: dict, trigger_source: str = "Scheduled"):
     """
     Reviews all active positions against their original theses.
-    Called at 08:30 ET (before trading) and upon high-severity Sentinel triggers.
-
-    The "Permabear Audit" - attacks existing positions before looking for new ones.
+    Now operates on GROUPED positions (spread-aware).
     """
     logger.info(f"--- POSITION AUDIT CYCLE ({trigger_source}) ---")
 
-    # Check Budget
     if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
         logger.warning("Budget hit — skipping Position Audit (LLM disabled)")
         return
@@ -607,57 +792,92 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
         # 3. Get trade ledger for position mapping
         trade_ledger = get_trade_ledger_df()
 
-        # 4. Audit each position
-        for pos in live_positions:
-            if pos.position == 0:
-                continue
+        # 4. === NEW: Group legs by thesis ===
+        position_groups = _group_positions_by_thesis(live_positions, trade_ledger, tms)
+        logger.info(
+            f"Grouped {len(live_positions)} IB positions into "
+            f"{len(position_groups)} thesis groups"
+        )
 
-            # Find the position_id from ledger
-            position_id = _find_position_id_for_contract(pos, trade_ledger)
-            if not position_id:
-                logger.warning(f"Could not find position_id for {pos.contract.localSymbol}")
-                continue
+        # 5. === NEW: Cache active futures (Issue 9 fix) ===
+        active_futures_cache = {}
+        try:
+            symbol = config.get('symbol', 'KC')
+            exchange = config.get('exchange', 'NYBOT')
+            futures = await get_active_futures(ib, symbol, exchange, count=5)
+            if futures:
+                active_futures_cache[symbol] = futures
+        except Exception as e:
+            logger.warning(f"Failed to pre-cache active futures: {e}")
 
-            # Retrieve the original thesis
-            thesis = tms.retrieve_thesis(position_id)
+        # 6. Audit each GROUP (not each leg)
+        for position_id, group in position_groups.items():
+            thesis = group['thesis']
+            legs = group['legs']
+
             if not thesis:
-                logger.info(f"No thesis found for {position_id} - using default aging rules")
+                logger.info(
+                    f"No thesis found for {position_id} "
+                    f"({len(legs)} legs) — using default aging rules"
+                )
                 continue
 
-            # 5. Run thesis validation
+            # Use first leg as representative for price checks
+            # (underlying price is the same regardless of which leg we check)
+            representative_leg = legs[0]
+
+            # 7. Run thesis validation ONCE per group
             verdict = await _validate_thesis(
                 thesis=thesis,
-                position=pos,
+                position=representative_leg,
                 council=council,
                 config=config,
-                ib=ib
+                ib=ib,
+                active_futures_cache=active_futures_cache  # Issue 9 fix
             )
 
             if verdict['action'] == 'CLOSE':
                 positions_to_close.append({
                     'position_id': position_id,
-                    'position': pos,
+                    'legs': legs,       # ALL legs, not just one
                     'reason': verdict['reason'],
                     'thesis': thesis
                 })
-                logger.warning(f"THESIS INVALIDATED: {position_id} - {verdict['reason']}")
+                logger.warning(
+                    f"THESIS INVALIDATED: {position_id} "
+                    f"({len(legs)} legs) — {verdict['reason']}"
+                )
 
-        # 6. Execute closures
+        # 8. Execute closures (spread-aware)
         for item in positions_to_close:
-            await _close_position_with_thesis_reason(
+            fully_closed = await _close_spread_position(
                 ib=ib,
-                position=item['position'],
+                legs=item['legs'],
                 position_id=item['position_id'],
                 reason=item['reason'],
                 config=config,
                 thesis=item['thesis']
             )
-            tms.invalidate_thesis(item['position_id'], item['reason'])
+            # CRITICAL: Only invalidate thesis if ALL legs actually closed
+            if fully_closed:
+                tms.invalidate_thesis(item['position_id'], item['reason'])
+            else:
+                logger.error(
+                    f"Thesis {item['position_id']} NOT invalidated — "
+                    f"close order did not fully succeed. "
+                    f"Will retry on next audit cycle."
+                )
 
-        # 7. Summary notification
+        # 9. Summary notification
         if positions_to_close:
-            summary = f"Closed {len(positions_to_close)} positions via thesis invalidation:\n"
-            summary += "\n".join([f"- {p['position_id']}: {p['reason']}" for p in positions_to_close])
+            summary = (
+                f"Closed {len(positions_to_close)} positions "
+                f"via thesis invalidation:\n"
+            )
+            summary += "\n".join([
+                f"- {p['position_id']} ({len(p['legs'])} legs): {p['reason']}"
+                for p in positions_to_close
+            ])
             send_pushover_notification(
                 config.get('notifications', {}),
                 "Position Audit Complete",

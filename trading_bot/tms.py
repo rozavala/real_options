@@ -450,6 +450,85 @@ class TransactiveMemory:
         except Exception as e:
             logger.error(f"TMS invalidate_thesis failed: {e}")
 
+    def get_all_theses(self) -> list:
+        """Returns all theses (active + invalidated) from the TMS."""
+        if not self.collection:
+            return []
+
+        try:
+            # Query all documents with type="entry_thesis"
+            results = self.collection.get(
+                where={"type": "entry_thesis"},
+                include=['metadatas', 'documents']
+            )
+
+            theses = []
+            if results and results['ids']:
+                for i, doc_id in enumerate(results['ids']):
+                    try:
+                        doc_content = results['documents'][i]
+                        if not doc_content:
+                            continue
+
+                        thesis_data = json.loads(doc_content)
+                        # Ensure trade_id is present
+                        metadata = results['metadatas'][i]
+                        if 'trade_id' not in thesis_data and metadata:
+                            thesis_data['trade_id'] = metadata.get('trade_id')
+
+                        # Add metadata flags to the returned object if they exist (like migrated_v6_5_1)
+                        # because they might be in metadata but not in the document yet (if written by legacy code)
+                        # However, we prefer the document as source of truth.
+                        # Migration script reads from thesis dict.
+
+                        theses.append(thesis_data)
+                    except Exception as e:
+                        logger.warning(f"Failed to parse thesis {doc_id}: {e}")
+            return theses
+        except Exception as e:
+            logger.error(f"TMS get_all_theses failed: {e}")
+            return []
+
+    def update_thesis_supporting_data(self, thesis_id: str, new_supporting_data: dict):
+        """
+        Updates the supporting_data field for a specific thesis.
+
+        Args:
+            thesis_id: The trade_id of the thesis (e.g., UUID)
+            new_supporting_data: The dictionary to replace or update supporting_data
+        """
+        if not self.collection:
+            return
+
+        doc_id = f"thesis_{thesis_id}"
+
+        try:
+            # 1. Get current doc
+            results = self.collection.get(ids=[doc_id], include=['documents', 'metadatas'])
+            if not results or not results['documents']:
+                logger.error(f"TMS update failed: Thesis {thesis_id} not found")
+                return
+
+            # 2. Parse
+            current_doc_str = results['documents'][0]
+            current_doc = json.loads(current_doc_str)
+
+            # 3. Update field
+            current_doc['supporting_data'] = new_supporting_data
+
+            # 4. Save back - preserve existing metadata
+            current_metadata = results['metadatas'][0]
+
+            self.collection.update(
+                ids=[doc_id],
+                documents=[json.dumps(current_doc)],
+                metadatas=[current_metadata]
+            )
+            logger.info(f"TMS: Updated supporting_data for thesis {thesis_id}")
+
+        except Exception as e:
+            logger.error(f"TMS update_thesis_supporting_data failed: {e}")
+
 
 # =============================================================================
 # BACKWARD COMPATIBILITY
