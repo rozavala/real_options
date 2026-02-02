@@ -1112,30 +1112,47 @@ async def _check_feedback_loop_health(config: dict):
     """
     Check for stale PENDING predictions and alert if feedback loop is broken.
 
-    This is the monitoring that would have caught the Jan 19-31 failure
-    within 48 hours instead of 12 days.
+    This monitoring function detects when the prediction → reconciliation →
+    Brier scoring pipeline has stalled. It would have caught the Jan 19-31
+    failure within 48 hours instead of 12 days.
+
+    DESIGN PRINCIPLES:
+    - Fail-Safe: This function NEVER crashes the orchestrator. All errors are
+      caught, logged, and the function exits gracefully.
+    - Observable: Every branch logs its outcome for debugging.
+    - Non-Blocking: Monitoring failures don't block trading operations.
     """
+    logger.info("Running feedback loop health check...")
+
     try:
         structured_file = "data/agent_accuracy_structured.csv"
         if not os.path.exists(structured_file):
+            logger.info("Feedback Loop Health: No structured predictions file yet (expected for new deployments)")
             return
 
-        # Use pandas if available (it should be)
+        # Use pandas for analysis
         try:
             import pandas as pd
-            df = pd.read_csv(structured_file)
-            if df.empty:
-                return
+        except ImportError:
+            logger.warning("Feedback Loop Health: pandas not available, skipping check")
+            return
 
-            pending_mask = df['actual'] == 'PENDING'
-            pending_count = pending_mask.sum()
-            total_count = len(df)
+        df = pd.read_csv(structured_file)
+        if df.empty:
+            logger.info("Feedback Loop Health: Predictions file exists but is empty")
+            return
 
-            if pending_count == 0:
-                logger.info(f"Feedback Loop Health: All {total_count} predictions resolved ✓")
-            else:
-                # Check age of oldest PENDING prediction
-            # Defensive parsing: coerce unparseable values to NaT instead of crashing
+        # === CORE METRICS ===
+        pending_mask = df['actual'] == 'PENDING'
+        pending_count = pending_mask.sum()
+        total_count = len(df)
+
+        if pending_count == 0:
+            logger.info(f"Feedback Loop Health: All {total_count} predictions resolved ✓")
+        else:
+            # === PENDING PREDICTIONS EXIST - ANALYZE STALENESS ===
+
+            # Defensive timestamp parsing: coerce unparseable values to NaT instead of crashing
             df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
 
             # Count and log corrupted rows
@@ -1147,48 +1164,54 @@ async def _check_feedback_loop_health(config: dict):
                 )
 
             # Filter out corrupted rows for analysis
-            df = df[df['timestamp'].notna()].copy()
+            df_clean = df[df['timestamp'].notna()].copy()
 
-            if df.empty:
+            if df_clean.empty:
                 logger.warning("Feedback loop health: All rows had corrupted timestamps!")
                 return
 
-                oldest_pending = df.loc[pending_mask, 'timestamp'].min()
+            # Recalculate pending mask on clean data
+            pending_mask_clean = df_clean['actual'] == 'PENDING'
+
+            # Calculate age of oldest PENDING prediction
+            pending_timestamps = df_clean.loc[pending_mask_clean, 'timestamp']
+            if not pending_timestamps.empty:
+                oldest_pending = pending_timestamps.min()
                 age_hours = (pd.Timestamp.now(tz='UTC') - oldest_pending).total_seconds() / 3600
+            else:
+                age_hours = 0
 
-                orphaned_count = (df['actual'] == 'ORPHANED').sum() if 'actual' in df.columns else 0
-                resolvable_count = total_count - orphaned_count
-                resolution_rate = (
-                    (resolvable_count - pending_count) / resolvable_count * 100
-                    if resolvable_count > 0 else 0
+            # Calculate resolution rate (excluding orphans)
+            orphaned_count = (df_clean['actual'] == 'ORPHANED').sum() if 'actual' in df_clean.columns else 0
+            resolvable_count = total_count - orphaned_count
+            resolution_rate = (
+                (resolvable_count - pending_count) / resolvable_count * 100
+                if resolvable_count > 0 else 0
+            )
+
+            logger.info(
+                f"Feedback Loop Health: {pending_count}/{resolvable_count} PENDING "
+                f"({orphaned_count} orphans excluded, "
+                f"resolution rate: {resolution_rate:.0f}%)"
+            )
+
+            # === ALERT IF PREDICTIONS ARE STALE ===
+            if age_hours > 48:
+                alert_msg = (
+                    f"⚠️ FEEDBACK LOOP STALE\n"
+                    f"Oldest PENDING: {age_hours:.0f}h ago\n"
+                    f"PENDING: {pending_count}/{total_count}\n"
+                    f"Resolution rate: {resolution_rate:.0f}%\n"
+                    f"Agent learning is NOT occurring!"
+                )
+                logger.warning(alert_msg)
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    "🔴 Feedback Loop Alert",
+                    alert_msg
                 )
 
-                logger.info(
-                    f"Feedback Loop Health: {pending_count}/{resolvable_count} PENDING "
-                    f"({orphaned_count} orphans excluded, "
-                    f"resolution rate: {resolution_rate:.0f}%)"
-                )
-
-                # ALERT if predictions are stale
-                if age_hours > 48:
-                    alert_msg = (
-                        f"⚠️ FEEDBACK LOOP STALE\n"
-                        f"Oldest PENDING: {age_hours:.0f}h ago\n"
-                        f"PENDING: {pending_count}/{total_count}\n"
-                        f"Resolution rate: {resolution_rate:.0f}%\n"
-                        f"Agent learning is NOT occurring!"
-                    )
-                    logger.warning(alert_msg)
-                    send_pushover_notification(
-                        config.get('notifications', {}),
-                        "🔴 Feedback Loop Alert",
-                        alert_msg
-                    )
-
-        except ImportError:
-            pass # No pandas, skip check
-
-        # === NEW: Enhanced Brier System Health ===
+        # === ENHANCED BRIER SYSTEM HEALTH ===
         try:
             from trading_bot.brier_bridge import get_calibration_data
             cal_data = get_calibration_data()
@@ -1200,10 +1223,13 @@ async def _check_feedback_loop_health(config: dict):
                     d.get('total_predictions', 0)
                     for d in cal_data.values()
                 )
-                logger.info(f"Enhanced Brier Health: {len(cal_data)} agents tracked, {total_resolved} total resolved predictions")
+                logger.info(
+                    f"Enhanced Brier Health: {len(cal_data)} agents tracked, "
+                    f"{total_resolved} total resolved predictions"
+                )
 
                 # Alert if system has been running >7 days but no resolutions
-                # We reuse age_hours from above if available, else skip check
+                # Use age_hours from above if available
                 if 'age_hours' in locals() and age_hours > 168 and total_resolved == 0:  # 7 days
                     alert_msg = (
                         "⚠️ ENHANCED BRIER STALLED\n"
@@ -1213,15 +1239,34 @@ async def _check_feedback_loop_health(config: dict):
                     logger.warning(alert_msg)
                     send_pushover_notification(
                         config.get('notifications', {}),
-                        "🔴 Enhanced Brier Alert",
+                        "🟡 Brier System Alert",
                         alert_msg
                     )
 
-        except Exception as e:
-            logger.debug(f"Enhanced Brier health check skipped: {e}")
+        except ImportError:
+            logger.debug("Enhanced Brier bridge not available - skipping advanced health check")
+        except Exception as brier_err:
+            logger.warning(f"Enhanced Brier health check failed (non-fatal): {brier_err}")
 
     except Exception as e:
-        logger.error(f"Feedback loop health check failed: {e}")
+        # === FAIL-SAFE: Log error but NEVER crash the orchestrator ===
+        logger.error(
+            f"Feedback loop health check failed (non-fatal): {e}\n"
+            f"The orchestrator will continue operating.\n"
+            f"{traceback.format_exc()}"
+        )
+        # Optionally notify about the monitoring failure itself
+        try:
+            send_pushover_notification(
+                config.get('notifications', {}),
+                "⚠️ Health Check Error",
+                f"Feedback loop health check failed: {str(e)[:100]}\n"
+                f"Trading continues but monitoring is impaired."
+            )
+        except Exception:
+            pass  # Don't let notification failure cause issues
+
+    logger.info("Feedback loop health check complete.")
 
 
 async def process_deferred_triggers(config: dict):
