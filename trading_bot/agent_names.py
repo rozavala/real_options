@@ -19,6 +19,9 @@ CANONICAL_AGENTS = [
     # 'ml_model' removed in v4.0 — ML pipeline archived
 ]
 
+# Agents no longer active but kept for backward compat with historical data
+DEPRECATED_AGENTS = {'ml_model', 'latest_ml_signals', 'strategy_iron_condor', 'strategy_long_straddle'}
+
 # Map various names to canonical names
 NAME_ALIASES = {
     # Agronomist / Weather

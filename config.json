@@ -36,7 +36,8 @@
     "quantity": 1,
     "signal_threshold": 0.005,
     "min_underlying_volume": 20,
-    "max_days_to_expiry": 180
+    "max_days_to_expiry": 180,
+    "min_voter_quorum": 3
   },
   "strategy_tuning": {
     "spread_width_percentage": 0.5,
@@ -240,6 +241,8 @@
       "topics_to_watch": [
         {
           "query": "Trump Fed Chair nominee",
+          "enabled": false,
+          "disabled_reason": "No active Polymarket market as of 2026-02",
           "tag": "FedChair",
           "display_name": "Fed Chair Nomination",
           "trigger_threshold_pct": 8.0,
@@ -250,6 +253,8 @@
         },
         {
           "query": "Supreme Court Trump tariffs",
+          "enabled": false,
+          "disabled_reason": "No active Polymarket market as of 2026-02",
           "tag": "Tariffs",
           "display_name": "SCOTUS Tariff Ruling",
           "trigger_threshold_pct": 8.0,
@@ -260,6 +265,7 @@
         },
         {
           "query": "US recession 2026",
+          "enabled": true,
           "tag": "Recession",
           "display_name": "US Recession Risk",
           "trigger_threshold_pct": 5.0,
@@ -270,6 +276,7 @@
         },
         {
           "query": "Fed rate 2026",
+          "enabled": true,
           "tag": "FedRate",
           "display_name": "Fed Rate Path 2026",
           "trigger_threshold_pct": 10.0,

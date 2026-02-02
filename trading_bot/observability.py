@@ -26,7 +26,53 @@ __all__ = [
     'AgentTrace',
     'HallucinationDetector',
     'ObservabilityHub',
+    'count_directional_evidence',
 ]
+
+BULLISH_WORDS = {'increase', 'rise', 'surge', 'shortage', 'deficit', 'drought', 'frost', 'bullish', 'strong', 'growth', 'up', 'rose', 'gained', 'rally'}
+BEARISH_WORDS = {'decrease', 'fall', 'drop', 'surplus', 'bumper', 'oversupply', 'bearish', 'weak', 'decline', 'down', 'fell', 'lost', 'crash', 'plunge'}
+NEGATION_WORDS = {'not', 'no', 'never', 'neither', 'nor', 'rejected', 'failed',
+                  'despite', 'unlikely', 'against', 'overcame', 'ignored', 'dismissed',
+                  'without', 'lack', 'absence', 'declining', 'decreased'}
+
+def count_directional_evidence(text: str) -> tuple:
+    """Count bullish vs bearish evidence words with negation awareness. Commodity-agnostic."""
+    words = text.lower().split()
+    bullish_count = 0
+    bearish_count = 0
+
+    for i, word in enumerate(words):
+        # Check for negation in preceding 3 words
+        context_start = max(0, i - 3)
+        preceding = set(words[context_start:i])
+        is_negated = bool(preceding & NEGATION_WORDS)
+
+        # Simple stemming/matching (could be improved)
+        # Check if word contains any of the target roots?
+        # The constants above are full words. Let's do exact match for now as per guide snippet style.
+        # But 'increase' vs 'increased' vs 'increasing'.
+        # The guide snippet showed simple "word in BULLISH_WORDS".
+        # I'll stick to exact match or simple contains if robust.
+        # Original code was: word in ['INCREASE', ...] if word in grounded_data.upper().
+        # That was substring search in the whole text.
+        # Here we are iterating words.
+        # Let's check for containment to handle suffixes.
+
+        is_bullish = any(bw in word for bw in BULLISH_WORDS)
+        is_bearish = any(bw in word for bw in BEARISH_WORDS)
+
+        if is_bullish:
+            if is_negated:
+                bearish_count += 1  # "not bullish" → bearish evidence
+            else:
+                bullish_count += 1
+        elif is_bearish:
+            if is_negated:
+                bullish_count += 1  # "not bearish" → bullish evidence
+            else:
+                bearish_count += 1
+
+    return bullish_count, bearish_count
 
 
 class HallucinationSeverity(Enum):

@@ -132,6 +132,7 @@ class TradingCouncil:
         Args:
             config: The full application configuration dictionary.
         """
+        self.full_config = config
         self.config = config.get('gemini', {})
         self.personas = self.config.get('personas', {})
         self.semantic_router = SemanticRouter(config)
@@ -230,17 +231,21 @@ class TradingCouncil:
 
         analysis_upper = analysis.upper()
 
-        # Check 1: Direction-evidence consistency (UNCHANGED)
-        bullish_evidence = sum(1 for word in ['INCREASE', 'RISE', 'SURGE', 'SHORTAGE', 'DEFICIT', 'DROUGHT', 'FROST']
-                             if word in grounded_data.upper())
-        bearish_evidence = sum(1 for word in ['DECREASE', 'FALL', 'DROP', 'SURPLUS', 'BUMPER', 'OVERSUPPLY']
-                             if word in grounded_data.upper())
+        # Check 1: Direction-evidence consistency (ENHANCED)
+        from trading_bot.observability import count_directional_evidence
+        bullish_evidence, bearish_evidence = count_directional_evidence(grounded_data)
 
-        if 'BULLISH' in analysis_upper and bearish_evidence > bullish_evidence + 2:
-            issues.append(f"Direction-evidence mismatch: BULLISH call but {bearish_evidence} bearish vs {bullish_evidence} bullish evidence words")
+        # Only flag significant mismatches (requires sufficient evidence words):
+        total_directional = bullish_evidence + bearish_evidence
 
-        if 'BEARISH' in analysis_upper and bullish_evidence > bearish_evidence + 2:
-            issues.append(f"Direction-evidence mismatch: BEARISH call but {bullish_evidence} bullish vs {bearish_evidence} bearish evidence words")
+        if total_directional >= 5:
+            if 'BULLISH' in analysis_upper and bearish_evidence > bullish_evidence + 2:
+                issues.append(f"Direction-evidence mismatch: BULLISH call but {bearish_evidence} bearish vs {bullish_evidence} bullish evidence words")
+
+            if 'BEARISH' in analysis_upper and bullish_evidence > bearish_evidence + 2:
+                issues.append(f"Direction-evidence mismatch: BEARISH call but {bullish_evidence} bullish vs {bearish_evidence} bearish evidence words")
+        else:
+            logger.debug(f"[{agent_name}] Low directional word count ({total_directional}), skipping mismatch check")
 
         # Check 2: Over-confidence (ENHANCED with correction)
         import re
@@ -908,13 +913,29 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
 
         # === NEW: Calculate Weighted Vote ===
         trigger_type = determine_trigger_type(trigger.source)
+        min_quorum = self.full_config.get('strategy', {}).get('min_voter_quorum', 3)
         weighted_result = await calculate_weighted_decision(
             agent_reports=final_reports,
             trigger_type=trigger_type,
             ml_signal=ml_signal,
             ib=ib,
-            contract=target_contract
+            contract=target_contract,
+            min_quorum=min_quorum
         )
+
+        if weighted_result.get('quorum_failure'):
+            logger.warning(
+                f"Quorum failure for {contract_name}: "
+                f"Only {weighted_result.get('voters_present', [])} voted. "
+                f"Skipping council for this contract."
+            )
+            return {
+                "direction": "NEUTRAL",
+                "confidence": 0.0,
+                "reason": f"Quorum Failure: Insufficient agent participation (Need {min_quorum})",
+                "prediction_type": "DIRECTIONAL",
+                "quorum_failure": True
+            }
 
         # Inject weighted context for Master
         weighted_context = (

@@ -1583,11 +1583,11 @@ class PredictionMarketSentinel(Sentinel):
                             # FAIL-SAFE: No relevant candidates → return None
                             # This prevents tracking irrelevant markets (e.g., deportation
                             # market when searching for "Federal Reserve interest rate")
-                            logger.warning(
-                                f"⚠️ No relevant markets for '{query}' "
+                            logger.debug(
+                                f"No relevant markets for '{query}' "
                                 f"(keywords: {relevance_keywords[:5]}, "
                                 f"min_score={min_relevance}). "
-                                f"Skipping topic — will retry next cycle."
+                                f"Will retry next cycle."
                             )
                             return None
                     else:
@@ -1652,6 +1652,9 @@ class PredictionMarketSentinel(Sentinel):
         triggers = []
 
         for topic in self.topics:
+            if not topic.get('enabled', True):
+                continue
+
             query = topic.get('query')
             if not query:
                 continue
@@ -1677,6 +1680,17 @@ class PredictionMarketSentinel(Sentinel):
                 if not market_data:
                     self._topic_failure_counts[query] = self._topic_failure_counts.get(query, 0) + 1
                     fail_count = self._topic_failure_counts[query]
+
+                    MAX_CONSECUTIVE_FAILURES = 50
+                    if fail_count >= MAX_CONSECUTIVE_FAILURES:
+                        if fail_count == MAX_CONSECUTIVE_FAILURES:
+                            logger.warning(
+                                f"⚠️ Topic '{display_name}' disabled after {fail_count} consecutive failures. "
+                                f"No active Polymarket market found. Will re-enable on next restart."
+                            )
+                        # Auto-disable in memory
+                        topic['enabled'] = False
+                        continue
 
                     # Exponential Backoff Logging (1, 5, 25, 125, 625, then every 100)
                     log_intervals = [1, 5, 25, 125, 625]

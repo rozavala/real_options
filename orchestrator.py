@@ -1398,12 +1398,19 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 # === BRIER SCORE RECORDING (Dual-Write: Legacy CSV + Enhanced JSON) ===
                 try:
                     from trading_bot.brier_bridge import record_agent_prediction
+                    from trading_bot.agent_names import CANONICAL_AGENTS, DEPRECATED_AGENTS
                     final_reports_for_scoring = StateManager.load_state()
 
                     # Determine current regime from council context
                     current_regime = _detect_market_regime(config, trigger)
 
+                    BRIER_ELIGIBLE_AGENTS = set(CANONICAL_AGENTS) - {'master_decision'} - DEPRECATED_AGENTS
+
                     for agent_name, report in final_reports_for_scoring.items():
+                        if agent_name not in BRIER_ELIGIBLE_AGENTS:
+                            logger.debug(f"Skipping non-canonical agent '{agent_name}' for Brier recording")
+                            continue
+
                         direction, confidence = _extract_agent_prediction(report)
 
                         record_agent_prediction(
@@ -1748,15 +1755,33 @@ async def run_sentinels(config: dict):
                 try:
                     micro_trigger = await micro_sentinel.check()
                     if micro_trigger:
-                        logger.warning(f"MICROSTRUCTURE ALERT: {micro_trigger.reason}")
-                        if micro_trigger.severity >= 7:
-                            asyncio.create_task(run_emergency_cycle(micro_trigger, config, sentinel_ib))
+                        from trading_bot.notifications import get_notification_tier, NotificationTier
+                        tier = get_notification_tier(micro_trigger.severity)
+
+                        if tier == NotificationTier.CRITICAL:
+                            # Severity 9-10: Full emergency cycle (must still pass deduplicator)
+                            logger.warning(f"MICROSTRUCTURE CRITICAL: {micro_trigger.reason}")
+                            if GLOBAL_DEDUPLICATOR.should_process(micro_trigger):
+                                asyncio.create_task(run_emergency_cycle(micro_trigger, config, sentinel_ib))
+                                GLOBAL_DEDUPLICATOR.set_cooldown(micro_trigger.source, 900)
+                        elif tier == NotificationTier.PUSHOVER:
+                            # Severity 7-8: Log + Pushover but NO emergency cycle
+                            # Liquidity depletion is informational, not actionable by council
+                            logger.warning(f"MICROSTRUCTURE ALERT: {micro_trigger.reason}")
+                            if GLOBAL_DEDUPLICATOR.should_process(micro_trigger):
+                                send_pushover_notification(
+                                    config.get('notifications', {}),
+                                    "Microstructure Alert",
+                                    f"{micro_trigger.reason} (Severity: {micro_trigger.severity:.1f})"
+                                )
+                                GLOBAL_DEDUPLICATOR.set_cooldown(micro_trigger.source, 1800)
+                        elif tier == NotificationTier.DASHBOARD:
+                            # Severity 5-6: Log only (visible in dashboard via sentinel history)
+                            logger.info(f"MICROSTRUCTURE NOTE: {micro_trigger.reason} (Sev: {micro_trigger.severity})")
+                            StateManager.log_sentinel_event(micro_trigger)
                         else:
-                            send_pushover_notification(
-                                config.get('notifications', {}),
-                                "Microstructure Warning",
-                                f"{micro_trigger.reason} (Severity: {micro_trigger.severity:.1f})"
-                            )
+                            # Severity 0-4: Debug log only
+                            logger.debug(f"MICROSTRUCTURE LOW: {micro_trigger.reason}")
                 except Exception as e:
                     logger.error(f"MicrostructureSentinel check failed: {type(e).__name__}: {e}")
 

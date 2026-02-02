@@ -88,8 +88,12 @@ class BrierScoreTracker:
                 else:
                     scores[agent] = group['correct'].mean()
 
-            logger.info(f"Loaded time-weighted Brier scores for {len(scores)} agents: "
-                       f"{{{', '.join(f'{k}: {v:.2f}' for k, v in scores.items())}}}")
+            # Filter deprecated for display
+            from trading_bot.agent_names import DEPRECATED_AGENTS
+            displayable_scores = {k: v for k, v in scores.items() if k not in DEPRECATED_AGENTS}
+
+            logger.info(f"Loaded time-weighted Brier scores for {len(displayable_scores)} agents: "
+                       f"{{{', '.join(f'{k}: {v:.2f}' for k, v in displayable_scores.items())}}}")
             return scores
 
         except Exception as e:
@@ -298,7 +302,7 @@ class BrierScoreTracker:
             0.5 to 2.0 multiplier (1.0 = baseline/unknown)
         """
         # Skip deprecated agents
-        DEPRECATED_AGENTS = {'ml_model'}
+        from trading_bot.agent_names import DEPRECATED_AGENTS
         if agent in DEPRECATED_AGENTS:
             return 1.0  # Neutral multiplier — no influence
 
@@ -441,21 +445,29 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
 
         logger.info(f"Built cycle_id lookup with {len(cycle_id_lookup)} entries")
 
+        # Diagnostics stats
+        stats = {'cycle_id_match': 0, 'nearest_match': 0, 'no_council_within_window': 0,
+                 'council_not_reconciled': 0, 'no_valid_direction': 0, 'orphaned': 0}
+
         # --- RESOLVE PREDICTIONS ---
         newly_resolved_indices = []
-        resolved_by_cycle_id = 0
-        resolved_by_nearest = 0
+
+        # Calculate age once
+        now_utc = datetime.now(timezone.utc)
 
         for idx in predictions_df[pending_mask].index:
             pred_row = predictions_df.loc[idx]
             pred_cycle_id = str(pred_row.get('cycle_id', '')).strip()
+
+            # Calculate age in hours
+            pred_age_hours = (now_utc - pred_row['timestamp']).total_seconds() / 3600
 
             actual_direction = None
 
             # STRATEGY 1: cycle_id JOIN (deterministic)
             if is_valid_cycle_id(pred_cycle_id) and pred_cycle_id in cycle_id_lookup:
                 actual_direction = cycle_id_lookup[pred_cycle_id]
-                resolved_by_cycle_id += 1
+                stats['cycle_id_match'] += 1
 
             # STRATEGY 2: Cycle-aware match for legacy data (no cycle_id)
             elif not is_valid_cycle_id(pred_cycle_id):
@@ -466,19 +478,45 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
                     max_distance_minutes=120
                 )
                 if actual_direction:
-                    resolved_by_nearest += 1
+                    stats['nearest_match'] += 1
+                elif pred_age_hours > 48:
+                    # Entry is old enough but no match
+                    stats['no_council_within_window'] += 1
+                    logger.debug(
+                        f"ORPHAN candidate: {pred_row.get('agent', '?')} at {pred_row['timestamp']} "
+                        f"(age: {pred_age_hours:.0f}h, no cycle_id, no council match within 120min)"
+                    )
+
+            # Auto-ORPHAN stale legacy entries (>72h without match)
+            ORPHAN_AGE_HOURS = 72
+            if not actual_direction and pred_age_hours > ORPHAN_AGE_HOURS and not is_valid_cycle_id(pred_cycle_id):
+                actual_direction = 'ORPHANED'
+                stats['orphaned'] += 1
+                logger.info(
+                    f"Auto-ORPHANED: {pred_row.get('agent', '?')} at {pred_row['timestamp']} "
+                    f"(age: {pred_age_hours:.0f}h, no cycle_id, no match)"
+                )
 
             # Apply resolution
             if actual_direction:
                 predictions_df.loc[idx, 'actual'] = actual_direction
                 newly_resolved_indices.append(idx)
 
+        # Log summary stats
+        logger.info(
+            f"Brier Resolution stats: "
+            f"cycle_id={stats['cycle_id_match']}, "
+            f"nearest={stats['nearest_match']}, "
+            f"orphaned={stats['orphaned']}, "
+            f"no_council_window={stats['no_council_within_window']}"
+        )
+
         if newly_resolved_indices:
             # Save updated structured file
             predictions_df.to_csv(structured_file, index=False)
             logger.info(
                 f"Resolved {len(newly_resolved_indices)} predictions "
-                f"(cycle_id: {resolved_by_cycle_id}, nearest-match: {resolved_by_nearest})"
+                f"(cycle_id: {stats['cycle_id_match']}, nearest: {stats['nearest_match']}, orphans: {stats['orphaned']})"
             )
 
             # Sync to legacy accuracy file

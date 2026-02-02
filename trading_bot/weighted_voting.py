@@ -293,7 +293,8 @@ async def calculate_weighted_decision(
     ml_signal: Optional[dict] = None,
     ib: Optional[Any] = None,
     contract: Optional[Any] = None,
-    regime: str = "UNKNOWN"
+    regime: str = "UNKNOWN",
+    min_quorum: int = 3
 ) -> dict:
     """
     Calculate weighted decision from all agent reports.
@@ -404,6 +405,25 @@ async def calculate_weighted_decision(
             confidence=confidence,
             sentiment_tag=sentiment_tag
         ))
+
+    # Quorum Check
+    if len(votes) < min_quorum:
+        logger.warning(
+            f"QUORUM FAILURE: Only {len(votes)} agents voted "
+            f"(minimum: {min_quorum}). "
+            f"Returning NEUTRAL to prevent low-confidence decisions."
+        )
+        voting_agents = [v.agent_name for v in votes]
+        return {
+            'direction': 'NEUTRAL',
+            'confidence': 0.0,
+            'weighted_score': 0.0,
+            'vote_breakdown': [],
+            'dominant_agent': None,
+            'trigger_type': trigger_type.value if hasattr(trigger_type, 'value') else str(trigger_type),
+            'quorum_failure': True,
+            'voters_present': voting_agents,
+        }
 
     if not votes:
         return {
