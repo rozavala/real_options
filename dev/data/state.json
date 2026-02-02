@@ -4,16 +4,6 @@
       "data": [
         {
           "source": "WeatherSentinel",
-          "reason": "Drought Risk in Honduras Copan: 10 days with < 5.0mm rain",
-          "payload": {
-            "location": "Honduras Copan",
-            "type": "DROUGHT",
-            "days": 10
-          },
-          "timestamp": "2026-01-30T17:56:35.083686+00:00"
-        },
-        {
-          "source": "WeatherSentinel",
           "reason": "Drought Risk in Dak Lak (Vietnam): 10 days with < 5.0mm rain",
           "payload": {
             "location": "Dak Lak (Vietnam)",
@@ -147,9 +137,51 @@
             ]
           },
           "timestamp": "2026-02-02T14:26:52.280166+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (13 posts, 3.0x baseline)",
+          "payload": {
+            "sentiment_score": 5.0,
+            "confidence": 0.21,
+            "top_themes": [
+              "Historical price surges",
+              "Expected price declines",
+              "Improved supply from weather",
+              "Coffee promotion/exports",
+              "Environmental/shade-grown benefits"
+            ],
+            "post_volume": 13,
+            "volume_baseline": 3.7,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 1,
+                "confidence": 0.2,
+                "top_post": null
+              },
+              {
+                "query": "arabica prices",
+                "score": 5.0,
+                "volume": 2,
+                "confidence": 0.2,
+                "top_post": "@Johnblanshe_m Just simply share with them the coffee prices then and now! Arabica parchment tripled..."
+              },
+              {
+                "query": "Brazil coffee harvest",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              }
+            ]
+          },
+          "timestamp": "2026-02-02T15:57:52.666085+00:00"
         }
       ],
-      "timestamp": 1770042412.2804003
+      "timestamp": 1770047872.666875
     }
   },
   "reports": {
@@ -163,11 +195,11 @@
     },
     "macro": {
       "data": {
-        "data": "[EVIDENCE]: ['[2026-02-02] Arabica coffee futures trading at 334.67 USd/Lbs, up 0.73% intraday but down ~6.9% over the past month.', '[2026-01-30] March Arabica coffee (KCH26) closed down 13.25 cents (-3.85%) to settle at a 5.5-month low.', '[2026-01-30] Brazil's 2026/27 coffee crop is preliminarily estimated at a record 71 million bags (up 10.5% YoY).', '[2026-01-27] COT data shows large speculators hold net long positions representing 32% of total open interest, the highest in four years.', '[2026-01-30] Vietnam reported a 17.5% year-over-year increase in coffee exports for 2025.']\n[ANALYSIS]: The analysis identified key factors impacting Arabica coffee prices, with the primary focus on the record high supply forecasts from Brazil and increased exports from Vietnam. These supply-side factors could indeed suggest bearish pressure on prices. However, the significant net long positions held by speculators in the futures market indicate strong bullish sentiment, which was underemphasized in the initial assessment. Furthermore, the initial analysis could benefit from exploring potential demand factors or other external influences to provide a more balanced view. While the evidence points to a robust supply situation, the high level of speculative interest suggests caution in making overly bearish conclusions. Therefore, considering both supply and speculative positions, a nuanced sentiment would be more appropriate.\n[CONFIDENCE]: 0.7\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
-        "confidence": 0.7,
-        "sentiment": "NEUTRAL"
+        "data": "[EVIDENCE]: Arabica coffee futures are trading near a 5.5-month low, with March 2026 futures around 332.25 - 333.97 cents/lb. Brazil's 2026/27 harvest is estimated to reach a record 71-74.4 million bags due to favorable weather. Recent trading saw Arabica futures close down 13.25 cents (-3.84%) and Robusta down $66 (-1.58%). Vietnam's coffee exports for early 2026 increased by 17.5% year-over-year.\n[ANALYSIS]: The evidence suggests a bearish trend for Arabica coffee prices, supported by multiple factors. First, the forecasted record harvest in Brazil implies a significant increase in supply, which traditionally puts downward pressure on prices. Second, the notable rise in Vietnam's coffee exports contributes to a growing market supply, reinforcing the potential for lower prices. However, the analysis should also consider other market factors that might influence coffee prices, such as global demand fluctuations, economic conditions, and potential supply chain issues. The sentiment tag 'BEARISH' is justifiable given the strong evidence for increasing supply, although acknowledging these other factors would provide a more balanced perspective.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: BEARISH]",
+        "confidence": 0.8,
+        "sentiment": "BEARISH"
       },
-      "timestamp": 1770042469.1372695
+      "timestamp": 1770047914.4264848
     },
     "geopolitical": {
       "data": {
@@ -299,7 +331,7 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1770042412.271418
+      "timestamp": 1770047872.6552804
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
@@ -390,7 +422,7 @@
         "price": 0.007,
         "timestamp": "2026-02-02T15:07:09.852801+00:00"
       },
-      "timestamp": 1770046041.305594
+      "timestamp": 1770047874.8469663
     }
   }
 }
