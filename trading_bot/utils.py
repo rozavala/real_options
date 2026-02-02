@@ -712,8 +712,8 @@ def hours_until_weekly_close() -> float:
     weekday = today.weekday()  # 0=Mon, 4=Fri
 
     # Position close time (must match close_stale_positions schedule)
-    CLOSE_HOUR = 12
-    CLOSE_MINUTE = 45
+    CLOSE_HOUR = 11
+    CLOSE_MINUTE = 0
 
     # Build holiday set
     us_holidays = set()

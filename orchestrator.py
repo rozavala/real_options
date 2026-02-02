@@ -64,6 +64,13 @@ logger = logging.getLogger("Orchestrator")
 monitor_process = None
 GLOBAL_BUDGET_GUARD = None
 
+# Module-level shutdown state
+_SYSTEM_SHUTDOWN = False
+
+def is_system_shutdown() -> bool:
+    """Check if the system has entered end-of-day shutdown."""
+    return _SYSTEM_SHUTDOWN
+
 class TriggerDeduplicator:
     def __init__(self, window_seconds: int = 7200, state_file="data/deduplicator_state.json"):
         self.state_file = state_file
@@ -902,7 +909,11 @@ async def log_stream(stream, logger_func):
 
 async def start_monitoring(config: dict):
     """Starts the `position_monitor.py` script as a background process."""
-    global monitor_process
+    global monitor_process, _SYSTEM_SHUTDOWN
+
+    # Reset shutdown flag for new trading day
+    _SYSTEM_SHUTDOWN = False
+    logger.info("System shutdown flag CLEARED — new trading day beginning")
 
     # === EARLY EXIT: Don't start monitor on non-trading days ===
     if not is_market_open():
@@ -954,7 +965,12 @@ async def stop_monitoring(config: dict):
 
 async def cancel_and_stop_monitoring(config: dict):
     """Wrapper task to cancel open orders and then stop the monitor."""
+    global _SYSTEM_SHUTDOWN
+
     logger.info("--- Initiating end-of-day shutdown sequence ---")
+    _SYSTEM_SHUTDOWN = True  # Set BEFORE canceling orders
+    logger.info("System shutdown flag SET — no new trades or emergency cycles will be processed")
+
     await cancel_all_open_orders(config)
     await stop_monitoring(config)
     logger.info("--- End-of-day shutdown sequence complete ---")
@@ -1067,11 +1083,26 @@ async def reconcile_and_notify(config: dict):
 async def reconcile_and_analyze(config: dict):
     """Runs reconciliation, then analysis and archiving."""
     logger.info("--- Kicking off end-of-day reconciliation and analysis process ---")
+
     await sync_equity_from_flex(config)
-    await reconcile_and_notify(config)
+
+    # Isolate reconciliation failures
+    reconciliation_succeeded = False
+    try:
+        await reconcile_and_notify(config)
+        reconciliation_succeeded = True
+    except Exception as e:
+        logger.critical(f"Reconciliation FAILED: {e}\n{traceback.format_exc()}")
+        send_pushover_notification(
+            config.get('notifications', {}),
+            "🚨 Reconciliation Failed",
+            f"Council history reconciliation failed: {str(e)[:200]}\n"
+            f"Brier scoring will be stale until this is fixed."
+        )
+
     await analyze_and_archive(config)
 
-    # === NEW: Feedback Loop Health Check ===
+    # Feedback loop health check — report reconciliation status too
     await _check_feedback_loop_health(config)
 
     logger.info("--- End-of-day reconciliation and analysis process complete ---")
@@ -1104,7 +1135,24 @@ async def _check_feedback_loop_health(config: dict):
                 logger.info(f"Feedback Loop Health: All {total_count} predictions resolved ✓")
             else:
                 # Check age of oldest PENDING prediction
-                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+            # Defensive parsing: coerce unparseable values to NaT instead of crashing
+            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+
+            # Count and log corrupted rows
+            corrupted_count = df['timestamp'].isna().sum()
+            if corrupted_count > 0:
+                logger.warning(
+                    f"Feedback loop health: {corrupted_count} rows with unparseable timestamps "
+                    f"(data corruption detected). Filtering them out."
+                )
+
+            # Filter out corrupted rows for analysis
+            df = df[df['timestamp'].notna()].copy()
+
+            if df.empty:
+                logger.warning("Feedback loop health: All rows had corrupted timestamps!")
+                return
+
                 oldest_pending = df.loc[pending_mask, 'timestamp'].min()
                 age_hours = (pd.Timestamp.now(tz='UTC') - oldest_pending).total_seconds() / 3600
 
@@ -1251,9 +1299,33 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
     Runs a specialized cycle triggered by a Sentinel.
     Executes trades if the Council approves.
     """
+    # === SHUTDOWN GATE ===
+    if is_system_shutdown():
+        logger.info(
+            f"Emergency cycle BLOCKED (system shutdown): {trigger.source} — {trigger.reason[:100]}"
+        )
+        return
+
     # === NEW: MARKET HOURS GATE ===
     if not is_market_open():
         logger.info(f"Market closed. Queuing {trigger.source} alert for next session.")
+        StateManager.queue_deferred_trigger(trigger)
+        return
+
+    # === DAILY TRADING CUTOFF GATE ===
+    ny_tz = pytz.timezone('America/New_York')
+    now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
+
+    # Read from config — default to 10:45
+    trading_cutoff = config.get('schedule', {}).get('daily_trading_cutoff_et', {'hour': 10, 'minute': 45})
+    cutoff_hour = trading_cutoff.get('hour', 10)
+    cutoff_minute = trading_cutoff.get('minute', 45)
+
+    if now_ny.hour > cutoff_hour or (now_ny.hour == cutoff_hour and now_ny.minute >= cutoff_minute):
+        logger.info(
+            f"Emergency cycle BLOCKED (daily trading cutoff {cutoff_hour}:{cutoff_minute:02d} ET): "
+            f"{trigger.source} — deferring to next session"
+        )
         StateManager.queue_deferred_trigger(trigger)
         return
 
@@ -1267,13 +1339,11 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
     async with EMERGENCY_LOCK:
         try:
             # --- WEEKLY CLOSE WINDOW GUARD ---
-            ny_tz = pytz.timezone('America/New_York')
-            now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
             weekday = now_ny.weekday()
 
-            # After Friday 12:30 ET (15 min before close_stale_positions) → block new positions
-            WEEKLY_CLOSE_CUTOFF_HOUR = 12
-            WEEKLY_CLOSE_CUTOFF_MINUTE = 30
+            # Align Friday cutoff with daily cutoff
+            WEEKLY_CLOSE_CUTOFF_HOUR = cutoff_hour
+            WEEKLY_CLOSE_CUTOFF_MINUTE = cutoff_minute
 
             is_in_close_window = False
             if weekday == 4:  # Friday
@@ -2024,23 +2094,130 @@ async def run_sentinels(config: dict):
 # IMPORTANT: Keys are New York Local Time.
 # The orchestrator dynamically converts these to UTC based on DST.
 
+async def emergency_hard_close(config: dict):
+    """
+    Last-resort position closure at 13:15 ET using MARKET orders.
+
+    This runs 45 minutes before market close. If we still have open positions
+    at this point, limit orders have failed and we accept slippage to protect
+    against overnight/weekend risk.
+    """
+    logger.info("--- Emergency Hard Close Check (T-45 min) ---")
+
+    try:
+        ib = await IBConnectionPool.get_connection("orchestrator_orders", config)
+        configure_market_data_type(ib)
+
+        live_positions = await ib.reqPositionsAsync()
+        open_positions = [p for p in live_positions if p.position != 0]
+
+        if not open_positions:
+            logger.info("Emergency hard close: No open positions. All clear. ✓")
+            return
+
+        position_count = len(open_positions)
+        logger.warning(
+            f"🚨 EMERGENCY HARD CLOSE: {position_count} positions still open at T-45! "
+            f"Closing with MARKET orders (slippage accepted)."
+        )
+
+        send_pushover_notification(
+            config.get('notifications', {}),
+            "🚨 Emergency Hard Close Triggered",
+            f"{position_count} positions still open at 13:15 ET.\n"
+            f"Closing with MARKET orders. Slippage expected."
+        )
+
+        closed = 0
+        failed = 0
+
+        for pos in open_positions:
+            try:
+                close_action = 'SELL' if pos.position > 0 else 'BUY'
+                qty = abs(pos.position)
+
+                contract = pos.contract
+                qualified = await ib.qualifyContractsAsync(contract)
+                if not qualified:
+                    logger.error(f"Could not qualify {contract.localSymbol}")
+                    failed += 1
+                    continue
+
+                # Market order with GTC
+                from ib_insync import MarketOrder
+                order = MarketOrder(close_action, qty)
+                order.tif = 'GTC'
+
+                trade = ib.placeOrder(contract, order)
+                logger.info(f"Emergency close: {close_action} {qty} {contract.localSymbol}")
+
+                for _ in range(60):
+                    await asyncio.sleep(1)
+                    if trade.isDone():
+                        break
+
+                if trade.orderStatus.status == 'Filled':
+                    closed += 1
+                    logger.info(f"Emergency fill: {contract.localSymbol} @ {trade.orderStatus.avgFillPrice}")
+                else:
+                    failed += 1
+                    logger.error(f"Emergency close incomplete: {contract.localSymbol}")
+
+            except Exception as e:
+                failed += 1
+                logger.error(f"Emergency close failed for {pos.contract.localSymbol}: {e}")
+
+        summary = f"Emergency hard close: {closed} closed, {failed} failed"
+        logger.info(summary)
+        send_pushover_notification(config.get('notifications', {}), "Emergency Close Result", summary)
+
+    except Exception as e:
+        logger.critical(f"Emergency hard close FAILED entirely: {e}")
+        send_pushover_notification(
+            config.get('notifications', {}),
+            "🚨🚨 EMERGENCY CLOSE FAILED",
+            f"Could not execute emergency hard close: {str(e)[:200]}\n"
+            f"MANUAL INTERVENTION REQUIRED IMMEDIATELY."
+        )
+
+async def close_stale_positions_fallback(config: dict):
+    """Fallback close attempt at 12:45 ET. Only acts if 11:00 primary close missed anything."""
+    logger.info("--- Fallback Close Attempt (12:45 ET) ---")
+    logger.info("This is a retry for any positions the 11:00 primary close failed to handle.")
+    await close_stale_positions(config)
+
 async def guarded_generate_orders(config: dict):
+    """Generate orders with budget and cutoff guards."""
     if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
         logger.warning("Budget hit - skipping scheduled orders.")
         return
+
+    # Daily cutoff check
+    ny_tz = pytz.timezone('America/New_York')
+    now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
+    trading_cutoff = config.get('schedule', {}).get('daily_trading_cutoff_et', {'hour': 10, 'minute': 45})
+    cutoff_hour = trading_cutoff.get('hour', 10)
+    cutoff_minute = trading_cutoff.get('minute', 45)
+
+    if now_ny.hour > cutoff_hour or (now_ny.hour == cutoff_hour and now_ny.minute >= cutoff_minute):
+        logger.info(f"Order generation BLOCKED: Past daily cutoff ({cutoff_hour}:{cutoff_minute:02d} ET)")
+        return
+
     await generate_and_execute_orders(config)
 
 schedule = {
-    time(3, 30): start_monitoring,           # Market Open
-    time(3, 31): process_deferred_triggers,  # 1 min after Open (Retry deferred)
-    time(8, 30): run_position_audit_cycle,   # Morning Roll Call (Defense before Offense)
-    time(9, 0): guarded_generate_orders,     # Morning Trading (has holding-time gate)
-    time(11, 0): run_position_audit_cycle,   # 11:00 ET - Midday audit
-    time(12, 45): close_stale_positions,     # Weekly close (w/ post-close verification)
-    time(13, 0): run_position_audit_cycle,   # 13:00 ET - Pre-close audit
-    time(13, 45): cancel_and_stop_monitoring,# 15 mins before Close
-    time(14, 5): log_equity_snapshot,        # After Close
-    time(14, 15): reconcile_and_analyze      # After Close
+    time(3, 30): start_monitoring,
+    time(3, 31): process_deferred_triggers,
+    time(8, 30): run_position_audit_cycle,
+    time(9, 0): guarded_generate_orders,
+    time(11, 0): close_stale_positions,          # PRIMARY: Peak liquidity
+    time(11, 15): run_position_audit_cycle,       # Post-close verification
+    time(12, 45): close_stale_positions_fallback, # FALLBACK: Retry failures
+    time(13, 0): run_position_audit_cycle,        # Pre-close audit
+    time(13, 15): emergency_hard_close,           # SAFETY: Market orders
+    time(13, 45): cancel_and_stop_monitoring,
+    time(14, 5): log_equity_snapshot,
+    time(14, 15): reconcile_and_analyze,
 }
 
 def apply_schedule_offset(original_schedule: dict, offset_minutes: int) -> dict:

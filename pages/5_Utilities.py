@@ -227,7 +227,7 @@ with manual_cols[0]:
                     async def run_with_cleanup():
                         """Run order generation with guaranteed connection cleanup."""
                         try:
-                            await generate_and_execute_orders(config)
+                            await generate_and_execute_orders(config, connection_purpose="dashboard_orders")
                         finally:
                             # Ensure pool connections are released before loop closes
                             try:
@@ -275,12 +275,12 @@ with manual_cols[1]:
                     from trading_bot.order_manager import cancel_all_open_orders
 
                     try:
-                        asyncio.run(cancel_all_open_orders(config))
+                        asyncio.run(cancel_all_open_orders(config, connection_purpose="dashboard_orders"))
                         st.success("✅ All open orders cancelled!")
                     except RuntimeError:
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
-                        loop.run_until_complete(cancel_all_open_orders(config))
+                        loop.run_until_complete(cancel_all_open_orders(config, connection_purpose="dashboard_orders"))
                         st.success("✅ All open orders cancelled!")
 
                 except Exception as e:
@@ -306,12 +306,12 @@ with manual_cols2[0]:
                     from trading_bot.order_manager import close_stale_positions
 
                     try:
-                        asyncio.run(close_stale_positions(config))
+                        asyncio.run(close_stale_positions(config, connection_purpose="dashboard_close"))
                         st.success("✅ Stale position closure completed!")
                     except RuntimeError:
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
-                        loop.run_until_complete(close_stale_positions(config))
+                        loop.run_until_complete(close_stale_positions(config, connection_purpose="dashboard_close"))
                         st.success("✅ Stale position closure completed!")
 
                 except Exception as e:

@@ -90,7 +90,7 @@ def _describe_bag(contract) -> str:
     return ticker
 
 
-async def generate_and_execute_orders(config: dict):
+async def generate_and_execute_orders(config: dict, connection_purpose: str = "orchestrator_orders"):
     """
     Generates, queues, and immediately places orders.
     This ensures that order placement isn't skipped if generation takes
@@ -121,17 +121,17 @@ async def generate_and_execute_orders(config: dict):
         return
 
     logger.info(">>> Starting combined task: Generate and Execute Orders <<<")
-    await generate_and_queue_orders(config)
+    await generate_and_queue_orders(config, connection_purpose=connection_purpose)
 
     # Only proceed to placement if orders were actually queued
     if ORDER_QUEUE:
-        await place_queued_orders(config)
+        await place_queued_orders(config, connection_purpose=connection_purpose)
     else:
         logger.info("No orders were queued. Skipping placement step.")
     logger.info(">>> Combined task 'Generate and Execute Orders' complete <<<")
 
 
-async def generate_and_queue_orders(config: dict):
+async def generate_and_queue_orders(config: dict, connection_purpose: str = "orchestrator_orders"):
     """
     Generates trading strategies based on market data and API predictions,
     and queues them for later execution.
@@ -143,9 +143,9 @@ async def generate_and_queue_orders(config: dict):
     try:
         # Use Connection Pool
         try:
-            ib = await IBConnectionPool.get_connection("order_manager", config)
+            ib = await IBConnectionPool.get_connection(connection_purpose, config)
             configure_market_data_type(ib)
-            logger.info("Connected to IB for signal generation.")
+            logger.info(f"Connected to IB for signal generation (purpose: {connection_purpose}).")
 
             logger.info("Step 1: Generating structured signals via Council...")
             signals = await generate_signals(ib, config)
@@ -657,7 +657,7 @@ async def check_liquidity_conditions(ib: IB, contract, order_size: int) -> tuple
         return False, f"Liquidity Check Error: {e}"
 
 
-async def place_queued_orders(config: dict, orders_list: list = None):
+async def place_queued_orders(config: dict, orders_list: list = None, connection_purpose: str = "orchestrator_orders"):
     """
     Connects to IB, places orders, and monitors them.
     If 'orders_list' is provided, it processes those orders instead of the global ORDER_QUEUE.
@@ -674,7 +674,7 @@ async def place_queued_orders(config: dict, orders_list: list = None):
     compliance = ComplianceGuardian(config)
 
     # Use Connection Pool
-    ib = await IBConnectionPool.get_connection("order_manager", config)
+    ib = await IBConnectionPool.get_connection(connection_purpose, config)
     configure_market_data_type(ib)
 
     live_orders = {} # Dictionary to track order status by orderId
@@ -1299,7 +1299,7 @@ def get_trade_ledger_df():
         return pd.DataFrame(columns=['timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity', 'reason'])
 
 
-async def close_stale_positions(config: dict):
+async def close_stale_positions(config: dict, connection_purpose: str = "orchestrator_orders"):
     """
     Closes any open positions that have been held for more than 'max_holding_days' (Default: 2) trading days.
     This function now uses the live portfolio from IB as the source of truth,
@@ -1346,10 +1346,45 @@ async def close_stale_positions(config: dict):
 
     try:
         # --- 1. Connect to IB and get the ground truth of current positions ---
-        ib = await IBConnectionPool.get_connection("order_manager", config)
+
+        # --- RETRY LOGIC (Issue 11 Fix) ---
+        MAX_CONNECT_RETRIES = 3
+        RETRY_DELAYS = [5.0, 10.0, 20.0]  # Exponential backoff
+
+        ib = None
+        for attempt in range(MAX_CONNECT_RETRIES):
+            try:
+                ib = await IBConnectionPool.get_connection(connection_purpose, config)
+                break  # Success
+            except (TimeoutError, ConnectionError, Exception) as e:
+                if attempt < MAX_CONNECT_RETRIES - 1:
+                    delay = RETRY_DELAYS[attempt]
+                    logger.warning(
+                        f"close_stale_positions connection attempt {attempt + 1}/{MAX_CONNECT_RETRIES} "
+                        f"failed: {e}. Retrying in {delay}s..."
+                    )
+                    # Force reset the connection before retry
+                    await IBConnectionPool._force_reset_connection(connection_purpose)
+                    await asyncio.sleep(delay)
+                else:
+                    logger.critical(
+                        f"close_stale_positions FAILED after {MAX_CONNECT_RETRIES} attempts. "
+                        f"Positions may remain open!"
+                    )
+                    send_pushover_notification(
+                        config.get('notifications', {}),
+                        "🚨 CRITICAL: Position Close Failed",
+                        f"close_stale_positions could not connect after {MAX_CONNECT_RETRIES} attempts. "
+                        f"Manual intervention required to close positions before market close."
+                    )
+                    return  # Cannot proceed without connection
+
+        if ib is None:
+            return
+
         configure_market_data_type(ib)
 
-        logger.info("Connected to IB for closing positions.")
+        logger.info(f"Connected to IB for closing positions (purpose: {connection_purpose}).")
 
         live_positions = await ib.reqPositionsAsync()
         if not live_positions:
@@ -2010,16 +2045,16 @@ def _build_invalidation_triggers(strategy_type: str, decision: dict) -> list:
     return triggers
 
 
-async def cancel_all_open_orders(config: dict):
+async def cancel_all_open_orders(config: dict, connection_purpose: str = "orchestrator_orders"):
     """
     Fetches and cancels all open (non-filled) orders.
     """
     logger.info("--- Canceling any remaining open DAY orders ---")
     try:
-        ib = await IBConnectionPool.get_connection("order_manager", config)
+        ib = await IBConnectionPool.get_connection(connection_purpose, config)
         configure_market_data_type(ib)
 
-        logger.info("Connected to IB for canceling open orders.")
+        logger.info(f"Connected to IB for canceling open orders (purpose: {connection_purpose}).")
 
         # Use ib.reqAllOpenOrdersAsync() to get all open orders from the broker
         open_trades = await ib.reqAllOpenOrdersAsync()

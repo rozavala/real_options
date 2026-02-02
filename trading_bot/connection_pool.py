@@ -24,10 +24,13 @@ class IBConnectionPool:
         "sentinel": 110,
         "emergency": 120,
         "monitor": 130,
-        "order_manager": 140,
+        "orchestrator_orders": 140,    # Orchestrator's order-related tasks
+        "dashboard_orders": 160,       # Dashboard's order generation
+        "dashboard_close": 180,        # Dashboard's manual position close
         "microstructure": 200,    # Range: 200-209
         "test_utilities": 220,    # Range: 220-229 (Dashboard IB test button)
         "audit": 230,             # Range: 230-239 (Position audit cycle)
+        "equity_logger": 250,     # Range: 250-259
         # Note: position_monitor.py uses 300-399
         # Note: reconciliation uses random 5000-9999
         # DEFAULT for unknown purposes: 200-209 (avoid adding new purposes without explicit ID)
