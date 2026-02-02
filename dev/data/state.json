@@ -4,48 +4,6 @@
       "data": [
         {
           "source": "XSentimentSentinel",
-          "reason": "UNUSUAL X ACTIVITY SPIKE (14 posts, 3.0x baseline)",
-          "payload": {
-            "sentiment_score": 5.42,
-            "confidence": 0.24,
-            "top_themes": [
-              "COT net long positions",
-              "Promotional coffee futures mention",
-              "Historical price surge",
-              "Expected price decline",
-              "Improved supply outlook"
-            ],
-            "post_volume": 14,
-            "volume_baseline": 3.8,
-            "volume_spike": true,
-            "query_results": [
-              {
-                "query": "coffee futures",
-                "score": 5.0,
-                "volume": 2,
-                "confidence": 0.2,
-                "top_post": "#COT - Non-commercial net long position in #sugar, #cocoa, #coffee futures"
-              },
-              {
-                "query": "arabica prices",
-                "score": 5.0,
-                "volume": 2,
-                "confidence": 0.2,
-                "top_post": "@Johnblanshe_m Just simply share with them the coffee prices then and now! Arabica parchment tripled in the last 5years..."
-              },
-              {
-                "query": "Brazil coffee harvest",
-                "score": 5.0,
-                "volume": 0,
-                "confidence": 0.1,
-                "top_post": null
-              }
-            ]
-          },
-          "timestamp": "2026-02-02T14:26:52.280166+00:00"
-        },
-        {
-          "source": "XSentimentSentinel",
           "reason": "UNUSUAL X ACTIVITY SPIKE (13 posts, 3.0x baseline)",
           "payload": {
             "sentiment_score": 5.0,
@@ -115,9 +73,19 @@
             "depth_ratio": 0.1925925925925926
           },
           "timestamp": "2026-02-02T16:32:15.387620+00:00"
+        },
+        {
+          "source": "MicrostructureSentinel",
+          "reason": "Liquidity Depletion: 26% of average",
+          "payload": {
+            "type": "LIQUIDITY_DEPLETION",
+            "contract": "KCK6",
+            "depth_ratio": 0.2559241706161137
+          },
+          "timestamp": "2026-02-02T17:14:35.029391+00:00"
         }
       ],
-      "timestamp": 1770049935.3878653
+      "timestamp": 1770052475.029902
     }
   },
   "reports": {
@@ -131,11 +99,11 @@
     },
     "macro": {
       "data": {
-        "data": "[EVIDENCE]: 1. Coffee C futures (Arabica) trading at 333.97 USd/Lbs, a slight recovery (+0.52%) after hitting lows since August 2025. 2. Predicted steady rains in Minas Gerais, easing drought concerns for the 2026/27 crop, prompting 'liquidation pressure'. 3. March Arabica coffee (KCH26) closed down 13.25 cents (-3.85%) on January 30, amid forecasts of steady rains in Minas Gerais. 4. Liquidity Depletion alert indicating only 19% of average market depth in the KCK6 contract.\n[ANALYSIS]: The initial analysis attributes the decline in coffee prices primarily to the improved rainfall forecasts, which could mitigate drought impacts and potentially increase coffee supply, thus exerting downward pressure on prices. However, this analysis may suffer from a confirmation bias by mostly focusing on the weather as the main factor for price changes without considering other potential influencing factors such as geopolitical events, changes in demand, or economic conditions. The claim regarding liquidity depletion is specific, yet it could have falsely correlated the reduced market depth directly to price movements without considering natural variations or other contributing factors. The sentiment tag as 'BEARISH' might not fully capture the nuances of the situation; while the evidence indicates a downward trend due to supply concerns, the slight price recovery suggests a mixed sentiment. Thus, the sentiment might better be classified as 'NEUTRAL' due to the conflicting directions of market indicators.\n[CONFIDENCE]: 0.7\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
-        "confidence": 0.7,
-        "sentiment": "NEUTRAL"
+        "data": "[EVIDENCE]: [2026-02-02] Coffee C futures (May 2026) prices faced downward pressure, described as 'cautious' and domestic trading in Vietnam stable. (source: Vietnam.vn / YouTube Market Updates), [2026-02-01] May 2026 Arabica coffee futures (KCK6) traded around 315.35 US cents/pound, down 4.12% for the week. (source: Vietnam.vn), [2026-01-30] Forecasts of steady rains in Minas Gerais, Brazil, have pressured prices downward by improving 2026 crop prospects. (source: Barchart / Nasdaq), [2026-01-30] ICE Arabica inventories recovered to a 2.5-month high of ~461,829 bags, easing some immediate supply fears but remaining low historically. (source: Barchart), 'Liquidity Depletion alert of 26% of average depth indicates thinning order book, increasing risk of slippage and exacerbated price movements.'\n[ANALYSIS]: The initial analysis addresses multiple data points indicating a bearish sentiment in the coffee market, such as improved weather conditions in Brazil and a recovery in ICE-certified inventories. However, the analysis could have suffered from a potential recency bias by focusing too much on the latest weather forecasts and inventory data without considering longer-term market trends or potential counteracting factors such as global demand trends that might offset these effects. While the linkage between favorable weather and bearish pressure on prices is logical, the analysis does not fully explore alternative factors, such as potential disruptions in other major coffee-producing regions. The sentiment tag of 'BEARISH' appears justified given the evidence presented, but a more comprehensive approach could offer a fuller market view. Furthermore, the analysis would benefit from expanding on the implications of reduced market liquidity. Overall, the sentiment tag is consistent with the available evidence, with a reasonable confidence level.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: BEARISH]",
+        "confidence": 0.8,
+        "sentiment": "BEARISH"
       },
-      "timestamp": 1770050021.1931567
+      "timestamp": 1770052542.9233673
     },
     "geopolitical": {
       "data": {
@@ -267,19 +235,19 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1770048184.3753784
+      "timestamp": 1770053162.5024827
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
-      "timestamp": 1770048154.9736319
+      "timestamp": 1770053132.0139787
     },
     "last_ib_success": {
-      "data": "2026-02-02T16:02:35.533228+00:00",
-      "timestamp": 1770048155.533957
+      "data": "2026-02-02T17:28:33.688901+00:00",
+      "timestamp": 1770053313.6898901
     },
     "microstructure_ib_status": {
       "data": "CONNECTED",
-      "timestamp": 1770048155.5339549
+      "timestamp": 1770053132.408046
     },
     "audit_ib_status": {
       "data": "CONNECTED",
@@ -287,7 +255,7 @@
     },
     "order_manager_ib_status": {
       "data": "CONNECTED",
-      "timestamp": 1770040200.2706935
+      "timestamp": 1770053313.689884
     },
     "deferred_ib_status": {
       "data": "CONNECTED",
@@ -345,7 +313,7 @@
     },
     "_test": {
       "data": "ok",
-      "timestamp": 1770048170.4740543
+      "timestamp": 1770053149.2515445
     }
   },
   "prediction_market_state": {
@@ -358,7 +326,7 @@
         "price": 0.007,
         "timestamp": "2026-02-02T15:07:09.852801+00:00"
       },
-      "timestamp": 1770051508.357346
+      "timestamp": 1770053162.9785125
     }
   }
 }
