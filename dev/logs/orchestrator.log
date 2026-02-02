@@ -1,16 +1,36 @@
-2026-02-02 03:33:25,441 - Orchestrator - INFO - =============================================
-2026-02-02 03:33:25,442 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-02 03:33:25,443 - Orchestrator - INFO - =============================================
-2026-02-02 03:33:25,446 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-02 03:33:25,496 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-02 03:33:25,496 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-02 03:33:25,496 - Orchestrator - INFO - Weekend detected (Sunday). Next trading day: Monday 2026-02-02
-2026-02-02 03:33:25,496 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-02 08:20:00 UTC. Waiting for 4.78 hours.
-2026-02-02 03:33:25,496 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-02 03:33:25,497 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
-2026-02-02 03:33:26,035 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-02 03:33:26,036 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 4 topics | min_liq=$10,000 | HWM decay=24h
-2026-02-02 03:33:41,946 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'Trump Fed Chair nominee' (keywords: ['fed', 'chair', 'nominee', 'warsh', 'rieder'], min_score=2). Skipping topic — will retry next cycle.
-2026-02-02 03:33:42,156 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'Supreme Court Trump tariffs' (keywords: ['supreme court', 'tariff', 'scotus', 'trump', 'trade'], min_score=2). Skipping topic — will retry next cycle.
-2026-02-02 03:33:42,365 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'US recession 2026' (keywords: ['recession', 'us', 'economy', 'gdp', '2026'], min_score=1). Skipping topic — will retry next cycle.
-2026-02-02 03:33:42,603 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-02 05:03:36,026 - Orchestrator - INFO - =============================================
+2026-02-02 05:03:36,026 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-02 05:03:36,026 - Orchestrator - INFO - =============================================
+2026-02-02 05:03:36,028 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-02 05:03:36,256 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-02 05:03:36,256 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-02-02 05:03:36,256 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-02 08:20:00 UTC. Waiting for 3.27 hours.
+2026-02-02 05:03:36,256 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-02 05:03:36,256 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
+2026-02-02 05:03:36,717 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-02-02 05:03:36,717 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 4 topics | min_liq=$10,000 | HWM decay=24h
+2026-02-02 05:03:45,123 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-02 05:03:48,630 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-02 05:03:48,751 - trading_bot.sentinels - INFO - Strict search for 'Brazil coffee harvest' returned 0 posts. Trying broad search...
+2026-02-02 05:03:48,889 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'Brazil coffee harvest'
+2026-02-02 05:03:49,982 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-02 05:03:50,064 - trading_bot.sentinels - INFO - Strict search for 'coffee futures' returned 0 posts. Trying broad search...
+2026-02-02 05:03:50,416 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-02 05:03:50,436 - trading_bot.sentinels - WARNING - Both strict and broad search returned 0 posts for 'coffee futures'
+2026-02-02 05:03:50,533 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-02 05:03:50,627 - trading_bot.sentinels - INFO - Strict search for 'arabica prices' returned 0 posts. Trying broad search...
+2026-02-02 05:03:50,767 - trading_bot.sentinels - INFO - Broad search returned 2 posts for 'arabica prices'
+2026-02-02 05:03:52,700 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-02 05:03:52,753 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-02 05:03:52,802 - trading_bot.sentinels - INFO - Strict search for 'Colombia coffee' returned 0 posts. Trying broad search...
+2026-02-02 05:03:53,143 - trading_bot.sentinels - INFO - Broad search returned 6 posts for 'Colombia coffee'
+2026-02-02 05:03:53,678 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-02 05:03:53,781 - trading_bot.sentinels - INFO - Strict search for 'US coffee tariffs' returned 0 posts. Trying broad search...
+2026-02-02 05:03:54,054 - trading_bot.sentinels - INFO - Broad search returned 4 posts for 'US coffee tariffs'
+2026-02-02 05:03:55,918 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-02 05:03:59,612 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-02 05:04:00,581 - httpx - INFO - HTTP Request: POST https://api.x.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-02 05:04:00,841 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'Trump Fed Chair nominee' (keywords: ['fed', 'chair', 'nominee', 'warsh', 'rieder'], min_score=2). Skipping topic — will retry next cycle.
+2026-02-02 05:04:01,071 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'Supreme Court Trump tariffs' (keywords: ['supreme court', 'tariff', 'scotus', 'trump', 'trade'], min_score=2). Skipping topic — will retry next cycle.
+2026-02-02 05:04:01,576 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'US recession 2026' (keywords: ['recession', 'us', 'economy', 'gdp', '2026'], min_score=1). Skipping topic — will retry next cycle.
+2026-02-02 05:04:02,093 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
