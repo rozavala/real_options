@@ -1580,13 +1580,20 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                 else:
                     # Single Leg Order
                     leg = final_legs_list[0]
-                    contract = Contract()
-                    contract.conId = leg['conId']
-                    contract.symbol = config.get('symbol', 'KC')
-                    contract.secType = "FOP" # Assumption, or fetch from pos?
-                    # Actually, if we supply conId, IB usually resolves. But secType helps.
-                    # We can get secType from the live position contract if needed, but we didn't store it.
-                    # Let's rely on conId.
+
+                    # CRITICAL FIX: Re-qualify by conId only to get correct strike format
+                    minimal = Contract(conId=leg['conId'])
+                    qualified = await ib.qualifyContractsAsync(minimal)
+                    if qualified and qualified[0].conId != 0:
+                        contract = qualified[0]
+                    else:
+                        logger.error(f"Could not re-qualify conId {leg['conId']} for close order")
+                        # Fallback to manual construction (risky)
+                        contract = Contract()
+                        contract.conId = leg['conId']
+                        contract.symbol = config.get('symbol', 'KC')
+                        contract.secType = "FOP"
+
                     contract.exchange = leg['exchange'] or config.get('exchange', 'SMART')
 
                     order_size = leg['quantity']
@@ -1881,7 +1888,13 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                             close_action = 'SELL' if pos.position > 0 else 'BUY'
                             qty = abs(pos.position)
                             order = MarketOrder(close_action, qty)
-                            trade = ib.placeOrder(pos.contract, order)
+
+                            # Re-qualify to get correct strike format
+                            minimal = Contract(conId=pos.contract.conId)
+                            requalified = await ib.qualifyContractsAsync(minimal)
+                            close_contract = requalified[0] if requalified and requalified[0].conId != 0 else pos.contract
+
+                            trade = ib.placeOrder(close_contract, order)
                             logger.warning(
                                 f"RETRY: Sent {close_action} {qty} {pos.contract.localSymbol}"
                             )

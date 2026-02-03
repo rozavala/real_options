@@ -125,6 +125,26 @@ class TestPositionClosing(unittest.TestCase):
             ]
             mock_ib_instance.reqPositionsAsync.return_value = mock_positions
 
+            # Mock qualifyContractsAsync to return populated contracts based on conId
+            populated_contracts = {
+                1: Contract(localSymbol='KC 26JUL24 250 C', symbol='KC', conId=1, exchange='NYBOT', secType='FOP'),
+                2: Contract(localSymbol='KC 26JUL24 260 C', symbol='KC', conId=2, exchange='NYBOT', secType='FOP'),
+                3: Contract(localSymbol='KC 26JUL24 300 P', symbol='KC', conId=3, exchange='NYBOT', secType='FOP'),
+                4: Contract(localSymbol='KC 26JUL24 310 P', symbol='KC', conId=4, exchange='NYBOT', secType='FOP'),
+                5: Contract(localSymbol='KC 26JUL24 200 C', symbol='KC', conId=5, exchange='NYBOT', secType='FOP'),
+            }
+
+            async def mock_qualify(*contracts):
+                result = []
+                for c in contracts:
+                    if c.conId in populated_contracts:
+                        result.append(populated_contracts[c.conId])
+                    else:
+                        result.append(c)
+                return result
+
+            mock_ib_instance.qualifyContractsAsync = AsyncMock(side_effect=mock_qualify)
+
             mock_trade = MagicMock()
             mock_trade.orderStatus.status = 'Filled'
             mock_fill = MagicMock()

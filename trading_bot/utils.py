@@ -446,6 +446,17 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
         if action == 'BUY':
             total_value *= -1
 
+        # CRITICAL: Normalize Strike for Ledger Consistency (KC options)
+        # IBKR returns strikes in dollars (3.075) for qualified contracts,
+        # but legacy ledger and reconciliation expect cents (307.5).
+        strike_value = contract.strike if hasattr(contract, 'strike') else 'N/A'
+        try:
+            if multiplier == 37500.0 and isinstance(strike_value, (int, float)):
+                if 0 < strike_value < 100.0:  # Threshold for "Dollar Format"
+                    strike_value = strike_value * 100.0
+        except Exception:
+            pass
+
         row = {
             'timestamp': execution.time.strftime('%Y-%m-%d %H:%M:%S'),
             'position_id': final_position_id,
@@ -454,7 +465,7 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
             'action': action,
             'quantity': execution.shares,
             'avg_fill_price': execution.price,
-            'strike': contract.strike if hasattr(contract, 'strike') else 'N/A',
+            'strike': strike_value,
             'right': contract.right if hasattr(contract, 'right') else 'N/A',
             'total_value_usd': total_value,
             'reason': reason
