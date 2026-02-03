@@ -109,10 +109,10 @@ class TestBrierScoringNew(unittest.TestCase):
                     with mock.patch('trading_bot.brier_scoring._append_to_legacy_accuracy') as mock_append:
 
                         # Run resolution
-                        resolved_count = brier_scoring.resolve_pending_predictions(council_file)
+                        resolved_indices = brier_scoring.resolve_pending_predictions(council_file)
 
                         # Check results
-                        self.assertEqual(resolved_count, 2) # 2 predictions for KC-test1234
+                        self.assertEqual(len(resolved_indices), 2) # 2 predictions for KC-test1234
 
                         # Verify structured file update by reading it back
                         # (We use original_read_csv to bypass our mock logic for verification)
@@ -137,10 +137,13 @@ class TestBrierScoringNew(unittest.TestCase):
             struct_file = os.path.join(tmpdir, "agent_accuracy_structured.csv")
             council_file = os.path.join(tmpdir, "council_history.csv")
 
-            # Timestamps
-            time_cycle_a = '2026-01-20 10:00:00+00:00'  # Prediction time for Cycle A
-            time_council_a = '2026-01-20 10:05:00+00:00'  # Council A decision (5 min later) - UNRECONCILED
-            time_council_b = '2026-01-20 11:30:00+00:00'  # Council B decision (90 min later) - RECONCILED
+            # Timestamps (dynamic to avoid stale/orphan logic)
+            now = datetime.now(timezone.utc)
+            t_base = now - pd.Timedelta(hours=10) # 10 hours ago
+
+            time_cycle_a = t_base.isoformat()
+            time_council_a = (t_base + pd.Timedelta(minutes=5)).isoformat()
+            time_council_b = (t_base + pd.Timedelta(minutes=90)).isoformat()
 
             # 1. Create LEGACY PREDICTION (no cycle_id)
             pd.DataFrame([
@@ -190,12 +193,12 @@ class TestBrierScoringNew(unittest.TestCase):
                     with mock.patch('trading_bot.brier_scoring._append_to_legacy_accuracy'):
 
                         # Run resolution
-                        resolved_count = brier_scoring.resolve_pending_predictions(council_file)
+                        resolved_indices = brier_scoring.resolve_pending_predictions(council_file)
 
                         # EXPECTATION: 0 resolved.
                         # It should match to Cycle A (nearest), see it's unreconciled, and stay PENDING.
                         # It should NOT match to Cycle B (which is reconciled but wrong cycle).
-                        self.assertEqual(resolved_count, 0)
+                        self.assertEqual(len(resolved_indices), 0)
 
                         df_new = original_read_csv(struct_file)
                         self.assertEqual(df_new.iloc[0]['actual'], 'PENDING')
@@ -209,8 +212,12 @@ class TestBrierScoringNew(unittest.TestCase):
             struct_file = os.path.join(tmpdir, "agent_accuracy_structured.csv")
             council_file = os.path.join(tmpdir, "council_history.csv")
 
-            time_cycle_a = '2026-01-20 10:00:00+00:00'
-            time_council_a = '2026-01-20 10:05:00+00:00'
+            # Timestamps
+            now = datetime.now(timezone.utc)
+            t_base = now - pd.Timedelta(hours=10)
+
+            time_cycle_a = t_base.isoformat()
+            time_council_a = (t_base + pd.Timedelta(minutes=5)).isoformat()
 
             # 1. Prediction
             pd.DataFrame([
@@ -251,10 +258,10 @@ class TestBrierScoringNew(unittest.TestCase):
                     with mock.patch('trading_bot.brier_scoring._append_to_legacy_accuracy'):
 
                         # Run resolution
-                        resolved_count = brier_scoring.resolve_pending_predictions(council_file)
+                        resolved_indices = brier_scoring.resolve_pending_predictions(council_file)
 
                         # EXPECTATION: 1 resolved. Matches A (nearest), sees reconciled, resolves.
-                        self.assertEqual(resolved_count, 1)
+                        self.assertEqual(len(resolved_indices), 1)
 
                         df_new = original_read_csv(struct_file)
                         self.assertEqual(df_new.iloc[0]['actual'], 'BULLISH')
