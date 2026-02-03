@@ -333,7 +333,28 @@ else:
     direction = row.get('master_decision', 'NEUTRAL')
     st.markdown(f"#### 📊 Trade Type: DIRECTIONAL ({direction}) → {strategy}")
 
-master_cols = st.columns(3)
+# === v7.1: Thesis Strength Badge ===
+thesis_strength = row.get('thesis_strength', 'N/A')
+if thesis_strength and thesis_strength != 'N/A':
+    thesis_colors = {
+        'PROVEN': '#00CC96',      # Green
+        'PLAUSIBLE': '#FFA15A',   # Orange
+        'SPECULATIVE': '#EF553B', # Red
+    }
+    thesis_color = thesis_colors.get(thesis_strength, '#888888')
+    st.markdown(f"""
+    <div style="display: inline-block; background-color: {thesis_color}; padding: 5px 15px;
+                border-radius: 20px; color: white; font-weight: bold; margin-bottom: 10px;">
+        Thesis: {thesis_strength}
+    </div>
+    """, unsafe_allow_html=True)
+
+# === v7.1: Primary Catalyst ===
+primary_catalyst = row.get('primary_catalyst', '')
+if primary_catalyst and primary_catalyst != 'N/A' and primary_catalyst != 'Not specified':
+    st.markdown(f"**🎯 Primary Catalyst:** {primary_catalyst}")
+
+master_cols = st.columns(4)
 
 with master_cols[0]:
     decision = row.get('master_decision', 'N/A')
@@ -353,10 +374,27 @@ with master_cols[2]:
     status = "✅ Approved" if approved else "❌ Vetoed"
     st.metric("Compliance", status)
 
+with master_cols[3]:
+    conviction = row.get('conviction_multiplier', 'N/A')
+    if conviction != 'N/A':
+        try:
+            conv_val = float(conviction)
+            conv_label = {1.0: "✅ Aligned", 0.75: "⚠️ Partial", 0.5: "🔻 Divergent"}.get(conv_val, f"{conv_val:.2f}")
+            st.metric("Consensus", conv_label)
+        except (ValueError, TypeError):
+            st.metric("Consensus", "N/A")
+    else:
+        st.metric("Consensus", "N/A")
+
 # Reasoning
 st.markdown("**Master Reasoning:**")
 reasoning = row.get('master_reasoning', 'No reasoning recorded.')
 st.info(reasoning)
+
+# === v7.1: Dissent Acknowledged ===
+dissent = row.get('dissent_acknowledged', '')
+if dissent and dissent != 'N/A' and dissent != 'None stated':
+    st.markdown(f"**⚖️ Dissent Acknowledged:** {dissent}")
 
 st.markdown("---")
 
