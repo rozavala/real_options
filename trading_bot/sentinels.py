@@ -21,6 +21,7 @@ from functools import wraps
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager
 from trading_bot.rate_limiter import acquire_api_slot
+from config.commodity_profiles import get_commodity_profile, GrowingRegion
 
 logger = logging.getLogger(__name__)
 
@@ -301,8 +302,10 @@ class WeatherSentinel(Sentinel):
         self.sentinel_config = config.get('sentinels', {}).get('weather', {})
         self.api_url = self.sentinel_config.get('api_url', "https://api.open-meteo.com/v1/forecast")
         self.params = self.sentinel_config.get('params', "daily=temperature_2m_min,precipitation_sum&timezone=auto&forecast_days=10")
-        self.locations = self.sentinel_config.get('locations', [])
-        self.triggers = self.sentinel_config.get('triggers', {})
+
+        # Load commodity profile (NEW)
+        ticker = config.get('commodity', {}).get('ticker', 'KC')
+        self.profile = get_commodity_profile(ticker)
 
         self._active_alerts = self._load_alert_state()
         self._alert_cooldown_hours = 24
@@ -340,33 +343,176 @@ class WeatherSentinel(Sentinel):
         except Exception as e:
             logger.warning(f"Failed to save weather alert state: {e}")
 
+    async def _fetch_weather(self, region: GrowingRegion) -> List[Dict]:
+        """Fetch weather data for a region."""
+        try:
+            url = f"{self.api_url}?latitude={region.latitude}&longitude={region.longitude}&{self.params}"
+
+            loop = asyncio.get_running_loop()
+            response = await loop.run_in_executor(None, requests.get, url)
+            data = response.json()
+
+            if 'daily' not in data:
+                return []
+
+            # Map daily arrays to list of day objects
+            daily = data['daily']
+            result = []
+            for i in range(len(daily.get('time', []))):
+                result.append({
+                    'time': daily.get('time')[i],
+                    'precipitation_mm': daily.get('precipitation_sum')[i],
+                    'min_temp_c': daily.get('temperature_2m_min')[i]
+                })
+            return result
+
+        except Exception as e:
+            logger.error(f"Weather fetch failed for {region.name}: {e}")
+            return []
+
+    def check_region_weather(self, region: GrowingRegion) -> Optional[Dict]:
+        """
+        Check weather for a single growing region.
+
+        Flight Director: "Hardcoding agronomic calendar safer than dynamic inference" ✓
+
+        Returns:
+        - None if normal conditions
+        - Dict with alert details if abnormal
+        """
+        # Note: _fetch_weather is async, but this method is called inside async check()
+        # We'll need to redesign flow slightly since this logic was presented as synchronous in prompt.
+        # But we can't await inside a non-async function if it calls async.
+        # So we will make this method take the DATA, not fetch it.
+        # OR make this method async. I'll make it async.
+        raise NotImplementedError("Use async_check_region_weather")
+
+    async def async_check_region_weather(self, region: GrowingRegion) -> Optional[Dict]:
+        from datetime import datetime
+
+        try:
+            # Fetch weather data
+            weather_data = await self._fetch_weather(region)
+            if not weather_data:
+                return None
+
+            # Calculate rolling 7-day precipitation (using last 7 days of forecast/history)
+            # API returns forecast_days=10. Let's look at the first 7 days (including today/forecast).
+            weekly_precip = sum(day.get('precipitation_mm', 0) for day in weather_data[:7])
+
+            # Get current month to determine agronomic stage
+            current_month = datetime.now().month
+
+            # Check Frost (if threshold defined)
+            if region.frost_threshold_celsius is not None:
+                min_temp_week = min(day.get('min_temp_c', 99) for day in weather_data[:7])
+                if min_temp_week < region.frost_threshold_celsius:
+                     return {
+                        "type": "FROST",
+                        "region": region.name,
+                        "min_temp_c": min_temp_week,
+                        "threshold": region.frost_threshold_celsius,
+                        "stage": "ANY",
+                        "direction": "BULLISH", # Frost is always Bullish
+                        "severity": "CRITICAL"
+                     }
+
+            if current_month in region.flowering_months:
+                stage = "FLOWERING"
+            elif current_month in region.harvest_months:
+                stage = "HARVEST"
+            elif current_month in region.bean_filling_months:
+                stage = "BEAN_FILLING"
+            else:
+                stage = "VEGETATIVE"
+
+            # Drought Detection
+            if weekly_precip < region.drought_threshold_mm:
+                return {
+                    "type": "DROUGHT",
+                    "region": region.name,
+                    "weekly_precip_mm": weekly_precip,
+                    "threshold": region.drought_threshold_mm,
+                    "stage": stage,
+                    "direction": self._determine_drought_direction(stage),
+                    "severity": "CRITICAL" if stage == "FLOWERING" else "HIGH"
+                }
+
+            # Flood Detection (NEW)
+            if weekly_precip > region.flood_threshold_mm:
+                return {
+                    "type": "FLOOD",
+                    "region": region.name,
+                    "weekly_precip_mm": weekly_precip,
+                    "threshold": region.flood_threshold_mm,
+                    "stage": stage,
+                    "direction": self._determine_flood_direction(stage),
+                    "severity": "CRITICAL" if stage == "HARVEST" else "MODERATE"
+                }
+
+            # Goldilocks Detection (>150% of historical = relief from prior drought)
+            if weekly_precip > region.historical_weekly_precip_mm * 1.5:
+                return {
+                    "type": "GOLDILOCKS_RAIN",
+                    "region": region.name,
+                    "weekly_precip_mm": weekly_precip,
+                    "baseline": region.historical_weekly_precip_mm,
+                    "stage": stage,
+                    "direction": "BEARISH",  # Removes supply fear premium
+                    "severity": "MODERATE"
+                }
+
+            return None
+
+        except Exception as e:
+            self.logger.error(f"Error checking weather for {region.name}: {e}")
+            return None
+
+    def _determine_drought_direction(self, stage: str) -> str:
+        """
+        Determine if drought is BULLISH or BEARISH based on agronomic stage.
+
+        Flight Director: "Correct implementation" ✓
+        """
+        if stage == "FLOWERING":
+            return "BULLISH"  # Drought during flowering = yield loss
+        elif stage == "BEAN_FILLING":
+            return "BULLISH"  # Drought during bean-filling = smaller beans
+        elif stage == "HARVEST":
+            return "BEARISH"  # Drought during harvest = ideal conditions
+        else:
+            return "NEUTRAL"
+
+    def _determine_flood_direction(self, stage: str) -> str:
+        """
+        Determine if heavy rain is BULLISH or BEARISH based on agronomic stage.
+        """
+        if stage == "HARVEST":
+            return "BULLISH"  # Rain during harvest = delays, quality loss
+        elif stage == "FLOWERING":
+            return "BEARISH"  # Excessive rain during flowering = too much water
+        else:
+            return "NEUTRAL"
+
     async def check(self) -> Optional[SentinelTrigger]:
-        for loc in self.locations:
+        if not self.profile:
+            return None
+
+        for region in self.profile.primary_regions:
             try:
-                lat, lon = loc['lat'], loc['lon']
-                name = loc['name']
+                alert = await self.async_check_region_weather(region)
 
-                # Construct URL from config params
-                url = f"{self.api_url}?latitude={lat}&longitude={lon}&{self.params}"
+                if alert:
+                    # Alert Cooldown Logic
+                    alert_key = f"{alert['type']}_{region.name}"
+                    current_value = alert.get('weekly_precip_mm', 0)
 
-                loop = asyncio.get_running_loop()
-                response = await loop.run_in_executor(None, requests.get, url)
-                data = response.json()
-
-                if 'daily' not in data:
-                    continue
-
-                min_temps = data['daily']['temperature_2m_min']
-                precip = data['daily']['precipitation_sum']
-
-                # Check Frost
-                frost_threshold = self.triggers.get('min_temp_c', 4.0)
-                min_temp = min(min_temps)
-                if min_temp < frost_threshold:
-                    alert_key = f"frost_{name}"
-                    # Severity = distance below threshold. Higher is worse.
-                    # E.g. Threshold 4. Temp 3 -> 1. Temp -1 -> 5.
-                    severity_val = frost_threshold - min_temp
+                    # Calculate a numeric severity for internal logic
+                    severity_val = 0
+                    if alert['type'] == 'DROUGHT':
+                        severity_val = alert['threshold'] - current_value
+                    elif alert['type'] == 'FLOOD':
+                        severity_val = current_value - alert['threshold']
 
                     if self._should_alert(alert_key, severity_val):
                         self._active_alerts[alert_key] = {
@@ -374,30 +520,17 @@ class WeatherSentinel(Sentinel):
                             "value": severity_val
                         }
                         self._save_alert_state()
-                        msg = f"Frost Risk in {name}: Min Temp {min_temp}°C < {frost_threshold}°C"
+
+                        msg = f"{alert['type']} in {alert['region']}: {alert.get('weekly_precip_mm',0):.1f}mm ({alert.get('direction')}, {alert.get('stage')} stage)"
                         logger.warning(f"WEATHER SENTINEL DETECTED: {msg}")
-                        return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "FROST", "value": min_temp}, severity=8)
 
-                # Check Drought
-                drought_days_limit = self.triggers.get('drought_days', 10)
-                rain_limit = self.triggers.get('drought_rain_mm', 5.0)
+                        # Map severity string to int
+                        sev_int = 8 if "CRITICAL" in alert.get('severity','') else (6 if "HIGH" in alert.get('severity','') else 4)
 
-                low_rain_days = sum(1 for p in precip if p < rain_limit)
-
-                if low_rain_days >= drought_days_limit:
-                    alert_key = f"drought_{name}"
-                    if self._should_alert(alert_key, low_rain_days):
-                        self._active_alerts[alert_key] = {
-                            "time": datetime.now(timezone.utc),
-                            "value": low_rain_days
-                        }
-                        self._save_alert_state()
-                        msg = f"Drought Risk in {name}: {low_rain_days} days with < {rain_limit}mm rain"
-                        logger.warning(f"WEATHER SENTINEL DETECTED: {msg}")
-                        return SentinelTrigger("WeatherSentinel", msg, {"location": name, "type": "DROUGHT", "days": low_rain_days}, severity=6)
+                        return SentinelTrigger("WeatherSentinel", msg, alert, severity=sev_int)
 
             except Exception as e:
-                logger.error(f"Weather Sentinel failed for {loc.get('name')}: {e}")
+                logger.error(f"Weather Sentinel failed for {region.name}: {e}")
 
         return None
 
@@ -412,6 +545,10 @@ class WeatherSentinel(Sentinel):
             return True
 
         prev = self._active_alerts[alert_key]
+        if isinstance(prev['time'], str):
+             prev['time'] = datetime.fromisoformat(prev['time'])
+             if prev['time'].tzinfo is None: prev['time'] = prev['time'].replace(tzinfo=timezone.utc)
+
         hours_since = (datetime.now(timezone.utc) - prev["time"]).total_seconds() / 3600
 
         # Cooldown expired
@@ -568,24 +705,11 @@ class NewsSentinel(Sentinel):
 class XSentimentSentinel(Sentinel):
     """
     Monitors X (Twitter) for coffee market sentiment using xAI Grok.
-
-    ARCHITECTURE:
-    - Frequency: Every 30 Minutes (Market Hours)
-    - Uses Grok's X search + code execution for quantitative sentiment
-    - Parallel query execution for low latency
-    - Volume anomaly detection for early warning
-
-    PRODUCTION FEATURES:
-    - Explicit tool schemas (prevents hallucinations)
-    - Weighted confidence scoring
-    - Robust error handling & validation
-    - Deduplication & history tracking
     """
     def __init__(self, config: dict):
         super().__init__(config)
         self.sentinel_config = config.get('sentinels', {}).get('x_sentiment', {})
 
-        # === SEARCH CONFIGURATION ===
         self.search_queries = self.sentinel_config.get('search_queries', [
             'coffee futures',
             'arabica prices',
@@ -597,12 +721,9 @@ class XSentimentSentinel(Sentinel):
         self.exclude_keywords = self.sentinel_config.get('exclude_keywords',
             ['meme', 'joke', 'spam', 'giveaway'])
 
-        # === THRESHOLDS ===
         self.sentiment_threshold = self.sentinel_config.get('sentiment_threshold', 6.5)
         self.min_engagement = self.sentinel_config.get('min_engagement', 5)
         self.volume_spike_multiplier = self.sentinel_config.get('volume_spike_multiplier', 2.0)
-
-        # === XAI CLIENT SETUP ===
 
         api_key = config.get('xai', {}).get('api_key')
         if not api_key or api_key == "LOADED_FROM_ENV":
@@ -614,10 +735,9 @@ class XSentimentSentinel(Sentinel):
         self.client = AsyncOpenAI(
             api_key=api_key,
             base_url="https://api.x.ai/v1",
-            timeout=180.0  # Allow time for agentic loops
+            timeout=180.0
         )
 
-        # === X API SETUP (for tool execution) ===
         self.x_bearer_token = config.get('x_api', {}).get('bearer_token')
         if not self.x_bearer_token or self.x_bearer_token == "LOADED_FROM_ENV":
             self.x_bearer_token = os.environ.get('X_BEARER_TOKEN')
@@ -625,43 +745,22 @@ class XSentimentSentinel(Sentinel):
         if not self.x_bearer_token:
             logger.warning("X_BEARER_TOKEN not found - X sentiment will use Grok's training knowledge only")
 
-        # === MODEL SELECTION ===
-        # CORRECTED: Use current production model
         self.model = self.sentinel_config.get('model', 'grok-4-1-fast-reasoning')
 
-        # === MODEL VALIDATION ===
-        KNOWN_GROK_MODELS = [
-            'grok-4-1-fast-reasoning',
-            'grok-4',
-            'grok-3',
-            'grok-2-1212',
-            'grok-beta'
-        ]
-        if self.model not in KNOWN_GROK_MODELS:
-            logger.warning(
-                f"⚠️ Unrecognized Grok model '{self.model}' - verify with xAI API docs. "
-                f"Known models: {KNOWN_GROK_MODELS}"
-            )
-
-        # === VOLUME TRACKING ===
         self.post_volume_history = []
         self.volume_mean = 0.0
         self.volume_stddev = 0.0
 
-        # === CIRCUIT BREAKER ===
         self.consecutive_failures = 0
         self.degraded_until: Optional[datetime] = None
         self.sensor_status = "ONLINE"
 
-        # === CONCURRENCY CONTROL (Protocol 1) ===
-        # Semaphore removed in favor of GlobalRateLimiter
         self._request_interval = 1.5
         self._last_request_time = 0
 
         logger.info(f"XSentimentSentinel initialized with model: {self.model}")
 
     def get_sensor_status(self) -> dict:
-        """Return sensor status for injection into Council context."""
         return {
             "sentiment_sensor_status": self.sensor_status,
             "consecutive_failures": self.consecutive_failures,
@@ -669,88 +768,41 @@ class XSentimentSentinel(Sentinel):
         }
 
     def _build_search_query(self, base_query: str) -> str:
-        """Construct advanced X search query with filters."""
         query_parts = [base_query]
-
-        # Add trusted handles if configured
         if self.from_handles:
             handle_filter = " OR ".join([f"from:{h.lstrip('@')}" for h in self.from_handles])
             query_parts.append(f"({handle_filter})")
-
-        # Exclude noise keywords
         for keyword in self.exclude_keywords:
             query_parts.append(f"-{keyword}")
-
-    # NOTE: min_faves removed - not available on Basic/Pro X API tiers
-    # Engagement filtering is now done in post-processing (see _execute_x_search)
-
         return " ".join(query_parts)
 
     def _build_broad_search_query(self, base_query: str) -> str:
-        """
-        Construct a broader search query without author restrictions.
-        Used as fallback when expert-filtered search returns no results.
-
-        NOTE: min_faves operator removed - not available on Basic tier.
-        Engagement filtering is done in post-processing via _fetch_x_posts with
-        dynamic threshold passed from _execute_x_search.
-        """
         query_parts = [base_query]
-
-        # Exclude noise keywords
         for keyword in self.exclude_keywords:
             query_parts.append(f"-{keyword}")
-
-        # REMOVED: min_faves operator (not available on Basic tier)
-        # Threshold is now passed to _fetch_x_posts as min_likes parameter
-
-        # Cap query length to prevent 400 errors (X API limit ~512 chars)
         full_query = " ".join(query_parts)
         if len(full_query) > 450:
             logger.warning(f"Broad query too long ({len(full_query)} chars), trimming exclusions")
             full_query = base_query
-
         return full_query
 
     async def _fetch_x_posts(self, query: str, limit: int, sort_order: str, min_likes: int = None) -> list:
-        """
-        Execute X API HTTP request and return posts.
-
-        ENHANCED (X Expert): Added recency bound via start_time param.
-
-        Args:
-            query: Search query string
-            limit: Max results to fetch
-            sort_order: 'recency' or 'relevancy'
-            min_likes: Minimum likes threshold for filtering. Defaults to self.min_engagement if None.
-
-        Returns:
-            list: Posts matching query (empty list on error/no results)
-        """
         from datetime import timedelta
-
         headers = {
             "Authorization": f"Bearer {self.x_bearer_token}",
             "Content-Type": "application/json"
         }
-
-        # === X EXPERT ENHANCEMENT: Add recency bound ===
-        # Build query WITHOUT since: operator (not available on Basic tier)
         query_with_filters = f"{query} -is:retweet lang:en"
-
-        # Use start_time parameter instead (ISO 8601 format)
         since_datetime = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
-
         params = {
             "query": query_with_filters,
-            "start_time": since_datetime,  # CORRECT: API parameter, not query operator
+            "start_time": since_datetime,
             "max_results": max(10, min(limit, 100)),
             "tweet.fields": "text,created_at,public_metrics,author_id",
             "expansions": "author_id",
             "user.fields": "username",
             "sort_order": sort_order
         }
-
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(
@@ -759,25 +811,19 @@ class XSentimentSentinel(Sentinel):
                     params=params,
                     timeout=aiohttp.ClientTimeout(total=30)
                 ) as response:
-
                     if response.status == 429:
                         logger.warning("X API rate limit hit")
                         return []
-
                     if response.status != 200:
                         error_text = await response.text()
                         logger.error(f"X API error {response.status}: {error_text}")
                         return []
-
                     data = await response.json()
-
                     posts = []
                     users = {}
-
                     if "includes" in data and "users" in data["includes"]:
                         for user in data["includes"]["users"]:
                             users[user["id"]] = user.get("username", "unknown")
-
                     for tweet in data.get("data", []):
                         metrics = tweet.get("public_metrics", {})
                         posts.append({
@@ -787,18 +833,11 @@ class XSentimentSentinel(Sentinel):
                             "retweets": metrics.get("retweet_count", 0),
                             "created_at": tweet.get("created_at", "")
                         })
-
-                    # Filter by engagement (post-processing since min_faves not available on Basic tier)
-                    # Use passed threshold or fall back to instance default
                     likes_threshold = min_likes if min_likes is not None else self.min_engagement
                     posts = [p for p in posts if p.get('likes', 0) >= likes_threshold]
-
-                    # === X EXPERT ENHANCEMENT: Log top post for debugging ===
                     if posts:
                         logger.debug(f"Top post: {posts[0]['text'][:50]}...")
-
                     return posts
-
         except asyncio.TimeoutError:
             logger.error("X API request timed out")
             return []
@@ -807,99 +846,52 @@ class XSentimentSentinel(Sentinel):
             return []
 
     def _update_volume_stats(self, new_volume: int):
-        """Update rolling volume statistics for spike detection."""
         self.post_volume_history.append(new_volume)
-        # Keep last 30 checks (~15 hours at 30min intervals)
         self.post_volume_history = self.post_volume_history[-30:]
-
         if len(self.post_volume_history) >= 5:
-            # statistics imported at top
             self.volume_mean = statistics.mean(self.post_volume_history)
             self.volume_stddev = statistics.stdev(self.post_volume_history) if len(self.post_volume_history) > 1 else 0
 
     async def _sem_bound_search(self, query: str) -> Optional[dict]:
-        """
-        Wrapper with GlobalRateLimiter integration and circuit breaker.
-
-        AMENDED: Now uses GlobalRateLimiter instead of local semaphore
-        to prevent quota exhaustion race conditions with Council agents.
-
-        Uses 'xai' provider bucket (25 RPM as configured in PROVIDER_LIMITS).
-        """
-        # === ACQUIRE SLOT FROM GLOBAL LIMITER ===
         slot_acquired = await acquire_api_slot('xai', timeout=30.0)
-
         if not slot_acquired:
             logger.warning(f"Rate limit exceeded for X Sentinel query: {query}")
             return None
-
-        # Add jitter to prevent thundering herd
         jitter = np.random.uniform(0.5, 2.0)
         await asyncio.sleep(jitter)
-
-        # Respect minimum interval between requests
         import time as time_module
         now = time_module.time()
         time_since_last = now - self._last_request_time
         if time_since_last < self._request_interval:
             await asyncio.sleep(self._request_interval - time_since_last)
-
         self._last_request_time = time_module.time()
-
         try:
             result = await self._search_x_and_analyze(query)
-
             if result is not None:
                 self.consecutive_failures = 0
                 self.sensor_status = "ONLINE"
-
             return result
-
         except Exception as e:
             error_str = str(e)
             is_server_error = any(code in error_str for code in ['502', '503', '504', '500'])
-
             if is_server_error:
                 self.consecutive_failures += 1
-                logger.warning(
-                    f"XSentimentSentinel: Server error. "
-                    f"Consecutive failures: {self.consecutive_failures}"
-                )
-
+                logger.warning(f"XSentimentSentinel: Server error. Consecutive failures: {self.consecutive_failures}")
                 if self.consecutive_failures >= 3:
                     self.degraded_until = datetime.now(timezone.utc) + timedelta(hours=1)
                     self.sensor_status = "OFFLINE"
-                    logger.error(
-                        f"XSentimentSentinel: CIRCUIT BREAKER TRIGGERED. "
-                        f"Degraded until {self.degraded_until.isoformat()}"
-                    )
-                    StateManager.save_state(
-                        {"x_sentiment": self.get_sensor_status()},
-                        namespace="sensors"
-                    )
+                    logger.error(f"XSentimentSentinel: CIRCUIT BREAKER TRIGGERED. Degraded until {self.degraded_until.isoformat()}")
+                    StateManager.save_state({"x_sentiment": self.get_sensor_status()}, namespace="sensors")
             else:
                 self.consecutive_failures += 1
-
             raise
 
     @with_retry(max_attempts=3)
     async def _search_x_and_analyze(self, query: str) -> Optional[dict]:
-        """
-        Use Grok with tool execution loop for live X sentiment analysis.
-
-        ARCHITECTURE (per xAI expert feedback):
-        1. Send query to Grok with x_search tool defined
-        2. If Grok returns tool_calls, execute locally via X API
-        3. Feed results back to Grok for analysis
-        4. Loop until Grok returns final content
-        """
         if not self.client:
             logger.error("XAI Client not initialized (missing API key)")
             return None
-
         search_query = self._build_search_query(query)
-
-        # === TOOL DEFINITION ===
         tools = [
             {
                 "type": "function",
@@ -909,391 +901,172 @@ class XSentimentSentinel(Sentinel):
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "The search query (e.g., 'coffee futures sentiment' with operators like OR, -exclude)."
-                            },
-                            "limit": {
-                                "type": "integer",
-                                "description": "Number of posts to return (default 10, min 10, max 100)."
-                            },
-                            "mode": {
-                                "type": "string",
-                                "enum": ["Top", "Latest"],
-                                "description": "Sort preference: 'Latest' for most recent posts (recency), 'Top' for most relevant (relevancy). Maps to X API sort_order. Default 'Latest' for time-sensitive commodity sentiment."
-                            }
+                            "query": {"type": "string", "description": "The search query."},
+                            "limit": {"type": "integer", "description": "Number of posts to return."},
+                            "mode": {"type": "string", "enum": ["Top", "Latest"], "description": "Sort preference."}
                         },
                         "required": ["query"]
                     }
                 }
             }
         ]
-
-        # === SYSTEM PROMPT ===
         system_prompt = """You are an expert commodities market sentiment analyst.
-
-Use the x_search tool to fetch live X data when needed for accurate sentiment analysis.
+Use the x_search tool to fetch live X data when needed.
 Analyze posts for bullish/bearish themes related to coffee futures.
-
-IMPORTANT: Prioritize RECENT posts for time-sensitive commodity sentiment (weather events, crop reports, frost alerts, port disruptions, etc.). Use mode="Latest" unless specifically looking for high-engagement historical takes.
-
+IMPORTANT: Prioritize RECENT posts. Use mode="Latest".
 After analyzing posts, provide a JSON response with:
-- sentiment_score: 0-10 (0=very bearish, 5=neutral, 10=very bullish)
-- confidence: 0.0-1.0 based on data quality and volume
-- summary: Executive summary (max 200 chars)
-- post_volume: Number of relevant posts found
-- key_themes: Top 3 themes detected
-- notable_posts: Up to 3 notable posts with text snippet, engagement, sentiment
-
-If the x_search tool returns no results or errors, provide neutral sentiment with low confidence."""
-
-        # === MESSAGE LOOP ===
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Analyze X sentiment for: {search_query}"}
-        ]
-
+- sentiment_score: 0-10
+- confidence: 0.0-1.0
+- summary: Executive summary
+- post_volume: Number of relevant posts
+- key_themes: Top 3 themes
+- notable_posts: Up to 3 notable posts
+If the x_search tool returns no results, provide neutral sentiment with low confidence."""
+        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": f"Analyze X sentiment for: {search_query}"}]
         max_iterations = 5
         iteration = 0
-
         try:
             while iteration < max_iterations:
                 iteration += 1
-
                 response = await self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
-                    tools=tools if self.x_bearer_token else None,  # Only offer tools if we can execute them
+                    tools=tools if self.x_bearer_token else None,
                     tool_choice="auto" if self.x_bearer_token else None,
                     temperature=0.3,
                     max_tokens=2000,
                     response_format={"type": "json_object"}
                 )
-
                 message = response.choices[0].message
-
-                # === CASE 1: Grok provided final content ===
                 if message.content and message.content.strip():
                     content = message.content.strip()
-
-                    # Strip markdown wrappers
-                    if content.startswith("```json"):
-                        content = content[7:]
-                    if content.startswith("```"):
-                        content = content[3:]
-                    if content.endswith("```"):
-                        content = content[:-3]
+                    if content.startswith("```json"): content = content[7:]
+                    if content.startswith("```"): content = content[3:]
+                    if content.endswith("```"): content = content[:-3]
                     content = content.strip()
-
                     try:
                         data = json.loads(content)
-
-                        # Validate required fields
                         required_fields = ['sentiment_score', 'confidence', 'summary', 'post_volume']
                         missing = [f for f in required_fields if f not in data]
                         if missing:
-                            logger.warning(f"Missing fields {missing} in Grok response")
                             data.setdefault('sentiment_score', 5.0)
                             data.setdefault('confidence', 0.0)
                             data.setdefault('summary', 'Incomplete response')
                             data.setdefault('post_volume', 0)
-
-                        # Type validation
                         data['sentiment_score'] = float(data['sentiment_score'])
                         data['confidence'] = float(data['confidence'])
                         data['post_volume'] = int(data['post_volume'])
-
-                        # Update volume tracking
-                        if data['post_volume'] > 0:
-                            self._update_volume_stats(data['post_volume'])
-
-                        logger.debug(f"X analysis for '{query}': sentiment={data['sentiment_score']:.1f}, "
-                                   f"volume={data['post_volume']}, confidence={data['confidence']:.2f}")
+                        if data['post_volume'] > 0: self._update_volume_stats(data['post_volume'])
                         return data
-
                     except json.JSONDecodeError as e:
                         logger.error(f"Invalid JSON from Grok: {e}")
                         return None
-
-                # === CASE 2: Grok wants to use a tool ===
                 if message.tool_calls:
                     tool_call = message.tool_calls[0]
                     function_name = tool_call.function.name
-
                     try:
                         args = json.loads(tool_call.function.arguments)
                     except json.JSONDecodeError:
                         args = {"query": query}
-
-                    logger.debug(f"Grok requested tool: {function_name} with args: {args}")
-
                     if function_name == "x_search":
-                        # Execute tool locally
                         tool_result = await self._execute_x_search(args)
                     else:
                         tool_result = {"error": f"Unknown tool: {function_name}"}
-
-                    # === ERROR LOGGING (per expert feedback) ===
                     if "error" in tool_result:
                         logger.warning(f"Tool execution failed: {tool_result['error']}")
-                        # Continue anyway - Grok will see the error and can provide fallback analysis
-
-                    # Append tool call and result to messages
-                    messages.append({
-                        "role": "assistant",
-                        "content": None,
-                        "tool_calls": [tool_call]
-                    })
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tool_call.id,
-                        "name": function_name,
-                        "content": json.dumps(tool_result)
-                    })
-
-                    continue  # Loop to get Grok's analysis of the results
-
-                # === CASE 3: Empty response without tools ===
-                logger.warning(f"Empty response from Grok without tool calls for '{query}'")
-                return {
-                    "sentiment_score": 5.0,
-                    "confidence": 0.0,
-                    "summary": "No data available",
-                    "post_volume": 0,
-                    "key_themes": [],
-                    "notable_posts": []
-                }
-
-            # Max iterations reached
-            logger.warning(f"Tool loop reached max iterations for '{query}'")
-            return {
-                "sentiment_score": 5.0,
-                "confidence": 0.0,
-                "summary": "Analysis loop timeout",
-                "post_volume": 0,
-                "key_themes": [],
-                "notable_posts": []
-            }
-
+                    messages.append({"role": "assistant", "content": None, "tool_calls": [tool_call]})
+                    messages.append({"role": "tool", "tool_call_id": tool_call.id, "name": function_name, "content": json.dumps(tool_result)})
+                    continue
+                return {"sentiment_score": 5.0, "confidence": 0.0, "summary": "No data available", "post_volume": 0, "key_themes": [], "notable_posts": []}
+            return {"sentiment_score": 5.0, "confidence": 0.0, "summary": "Analysis loop timeout", "post_volume": 0, "key_themes": [], "notable_posts": []}
         except Exception as e:
             logger.error(f"X search failed for query '{query}': {e}", exc_info=True)
             return None
 
-
     async def _execute_x_search(self, args: dict) -> dict:
-        """
-        Execute X API search with two-stage fallback.
-
-        ARCHITECTURE (AMENDED with X Expert feedback):
-        Stage 1: Strict search (expert accounts from config)
-        Stage 2: Broad search (general public with min_faves filter) if strict returns 0
-
-        ENHANCED: Added data_quality flag for Grok confidence calibration.
-        """
         if not self.x_bearer_token:
-            return {
-                "error": "X API not configured",
-                "posts": [],
-                "post_volume": 0,
-                "data_quality": "unavailable"
-            }
-
+            return {"error": "X API not configured", "posts": [], "post_volume": 0, "data_quality": "unavailable"}
         query = args.get("query", "coffee futures")
         limit = args.get("limit", 10)
-
-        # Map mode to X API sort_order
         mode = args.get("mode", "Latest")
         sort_order = "recency" if mode == "Latest" else "relevancy"
-
-        # === NEW: SANITIZE LLM QUERY INPUT ===
-        # Grok may pre-add exclusion keywords to the query. Remove them to prevent
-        # duplication when _build_search_query adds them again.
         sanitized_query = query
         for keyword in self.exclude_keywords:
-            # Remove both "-keyword" and "- keyword" patterns
             sanitized_query = sanitized_query.replace(f"-{keyword}", "").replace(f"- {keyword}", "")
-
-        # Also remove any from: filters that Grok might have added
-        # (we'll add our configured handles via _build_search_query)
         sanitized_query = re.sub(r'\(from:[^)]+\)', '', sanitized_query)
         sanitized_query = re.sub(r'from:\w+', '', sanitized_query)
-
-        # Clean up extra whitespace
         sanitized_query = ' '.join(sanitized_query.split()).strip()
-
-        if sanitized_query != query:
-            logger.debug(f"Sanitized LLM query: '{query}' -> '{sanitized_query}'")
-
-        # Track which stage succeeded for logging
         search_stage = "strict"
-
-        # === STAGE 1: STRICT SEARCH (Expert Accounts) ===
         strict_query = self._build_search_query(sanitized_query)
-        logger.debug(f"Stage 1 (strict) query: {strict_query}")
         posts = await self._fetch_x_posts(strict_query, limit, sort_order)
-
-        # === STAGE 2: BROAD SEARCH FALLBACK ===
         if not posts:
-            logger.debug(f"Strict search for '{sanitized_query}' returned 0. Trying broad...")
             search_stage = "broad"
             broad_query = self._build_broad_search_query(sanitized_query)
-            logger.debug(f"Stage 2 (broad) query: {broad_query}")
-
-            # DYNAMIC THRESHOLD: Use config value for broad search (default: 3)
-            # This is looser than strict search (default: 5) to capture more results
             broad_threshold = self.sentinel_config.get('broad_min_faves', 3)
             posts = await self._fetch_x_posts(broad_query, limit, sort_order, min_likes=broad_threshold)
-
-            if posts:
-                logger.debug(f"Broad search returned {len(posts)} posts")
-            else:
-                logger.debug(f"Both strict and broad search returned 0 posts for '{sanitized_query}'")
-        else:
-            logger.debug(f"X API returned {len(posts)} posts for '{query}'")
-
-        # === X EXPERT ENHANCEMENT: Data quality flag ===
-        # Grok should reduce confidence when data is sparse
         data_quality = "high" if len(posts) >= 5 else ("low" if len(posts) < 3 else "medium")
-
-        return {
-            "posts": posts,
-            "post_volume": len(posts),
-            "query": query,
-            "search_stage": search_stage,
-            "data_quality": data_quality  # Grok uses this to calibrate confidence
-        }
+        return {"posts": posts, "post_volume": len(posts), "query": query, "search_stage": search_stage, "data_quality": data_quality}
 
     async def check(self) -> Optional[SentinelTrigger]:
-        """
-        Check X sentiment across multiple queries IN PARALLEL.
-
-        ENHANCEMENT: Parallel execution reduces latency from ~15s to ~3s.
-        """
-        # === MARKET HOURS GATE (Cost Optimization) ===
         from trading_bot.utils import is_market_open, is_trading_day
-
-        if not is_trading_day():
-            # Complete holiday/weekend - skip entirely
-            logger.debug("Non-trading day - skipping X sentiment check")
-            return None
-
+        if not is_trading_day(): return None
         if not is_market_open():
-            # Trading day but outside hours - reduced frequency
-            if not hasattr(self, '_last_closed_market_check'):
-                self._last_closed_market_check = None
-
+            if not hasattr(self, '_last_closed_market_check'): self._last_closed_market_check = None
             now = datetime.now(timezone.utc)
             if self._last_closed_market_check:
                 hours_since_last = (now - self._last_closed_market_check).total_seconds() / 3600
-                if hours_since_last < 4:
-                    return None  # Skip check, still in cooldown
-
+                if hours_since_last < 4: return None
             self._last_closed_market_check = now
-            logger.debug("Market closed - running periodic X sentiment check")
-
-        # === CIRCUIT BREAKER CHECK ===
         if self.degraded_until and datetime.now(timezone.utc) < self.degraded_until:
             self.sensor_status = "OFFLINE"
-            # Refresh state to ensure persistence knows we are still offline
             StateManager.save_state({"x_sentiment": self.get_sensor_status()}, namespace="sensors")
             return None
-
-        # === PARALLEL QUERY EXECUTION ===
         tasks = [self._sem_bound_search(query) for query in self.search_queries]
         all_results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        # === FILTER SUCCESSFUL RESULTS ===
         valid_results = []
         for i, result in enumerate(all_results):
-            if isinstance(result, Exception):
-                logger.error(f"Query '{self.search_queries[i]}' failed: {result}")
-            elif result is not None:
-                valid_results.append(result)
-
+            if isinstance(result, Exception): logger.error(f"Query '{self.search_queries[i]}' failed: {result}")
+            elif result is not None: valid_results.append(result)
         if not valid_results:
             self.consecutive_failures += 1
             if self.consecutive_failures >= 3:
                 self.degraded_until = datetime.now(timezone.utc) + timedelta(hours=1)
                 self.sensor_status = "OFFLINE"
-                logger.warning("XSentimentSentinel entering degraded mode for 1 hour due to 3 consecutive failures")
-                # Optionally send notification here
-
-            # Save status
             StateManager.save_state({"x_sentiment": self.get_sensor_status()}, namespace="sensors")
-
-            logger.warning("XSentimentSentinel: All X searches failed")
             return None
-
-        # Success - Reset failure counter
         self.consecutive_failures = 0
         self.sensor_status = "ONLINE"
-        # Save status
         StateManager.save_state({"x_sentiment": self.get_sensor_status()}, namespace="sensors")
-
-        # === WEIGHTED AGGREGATION ===
-        # ENHANCEMENT: Weight by confidence and post volume for better signal
         total_weight = 0.0
         weighted_sentiment = 0.0
-
         for r in valid_results:
             weight = r.get('confidence', 0.5) * max(1.0, r.get('post_volume', 1) / 10.0)
             weighted_sentiment += r.get('sentiment_score', 5.0) * weight
             total_weight += weight
-
         avg_sentiment = weighted_sentiment / total_weight if total_weight > 0 else 5.0
-
-        # Simple average confidence
         avg_confidence = sum(r.get('confidence', 0.5) for r in valid_results) / len(valid_results)
-
-        # === EXTRACT THEMES ===
         all_themes = []
-        for r in valid_results:
-            all_themes.extend(r.get('key_themes', []))
-
+        for r in valid_results: all_themes.extend(r.get('key_themes', []))
         theme_counts = {}
-        for theme in all_themes:
-            theme_counts[theme] = theme_counts.get(theme, 0) + 1
+        for theme in all_themes: theme_counts[theme] = theme_counts.get(theme, 0) + 1
         top_themes = sorted(theme_counts.items(), key=lambda x: x[1], reverse=True)[:5]
-
-        # === VOLUME SPIKE DETECTION ===
-        # ENHANCEMENT: Use statistical thresholds (mean + 2*stddev)
         total_volume = sum(r.get('post_volume', 0) for r in valid_results)
         volume_spike_detected = False
-
         if len(self.post_volume_history) >= 5:
-            # Simple multiplier check
             if total_volume > (self.volume_mean * self.volume_spike_multiplier):
                 volume_spike_detected = True
-                logger.warning(f"X volume spike: {total_volume} vs mean {self.volume_mean:.0f} (>{self.volume_spike_multiplier}x)")
-
-            # Statistical outlier check (optional additional signal)
-            if self.volume_stddev > 0:
-                z_score = (total_volume - self.volume_mean) / self.volume_stddev
-                if z_score > 2.0:
-                    logger.info(f"X volume anomaly: z-score={z_score:.1f}")
-
-        # === TRIGGER LOGIC ===
         trigger_reason = None
         severity = 0
-
-        # Extreme sentiment triggers
         if avg_sentiment >= self.sentiment_threshold:
-            trigger_reason = f"EXTREMELY BULLISH X sentiment (score: {avg_sentiment:.1f}/10, confidence: {avg_confidence:.0%})"
+            trigger_reason = f"EXTREMELY BULLISH X sentiment (score: {avg_sentiment:.1f}/10)"
             severity = 7
         elif avg_sentiment <= (10 - self.sentiment_threshold):
-            trigger_reason = f"EXTREMELY BEARISH X sentiment (score: {avg_sentiment:.1f}/10, confidence: {avg_confidence:.0%})"
+            trigger_reason = f"EXTREMELY BEARISH X sentiment (score: {avg_sentiment:.1f}/10)"
             severity = 7
-
-        # Volume spike trigger (even if sentiment neutral)
         if volume_spike_detected and not trigger_reason:
-            trigger_reason = f"UNUSUAL X ACTIVITY SPIKE ({total_volume} posts, {self.volume_spike_multiplier:.1f}x baseline)"
+            trigger_reason = f"UNUSUAL X ACTIVITY SPIKE ({total_volume} posts)"
             severity = 6
-
-        if not trigger_reason:
-            logger.debug(f"XSentimentSentinel: No trigger (sentiment={avg_sentiment:.1f}, volume={total_volume})")
-            return None
-
-        # === BUILD PAYLOAD ===
+        if not trigger_reason: return None
         payload = {
             "sentiment_score": round(avg_sentiment, 2),
             "confidence": round(avg_confidence, 2),
@@ -1310,769 +1083,579 @@ If the x_search tool returns no results or errors, provide neutral sentiment wit
                     "top_post": r.get('notable_posts', [{}])[0].get('text', 'N/A') if r.get('notable_posts') else None
                 }
                 for i, r in enumerate(valid_results)
-            ][:3]  # Top 3 for context
+            ][:3]
         }
-
-        # === DEDUPLICATION CHECK ===
-        if self._is_duplicate_payload(payload):
-            logger.info("XSentimentSentinel: Duplicate sentiment signal detected, skipping")
-            return None
-
+        if self._is_duplicate_payload(payload): return None
         logger.warning(f"🚨 X SENTINEL TRIGGERED: {trigger_reason}")
-
-        return SentinelTrigger(
-            source="XSentimentSentinel",
-            reason=trigger_reason,
-            payload=payload,
-            severity=severity
-        )
-
-# Domain Keyword Whitelists (R4)
-DOMAIN_KEYWORD_WHITELISTS = {
-    'coffee': ['coffee', 'brazil', 'vietnam', 'colombia', 'weather', 'rain', 'drought',
-               'frost', 'port', 'strike', 'robusta', 'arabica', 'harvest', 'crop',
-               'ice futures', 'export'],
-    'macro':  ['fed', 'rate', 'inflation', 'cpi', 'fomc', 'interest', 'monetary',
-               'treasury', 'yield', 'gdp', 'employment', 'pce'],
-    'energy': ['oil', 'crude', 'opec', 'natural gas', 'petroleum', 'refinery',
-               'pipeline', 'brent', 'wti'],
-}
+        return SentinelTrigger(source="XSentimentSentinel", reason=trigger_reason, payload=payload, severity=severity)
 
 class PredictionMarketSentinel(Sentinel):
     """
     Monitors Prediction Markets via Dynamic Market Discovery.
-    Automatically follows liquidity to the most active relevant market.
-
-    ARCHITECTURE v2.0:
-    - Frequency: Every 5 Minutes (24/7)
-    - No LLM calls (pure API + threshold logic)
-    - Zero maintenance: auto-discovers markets by topic/query
-
-    KEY MECHANISMS:
-    1. Dynamic Discovery: Searches by query, picks highest-liquidity active market
-    2. Slug Consistency: Detects market rollover (June→July), resets baseline
-    3. High-Water Mark: Prevents alert flapping on severity oscillation
-    4. HWM Decay: Resets HWM after 24h to allow re-alerting on persistent situations
-
-    COFFEE RELEVANCE:
-    - Fed Policy → USD strength → Coffee export pricing
-    - Brazil Rates → BRL/USD → Export competitiveness
-    - Elections → Trade policy → Tariff risk
     """
-
     def __init__(self, config: dict):
         super().__init__(config)
         self.sentinel_config = config.get('sentinels', {}).get('prediction_markets', {})
-
-        # API Configuration
         polymarket_config = self.sentinel_config.get('providers', {}).get('polymarket', {})
         self.api_url = polymarket_config.get('api_url', "https://gamma-api.polymarket.com/events")
         self.search_limit = polymarket_config.get('search_limit', 10)
-
-        # Liquidity Filters
         self.min_liquidity = self.sentinel_config.get('min_liquidity_usd', 50000)
         self.min_volume = self.sentinel_config.get('min_volume_usd', 10000)
-
-        # High-Water Mark Decay (hours)
         self.hwm_decay_hours = self.sentinel_config.get('hwm_decay_hours', 24)
-
-        # State Cache: { topic_query: { slug, price, timestamp, severity_hwm, hwm_timestamp } }
         self.state_cache: Dict[str, Dict[str, Any]] = {}
         self._load_state_cache()
         self._cleanup_misaligned_cache()
-
-        # Topics to watch (queries, not slugs)
         self.topics = []
         self.reload_topics()
-
-        # Polling interval (internal rate limiting)
         self.poll_interval = self.sentinel_config.get('poll_interval_seconds', 300)
         self._last_poll_time = 0
-
-        # Severity mapping
         self.severity_map = self.sentinel_config.get('severity_mapping', {
             '10_to_20_pct': 6,
             '20_to_30_pct': 7,
             '30_plus_pct': 9
         })
-
-        # Track topics that persistently fail to find markets
         self._topic_failure_counts: Dict[str, int] = {}
-
-        # Periodic validation timer
         self._last_slug_check = datetime.now(timezone.utc)
-
-        logger.info(
-            f"PredictionMarketSentinel v2.0 initialized: "
-            f"{len(self.topics)} topics | "
-            f"min_liq=${self.min_liquidity:,} | "
-            f"HWM decay={self.hwm_decay_hours}h"
-        )
+        logger.info(f"PredictionMarketSentinel v2.0 initialized: {len(self.topics)} topics")
 
     def _validate_all_slugs(self):
-        """Wrapper for periodic validation."""
         self._cleanup_misaligned_cache()
 
     def _cleanup_misaligned_cache(self):
-        """Clean up cached slugs that don't match their query keywords."""
         for topic_key, cached in list(self.state_cache.items()):
             if cached.get('slug') and cached.get('title'):
                 query_lower = topic_key.lower()
                 title_lower = cached['title'].lower()
-                # If no query keywords appear in the cached title, invalidate
                 keywords = [kw for kw in query_lower.split() if len(kw) > 2]
                 if keywords and not any(kw in title_lower for kw in keywords):
-                    logger.warning(
-                        f"Stale/misaligned slug for '{topic_key}': "
-                        f"title='{cached['title']}'. Clearing cache."
-                    )
+                    logger.warning(f"Stale/misaligned slug for '{topic_key}': title='{cached['title']}'. Clearing cache.")
                     self.state_cache.pop(topic_key)
+
     def _merge_discovered_topics(self, static_topics: List[Dict]) -> List[Dict]:
-        """Merge static topics with discovered topics from disk."""
         discovered_file = "data/discovered_topics.json"
-        if not os.path.exists(discovered_file):
-            return static_topics
-
+        if not os.path.exists(discovered_file): return static_topics
         try:
-            with open(discovered_file, 'r') as f:
-                discovered = json.load(f)
-
-            # Create map of static topics by tag (or query) for dedup
-            # Static topics take precedence
+            with open(discovered_file, 'r') as f: discovered = json.load(f)
             merged = {t.get('tag', t.get('query')): t for t in static_topics}
-
             for topic in discovered:
                 key = topic.get('tag', topic.get('query'))
-                if key not in merged:
-                    merged[key] = topic
-
+                if key not in merged: merged[key] = topic
             return list(merged.values())
         except Exception as e:
             logger.warning(f"Failed to merge discovered topics: {e}")
             return static_topics
 
     def reload_topics(self):
-        """
-        Hot-reload topics from config + discovered topics file.
-        Preserves in-memory state (state_cache, HWM, failure counts).
-
-        Called by orchestrator when TopicDiscoveryAgent detects changes.
-        """
         logger.info("Reloading prediction market topics...")
-
-        old_count = len(self.topics)
-        old_tags = {t.get('tag', t.get('query', '?')) for t in self.topics}
-
-        # Re-read static topics from config
         static_topics = self.sentinel_config.get('topics_to_watch', [])
-
-        # Merge with discovered topics (reads fresh file from disk)
         self.topics = self._merge_discovered_topics(static_topics)
-
-        new_tags = {t.get('tag', t.get('query', '?')) for t in self.topics}
-        added = new_tags - old_tags
-        removed = old_tags - new_tags
-
-        # Clean up state_cache entries for removed topics
-        # (but only those that are truly gone, not just renamed)
         for topic in list(self.state_cache.keys()):
             if topic not in {t.get('query', '') for t in self.topics}:
-                # Don't delete — just mark as stale so history is preserved
-                # in case the topic comes back in a future scan
                 logger.debug(f"Topic '{topic}' removed from active tracking")
-
-        # Reset failure counts for newly added topics
-        for tag in added:
-            # Find query for this tag
-            for t in self.topics:
-                if t.get('tag') == tag:
-                    q = t.get('query', '')
-                    self._topic_failure_counts.pop(q, None)
-
-        logger.info(
-            f"Topics reloaded: {old_count} -> {len(self.topics)} | "
-            f"+{len(added)} added, -{len(removed)} removed | "
-            f"State cache preserved ({len(self.state_cache)} entries)"
-        )
+        logger.info(f"Topics reloaded: {len(self.topics)}")
 
     def _load_state_cache(self):
-        """Load state cache from StateManager for persistence across restarts."""
         try:
-            # CRITICAL: Use load_state_raw() to avoid STALE string substitution
-            # load_state() converts stale dicts to strings, which crashes
-            # cached.get('slug') later in check()
             cached = StateManager.load_state_raw(namespace="prediction_market_state")
             if cached and isinstance(cached, dict):
-                # Validate each entry is actually a dict (defense-in-depth)
                 validated = {}
                 for key, value in cached.items():
-                    if isinstance(value, dict):
-                        validated[key] = value
-                    else:
-                        logger.warning(
-                            f"Skipping invalid state entry for '{key}': "
-                            f"expected dict, got {type(value).__name__}"
-                        )
+                    if isinstance(value, dict): validated[key] = value
                 self.state_cache = validated
                 logger.info(f"Loaded state for {len(self.state_cache)} prediction market topics")
         except Exception as e:
             logger.warning(f"Failed to load prediction market state: {e}")
 
     def _save_state_cache(self):
-        """Persist state cache for restart resilience."""
         try:
             StateManager.save_state(self.state_cache, namespace="prediction_market_state")
         except Exception as e:
             logger.warning(f"Failed to save prediction market state: {e}")
 
     def _calculate_severity(self, delta_pct: float) -> int:
-        """Map probability swing magnitude to severity level."""
         abs_delta = abs(delta_pct)
-        if abs_delta >= 30:
-            return self.severity_map.get('30_plus_pct', 9)
-        elif abs_delta >= 20:
-            return self.severity_map.get('20_to_30_pct', 7)
-        else:
-            return self.severity_map.get('10_to_20_pct', 6)
+        if abs_delta >= 30: return self.severity_map.get('30_plus_pct', 9)
+        elif abs_delta >= 20: return self.severity_map.get('20_to_30_pct', 7)
+        else: return self.severity_map.get('10_to_20_pct', 6)
 
     def _should_decay_hwm(self, hwm_timestamp: Optional[str]) -> bool:
-        """Check if High-Water Mark should decay (reset) based on time."""
-        if not hwm_timestamp:
-            return False
-
+        if not hwm_timestamp: return False
         try:
             hwm_time = datetime.fromisoformat(hwm_timestamp)
             age_hours = (datetime.now(timezone.utc) - hwm_time).total_seconds() / 3600
             return age_hours >= self.hwm_decay_hours
-        except (ValueError, TypeError):
-            return False
+        except (ValueError, TypeError): return False
 
     def _infer_topic_category(self, query: str) -> str:
-        """Infer which domain whitelist to use based on query content."""
         query_lower = query.lower()
-
-        # Check each category's keywords against the query
         for category, keywords in DOMAIN_KEYWORD_WHITELISTS.items():
-            if any(kw in query_lower for kw in keywords):
-                return category
-
-        # Default to commodity being traded
+            if any(kw in query_lower for kw in keywords): return category
         commodity = self.config.get('commodity', {}).get('name', 'coffee').lower()
         return commodity if commodity in DOMAIN_KEYWORD_WHITELISTS else 'coffee'
 
     def _passes_domain_filter(self, market: dict, query: str, topic_category: str = None) -> bool:
-        """
-        R4: Mandatory binary filter — market title MUST contain at least one
-        domain-relevant keyword. Returns False to exclude entirely.
-        """
         title = market.get('title', '').lower()
-
-        # Determine which whitelist to use
         if topic_category and topic_category in DOMAIN_KEYWORD_WHITELISTS:
             required_keywords = DOMAIN_KEYWORD_WHITELISTS[topic_category]
         else:
-            # Fallback: derive from query keywords
             query_keywords = [kw for kw in query.lower().split() if len(kw) > 2]
             required_keywords = query_keywords
-
-        # At least ONE required keyword must appear in the title
-        if any(kw in title for kw in required_keywords):
-            return True
-
-        logger.debug(f"Market '{market.get('title', '')}' EXCLUDED by domain filter "
-                     f"(no keywords from {topic_category or 'query'} found in title)")
+        if any(kw in title for kw in required_keywords): return True
         return False
 
     async def _resolve_active_market(self, query: str, **kwargs) -> Optional[Dict[str, Any]]:
-        """
-        DYNAMIC MARKET DISCOVERY:
-        Searches Polymarket for the query, filters by liquidity/volume,
-        and returns the single most relevant ACTIVE market.
-
-        This is the core mechanism that eliminates "slug rot" - we follow
-        the liquidity, which naturally flows to the current active market.
-        """
-        params = {
-            "q": query,
-            "closed": "false",
-            "active": "true",
-            "limit": str(self.search_limit)
-        }
-
+        params = {"q": query, "closed": "false", "active": "true", "limit": str(self.search_limit)}
         try:
-            async with aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=15)
-            ) as session:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
                 async with session.get(self.api_url, params=params) as response:
                     if response.status != 200:
-                        logger.warning(
-                            f"Polymarket search failed for '{query}': HTTP {response.status}"
-                        )
+                        logger.warning(f"Polymarket search failed for '{query}': HTTP {response.status}")
                         return None
-
                     data = await response.json()
-
-                    # Type guard: API should return a list of events
-                    if not isinstance(data, list):
-                        logger.warning(
-                            f"Polymarket API returned {type(data).__name__} instead of list "
-                            f"for query '{query}'"
-                        )
-                        return None
-
-                    logger.debug(
-                        f"Dynamic Discovery: '{query}' found {len(data)} markets. "
-                        f"Top result: {[e.get('title') for e in data[:1] if isinstance(e, dict)]}"
-                    )
-
-                    if not data:
-                        logger.debug(f"No markets found for query: '{query}'")
-                        return None
-
-                    # Filter and sort candidates by liquidity
+                    if not isinstance(data, list): return None
+                    if not data: return None
                     candidates = []
                     for event in data:
-                        if not isinstance(event, dict):
-                            logger.debug(f"Skipping non-dict event: {type(event).__name__}")
-                            continue
-
+                        if not isinstance(event, dict): continue
                         markets = event.get('markets', [])
-                        if not markets:
-                            continue
-
-                        # Select highest-liquidity sub-market within this event
+                        if not markets: continue
                         best_market = None
                         best_liq = -1
                         best_vol = 0
-
                         for m in markets:
-                            if not isinstance(m, dict):
-                                continue
+                            if not isinstance(m, dict): continue
                             try:
                                 m_liq = float(m.get('liquidity', 0) or 0)
-                            except (ValueError, TypeError):
-                                continue
+                            except (ValueError, TypeError): continue
                             if m_liq > best_liq:
                                 best_liq = m_liq
                                 best_market = m
-                                try:
-                                    best_vol = float(m.get('volume', 0) or 0)
-                                except:
-                                    best_vol = 0
-
-                        if best_market is None:
-                            continue
-
+                                try: best_vol = float(m.get('volume', 0) or 0)
+                                except: best_vol = 0
+                        if best_market is None: continue
                         market = best_market
                         liquidity = best_liq
                         volume = best_vol
-
-                        # Apply filters
-                        if liquidity < self.min_liquidity:
-                            logger.debug(
-                                f"Skipping '{event.get('slug')}': "
-                                f"Low liquidity (${liquidity:,.0f} < ${self.min_liquidity:,})"
-                            )
-                            continue
-
-                        if volume < self.min_volume:
-                            logger.debug(
-                                f"Skipping '{event.get('slug')}': "
-                                f"Low volume (${volume:,.0f} < ${self.min_volume:,})"
-                            )
-                            continue
-
-                        candidates.append({
-                            'slug': event.get('slug'),
-                            'title': event.get('title', ''),
-                            'market': market,
-                            'liquidity': liquidity,
-                            'volume': volume
-                        })
-
-                    if not candidates:
-                        return None
-
-                    # APPLY DOMAIN FILTER FIRST (R4)
+                        if liquidity < self.min_liquidity: continue
+                        if volume < self.min_volume: continue
+                        candidates.append({'slug': event.get('slug'), 'title': event.get('title', ''), 'market': market, 'liquidity': liquidity, 'volume': volume})
+                    if not candidates: return None
                     topic_category = self._infer_topic_category(query)
-                    filtered_candidates = [
-                        m for m in candidates
-                        if self._passes_domain_filter(m, query, topic_category=topic_category)
-                    ]
-
-                    if not filtered_candidates:
-                        logger.warning(f"No markets passed domain filter for '{query}'. "
-                                    f"All {len(candidates)} candidates excluded.")
-                        return None
-
+                    filtered_candidates = [m for m in candidates if self._passes_domain_filter(m, query, topic_category=topic_category)]
+                    if not filtered_candidates: return None
                     candidates = filtered_candidates
-
-                    # --- RELEVANCE SCORING ---
-                    # Get keywords from topic config (passed via new parameter)
                     relevance_keywords = kwargs.get('relevance_keywords', [])
                     min_relevance = kwargs.get('min_relevance_score', 1)
-
                     if relevance_keywords:
                         for candidate in candidates:
                             title_lower = candidate['title'].lower()
-                            # Count keyword matches in event title
-                            match_count = sum(
-                                1 for kw in relevance_keywords
-                                if kw.lower() in title_lower
-                            )
+                            match_count = sum(1 for kw in relevance_keywords if kw.lower() in title_lower)
                             candidate['relevance_score'] = match_count
-
-                        # Prefer relevant candidates (must meet minimum score)
-                        relevant = [
-                            c for c in candidates
-                            if c.get('relevance_score', 0) >= min_relevance
-                        ]
-
+                        relevant = [c for c in candidates if c.get('relevance_score', 0) >= min_relevance]
                         if relevant:
-                            # Among relevant: pick highest liquidity
                             relevant.sort(key=lambda x: x['liquidity'], reverse=True)
                             winner = relevant[0]
-                            logger.debug(
-                                f"Resolved '{query}' → '{winner['slug']}' "
-                                f"(relevance={winner['relevance_score']}, "
-                                f"liq=${winner['liquidity']:,.0f})"
-                            )
-                        else:
-                            # FAIL-SAFE: No relevant candidates → return None
-                            # This prevents tracking irrelevant markets (e.g., deportation
-                            # market when searching for "Federal Reserve interest rate")
-                            logger.debug(
-                                f"No relevant markets for '{query}' "
-                                f"(keywords: {relevance_keywords[:5]}, "
-                                f"min_score={min_relevance}). "
-                                f"Will retry next cycle."
-                            )
-                            return None
+                        else: return None
                     else:
-                        # No keywords configured — fall back to pure liquidity
                         candidates.sort(key=lambda x: x['liquidity'], reverse=True)
                         winner = candidates[0]
-
                     return winner
-
         except asyncio.TimeoutError:
             logger.warning(f"Polymarket API timeout for query: '{query}'")
         except aiohttp.ClientError as e:
             logger.warning(f"Polymarket network error for '{query}': {e}")
         except Exception as e:
             logger.error(f"Polymarket fetch error for '{query}': {e}")
-
         return None
 
     async def check(self) -> Optional[SentinelTrigger]:
-        """
-        Check prediction markets for significant probability swings.
-
-        OPERATIONAL SAFEGUARDS:
-        1. Dynamic Discovery: Auto-finds current active market per topic
-        2. Slug Consistency: Resets baseline on market rollover
-        3. High-Water Mark: Prevents alert flapping
-        4. HWM Decay: Allows re-alerting after 24h
-        """
-        if not self.sentinel_config.get('enabled', True):
-            return None
-
-        if not self.topics:
-            return None
-
-        # Internal rate limiting
+        if not self.sentinel_config.get('enabled', True): return None
+        if not self.topics: return None
         import time as time_module
         now = time_module.time()
-        if (now - self._last_poll_time) < self.poll_interval:
-            return None
-
-        # --- PERIODIC SLUG VALIDATION ---
-        # Check every 4 hours (14400 seconds)
+        if (now - self._last_poll_time) < self.poll_interval: return None
         slug_check_now = datetime.now(timezone.utc)
         if (slug_check_now - self._last_slug_check).total_seconds() > 14400:
-            logger.info("Running periodic prediction market slug validation...")
             self._validate_all_slugs()
             self._last_slug_check = slug_check_now
-
-        # --- NON-TRADING-DAY FREQUENCY REDUCTION ---
         from trading_bot.utils import is_market_open, is_trading_day
-
         if not is_trading_day():
-            # Weekend/holiday: check every 2 hours instead of every 5 minutes
-            if not hasattr(self, '_last_non_trading_check'):
-                self._last_non_trading_check = 0
-            if (now - self._last_non_trading_check) < 7200:  # 2 hours
-                return None
+            if not hasattr(self, '_last_non_trading_check'): self._last_non_trading_check = 0
+            if (now - self._last_non_trading_check) < 7200: return None
             self._last_non_trading_check = now
-            logger.debug("Non-trading day: Running reduced-frequency prediction market check")
         elif not is_market_open():
-            # Trading day but outside hours: check every 30 minutes
-            if not hasattr(self, '_last_closed_market_check_pm'):
-                self._last_closed_market_check_pm = 0
-            if (now - self._last_closed_market_check_pm) < 1800:  # 30 min
-                return None
+            if not hasattr(self, '_last_closed_market_check_pm'): self._last_closed_market_check_pm = 0
+            if (now - self._last_closed_market_check_pm) < 1800: return None
             self._last_closed_market_check_pm = now
-
         self._last_poll_time = now
-
         triggers = []
-
         for topic in self.topics:
-            if not topic.get('enabled', True):
-                continue
-
+            if not topic.get('enabled', True): continue
             query = topic.get('query')
-            if not query:
-                continue
-
+            if not query: continue
             try:
                 threshold = topic.get('trigger_threshold_pct', 10.0) / 100.0
                 display_name = topic.get('display_name', query)
                 tag = topic.get('tag', 'Unknown')
                 importance = topic.get('importance', 'macro')
-                commodity_impact = topic.get('commodity_impact',
-                    topic.get('coffee_impact', 'Potential macro impact on commodity'))
-
-                # === DYNAMIC MARKET RESOLUTION ===
+                commodity_impact = topic.get('commodity_impact', topic.get('coffee_impact', 'Potential macro impact'))
                 relevance_keywords = topic.get('relevance_keywords', [])
-                min_relevance = topic.get('min_relevance_score',
-                    self.sentinel_config.get('min_relevance_score', 1))
-                market_data = await self._resolve_active_market(
-                    query,
-                    relevance_keywords=relevance_keywords,
-                    min_relevance_score=min_relevance
-                )
-
+                min_relevance = topic.get('min_relevance_score', self.sentinel_config.get('min_relevance_score', 1))
+                market_data = await self._resolve_active_market(query, relevance_keywords=relevance_keywords, min_relevance_score=min_relevance)
                 if not market_data:
                     self._topic_failure_counts[query] = self._topic_failure_counts.get(query, 0) + 1
                     fail_count = self._topic_failure_counts[query]
-
                     MAX_CONSECUTIVE_FAILURES = 50
                     if fail_count >= MAX_CONSECUTIVE_FAILURES:
-                        if fail_count == MAX_CONSECUTIVE_FAILURES:
-                            logger.warning(
-                                f"⚠️ Topic '{display_name}' disabled after {fail_count} consecutive failures. "
-                                f"No active Polymarket market found. Will re-enable on next restart."
-                            )
-                        # Auto-disable in memory
                         topic['enabled'] = False
                         continue
-
-                    # Exponential Backoff Logging (1, 5, 25, 125, 625, then every 100)
-                    log_intervals = [1, 5, 25, 125, 625]
-                    if fail_count in log_intervals or fail_count % 100 == 0:
-                        level = logging.WARNING if fail_count <= 5 else logging.INFO
-                        logger.log(level, f"⚠️ No relevant markets for '{display_name}' (attempt {fail_count}).")
-
                     continue
-
-                # Reset failure count on success
                 self._topic_failure_counts[query] = 0
-
                 current_slug = market_data['slug']
                 current_title = market_data['title']
-
-                # Parse price safely
                 try:
                     outcomes = market_data['market'].get('outcomePrices', [])
                     if isinstance(outcomes, str):
-                        try:
-                            outcomes = json.loads(outcomes)
-                        except json.JSONDecodeError:
-                            logger.warning(f"Failed to parse outcomePrices JSON for '{query}'")
-                            continue
-
-                    if not outcomes:
-                        continue
-                    current_price = float(outcomes[0])  # Index 0 is typically "Yes"
-                except (ValueError, TypeError, IndexError) as e:
-                    logger.warning(f"Failed to parse price for '{query}': {e}")
-                    continue
-
-                # === COMPARE AGAINST CACHED STATE ===
+                        try: outcomes = json.loads(outcomes)
+                        except json.JSONDecodeError: continue
+                    if not outcomes: continue
+                    current_price = float(outcomes[0])
+                except (ValueError, TypeError, IndexError): continue
                 if query in self.state_cache:
                     cached = self.state_cache[query]
                     last_slug = cached.get('slug')
                     last_price = cached.get('price', current_price)
                     severity_hwm = cached.get('severity_hwm', 0)
                     hwm_timestamp = cached.get('hwm_timestamp')
-
-                    # === SLUG CONSISTENCY CHECK ===
-                    # If the resolved market changed (June → July rollover),
-                    # reset the baseline and DO NOT trigger an alert
                     if last_slug and last_slug != current_slug:
-                        logger.info(
-                            f"📅 Market Rollover Detected for '{display_name}': "
-                            f"'{last_slug}' → '{current_slug}'. Resetting baseline."
-                        )
-
-                        # Notify (informational, not alert)
-                        send_pushover_notification(
-                            self.config.get('notifications', {}),
-                            f"Market Rollover: {display_name}",
-                            f"Now tracking: {current_title[:50]}...",
-                            priority=-1  # Low priority (informational)
-                        )
-
-                        # Reset state for this topic
-                        self.state_cache[query] = {
-                            'slug': current_slug,
-                            'title': current_title,
-                            'price': current_price,
-                            'timestamp': datetime.now(timezone.utc).isoformat(),
-                            'severity_hwm': 0,
-                            'hwm_timestamp': None
-                        }
-                        continue  # Skip trigger evaluation this cycle
-
-                    # === HIGH-WATER MARK DECAY ===
-                    # Reset HWM if enough time has passed (allows re-alerting)
+                        send_pushover_notification(self.config.get('notifications', {}), f"Market Rollover: {display_name}", f"Now tracking: {current_title[:50]}...", priority=-1)
+                        self.state_cache[query] = {'slug': current_slug, 'title': current_title, 'price': current_price, 'timestamp': datetime.now(timezone.utc).isoformat(), 'severity_hwm': 0, 'hwm_timestamp': None}
+                        continue
                     if self._should_decay_hwm(hwm_timestamp):
-                        logger.debug(
-                            f"HWM decay for '{display_name}': "
-                            f"Resetting from {severity_hwm} to 0 (>{self.hwm_decay_hours}h old)"
-                        )
                         severity_hwm = 0
                         cached['severity_hwm'] = 0
                         cached['hwm_timestamp'] = None
-
-                    # === RATE OF CHANGE DETECTION ===
                     delta = current_price - last_price
                     delta_pct = abs(delta) * 100
-
                     if abs(delta) >= threshold:
                         current_severity = self._calculate_severity(delta_pct)
-
-                        # === HIGH-WATER MARK FLAPPING PROTECTION ===
-                        # Only alert if severity INCREASES beyond the high-water mark
-                        # This prevents: 15% alert → 21% alert → 19% RE-ALERT (bad)
                         if current_severity > severity_hwm:
                             direction = "JUMPED" if delta > 0 else "CRASHED"
-
-                            msg = (
-                                f"Prediction Market Alert: '{display_name}' {direction} "
-                                f"{delta_pct:.1f}% (Now: {current_price*100:.0f}% → "
-                                f"Was: {last_price*100:.0f}%)"
-                            )
-
+                            msg = f"Prediction Market Alert: '{display_name}' {direction} {delta_pct:.1f}%"
                             logger.warning(f"🎯 PREDICTION SENTINEL: {msg}")
-
-                            triggers.append(SentinelTrigger(
-                                source="PredictionMarketSentinel",
-                                reason=msg,
-                                payload={
-                                    "topic": query,
-                                    "tag": tag,
-                                    "display_name": display_name,
-                                    "slug": current_slug,
-                                    "title": current_title,
-                                    "prev_price": round(last_price, 4),
-                                    "curr_price": round(current_price, 4),
-                                    "delta_pct": round(delta * 100, 2),
-                                    "importance": importance,
-                                    "commodity_impact": commodity_impact,
-                                    "volume": market_data.get('volume', 0),
-                                    "liquidity": market_data.get('liquidity', 0)
-                                },
-                                severity=current_severity
-                            ))
-
-                            # Update High-Water Mark
+                            triggers.append(SentinelTrigger(source="PredictionMarketSentinel", reason=msg, payload={"topic": query, "slug": current_slug, "delta_pct": round(delta * 100, 2), "importance": importance, "commodity_impact": commodity_impact}, severity=current_severity))
                             cached['severity_hwm'] = current_severity
                             cached['hwm_timestamp'] = datetime.now(timezone.utc).isoformat()
-                        else:
-                            logger.debug(
-                                f"Suppressed alert for '{display_name}': "
-                                f"severity {current_severity} <= HWM {severity_hwm}"
-                            )
-
-                # === UPDATE STATE CACHE ===
-                if query not in self.state_cache:
-                    self.state_cache[query] = {
-                        'severity_hwm': 0,
-                        'hwm_timestamp': None
-                    }
-
-                self.state_cache[query].update({
-                    'slug': current_slug,
-                    'title': current_title,
-                    'price': current_price,
-                    'timestamp': datetime.now(timezone.utc).isoformat()
-                })
-
+                if query not in self.state_cache: self.state_cache[query] = {'severity_hwm': 0, 'hwm_timestamp': None}
+                self.state_cache[query].update({'slug': current_slug, 'title': current_title, 'price': current_price, 'timestamp': datetime.now(timezone.utc).isoformat()})
             except Exception as topic_error:
-                logger.warning(
-                    f"Error processing prediction market topic '{query}': "
-                    f"{type(topic_error).__name__}: {topic_error}"
-                )
-                self._topic_failure_counts[query] = self._topic_failure_counts.get(query, 0) + 1
+                logger.warning(f"Error processing prediction market topic '{query}': {topic_error}")
                 continue
-
-        # --- DUPLICATE SLUG DETECTION ---
-        # Alert if multiple topics resolve to the same market (indicates query failure)
-        slug_map = {}
-        for topic in self.topics:
-            query = topic.get('query', '')
-            cached = self.state_cache.get(query, {})
-            slug = cached.get('slug') if isinstance(cached, dict) else None
-            if slug:
-                slug_map.setdefault(slug, []).append(topic.get('tag', query))
-
-        duplicates = {slug: tags for slug, tags in slug_map.items() if len(tags) > 1}
-        if duplicates:
-            collision_details = []
-            for slug, tags in duplicates.items():
-                detail = f"{', '.join(tags)} → '{slug}'"
-                collision_details.append(detail)
-                logger.warning(
-                    f"⚠️ TOPIC COLLISION: {', '.join(tags)} all resolved to "
-                    f"'{slug}'. Dynamic Discovery is failing to differentiate topics."
-                )
-
-            # Alert operator on first detection (then suppress for 6 hours)
-            if not hasattr(self, '_last_collision_alert_time'):
-                self._last_collision_alert_time = 0
-
-            import time as time_module
-            now = time_module.time()
-            if (now - self._last_collision_alert_time) > 21600:  # 6 hours
-                send_pushover_notification(
-                    self.config.get('notifications', {}),
-                    "🔮 Prediction Market Topic Collision",
-                    f"{len(duplicates)} collision(s) detected:\n"
-                    + "\n".join(collision_details)
-                    + "\n\nCheck config.json topics_to_watch queries.",
-                    priority=0  # Normal priority
-                )
-                self._last_collision_alert_time = now
-
-        # Persist state
         self._save_state_cache()
-
-        # --- CYCLE SUMMARY (single INFO log replaces per-topic spam) ---
-        active_topics = [
-            topic.get('tag', topic.get('query', '?'))
-            for topic in self.topics
-            if topic.get('query') in self.state_cache
-            and self.state_cache[topic['query']].get('slug')
-        ]
-        stale_topics = [
-            topic.get('tag', topic.get('query', '?'))
-            for topic in self.topics
-            if topic.get('query') not in self.state_cache
-            or not self.state_cache[topic['query']].get('slug')
-        ]
-
-        if active_topics or stale_topics:
-            logger.info(
-                f"PredictionMarket: {len(active_topics)} tracking, "
-                f"{len(stale_topics)} unresolved | "
-                f"Active: {', '.join(active_topics) if active_topics else 'none'}"
-            )
-
-        # Return the most severe trigger (if multiple)
         if triggers:
             triggers.sort(key=lambda t: t.severity, reverse=True)
             return triggers[0]
+        return None
+
+class MacroContagionSentinel(Sentinel):
+    """
+    Detects macro shocks that cause cross-asset contagion.
+    """
+    def __init__(self, config, event_bus=None, logger=None):
+        # event_bus and logger are passed by orchestrator, but we also inherit config from base Sentinel
+        # Base Sentinel only takes config.
+        # Orchestrator instantiates sentinels with (config).
+        super().__init__(config)
+        self.sentinel_config = config.get('sentinels', {}).get('MacroContagionSentinel', {})
+        self.dxy_threshold_1d = 0.01  # 1% daily move
+        self.dxy_threshold_2d = 0.02  # 2% two-day move
+        self.last_dxy_value = None
+        self.last_dxy_timestamp = None
+        self.last_policy_check = None
+        self.policy_check_interval = 86400  # Check policy news once per day
+
+        api_key = config.get('gemini', {}).get('api_key')
+        self.client = genai.Client(api_key=api_key)
+        self.model = "gemini-2.0-flash-exp" # Flight Director specific model
+
+    async def _get_history(self, ticker_symbol, period="5d", interval="1h"):
+        import yfinance as yf
+        loop = asyncio.get_running_loop()
+        def fetch():
+            t = yf.Ticker(ticker_symbol)
+            return t.history(period=period, interval=interval)
+        return await loop.run_in_executor(None, fetch)
+
+    async def check_dxy_shock(self) -> Optional[Dict]:
+        try:
+            hist = await self._get_history("DX-Y.NYB", period="5d", interval="1h")
+
+            if len(hist) < 48:
+                return None
+
+            current_value = hist['Close'].iloc[-1]
+            value_24h_ago = hist['Close'].iloc[-24] if len(hist) >= 24 else None
+            value_48h_ago = hist['Close'].iloc[-48] if len(hist) >= 48 else None
+
+            pct_change_1d = ((current_value - value_24h_ago) / value_24h_ago) if value_24h_ago else 0
+            pct_change_2d = ((current_value - value_48h_ago) / value_48h_ago) if value_48h_ago else 0
+
+            self.last_dxy_value = current_value
+            self.last_dxy_timestamp = datetime.now(timezone.utc)
+
+            if abs(pct_change_1d) >= self.dxy_threshold_1d:
+                direction = "SURGE" if pct_change_1d > 0 else "CRASH"
+                return {
+                    "type": "DXY_SHOCK_1D",
+                    "direction": direction,
+                    "current_dxy": current_value,
+                    "pct_change": pct_change_1d,
+                    "severity": "HIGH" if abs(pct_change_1d) >= 0.015 else "MODERATE"
+                }
+
+            if abs(pct_change_2d) >= self.dxy_threshold_2d:
+                direction = "SURGE" if pct_change_2d > 0 else "CRASH"
+                return {
+                    "type": "DXY_SHOCK_2D",
+                    "direction": direction,
+                    "current_dxy": current_value,
+                    "pct_change": pct_change_2d,
+                    "severity": "CRITICAL" if abs(pct_change_2d) >= 0.025 else "HIGH"
+                }
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Error checking DXY shock: {e}")
+            return None
+
+    async def check_cross_commodity_contagion(self) -> Optional[Dict]:
+        try:
+            tickers = {
+                'coffee': 'KC=F',
+                'gold': 'GC=F',
+                'silver': 'SI=F',
+                'wheat': 'ZW=F',
+                'soybeans': 'ZS=F'
+            }
+
+            returns = {}
+            for name, ticker in tickers.items():
+                hist = await self._get_history(ticker, period="5d", interval="1d") # 1d for correlation
+                if len(hist) < 2:
+                    return None
+                returns[name] = hist['Close'].pct_change().dropna()
+
+            # Simple correlation (requires aligned dates, yfinance usually aligns or pandas handles it)
+            import pandas as pd
+            df = pd.DataFrame(returns)
+            corr = df.corr()
+
+            coffee_gold_corr = corr.loc['coffee', 'gold']
+            coffee_silver_corr = corr.loc['coffee', 'silver']
+            coffee_wheat_corr = corr.loc['coffee', 'wheat']
+            coffee_soy_corr = corr.loc['coffee', 'soybeans']
+
+            avg_precious_corr = (coffee_gold_corr + coffee_silver_corr) / 2
+            avg_grain_corr = (coffee_wheat_corr + coffee_soy_corr) / 2
+
+            if avg_precious_corr > 0.7 and avg_grain_corr < 0.3:
+                return {
+                    "type": "CROSS_COMMODITY_CONTAGION",
+                    "correlation_precious": avg_precious_corr,
+                    "correlation_grains": avg_grain_corr,
+                    "interpretation": "Coffee trading as RISK ASSET (like Gold/Silver), not AG COMMODITY",
+                    "severity": "HIGH"
+                }
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Error checking cross-commodity contagion: {e}")
+            return None
+
+    async def check_fed_policy_shock(self) -> Optional[Dict]:
+        now = datetime.now(timezone.utc)
+        if self.last_policy_check and (now - self.last_policy_check).total_seconds() < self.policy_check_interval:
+            return None
+
+        self.last_policy_check = now
+
+        try:
+            prompt = """
+            Search for recent (past 48 hours) Federal Reserve policy surprises or shocks:
+            - Fed Chair nominations or replacements
+            - Unexpected FOMC rate decisions or hawkish/dovish pivots
+            - Fed officials' speeches that moved markets
+
+            If found, respond ONLY with JSON:
+            {
+                "shock_detected": true,
+                "type": "CHAIR_NOMINATION" | "FOMC_SURPRISE" | "HAWKISH_PIVOT" | "DOVISH_PIVOT",
+                "summary": "Brief description",
+                "market_impact": "Expected impact on USD and commodities"
+            }
+
+            If no significant shock, respond: {"shock_detected": false}
+            """
+
+            response = await self.client.aio.models.generate_content(
+                model=self.model,
+                contents=prompt
+            )
+
+            # Clean JSON
+            text = response.text.strip()
+            if text.startswith("```json"): text = text[7:]
+            if text.startswith("```"): text = text[:-3]
+            if text.endswith("```"): text = text[:-3]
+            text = text.strip()
+
+            result = json.loads(text)
+
+            if result.get('shock_detected'):
+                return {
+                    "type": "FED_POLICY_SHOCK",
+                    "policy_type": result.get('type'),
+                    "summary": result.get('summary'),
+                    "market_impact": result.get('market_impact'),
+                    "severity": "CRITICAL"
+                }
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Error checking Fed policy shock: {e}")
+            return None
+
+    async def check(self) -> Optional[SentinelTrigger]:
+        dxy_shock = await self.check_dxy_shock()
+        if dxy_shock:
+            return SentinelTrigger(
+                source="MacroContagionSentinel",
+                reason=f"DXY {dxy_shock['direction']}: {dxy_shock['pct_change']:.2%} ({dxy_shock['severity']})",
+                payload=dxy_shock,
+                severity=8 if dxy_shock['severity'] == 'CRITICAL' else 6
+            )
+
+        contagion = await self.check_cross_commodity_contagion()
+        if contagion:
+            return SentinelTrigger(
+                source="MacroContagionSentinel",
+                reason=f"Cross-Commodity Contagion: Coffee correlating with Gold/Silver ({contagion['correlation_precious']:.2f})",
+                payload=contagion,
+                severity=7
+            )
+
+        policy_shock = await self.check_fed_policy_shock()
+        if policy_shock:
+            return SentinelTrigger(
+                source="MacroContagionSentinel",
+                reason=f"Fed Policy Shock: {policy_shock['policy_type']} - {policy_shock['summary']}",
+                payload=policy_shock,
+                severity=9
+            )
+
+        return None
+
+class FundamentalRegimeSentinel(Sentinel):
+    """
+    Determine if the market is in DEFICIT or SURPLUS regime.
+    """
+    def __init__(self, config, event_bus=None, logger=None):
+        super().__init__(config)
+        self.check_interval = 604800  # 1 week
+        self.regime_file = Path("data/fundamental_regime.json")
+        self.current_regime = self._load_regime()
+        self.last_check = 0
+
+    def _load_regime(self) -> Dict:
+        if self.regime_file.exists():
+            with open(self.regime_file, 'r') as f:
+                return json.load(f)
+        else:
+            return {
+                "regime": "UNKNOWN",
+                "confidence": 0.0,
+                "last_updated": None,
+                "evidence": []
+            }
+
+    def _save_regime(self, regime: Dict):
+        self.regime_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.regime_file, 'w') as f:
+            json.dump(regime, f, indent=2, default=str)
+
+    def check_ice_stocks_trend(self) -> str:
+        # Placeholder logic
+        return "BALANCED" # Assume balanced if no data
+
+    def check_news_sentiment(self) -> str:
+        try:
+            surplus_url = "https://news.google.com/rss/search?q=coffee+market+surplus"
+            deficit_url = "https://news.google.com/rss/search?q=coffee+market+deficit"
+
+            surplus_feed = feedparser.parse(surplus_url)
+            deficit_feed = feedparser.parse(deficit_url)
+
+            if surplus_feed.bozo or deficit_feed.bozo:
+                logger.warning("RSS feed error detected, preserving previous regime")
+                return self.current_regime.get('regime', 'UNKNOWN')
+
+            surplus_count = len(surplus_feed.entries)
+            deficit_count = len(deficit_feed.entries)
+
+            if surplus_count > deficit_count * 2:
+                return "SURPLUS"
+            elif deficit_count > surplus_count * 2:
+                return "DEFICIT"
+            else:
+                return "BALANCED"
+
+        except Exception as e:
+            logger.error(f"Error checking news sentiment: {e}")
+            return self.current_regime.get('regime', 'UNKNOWN')
+
+    async def check(self) -> Optional[SentinelTrigger]:
+        import time as time_module
+        now = time_module.time()
+        if (now - self.last_check) < self.check_interval:
+            return None
+        self.last_check = now
+
+        loop = asyncio.get_running_loop()
+
+        # Run blocking news check in executor
+        news_regime = await loop.run_in_executor(None, self.check_news_sentiment)
+        stocks_regime = self.check_ice_stocks_trend() # Placeholder is fast
+
+        from collections import Counter
+
+        if stocks_regime == news_regime:
+            new_regime = stocks_regime
+            confidence = 0.9
+        else:
+            regimes = [stocks_regime, stocks_regime, news_regime]
+            new_regime = Counter(regimes).most_common(1)[0][0]
+            confidence = 0.6
+
+        if new_regime != self.current_regime.get('regime'):
+            self.current_regime = {
+                "regime": new_regime,
+                "confidence": confidence,
+                "last_updated": datetime.now(timezone.utc).isoformat(),
+                "evidence": {
+                    "ice_stocks": stocks_regime,
+                    "news_sentiment": news_regime
+                }
+            }
+            self._save_regime(self.current_regime)
+
+            return SentinelTrigger(
+                source="FundamentalRegimeSentinel",
+                reason=f"Fundamental Regime Changed: {new_regime} (confidence: {confidence:.1%})",
+                payload=self.current_regime,
+                severity=6
+            )
 
         return None

@@ -452,7 +452,7 @@ OUTPUT FORMAT (JSON):
             provenance_logger.warning(f"QUERY: {search_instruction} | FALLBACK TRIGGERED")
             return packet
 
-    async def research_topic(self, persona_key: str, search_instruction: str) -> str:
+    async def research_topic(self, persona_key: str, search_instruction: str, regime_context: str = "") -> str:
         """
         Conducts deep-dive research using a specialized agent persona.
 
@@ -503,7 +503,7 @@ OUTPUT FORMAT (JSON):
         if self.commodity_profile and _HAS_COMMODITY_PROFILES:
             try:
                 # Use commodity-specific prompt template
-                persona_prompt = get_agent_prompt(persona_key, self.commodity_profile)
+                persona_prompt = get_agent_prompt(persona_key, self.commodity_profile, regime_context=regime_context)
                 logger.debug(f"Using commodity-aware prompt for {persona_key}")
             except (ValueError, KeyError) as e:
                 # Fall back to legacy persona prompt (no change in behavior)
@@ -620,11 +620,11 @@ OUTPUT FORMAT (JSON):
         except Exception as e:
             return {'data': f"Error conducting research: {str(e)}", 'confidence': 0.0, 'sentiment': 'NEUTRAL'}
 
-    async def research_topic_with_reflexion(self, persona_key: str, search_instruction: str) -> dict:
+    async def research_topic_with_reflexion(self, persona_key: str, search_instruction: str, regime_context: str = "") -> dict:
         """Research with self-correction loop."""
 
         # Step 1: Initial analysis
-        initial_response_struct = await self.research_topic(persona_key, search_instruction)
+        initial_response_struct = await self.research_topic(persona_key, search_instruction, regime_context=regime_context)
         initial_text = initial_response_struct.get('data', '')
 
         # Step 2: Reflexion prompt
@@ -964,7 +964,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                 "dissent_acknowledged": "N/A"
             }
 
-    async def run_specialized_cycle(self, trigger: SentinelTrigger, contract_name: str, ml_signal: dict, market_context: str, ib=None, target_contract=None, cycle_id: str = "") -> dict:
+    async def run_specialized_cycle(self, trigger: SentinelTrigger, contract_name: str, ml_signal: dict, market_context: str, ib=None, target_contract=None, cycle_id: str = "", regime_context: str = "") -> dict:
         """
         Runs a Triggered Cycle (Hybrid Decision Model).
         1. Wake up the RELEVANT agent based on Semantic Router.
@@ -1009,9 +1009,9 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
 
         # Use Reflexion for high-ambiguity roles
         if active_agent_key in ['agronomist', 'macro']:
-            fresh_report = await self.research_topic_with_reflexion(active_agent_key, search_instruction)
+            fresh_report = await self.research_topic_with_reflexion(active_agent_key, search_instruction, regime_context=regime_context)
         else:
-            fresh_report = await self.research_topic(active_agent_key, search_instruction)
+            fresh_report = await self.research_topic(active_agent_key, search_instruction, regime_context=regime_context)
 
         # Create combined reports for Decision context
         final_reports = cached_reports.copy()
@@ -1058,7 +1058,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                     # Run cued agents in parallel
                     logger.info(f"Waking up cued agents: {cues_to_run}")
                     cued_tasks = {
-                        agent: self.research_topic(agent, cue_instruction)
+                        agent: self.research_topic(agent, cue_instruction, regime_context=regime_context)
                         for agent in cues_to_run
                     }
 

@@ -1499,6 +1499,47 @@ async def process_deferred_triggers(config: dict):
 
 # --- SENTINEL LOGIC ---
 
+def load_regime_context() -> str:
+    """
+    Load current fundamental regime from FundamentalRegimeSentinel.
+
+    Returns formatted string for prompt injection.
+    """
+    from pathlib import Path
+    import json
+
+    regime_file = Path("data/fundamental_regime.json")
+    if regime_file.exists():
+        with open(regime_file, 'r') as f:
+            regime = json.load(f)
+
+        regime_type = regime.get('regime', 'UNKNOWN')
+        confidence = regime.get('confidence', 0.0)
+
+        if regime_type == "DEFICIT":
+            context = f"""
+**CRITICAL CONTEXT: DEFICIT REGIME (Confidence: {confidence:.1%})**
+The market is currently in a supply deficit. Any weather disruption, logistics bottleneck,
+or demand spike will have AMPLIFIED price impact because there are no buffer stocks to absorb shocks.
+Interpret bullish signals as higher conviction; bearish signals as potential mean reversion.
+"""
+        elif regime_type == "SURPLUS":
+            context = f"""
+**CRITICAL CONTEXT: SURPLUS REGIME (Confidence: {confidence:.1%})**
+The market is currently in a supply surplus. Weather disruptions or logistics issues will have
+MUTED price impact because ample global inventory can absorb shocks.
+Interpret bearish signals as higher conviction; bullish signals as temporary.
+"""
+        else:
+            context = f"""
+**MARKET REGIME: BALANCED (Confidence: {confidence:.1%})**
+Supply and demand are roughly in equilibrium. Price moves will be driven by marginal changes.
+"""
+
+        return context
+    else:
+        return ""
+
 async def _is_signal_priced_in(trigger: SentinelTrigger, ml_signal: dict, ib: IB, contract) -> tuple[bool, str]:
     """Check if the signal has already been priced into the market."""
     try:
@@ -1756,6 +1797,9 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 ml_signal['reason'] = f"Emergency Cycle triggered by {trigger.source}"
                 logger.info(f"Emergency market context: price={ml_signal.get('price')}, regime={ml_signal.get('regime')}")
 
+                # Load Regime Context
+                regime_context = load_regime_context()
+
                 # 5. Run Specialized Cycle
                 decision = await council.run_specialized_cycle(
                     trigger,
@@ -1764,7 +1808,8 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     market_context_str,
                     ib=ib,
                     target_contract=target_contract,
-                    cycle_id=cycle_id # Pass cycle_id for logging if supported
+                    cycle_id=cycle_id, # Pass cycle_id for logging if supported
+                    regime_context=regime_context
                 )
 
                 logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
