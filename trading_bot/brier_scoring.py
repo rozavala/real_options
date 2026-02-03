@@ -9,7 +9,7 @@ import numpy as np
 import os
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List
 from trading_bot.timestamps import parse_ts_column
 
 logger = logging.getLogger(__name__)
@@ -402,7 +402,7 @@ def get_brier_tracker() -> BrierScoreTracker:
         _tracker = BrierScoreTracker()
     return _tracker
 
-def resolve_pending_predictions(council_history_path: str = "data/council_history.csv") -> int:
+def resolve_pending_predictions(council_history_path: str = "data/council_history.csv") -> List[int]:
     """
     Resolve PENDING predictions by cross-referencing with reconciled council_history.
 
@@ -413,17 +413,17 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
     IDEMPOTENT: Only processes rows where actual == 'PENDING'.
 
     Returns:
-        Number of newly resolved predictions
+        List of indices of newly resolved predictions
     """
     structured_file = "data/agent_accuracy_structured.csv"
 
     if not os.path.exists(structured_file):
         logger.info("No structured predictions file found — nothing to resolve")
-        return 0
+        return []
 
     if not os.path.exists(council_history_path):
         logger.warning(f"Council history not found at {council_history_path}")
-        return 0
+        return []
 
     try:
         predictions_df = pd.read_csv(structured_file)
@@ -431,7 +431,7 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
 
         if predictions_df.empty or council_df.empty:
             logger.info("Empty dataframes — nothing to resolve")
-            return 0
+            return []
 
         # Ensure timestamp columns are datetime with UTC (handles mixed formats)
         # Use coerce mode to handle any residual data corruption gracefully
@@ -446,7 +446,7 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
                 f"Dropping {nat_count} predictions with unparseable timestamps "
                 f"(likely column-alignment corruption — run fix_brier_data.py to repair)"
             )
-            predictions_df = predictions_df[~pred_nat_mask].copy()
+            predictions_df = predictions_df[~pred_nat_mask].copy().reset_index(drop=True)
 
         # Ensure cycle_id column exists (backward compat)
         if 'cycle_id' not in predictions_df.columns:
@@ -571,16 +571,16 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
             # Reset singleton tracker so weighted voting picks up new scores
             _reset_tracker_singleton()
 
-            return len(newly_resolved_indices)
+            return newly_resolved_indices
 
         logger.info("No predictions could be resolved this run")
-        return 0
+        return []
 
     except Exception as e:
         logger.error(f"Failed to resolve pending predictions: {e}")
         import traceback
         logger.error(traceback.format_exc())
-        return 0
+        return []
 
 
 def _normalize_direction(raw: str) -> str:

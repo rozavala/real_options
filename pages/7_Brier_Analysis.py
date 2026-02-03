@@ -273,8 +273,8 @@ try:
     else:
         st.info("All agents at baseline (1.0). Weights will differentiate after sufficient resolved predictions.")
 
-except ImportError:
-    st.warning("Brier bridge not yet deployed. Deploy v6.4 to enable reliability tracking.")
+except ImportError as e:
+    st.warning(f"Brier bridge import failed: {e}. Check that all v6.4 modules are deployed.")
 except Exception as e:
     st.error(f"Error loading reliability data: {e}")
 

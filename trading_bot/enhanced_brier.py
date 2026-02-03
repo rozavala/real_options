@@ -194,6 +194,13 @@ class EnhancedBrierTracker:
 
         logger.debug(f"Recorded prediction: {pred_id} -> {pred.predicted_direction} ({pred.confidence:.2f})")
 
+        # FIX: Persist to disk so predictions survive process restarts.
+        # Without this, predictions exist only in memory and are lost when the
+        # orchestrator restarts, making resolution impossible.
+        # Batched save: only save every N predictions to reduce I/O overhead.
+        if len(self.predictions) % 8 == 0:
+            self._save()
+
         return pred_id
 
     def resolve_prediction(
