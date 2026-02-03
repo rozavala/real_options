@@ -1195,3 +1195,4 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
 
 # Backward compatibility alias — safe to remove once all imports are updated
 CoffeeCouncil = TradingCouncil
+# Refined Diagnostic Fix 1

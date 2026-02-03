@@ -1399,12 +1399,19 @@ class PredictionMarketSentinel(Sentinel):
         # Track topics that persistently fail to find markets
         self._topic_failure_counts: Dict[str, int] = {}
 
+        # Periodic validation timer
+        self._last_slug_check = datetime.now(timezone.utc)
+
         logger.info(
             f"PredictionMarketSentinel v2.0 initialized: "
             f"{len(self.topics)} topics | "
             f"min_liq=${self.min_liquidity:,} | "
             f"HWM decay={self.hwm_decay_hours}h"
         )
+
+    def _validate_all_slugs(self):
+        """Wrapper for periodic validation."""
+        self._cleanup_misaligned_cache()
 
     def _cleanup_misaligned_cache(self):
         """Clean up cached slugs that don't match their query keywords."""
@@ -1778,6 +1785,14 @@ class PredictionMarketSentinel(Sentinel):
         now = time_module.time()
         if (now - self._last_poll_time) < self.poll_interval:
             return None
+
+        # --- PERIODIC SLUG VALIDATION ---
+        # Check every 4 hours (14400 seconds)
+        slug_check_now = datetime.now(timezone.utc)
+        if (slug_check_now - self._last_slug_check).total_seconds() > 14400:
+            logger.info("Running periodic prediction market slug validation...")
+            self._validate_all_slugs()
+            self._last_slug_check = slug_check_now
 
         # --- NON-TRADING-DAY FREQUENCY REDUCTION ---
         from trading_bot.utils import is_market_open, is_trading_day

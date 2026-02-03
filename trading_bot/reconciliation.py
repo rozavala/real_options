@@ -495,21 +495,8 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                     )
                     logger.info(f"Recorded Brier for master: Predicted {decision} vs Actual {trend}")
 
-                    # Also record ML Model if available
-                    ml_signal_direction = row.get('ml_signal', 'NEUTRAL')
-                    if ml_signal_direction and ml_signal_direction != 'NEUTRAL':
-                        ml_normalized = ml_signal_direction.upper()
-                        if ml_normalized == 'LONG':
-                            ml_normalized = 'BULLISH'
-                        elif ml_normalized == 'SHORT':
-                            ml_normalized = 'BEARISH'
-
-                        tracker.record_prediction(
-                            agent='ml_model',
-                            predicted=ml_normalized,
-                            actual=trend,
-                            timestamp=target_exit_time
-                        )
+                    # ML model archived in v4.0 — skip recording
+                    # (Legacy data preserved in CSV for historical analysis)
 
             except Exception as brier_e:
                 logger.error(f"Failed to record Brier score: {brier_e}")

@@ -2651,6 +2651,64 @@ async def main():
     else:
         logger.info("Environment: PROD 🚀. Using standard master schedule.")
 
+    # === MISSED TASK DETECTION & RECOVERY ===
+    ny_tz = pytz.timezone('America/New_York')
+    now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
+
+    missed_tasks = []
+    for run_time, task_func in current_schedule.items():
+        task_ny = now_ny.replace(hour=run_time.hour, minute=run_time.minute, second=0, microsecond=0)
+        if task_ny < now_ny:
+            missed_tasks.append((run_time, task_func.__name__))
+
+    if missed_tasks:
+        missed_names = [f"  - {t.strftime('%H:%M')} UTC: {name}" for t, name in missed_tasks]
+        logger.warning(
+            f"⚠️ LATE START DETECTED: {len(missed_tasks)} scheduled tasks already passed:\n"
+            + "\n".join(missed_names)
+        )
+        send_pushover_notification(
+            config.get('notifications', {}),
+            f"⚠️ Late Start: {len(missed_tasks)} Tasks Missed",
+            "\n".join(missed_names)
+        )
+
+        # === RECOVERY: Attempt guarded_generate_orders if missed and before cutoff ===
+        trading_cutoff = config.get('schedule', {}).get(
+            'daily_trading_cutoff_et', {'hour': 10, 'minute': 45}
+        )
+        cutoff_hour = trading_cutoff.get('hour', 10)
+        cutoff_minute = trading_cutoff.get('minute', 45)
+
+        missed_order_gen = any(
+            name == 'guarded_generate_orders' for _, name in missed_tasks
+        )
+        before_cutoff = (
+            now_ny.hour < cutoff_hour or
+            (now_ny.hour == cutoff_hour and now_ny.minute < cutoff_minute)
+        )
+
+        if missed_order_gen and before_cutoff and is_market_open():
+            logger.info(
+                "🔄 RECOVERY: Running missed guarded_generate_orders "
+                f"(before cutoff {cutoff_hour}:{cutoff_minute:02d} ET)"
+            )
+            try:
+                await guarded_generate_orders(config)
+            except Exception as e:
+                logger.error(f"Recovery order generation failed: {e}")
+        elif missed_order_gen and not before_cutoff:
+            logger.warning(
+                f"⏭️ RECOVERY SKIPPED: guarded_generate_orders missed and past "
+                f"daily cutoff ({cutoff_hour}:{cutoff_minute:02d} ET). "
+                f"No signal generation today unless forced via dashboard."
+            )
+        elif missed_order_gen and not is_market_open():
+            logger.info(
+                "⏭️ RECOVERY SKIPPED: Market closed. "
+                "guarded_generate_orders deferred to next session."
+            )
+
     # Start Sentinels in background
     sentinel_task = asyncio.create_task(run_sentinels(config))
 

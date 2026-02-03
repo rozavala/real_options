@@ -203,7 +203,7 @@ manual_cols = st.columns(2)
 
 with manual_cols[0]:
     st.warning("⚠️ **Generate & Execute Orders**")
-    st.caption("Runs full order generation cycle: data pull → ML inference → signals → order placement")
+    st.caption("Runs full order generation cycle: data pull → Council deliberation → signals → order placement")
 
     # Safety Interlock
     confirm_exec = st.checkbox("I confirm I want to execute live trades", key="confirm_exec_orders")
@@ -241,8 +241,40 @@ with manual_cols[0]:
                     # Run the async function
                     try:
                         asyncio.run(run_with_cleanup())
-                        st.success("✅ Order generation and execution completed!")
+
+                        # === POST-EXECUTION DIAGNOSTIC ===
+                        try:
+                            from trading_bot.order_manager import ORDER_QUEUE
+                            queued_count = len(ORDER_QUEUE)
+
+                            if queued_count == 0:
+                                st.warning(
+                                    "⚠️ Order generation completed but **0 orders were queued**. "
+                                    "This typically means the Hard Freshness Gate or another safety "
+                                    "guard blocked all contracts. Check the orchestrator log for details."
+                                )
+
+                                # Show quick diagnostic
+                                from trading_bot.state_manager import StateManager
+                                reports = StateManager.load_state_with_metadata()
+                                stale_agents = [
+                                    name for name, meta in reports.items()
+                                    if isinstance(meta, dict) and meta.get('age_hours', 0) > 24
+                                ]
+                                if stale_agents:
+                                    st.error(
+                                        f"🔍 **Likely cause:** {len(stale_agents)} agents have stale data (>24h): "
+                                        f"{', '.join(stale_agents)}"
+                                    )
+                            else:
+                                st.success(f"✅ Order generation completed! {queued_count} orders queued.")
+
+                        except Exception as diag_e:
+                            st.success("✅ Order generation and execution completed!")
+                            # Diagnostic failure should not prevent success message
+
                         st.info("💡 Check Cockpit page for new positions and Council page for decision details")
+
                     except RuntimeError:
                         # If loop is already running
                         loop = asyncio.new_event_loop()

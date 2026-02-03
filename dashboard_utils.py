@@ -1047,35 +1047,17 @@ def get_active_theses() -> list[dict]:
 
 def get_current_market_regime() -> str:
     """
-    Retrieves the current market regime from state.json.
+    Get the most recent market regime from available data.
 
     Priority:
-    1. state.json -> reports -> latest_ml_signals (most recent)
-    2. council_history -> entry_regime column (fallback)
-    3. "UNKNOWN" if no data
+    1. council_history -> entry_regime column (most recent council decision)
+    2. "UNKNOWN" if no data
 
-    Returns:
-        str: One of HIGH_VOLATILITY, RANGE_BOUND, TRENDING_UP, TRENDING_DOWN, or UNKNOWN
+    Note: latest_ml_signals was removed as a source — ML pipeline
+    archived in v4.0 and the data in state.json is permanently stale.
     """
     try:
-        from trading_bot.state_manager import StateManager
-
-        # Priority 1: Check latest_ml_signals in state.json
-        raw_state = StateManager._load_raw_sync()
-        reports = raw_state.get("reports", {})
-        ml_signals_entry = reports.get("latest_ml_signals", {})
-
-        if isinstance(ml_signals_entry, dict):
-            signals_data = ml_signals_entry.get("data", [])
-            if isinstance(signals_data, list) and signals_data:
-                # Get regime from most recent signal (first in list)
-                for signal in signals_data:
-                    if isinstance(signal, dict):
-                        regime = signal.get("regime")
-                        if regime and regime != "UNKNOWN":
-                            return regime
-
-        # Priority 2: Fallback to council_history CSV
+        # Priority 1: Council history (most recent regime from actual decisions)
         if os.path.exists(COUNCIL_HISTORY_PATH):
             df = pd.read_csv(COUNCIL_HISTORY_PATH)
             if not df.empty and 'entry_regime' in df.columns:

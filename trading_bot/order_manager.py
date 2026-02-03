@@ -1429,6 +1429,21 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
         logger.info(f"Found {len(live_positions)} live position legs in the IB account.")
 
+        non_zero_positions = [p for p in live_positions if p.position != 0]
+        if len(non_zero_positions) != len(live_positions):
+            logger.info(
+                f"  Filtered to {len(non_zero_positions)} positions with non-zero quantity "
+                f"({len(live_positions) - len(non_zero_positions)} already closed/zero-qty excluded)"
+            )
+        if not non_zero_positions:
+            logger.info("All returned positions have zero quantity — nothing to close.")
+            send_pushover_notification(
+                config.get('notifications', {}),
+                "Position Closing",
+                "All IB positions already closed (zero quantity)."
+            )
+            return
+
         # --- 2. Load trade ledger to get historical data (open dates) ---
         trade_ledger = get_trade_ledger_df()
         if trade_ledger.empty:
