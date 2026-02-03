@@ -546,7 +546,12 @@ def log_council_decision(decision_data):
         "vote_breakdown",     # JSON string of agent contributions
         "dominant_agent",     # Agent with highest contribution
         "weighted_score",     # Final weighted score (-1 to 1)
-        "trigger_type"        # What triggered the decision (scheduled, weather, news, etc.)
+        "trigger_type",       # What triggered the decision (scheduled, weather, news, etc.)
+        # NEW COLUMNS (v3 — Judge & Jury Protocol)
+        "thesis_strength",        # SPECULATIVE / PLAUSIBLE / PROVEN
+        "primary_catalyst",       # Single most important driver
+        "conviction_multiplier",  # 0.5 / 0.75 / 1.0 from consensus sensor
+        "dissent_acknowledged",   # Strongest counter-argument Master chose to override
     ]
 
     # Prepare the new row

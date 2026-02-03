@@ -51,16 +51,50 @@ def _calculate_agent_conflict(agent_data: dict) -> float:
 
 def _detect_imminent_catalyst(agent_data: dict) -> str | None:
     """
-    Scans agent reports for signs of imminent market-moving events.
+    Scans agent reports for signs of IMMINENT, UNPRICED market-moving events.
     Returns catalyst description if found, None otherwise.
+
+    v7.0: Previous version triggered on generic keywords like "drought" and "rain"
+    which appear in EVERY coffee report. Now requires:
+    1. Compound keywords (e.g. "frost warning") trigger directly — high confidence
+    2. Single keywords (e.g. "drought") require urgency co-occurrence
+    3. Resolved markers ("ended", "improving", "priced in") suppress false positives
+
+    This prevents the system from perpetually thinking there's an "imminent catalyst"
+    when reports are simply discussing normal weather conditions.
     """
+    # Compound keywords — trigger directly (high confidence)
     catalyst_keywords = [
-        ('frost', 'Frost risk in growing regions'),
-        ('freeze', 'Freeze warning'),
-        ('conab', 'CONAB report imminent'),
-        ('usda', 'USDA report pending'),
-        ('strike', 'Labor strike risk'),
-        ('drought', 'Drought conditions developing'),
+        ('frost warning', 'Active frost warning in growing regions'),
+        ('freeze warning', 'Active freeze warning'),
+        ('frost risk', 'Elevated frost risk detected'),
+        ('conab report', 'CONAB report imminent'),
+        ('usda report', 'USDA report pending'),
+        ('strike action', 'Labor strike in progress or imminent'),
+        ('port closure', 'Port closure affecting exports'),
+        ('export ban', 'Export restriction announced'),
+    ]
+
+    # Single-word triggers — REQUIRE urgency co-occurrence
+    conditional_keywords = [
+        ('drought', 'Drought conditions'),
+        ('frost', 'Frost conditions'),
+        ('freeze', 'Freeze conditions'),
+        ('strike', 'Labor disruption'),
+    ]
+
+    # Urgency markers — catalyst must be ACTIVE, not historical
+    urgency_markers = [
+        'imminent', 'warning', 'developing', 'worsening', 'escalating',
+        'confirmed', 'breaking', 'emergency', 'unprecedented', 'severe',
+        'expected this week', 'forecast for', 'risk elevated',
+    ]
+
+    # Resolved markers — catalyst is OVER, not actionable
+    resolved_markers = [
+        'ended', 'resolved', 'passed', 'recovered', 'abated', 'eased',
+        'improving', 'relief', 'normalized', 'subsided', 'historical',
+        'priced in', 'already reflected',
     ]
 
     # Check agronomist and geopolitical summaries
@@ -72,9 +106,23 @@ def _detect_imminent_catalyst(agent_data: dict) -> str | None:
 
     combined_text = ' '.join(str(r).lower() for r in reports_to_check)
 
+    # Check if text contains resolved markers (reduces false positives)
+    has_resolved = any(marker in combined_text for marker in resolved_markers)
+
+    # Phase 1: Check compound keywords (high confidence, don't need urgency)
     for keyword, description in catalyst_keywords:
-        if keyword in combined_text:
+        if keyword in combined_text and not has_resolved:
+            logger.info(f"CATALYST DETECTED (compound): '{keyword}' → {description}")
             return description
+
+    # Phase 2: Check single keywords (require urgency co-occurrence)
+    if not has_resolved:
+        has_urgency = any(marker in combined_text for marker in urgency_markers)
+        if has_urgency:
+            for keyword, description in conditional_keywords:
+                if keyword in combined_text:
+                    logger.info(f"CATALYST DETECTED (conditional+urgent): '{keyword}' → {description}")
+                    return f"{description} (urgent)"
 
     return None
 
@@ -276,13 +324,16 @@ async def generate_signals(ib: IB, config: dict) -> list:
                     }
 
                 # Inject weighted result into market context for Master
+                # v7.0: Present vote as INFORMATION, not instruction.
+                # The Master should consider this as one data point, not a binding directive.
                 weighted_context = (
-                    f"\n\n--- WEIGHTED VOTING RESULT ---\n"
-                    f"Consensus Direction: {weighted_result['direction']}\n"
-                    f"Consensus Confidence: {weighted_result['confidence']:.2f}\n"
-                    f"Weighted Score: {weighted_result['weighted_score']:.3f}\n"
-                    f"Dominant Agent: {weighted_result['dominant_agent']}\n"
-                    f"Trigger Type: {weighted_result['trigger_type']}\n"
+                    f"\n\n--- AGENT SENTIMENT THERMOMETER (Informational Only) ---\n"
+                    f"Agent Consensus: {weighted_result['direction']}\n"
+                    f"Consensus Strength: {weighted_result['confidence']:.2f}\n"
+                    f"Dominant Voice: {weighted_result['dominant_agent']}\n"
+                    f"NOTE: This is a summary of agent votes. You are NOT bound by this.\n"
+                    f"Your job is to evaluate the QUALITY of arguments, not count votes.\n"
+                    f"A strong thesis with weak consensus is still a valid trade.\n"
                 )
 
                 # D. Master Decision
@@ -376,39 +427,58 @@ async def generate_signals(ib: IB, config: dict) -> list:
                 except (ValueError, TypeError):
                     decision['confidence'] = 0.0
 
-                # --- WEIGHTED VOTE CONFLICT RESOLUTION ---
-                # Check for strong disagreement between Master and Weighted Vote
-                if weighted_result['confidence'] > 0.7:
-                    # Map weighted result to simpler direction for comparison
-                    vote_dir = weighted_result['direction'] # BULLISH, BEARISH, NEUTRAL
-                    master_dir = decision.get('direction', 'NEUTRAL')
+                # --- v7.0: CONSENSUS SENSOR (Replaces Vote Override) ---
+                # The Master's DIRECTION is trusted. The Vote only adjusts CONVICTION.
+                # Rationale: LLMs are better at qualitative reasoning (thesis quality)
+                # than at producing calibrated numerical confidence scores. The vote's
+                # value is measuring how much the agents agree, not which direction is right.
+                vote_dir = weighted_result['direction']
+                master_dir = decision.get('direction', 'NEUTRAL')
 
-                    if vote_dir != master_dir and vote_dir != 'NEUTRAL':
-                        logger.warning(f"CONFLICT: Master={master_dir} vs Weighted={vote_dir} (Conf: {weighted_result['confidence']:.2f})")
+                if master_dir == vote_dir or vote_dir == 'NEUTRAL':
+                    conviction_multiplier = 1.0
+                    consensus_note = f"Consensus ALIGNED (Vote={vote_dir})"
+                elif vote_dir != master_dir and master_dir != 'NEUTRAL':
+                    conviction_multiplier = 0.5
+                    consensus_note = f"Consensus DIVERGENT (Master={master_dir}, Vote={vote_dir}) → half size"
+                else:
+                    conviction_multiplier = 0.75
+                    consensus_note = f"Consensus PARTIAL (Master={master_dir}, Vote={vote_dir})"
 
-                        # Override Master if weighted confidence is very high (> 0.85) or Master is just wrong?
-                        # Let's be conservative: If Weighted is > 0.85 and contradicts, OVERRIDE.
-                        if weighted_result['confidence'] > 0.85:
-                            decision['direction'] = vote_dir
-                            decision['confidence'] = weighted_result['confidence']
-                            decision['reasoning'] += f" [OVERRIDE: Strong agent consensus ({vote_dir})]"
-                            logger.info(f"Overriding Master decision with Weighted Vote: {vote_dir}")
+                # Adjust confidence by consensus (preserves thesis_strength bucket but modulates)
+                decision['confidence'] = round(decision.get('confidence', 0.5) * conviction_multiplier, 2)
+                decision['conviction_multiplier'] = conviction_multiplier
+                decision['reasoning'] += f" [{consensus_note}]"
 
-                        # If Master says trade but Vote says NEUTRAL/OPPOSITE with > 0.7 confidence?
-                        elif master_dir != 'NEUTRAL':
-                             # Force Neutral if strong dissension
-                             decision['direction'] = 'NEUTRAL'
-                             decision['reasoning'] += f" [VETO: Agents disagree ({vote_dir})]"
-                             logger.info("Vetoing Master decision due to agent dissension.")
+                logger.info(
+                    f"Consensus Sensor: Master={master_dir}, Vote={vote_dir} → "
+                    f"multiplier={conviction_multiplier}, adj_confidence={decision['confidence']}"
+                )
 
-                # --- DEVIL'S ADVOCATE (Pre-Mortem) ---
-                if decision.get('direction') != 'NEUTRAL' and decision.get('confidence', 0) > 0.5:
-                    devils_review = await council.run_devils_advocate(decision, str(reports), market_context_str)
+                # === Devil's Advocate Check (Emergency Only — v7.0) ===
+                # DA is skipped for scheduled cycles to prevent excessive vetoing.
+                # Scheduled cycles already have: 7 agents + debate + compliance.
+                # DA adds value for emergency/sentinel triggers where unusual events
+                # need extra scrutiny that the routine pipeline may miss.
+                is_emergency = trigger_type in [
+                    TriggerType.WEATHER, TriggerType.PRICE_SPIKE,
+                    TriggerType.NEWS_SENTIMENT, TriggerType.LOGISTICS,
+                    TriggerType.MICROSTRUCTURE
+                ]
 
-                    if not devils_review.get('proceed', True):
-                        logger.warning(f"Devil's Advocate VETOED trade: {devils_review.get('recommendation')}")
+                if is_emergency and decision.get('direction') != 'NEUTRAL' and decision.get('confidence', 0) > 0.5:
+                    da_review = await council.run_devils_advocate(
+                        decision, str(reports), market_context_str
+                    )
+                    if not da_review.get('proceed', True):
+                        logger.warning(f"DA VETOED emergency trade: {da_review.get('recommendation')}")
                         decision['direction'] = 'NEUTRAL'
-                        decision['reasoning'] += f" [DA VETO: {devils_review.get('risks', ['Unknown'])[0]}]"
+                        decision['confidence'] = 0.0
+                        decision['reasoning'] += f" [DA VETO: {da_review.get('risks', ['Unknown'])[0]}]"
+                    else:
+                        logger.info("DA CHECK PASSED for emergency cycle.")
+                elif not is_emergency:
+                    logger.info("DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)")
 
                 # --- E.1: EARLY COMPLIANCE AUDIT (Hallucination Check) ---
                 compliance_approved = True
@@ -516,21 +586,27 @@ async def generate_signals(ib: IB, config: dict) -> list:
                     # === DECISION LOGIC FOR PREDICTION TYPE ===
                     # Moved inside logging block to capture state for DB
                     final_direction_log = final_data["action"]
-                    vol_sentiment_log = agent_data.get('volatility_sentiment', 'NEUTRAL')
+                    # v7.0 SAFETY: Match execution path default
+                    vol_sentiment_log = agent_data.get('volatility_sentiment', 'BEARISH')
                     regime_log = regime_for_voting if regime_for_voting != 'UNKNOWN' else market_ctx.get('regime', 'UNKNOWN')
 
                     if final_direction_log == 'NEUTRAL':
                         agent_conflict_score_log = _calculate_agent_conflict(agent_data)
                         imminent_catalyst_log = _detect_imminent_catalyst(agent_data)
 
-                        if imminent_catalyst_log or agent_conflict_score_log > 0.8:
-                            prediction_type_log = "VOLATILITY"
-                            vol_level_log = "HIGH"
-                            strategy_type_log = "LONG_STRADDLE"
-                        elif regime_log == 'RANGE_BOUND' or vol_sentiment_log in ['BEARISH', 'NEUTRAL']:
+                        # v7.0: Mirror execution-path logic exactly
+                        if regime_log == 'RANGE_BOUND' and vol_sentiment_log == 'BEARISH':
                             prediction_type_log = "VOLATILITY"
                             vol_level_log = "LOW"
                             strategy_type_log = "IRON_CONDOR"
+                        elif (imminent_catalyst_log or agent_conflict_score_log > 0.6) and vol_sentiment_log != 'BEARISH':
+                            prediction_type_log = "VOLATILITY"
+                            vol_level_log = "HIGH"
+                            strategy_type_log = "LONG_STRADDLE"
+                        else:
+                            prediction_type_log = "DIRECTIONAL"
+                            vol_level_log = None
+                            strategy_type_log = "NONE"
                     else:
                         if final_direction_log == 'BULLISH':
                             strategy_type_log = 'BULL_CALL_SPREAD'
@@ -569,6 +645,12 @@ async def generate_signals(ib: IB, config: dict) -> list:
                         "master_decision": decision.get('direction'),
                         "master_confidence": decision.get('confidence'),
                         "master_reasoning": decision.get('reasoning'),
+
+                        # v7.0: New thesis-based fields
+                        "thesis_strength": decision.get('thesis_strength', 'SPECULATIVE'),
+                        "primary_catalyst": decision.get('primary_catalyst', 'Not specified'),
+                        "conviction_multiplier": decision.get('conviction_multiplier', 1.0),
+                        "dissent_acknowledged": decision.get('dissent_acknowledged', 'None stated'),
 
                         # [NEW] Prediction & Strategy Fields
                         "prediction_type": prediction_type_log,
@@ -666,44 +748,68 @@ async def generate_signals(ib: IB, config: dict) -> list:
                 )
                 # We silently fall back to the ML defaults set at start of function
 
-        # === DECISION LOGIC FOR PREDICTION TYPE ===
-        # Conditions for VOLATILITY trade:
-        # 1. Direction is NEUTRAL (no directional conviction)
-        # 2. We have volatility data to guide HIGH vs LOW selection
+        # === v7.0: HARD-CODED STRATEGY SELECTION ("Judge & Jury" Protocol) ===
+        # Strategy type is determined by HARD DATA (vol_sentiment, regime),
+        # NOT by LLM suggestion. The Master's volatility_play output is IGNORED.
+        #
+        # Design principle: LLMs decide WHAT (direction + thesis).
+        # Python code decides HOW (strategy type + sizing).
+        #
+        # Origin: Merges "Cash Is a Position" hotfix + Judge & Jury routing
+        # + conservative vol defaults (Addendum PATCH 2).
 
         final_direction = final_data["action"]
-        vol_sentiment = agent_data.get('volatility_sentiment', 'NEUTRAL')
-        # Use regime_for_voting calculated earlier if available, else fallback
+
+        # v7.0 SAFETY: Default to BEARISH (expensive) when vol data is missing.
+        # Rationale: On a $50K account, assume worst-case (expensive options)
+        # rather than neutral. Fail-safe, not fail-neutral.
+        vol_sentiment = agent_data.get('volatility_sentiment', 'BEARISH')
+
         regime = regime_for_voting if regime_for_voting != 'UNKNOWN' else market_ctx.get('regime', 'UNKNOWN')
+        thesis_strength = decision.get('thesis_strength', 'SPECULATIVE') if 'decision' in dir() else 'SPECULATIVE'
 
         prediction_type = "DIRECTIONAL"
         vol_level = None
         reason = final_data["reason"]
 
         if final_direction == 'NEUTRAL':
-            # Check if we should deploy a volatility strategy instead of sitting idle
+            # === NEUTRAL PATH: Vol trade or No Trade ===
             agent_conflict_score = _calculate_agent_conflict(agent_data)
             imminent_catalyst = _detect_imminent_catalyst(agent_data)
 
-            # HIGH VOLATILITY SIGNAL: Deploy Long Straddle
-            # Conditions: Specific catalysts OR extreme agent conflict (> 0.8)
-            if imminent_catalyst or agent_conflict_score > 0.8:
-                prediction_type = "VOLATILITY"
-                vol_level = "HIGH"
-                reason = f"Volatility Play: {imminent_catalyst or 'Extreme agent conflict (>0.8)'}"
-
-            # LOW VOLATILITY SIGNAL: Deploy Iron Condor
-            # Conditions: Range-bound regime OR Volatility is not cheap (Bearish/Neutral Vol Sentiment)
-            # We want to SELL premium when it's expensive (Bearish Vol) or Fair (Neutral) in a range.
-            elif regime == 'RANGE_BOUND' or vol_sentiment in ['BEARISH', 'NEUTRAL']:
+            # PATH 1: IRON CONDOR — sell premium in a range when vol is expensive
+            if regime == 'RANGE_BOUND' and vol_sentiment == 'BEARISH':
                 prediction_type = "VOLATILITY"
                 vol_level = "LOW"
-                reason = "Premium Harvest: Range-bound/Uncertain with expensive/fair options"
+                reason = f"Iron Condor: Range-bound + expensive vol (sell premium)"
+                logger.info(f"STRATEGY SELECTED: IRON_CONDOR | regime={regime}, vol={vol_sentiment}")
 
-            # DEFAULT: Stand Down (NO_TRADE)
+            # PATH 2: LONG STRADDLE — expect big move, but only if options aren't expensive
+            elif (imminent_catalyst or agent_conflict_score > 0.6) and vol_sentiment != 'BEARISH':
+                prediction_type = "VOLATILITY"
+                vol_level = "HIGH"
+                reason = f"Long Straddle: {imminent_catalyst or f'High conflict ({agent_conflict_score:.2f})'}"
+                logger.info(f"STRATEGY SELECTED: LONG_STRADDLE | catalyst={imminent_catalyst}, conflict={agent_conflict_score:.2f}")
+
+            # PATH 3: NO TRADE — insufficient conviction for any trade
             else:
-                prediction_type = "NEUTRAL"
-                reason = "No Trade: Neutral direction with low conviction"
+                prediction_type = "DIRECTIONAL"
+                vol_level = None
+                reason = (
+                    f"NO TRADE: Direction neutral, no positive-EV vol trade available. "
+                    f"(vol={vol_sentiment}, regime={regime}, conflict={agent_conflict_score:.2f})"
+                )
+                logger.info(f"NO TRADE: vol={vol_sentiment}, regime={regime}, catalyst={imminent_catalyst}")
+
+        else:
+            # === DIRECTIONAL PATH: Always use defined-risk spreads ===
+            # Strategy type forced by code. On a $50K account, we NEVER trade naked options.
+            # Vol sentiment only affects whether we LOG a warning, not the strategy itself.
+            if vol_sentiment == 'BEARISH':
+                reason += f" [VOL WARNING: Options expensive. Spread costs elevated. Thesis: {thesis_strength}]"
+                logger.info(f"STRATEGY: Directional spread with expensive vol (thesis={thesis_strength})")
+            else:
+                logger.info(f"STRATEGY: Directional spread (thesis={thesis_strength}, vol={vol_sentiment})")
 
         # Construct final signal object
         if prediction_type == "VOLATILITY":
@@ -720,6 +826,9 @@ async def generate_signals(ib: IB, config: dict) -> list:
                 "sma_200": market_ctx.get('sma_200'),
                 "expected_price": final_data["expected_price"],
                 "predicted_return": market_ctx.get('predicted_return'),
+                # v7.0: Carry forward for Phase 5 position sizing
+                "thesis_strength": decision.get('thesis_strength', 'SPECULATIVE') if 'decision' in dir() else 'SPECULATIVE',
+                "conviction_multiplier": decision.get('conviction_multiplier', 1.0) if 'decision' in dir() else 1.0,
                 "_agent_reports": reports
             }
         else:
@@ -735,6 +844,9 @@ async def generate_signals(ib: IB, config: dict) -> list:
                 "sma_200": market_ctx.get('sma_200'),
                 "expected_price": final_data["expected_price"],
                 "predicted_return": market_ctx.get('predicted_return'),
+                # v7.0: Carry forward for Phase 5 position sizing
+                "thesis_strength": decision.get('thesis_strength', 'SPECULATIVE') if 'decision' in dir() else 'SPECULATIVE',
+                "conviction_multiplier": decision.get('conviction_multiplier', 1.0) if 'decision' in dir() else 1.0,
                 "_agent_reports": reports
             }
 
