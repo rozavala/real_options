@@ -14,3 +14,70 @@
 2026-02-03 10:17:56,043 - trading_bot.sentinels - INFO - Loaded state for 1 prediction market topics
 2026-02-03 10:17:56,043 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Fed rate 2026': title='How much spending will DOGE cut in 2025?'. Clearing cache.
 2026-02-03 10:17:56,043 - trading_bot.sentinels - INFO - Reloading prediction market topics...
+2026-02-03 13:20:00,100 - Orchestrator - INFO - --- Running scheduled task: run_position_audit_cycle ---
+2026-02-03 13:20:00,101 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-03 13:20:00,102 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 231...
+2026-02-03 13:20:00,267 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 231
+2026-02-03 13:20:00,272 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-03 13:20:00,394 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-03 13:20:00,489 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-03 13:20:00,586 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-03 13:20:00,586 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-03 13:20:00,586 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-03 13:20:00,590 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-03 13:20:00,593 - trading_bot.enhanced_brier - INFO - Loaded 208 predictions from ./data/enhanced_brier.json
+2026-02-03 13:20:00,593 - trading_bot.agents - INFO - Loaded commodity profile: Coffee Arabica
+2026-02-03 13:20:00,593 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee Arabica: 9 port tokens, 24 producer tokens
+2026-02-03 13:20:00,593 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee Arabica
+2026-02-03 13:20:00,593 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-03 13:20:00,593 - trading_bot.agents - INFO - Trading Council initialized for Coffee Arabica. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-03 13:20:00,606 - Orchestrator - WARNING - No open position found for KOK6 C3.35, using most recent
+2026-02-03 13:20:00,646 - Orchestrator - WARNING - No open position found for KOK6 P3.15, using most recent
+2026-02-03 13:20:00,648 - Orchestrator - WARNING - No open position found for KOK6 P3.2, using most recent
+2026-02-03 13:20:00,650 - Orchestrator - WARNING - No open position found for KOK6 P3.075, using most recent
+2026-02-03 13:20:00,654 - Orchestrator - WARNING - No open position found for KOK6 C3.225, using most recent
+2026-02-03 13:20:00,656 - Orchestrator - WARNING - No open position found for KOK6 C3.275, using most recent
+2026-02-03 13:20:00,658 - Orchestrator - WARNING - No open position found for KOK6 P3.125, using most recent
+2026-02-03 13:20:00,659 - Orchestrator - WARNING - No open position found for KOK6 C3.3, using most recent
+2026-02-03 13:20:00,660 - Orchestrator - INFO - Grouped 8 IB positions into 2 thesis groups
+2026-02-03 13:20:00,660 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-03 13:20:00,738 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-03 13:20:00,738 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-03 13:20:00,738 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-03 13:20:00,836 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-03 13:20:00,837 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-03 13:20:03,844 - Orchestrator - WARNING - SEMANTIC GUARD: entry_price $15.17 < floor $100.00 for thesis ?. Likely a spread premium, not underlying price. Skipping price breach check. Run migration script.
+2026-02-03 13:20:03,845 - Orchestrator - WARNING - Invalid prices for IC validation: entry=0, current=307.6
+2026-02-03 13:20:03,845 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-03 13:20:03,918 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-03 13:20:03,918 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-03 13:20:07,081 - Orchestrator - WARNING - THESIS INVALIDATED: f95c29ea-4597-4108-9e43-d10faed4461a (4 legs) — PRICE BREACH: Underlying moved 3.22% from entry (threshold: 2%). Entry: $317.85, Current: $307.60
+2026-02-03 13:20:07,081 - Orchestrator - INFO - Executing SPREAD CLOSE for f95c29ea-4597-4108-9e43-d10faed4461a (4 legs): PRICE BREACH: Underlying moved 3.22% from entry (threshold: 2%). Entry: $317.85, Current: $307.60
+2026-02-03 13:20:07,143 - root - INFO - Assigned new unique OrderRef for tracking: 9fc85015-532a-4044-b181-92950da68077
+2026-02-03 13:20:07,143 - root - INFO - Placing BUY order for KOK6 P3.075...
+2026-02-03 13:20:07,146 - root - INFO - Successfully placed order ID 17 for KOK6 P3.075.
+2026-02-03 13:20:07,195 - ib_insync.wrapper - ERROR - Error 478, reqId 17: Parameters in request conflicts with contract parameters received by contract id: requested strike 307.5, in contract 3.075;
+2026-02-03 13:20:07,196 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=FuturesOption(conId=745191382, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=307.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P3.075', tradingClass='KO'), order=MarketOrder(orderId=17, clientId=231, action='BUY', totalQuantity=1.0, orderRef='9fc85015-532a-4044-b181-92950da68077'), orderStatus=OrderStatus(orderId=17, status='Cancelled', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 2, 3, 13, 20, 7, 145729, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 2, 3, 13, 20, 7, 195756, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 478, reqId 17: Parameters in request conflicts with contract parameters received by contract id: requested strike 307.5, in contract 3.075;', errorCode=478)], advancedError='')
+2026-02-03 13:20:10,150 - Orchestrator - ERROR -   ❌ KOK6 P3.075: Cancelled — Error 478, reqId 17: Parameters in request conflicts with contract parameters received by contract id: requested strike 307.5, in contract 3.075;
+2026-02-03 13:20:10,651 - root - INFO - Assigned new unique OrderRef for tracking: a6afa6f6-3ae6-4e76-8e77-cc9097078571
+2026-02-03 13:20:10,651 - root - INFO - Placing SELL order for KOK6 C3.225...
+2026-02-03 13:20:10,652 - root - INFO - Successfully placed order ID 18 for KOK6 C3.225.
+2026-02-03 13:20:10,654 - ib_insync.wrapper - ERROR - Error 478, reqId 18: Parameters in request conflicts with contract parameters received by contract id: requested strike 322.5, in contract 3.225;
+2026-02-03 13:20:10,655 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=FuturesOption(conId=756864355, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=322.5, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 C3.225', tradingClass='KO'), order=MarketOrder(orderId=18, clientId=231, action='SELL', totalQuantity=1.0, orderRef='a6afa6f6-3ae6-4e76-8e77-cc9097078571'), orderStatus=OrderStatus(orderId=18, status='Cancelled', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 2, 3, 13, 20, 10, 652190, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 2, 3, 13, 20, 10, 654471, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 478, reqId 18: Parameters in request conflicts with contract parameters received by contract id: requested strike 322.5, in contract 3.225;', errorCode=478)], advancedError='')
+2026-02-03 13:20:13,656 - Orchestrator - ERROR -   ❌ KOK6 C3.225: Cancelled — Error 478, reqId 18: Parameters in request conflicts with contract parameters received by contract id: requested strike 322.5, in contract 3.225;
+2026-02-03 13:20:14,157 - root - INFO - Assigned new unique OrderRef for tracking: 1a770459-265f-43c4-87b3-edcb960147a7
+2026-02-03 13:20:14,157 - root - INFO - Placing BUY order for KOK6 C3.275...
+2026-02-03 13:20:14,158 - root - INFO - Successfully placed order ID 19 for KOK6 C3.275.
+2026-02-03 13:20:14,160 - ib_insync.wrapper - ERROR - Error 478, reqId 19: Parameters in request conflicts with contract parameters received by contract id: requested strike 327.5, in contract 3.275;
+2026-02-03 13:20:14,161 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=FuturesOption(conId=757830282, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=327.5, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 C3.275', tradingClass='KO'), order=MarketOrder(orderId=19, clientId=231, action='BUY', totalQuantity=1.0, orderRef='1a770459-265f-43c4-87b3-edcb960147a7'), orderStatus=OrderStatus(orderId=19, status='Cancelled', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 2, 3, 13, 20, 14, 157790, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 2, 3, 13, 20, 14, 160265, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 478, reqId 19: Parameters in request conflicts with contract parameters received by contract id: requested strike 327.5, in contract 3.275;', errorCode=478)], advancedError='')
+2026-02-03 13:20:17,161 - Orchestrator - ERROR -   ❌ KOK6 C3.275: Cancelled — Error 478, reqId 19: Parameters in request conflicts with contract parameters received by contract id: requested strike 327.5, in contract 3.275;
+2026-02-03 13:20:17,662 - root - INFO - Assigned new unique OrderRef for tracking: 8210e5ac-33a8-4de1-b5d9-c5a76bf01025
+2026-02-03 13:20:17,662 - root - INFO - Placing SELL order for KOK6 P3.125...
+2026-02-03 13:20:17,663 - root - INFO - Successfully placed order ID 20 for KOK6 P3.125.
+2026-02-03 13:20:17,667 - ib_insync.wrapper - ERROR - Error 478, reqId 20: Parameters in request conflicts with contract parameters received by contract id: requested strike 312.5, in contract 3.125;
+2026-02-03 13:20:17,667 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=FuturesOption(conId=745575700, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=312.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P3.125', tradingClass='KO'), order=MarketOrder(orderId=20, clientId=231, action='SELL', totalQuantity=1.0, orderRef='8210e5ac-33a8-4de1-b5d9-c5a76bf01025'), orderStatus=OrderStatus(orderId=20, status='Cancelled', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 2, 3, 13, 20, 17, 663145, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 2, 3, 13, 20, 17, 667340, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 478, reqId 20: Parameters in request conflicts with contract parameters received by contract id: requested strike 312.5, in contract 3.125;', errorCode=478)], advancedError='')
+2026-02-03 13:20:20,667 - Orchestrator - ERROR -   ❌ KOK6 P3.125: Cancelled — Error 478, reqId 20: Parameters in request conflicts with contract parameters received by contract id: requested strike 312.5, in contract 3.125;
+2026-02-03 13:20:21,494 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-03 13:20:21,497 - Orchestrator - ERROR - Thesis f95c29ea-4597-4108-9e43-d10faed4461a NOT invalidated — close order did not fully succeed. Will retry on next audit cycle.
+2026-02-03 13:20:21,814 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-03 13:20:21,816 - Orchestrator - INFO - Next task 'guarded_generate_orders' scheduled for 2026-02-03 13:50:00 UTC. Waiting for 0.49 hours.
