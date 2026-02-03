@@ -172,7 +172,12 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
                 else:
                     st.success(f"✅ {distance_pct:.1%} to stop")
             else:
-                st.info("No stop defined")
+                # Issue 6 Fix: Strategy-aware stop display
+                MULTI_LEG_STRATEGIES = {'IRON_CONDOR', 'LONG_STRADDLE', 'IRON_BUTTERFLY', 'STRANGLE'}
+                if strategy.upper() in MULTI_LEG_STRATEGIES:
+                    st.info("📑 Uses invalidation triggers")
+                else:
+                    st.error("No stop defined")
 
         with st.expander("📜 Invalidation Triggers"):
             if isinstance(triggers, list):
@@ -222,8 +227,8 @@ def render_prediction_markets():
     try:
         from trading_bot.state_manager import StateManager
 
-        # Load the sentinel's state cache
-        state = StateManager.load_state(namespace="prediction_market_state")
+        # Issue 1 Fix: Use load_state_with_metadata to prevent crash on stale string data
+        state = StateManager.load_state_with_metadata(namespace="prediction_market_state")
 
         if not state:
             st.info("No prediction market data active. Sentinel may not have run yet.")
@@ -236,10 +241,22 @@ def render_prediction_markets():
         # Create responsive columns
         cols = st.columns(cols_per_row)
 
-        for i, (topic, data) in enumerate(state.items()):
+        for i, (topic, meta) in enumerate(state.items()):
             col_idx = i % cols_per_row
 
             with cols[col_idx]:
+                # load_state_with_metadata returns:
+                #   {'data': <original_dict>, 'age_seconds': float, 'age_hours': float,
+                #    'timestamp': float, 'is_available': bool}
+                data = meta.get('data', {})
+                is_stale = not meta.get('is_available', True)
+                age_hours = meta.get('age_hours', 0)
+
+                # Defensive: if data is somehow not a dict, skip gracefully
+                if not isinstance(data, dict):
+                    st.warning(f"⚠️ Invalid data for topic '{topic}' — skipping.")
+                    continue
+
                 # Extract state data
                 title = data.get('title', topic)[:50]  # Truncate long titles
                 price = data.get('price', 0)
@@ -251,6 +268,10 @@ def render_prediction_markets():
                 # Color-code based on alert state
                 # "off" = red (alerting), "normal" = green (stable)
                 delta_color = "off" if hwm > 0 else "normal"
+
+                # Staleness visual indicator
+                if is_stale:
+                    st.caption(f"⏳ Data is {age_hours:.1f}h old")
 
                 # Display metric card
                 st.metric(

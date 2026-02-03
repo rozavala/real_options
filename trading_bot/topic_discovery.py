@@ -475,6 +475,9 @@ Answer ONLY with a JSON object: {{"relevant": true/false, "score": 0-5}}
         if not os.path.exists(self.DISCOVERED_TOPICS_FILE):
             changes['has_changes'] = True
             changes['added'] = [t['tag'] for t in new_topics]
+            changes['added_display'] = [
+                t.get('display_name', t.get('query', t['tag'])) for t in new_topics
+            ]
             changes['summary'] = f"Initial scan: {len(new_topics)} topics found"
             return changes
 
@@ -492,6 +495,14 @@ Answer ONLY with a JSON object: {{"relevant": true/false, "score": 0-5}}
                 changes['has_changes'] = True
                 changes['added'] = list(added)
                 changes['removed'] = list(removed)
+
+                # Build tag → display_name lookup for human-readable notifications
+                new_display = {t['tag']: t.get('display_name', t.get('query', t['tag'])) for t in new_topics}
+                old_display = {t['tag']: t.get('display_name', t.get('query', t['tag'])) for t in old_topics}
+
+                changes['added_display'] = [new_display.get(tag, tag) for tag in added]
+                changes['removed_display'] = [old_display.get(tag, tag) for tag in removed]
+
                 changes['summary'] = f"Topics: +{len(added)} added, -{len(removed)} removed"
 
         except Exception as e:
@@ -500,13 +511,21 @@ Answer ONLY with a JSON object: {{"relevant": true/false, "score": 0-5}}
         return changes
 
     def _notify_changes(self, changes: Dict):
-        """Send Pushover notification."""
+        """Send Pushover notification with human-readable topic names."""
         from notifications import send_pushover_notification
 
         msg = f"<b>Topic Discovery Update</b>\n{changes['summary']}\n"
-        if changes['added']:
+        if changes.get('added_display'):
+            display_items = [name[:60] for name in changes['added_display'][:5]]
+            msg += f"\n<b>Added:</b>\n" + "\n".join(f"• {name}" for name in display_items)
+        elif changes.get('added'):
+            # Fallback to tags if display names unavailable
             msg += f"\n<b>Added:</b> {', '.join(changes['added'][:5])}"
-        if changes['removed']:
+
+        if changes.get('removed_display'):
+            display_items = [name[:60] for name in changes['removed_display'][:5]]
+            msg += f"\n<b>Removed:</b>\n" + "\n".join(f"• {name}" for name in display_items)
+        elif changes.get('removed'):
             msg += f"\n<b>Removed:</b> {', '.join(changes['removed'][:5])}"
 
         send_pushover_notification(self.config.get('notifications', {}), "Topic Discovery", msg)
