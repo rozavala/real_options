@@ -25,6 +25,15 @@ from config.commodity_profiles import get_commodity_profile, GrowingRegion
 
 logger = logging.getLogger(__name__)
 
+# Domain whitelists for prediction market filtering
+DOMAIN_KEYWORD_WHITELISTS = {
+    'coffee': ['coffee', 'arabica', 'robusta', 'kc', 'bean', 'starbucks', 'peet', 'roast', 'harvest', 'crop'],
+    'macro': ['fed', 'rate', 'inflation', 'cpi', 'fomc', 'powell', 'yield', 'treasury', 'dollar', 'dxy', 'recession', 'gdp', 'employment', 'jobs', 'economy', 'market'],
+    'geopolitical': ['war', 'conflict', 'tariff', 'sanction', 'election', 'trade', 'china', 'russia', 'ukraine', 'israel', 'iran', 'houthi', 'suez', 'canal', 'panama', 'trump', 'biden', 'president'],
+    'weather': ['rain', 'drought', 'frost', 'el nino', 'la nina', 'monsoon', 'hurricane', 'cyclone', 'typhoon', 'temp', 'precipitation'],
+    'logistics': ['port', 'shipping', 'container', 'freight', 'strike', 'union', 'rail', 'supply chain']
+}
+
 def with_retry(max_attempts: int = 3, backoff: float = 2.0):
     """Decorator for retrying failed async operations."""
     def decorator(func):

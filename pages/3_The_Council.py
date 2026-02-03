@@ -110,9 +110,15 @@ with st.sidebar:
 
     weighted_score = row.get('weighted_score', None)
 
-    if weighted_score and pd.notna(weighted_score):
-        ws = float(weighted_score)
+    # Robust check: handle empty strings, NaN, None, and valid zero scores
+    ws = None
+    if weighted_score is not None and weighted_score != '' and pd.notna(weighted_score):
+        try:
+            ws = float(weighted_score)
+        except (ValueError, TypeError):
+            ws = None
 
+    if ws is not None:
         # Determine conviction level
         if ws >= 0.6:
             level, color = "STRONG BULL", "#00CC96"
@@ -162,6 +168,8 @@ st.caption("Perfect polygon = total alignment. Jagged shape = internal conflict"
 
 # Map sentiments to numerical values
 def sentiment_to_value(sentiment):
+    if pd.isna(sentiment) or str(sentiment).lower() == 'nan':
+        return 0.0  # Treat missing data as no signal (won't affect radar)
     if sentiment in ['BULLISH', 'Bullish', 'bullish']:
         return 1.0
     elif sentiment in ['BEARISH', 'Bearish', 'bearish']:
@@ -210,8 +218,20 @@ with radar_cols[1]:
     st.markdown("**Agent Votes:**")
     for i, (agent, col) in enumerate(zip(agents, agent_cols)):
         sentiment = row.get(col, 'NEUTRAL')
-        icon = "🟢" if sentiment in ['BULLISH', 'Bullish'] else "🔴" if sentiment in ['BEARISH', 'Bearish'] else "⚪"
-        st.write(f"{icon} **{agent}**: {sentiment}")
+        # Handle NaN/None/empty values from stale or missing agents
+        if pd.isna(sentiment) or str(sentiment).lower() == 'nan' or sentiment == '':
+            icon = "🔘"
+            display_sentiment = "No Data"
+        elif sentiment in ['BULLISH', 'Bullish', 'bullish']:
+            icon = "🟢"
+            display_sentiment = sentiment
+        elif sentiment in ['BEARISH', 'Bearish', 'bearish']:
+            icon = "🔴"
+            display_sentiment = sentiment
+        else:
+            icon = "⚪"
+            display_sentiment = sentiment
+        st.write(f"{icon} **{agent}**: {display_sentiment}")
 
     # Add interpretation text based on trade type
     if row.get('prediction_type') == 'VOLATILITY':
@@ -322,6 +342,15 @@ st.markdown("---")
 # === SECTION 3: Master Decision Details ===
 st.subheader("👑 Master Decision")
 
+# Helper for NaN safety
+def safe_display(value, fallback="N/A"):
+    """Convert NaN/None/empty values to a readable fallback."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return fallback
+    if str(value).strip().lower() == 'nan' or str(value).strip() == '':
+        return fallback
+    return str(value)
+
 # Show prediction type badge
 pred_type = row.get('prediction_type', 'DIRECTIONAL')
 strategy = row.get('strategy_type', 'Unknown')
@@ -334,8 +363,8 @@ else:
     st.markdown(f"#### 📊 Trade Type: DIRECTIONAL ({direction}) → {strategy}")
 
 # === v7.1: Thesis Strength Badge ===
-thesis_strength = row.get('thesis_strength', 'N/A')
-if thesis_strength and thesis_strength != 'N/A':
+thesis_strength = safe_display(row.get('thesis_strength'), "UNKNOWN")
+if thesis_strength != "UNKNOWN":
     thesis_colors = {
         'PROVEN': '#00CC96',      # Green
         'PLAUSIBLE': '#FFA15A',   # Orange
@@ -350,9 +379,8 @@ if thesis_strength and thesis_strength != 'N/A':
     """, unsafe_allow_html=True)
 
 # === v7.1: Primary Catalyst ===
-primary_catalyst = row.get('primary_catalyst', '')
-if primary_catalyst and primary_catalyst != 'N/A' and primary_catalyst != 'Not specified':
-    st.markdown(f"**🎯 Primary Catalyst:** {primary_catalyst}")
+primary_catalyst = safe_display(row.get('primary_catalyst'), "N/A")
+st.markdown(f"**🎯 Primary Catalyst:** {primary_catalyst}")
 
 master_cols = st.columns(4)
 
@@ -367,6 +395,10 @@ with master_cols[0]:
 
 with master_cols[1]:
     confidence = row.get('master_confidence', 0)
+    if pd.isna(confidence) or confidence is None:
+        confidence = 0.0
+    else:
+        confidence = float(confidence)
     st.metric("Confidence", f"{confidence:.1%}")
 
 with master_cols[2]:
@@ -376,7 +408,7 @@ with master_cols[2]:
 
 with master_cols[3]:
     conviction = row.get('conviction_multiplier', 'N/A')
-    if conviction != 'N/A':
+    if conviction != 'N/A' and pd.notna(conviction):
         try:
             conv_val = float(conviction)
             conv_label = {1.0: "✅ Aligned", 0.75: "⚠️ Partial", 0.5: "🔻 Divergent"}.get(conv_val, f"{conv_val:.2f}")
@@ -388,13 +420,12 @@ with master_cols[3]:
 
 # Reasoning
 st.markdown("**Master Reasoning:**")
-reasoning = row.get('master_reasoning', 'No reasoning recorded.')
+reasoning = safe_display(row.get('master_reasoning'), "No reasoning recorded for this decision.")
 st.info(reasoning)
 
 # === v7.1: Dissent Acknowledged ===
-dissent = row.get('dissent_acknowledged', '')
-if dissent and dissent != 'N/A' and dissent != 'None stated':
-    st.markdown(f"**⚖️ Dissent Acknowledged:** {dissent}")
+dissent = safe_display(row.get('dissent_acknowledged'), "N/A")
+st.markdown(f"**⚖️ Dissent Acknowledged:** {dissent}")
 
 st.markdown("---")
 
