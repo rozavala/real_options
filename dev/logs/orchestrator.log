@@ -1,105 +1,16 @@
-2026-02-03 08:57:41,706 - Orchestrator - INFO - =============================================
-2026-02-03 08:57:41,706 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-03 08:57:41,706 - Orchestrator - INFO - =============================================
-2026-02-03 08:57:41,708 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-03 08:57:41,708 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-03 08:57:41,868 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-02-03 08:57:41,869 - Orchestrator - INFO - Processing 1 deferred triggers from overnight
-2026-02-03 08:57:41,870 - trading_bot.connection_pool - INFO - Connecting IB (deferred) ID: 200...
-2026-02-03 08:57:42,185 - trading_bot.connection_pool - INFO - IB (deferred) connected successfully with ID 200
-2026-02-03 08:57:42,197 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
-2026-02-03 08:57:42,297 - trading_bot.drawdown_circuit_breaker - INFO - DrawdownGuard initialized. Starting Equity: $46,992.67
-2026-02-03 08:57:42,298 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: Drought Risk in Honduras Copan: 10 days with < 5.0mm rain (Cycle: KC-85518e55)
-2026-02-03 08:57:42,629 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-03 08:57:42,913 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-02-03 08:57:42,914 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
-2026-02-03 08:57:42,914 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'gemini', 'anthropic', 'openai'], 'diversity_score': 1.0}
-2026-02-03 08:57:42,945 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-03 08:57:43,098 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-03 08:57:43,104 - trading_bot.enhanced_brier - INFO - Loaded 200 predictions from ./data/enhanced_brier.json
-2026-02-03 08:57:43,105 - trading_bot.agents - INFO - Loaded commodity profile: Coffee Arabica
-2026-02-03 08:57:43,106 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee Arabica: 9 port tokens, 24 producer tokens
-2026-02-03 08:57:43,106 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee Arabica
-2026-02-03 08:57:43,106 - trading_bot.agents - INFO - Observability Hub initialized.
-2026-02-03 08:57:43,106 - trading_bot.agents - INFO - Trading Council initialized for Coffee Arabica. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
-2026-02-03 08:57:43,106 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
-2026-02-03 08:57:43,238 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
-2026-02-03 08:57:43,239 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
-2026-02-03 08:57:43,240 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
-2026-02-03 08:57:48,110 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
-2026-02-03 08:57:48,774 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=315.05, sma_200=335.881, regime=TRENDING, vol_5d=0.0278
-2026-02-03 08:57:48,775 - Orchestrator - INFO - Emergency market context: price=315.05, regime=TRENDING
-2026-02-03 08:57:48,775 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
-2026-02-03 08:57:48,775 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
-2026-02-03 08:57:48,775 - trading_bot.agents - INFO - Waking up agronomist...
-2026-02-03 08:57:49,586 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
-2026-02-03 08:57:49,587 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
-2026-02-03 08:58:35,132 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-02-03 08:58:57,386 - trading_bot.agents - WARNING - [agronomist] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 6 bullish vs 2 bearish evidence words']
-2026-02-03 08:58:57,387 - trading_bot.agents - WARNING - [agronomist] Validation issues: ['Direction-evidence mismatch: BEARISH call but 6 bullish vs 2 bearish evidence words']
-2026-02-03 08:59:27,845 - trading_bot.weighted_voting - INFO - Market Regime Detected: TRENDING
-2026-02-03 08:59:27,846 - trading_bot.weighted_voting - WARNING - Agent macro: ABSTAINING due to stale/failed data (would dilute signal)
-2026-02-03 08:59:27,846 - trading_bot.weighted_voting - WARNING - Agent geopolitical: ABSTAINING due to stale/failed data (would dilute signal)
-2026-02-03 08:59:27,846 - trading_bot.weighted_voting - WARNING - Agent supply_chain: ABSTAINING due to stale/failed data (would dilute signal)
-2026-02-03 08:59:27,846 - trading_bot.weighted_voting - WARNING - Agent inventory: ABSTAINING due to stale/failed data (would dilute signal)
-2026-02-03 08:59:27,846 - trading_bot.weighted_voting - WARNING - Agent sentiment: ABSTAINING due to stale/failed data (would dilute signal)
-2026-02-03 08:59:27,846 - trading_bot.weighted_voting - WARNING - Agent technical: ABSTAINING due to stale/failed data (would dilute signal)
-2026-02-03 08:59:27,846 - trading_bot.weighted_voting - WARNING - Agent volatility: ABSTAINING due to stale/failed data (would dilute signal)
-2026-02-03 08:59:27,847 - trading_bot.weighted_voting - WARNING - Agent latest_ml_signals: ABSTAINING due to stale/failed data (would dilute signal)
-2026-02-03 08:59:27,847 - trading_bot.weighted_voting - WARNING - QUORUM FAILURE: Only 1 agents voted (minimum: 3). Returning NEUTRAL to prevent low-confidence decisions.
-2026-02-03 08:59:27,847 - trading_bot.agents - WARNING - Quorum failure for KCK6 (202605): Only ['agronomist'] voted. Skipping council for this contract.
-2026-02-03 08:59:27,847 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
-2026-02-03 08:59:27,850 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=TRENDING
-2026-02-03 08:59:27,863 - root - INFO - Schema mismatch detected. Migrating council_history.csv in-place.
-2026-02-03 08:59:27,864 - root - INFO -   Old columns: 36, New columns: 40
-2026-02-03 08:59:27,886 - root - INFO -   Added new column: thesis_strength
-2026-02-03 08:59:27,887 - root - INFO -   Added new column: primary_catalyst
-2026-02-03 08:59:27,887 - root - INFO -   Added new column: conviction_multiplier
-2026-02-03 08:59:27,887 - root - INFO -   Added new column: dissent_acknowledged
-2026-02-03 08:59:27,913 - root - INFO - Schema migration complete. 103 records preserved.
-2026-02-03 08:59:27,914 - root - INFO - Logged council decision for KCK6 (202605)
-2026-02-03 08:59:27,918 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (DIRECTIONAL/NONE)
-2026-02-03 08:59:28,059 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.20, geopolitical: 0.17, inventory: 0.00, macro: 0.48, master_decision: 0.05, sentiment: 0.00, supply_chain: 0.03, technical: 0.12, volatility: 0.11}
-2026-02-03 08:59:28,063 - trading_bot.brier_scoring - WARNING - Header mismatch in data/agent_accuracy_structured.csv: expected 'cycle_id,timestamp,agent,direction,confidence,prob_bullish,actual', got 'timestamp,agent,direction,confidence,prob_bullish,actual,cycle_id'. Rewriting with canonical column order.
-2026-02-03 08:59:28,072 - trading_bot.enhanced_brier - INFO - Loaded 200 predictions from ./data/enhanced_brier.json
-2026-02-03 08:59:28,104 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
-2026-02-03 08:59:28,104 - Orchestrator - INFO - Post-cycle debounce set for 1800s
-2026-02-03 08:59:28,105 - Orchestrator - INFO - Deferred triggers complete: 1 processed, 0 skipped
-2026-02-03 08:59:28,105 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-03 08:59:28,105 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-03 13:20:00 UTC. Waiting for 4.34 hours.
-2026-02-03 08:59:28,112 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-03 08:59:28,113 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
-2026-02-03 08:59:28,438 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-03 08:59:28,439 - trading_bot.sentinels - INFO - Loaded state for 1 prediction market topics
-2026-02-03 08:59:28,439 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 4 topics | min_liq=$10,000 | HWM decay=24h
-2026-02-03 08:59:28,441 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
-2026-02-03 08:59:28,441 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 118...
-2026-02-03 08:59:28,562 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 118
-2026-02-03 08:59:28,566 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-03 08:59:28,566 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
-2026-02-03 08:59:28,566 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
-2026-02-03 08:59:28,671 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
-2026-02-03 08:59:28,671 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-02-03 08:59:28,671 - Orchestrator - INFO - Refreshed contract cache: KCK6
-2026-02-03 08:59:28,671 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-02-03 08:59:28,672 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 204...
-2026-02-03 08:59:29,125 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 204
-2026-02-03 08:59:29,129 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-03 08:59:29,129 - trading_bot.microstructure_sentinel - INFO - MicrostructureSentinel initialized
-2026-02-03 08:59:31,132 - trading_bot.microstructure_sentinel - INFO - Subscribed to microstructure for KCK6
-2026-02-03 09:00:02,206 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'US Recession Risk' (attempt 1).
-2026-02-03 09:00:02,447 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'Fed Rate Path 2026' (attempt 1).
-2026-02-03 09:00:02,467 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
-2026-02-03 09:05:03,199 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
-2026-02-03 09:10:03,851 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
-2026-02-03 09:15:04,465 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
-2026-02-03 09:20:04,720 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'US Recession Risk' (attempt 5).
-2026-02-03 09:20:04,947 - trading_bot.sentinels - WARNING - ⚠️ No relevant markets for 'Fed Rate Path 2026' (attempt 5).
-2026-02-03 09:20:04,952 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
-2026-02-03 09:25:05,696 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
-2026-02-03 09:30:06,182 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
-2026-02-03 09:35:06,926 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
-2026-02-03 09:40:07,424 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
-2026-02-03 09:45:08,191 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
-2026-02-03 09:50:08,973 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
-2026-02-03 09:55:09,722 - trading_bot.sentinels - INFO - PredictionMarket: 1 tracking, 3 unresolved | Active: FedRate
+2026-02-03 10:17:55,594 - Orchestrator - INFO - =============================================
+2026-02-03 10:17:55,594 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-03 10:17:55,594 - Orchestrator - INFO - =============================================
+2026-02-03 10:17:55,598 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-03 10:17:55,599 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
+2026-02-03 10:17:55,599 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-03 10:17:55,779 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-02-03 10:17:55,779 - Orchestrator - INFO - No deferred triggers to process.
+2026-02-03 10:17:55,779 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-02-03 10:17:55,779 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-03 13:20:00 UTC. Waiting for 3.03 hours.
+2026-02-03 10:17:55,779 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-03 10:17:55,779 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
+2026-02-03 10:17:56,042 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-02-03 10:17:56,043 - trading_bot.sentinels - INFO - Loaded state for 1 prediction market topics
+2026-02-03 10:17:56,043 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Fed rate 2026': title='How much spending will DOGE cut in 2025?'. Clearing cache.
+2026-02-03 10:17:56,043 - trading_bot.sentinels - INFO - Reloading prediction market topics...
