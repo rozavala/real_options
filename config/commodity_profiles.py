@@ -6,7 +6,7 @@ agents, TMS) remains identical; only the Profile changes.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from enum import Enum
 import os
 import logging
@@ -25,21 +25,43 @@ class CommodityType(Enum):
 
 @dataclass
 class GrowingRegion:
-    """Geographic region with weather monitoring parameters."""
+    """Physical characteristics of a commodity growing region."""
     name: str
     country: str
-    latitude: float
-    longitude: float
-    weight: float  # Production weight (0.0-1.0)
+    latitude_range: Tuple[float, float]
+    longitude_range: Tuple[float, float]
+    production_share: float  # % of global production
 
-    # Weather thresholds (commodity-specific)
+    # NEW FIELDS (Flight Director Amendment - Data Locality)
+    historical_weekly_precip_mm: float = 60.0  # Normal rainfall per week during growing season
+    drought_threshold_mm: float = 30.0  # Below this = drought risk
+    flood_threshold_mm: float = 150.0  # Above this = flood risk
+
+    # Agronomic calendar (NEW)
+    flowering_months: List[int] = field(default_factory=list)  # Months when flowering occurs (1-12)
+    harvest_months: List[int] = field(default_factory=list)  # Months when harvest occurs (1-12)
+    bean_filling_months: List[int] = field(default_factory=list)  # Critical bean development period
+
+    # Legacy/Optional fields for compatibility
+    planting_months: List[int] = field(default_factory=list)
     frost_threshold_celsius: Optional[float] = None
     drought_soil_moisture_pct: Optional[float] = None
     flood_precip_mm_24h: Optional[float] = None
 
-    # Seasonality
-    harvest_months: List[int] = field(default_factory=list)
-    planting_months: List[int] = field(default_factory=list)
+    @property
+    def latitude(self) -> float:
+        """Center latitude for API queries."""
+        return (self.latitude_range[0] + self.latitude_range[1]) / 2.0
+
+    @property
+    def longitude(self) -> float:
+        """Center longitude for API queries."""
+        return (self.longitude_range[0] + self.longitude_range[1]) / 2.0
+
+    @property
+    def weight(self) -> float:
+        """Alias for production_share."""
+        return self.production_share
 
 
 @dataclass
@@ -138,7 +160,7 @@ class CommodityProfile:
 # =============================================================================
 
 COFFEE_ARABICA_PROFILE = CommodityProfile(
-    name="Coffee Arabica",
+    name="Coffee (Arabica)",
     ticker="KC",
     commodity_type=CommodityType.SOFT,
 
@@ -159,87 +181,106 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
         GrowingRegion(
             name="Minas Gerais",
             country="Brazil",
-            latitude=-19.9,
-            longitude=-43.9,
-            weight=0.35,
+            latitude_range=(-22.0, -14.0),
+            longitude_range=(-51.0, -39.0),
+            production_share=0.30,
+            historical_weekly_precip_mm=60.0,  # ~240mm/month during growing season
+            drought_threshold_mm=30.0,  # <30mm/week = drought
+            flood_threshold_mm=150.0,  # >150mm/week = flood
+            flowering_months=[9, 10, 11],  # Sep-Nov (Southern Hemisphere spring)
+            harvest_months=[5, 6, 7, 8],  # May-Aug (dry season)
+            bean_filling_months=[12, 1, 2, 3],  # Dec-Mar (rainy season)
+            planting_months=[10, 11, 12],
             frost_threshold_celsius=2.0,
-            drought_soil_moisture_pct=10.0,
-            harvest_months=[5, 6, 7, 8, 9],  # May-Sep
-            planting_months=[10, 11, 12]
+            drought_soil_moisture_pct=10.0
         ),
         GrowingRegion(
-            name="São Paulo",
+            name="Espirito Santo",
             country="Brazil",
-            latitude=-23.5,
-            longitude=-46.6,
-            weight=0.15,
-            frost_threshold_celsius=2.0,
-            drought_soil_moisture_pct=10.0,
+            latitude_range=(-21.0, -17.5),
+            longitude_range=(-41.5, -39.5),
+            production_share=0.15,
+            historical_weekly_precip_mm=55.0,
+            drought_threshold_mm=25.0,
+            flood_threshold_mm=140.0,
+            flowering_months=[9, 10, 11],
             harvest_months=[5, 6, 7, 8],
-            planting_months=[10, 11]
-        ),
-        GrowingRegion(
-            name="Dak Lak",
-            country="Vietnam",
-            latitude=12.7,
-            longitude=108.0,
-            weight=0.15,
-            drought_soil_moisture_pct=15.0,
-            harvest_months=[10, 11, 12, 1],  # Oct-Jan
-            planting_months=[5, 6]
+            bean_filling_months=[12, 1, 2, 3],
+            planting_months=[10, 11],
+            frost_threshold_celsius=2.0,
+            drought_soil_moisture_pct=10.0
         ),
         GrowingRegion(
             name="Central Highlands",
             country="Vietnam",
-            latitude=14.3,
-            longitude=108.2,
-            weight=0.05,
-            drought_soil_moisture_pct=15.0,
-            harvest_months=[10, 11, 12, 1],  # Oct-Jan
-            planting_months=[5, 6]
+            latitude_range=(11.0, 14.0),
+            longitude_range=(107.0, 109.0),
+            production_share=0.18,
+            historical_weekly_precip_mm=70.0,  # Higher rainfall in Vietnam
+            drought_threshold_mm=35.0,
+            flood_threshold_mm=180.0,
+            flowering_months=[1, 2, 3],  # Jan-Mar (tropical dry season)
+            harvest_months=[10, 11, 12],  # Oct-Dec
+            bean_filling_months=[4, 5, 6, 7, 8, 9],  # Apr-Sep (monsoon)
+            planting_months=[5, 6],
+            drought_soil_moisture_pct=15.0
+        ),
+        GrowingRegion(
+            name="Copan",
+            country="Honduras",
+            latitude_range=(14.5, 15.5),
+            longitude_range=(-89.0, -88.0),
+            production_share=0.05,
+            historical_weekly_precip_mm=50.0,
+            drought_threshold_mm=20.0,
+            flood_threshold_mm=130.0,
+            flowering_months=[3, 4, 5],  # Mar-May
+            harvest_months=[11, 12, 1, 2],  # Nov-Feb
+            bean_filling_months=[6, 7, 8, 9, 10],
+            planting_months=[5, 6],
+            drought_soil_moisture_pct=12.0
+        ),
+        # Legacy/Extra regions mapped to new structure
+        GrowingRegion(
+            name="São Paulo",
+            country="Brazil",
+            latitude_range=(-24.0, -23.0),
+            longitude_range=(-47.0, -46.0),
+            production_share=0.15,
+            harvest_months=[5, 6, 7, 8],
+            planting_months=[10, 11],
+            frost_threshold_celsius=2.0,
+            drought_soil_moisture_pct=10.0
         ),
         GrowingRegion(
             name="Colombia Huila",
             country="Colombia",
-            latitude=2.5,
-            longitude=-75.5,
-            weight=0.10,
-            flood_precip_mm_24h=100.0,
-            harvest_months=[4, 5, 6, 10, 11, 12],  # Two harvests
-            planting_months=[3, 9]
-        ),
-        GrowingRegion(
-            name="Honduras Copan",
-            country="Honduras",
-            latitude=14.8,
-            longitude=-89.1,
-            weight=0.05,
-            drought_soil_moisture_pct=12.0,
-            harvest_months=[11, 12, 1, 2, 3],  # Nov-Mar
-            planting_months=[5, 6]
+            latitude_range=(2.0, 3.0),
+            longitude_range=(-76.0, -75.0),
+            production_share=0.10,
+            harvest_months=[4, 5, 6, 10, 11, 12],
+            planting_months=[3, 9],
+            flood_precip_mm_24h=100.0
         ),
         GrowingRegion(
             name="Sumatra",
             country="Indonesia",
-            latitude=3.6,
-            longitude=98.7,
-            weight=0.05,
-            flood_precip_mm_24h=120.0,
-            harvest_months=[3, 4, 5, 6, 9, 10, 11, 12],  # Two harvests (fly crop + main)
-            planting_months=[1, 2]
+            latitude_range=(3.0, 4.0),
+            longitude_range=(98.0, 99.0),
+            production_share=0.05,
+            harvest_months=[3, 4, 5, 6, 9, 10, 11, 12],
+            planting_months=[1, 2],
+            flood_precip_mm_24h=120.0
         ),
-        # NOTE: Ethiopia (Sidamo/Yirgacheffe) is not currently monitored in production
-        # but is a significant Arabica origin. Add to config.json sentinel locations
-        # before enabling here. Weight set to 0.0 to prevent accidental activation.
         GrowingRegion(
             name="Sidamo/Yirgacheffe",
             country="Ethiopia",
-            latitude=6.0,
-            longitude=38.5,
-            weight=0.0,  # NOT YET IN PRODUCTION — set to 0 until sentinel configured
-            drought_soil_moisture_pct=12.0,
+            latitude_range=(5.5, 6.5),
+            longitude_range=(38.0, 39.0),
+            production_share=0.0,
             harvest_months=[10, 11, 12],
-            planting_months=[4, 5]
+            planting_months=[4, 5],
+            drought_soil_moisture_pct=12.0
         ),
     ],
 
@@ -321,8 +362,6 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
     ],
 
     social_accounts=[
-        # MUST MATCH config.json → sentinels.x_sentiment.from_handles
-        # These are the production-curated X handles monitored by XSentimentSentinel
         "SpillingTheBean",    # Coffee-specific commodity analyst
         "optima_t",           # Coffee market intelligence
         "Reuters",            # Major wire service
@@ -364,9 +403,9 @@ COCOA_PROFILE = CommodityProfile(
         GrowingRegion(
             name="Côte d'Ivoire",
             country="Ivory Coast",
-            latitude=6.8,
-            longitude=-5.3,
-            weight=0.40,
+            latitude_range=(6.0, 7.6), # Approx center 6.8
+            longitude_range=(-6.0, -4.6), # Approx center -5.3
+            production_share=0.40,
             drought_soil_moisture_pct=15.0,
             harvest_months=[10, 11, 12, 1, 2],  # Main crop Oct-Feb
             planting_months=[5, 6]
@@ -374,9 +413,9 @@ COCOA_PROFILE = CommodityProfile(
         GrowingRegion(
             name="Ghana",
             country="Ghana",
-            latitude=6.7,
-            longitude=-1.6,
-            weight=0.20,
+            latitude_range=(6.0, 7.5), # Approx center 6.7
+            longitude_range=(-2.5, -0.5), # Approx center -1.6
+            production_share=0.20,
             drought_soil_moisture_pct=15.0,
             harvest_months=[10, 11, 12, 1],
             planting_months=[5, 6]
@@ -384,9 +423,9 @@ COCOA_PROFILE = CommodityProfile(
         GrowingRegion(
             name="Ecuador",
             country="Ecuador",
-            latitude=-1.8,
-            longitude=-79.5,
-            weight=0.08,
+            latitude_range=(-2.5, -1.0), # Approx center -1.8
+            longitude_range=(-80.0, -79.0), # Approx center -79.5
+            production_share=0.08,
             flood_precip_mm_24h=80.0,
             harvest_months=[3, 4, 5, 6],
             planting_months=[11, 12]
@@ -465,43 +504,6 @@ COCOA_PROFILE = CommodityProfile(
 
 
 # =============================================================================
-# ⚠️  CONFIG.JSON INTEGRATION — CRITICAL OPERATIONAL NOTE
-# =============================================================================
-#
-# CommodityProfile is SUPPLEMENTARY to config.json, NOT a replacement.
-#
-# RUNTIME AUTHORITY (config.json — sentinels read from HERE):
-#   - sentinels.x_sentiment.from_handles  → X accounts to monitor
-#   - sentinels.x_sentiment.search_queries → search terms
-#   - sentinels.x_sentiment.exclude_keywords → spam filters
-#   - sentinels.weather.locations          → lat/lon for weather API calls
-#   - sentinels.weather.triggers           → frost_temp_c=4.0 (ALERT threshold)
-#   - sentinels.logistics.rss_urls         → RSS feed URLs
-#   - sentinels.news.rss_urls              → news RSS feed URLs
-#   - sentinels.microstructure.*           → order book thresholds
-#   - sentinels.prediction_markets.*       → Polymarket topics
-#   - fred_series, yf_series_map           → data pipeline tickers
-#   - commodity_profile.KC.stop_parse_range → [80, 800] for stop-loss validation
-#   - commodity_profile.KC.typical_price_range → [100, 600] for sanity checks
-#
-# THIS FILE PROVIDES (for agent prompts & profile metadata):
-#   - agronomy_context, macro_context, supply_chain_context → injected into prompts
-#   - GrowingRegion data → used in prompt templates & future sentinel routing
-#   - ContractSpec → tick size, contract months, position limits
-#   - social_accounts → REFERENCE copy (must stay synced with config.json)
-#
-# THRESHOLD NOTE: GrowingRegion.frost_threshold_celsius=2.0 is the AGRONOMIC
-# damage threshold (crop damage occurs here). Config.json sentinel
-# frost_temp_c=4.0 is the ALERT threshold (fires early as early warning).
-# Both are correct — they serve different purposes.
-#
-# FUTURE (Phase 3+): Sentinels will read from CommodityProfile directly,
-# making config.json sentinel sections auto-generated from profiles.
-# Until then, changes to social_accounts/regions must be synced in BOTH places.
-# =============================================================================
-
-
-# =============================================================================
 # PROFILE FACTORY
 # =============================================================================
 
@@ -568,25 +570,29 @@ def _load_profile_from_json(path: str) -> CommodityProfile:
         data = json.load(f)
 
     # Build nested objects from JSON
-    # FIX (Flight Director Review): Aligned with GrowingRegion dataclass exactly.
-    # - Removed 'climate_risks' (not a field on GrowingRegion)
-    # - Added required 'weight' field
-    # - Added optional weather thresholds and planting_months
-    # - harvest_months MUST be List[int] (1=Jan, 12=Dec), NOT strings
+    # FIX (Flight Director Amendment): Added new fields with defaults
     regions = [
         GrowingRegion(
             name=r['name'],
             country=r['country'],
-            latitude=r.get('latitude', 0.0),
-            longitude=r.get('longitude', 0.0),
-            weight=r.get('weight', 0.0),
-            # Weather thresholds (optional, commodity-specific)
+            # Convert JSON list/tuple to tuple for range
+            latitude_range=tuple(r.get('latitude_range', (0.0, 0.0))),
+            longitude_range=tuple(r.get('longitude_range', (0.0, 0.0))),
+            production_share=r.get('production_share', r.get('weight', 0.0)),
+
+            # New Fields
+            historical_weekly_precip_mm=r.get('historical_weekly_precip_mm', 60.0),
+            drought_threshold_mm=r.get('drought_threshold_mm', 30.0),
+            flood_threshold_mm=r.get('flood_threshold_mm', 150.0),
+            flowering_months=r.get('flowering_months', [9, 10, 11]),
+            harvest_months=r.get('harvest_months', [5, 6, 7, 8]),
+            bean_filling_months=r.get('bean_filling_months', [12, 1, 2, 3]),
+
+            # Legacy/Optional
+            planting_months=r.get('planting_months', []),
             frost_threshold_celsius=r.get('frost_threshold_celsius'),
             drought_soil_moisture_pct=r.get('drought_soil_moisture_pct'),
             flood_precip_mm_24h=r.get('flood_precip_mm_24h'),
-            # Seasonality (integers: 1=Jan, 12=Dec)
-            harvest_months=r.get('harvest_months', []),
-            planting_months=r.get('planting_months', [])
         )
         for r in data.get('primary_regions', [])
     ]
