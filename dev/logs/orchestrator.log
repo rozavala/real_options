@@ -303,3 +303,60 @@
 2026-02-03 13:55:27,927 - OrderManager - INFO - No orders were queued. Skipping placement step.
 2026-02-03 13:55:27,928 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
 2026-02-03 13:55:27,929 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-02-03 15:50:00 UTC. Waiting for 1.91 hours.
+2026-02-03 15:50:00,013 - Orchestrator - INFO - --- Running scheduled task: close_stale_positions ---
+2026-02-03 15:50:00,017 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-03 15:50:00,018 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-03 15:50:00,018 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-03 15:50:00,025 - OrderManager - INFO - Found 8 live position legs in the IB account.
+2026-02-03 15:50:00,049 - OrderManager - INFO - Reconstruction: KOK6 C3.35 | Trade Date: 2026-01-30 | Age: 3 | Qty: 1.0
+2026-02-03 15:50:00,051 - OrderManager - INFO - Reconstruction: KOK6 P3.15 | Trade Date: 2026-01-30 | Age: 3 | Qty: 1.0
+2026-02-03 15:50:00,052 - OrderManager - INFO - Reconstruction: KOK6 P3.2 | Trade Date: 2026-01-30 | Age: 3 | Qty: 1.0
+2026-02-03 15:50:00,053 - OrderManager - INFO - Reconstruction: KOK6 P3.075 | Trade Date: 2026-02-02 | Age: 2 | Qty: 1.0
+2026-02-03 15:50:00,054 - OrderManager - INFO - Reconstruction: KOK6 C3.225 | Trade Date: 2026-02-02 | Age: 2 | Qty: 1.0
+2026-02-03 15:50:00,055 - OrderManager - INFO - Reconstruction: KOK6 C3.275 | Trade Date: 2026-02-02 | Age: 2 | Qty: 1.0
+2026-02-03 15:50:00,056 - OrderManager - INFO - Reconstruction: KOK6 P3.125 | Trade Date: 2026-02-02 | Age: 2 | Qty: 1.0
+2026-02-03 15:50:00,057 - OrderManager - INFO - Reconstruction: KOK6 C3.3 | Trade Date: 2026-01-30 | Age: 3 | Qty: 1.0
+2026-02-03 15:50:00,057 - OrderManager - INFO - Processing closure for Position ID e8fcdc8a-6507-4b60-a3dc-37b22843036b with 4 legs.
+2026-02-03 15:50:00,057 - OrderManager - INFO - Constructed BAG order for Pos ID e8fcdc8a-6507-4b60-a3dc-37b22843036b: ['BUY 1 x 745575714', 'BUY 1 x 743955683', 'SELL 1 x 725781080', 'SELL 1 x 732415567']
+2026-02-03 15:50:00,057 - OrderManager - INFO - Calculating combo price from 4 legs...
+2026-02-03 15:50:04,773 - OrderManager - WARNING - Leg 725781080 (KOK6 P3.2): No valid price data
+2026-02-03 15:50:04,774 - OrderManager - WARNING - Limit price is zero for KC
+2026-02-03 15:50:04,774 - OrderManager - WARNING - Invalid limit price for KC. Using Market Order.
+2026-02-03 15:50:04,775 - root - INFO - Assigned new unique OrderRef for tracking: f797d86f-865e-424f-8000-24246951ee32
+2026-02-03 15:50:04,775 - root - INFO - Placing BUY order for ...
+2026-02-03 15:50:04,775 - root - INFO - Successfully placed order ID 1101 for .
+2026-02-03 15:50:04,775 - OrderManager - INFO - Placed close order 1101 for Pos ID e8fcdc8a-6507-4b60-a3dc-37b22843036b. Waiting for fill...
+2026-02-03 15:50:18,793 - root - INFO - Skipping ledger entry for BAG contract KC (legs will be logged individually).
+2026-02-03 15:50:18,793 - root - INFO - Logged 4 leg(s) to ledger for position_id e8fcdc8a-6507-4b60-a3dc-37b22843036b (Stale Position Close)
+2026-02-03 15:50:18,793 - OrderManager - INFO - Successfully closed Combo (Pos ID: e8fcdc8a-6507-4b60-a3dc-37b22843036b). P&L: -2435.0099999999998
+2026-02-03 15:50:18,800 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-03 15:50:18,834 - trading_bot.tms - INFO - TMS: Invalidated thesis for e8fcdc8a-6507-4b60-a3dc-37b22843036b: Stale position (>2 days)
+2026-02-03 15:50:18,835 - OrderManager - INFO - TMS: Invalidated thesis for e8fcdc8a-6507-4b60-a3dc-37b22843036b: Stale position (>2 days)
+2026-02-03 15:50:19,840 - OrderManager - INFO - Processing closure for Position ID f95c29ea-4597-4108-9e43-d10faed4461a with 4 legs.
+2026-02-03 15:50:19,840 - OrderManager - INFO - Constructed BAG order for Pos ID f95c29ea-4597-4108-9e43-d10faed4461a: ['BUY 1 x 745191382', 'SELL 1 x 756864355', 'BUY 1 x 757830282', 'SELL 1 x 745575700']
+2026-02-03 15:50:19,840 - OrderManager - INFO - Calculating combo price from 4 legs...
+2026-02-03 15:50:26,157 - OrderManager - INFO - Calculated combo limit price: -4.35 (raw: -4.43, slippage: 0.09)
+2026-02-03 15:50:26,158 - OrderManager - INFO - Placing LIMIT order for KC. Price: -4.35 (CREDIT)
+2026-02-03 15:50:26,158 - root - INFO - Assigned new unique OrderRef for tracking: d5b95091-4b29-4cff-90ad-8014bac76b8a
+2026-02-03 15:50:26,158 - root - INFO - Placing BUY order for ...
+2026-02-03 15:50:26,159 - root - INFO - Successfully placed order ID 1110 for .
+2026-02-03 15:50:26,161 - OrderManager - INFO - Placed close order 1110 for Pos ID f95c29ea-4597-4108-9e43-d10faed4461a. Waiting for fill...
+2026-02-03 15:50:31,167 - OrderManager - INFO - Price walk #1: -4.35 -> -4.30 (CREDIT)
+2026-02-03 15:50:36,176 - OrderManager - INFO - Price walk #2: -4.30 -> -4.25 (CREDIT)
+2026-02-03 15:50:41,182 - OrderManager - INFO - Price walk #3: -4.25 -> -4.20 (CREDIT)
+2026-02-03 15:50:46,190 - OrderManager - INFO - Price walk #4: -4.20 -> -4.15 (CREDIT)
+2026-02-03 15:50:51,200 - OrderManager - INFO - Price walk #5: -4.15 -> -4.10 (CREDIT)
+2026-02-03 15:50:56,207 - OrderManager - INFO - Price walk #6: -4.10 -> -4.05 (CREDIT)
+2026-02-03 15:51:11,228 - OrderManager - WARNING - Order 1110 not filled after 45s and 6 walks. Converting to Market.
+2026-02-03 15:51:13,231 - root - INFO - Assigned new unique OrderRef for tracking: 0f093c5a-8b4c-491d-b00e-8723d0102c3a
+2026-02-03 15:51:13,232 - root - INFO - Placing BUY order for ...
+2026-02-03 15:51:13,233 - root - INFO - Successfully placed order ID 1111 for .
+2026-02-03 15:51:23,245 - OrderManager - INFO - Market order filled at -0.95
+2026-02-03 15:51:24,247 - root - INFO - Skipping ledger entry for BAG contract KC (legs will be logged individually).
+2026-02-03 15:51:24,247 - root - INFO - Logged 4 leg(s) to ledger for position_id f95c29ea-4597-4108-9e43-d10faed4461a (Stale Position Close)
+2026-02-03 15:51:24,247 - OrderManager - INFO - Successfully closed Combo (Pos ID: f95c29ea-4597-4108-9e43-d10faed4461a). P&L: -1722.5100000000002
+2026-02-03 15:51:24,254 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-03 15:51:24,284 - trading_bot.tms - INFO - TMS: Invalidated thesis for f95c29ea-4597-4108-9e43-d10faed4461a: Stale position (>2 days)
+2026-02-03 15:51:24,284 - OrderManager - INFO - TMS: Invalidated thesis for f95c29ea-4597-4108-9e43-d10faed4461a: Stale position (>2 days)
+2026-02-03 15:51:25,619 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-03 15:51:25,623 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-03 16:05:00 UTC. Waiting for 0.23 hours.
