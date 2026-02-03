@@ -133,13 +133,15 @@ class TestUtils:
         # Check the first leg (BUY order should have negative value)
         assert written_rows[0]['combo_id'] == 123456
         assert written_rows[0]['action'] == 'BUY'
-        assert written_rows[0]['strike'] == 3.5
+        # EXPECTED CHANGE: Strike 3.5 normalized to 350.0
+        assert written_rows[0]['strike'] == 350.0
         assert abs(written_rows[0]['total_value_usd'] - -187.50) < 0.01
 
         # Check the second leg (SELL order should have positive value)
         assert written_rows[1]['combo_id'] == 123456
         assert written_rows[1]['action'] == 'SELL'
-        assert written_rows[1]['strike'] == 3.6
+        # EXPECTED CHANGE: Strike 3.6 normalized to 360.0
+        assert written_rows[1]['strike'] == 360.0
         assert abs(written_rows[1]['total_value_usd'] - 75.0) < 0.01
 
     @patch('csv.DictWriter')
@@ -192,7 +194,8 @@ class TestUtils:
 
         # CRITICAL: Assert that the logged data used the ENRICHED details
         # from the 'complete_contract' in the cache, not the incomplete one.
-        assert written_rows[0]['strike'] == 3.2
+        # EXPECTED CHANGE: Strike 3.2 normalized to 320.0
+        assert written_rows[0]['strike'] == 320.0
         assert written_rows[0]['right'] == 'P'
         assert written_rows[0]['local_symbol'] == 'KCH6 P3.2'
 

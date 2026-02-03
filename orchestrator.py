@@ -782,38 +782,45 @@ async def _close_spread_position(
         f"({len(legs)} legs): {reason}"
     )
 
-    # --- Step 1: Qualify all contracts ---
+    # --- Step 1: Re-qualify ALL contracts by conId ---
+    # CRITICAL FIX (2026-02-03): IBKR returns KC option positions with strikes
+    # in cents (307.5), but the order API expects dollars (3.075). We MUST
+    # re-qualify every contract using ONLY the conId so IB populates the
+    # correct strike format. Previous code skipped this for contracts that
+    # already had an exchange set, which was always the case for positions.
     qualified_legs = []
     for leg in legs:
-        contract = leg.contract
-        if not contract.exchange:
-            try:
-                qualified = await ib.qualifyContractsAsync(contract)
-                if qualified:
-                    # Create a new leg-like object with qualified contract
-                    qualified_legs.append(type(leg)(
-                        account=leg.account,
-                        contract=qualified[0],
-                        position=leg.position,
-                        avgCost=leg.avgCost
-                    ))
-                    logger.debug(
-                        f"Qualified {contract.localSymbol}: "
-                        f"exchange={qualified[0].exchange}"
-                    )
-                else:
-                    logger.error(
-                        f"Contract qualification returned empty for "
-                        f"{contract.localSymbol} — skipping leg"
-                    )
-                    qualified_legs.append(leg)  # Try anyway
-            except Exception as e:
-                logger.error(
-                    f"Contract qualification failed for "
-                    f"{contract.localSymbol}: {e}"
+        original_contract = leg.contract
+        try:
+            # Build a minimal contract with ONLY the conId.
+            # This forces IB to populate all fields from its database,
+            # including the correctly-formatted strike price.
+            minimal = Contract(conId=original_contract.conId)
+            qualified = await ib.qualifyContractsAsync(minimal)
+            if qualified and qualified[0].conId != 0:
+                qualified_legs.append(type(leg)(
+                    account=leg.account,
+                    contract=qualified[0],
+                    position=leg.position,
+                    avgCost=leg.avgCost
+                ))
+                logger.debug(
+                    f"Re-qualified {original_contract.localSymbol}: "
+                    f"strike {original_contract.strike} -> {qualified[0].strike}, "
+                    f"exchange={qualified[0].exchange}"
                 )
-                qualified_legs.append(leg)  # Try anyway
-        else:
+            else:
+                logger.error(
+                    f"Contract re-qualification returned invalid result for "
+                    f"{original_contract.localSymbol} (conId={original_contract.conId}) "
+                    f"— using original (may fail with Error 478)"
+                )
+                qualified_legs.append(leg)
+        except Exception as e:
+            logger.error(
+                f"Contract re-qualification failed for "
+                f"{original_contract.localSymbol}: {e} — using original"
+            )
             qualified_legs.append(leg)
 
     # --- Step 2: Close each leg individually ---
@@ -2437,12 +2444,14 @@ async def emergency_hard_close(config: dict):
                 close_action = 'SELL' if pos.position > 0 else 'BUY'
                 qty = abs(pos.position)
 
-                contract = pos.contract
-                qualified = await ib.qualifyContractsAsync(contract)
-                if not qualified:
-                    logger.error(f"Could not qualify {contract.localSymbol}")
+                # CRITICAL FIX: Re-qualify by conId only to get correct strike format
+                minimal = Contract(conId=pos.contract.conId)
+                qualified = await ib.qualifyContractsAsync(minimal)
+                if not qualified or qualified[0].conId == 0:
+                    logger.error(f"Could not qualify {pos.contract.localSymbol} (conId={pos.contract.conId})")
                     failed += 1
                     continue
+                contract = qualified[0]
 
                 # Market order with GTC
                 from ib_insync import MarketOrder
