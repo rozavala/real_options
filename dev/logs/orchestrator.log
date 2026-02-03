@@ -37,3 +37,39 @@
 2026-02-03 18:05:00,092 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
 2026-02-03 18:05:00,194 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
 2026-02-03 18:05:00,196 - Orchestrator - INFO - Next task 'cancel_and_stop_monitoring' scheduled for 2026-02-03 18:35:00 UTC. Waiting for 0.50 hours.
+2026-02-03 18:35:00,096 - Orchestrator - INFO - --- Running scheduled task: cancel_and_stop_monitoring ---
+2026-02-03 18:35:00,097 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
+2026-02-03 18:35:00,097 - Orchestrator - INFO - System shutdown flag SET — no new trades or emergency cycles will be processed
+2026-02-03 18:35:00,097 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
+2026-02-03 18:35:00,098 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-03 18:35:00,099 - OrderManager - INFO - Connected to IB for canceling open orders (purpose: orchestrator_orders).
+2026-02-03 18:35:00,200 - OrderManager - INFO - No open orders found to cancel.
+2026-02-03 18:35:00,201 - Orchestrator - WARNING - Monitoring process is not running or has already terminated.
+2026-02-03 18:35:00,201 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
+2026-02-03 18:35:00,202 - Orchestrator - INFO - Next task 'log_equity_snapshot' scheduled for 2026-02-03 18:55:00 UTC. Waiting for 0.33 hours.
+2026-02-03 18:55:00,023 - Orchestrator - INFO - --- Running scheduled task: log_equity_snapshot ---
+2026-02-03 18:55:00,024 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
+2026-02-03 18:55:00,024 - EquityLogger - INFO - Connecting to IB at 127.0.0.1:7497 with clientId 2063...
+2026-02-03 18:55:00,384 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-03 18:55:00,578 - EquityLogger - INFO - Fetched NetLiquidation: $43,588.97
+2026-02-03 18:55:00,585 - EquityLogger - INFO - Updated data/daily_equity.csv with value $43,588.97
+2026-02-03 18:55:03,588 - EquityLogger - INFO - Disconnected from IB.
+2026-02-03 18:55:03,589 - Orchestrator - INFO - Next task 'run_brier_reconciliation' scheduled for 2026-02-03 19:00:00 UTC. Waiting for 0.08 hours.
+2026-02-03 19:00:00,066 - Orchestrator - INFO - --- Running scheduled task: run_brier_reconciliation ---
+2026-02-03 19:00:00,114 - scripts.fix_brier_data - INFO - Found 8 pending predictions
+2026-02-03 19:00:00,115 - scripts.fix_brier_data - INFO - Total council decisions: 104
+2026-02-03 19:00:00,117 - scripts.fix_brier_data - WARNING - Found 5 corrupt council decisions (shutdown race condition). Marking associated predictions as ORPHANED.
+2026-02-03 19:00:00,118 - scripts.fix_brier_data - INFO - Reconciled council decisions: 83/104
+2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO - 
+==================================================
+2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO - RESOLUTION BREAKDOWN:
+2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO -   Total predictions:            465
+2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO -   ✅ Resolved:                   200 (+0 new)
+2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO -   ⏳ Awaiting reconciliation:    8 (potential: 8)
+2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO -   🗑️  Orphaned (no council):     257 (+0 new)
+2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO -   📊 Effective resolution rate:  96% (excl. orphans)
+2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO - ==================================================
+2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO - 
+💡 Running 'python backfill_council_history.py' could unlock up to 8 more predictions
+2026-02-03 19:00:00,123 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-02-03 19:00:00,123 - Orchestrator - INFO - Next task 'reconcile_and_analyze' scheduled for 2026-02-03 19:05:00 UTC. Waiting for 0.08 hours.
