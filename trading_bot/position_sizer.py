@@ -67,6 +67,12 @@ class DynamicPositionSizer:
         # v7.1: Apply consensus conviction scaling
         # When the vote diverges from the Master's direction, reduce size.
         raw_qty = self.base_qty * confidence_multiplier * vol_multiplier * heat_multiplier * conviction_multiplier
+
+        # R3: DA Bypass safety reduction
+        if signal.get('da_bypassed'):
+            logger.warning(f"DA was bypassed (parse failure). Applying 50% position reduction for safety.")
+            raw_qty *= 0.5
+
         # Use ceiling to be slightly more aggressive on sizing (strategy upgrade)
         final_qty = max(1, math.ceil(raw_qty))
 

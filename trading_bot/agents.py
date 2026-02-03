@@ -761,13 +761,53 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                     prompt += "\n\nOUTPUT VALID JSON ONLY. No markdown headers, no explanation, ONLY a JSON object."
                     continue
 
-                logger.error(f"DA Failed final attempt: {e}")
-                return {
-                    'proceed': False,
-                    'risks': [f"System Error: {str(e)}"],
-                    'recommendation': "BLOCK: Devil's Advocate System Failure (Parse Error)",
-                    'da_block_reason': 'PARSE_FAILURE'
-                }
+                # === FINAL ATTEMPT: Text extraction fallback ===
+                logger.warning(f"DA JSON parse failed after {max_retries + 1} attempts. "
+                              f"Attempting text-based extraction from raw response.")
+
+                try:
+                    raw_text = cleaned if 'cleaned' in locals() and cleaned else str(response)
+                    raw_lower = raw_text.lower()
+
+                    # Extract verdict from text
+                    if any(kw in raw_lower for kw in ['verdict: no', 'should not proceed',
+                                                       'do not proceed', 'veto', 'block']):
+                        proceed = False
+                    elif any(kw in raw_lower for kw in ['verdict: yes', 'should proceed',
+                                                         'proceed with', 'approved']):
+                        proceed = True
+                    else:
+                        # Ambiguous — default to PROCEED (fail-open for parse errors)
+                        # Rationale: The DA already has 2 safety nets downstream
+                        # (Compliance Guardian + position sizer). A parse error
+                        # should not be the reason a trade is blocked.
+                        proceed = True
+                        logger.warning("DA text ambiguous — defaulting to PROCEED (fail-open for parse errors)")
+
+                    # Extract risks via regex
+                    import re
+                    risks = re.findall(r'(?:risk|scenario|concern)\s*\d*\s*[:\-]\s*(.+?)(?:\n|$)',
+                                      raw_text, re.IGNORECASE)
+                    risks = risks[:5] if risks else ['DA response unparseable — text extraction used']
+
+                    return {
+                        'proceed': proceed,
+                        'risks': risks,
+                        'recommendation': f"{'PROCEED' if proceed else 'BLOCK'}: Text extraction fallback",
+                        'da_extraction_method': 'text_fallback',
+                        'da_bypassed': True  # R3: Signal to downstream components
+                    }
+
+                except Exception as fallback_err:
+                    logger.error(f"DA text fallback also failed: {fallback_err}")
+                    # Ultimate fallback: PROCEED (fail-open)
+                    return {
+                        'proceed': True,
+                        'risks': ['DA system completely failed — defaulting to proceed'],
+                        'recommendation': 'PROCEED: DA system failure (fail-open)',
+                        'da_block_reason': 'TOTAL_FAILURE_FAILOPEN',
+                        'da_bypassed': True  # R3: Signal to downstream components
+                    }
 
     async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict, market_context: str, trigger_reason: str = None, cycle_id: str = "") -> dict:
         """
@@ -915,9 +955,17 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         """
         logger.info(f"Running Specialized Cycle triggered by {trigger.source}...")
         
-        # Load Cached State (Sync call)
-        # Note: load_state returns dict of key->data (str), potentially with "STALE" prefix
-        cached_reports = StateManager.load_state()
+        # Load Cached State with Metadata (Fix #1: Graduated Staleness)
+        cached_metadata = StateManager.load_state_with_metadata()
+        cached_reports = {}
+
+        for agent, meta in cached_metadata.items():
+            # Construct report object with injected age metadata
+            # weighted_voting.py will unwrap this to calculate staleness weight
+            cached_reports[agent] = {
+                'data': meta['data'],
+                '_age_hours': meta['age_hours']
+            }
 
         # Semantic Routing
         route = self.semantic_router.route(trigger)
@@ -1080,6 +1128,10 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                 decision['reasoning'] += f" [DA VETO: {da_review.get('risks', ['Unknown'])[0]}]"
             else:
                 logger.info(f"DEVIL'S ADVOCATE CHECK PASSED. Risks identified: {da_review.get('risks', [])}")
+
+            # --- R3: Propagate Bypass Flag ---
+            if da_review.get('da_bypassed'):
+                decision['da_bypassed'] = True
 
         # === ENHANCED BRIER TRACKING ===
         # Record probabilistic prediction

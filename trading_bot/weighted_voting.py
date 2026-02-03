@@ -44,6 +44,35 @@ class AgentVote:
     direction: Direction
     confidence: float
     sentiment_tag: str
+    age_hours: float = 0.0  # Populated from StateManager metadata
+
+
+def calculate_staleness_weight(age_hours: float, max_useful_age: float = 24.0) -> float:
+    """
+    Graduated staleness decay — aged data gets reduced weight, never zero.
+
+    Fresh (0-1h):    1.0 (full weight — data is current)
+    Aging (1-6h):    0.9 → 0.5 (linear decay — still highly relevant)
+    Stale (6-24h):   0.5 → 0.1 (slower decay — context still useful)
+    Ancient (>24h):  0.1 (floor — prevents total exclusion)
+
+    The key insight: 4-hour-old macro analysis is MORE useful than
+    an abstained vote. The current binary system throws away this signal.
+
+    Edge case: float('inf') (legacy data with no timestamp) falls to
+    the >24h branch and returns 0.1 (floor). This is intentional —
+    legacy agents participate at minimum weight rather than being excluded.
+    """
+    if age_hours <= 1.0:
+        return 1.0
+    elif age_hours <= 6.0:
+        # Linear decay: 0.9 at 1h → 0.5 at 6h
+        return 1.0 - (age_hours - 1.0) * 0.1
+    elif age_hours <= max_useful_age:
+        # Slower decay: 0.5 at 6h → 0.1 at 24h
+        return max(0.1, 0.5 - (age_hours - 6.0) * 0.022)
+    else:
+        return 0.1  # Floor — never fully exclude
 
 
 # Domain weight matrix: weight by trigger type
@@ -339,6 +368,7 @@ async def calculate_weighted_decision(
         # === NEW: Track stale/failure state for abstention logic ===
         is_stale = False
         is_failure = False
+        age_hours = 0.0
 
         # === FIX #4: Handle STALE prefix from StateManager ===
         if isinstance(report, str) and report.startswith('STALE'):
@@ -352,6 +382,17 @@ async def calculate_weighted_decision(
             else:
                 logger.warning(f"Agent {agent_name}: Unparseable STALE format, skipping")
                 continue
+
+        # === EXTRACT AGE METADATA (from load_state_with_metadata) ===
+        if isinstance(report, dict) and '_age_hours' in report:
+            age_hours = report.get('_age_hours', 0.0)
+            # Remove metadata before processing
+            if 'data' in report:
+                # Unwrap the data
+                report_data = report['data']
+                # If data itself is a dict (nested), use it. If string, use string.
+                if isinstance(report_data, (dict, str)):
+                    report = report_data
 
         # === Check for error messages ===
         if isinstance(report, str) and ('Error conducting research' in report or 'All providers exhausted' in report):
@@ -385,13 +426,18 @@ async def calculate_weighted_decision(
         confidence = max(0.0, min(1.0, float(confidence)))  # Defensive clamp
         direction = parse_sentiment_to_direction(sentiment_tag)
 
-        # === FIX #7 (ADDENDUM B): ABSTENTION LOGIC ===
-        # If extraction resulted in default values AND source suggests failure/staleness,
-        # the agent should ABSTAIN rather than vote NEUTRAL and dilute the signal
-        if direction == Direction.NEUTRAL and confidence == 0.5:
-            if is_stale or is_failure:
-                logger.warning(f"Agent {agent_name}: ABSTAINING due to stale/failed data (would dilute signal)")
-                continue  # Skip this vote entirely; do not add to total_weight
+        # === FIX #7 REVISED: GRADUATED STALENESS (replaces binary abstention) ===
+        # Failed agents still abstain. Stale agents vote with reduced weight.
+        if is_failure:
+            logger.warning(f"Agent {agent_name}: ABSTAINING due to failed research")
+            continue  # Skip failed agents entirely
+
+        if direction == Direction.NEUTRAL and confidence == 0.5 and not is_stale:
+            # Genuinely neutral with fresh data — this is a legitimate vote
+            logger.info(f"Agent {agent_name}: Fresh NEUTRAL vote (not abstention)")
+
+        # Stale agents that produced real sentiment still vote, with reduced weight
+        # The staleness_weight will be applied in the weighting section below
 
         # Log default value occurrences for monitoring
         if direction == Direction.NEUTRAL and confidence == 0.5:
@@ -403,7 +449,8 @@ async def calculate_weighted_decision(
             agent_name=agent_name,
             direction=direction,
             confidence=confidence,
-            sentiment_tag=sentiment_tag
+            sentiment_tag=sentiment_tag,
+            age_hours=age_hours
         ))
 
     # Quorum Check
@@ -448,7 +495,11 @@ async def calculate_weighted_decision(
 
         # Apply Brier Score Multiplier (Enhanced + Legacy Blend)
         reliability_multiplier = get_agent_reliability(vote.agent_name, regime=regime)
-        final_weight = base_domain_weight * reliability_multiplier
+
+        # Apply Staleness Weight (graduated, from metadata)
+        staleness_weight = calculate_staleness_weight(vote.age_hours)
+
+        final_weight = base_domain_weight * reliability_multiplier * staleness_weight
 
         contribution = vote.direction.value * vote.confidence * final_weight
         total_weighted_score += contribution
@@ -460,6 +511,8 @@ async def calculate_weighted_decision(
             'confidence': vote.confidence,
             'domain_weight': base_domain_weight,
             'reliability_mult': round(reliability_multiplier, 2),
+            'staleness_weight': round(staleness_weight, 2),
+            'age_hours': round(vote.age_hours, 1),
             'final_weight': round(final_weight, 2),
             'contribution': round(contribution, 3),
         })
