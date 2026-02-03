@@ -2458,10 +2458,35 @@ async def close_stale_positions_fallback(config: dict):
     logger.info("This is a retry for any positions the 11:00 primary close failed to handle.")
     await close_stale_positions(config)
 
+async def run_brier_reconciliation(config: dict):
+    """Automated Brier prediction reconciliation."""
+    try:
+        from scripts.fix_brier_data import resolve_with_cycle_aware_match
+        resolved = resolve_with_cycle_aware_match(dry_run=False)
+        logger.info(f"Brier reconciliation complete: {resolved} predictions resolved")
+    except Exception as e:
+        logger.error(f"Brier reconciliation failed (non-fatal): {e}")
+
 async def guarded_generate_orders(config: dict):
     """Generate orders with budget and cutoff guards."""
     if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
         logger.warning("Budget hit - skipping scheduled orders.")
+        return
+
+    # === NEW: Shutdown proximity check ===
+    ny_tz = pytz.timezone('America/New_York')
+    now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
+    shutdown_time = time(13, 45)  # cancel_and_stop_monitoring time
+    minutes_to_shutdown = (
+        datetime.combine(now_ny.date(), shutdown_time) -
+        datetime.combine(now_ny.date(), now_ny.time())
+    ).total_seconds() / 60
+
+    if 0 < minutes_to_shutdown < 30:
+        logger.warning(
+            f"Order generation SKIPPED: Only {minutes_to_shutdown:.0f} min to shutdown. "
+            f"Insufficient time for full council cycle."
+        )
         return
 
     # Daily cutoff check
@@ -2490,7 +2515,7 @@ async def guarded_generate_orders(config: dict):
         except Exception as e:
              logger.warning(f"Failed to check drawdown guard before orders: {e}")
 
-    await generate_and_execute_orders(config)
+    await generate_and_execute_orders(config, shutdown_check=is_system_shutdown)
 
 schedule = {
     time(3, 30): start_monitoring,
@@ -2504,6 +2529,7 @@ schedule = {
     time(13, 15): emergency_hard_close,           # SAFETY: Market orders
     time(13, 45): cancel_and_stop_monitoring,
     time(14, 5): log_equity_snapshot,
+    time(14, 10): run_brier_reconciliation,       # After equity logging, before end-of-day
     time(14, 15): reconcile_and_analyze,
 }
 

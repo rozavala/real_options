@@ -84,8 +84,17 @@ def migrate_structured_csv():
 
     # Add cycle_id as first column with empty values
     df.insert(0, 'cycle_id', '')
+
+    # R3: Enforce canonical column order
+    CANONICAL_ORDER = ['cycle_id', 'timestamp', 'agent', 'direction', 'confidence', 'prob_bullish', 'actual']
+
+    # Reorder columns to match canonical schema
+    existing_cols = [c for c in CANONICAL_ORDER if c in df.columns]
+    extra_cols = [c for c in df.columns if c not in CANONICAL_ORDER]
+    df = df[existing_cols + extra_cols]
+
     df.to_csv(STRUCTURED_FILE, index=False)
-    logger.info(f"Added cycle_id column to {STRUCTURED_FILE} ({len(df)} rows)")
+    logger.info(f"Added cycle_id column to {STRUCTURED_FILE} ({len(df)} rows) and enforced canonical order")
 
 
 def migrate_council_history_csv():
@@ -365,6 +374,21 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
     # === KEY CHANGE: Use ALL council decisions for cycle matching ===
     all_decisions = council_df.sort_values('timestamp').reset_index(drop=True)
     logger.info(f"Total council decisions: {len(all_decisions)}")
+
+    # Filter corrupt cycles (shutdown race condition)
+    corrupt_mask = all_decisions['master_reasoning'].str.contains(
+        'cannot schedule new futures after shutdown',
+        na=False, case=False
+    )
+    if corrupt_mask.any():
+        corrupt_count = corrupt_mask.sum()
+        logger.warning(
+            f"Found {corrupt_count} corrupt council decisions (shutdown race condition). "
+            f"Marking associated predictions as ORPHANED."
+        )
+        # Note: We rely on the orphan logic (no valid match) to handle these,
+        # but we could also proactively mark them. For now, just logging is good,
+        # as they won't have a valid 'actual_trend_direction' so they won't be reconciled.
 
     # Identify reconciled decisions (have actual_trend_direction)
     reconciled_mask = (

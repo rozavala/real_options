@@ -126,9 +126,15 @@ def _detect_imminent_catalyst(agent_data: dict) -> str | None:
 
     return None
 
-async def generate_signals(ib: IB, config: dict) -> list:
+async def generate_signals(ib: IB, config: dict, shutdown_check=None) -> list:
     """
     Generates trading signals via the Council's multi-agent analysis.
+
+    Args:
+        ib: Interactive Brokers connection
+        config: Trading configuration
+        shutdown_check: Optional callable returning True if system is shutting down.
+                       Injected by orchestrator to avoid circular import.
 
     Market data is fetched directly from IBKR for each active contract.
     The Council (8 specialized agents + adversarial debate + weighted voting)
@@ -142,6 +148,11 @@ async def generate_signals(ib: IB, config: dict) -> list:
         List of signal dicts, one per active contract
     """
     logger.info("--- Starting Multi-Agent Signal Generation (Council) ---")
+
+    # === SHUTDOWN GATE (R1: Dependency Injection) ===
+    if shutdown_check and shutdown_check():
+        logger.warning("Signal generation SKIPPED: System in shutdown mode")
+        return []
 
     # 1. Initialize Council & Compliance
     council = None
@@ -499,6 +510,10 @@ async def generate_signals(ib: IB, config: dict) -> list:
                         decision['reasoning'] += f" [DA VETO: {da_review.get('risks', ['Unknown'])[0]}]"
                     else:
                         logger.info("DA CHECK PASSED for emergency cycle.")
+
+                    # --- R3: Propagate Bypass Flag ---
+                    if da_review.get('da_bypassed'):
+                        decision['da_bypassed'] = True
                 elif not is_emergency:
                     logger.info("DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)")
 

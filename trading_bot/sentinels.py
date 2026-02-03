@@ -1327,6 +1327,17 @@ If the x_search tool returns no results or errors, provide neutral sentiment wit
             severity=severity
         )
 
+# Domain Keyword Whitelists (R4)
+DOMAIN_KEYWORD_WHITELISTS = {
+    'coffee': ['coffee', 'brazil', 'vietnam', 'colombia', 'weather', 'rain', 'drought',
+               'frost', 'port', 'strike', 'robusta', 'arabica', 'harvest', 'crop',
+               'ice futures', 'export'],
+    'macro':  ['fed', 'rate', 'inflation', 'cpi', 'fomc', 'interest', 'monetary',
+               'treasury', 'yield', 'gdp', 'employment', 'pce'],
+    'energy': ['oil', 'crude', 'opec', 'natural gas', 'petroleum', 'refinery',
+               'pipeline', 'brent', 'wti'],
+}
+
 class PredictionMarketSentinel(Sentinel):
     """
     Monitors Prediction Markets via Dynamic Market Discovery.
@@ -1371,6 +1382,7 @@ class PredictionMarketSentinel(Sentinel):
         # State Cache: { topic_query: { slug, price, timestamp, severity_hwm, hwm_timestamp } }
         self.state_cache: Dict[str, Dict[str, Any]] = {}
         self._load_state_cache()
+        self._cleanup_misaligned_cache()
 
         # Polling interval (internal rate limiting)
         self.poll_interval = self.sentinel_config.get('poll_interval_seconds', 300)
@@ -1392,6 +1404,21 @@ class PredictionMarketSentinel(Sentinel):
             f"min_liq=${self.min_liquidity:,} | "
             f"HWM decay={self.hwm_decay_hours}h"
         )
+
+    def _cleanup_misaligned_cache(self):
+        """Clean up cached slugs that don't match their query keywords."""
+        for topic_key, cached in list(self.state_cache.items()):
+            if cached.get('slug') and cached.get('title'):
+                query_lower = topic_key.lower()
+                title_lower = cached['title'].lower()
+                # If no query keywords appear in the cached title, invalidate
+                keywords = [kw for kw in query_lower.split() if len(kw) > 2]
+                if keywords and not any(kw in title_lower for kw in keywords):
+                    logger.warning(
+                        f"Stale/misaligned slug for '{topic_key}': "
+                        f"title='{cached['title']}'. Clearing cache."
+                    )
+                    self.state_cache.pop(topic_key)
 
     def _load_state_cache(self):
         """Load state cache from StateManager for persistence across restarts."""
@@ -1444,6 +1471,42 @@ class PredictionMarketSentinel(Sentinel):
             return age_hours >= self.hwm_decay_hours
         except (ValueError, TypeError):
             return False
+
+    def _infer_topic_category(self, query: str) -> str:
+        """Infer which domain whitelist to use based on query content."""
+        query_lower = query.lower()
+
+        # Check each category's keywords against the query
+        for category, keywords in DOMAIN_KEYWORD_WHITELISTS.items():
+            if any(kw in query_lower for kw in keywords):
+                return category
+
+        # Default to commodity being traded
+        commodity = self.config.get('commodity', {}).get('name', 'coffee').lower()
+        return commodity if commodity in DOMAIN_KEYWORD_WHITELISTS else 'coffee'
+
+    def _passes_domain_filter(self, market: dict, query: str, topic_category: str = None) -> bool:
+        """
+        R4: Mandatory binary filter — market title MUST contain at least one
+        domain-relevant keyword. Returns False to exclude entirely.
+        """
+        title = market.get('title', '').lower()
+
+        # Determine which whitelist to use
+        if topic_category and topic_category in DOMAIN_KEYWORD_WHITELISTS:
+            required_keywords = DOMAIN_KEYWORD_WHITELISTS[topic_category]
+        else:
+            # Fallback: derive from query keywords
+            query_keywords = [kw for kw in query.lower().split() if len(kw) > 2]
+            required_keywords = query_keywords
+
+        # At least ONE required keyword must appear in the title
+        if any(kw in title for kw in required_keywords):
+            return True
+
+        logger.debug(f"Market '{market.get('title', '')}' EXCLUDED by domain filter "
+                     f"(no keywords from {topic_category or 'query'} found in title)")
+        return False
 
     async def _resolve_active_market(self, query: str, **kwargs) -> Optional[Dict[str, Any]]:
         """
@@ -1548,6 +1611,20 @@ class PredictionMarketSentinel(Sentinel):
 
                     if not candidates:
                         return None
+
+                    # APPLY DOMAIN FILTER FIRST (R4)
+                    topic_category = self._infer_topic_category(query)
+                    filtered_candidates = [
+                        m for m in candidates
+                        if self._passes_domain_filter(m, query, topic_category=topic_category)
+                    ]
+
+                    if not filtered_candidates:
+                        logger.warning(f"No markets passed domain filter for '{query}'. "
+                                    f"All {len(candidates)} candidates excluded.")
+                        return None
+
+                    candidates = filtered_candidates
 
                     # --- RELEVANCE SCORING ---
                     # Get keywords from topic config (passed via new parameter)

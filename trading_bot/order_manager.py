@@ -91,7 +91,7 @@ def _describe_bag(contract) -> str:
     return ticker
 
 
-async def generate_and_execute_orders(config: dict, connection_purpose: str = "orchestrator_orders"):
+async def generate_and_execute_orders(config: dict, connection_purpose: str = "orchestrator_orders", shutdown_check=None):
     """
     Generates, queues, and immediately places orders.
     This ensures that order placement isn't skipped if generation takes
@@ -122,7 +122,7 @@ async def generate_and_execute_orders(config: dict, connection_purpose: str = "o
         return
 
     logger.info(">>> Starting combined task: Generate and Execute Orders <<<")
-    await generate_and_queue_orders(config, connection_purpose=connection_purpose)
+    await generate_and_queue_orders(config, connection_purpose=connection_purpose, shutdown_check=shutdown_check)
 
     # Only proceed to placement if orders were actually queued
     if ORDER_QUEUE:
@@ -132,7 +132,7 @@ async def generate_and_execute_orders(config: dict, connection_purpose: str = "o
     logger.info(">>> Combined task 'Generate and Execute Orders' complete <<<")
 
 
-async def generate_and_queue_orders(config: dict, connection_purpose: str = "orchestrator_orders"):
+async def generate_and_queue_orders(config: dict, connection_purpose: str = "orchestrator_orders", shutdown_check=None):
     """
     Generates trading strategies based on market data and API predictions,
     and queues them for later execution.
@@ -149,7 +149,7 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             logger.info(f"Connected to IB for signal generation (purpose: {connection_purpose}).")
 
             logger.info("Step 1: Generating structured signals via Council...")
-            signals = await generate_signals(ib, config)
+            signals = await generate_signals(ib, config, shutdown_check=shutdown_check)
             logger.info(f"Generated {len(signals)} signals: {signals}")
 
             futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=5)

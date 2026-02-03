@@ -154,6 +154,71 @@ class StateManager:
         return result
 
     @classmethod
+    def load_state_with_metadata(cls, namespace: str = "reports") -> Dict[str, Dict]:
+        """
+        Returns agent reports with age metadata for graduated staleness weighting.
+
+        Returns: {
+            'agent_name': {
+                'data': <actual report dict or string>,
+                'age_seconds': <float>,
+                'age_hours': <float>,
+                'timestamp': <float>,
+                'is_available': <bool>
+            }
+        }
+        """
+        raw_state = cls._load_raw_sync()
+        namespace_data = raw_state.get(namespace, {})
+        now = time.time()
+        result = {}
+
+        for key, entry in namespace_data.items():
+            if key.startswith('_'):  # Skip internal keys
+                continue
+
+            if isinstance(entry, dict) and 'data' in entry and 'timestamp' in entry:
+                age_seconds = now - entry['timestamp']
+                result[key] = {
+                    'data': entry['data'],
+                    'age_seconds': age_seconds,
+                    'age_hours': age_seconds / 3600,
+                    'timestamp': entry['timestamp'],
+                    'is_available': True
+                }
+            else:
+                # ┌──────────────────────────────────────────────────┐
+                # │ LEGACY FALLBACK (R2 — Advisor Review Fix)        │
+                # │                                                  │
+                # │ CRITICAL: On first deployment, state.json will   │
+                # │ contain entries written by the OLD code, which   │
+                # │ lack the {data, timestamp} structure. Rather     │
+                # │ than crashing or excluding these agents (which   │
+                # │ would cause quorum failure — the exact problem   │
+                # │ we're fixing), we assign them:                   │
+                # │   age_seconds = inf → staleness_weight = 0.1     │
+                # │   is_available = False (logged, not fatal)       │
+                # │                                                  │
+                # │ This means legacy-format agents get MINIMUM      │
+                # │ weight (0.1) but still PARTICIPATE in voting,    │
+                # │ preventing quorum collapse on the first run.     │
+                # │                                                  │
+                # │ After the first full scheduled cycle writes new  │
+                # │ format data, this path won't fire again.         │
+                # └──────────────────────────────────────────────────┘
+                logger.info(f"Legacy format for '{key}' — no timestamp metadata. "
+                            f"Assigning floor weight (0.1). Will auto-resolve after next scheduled cycle.")
+                result[key] = {
+                    'data': entry,
+                    'age_seconds': float('inf'),
+                    'age_hours': float('inf'),
+                    'timestamp': 0,
+                    'is_available': False
+                }
+
+        return result
+
+    @classmethod
     def load_state_raw(cls, namespace: str = "reports") -> Dict[str, Any]:
         """
         Load state WITHOUT staleness string substitution.

@@ -224,6 +224,11 @@ class BrierScoreTracker:
         else:
             predicted_confidence = max(0.1, predicted_confidence)
 
+        # Issue 6: Skip default-value predictions (NEUTRAL/0.5 carries no information)
+        if predicted_direction == 'NEUTRAL' and abs(predicted_confidence - 0.5) < 0.01:
+            logger.debug(f"Skipping default-value prediction for {agent} (NEUTRAL/0.5 carries no information)")
+            return  # Don't record uninformative predictions
+
         try:
             structured_file = self.history_file.replace(".csv", "_structured.csv")
             exists_struct = os.path.exists(structured_file)
@@ -242,6 +247,7 @@ class BrierScoreTracker:
 
             CANONICAL_HEADER = "cycle_id,timestamp,agent,direction,confidence,prob_bullish,actual"
             CANONICAL_COLUMNS = CANONICAL_HEADER.split(',')
+            MIGRATION_FLAG = os.path.join(os.path.dirname(structured_file), '.brier_schema_v2')
 
             with open(structured_file, 'a+') as f:
                 if not exists_struct:
@@ -252,28 +258,42 @@ class BrierScoreTracker:
                     f.seek(0)
                     existing_header = f.readline().strip()
                     if existing_header != CANONICAL_HEADER:
-                        existing_cols = existing_header.split(',')
-                        if set(existing_cols) == set(CANONICAL_COLUMNS):
-                            # Same columns, different order — rewrite file with canonical order
-                            logger.warning(
-                                f"Header mismatch in {structured_file}: "
-                                f"expected '{CANONICAL_HEADER}', got '{existing_header}'. "
-                                f"Rewriting with canonical column order."
-                            )
-                            f.seek(0)
-                            content = f.read()
-                            f.close()
-                            # Read, reorder, and rewrite
-                            df_fix = pd.read_csv(structured_file)
-                            df_fix = df_fix[CANONICAL_COLUMNS]
-                            df_fix.to_csv(structured_file, index=False)
-                            # Re-open in append mode
-                            f = open(structured_file, 'a')
+                        if not os.path.exists(MIGRATION_FLAG):
+                            logger.info("One-time schema migration: reordering columns to canonical order")
+                            existing_cols = existing_header.split(',')
+                            if set(existing_cols) == set(CANONICAL_COLUMNS):
+                                # Same columns, different order — rewrite file with canonical order
+                                logger.warning(
+                                    f"Header mismatch in {structured_file}: "
+                                    f"expected '{CANONICAL_HEADER}', got '{existing_header}'. "
+                                    f"Rewriting with canonical column order."
+                                )
+                                f.seek(0)
+                                content = f.read()
+                                f.close()
+                                # Read, reorder, and rewrite
+                                df_fix = pd.read_csv(structured_file)
+                                df_fix = df_fix[CANONICAL_COLUMNS]
+                                df_fix.to_csv(structured_file, index=False)
+
+                                # Write migration flag
+                                with open(MIGRATION_FLAG, 'w') as mf:
+                                    mf.write(datetime.now(timezone.utc).isoformat())
+
+                                # Re-open in append mode
+                                f = open(structured_file, 'a')
+                            else:
+                                logger.error(
+                                    f"Column set mismatch in {structured_file}: "
+                                    f"expected {set(CANONICAL_COLUMNS)}, got {set(existing_cols)}. "
+                                    f"Appending anyway but data may be misaligned."
+                                )
                         else:
+                            # Flag exists but header still mismatch? Log warning but don't loop
                             logger.error(
-                                f"Column set mismatch in {structured_file}: "
-                                f"expected {set(CANONICAL_COLUMNS)}, got {set(existing_cols)}. "
-                                f"Appending anyway but data may be misaligned."
+                                f"Header mismatch AFTER migration (flag exists). "
+                                f"Expected: {CANONICAL_HEADER}, Got: {existing_header}. "
+                                f"Investigate: something is writing non-canonical column order."
                             )
                     # Seek to end for append
                     f.seek(0, 2)
