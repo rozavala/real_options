@@ -1,75 +1,31 @@
-2026-02-03 17:23:33,202 - Orchestrator - INFO - =============================================
-2026-02-03 17:23:33,204 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-03 17:23:33,204 - Orchestrator - INFO - =============================================
-2026-02-03 17:23:33,206 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-03 17:23:33,206 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.10%)
-2026-02-03 17:23:33,206 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-03 17:23:33,398 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-02-03 17:23:33,398 - Orchestrator - INFO - No deferred triggers to process.
-2026-02-03 17:23:33,398 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-03 17:23:33,399 - Orchestrator - INFO - Next task 'close_stale_positions_fallback' scheduled for 2026-02-03 17:35:00 UTC. Waiting for 0.19 hours.
-2026-02-03 17:23:33,399 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-03 17:23:33,399 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
-2026-02-03 17:23:33,675 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-03 17:23:33,676 - trading_bot.sentinels - INFO - Loaded state for 1 prediction market topics
-2026-02-03 17:23:33,676 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Fed rate 2026': title='How much spending will DOGE cut in 2025?'. Clearing cache.
-2026-02-03 17:23:33,676 - trading_bot.sentinels - INFO - Reloading prediction market topics...
-2026-02-03 17:35:00,100 - Orchestrator - INFO - --- Running scheduled task: close_stale_positions_fallback ---
-2026-02-03 17:35:00,103 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
-2026-02-03 17:35:00,103 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
-2026-02-03 17:35:00,103 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
-2026-02-03 17:35:00,104 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 141...
-2026-02-03 17:35:00,603 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 141
-2026-02-03 17:35:00,608 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-03 17:35:00,608 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
-2026-02-03 17:35:00,752 - OrderManager - INFO - Found 8 live position legs in the IB account.
-2026-02-03 17:35:01,094 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-03 17:35:01,097 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-03 17:50:00 UTC. Waiting for 0.25 hours.
-2026-02-03 17:50:00,094 - Orchestrator - INFO - --- Running scheduled task: run_position_audit_cycle ---
-2026-02-03 17:50:00,094 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
-2026-02-03 17:50:00,095 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 234...
-2026-02-03 17:50:00,457 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 234
-2026-02-03 17:50:00,462 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-03 17:50:00,605 - Orchestrator - INFO - No open positions to audit.
-2026-02-03 17:50:00,606 - Orchestrator - INFO - Next task 'emergency_hard_close' scheduled for 2026-02-03 18:05:00 UTC. Waiting for 0.25 hours.
-2026-02-03 18:05:00,090 - Orchestrator - INFO - --- Running scheduled task: emergency_hard_close ---
-2026-02-03 18:05:00,091 - Orchestrator - INFO - --- Emergency Hard Close Check (T-45 min) ---
-2026-02-03 18:05:00,092 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-03 18:05:00,194 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
-2026-02-03 18:05:00,196 - Orchestrator - INFO - Next task 'cancel_and_stop_monitoring' scheduled for 2026-02-03 18:35:00 UTC. Waiting for 0.50 hours.
-2026-02-03 18:35:00,096 - Orchestrator - INFO - --- Running scheduled task: cancel_and_stop_monitoring ---
-2026-02-03 18:35:00,097 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
-2026-02-03 18:35:00,097 - Orchestrator - INFO - System shutdown flag SET — no new trades or emergency cycles will be processed
-2026-02-03 18:35:00,097 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
-2026-02-03 18:35:00,098 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-03 18:35:00,099 - OrderManager - INFO - Connected to IB for canceling open orders (purpose: orchestrator_orders).
-2026-02-03 18:35:00,200 - OrderManager - INFO - No open orders found to cancel.
-2026-02-03 18:35:00,201 - Orchestrator - WARNING - Monitoring process is not running or has already terminated.
-2026-02-03 18:35:00,201 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
-2026-02-03 18:35:00,202 - Orchestrator - INFO - Next task 'log_equity_snapshot' scheduled for 2026-02-03 18:55:00 UTC. Waiting for 0.33 hours.
-2026-02-03 18:55:00,023 - Orchestrator - INFO - --- Running scheduled task: log_equity_snapshot ---
-2026-02-03 18:55:00,024 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
-2026-02-03 18:55:00,024 - EquityLogger - INFO - Connecting to IB at 127.0.0.1:7497 with clientId 2063...
-2026-02-03 18:55:00,384 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-03 18:55:00,578 - EquityLogger - INFO - Fetched NetLiquidation: $43,588.97
-2026-02-03 18:55:00,585 - EquityLogger - INFO - Updated data/daily_equity.csv with value $43,588.97
-2026-02-03 18:55:03,588 - EquityLogger - INFO - Disconnected from IB.
-2026-02-03 18:55:03,589 - Orchestrator - INFO - Next task 'run_brier_reconciliation' scheduled for 2026-02-03 19:00:00 UTC. Waiting for 0.08 hours.
-2026-02-03 19:00:00,066 - Orchestrator - INFO - --- Running scheduled task: run_brier_reconciliation ---
-2026-02-03 19:00:00,114 - scripts.fix_brier_data - INFO - Found 8 pending predictions
-2026-02-03 19:00:00,115 - scripts.fix_brier_data - INFO - Total council decisions: 104
-2026-02-03 19:00:00,117 - scripts.fix_brier_data - WARNING - Found 5 corrupt council decisions (shutdown race condition). Marking associated predictions as ORPHANED.
-2026-02-03 19:00:00,118 - scripts.fix_brier_data - INFO - Reconciled council decisions: 83/104
-2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO - 
-==================================================
-2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO - RESOLUTION BREAKDOWN:
-2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO -   Total predictions:            465
-2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO -   ✅ Resolved:                   200 (+0 new)
-2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO -   ⏳ Awaiting reconciliation:    8 (potential: 8)
-2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO -   🗑️  Orphaned (no council):     257 (+0 new)
-2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO -   📊 Effective resolution rate:  96% (excl. orphans)
-2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO - ==================================================
-2026-02-03 19:00:00,122 - scripts.fix_brier_data - INFO - 
-💡 Running 'python backfill_council_history.py' could unlock up to 8 more predictions
-2026-02-03 19:00:00,123 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
-2026-02-03 19:00:00,123 - Orchestrator - INFO - Next task 'reconcile_and_analyze' scheduled for 2026-02-03 19:05:00 UTC. Waiting for 0.08 hours.
+2026-02-03 19:27:10,346 - Orchestrator - INFO - =============================================
+2026-02-03 19:27:10,346 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-03 19:27:10,346 - Orchestrator - INFO - =============================================
+2026-02-03 19:27:10,348 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-03 19:27:10,348 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.10%)
+2026-02-03 19:27:10,348 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-03 19:27:10,502 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-03 19:27:10,502 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-02-03 19:27:10,502 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 13 scheduled tasks already passed:
+  - 03:20 UTC: start_monitoring
+  - 03:21 UTC: process_deferred_triggers
+  - 08:20 UTC: run_position_audit_cycle
+  - 08:50 UTC: guarded_generate_orders
+  - 10:50 UTC: close_stale_positions
+  - 11:05 UTC: run_position_audit_cycle
+  - 12:35 UTC: close_stale_positions_fallback
+  - 12:50 UTC: run_position_audit_cycle
+  - 13:05 UTC: emergency_hard_close
+  - 13:35 UTC: cancel_and_stop_monitoring
+  - 13:55 UTC: log_equity_snapshot
+  - 14:00 UTC: run_brier_reconciliation
+  - 14:05 UTC: reconcile_and_analyze
+2026-02-03 19:27:10,827 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-03 19:27:10,829 - Orchestrator - WARNING - ⏭️ RECOVERY SKIPPED: guarded_generate_orders missed and past daily cutoff (10:45 ET). No signal generation today unless forced via dashboard.
+2026-02-03 19:27:10,830 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-04 08:20:00 UTC. Waiting for 12.88 hours.
+2026-02-03 19:27:10,831 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-03 19:27:10,831 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 3 active alerts from disk
+2026-02-03 19:27:11,282 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-02-03 19:27:11,283 - trading_bot.sentinels - INFO - Loaded state for 1 prediction market topics
+2026-02-03 19:27:11,284 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Fed rate 2026': title='How much spending will DOGE cut in 2025?'. Clearing cache.
+2026-02-03 19:27:11,284 - trading_bot.sentinels - INFO - Reloading prediction market topics...
