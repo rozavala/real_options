@@ -46,7 +46,7 @@ from trading_bot.ib_interface import (
     get_active_futures, build_option_chain, create_combo_order_object, get_underlying_iv_metrics,
     place_order, close_spread_with_protection_cleanup
 )
-from trading_bot.strategy import define_directional_strategy
+from trading_bot.strategy import define_directional_strategy, define_volatility_strategy
 from trading_bot.state_manager import StateManager
 from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.compliance import ComplianceGuardian
@@ -219,6 +219,148 @@ def _extract_agent_prediction(report) -> tuple:
             direction = 'BEARISH'
 
     return direction, confidence
+
+
+def _route_emergency_strategy(decision: dict, market_context: dict, agent_reports: dict, config: dict) -> dict:
+    """
+    v7.1: Strategy routing for emergency cycles.
+
+    Mirrors the v7.0 "Judge & Jury" routing logic from signal_generator.py
+    to ensure emergency cycles respect thesis_strength, vol_sentiment,
+    and regime-based strategy selection.
+
+    Design principle: LLMs decide WHAT (direction + thesis).
+                      Python code decides HOW (strategy type + sizing).
+
+    Returns:
+        dict with keys: prediction_type, vol_level, direction, confidence,
+                        thesis_strength, conviction_multiplier, vol_sentiment,
+                        regime, reason
+    """
+    direction = decision.get('direction', 'NEUTRAL')
+    confidence = decision.get('confidence', 0.0)
+    thesis_strength = decision.get('thesis_strength', 'SPECULATIVE')
+    conviction_multiplier = decision.get('conviction_multiplier', 1.0)
+    reasoning = decision.get('reasoning', '')
+
+    # v7.0 SAFETY: Default to BEARISH (expensive) when vol data is missing.
+    # Fail-safe, not fail-neutral.
+    vol_sentiment = decision.get('volatility_sentiment', 'BEARISH')
+    if not vol_sentiment or vol_sentiment == 'N/A':
+        vol_sentiment = 'BEARISH'
+
+    regime = market_context.get('regime', 'UNKNOWN')
+
+    prediction_type = "DIRECTIONAL"
+    vol_level = None
+    reason = reasoning
+
+    if direction == 'NEUTRAL':
+        # === NEUTRAL PATH: Vol trade or No Trade ===
+        # Simplified conflict detection for emergency path
+        agent_conflict_score = _calculate_emergency_conflict(agent_reports)
+        imminent_catalyst = _detect_emergency_catalyst(agent_reports)
+
+        # PATH 1: IRON CONDOR — sell premium in range when vol is expensive
+        if regime == 'RANGE_BOUND' and vol_sentiment == 'BEARISH':
+            prediction_type = "VOLATILITY"
+            vol_level = "LOW"
+            reason = f"Emergency Iron Condor: Range-bound + expensive vol (sell premium)"
+            logger.info(f"EMERGENCY STRATEGY: IRON_CONDOR | regime={regime}, vol={vol_sentiment}")
+
+        # PATH 2: LONG STRADDLE — expect big move, options not expensive
+        elif (imminent_catalyst or agent_conflict_score > 0.6) and vol_sentiment != 'BEARISH':
+            prediction_type = "VOLATILITY"
+            vol_level = "HIGH"
+            reason = f"Emergency Long Straddle: {imminent_catalyst or f'High conflict ({agent_conflict_score:.2f})'}"
+            logger.info(f"EMERGENCY STRATEGY: LONG_STRADDLE | catalyst={imminent_catalyst}, conflict={agent_conflict_score:.2f}")
+
+        # PATH 3: NO TRADE
+        else:
+            prediction_type = "DIRECTIONAL"
+            vol_level = None
+            reason = (
+                f"Emergency NO TRADE: Direction neutral, no positive-EV vol trade. "
+                f"(vol={vol_sentiment}, regime={regime}, conflict={agent_conflict_score:.2f})"
+            )
+            logger.info(f"EMERGENCY NO TRADE: vol={vol_sentiment}, regime={regime}")
+    else:
+        # === DIRECTIONAL PATH: Always defined-risk spreads ===
+        if vol_sentiment == 'BEARISH':
+            reason += f" [VOL WARNING: Options expensive. Spread costs elevated. Thesis: {thesis_strength}]"
+        logger.info(f"EMERGENCY STRATEGY: DIRECTIONAL spread (thesis={thesis_strength}, vol={vol_sentiment})")
+
+    return {
+        'prediction_type': prediction_type,
+        'vol_level': vol_level,
+        'direction': direction if prediction_type != 'VOLATILITY' else 'VOLATILITY',
+        'confidence': confidence,
+        'thesis_strength': thesis_strength,
+        'conviction_multiplier': conviction_multiplier,
+        'volatility_sentiment': vol_sentiment,
+        'regime': regime,
+        'reason': reason,
+    }
+
+
+def _calculate_emergency_conflict(agent_reports: dict) -> float:
+    """
+    Quick conflict score for emergency path.
+
+    Measures directional disagreement among cached agent reports.
+    Returns 0.0 (full agreement) to 1.0 (full disagreement).
+    """
+    directions = []
+    for key, report in agent_reports.items():
+        if key in ('master_decision', 'master'):
+            continue
+        report_str = str(report.get('data', '') if isinstance(report, dict) else report).upper()
+        if 'BULLISH' in report_str:
+            directions.append(1)
+        elif 'BEARISH' in report_str:
+            directions.append(-1)
+        # NEUTRAL agents don't contribute to conflict
+
+    if len(directions) < 2:
+        return 0.0
+
+    avg = sum(directions) / len(directions)
+    # Variance-like measure: how spread out are the directions?
+    conflict = sum(abs(d - avg) for d in directions) / len(directions)
+    return min(1.0, conflict)  # Normalize to [0, 1]
+
+
+def _detect_emergency_catalyst(agent_reports: dict) -> str:
+    """
+    Check if any agent report mentions an imminent catalyst.
+
+    Returns catalyst description string or empty string.
+    """
+    catalyst_keywords = [
+        'USDA report', 'FOMC', 'frost', 'freeze', 'hurricane',
+        'strike', 'embargo', 'election', 'earnings', 'inventory report',
+        'COT report', 'export ban', 'tariff', 'sanctions'
+    ]
+
+    for key, report in agent_reports.items():
+        report_text = str(report.get('data', '') if isinstance(report, dict) else report)
+        for keyword in catalyst_keywords:
+            if keyword.lower() in report_text.lower():
+                return f"{keyword} (detected in {key} report)"
+
+    return ""
+
+
+def _infer_strategy_type(routed: dict) -> str:
+    """Infer human-readable strategy type from routed signal."""
+    if routed['prediction_type'] == 'VOLATILITY':
+        if routed.get('vol_level') == 'HIGH':
+            return 'LONG_STRADDLE'
+        elif routed.get('vol_level') == 'LOW':
+            return 'IRON_CONDOR'
+    elif routed['direction'] in ('BULLISH', 'BEARISH'):
+        return 'DIRECTIONAL'
+    return 'NONE'
 
 
 def _detect_market_regime(config: dict, trigger=None) -> str:
@@ -1565,6 +1707,16 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 
                 logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
 
+                # === v7.1: Strategy Routing (aligns emergency with v7.0 Judge & Jury) ===
+                # Previously: hardcoded DIRECTIONAL. Now: respects thesis, vol, regime.
+                current_reports = StateManager.load_state()
+                routed = _route_emergency_strategy(
+                    decision=decision,
+                    market_context=ml_signal,  # Contains regime, price, etc.
+                    agent_reports=current_reports,
+                    config=config
+                )
+
                 # === Log Emergency Decision to History ===
                 # Reconstruct full log entry for history
                 try:
@@ -1614,10 +1766,16 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         "master_confidence": decision.get('confidence'),
                         "master_reasoning": decision.get('reasoning'),
 
-                        # Infer prediction types from decision structure
-                        "prediction_type": decision.get('prediction_type', 'DIRECTIONAL'),
-                        "volatility_level": decision.get('level'), # HIGH/LOW for volatility
-                        "strategy_type": "EMERGENCY", # Or infer from direction
+                        # v7.1: Use routed prediction type, not raw decision
+                        "prediction_type": routed['prediction_type'],
+                        "volatility_level": routed.get('vol_level'),
+                        "strategy_type": _infer_strategy_type(routed),
+
+                        # v7.0 forensic fields
+                        "thesis_strength": routed.get('thesis_strength', 'SPECULATIVE'),
+                        "primary_catalyst": decision.get('primary_catalyst', 'N/A'),
+                        "conviction_multiplier": routed.get('conviction_multiplier', 1.0),
+                        "dissent_acknowledged": decision.get('dissent_acknowledged', 'N/A'),
 
                         "compliance_approved": True, # Assume true if we reached here, actually checked later
                         "trigger_type": trigger.source,
@@ -1645,14 +1803,14 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     logger.error(f"Failed to log emergency decision: {e}")
 
                 # 6. Execute if Actionable
-                direction = decision.get('direction')
-                pred_type = decision.get('prediction_type', 'DIRECTIONAL')
-                confidence = decision.get('confidence', 0)
+                direction = routed['direction']
+                pred_type = routed['prediction_type']
+                confidence = routed['confidence']
                 threshold = config.get('strategy', {}).get('signal_threshold', 0.5)
 
                 is_actionable = (
                     (direction in ['BULLISH', 'BEARISH'] and confidence > threshold) or
-                    (direction == 'NEUTRAL' and pred_type in ['VOLATILITY', 'RANGE_BOUND'] and confidence > threshold)
+                    (direction == 'VOLATILITY' and pred_type == 'VOLATILITY' and confidence > threshold)
                 )
 
                 if is_actionable:
@@ -1697,7 +1855,12 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         # Try to extract from vote breakdown
                         pass # sizer defaults to NEUTRAL if passed string is None
 
-                    qty = await sizer.calculate_size(ib, decision, vol_sentiment, account_value)
+                    # v7.1: Pass conviction_multiplier so divergent consensus = smaller position
+                    _conviction = decision.get('conviction_multiplier', 1.0)
+                    qty = await sizer.calculate_size(
+                        ib, decision, vol_sentiment, account_value,
+                        conviction_multiplier=_conviction
+                    )
 
                     # Build Strategy
                     chain = await build_option_chain(ib, target_contract)
@@ -1705,17 +1868,26 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         logger.warning("No option chain available.")
                         return
 
-                    # Construct Signal Object for Strategy Definition
                     signal_obj = {
                         "contract_month": target_contract.lastTradeDateOrContractMonth[:6],
-                        "direction": decision['direction'],
-                        "confidence": decision['confidence'],
+                        "direction": routed['direction'],
+                        "confidence": routed['confidence'],
                         "price": ticker.last,
-                        "prediction_type": "DIRECTIONAL",
-                        "quantity": qty
+                        "prediction_type": routed['prediction_type'],
+                        "volatility_sentiment": routed['volatility_sentiment'],
+                        "thesis_strength": routed['thesis_strength'],
+                        "conviction_multiplier": routed['conviction_multiplier'],
+                        "regime": routed['regime'],
+                        "reason": routed['reason'],
+                        "quantity": qty,
                     }
 
-                    strategy_def = define_directional_strategy(config, signal_obj, chain, ticker.last, target_contract)
+                    # Route to correct strategy definition function
+                    if routed['prediction_type'] == 'VOLATILITY':
+                        signal_obj['level'] = routed['vol_level']  # "HIGH" or "LOW"
+                        strategy_def = define_volatility_strategy(config, signal_obj, chain, ticker.last, target_contract)
+                    else:
+                        strategy_def = define_directional_strategy(config, signal_obj, chain, ticker.last, target_contract)
 
                     if strategy_def:
                         strategy_def['quantity'] = qty # Force apply

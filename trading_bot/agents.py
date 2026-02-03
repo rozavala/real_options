@@ -849,6 +849,20 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
             # Map thesis_strength to a numeric conviction for downstream compatibility.
             # These are coarse "buckets" — the system doesn't care about the difference
             # between 0.71 and 0.74, which was always noise anyway.
+            #
+            # NOTE: SPECULATIVE maps to 0.45, which is BELOW the default
+            # signal_threshold of 0.5. This is BY DESIGN — SPECULATIVE theses
+            # do not warrant risking capital. They are logged for learning
+            # (Brier scoring) but not executed.
+            #
+            # Execution threshold:
+            #   PROVEN (0.90)     → Executes ✓
+            #   PLAUSIBLE (0.70)  → Executes ✓ (even with 0.5 conviction = 0.35... see note)
+            #   SPECULATIVE (0.45) → Blocked ✗
+            #
+            # IMPORTANT: PLAUSIBLE + DIVERGENT consensus (0.70 * 0.5 = 0.35)
+            # will ALSO be blocked. This is correct — low conviction + disagreement
+            # should not trade.
             THESIS_TO_CONFIDENCE = {
                 'PROVEN': 0.90,
                 'PLAUSIBLE': 0.70,
@@ -910,7 +924,18 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         logger.info(f"Routing to {active_agent_key} (Reason: {route.reasoning})")
 
         # Construct specific search instruction based on trigger content
-        search_instruction = f"Investigate alert from {trigger.source}: {trigger.reason}. Details: {trigger.payload}. Analyze impact on Coffee prices."
+        # v7.1: Commodity-agnostic agent instructions
+        from config.commodity_profiles import get_commodity_profile
+        from trading_bot.utils import get_active_ticker
+        _ticker = get_active_ticker(self.full_config)
+        _profile = get_commodity_profile(_ticker)
+        _commodity_name = _profile.name  # e.g., "Arabica Coffee", "Cocoa"
+
+        search_instruction = (
+            f"Investigate alert from {trigger.source}: {trigger.reason}. "
+            f"Details: {trigger.payload}. "
+            f"Analyze impact on {_commodity_name} prices."
+        )
 
         # Run the Active Agent
         logger.info(f"Waking up {active_agent_key}...")
