@@ -522,7 +522,14 @@ async def check_weather_sentinel(config: dict) -> CheckResult:
     try:
         from trading_bot.sentinels import WeatherSentinel
         sentinel = WeatherSentinel(config)
-        return CheckResult("Weather Sentinel", CheckStatus.PASS, f"{len(sentinel.locations)} locations")
+        # Handle v2.1 refactor (uses profile.primary_regions)
+        if hasattr(sentinel, 'profile') and sentinel.profile:
+            count = len(sentinel.profile.primary_regions)
+            source = "profile"
+        else:
+            count = len(sentinel.locations)
+            source = "config"
+        return CheckResult("Weather Sentinel", CheckStatus.PASS, f"{count} regions ({source})")
     except Exception as e:
         return CheckResult("Weather Sentinel", CheckStatus.FAIL, str(e))
 

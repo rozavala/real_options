@@ -93,7 +93,8 @@ errors = []
 try:
     from config import get_commodity_profile, CommodityProfile, GrowingRegion
     profile = get_commodity_profile('KC')
-    assert profile.name == 'Coffee Arabica'
+    # Updated to match new profile name with parens
+    assert profile.name == 'Coffee (Arabica)', f\"Expected 'Coffee (Arabica)', got '{profile.name}'\"
 except Exception as e:
     errors.append(f'  config.commodity_profiles: {e}')
 
