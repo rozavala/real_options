@@ -45,6 +45,8 @@ class AgentVote:
     confidence: float
     sentiment_tag: str
     age_hours: float = 0.0  # Populated from StateManager metadata
+    is_stale: bool = False
+    data_freshness_hours: float = 0.0
 
 
 def calculate_staleness_weight(age_hours: float, max_useful_age: float = 24.0) -> float:
@@ -394,6 +396,13 @@ async def calculate_weighted_decision(
                 if isinstance(report_data, (dict, str)):
                     report = report_data
 
+        # Extract data freshness (Issue A)
+        is_data_stale = False
+        data_freshness = 0.0
+        if isinstance(report, dict):
+            is_data_stale = report.get('is_stale', False)
+            data_freshness = report.get('data_freshness_hours', 0.0)
+
         # === Check for error messages ===
         if isinstance(report, str) and ('Error conducting research' in report or 'All providers exhausted' in report):
             is_failure = True
@@ -450,7 +459,9 @@ async def calculate_weighted_decision(
             direction=direction,
             confidence=confidence,
             sentiment_tag=sentiment_tag,
-            age_hours=age_hours
+            age_hours=age_hours,
+            is_stale=is_data_stale,
+            data_freshness_hours=data_freshness
         ))
 
     # Quorum Check
@@ -499,7 +510,17 @@ async def calculate_weighted_decision(
         # Apply Staleness Weight (graduated, from metadata)
         staleness_weight = calculate_staleness_weight(vote.age_hours)
 
-        final_weight = base_domain_weight * reliability_multiplier * staleness_weight
+        # Apply Freshness Penalty (from Issue A)
+        freshness_penalty = 1.0
+        if vote.is_stale:
+            SOFT_FRESHNESS_LIMIT_HOURS = 4.0
+            freshness = vote.data_freshness_hours
+            # Linear decay: 100% weight at 4h, 50% weight at 12h, 25% at 24h
+            decay_factor = max(0.25, 1.0 - (freshness - SOFT_FRESHNESS_LIMIT_HOURS) / 40.0)
+            freshness_penalty = decay_factor
+            logger.debug(f"Agent {vote.agent_name}: Freshness penalty applied: {freshness:.1f}h -> factor {decay_factor:.2f}")
+
+        final_weight = base_domain_weight * reliability_multiplier * staleness_weight * freshness_penalty
 
         contribution = vote.direction.value * vote.confidence * final_weight
         total_weighted_score += contribution

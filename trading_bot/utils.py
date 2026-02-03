@@ -451,11 +451,19 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
         # but legacy ledger and reconciliation expect cents (307.5).
         strike_value = contract.strike if hasattr(contract, 'strike') else 'N/A'
         try:
+            # Ensure strike is numeric
+            if strike_value != 'N/A':
+                strike_value = float(strike_value)
+
             if multiplier == 37500.0 and isinstance(strike_value, (int, float)):
                 if 0 < strike_value < 100.0:  # Threshold for "Dollar Format"
-                    strike_value = strike_value * 100.0
-        except Exception:
-            pass
+                    strike_value = round(strike_value * 100.0, 2)
+                    logging.debug(
+                        f"Strike normalized: {contract.strike} -> {strike_value} "
+                        f"(dollar to cents for {contract.localSymbol})"
+                    )
+        except Exception as e:
+            logging.warning(f"Strike normalization failed: {e}")
 
         row = {
             'timestamp': execution.time.strftime('%Y-%m-%d %H:%M:%S'),

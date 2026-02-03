@@ -106,6 +106,7 @@ class AgentTrace:
 
     # Processing
     reasoning_steps: List[str] = field(default_factory=list)
+    grounded_data: str = ""  # Fix B3: Capture grounded search results
 
     # Output
     output_text: str = ""
@@ -508,7 +509,8 @@ class ObservabilityHub:
         flags = self.hallucination_detector.check_output(
             agent=trace.agent,
             output_text=trace.output_text,
-            retrieved_docs=trace.retrieved_documents
+            retrieved_docs=trace.retrieved_documents,
+            grounded_data=trace.grounded_data  # Fix B3: Pass grounded data
         )
 
         trace.hallucination_flags = flags

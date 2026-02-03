@@ -159,6 +159,11 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None) -> list:
     compliance = None
     try:
         council = TradingCouncil(config)
+        # --- CACHE INVALIDATION (Fix B1) ---
+        # Force fresh agent searches for order generation cycles.
+        if hasattr(council, 'invalidate_grounded_data_cache'):
+            council.invalidate_grounded_data_cache()
+
         compliance = ComplianceGuardian(config)
     except Exception as e:
         logger.error(f"Failed to initialize Trading Council: {e}. Cannot proceed without Council.")
@@ -284,27 +289,63 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None) -> list:
                 if successful_agents < total_agents * 0.5:
                     logger.warning(f"⚠️ LOW AGENT YIELD for {contract_name}: Only {successful_agents}/{total_agents} agents returned meaningful data")
 
-                # --- DATA FRESHNESS GATE (Fix #7) ---
-                MAX_ACCEPTABLE_FRESHNESS_HOURS = config.get('risk_management', {}).get('max_acceptable_freshness_hours', 4)
-                stale_agents = []
+                # --- DATA FRESHNESS GATE (v2: Two-Tier) ---
+                # Tier 1: HARD GATE — Reject if data is catastrophically stale (>24h)
+                #   This catches overnight/weekend data that is genuinely dangerous.
+                # Tier 2: SOFT PENALTY — Degrade confidence if data is moderately stale (>4h)
+                #   This allows trading on calm days when news has not updated.
+
+                HARD_FRESHNESS_LIMIT_HOURS = config.get(
+                    'risk_management', {}
+                ).get('hard_freshness_limit_hours', 24)
+
+                SOFT_FRESHNESS_LIMIT_HOURS = config.get(
+                    'risk_management', {}
+                ).get('soft_freshness_limit_hours', 4)
+
+                critically_stale_agents = []
+                moderately_stale_agents = []
+
                 for k, v in reports.items():
                     if isinstance(v, dict) and 'data_freshness_hours' in v:
-                        if v['data_freshness_hours'] > MAX_ACCEPTABLE_FRESHNESS_HOURS:
-                            stale_agents.append(k)
-                            v['is_stale'] = True # Mark for weighted voting
+                        freshness = v['data_freshness_hours']
+                        if freshness > HARD_FRESHNESS_LIMIT_HOURS:
+                            critically_stale_agents.append(k)
+                            v['is_stale'] = True
+                        elif freshness > SOFT_FRESHNESS_LIMIT_HOURS:
+                            moderately_stale_agents.append(k)
+                            v['is_stale'] = True  # Mark for weighted voting penalty
 
-                if len(stale_agents) > total_agents * 0.5:
-                     logger.warning(f"FRESHNESS GATE: {len(stale_agents)}/{total_agents} agents have stale data. Skipping {contract_name}.")
-                     return {
+                # HARD GATE: Only reject if >50% are CRITICALLY stale (>24h)
+                if len(critically_stale_agents) > total_agents * 0.5:
+                    logger.warning(
+                        f"HARD FRESHNESS GATE: {len(critically_stale_agents)}/{total_agents} "
+                        f"agents have critically stale data (>{HARD_FRESHNESS_LIMIT_HOURS}h). "
+                        f"Skipping {contract_name}."
+                    )
+                    return {
                         **market_ctx,
                         **final_data,
                         "contract_month": contract.lastTradeDateOrContractMonth[:6],
                         "prediction_type": "NEUTRAL",
                         "direction": "NEUTRAL",
                         "confidence": 0.0,
-                        "reason": f"Freshness Gate: {len(stale_agents)} agents returned stale data (> {MAX_ACCEPTABLE_FRESHNESS_HOURS}h)",
+                        "reason": (
+                            f"Hard Freshness Gate: {len(critically_stale_agents)} agents "
+                            f"returned critically stale data (>{HARD_FRESHNESS_LIMIT_HOURS}h)"
+                        ),
                         "_agent_reports": reports
                     }
+
+                # SOFT PENALTY: Log warning but proceed with degraded confidence
+                if moderately_stale_agents:
+                    logger.info(
+                        f"SOFT FRESHNESS PENALTY: {len(moderately_stale_agents)}/{total_agents} "
+                        f"agents have moderately stale data (>{SOFT_FRESHNESS_LIMIT_HOURS}h). "
+                        f"Proceeding with confidence penalty for {contract_name}."
+                    )
+                    # Stale agents already marked with is_stale=True
+                    # The weighted voting system will apply reduced weight to these agents
 
                 # --- SAVE STATE (For Sentinel Context) ---
                 # DISABLED: Moved to post-gather consolidation to prevent race condition

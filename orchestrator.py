@@ -2511,6 +2511,40 @@ async def guarded_generate_orders(config: dict):
         logger.warning("Budget hit - skipping scheduled orders.")
         return
 
+    # --- QUARANTINE HEALTH CHECK (Fix B2) ---
+    # Ensure any agents past their quarantine cooldown are released
+    # before the order generation cycle begins.
+    try:
+        from trading_bot.agents import TradingCouncil
+        temp_council = TradingCouncil(config)
+        if hasattr(temp_council, 'observability') and temp_council.observability:
+            hub = temp_council.observability
+            if hasattr(hub, 'hallucination_detector'):
+                detector = hub.hallucination_detector
+                for agent_name in list(detector.quarantined_agents):
+                    recent_flags = [
+                        f for f in detector.agent_flags.get(agent_name, [])
+                        if (datetime.now(timezone.utc) - f.timestamp).days < 7
+                    ]
+                    if not recent_flags:
+                        detector.quarantined_agents.discard(agent_name)
+                        logger.info(
+                            f"Pre-cycle quarantine release: {agent_name} "
+                            f"(no flags in 7-day window)"
+                        )
+                    else:
+                        most_recent = max(f.timestamp for f in recent_flags)
+                        hours_since = (datetime.now(timezone.utc) - most_recent).total_seconds() / 3600
+                        if hours_since > 48:
+                            detector.quarantined_agents.discard(agent_name)
+                            logger.info(
+                                f"Pre-cycle quarantine release: {agent_name} "
+                                f"(clean for {hours_since:.1f}h)"
+                            )
+                detector._save_state()  # Persist release
+    except Exception as e:
+        logger.warning(f"Pre-cycle quarantine check failed: {e}")
+
     # === NEW: Shutdown proximity check ===
     ny_tz = pytz.timezone('America/New_York')
     now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
