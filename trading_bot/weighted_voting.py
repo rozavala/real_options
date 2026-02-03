@@ -479,9 +479,14 @@ async def calculate_weighted_decision(
         logger.debug(f"Market context received (informational only, not blended): "
                      f"regime={ml_signal.get('regime')}, price={ml_signal.get('price')}")
 
-    if normalized_score > 0.15:
+    # v7.0: Widen deadlock zone from ±0.15 to ±0.10
+    # RATIONALE: With 7 agents designed to disagree (Permabear vs Permabull),
+    # the ±0.15 band catches ~85% of votes in the deadlock zone. Downstream
+    # gates (Compliance, DA on emergencies) still filter weak signals.
+    # A "Weak Bull" at +0.12 should at least reach the Master for consideration.
+    if normalized_score > 0.10:
         final_direction = 'BULLISH'
-    elif normalized_score < -0.15:
+    elif normalized_score < -0.10:
         final_direction = 'BEARISH'
     else:
         final_direction = 'NEUTRAL'

@@ -253,8 +253,22 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             # If parallelization is ever needed, use _CAPITAL_LOCK.
 
             for signal in signals:
-                # Skip order generation for NEUTRAL signals
-                if signal.get('direction') == 'NEUTRAL':
+                # === v7.0: Explicit NO TRADE short-circuit ===
+                # Skip NEUTRAL directional signals (no trade warranted)
+                # Skip NEUTRAL non-volatility signals (the "Cash is a Position" path)
+                sig_direction = signal.get('direction', 'NEUTRAL')
+                sig_pred_type = signal.get('prediction_type', 'DIRECTIONAL')
+
+                if sig_direction == 'NEUTRAL' and sig_pred_type != 'VOLATILITY':
+                    logger.info(
+                        f"NO TRADE: {signal.get('contract_month', 'N/A')} — "
+                        f"Direction={sig_direction}, Type={sig_pred_type}. "
+                        f"Reason: {signal.get('reason', 'No reason provided')[:100]}"
+                    )
+                    continue
+
+                # Also skip explicit NEUTRAL (legacy path)
+                if sig_direction == 'NEUTRAL':
                     continue
 
                 future = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal.get("contract_month", ""))), None)

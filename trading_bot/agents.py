@@ -831,12 +831,13 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
             f"2. If agent consensus confidence > 0.85 -> Strong signal, consider action\n"
             f"3. If agent conflict score is high -> Consider volatility play\n\n"
             f"TASK: Synthesize the evidence. Judge the debate. Render a verdict.\n"
-            f"NEGATIVE CONSTRAINT: DO NOT output specific numerical price projections unless explicitly provided in reports.\n"
-            f"OUTPUT FORMAT: Valid JSON object ONLY.\n"
-            f"- 'projected_price_5_day': (float) Target.\n"
+            f"CRITICAL: DO NOT output price targets, stop-losses, or precise numerical confidence. Focus on reasoning quality.\n"
+            f"OUTPUT FORMAT: Valid JSON object ONLY with these exact keys:\n"
             f"- 'direction': (string) 'BULLISH', 'BEARISH', or 'NEUTRAL'.\n"
-            f"- 'confidence': (float) 0.0-1.0.\n"
-            f"- 'reasoning': (string) Concise explanation.\n"
+            f"- 'thesis_strength': (string) 'SPECULATIVE', 'PLAUSIBLE', or 'PROVEN'.\n"
+            f"- 'primary_catalyst': (string) The single most important driver.\n"
+            f"- 'reasoning': (string) Full synthesis of evidence and debate.\n"
+            f"- 'dissent_acknowledged': (string) Strongest counter-argument and why you override it.\n"
         )
 
         try:
@@ -844,21 +845,50 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
             cleaned_text = self._clean_json_text(response_text)
             decision = json.loads(cleaned_text)
 
-            # === Confidence Validation Layer ===
-            raw_conf = decision.get('confidence', 0.5)
-            if not isinstance(raw_conf, (int, float)):
-                logger.warning(f"Non-numeric confidence received: {raw_conf}. Defaulting to 0.5")
-                raw_conf = 0.5
+            # === v7.0: Thesis Strength Validation ===
+            # Map thesis_strength to a numeric conviction for downstream compatibility.
+            # These are coarse "buckets" — the system doesn't care about the difference
+            # between 0.71 and 0.74, which was always noise anyway.
+            THESIS_TO_CONFIDENCE = {
+                'PROVEN': 0.90,
+                'PLAUSIBLE': 0.70,
+                'SPECULATIVE': 0.45,
+            }
+            thesis = decision.get('thesis_strength', 'SPECULATIVE').upper()
+            if thesis not in THESIS_TO_CONFIDENCE:
+                logger.warning(f"Invalid thesis_strength '{thesis}'. Defaulting to SPECULATIVE.")
+                thesis = 'SPECULATIVE'
+            decision['thesis_strength'] = thesis
+            decision['confidence'] = THESIS_TO_CONFIDENCE[thesis]
 
-            decision['confidence'] = max(0.0, min(1.0, float(raw_conf)))
+            # Ensure primary_catalyst exists
+            if not decision.get('primary_catalyst'):
+                decision['primary_catalyst'] = 'Not specified'
+
+            # Ensure dissent_acknowledged exists
+            if not decision.get('dissent_acknowledged'):
+                decision['dissent_acknowledged'] = 'None stated'
+
+            # Legacy compatibility: set projected_price_5_day to 0 (unused)
+            decision['projected_price_5_day'] = 0.0
+
+            logger.info(
+                f"Master Decision: {decision.get('direction')} | "
+                f"Thesis: {thesis} (conf={decision['confidence']}) | "
+                f"Catalyst: {decision.get('primary_catalyst', 'N/A')[:60]}"
+            )
             return decision
+
         except Exception as e:
             logger.error(f"Master Strategist failed: {e}")
             return {
-                "projected_price_5_day": ml_signal.get('expected_price', 0.0),
+                "projected_price_5_day": 0.0,
                 "direction": "NEUTRAL",
                 "confidence": 0.0,
-                "reasoning": f"Master Error: {str(e)}"
+                "thesis_strength": "SPECULATIVE",
+                "primary_catalyst": f"System Error: {str(e)}",
+                "reasoning": f"Master Error: {str(e)}",
+                "dissent_acknowledged": "N/A"
             }
 
     async def run_specialized_cycle(self, trigger: SentinelTrigger, contract_name: str, ml_signal: dict, market_context: str, ib=None, target_contract=None, cycle_id: str = "") -> dict:
@@ -952,19 +982,22 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         # Run Decision Loop with Context Injection
         decision = await self.decide(contract_name, ml_signal, final_reports, enriched_context, trigger_reason=trigger.reason, cycle_id=cycle_id)
 
-        # === NEW: Weighted Vote Override Logic ===
+        # === v7.0: Consensus Sensor (Emergency Path) ===
+        # Master's DIRECTION is trusted. Vote only adjusts CONVICTION (sizing).
         master_dir = decision.get('direction', 'NEUTRAL')
         vote_dir = weighted_result['direction']
 
-        if master_dir != vote_dir:
-            if weighted_result['confidence'] > 0.85:
-                decision['direction'] = vote_dir
-                decision['reasoning'] += f" [OVERRIDE: Strong agent consensus ({vote_dir})]"
-                logger.info(f"Master override by Weighted Vote: {vote_dir} (Conf: {weighted_result['confidence']})")
-            elif master_dir != 'NEUTRAL':
-                decision['direction'] = 'NEUTRAL'
-                decision['reasoning'] += f" [VETO: Agents disagree ({vote_dir})]"
-                logger.info(f"Master decision vetoed by conflicting Weighted Vote ({vote_dir})")
+        if master_dir == vote_dir or vote_dir == 'NEUTRAL':
+            conviction_multiplier = 1.0
+        elif vote_dir != master_dir and master_dir != 'NEUTRAL':
+            conviction_multiplier = 0.5
+            decision['reasoning'] += f" [DIVERGENT CONSENSUS: Vote={vote_dir}, trading smaller]"
+            logger.info(f"Emergency consensus divergent: Master={master_dir}, Vote={vote_dir} → half size")
+        else:
+            conviction_multiplier = 0.75
+
+        decision['confidence'] = round(decision.get('confidence', 0.5) * conviction_multiplier, 2)
+        decision['conviction_multiplier'] = conviction_multiplier
 
         # Inject vote breakdown into decision for dashboard visibility
         decision['vote_breakdown'] = weighted_result.get('vote_breakdown')
