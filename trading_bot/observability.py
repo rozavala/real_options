@@ -152,6 +152,8 @@ class HallucinationDetector:
         self.quarantine_threshold = quarantine_threshold
         self.agent_flags: Dict[str, List[HallucinationFlag]] = {}
         self.quarantined_agents: Set[str] = set()
+        self._state_file = "data/quarantine_state.json"
+        self._load_state()
 
         # DYNAMICALLY build known facts from the profile
         # This ensures commodity-agnostic operation
@@ -285,6 +287,33 @@ class HallucinationDetector:
         """Manually release an agent from quarantine."""
         self.quarantined_agents.discard(agent)
         logger.info(f"Agent {agent} released from quarantine")
+        self._save_state()
+
+    def _save_state(self):
+        """Persist quarantine state to survive restarts."""
+        try:
+            state = {
+                'quarantined_agents': list(self.quarantined_agents),
+                'last_updated': datetime.now(timezone.utc).isoformat()
+            }
+            # Create data dir if needed
+            os.makedirs(os.path.dirname(self._state_file), exist_ok=True)
+            with open(self._state_file, 'w') as f:
+                json.dump(state, f, indent=2)
+        except Exception as e:
+            logger.warning(f"Failed to save quarantine state: {e}")
+
+    def _load_state(self):
+        """Load quarantine state from disk."""
+        if os.path.exists(self._state_file):
+            try:
+                with open(self._state_file, 'r') as f:
+                    state = json.load(f)
+                self.quarantined_agents = set(state.get('quarantined_agents', []))
+                if self.quarantined_agents:
+                    logger.info(f"Restored quarantine state: {self.quarantined_agents}")
+            except Exception as e:
+                logger.warning(f"Could not load quarantine state: {e}")
 
     def _check_citations(self, output: str, sources: str) -> List[HallucinationFlag]:
         """Verify citations using 3-tier fuzzy matching."""
