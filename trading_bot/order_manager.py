@@ -222,7 +222,10 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                     )
 
                 # CRITICAL: Cancel subscription to prevent feed accumulation
-                ib.cancelMktData(f)
+                try:
+                    ib.cancelMktData(f)
+                except Exception:
+                    pass  # Error 300 is expected if subscription already expired
 
             futures = volume_filtered
 

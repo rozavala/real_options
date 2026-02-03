@@ -219,6 +219,23 @@ class TradingCouncil:
         commodity_label = self.commodity_profile.name if self.commodity_profile else "General"
         logger.info(f"Trading Council initialized for {commodity_label}. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
 
+    def invalidate_grounded_data_cache(self):
+        """Force-clear the grounded data cache.
+
+        Call this before each order generation cycle to ensure agents
+        perform fresh searches rather than reusing data from a prior
+        cycle. Without this, a sentinel cycle's cached data can serve
+        the order generation cycle hours later, causing freshness gate
+        failures and citation mismatches.
+        """
+        if hasattr(self, '_search_cache'):
+            cache_size = len(self._search_cache)
+            self._search_cache.clear()
+            logger.info(
+                f"Grounded data cache invalidated ({cache_size} entries cleared). "
+                f"Next cycle will perform fresh searches."
+            )
+
     def _validate_agent_output(self, agent_name: str, analysis: str, grounded_data: str) -> tuple:
         """
         Rule-based sanity check on agent output.
@@ -581,6 +598,7 @@ OUTPUT FORMAT (JSON):
                         timestamp=datetime.now(timezone.utc),
                         query=search_instruction,
                         retrieved_documents=relevant_context,
+                        grounded_data=grounded_data.raw_findings, # Fix B3: Populate grounded data
                         output_text=formatted_text,
                         sentiment=data.get('sentiment', 'NEUTRAL'),
                         confidence=float(data.get('confidence', 0.5)),
