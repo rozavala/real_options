@@ -240,10 +240,44 @@ class BrierScoreTracker:
                 except Exception:
                     pass  # If dedup check fails, record anyway (safe to have dupes)
 
-            with open(structured_file, 'a') as f:
+            CANONICAL_HEADER = "cycle_id,timestamp,agent,direction,confidence,prob_bullish,actual"
+            CANONICAL_COLUMNS = CANONICAL_HEADER.split(',')
+
+            with open(structured_file, 'a+') as f:
                 if not exists_struct:
                     # NEW SCHEMA: includes cycle_id column
-                    f.write("cycle_id,timestamp,agent,direction,confidence,prob_bullish,actual\n")
+                    f.write(CANONICAL_HEADER + "\n")
+                else:
+                    # VALIDATE: Ensure existing header matches expected column order
+                    f.seek(0)
+                    existing_header = f.readline().strip()
+                    if existing_header != CANONICAL_HEADER:
+                        existing_cols = existing_header.split(',')
+                        if set(existing_cols) == set(CANONICAL_COLUMNS):
+                            # Same columns, different order — rewrite file with canonical order
+                            logger.warning(
+                                f"Header mismatch in {structured_file}: "
+                                f"expected '{CANONICAL_HEADER}', got '{existing_header}'. "
+                                f"Rewriting with canonical column order."
+                            )
+                            f.seek(0)
+                            content = f.read()
+                            f.close()
+                            # Read, reorder, and rewrite
+                            df_fix = pd.read_csv(structured_file)
+                            df_fix = df_fix[CANONICAL_COLUMNS]
+                            df_fix.to_csv(structured_file, index=False)
+                            # Re-open in append mode
+                            f = open(structured_file, 'a')
+                        else:
+                            logger.error(
+                                f"Column set mismatch in {structured_file}: "
+                                f"expected {set(CANONICAL_COLUMNS)}, got {set(existing_cols)}. "
+                                f"Appending anyway but data may be misaligned."
+                            )
+                    # Seek to end for append
+                    f.seek(0, 2)
+
                 f.write(f"{cycle_id or ''},{timestamp},{agent},{predicted_direction},{predicted_confidence},{prob_bullish},{actual}\n")
 
             logger.debug(f"Recorded structured prediction: {agent} -> {predicted_direction} (cycle={cycle_id})")
@@ -400,8 +434,19 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
             return 0
 
         # Ensure timestamp columns are datetime with UTC (handles mixed formats)
-        predictions_df['timestamp'] = parse_ts_column(predictions_df['timestamp'])
-        council_df['timestamp'] = parse_ts_column(council_df['timestamp'])
+        # Use coerce mode to handle any residual data corruption gracefully
+        predictions_df['timestamp'] = parse_ts_column(predictions_df['timestamp'], errors='coerce')
+        council_df['timestamp'] = parse_ts_column(council_df['timestamp'], errors='coerce')
+
+        # Drop rows with unparseable timestamps (column-alignment corruption, etc.)
+        pred_nat_mask = predictions_df['timestamp'].isna()
+        if pred_nat_mask.any():
+            nat_count = pred_nat_mask.sum()
+            logger.warning(
+                f"Dropping {nat_count} predictions with unparseable timestamps "
+                f"(likely column-alignment corruption — run fix_brier_data.py to repair)"
+            )
+            predictions_df = predictions_df[~pred_nat_mask].copy()
 
         # Ensure cycle_id column exists (backward compat)
         if 'cycle_id' not in predictions_df.columns:
