@@ -92,3 +92,46 @@ def format_ts(dt: Optional[datetime] = None) -> str:
         dt = dt.astimezone(timezone.utc)
 
     return dt.strftime(_WRITE_FORMAT)
+
+
+def format_ib_datetime(dt: Optional[datetime] = None) -> str:
+    """
+    Format a datetime for IB API's endDateTime parameter.
+
+    IB API accepts two formats:
+      1. Space format: "20260201 16:00:00 US/Eastern"
+      2. Dash format:  "20260201-16:00:00" (dash implies UTC, no suffix)
+
+    We use the dash format exclusively because:
+      - Our system operates in UTC internally
+      - The dash format is unambiguous (no timezone name required)
+      - It suppresses IB Warning 2174 (timezone ambiguity)
+
+    IMPORTANT: Do NOT append ' UTC' to the dash format — the dash already
+    signals UTC. Appending ' UTC' creates an invalid hybrid that triggers
+    IB Error 10314.
+
+    Args:
+        dt: datetime to format. If None, returns '' (IB interprets as "now").
+            Must be timezone-aware (UTC) or naive (assumed UTC).
+
+    Returns:
+        String like "20260201-16:00:00" or "" if dt is None.
+
+    Examples:
+        >>> format_ib_datetime(datetime(2026, 2, 1, 16, 0, tzinfo=timezone.utc))
+        '20260201-16:00:00'
+        >>> format_ib_datetime(None)
+        ''
+        >>> format_ib_datetime()
+        ''
+    """
+    if dt is None:
+        return ''
+
+    # Convert to UTC if timezone-aware and not already UTC
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc)
+    # If naive, assume UTC (consistent with rest of our system)
+
+    return dt.strftime('%Y%m%d-%H:%M:%S')
