@@ -2017,7 +2017,9 @@ async def record_entry_thesis_for_trade(
             'contract_month': contract_month,
             'entry_regime': decision.get('regime', 'UNKNOWN'),
             'volatility_sentiment': decision.get('volatility_sentiment', 'NEUTRAL'),
-            'confidence': decision.get('confidence', 0.5)
+            'confidence': decision.get('confidence', 0.5),
+            'polymarket_slug': decision.get('polymarket_slug', ''),
+            'polymarket_title': decision.get('polymarket_title', '')
         },
         'entry_timestamp': datetime.now(timezone.utc).isoformat(),
         'entry_regime': decision.get('regime', 'UNKNOWN')

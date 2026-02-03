@@ -248,6 +248,141 @@
           "enabled": true
         }
       },
+      "discovery_agent": {
+        "enabled": true,
+        "scan_interval_hours": 12,
+        "llm_model": "claude-haiku-4-5-20251001",
+        "llm_provider": "anthropic",
+        "max_llm_calls_per_scan": 15,
+        "min_liquidity_usd": 5000,
+        "min_volume_usd": 5000,
+        "max_total_topics": 12,
+        "novel_market_llm_assessment": true,
+        "auto_apply": true,
+        "notify_on_change": true
+      },
+      "interest_areas": [
+        {
+          "name": "US Monetary Policy",
+          "enabled": true,
+          "discovery_methods": [
+            {"type": "tag_scan", "tag_id": 120, "limit": 20},
+            {"type": "query", "q": "Federal Reserve"},
+            {"type": "query", "q": "Fed rate"},
+            {"type": "query", "q": "FOMC decision"}
+          ],
+          "relevance_keywords": [
+            "fed", "rate", "fomc", "interest", "monetary", "powell",
+            "federal reserve", "rate cut", "rate hike", "basis points"
+          ],
+          "exclude_keywords": ["crypto", "bitcoin", "ethereum", "defi"],
+          "min_relevance_score": 2,
+          "max_topics": 3,
+          "default_threshold_pct": 8.0,
+          "importance": "macro",
+          "commodity_impact_template": "US rate changes affect USD strength, commodity financing costs, and carry trade dynamics"
+        },
+        {
+          "name": "Trade Policy",
+          "enabled": true,
+          "discovery_methods": [
+            {"type": "tag_scan", "tag_id": 2, "limit": 20},
+            {"type": "tag_scan", "tag_id": 100265, "limit": 10},
+            {"type": "query", "q": "tariff"},
+            {"type": "query", "q": "trade war"},
+            {"type": "query", "q": "SCOTUS tariff"}
+          ],
+          "relevance_keywords": [
+            "tariff", "trade", "sanction", "import", "export", "customs",
+            "duty", "ieepa", "scotus", "supreme court", "trade war"
+          ],
+          "exclude_keywords": ["crypto", "nft", "sports"],
+          "min_relevance_score": 2,
+          "max_topics": 2,
+          "default_threshold_pct": 8.0,
+          "importance": "macro",
+          "commodity_impact_template": "Trade policy changes affect import/export costs, supply chain routing, and cross-border pricing"
+        },
+        {
+          "name": "US Economic Health",
+          "enabled": true,
+          "discovery_methods": [
+            {"type": "tag_scan", "tag_id": 120, "limit": 20},
+            {"type": "query", "q": "recession"},
+            {"type": "query", "q": "US economy"}
+          ],
+          "relevance_keywords": [
+            "recession", "gdp", "unemployment", "inflation", "nber",
+            "economy", "growth", "contraction", "downturn"
+          ],
+          "exclude_keywords": ["crypto", "bitcoin"],
+          "min_relevance_score": 2,
+          "max_topics": 2,
+          "default_threshold_pct": 5.0,
+          "importance": "macro",
+          "commodity_impact_template": "Economic contraction reduces coffee demand; recession fears drive USD safe-haven flows"
+        },
+        {
+          "name": "Brazil Economy",
+          "enabled": true,
+          "discovery_methods": [
+            {"type": "query", "q": "Brazil rate"},
+            {"type": "query", "q": "Selic rate"},
+            {"type": "query", "q": "Brazil economy"},
+            {"type": "query", "q": "BRL USD"}
+          ],
+          "relevance_keywords": [
+            "brazil", "selic", "brl", "copom", "bcb", "real",
+            "brazilian", "banco central"
+          ],
+          "exclude_keywords": ["football", "soccer", "sports"],
+          "min_relevance_score": 1,
+          "max_topics": 2,
+          "default_threshold_pct": 8.0,
+          "importance": "supply_chain",
+          "commodity_impact_template": "Brazil monetary policy affects BRL/USD, farmer selling behavior, and export competitiveness"
+        },
+        {
+          "name": "LatAm Geopolitics",
+          "enabled": true,
+          "discovery_methods": [
+            {"type": "tag_scan", "tag_id": 100265, "limit": 15},
+            {"type": "query", "q": "Colombia"},
+            {"type": "query", "q": "Latin America military"},
+            {"type": "query", "q": "Venezuela"}
+          ],
+          "relevance_keywords": [
+            "colombia", "latin", "america", "venezuela", "brazil",
+            "mexico", "invade", "invasion", "military", "embargo",
+            "supply chain", "port", "blockade"
+          ],
+          "exclude_keywords": ["sports", "football", "soccer", "crypto"],
+          "min_relevance_score": 1,
+          "max_topics": 2,
+          "default_threshold_pct": 5.0,
+          "importance": "supply_chain",
+          "commodity_impact_template": "LatAm geopolitical instability threatens coffee supply chains from origin countries"
+        },
+        {
+          "name": "Fed Leadership",
+          "enabled": true,
+          "discovery_methods": [
+            {"type": "query", "q": "Fed Chair"},
+            {"type": "query", "q": "Jerome Powell"},
+            {"type": "query", "q": "Federal Reserve Chair"}
+          ],
+          "relevance_keywords": [
+            "powell", "fed", "chair", "resign", "fired", "replace",
+            "nominee", "warsh", "hassett", "federal reserve"
+          ],
+          "exclude_keywords": [],
+          "min_relevance_score": 2,
+          "max_topics": 1,
+          "default_threshold_pct": 8.0,
+          "importance": "macro",
+          "commodity_impact_template": "Fed leadership changes signal monetary policy shifts affecting USD and rate expectations"
+        }
+      ],
       "topics_to_watch": [
         {
           "query": "Trump Fed Chair nominee",

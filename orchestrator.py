@@ -1762,6 +1762,11 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 
                 logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
 
+                # Amendment A: Inject polymarket context into the decision for thesis recording
+                if trigger.source == "PredictionMarketSentinel":
+                    decision['polymarket_slug'] = trigger.payload.get('slug', '')
+                    decision['polymarket_title'] = trigger.payload.get('title', '')
+
                 # === v7.1: Strategy Routing (aligns emergency with v7.0 Judge & Jury) ===
                 # Previously: hardcoded DIRECTIONAL. Now: respects thesis, vol, regime.
                 current_reports = StateManager.load_state()
@@ -2056,6 +2061,7 @@ async def run_sentinels(config: dict):
     last_news = 0
     last_x_sentiment = 0
     last_prediction_market = 0
+    last_topic_discovery = 0
 
     # Contract Cache
     cached_contract = None
@@ -2311,6 +2317,29 @@ async def run_sentinels(config: dict):
                     logger.error(f"PredictionMarketSentinel check failed: {type(e).__name__}: {e}")
                 finally:
                     last_prediction_market = now
+
+            # 8. Topic Discovery Agent (Every 12 hours) - Runs 24/7, no IB needed
+            discovery_config = config.get('sentinels', {}).get('prediction_markets', {}).get('discovery_agent', {})
+            discovery_interval = discovery_config.get('scan_interval_hours', 12) * 3600
+
+            if discovery_config.get('enabled', False) and (now - last_topic_discovery) > discovery_interval:
+                try:
+                    from trading_bot.topic_discovery import TopicDiscoveryAgent
+                    # Inject GLOBAL_BUDGET_GUARD (dependency injection)
+                    discovery_agent = TopicDiscoveryAgent(config, budget_guard=GLOBAL_BUDGET_GUARD)
+                    result = await discovery_agent.run_scan()
+                    logger.info(
+                        f"TopicDiscovery: {result['metadata']['topics_discovered']} topics, "
+                        f"{result['changes']['summary']}"
+                    )
+
+                    # If topics changed, hot-reload the sentinel (preserves state)
+                    if result.get('changes', {}).get('has_changes'):
+                        prediction_market_sentinel.reload_topics()
+                except Exception as e:
+                    logger.error(f"TopicDiscoveryAgent scan failed: {type(e).__name__}: {e}")
+                finally:
+                    last_topic_discovery = now
 
             # 7. Microstructure Sentinel (Every 1 min with Price Sentinel)
             if micro_sentinel and micro_ib and micro_ib.isConnected():

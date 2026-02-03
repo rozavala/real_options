@@ -1358,9 +1358,6 @@ class PredictionMarketSentinel(Sentinel):
         self.api_url = polymarket_config.get('api_url', "https://gamma-api.polymarket.com/events")
         self.search_limit = polymarket_config.get('search_limit', 10)
 
-        # Topics to watch (queries, not slugs)
-        self.topics = self.sentinel_config.get('topics_to_watch', [])
-
         # Liquidity Filters
         self.min_liquidity = self.sentinel_config.get('min_liquidity_usd', 50000)
         self.min_volume = self.sentinel_config.get('min_volume_usd', 10000)
@@ -1371,6 +1368,10 @@ class PredictionMarketSentinel(Sentinel):
         # State Cache: { topic_query: { slug, price, timestamp, severity_hwm, hwm_timestamp } }
         self.state_cache: Dict[str, Dict[str, Any]] = {}
         self._load_state_cache()
+
+        # Topics to watch (queries, not slugs)
+        self.topics = []
+        self.reload_topics()
 
         # Polling interval (internal rate limiting)
         self.poll_interval = self.sentinel_config.get('poll_interval_seconds', 300)
@@ -1391,6 +1392,74 @@ class PredictionMarketSentinel(Sentinel):
             f"{len(self.topics)} topics | "
             f"min_liq=${self.min_liquidity:,} | "
             f"HWM decay={self.hwm_decay_hours}h"
+        )
+
+    def _merge_discovered_topics(self, static_topics: List[Dict]) -> List[Dict]:
+        """Merge static topics with discovered topics from disk."""
+        discovered_file = "data/discovered_topics.json"
+        if not os.path.exists(discovered_file):
+            return static_topics
+
+        try:
+            with open(discovered_file, 'r') as f:
+                discovered = json.load(f)
+
+            # Create map of static topics by tag (or query) for dedup
+            # Static topics take precedence
+            merged = {t.get('tag', t.get('query')): t for t in static_topics}
+
+            for topic in discovered:
+                key = topic.get('tag', topic.get('query'))
+                if key not in merged:
+                    merged[key] = topic
+
+            return list(merged.values())
+        except Exception as e:
+            logger.warning(f"Failed to merge discovered topics: {e}")
+            return static_topics
+
+    def reload_topics(self):
+        """
+        Hot-reload topics from config + discovered topics file.
+        Preserves in-memory state (state_cache, HWM, failure counts).
+
+        Called by orchestrator when TopicDiscoveryAgent detects changes.
+        """
+        logger.info("Reloading prediction market topics...")
+
+        old_count = len(self.topics)
+        old_tags = {t.get('tag', t.get('query', '?')) for t in self.topics}
+
+        # Re-read static topics from config
+        static_topics = self.sentinel_config.get('topics_to_watch', [])
+
+        # Merge with discovered topics (reads fresh file from disk)
+        self.topics = self._merge_discovered_topics(static_topics)
+
+        new_tags = {t.get('tag', t.get('query', '?')) for t in self.topics}
+        added = new_tags - old_tags
+        removed = old_tags - new_tags
+
+        # Clean up state_cache entries for removed topics
+        # (but only those that are truly gone, not just renamed)
+        for topic in list(self.state_cache.keys()):
+            if topic not in {t.get('query', '') for t in self.topics}:
+                # Don't delete — just mark as stale so history is preserved
+                # in case the topic comes back in a future scan
+                logger.debug(f"Topic '{topic}' removed from active tracking")
+
+        # Reset failure counts for newly added topics
+        for tag in added:
+            # Find query for this tag
+            for t in self.topics:
+                if t.get('tag') == tag:
+                    q = t.get('query', '')
+                    self._topic_failure_counts.pop(q, None)
+
+        logger.info(
+            f"Topics reloaded: {old_count} -> {len(self.topics)} | "
+            f"+{len(added)} added, -{len(removed)} removed | "
+            f"State cache preserved ({len(self.state_cache)} entries)"
         )
 
     def _load_state_cache(self):
@@ -1502,26 +1571,32 @@ class PredictionMarketSentinel(Sentinel):
                         if not markets:
                             continue
 
-                        # Primary market (usually the main Yes/No question)
-                        # NOTE: markets[0] heuristic is intentional per v2.0 design review.
-                        # 95% of Polymarket events have the primary binary at index 0.
-                        # If we find "Side Bet" lock-on issues later, add market['question'] filter.
-                        market = markets[0]
+                        # Select highest-liquidity sub-market within this event
+                        best_market = None
+                        best_liq = -1
+                        best_vol = 0
 
-                        if not isinstance(market, dict):
-                            logger.debug(f"Skipping non-dict market: {type(market).__name__}")
+                        for m in markets:
+                            if not isinstance(m, dict):
+                                continue
+                            try:
+                                m_liq = float(m.get('liquidity', 0) or 0)
+                            except (ValueError, TypeError):
+                                continue
+                            if m_liq > best_liq:
+                                best_liq = m_liq
+                                best_market = m
+                                try:
+                                    best_vol = float(m.get('volume', 0) or 0)
+                                except:
+                                    best_vol = 0
+
+                        if best_market is None:
                             continue
 
-                        # Parse liquidity and volume safely
-                        try:
-                            liquidity = float(market.get('liquidity', 0) or 0)
-                            volume = float(market.get('volume', 0) or 0)
-                        except (ValueError, TypeError, AttributeError):
-                            logger.warning(
-                                f"Skipping malformed market data for '{query}': "
-                                f"type={type(market).__name__}"
-                            )
-                            continue
+                        market = best_market
+                        liquidity = best_liq
+                        volume = best_vol
 
                         # Apply filters
                         if liquidity < self.min_liquidity:
