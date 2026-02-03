@@ -81,3 +81,225 @@
 2026-02-03 13:20:21,497 - Orchestrator - ERROR - Thesis f95c29ea-4597-4108-9e43-d10faed4461a NOT invalidated — close order did not fully succeed. Will retry on next audit cycle.
 2026-02-03 13:20:21,814 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
 2026-02-03 13:20:21,816 - Orchestrator - INFO - Next task 'guarded_generate_orders' scheduled for 2026-02-03 13:50:00 UTC. Waiting for 0.49 hours.
+2026-02-03 13:50:00,011 - Orchestrator - INFO - --- Running scheduled task: guarded_generate_orders ---
+2026-02-03 13:50:00,013 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 206...
+2026-02-03 13:50:00,134 - trading_bot.connection_pool - INFO - IB (drawdown_check) connected successfully with ID 206
+2026-02-03 13:50:00,239 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-02-03 13:50:00,240 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-02-03 13:50:00,240 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 144...
+2026-02-03 13:50:00,357 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 144
+2026-02-03 13:50:00,363 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-03 13:50:00,364 - OrderManager - INFO - Connected to IB for signal generation (purpose: orchestrator_orders).
+2026-02-03 13:50:00,364 - OrderManager - INFO - Step 1: Generating structured signals via Council...
+2026-02-03 13:50:00,364 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
+2026-02-03 13:50:00,531 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-03 13:50:00,531 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-03 13:50:00,531 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-03 13:50:00,541 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-03 13:50:00,545 - trading_bot.enhanced_brier - INFO - Loaded 208 predictions from ./data/enhanced_brier.json
+2026-02-03 13:50:00,545 - trading_bot.agents - INFO - Loaded commodity profile: Coffee Arabica
+2026-02-03 13:50:00,546 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee Arabica: 9 port tokens, 24 producer tokens
+2026-02-03 13:50:00,546 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee Arabica
+2026-02-03 13:50:00,546 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-03 13:50:00,546 - trading_bot.agents - INFO - Trading Council initialized for Coffee Arabica. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-03 13:50:00,546 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-03 13:50:00,546 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-03 13:50:00,546 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-03 13:50:00,647 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-03 13:50:00,648 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-03 13:50:00,648 - trading_bot.market_data_provider - INFO - Building market context for 5 contracts...
+2026-02-03 13:50:00,648 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-03 13:50:00,649 - trading_bot.market_data_provider - INFO - Building market context for KCN6 (202607)...
+2026-02-03 13:50:00,649 - trading_bot.market_data_provider - INFO - Building market context for KCU6 (202609)...
+2026-02-03 13:50:02,227 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=306.60, sma_200=335.6875, regime=TRENDING, vol_5d=0.0281
+2026-02-03 13:50:02,227 - trading_bot.market_data_provider - INFO - Building market context for KCZ6 (202612)...
+2026-02-03 13:50:02,276 - trading_bot.market_data_provider - INFO - Market context for KCN6 (202607): price=300.40, sma_200=325.3875, regime=TRENDING, vol_5d=0.0276
+2026-02-03 13:50:02,277 - trading_bot.market_data_provider - INFO - Building market context for KCH7 (202703)...
+2026-02-03 13:50:02,345 - trading_bot.market_data_provider - INFO - Market context for KCU6 (202609): price=295.40, sma_200=314.64525000000003, regime=TRENDING, vol_5d=0.0267
+2026-02-03 13:50:02,892 - trading_bot.market_data_provider - INFO - Market context for KCZ6 (202612): price=290.55, sma_200=306.33, regime=TRENDING, vol_5d=0.0262
+2026-02-03 13:50:02,963 - trading_bot.market_data_provider - INFO - Market context for KCH7 (202703): price=287.35, sma_200=300.67575, regime=TRENDING, vol_5d=0.0256
+2026-02-03 13:50:02,963 - trading_bot.market_data_provider - INFO - Market context complete: 5/5 contracts successful
+2026-02-03 13:50:02,963 - trading_bot.signal_generator - INFO - Market context built for 5 contracts
+2026-02-03 13:50:02,963 - trading_bot.signal_generator - INFO - Convening Council for KCK6 (202605) (Cycle: KC-ae7f605a)...
+2026-02-03 13:50:02,964 - trading_bot.signal_generator - INFO - Convening Council for KCN6 (202607) (Cycle: KC-2a3ba97f)...
+2026-02-03 13:50:02,964 - trading_bot.signal_generator - INFO - Convening Council for KCU6 (202609) (Cycle: KC-f0b5918b)...
+2026-02-03 13:50:04,000 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-03 13:50:04,002 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-03 13:50:04,368 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-03 13:50:04,368 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-03 13:50:04,694 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-03 13:50:04,695 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-03 13:50:04,996 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-03 13:50:04,996 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-03 13:50:05,318 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-03 13:50:05,318 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-03 13:50:05,662 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-03 13:50:05,662 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-03 13:50:05,986 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-03 13:50:05,986 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-03 13:50:06,285 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-03 13:50:06,286 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-03 13:50:06,568 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-03 13:50:06,569 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-03 13:50:06,853 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-03 13:50:06,853 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-03 13:50:07,139 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-03 13:50:07,139 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-03 13:50:07,421 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-03 13:50:07,422 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-03 13:50:07,726 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-03 13:50:07,726 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-03 13:50:08,008 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-03 13:50:08,008 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-03 13:50:08,288 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-03 13:50:08,288 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-03 13:50:08,630 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-03 13:50:08,630 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-03 13:50:08,942 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-03 13:50:08,943 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-03 13:50:09,297 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-03 13:50:09,297 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-03 13:50:09,600 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-03 13:50:09,600 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-03 13:50:09,915 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-03 13:50:09,916 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-03 13:50:10,205 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-03 13:50:10,206 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-03 13:50:10,510 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-03 13:50:10,510 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-03 13:50:10,814 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-03 13:50:10,814 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-03 13:50:11,119 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-03 13:50:11,119 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-03 13:50:34,288 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-03 13:50:47,911 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 12.8s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 12.108346184s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '12s'}]}}
+2026-02-03 13:50:49,780 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.9s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 10.239635118s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '10s'}]}}
+2026-02-03 13:50:53,907 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: geopolitical - Cited source not found in retrieved documents
+2026-02-03 13:50:56,609 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 4.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 3.41092437s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '3s'}]}}
+2026-02-03 13:50:57,564 - trading_bot.tms - INFO - TMS: macro insight cues -> ['geopolitical', 'fundamentalist']
+2026-02-03 13:51:00,713 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 61.1s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 59.306937822s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'model': 'gemini-3-pro', 'location': 'global'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '59s'}]}}
+2026-02-03 13:51:00,733 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 61.1s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 59.286622806s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '59s'}]}}
+2026-02-03 13:51:00,798 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 60.9s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 59.221765844s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '59s'}]}}
+2026-02-03 13:51:01,607 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 59.1s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 58.413136602s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'model': 'gemini-3-pro', 'location': 'global'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '58s'}]}}
+2026-02-03 13:51:02,996 - trading_bot.tms - INFO - TMS: macro insight cues -> ['geopolitical', 'fundamentalist']
+2026-02-03 13:51:03,474 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 58.2s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 56.54505217s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '56s'}]}}
+2026-02-03 13:51:05,608 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: geopolitical - Cited source not found in retrieved documents
+2026-02-03 13:51:09,107 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 52.3s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model, limit: 25, model: gemini-3-pro\nPlease retry in 50.913158586s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3-pro'}, 'quotaValue': '25'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '50s'}]}}
+2026-02-03 13:51:14,527 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: macro - Cited source not found in retrieved documents
+2026-02-03 13:51:14,870 - trading_bot.tms - INFO - TMS: macro insight cues -> ['sentiment', 'technical', 'geopolitical', 'fundamentalist']
+2026-02-03 13:51:16,317 - trading_bot.agents - WARNING - [supply_chain] Output validation issues: ['Direction-evidence mismatch: BULLISH call but 6 bearish vs 3 bullish evidence words']
+2026-02-03 13:51:16,317 - trading_bot.agents - WARNING - [supply_chain] Validation issues: ['Direction-evidence mismatch: BULLISH call but 6 bearish vs 3 bullish evidence words']
+2026-02-03 13:51:18,347 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: geopolitical - Cited source not found in retrieved documents
+2026-02-03 13:51:28,330 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-03 13:51:35,558 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-03 13:51:44,920 - trading_bot.agents - WARNING - [supply_chain] Output validation issues: ['Direction-evidence mismatch: BULLISH call but 8 bearish vs 0 bullish evidence words']
+2026-02-03 13:51:44,921 - trading_bot.agents - WARNING - [supply_chain] Validation issues: ['Direction-evidence mismatch: BULLISH call but 8 bearish vs 0 bullish evidence words']
+2026-02-03 13:51:59,182 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-03 13:52:05,097 - trading_bot.agents - WARNING - [inventory] Output validation issues: ["Possible hallucination: 4 numbers not in grounded data: ['312', '440', '372']"]
+2026-02-03 13:52:05,097 - trading_bot.agents - WARNING - [inventory] Validation issues: ["Possible hallucination: 4 numbers not in grounded data: ['312', '440', '372']"]
+2026-02-03 13:52:11,308 - trading_bot.agents - WARNING - [agronomist] Output validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-03 13:52:11,309 - trading_bot.agents - WARNING - [agronomist] Validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-03 13:52:11,309 - trading_bot.agents - INFO - [agronomist] Confidence clamped: 0.95 → 0.65
+2026-02-03 13:52:25,992 - trading_bot.agents - WARNING - [volatility] Output validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-03 13:52:25,992 - trading_bot.agents - WARNING - [volatility] Validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-03 13:52:25,992 - trading_bot.agents - INFO - [volatility] Confidence clamped: 0.95 → 0.75
+2026-02-03 13:52:25,993 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: volatility - Cited source not found in retrieved documents
+2026-02-03 13:52:29,339 - trading_bot.signal_generator - INFO - Agent research complete for KCU6 (202609): 8/8 returned non-default results
+2026-02-03 13:52:29,339 - trading_bot.signal_generator - WARNING - FRESHNESS GATE: 6/8 agents have stale data. Skipping KCU6 (202609).
+2026-02-03 13:52:29,339 - trading_bot.signal_generator - INFO - Convening Council for KCZ6 (202612) (Cycle: KC-d17ea61e)...
+2026-02-03 13:52:29,638 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: volatility - Cited source not found in retrieved documents
+2026-02-03 13:52:29,962 - trading_bot.signal_generator - INFO - Agent research complete for KCN6 (202607): 8/8 returned non-default results
+2026-02-03 13:52:29,962 - trading_bot.signal_generator - WARNING - FRESHNESS GATE: 6/8 agents have stale data. Skipping KCN6 (202607).
+2026-02-03 13:52:29,963 - trading_bot.signal_generator - INFO - Convening Council for KCH7 (202703) (Cycle: KC-52340695)...
+2026-02-03 13:52:30,277 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-03 13:52:30,277 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-03 13:52:30,277 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-02-03 13:52:30,953 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-03 13:52:30,953 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-03 13:52:30,953 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-02-03 13:52:30,954 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: macro - Cited source not found in retrieved documents
+2026-02-03 13:52:31,272 - trading_bot.tms - INFO - TMS: macro insight cues -> ['sentiment', 'technical', 'geopolitical', 'fundamentalist']
+2026-02-03 13:52:31,644 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-03 13:52:31,644 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-03 13:52:31,644 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-02-03 13:52:31,647 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: geopolitical - Cited source not found in retrieved documents
+2026-02-03 13:52:32,298 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-03 13:52:32,298 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-03 13:52:32,298 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-02-03 13:52:32,592 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-03 13:52:32,592 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-03 13:52:32,592 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-02-03 13:52:33,317 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-03 13:52:33,317 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-03 13:52:33,317 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-02-03 13:52:34,188 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-03 13:52:34,188 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-03 13:52:34,591 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-03 13:52:34,591 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-03 13:52:35,337 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-03 13:52:35,337 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-03 13:52:35,337 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-02-03 13:52:35,979 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-03 13:52:35,979 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-03 13:52:35,979 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-02-03 13:52:35,981 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: macro - Cited source not found in retrieved documents
+2026-02-03 13:52:36,361 - trading_bot.tms - INFO - TMS: macro insight cues -> ['sentiment', 'technical', 'geopolitical', 'fundamentalist']
+2026-02-03 13:52:36,709 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-03 13:52:36,709 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-03 13:52:36,710 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-02-03 13:52:36,712 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: geopolitical - Cited source not found in retrieved documents
+2026-02-03 13:52:36,712 - trading_bot.observability - ERROR - Agent geopolitical QUARANTINED: 5 flawed cycles in 7 days.
+2026-02-03 13:52:37,523 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-03 13:52:37,523 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-03 13:52:37,523 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-02-03 13:52:37,850 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-03 13:52:37,850 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-03 13:52:37,850 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-02-03 13:52:38,536 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-03 13:52:38,537 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-03 13:52:38,537 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-02-03 13:52:39,425 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-03 13:52:39,426 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-03 13:52:39,849 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-03 13:52:39,850 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-03 13:52:41,287 - trading_bot.signal_generator - INFO - Agent research complete for KCK6 (202605): 8/8 returned non-default results
+2026-02-03 13:52:41,287 - trading_bot.signal_generator - WARNING - FRESHNESS GATE: 6/8 agents have stale data. Skipping KCK6 (202605).
+2026-02-03 13:52:58,264 - trading_bot.agents - WARNING - [supply_chain] Output validation issues: ['Direction-evidence mismatch: BULLISH call but 8 bearish vs 0 bullish evidence words']
+2026-02-03 13:52:58,264 - trading_bot.agents - WARNING - [supply_chain] Validation issues: ['Direction-evidence mismatch: BULLISH call but 8 bearish vs 0 bullish evidence words']
+2026-02-03 13:53:00,395 - trading_bot.agents - WARNING - [supply_chain] Output validation issues: ['Direction-evidence mismatch: BULLISH call but 8 bearish vs 0 bullish evidence words']
+2026-02-03 13:53:00,395 - trading_bot.agents - WARNING - [supply_chain] Validation issues: ['Direction-evidence mismatch: BULLISH call but 8 bearish vs 0 bullish evidence words']
+2026-02-03 13:54:20,476 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: volatility - Cited source not found in retrieved documents
+2026-02-03 13:54:27,494 - trading_bot.agents - WARNING - [volatility] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 6 bullish vs 3 bearish evidence words']
+2026-02-03 13:54:27,494 - trading_bot.agents - WARNING - [volatility] Validation issues: ['Direction-evidence mismatch: BEARISH call but 6 bullish vs 3 bearish evidence words']
+2026-02-03 13:54:27,495 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: volatility - Cited source not found in retrieved documents
+2026-02-03 13:54:29,112 - trading_bot.agents - WARNING - [technical] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 4 bullish vs 1 bearish evidence words']
+2026-02-03 13:54:29,112 - trading_bot.agents - WARNING - [technical] Validation issues: ['Direction-evidence mismatch: BEARISH call but 4 bullish vs 1 bearish evidence words']
+2026-02-03 13:54:29,444 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-03 13:54:47,852 - trading_bot.signal_generator - INFO - Agent research complete for KCZ6 (202612): 8/8 returned non-default results
+2026-02-03 13:54:47,852 - trading_bot.signal_generator - WARNING - FRESHNESS GATE: 6/8 agents have stale data. Skipping KCZ6 (202612).
+2026-02-03 13:55:25,361 - trading_bot.signal_generator - INFO - Agent research complete for KCH7 (202703): 8/8 returned non-default results
+2026-02-03 13:55:25,361 - trading_bot.signal_generator - WARNING - FRESHNESS GATE: 6/8 agents have stale data. Skipping KCH7 (202703).
+2026-02-03 13:55:25,378 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-02-03 13:55:25,378 - OrderManager - INFO - Generated 5 signals: [{'price': 306.6, 'sma_200': 335.6875, 'expected_price': 306.6, 'predicted_return': 0.0, 'action': 'NEUTRAL', 'confidence': 0.0, 'reason': 'Freshness Gate: 6 agents returned stale data (> 4h)', 'regime': 'TRENDING', 'volatility_5d': 0.02808371664488034, 'price_vs_sma': -0.08665053062744361, 'data_source': 'IBKR_LIVE', 'timestamp': '2026-02-03T13:50:02.227420+00:00', 'contract_month': '202605', 'prediction_type': 'NEUTRAL', 'direction': 'NEUTRAL'}, {'price': 300.4, 'sma_200': 325.3875, 'expected_price': 300.4, 'predicted_return': 0.0, 'action': 'NEUTRAL', 'confidence': 0.0, 'reason': 'Freshness Gate: 6 agents returned stale data (> 4h)', 'regime': 'TRENDING', 'volatility_5d': 0.027572450439587705, 'price_vs_sma': -0.07679305443509665, 'data_source': 'IBKR_LIVE', 'timestamp': '2026-02-03T13:50:02.276495+00:00', 'contract_month': '202607', 'prediction_type': 'NEUTRAL', 'direction': 'NEUTRAL'}, {'price': 295.4, 'sma_200': 314.64525000000003, 'expected_price': 295.4, 'predicted_return': 0.0, 'action': 'NEUTRAL', 'confidence': 0.0, 'reason': 'Freshness Gate: 6 agents returned stale data (> 4h)', 'regime': 'TRENDING', 'volatility_5d': 0.026675843486299478, 'price_vs_sma': -0.061164915090884266, 'data_source': 'IBKR_LIVE', 'timestamp': '2026-02-03T13:50:02.345078+00:00', 'contract_month': '202609', 'prediction_type': 'NEUTRAL', 'direction': 'NEUTRAL'}, {'price': 290.55, 'sma_200': 306.33, 'expected_price': 290.55, 'predicted_return': 0.0, 'action': 'NEUTRAL', 'confidence': 0.0, 'reason': 'Freshness Gate: 6 agents returned stale data (> 4h)', 'regime': 'TRENDING', 'volatility_5d': 0.026170715743454732, 'price_vs_sma': -0.05151307413573589, 'data_source': 'IBKR_LIVE', 'timestamp': '2026-02-03T13:50:02.892721+00:00', 'contract_month': '202612', 'prediction_type': 'NEUTRAL', 'direction': 'NEUTRAL'}, {'price': 287.35, 'sma_200': 300.67575, 'expected_price': 287.35, 'predicted_return': 0.0, 'action': 'NEUTRAL', 'confidence': 0.0, 'reason': 'Freshness Gate: 6 agents returned stale data (> 4h)', 'regime': 'TRENDING', 'volatility_5d': 0.025552467635126176, 'price_vs_sma': -0.04431933735926483, 'data_source': 'IBKR_LIVE', 'timestamp': '2026-02-03T13:50:02.963305+00:00', 'contract_month': '202703', 'prediction_type': 'NEUTRAL', 'direction': 'NEUTRAL'}]
+2026-02-03 13:55:25,379 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-03 13:55:25,449 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-03 13:55:25,450 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-03 13:55:25,450 - OrderManager - INFO - Skipping KCU6: Too deferred (226 days > 180 max)
+2026-02-03 13:55:25,450 - OrderManager - INFO - Skipping KCZ6: Too deferred (317 days > 180 max)
+2026-02-03 13:55:25,451 - OrderManager - INFO - Skipping KCH7: Too deferred (407 days > 180 max)
+2026-02-03 13:55:25,451 - OrderManager - INFO - Date filter passed: 2/5 contracts within 180 days.
+2026-02-03 13:55:25,452 - OrderManager - INFO - Checking liquidity for 2 contracts (parallel)...
+2026-02-03 13:55:27,454 - OrderManager - INFO - Volume filter passed: 2 liquid candidates proceeding to signal generation.
+2026-02-03 13:55:27,455 - ib_insync.wrapper - ERROR - Error 300, reqId 1092: Can't find EId with tickerId:1092
+2026-02-03 13:55:27,456 - ib_insync.wrapper - ERROR - Error 300, reqId 1093: Can't find EId with tickerId:1093
+2026-02-03 13:55:27,612 - OrderManager - INFO - Account Value for Sizing: $47,017.26
+2026-02-03 13:55:27,612 - OrderManager - INFO - NO TRADE: 202605 — Direction=NEUTRAL, Type=NEUTRAL. Reason: Freshness Gate: 6 agents returned stale data (> 4h)
+2026-02-03 13:55:27,612 - OrderManager - INFO - NO TRADE: 202607 — Direction=NEUTRAL, Type=NEUTRAL. Reason: Freshness Gate: 6 agents returned stale data (> 4h)
+2026-02-03 13:55:27,612 - OrderManager - INFO - NO TRADE: 202609 — Direction=NEUTRAL, Type=NEUTRAL. Reason: Freshness Gate: 6 agents returned stale data (> 4h)
+2026-02-03 13:55:27,612 - OrderManager - INFO - NO TRADE: 202612 — Direction=NEUTRAL, Type=NEUTRAL. Reason: Freshness Gate: 6 agents returned stale data (> 4h)
+2026-02-03 13:55:27,612 - OrderManager - INFO - NO TRADE: 202703 — Direction=NEUTRAL, Type=NEUTRAL. Reason: Freshness Gate: 6 agents returned stale data (> 4h)
+2026-02-03 13:55:27,612 - OrderManager - INFO - --- Order generation complete. 0 orders queued. ---
+2026-02-03 13:55:27,925 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-03 13:55:27,927 - OrderManager - INFO - No orders were queued. Skipping placement step.
+2026-02-03 13:55:27,928 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-02-03 13:55:27,929 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-02-03 15:50:00 UTC. Waiting for 1.91 hours.
