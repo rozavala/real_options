@@ -22,6 +22,7 @@ import os
 import sys
 import shutil
 import argparse
+import re
 from datetime import datetime, timezone
 
 import logging
@@ -37,6 +38,18 @@ DATA_DIR = "data"
 STRUCTURED_FILE = os.path.join(DATA_DIR, "agent_accuracy_structured.csv")
 COUNCIL_FILE = os.path.join(DATA_DIR, "council_history.csv")
 ACCURACY_FILE = os.path.join(DATA_DIR, "agent_accuracy.csv")
+
+# Regex: matches cycle_id patterns like "KC-c0f3b12c", "CC-ab12ef34"
+CYCLE_ID_PATTERN = re.compile(r'^[A-Z]{2,4}-[0-9a-f]{6,12}$')
+
+# Known valid agent names for recovery validation
+KNOWN_AGENTS = {
+    'agronomist', 'macro', 'geopolitical', 'supply_chain', 'inventory',
+    'sentiment', 'technical', 'volatility', 'microstructure', 'fundamentalist',
+}
+
+# Valid direction values for recovery validation
+VALID_DIRECTIONS = {'BULLISH', 'BEARISH', 'NEUTRAL'}
 
 
 def backup_files():
@@ -154,6 +167,152 @@ def fix_legacy_accuracy_file():
     logger.info(f"Wrote clean {ACCURACY_FILE}")
 
 
+def sanitize_structured_csv():
+    """
+    Detect and repair column-misaligned rows in agent_accuracy_structured.csv.
+
+    ROOT CAUSE: record_prediction_structured() writes cycle_id as the FIRST field,
+    but if the file header has cycle_id as the LAST column (pre-v6.4 layout),
+    all values shift one position right when read by pandas.
+
+    DETECTION: timestamp column contains a cycle_id pattern (e.g., KC-c0f3b12c)
+    RECOVERY: Right-shift all column values to restore correct alignment
+    FALLBACK: Drop unrecoverable rows with logging
+
+    IDEMPOTENT: Safe to run multiple times. Clean rows are not modified.
+    """
+    if not os.path.exists(STRUCTURED_FILE):
+        logger.info(f"{STRUCTURED_FILE} doesn't exist — skipping sanitization")
+        return
+
+    df = pd.read_csv(STRUCTURED_FILE)
+    if df.empty:
+        return
+
+    # Detect misaligned rows: timestamp column contains a cycle_id pattern
+    if df['timestamp'].dtype != 'object' and df['timestamp'].dtype != 'string':
+        logger.info("Timestamp column is numeric type — no string corruption possible")
+        return
+
+    bad_mask = df['timestamp'].astype(str).str.match(CYCLE_ID_PATTERN, na=False)
+    bad_count = bad_mask.sum()
+
+    if bad_count == 0:
+        logger.info(f"Sanitization: No misaligned rows detected in {STRUCTURED_FILE}")
+        return
+
+    logger.warning(f"Sanitization: Found {bad_count} misaligned rows — attempting recovery")
+
+    # Determine current header order
+    columns = list(df.columns)
+    logger.info(f"Current header order: {columns}")
+
+    recovered = 0
+    dropped = 0
+
+    for idx in df[bad_mask].index:
+        row = df.loc[idx]
+
+        # The data was written as: cycle_id, timestamp, agent, direction, confidence, prob_bullish, actual
+        # But the header reads it as: timestamp, agent, direction, confidence, prob_bullish, actual, cycle_id
+        # So: current 'timestamp' = real cycle_id
+        #     current 'agent' = real timestamp
+        #     current 'direction' = real agent
+        #     current 'confidence' = real direction
+        #     current 'prob_bullish' = real confidence
+        #     current 'actual' = real prob_bullish
+        #     current 'cycle_id' = real actual
+
+        real_cycle_id = str(row.get('timestamp', ''))
+        real_timestamp = str(row.get('agent', ''))
+        real_agent = str(row.get('direction', '')).lower()
+        real_direction = str(row.get('confidence', '')).upper()
+        # For numeric columns, keep as numeric if possible to satisfy pandas strict typing
+        raw_conf = row.get('prob_bullish', '')
+        try:
+            real_confidence = float(raw_conf)
+        except (ValueError, TypeError):
+            real_confidence = str(raw_conf)
+
+        raw_prob = row.get('actual', '')
+        try:
+            real_prob_bullish = float(raw_prob)
+        except (ValueError, TypeError):
+            real_prob_bullish = str(raw_prob)
+
+        real_actual = str(row.get('cycle_id', '')).upper()
+
+        # Ensure compatibility with target column dtypes (Pandas 3.0 strictness)
+        # 1. confidence
+        if pd.api.types.is_string_dtype(df['confidence'].dtype):
+            real_confidence = str(real_confidence)
+        elif pd.api.types.is_numeric_dtype(df['confidence'].dtype):
+            try:
+                real_confidence = float(real_confidence)
+            except (ValueError, TypeError):
+                pass  # Keep as is, let assignment fail if incompatible
+
+        # 2. prob_bullish
+        if pd.api.types.is_string_dtype(df['prob_bullish'].dtype):
+            real_prob_bullish = str(real_prob_bullish)
+        elif pd.api.types.is_numeric_dtype(df['prob_bullish'].dtype):
+            try:
+                real_prob_bullish = float(real_prob_bullish)
+            except (ValueError, TypeError):
+                pass
+
+        # Validate recovery: check that shifted values make sense
+        is_valid = True
+        validation_failures = []
+
+        # 1. real_cycle_id should match cycle_id pattern (already confirmed by bad_mask)
+        # 2. real_timestamp should be parseable as datetime
+        try:
+            pd.to_datetime(real_timestamp)
+        except Exception:
+            is_valid = False
+            validation_failures.append(f"timestamp={real_timestamp!r} not parseable")
+
+        # 3. real_agent should be a known agent name
+        if real_agent not in KNOWN_AGENTS:
+            is_valid = False
+            validation_failures.append(f"agent={real_agent!r} not in known agents")
+
+        # 4. real_direction should be a valid direction
+        if real_direction not in VALID_DIRECTIONS:
+            is_valid = False
+            validation_failures.append(f"direction={real_direction!r} not valid")
+
+        # 5. real_actual should be a valid status
+        if real_actual not in ('PENDING', 'BULLISH', 'BEARISH', 'NEUTRAL', 'ORPHANED', ''):
+            is_valid = False
+            validation_failures.append(f"actual={real_actual!r} not valid status")
+
+        if is_valid:
+            # Apply recovery: reassign columns to correct values
+            df.loc[idx, 'cycle_id'] = real_cycle_id
+            df.loc[idx, 'timestamp'] = real_timestamp
+            df.loc[idx, 'agent'] = real_agent
+            df.loc[idx, 'direction'] = real_direction
+            df.loc[idx, 'confidence'] = real_confidence
+            df.loc[idx, 'prob_bullish'] = real_prob_bullish
+            df.loc[idx, 'actual'] = real_actual
+            recovered += 1
+            logger.info(f"  Recovered row {idx}: {real_agent} cycle={real_cycle_id} actual={real_actual}")
+        else:
+            # Drop unrecoverable row
+            df = df.drop(idx)
+            dropped += 1
+            logger.warning(f"  Dropped unrecoverable row {idx}: {validation_failures}")
+
+    # Save cleaned file
+    df.to_csv(STRUCTURED_FILE, index=False)
+    logger.info(
+        f"Sanitization complete: {recovered} recovered, {dropped} dropped "
+        f"(out of {bad_count} misaligned)"
+    )
+
+
 def resolve_with_cycle_aware_match(dry_run: bool = False):
     """
     Resolve PENDING predictions using cycle-aware matching.
@@ -178,9 +337,20 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
     if predictions_df.empty or council_df.empty:
         return 0
 
-    # Parse timestamps
-    predictions_df['timestamp'] = parse_ts_column(predictions_df['timestamp'])
-    council_df['timestamp'] = parse_ts_column(council_df['timestamp'])
+    # Parse timestamps (coerce mode: unparseable values become NaT instead of crashing)
+    predictions_df['timestamp'] = parse_ts_column(predictions_df['timestamp'], errors='coerce')
+    council_df['timestamp'] = parse_ts_column(council_df['timestamp'], errors='coerce')
+
+    # Drop rows with unparseable timestamps (defense-in-depth after sanitization)
+    pred_nat_count = predictions_df['timestamp'].isna().sum()
+    if pred_nat_count > 0:
+        logger.warning(f"Dropping {pred_nat_count} predictions with unparseable timestamps")
+        predictions_df = predictions_df.dropna(subset=['timestamp'])
+
+    council_nat_count = council_df['timestamp'].isna().sum()
+    if council_nat_count > 0:
+        logger.warning(f"Dropping {council_nat_count} council rows with unparseable timestamps")
+        council_df = council_df.dropna(subset=['timestamp'])
 
     # Filter to PENDING
     pending_mask = predictions_df['actual'] == 'PENDING'
@@ -356,6 +526,10 @@ def main():
         migrate_structured_csv()
         migrate_council_history_csv()
         fix_legacy_accuracy_file()
+
+    # Step 2.5: Sanitize structured CSV (fix column misalignment)
+    if not args.dry_run:
+        sanitize_structured_csv()
 
     # Step 3: Resolve pending predictions
     resolved = resolve_with_cycle_aware_match(dry_run=args.dry_run)

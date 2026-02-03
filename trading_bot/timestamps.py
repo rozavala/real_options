@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 _WRITE_FORMAT = '%Y-%m-%d %H:%M:%S+00:00'
 
 
-def parse_ts_column(series: pd.Series) -> pd.Series:
+def parse_ts_column(series: pd.Series, errors: str = 'raise') -> pd.Series:
     """
     Parse a pandas Series of timestamp strings into timezone-aware UTC datetimes.
 
@@ -42,13 +42,34 @@ def parse_ts_column(series: pd.Series) -> pd.Series:
       - "2026-01-20T12:30:45Z"                   (ISO8601 with T and Z)
       - NaN / None / empty string                (returned as NaT)
 
+    Args:
+        series: pandas Series of timestamp strings
+        errors: 'raise' (default, crash on bad values) or 'coerce' (return NaT for bad values)
+
     Returns:
         pd.Series of datetime64[ns, UTC]
 
     Example:
         df['timestamp'] = parse_ts_column(df['timestamp'])
+        df['timestamp'] = parse_ts_column(df['timestamp'], errors='coerce')  # defensive
     """
-    return pd.to_datetime(series, utc=True, format='mixed')
+    if errors == 'coerce':
+        # Two-pass: first try mixed format, fall back to per-element coercion
+        try:
+            return pd.to_datetime(series, utc=True, format='mixed')
+        except Exception:
+            logger.warning(
+                f"parse_ts_column: Mixed-format parse failed, falling back to "
+                f"element-wise coercion. Some timestamps will become NaT."
+            )
+            # Coerce unparseable values to NaT instead of crashing
+            result = pd.to_datetime(series, utc=True, errors='coerce')
+            nat_count = result.isna().sum() - series.isna().sum()  # new NaTs from coercion
+            if nat_count > 0:
+                logger.warning(f"parse_ts_column: Coerced {nat_count} unparseable values to NaT")
+            return result
+    else:
+        return pd.to_datetime(series, utc=True, format='mixed')
 
 
 def parse_ts_single(value: str) -> Optional[datetime]:
