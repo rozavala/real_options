@@ -4,10 +4,11 @@ import sys
 import os
 import pytest
 import pandas as pd
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import pytz
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from trading_bot.timestamps import parse_ts_column, parse_ts_single, format_ts
+from trading_bot.timestamps import parse_ts_column, parse_ts_single, format_ts, format_ib_datetime
 
 
 class TestParseTimestampColumn:
@@ -106,6 +107,69 @@ class TestFormatTimestamp:
         assert parsed.day == original.day
         assert parsed.hour == original.hour
         assert parsed.minute == original.minute
+
+
+class TestFormatIbDatetime:
+    """Tests for format_ib_datetime() — IB API endDateTime parameter formatting."""
+
+    def test_none_returns_empty_string(self):
+        """None input → '' (IB interprets as 'now')."""
+        assert format_ib_datetime(None) == ''
+        # We cannot test format_ib_datetime() without arguments directly
+        # because the type hint says dt: Optional[datetime] = None,
+        # but if we call it without arguments it uses the default value.
+        assert format_ib_datetime() == ''
+
+    def test_utc_datetime(self):
+        """UTC datetime → dash format without suffix."""
+        dt = datetime(2026, 2, 1, 16, 0, 0, tzinfo=timezone.utc)
+        result = format_ib_datetime(dt)
+        assert result == '20260201-16:00:00'
+        # CRITICAL: Must NOT contain ' UTC' suffix
+        assert ' UTC' not in result
+        assert result.count('-') == 1  # Only the date-time dash
+
+    def test_naive_datetime_assumed_utc(self):
+        """Naive datetime → treated as UTC."""
+        dt = datetime(2026, 1, 30, 16, 0, 0)
+        result = format_ib_datetime(dt)
+        assert result == '20260130-16:00:00'
+
+    def test_non_utc_converted(self):
+        """Non-UTC timezone → converted to UTC before formatting."""
+        ny = pytz.timezone('America/New_York')
+        dt = ny.localize(datetime(2026, 1, 30, 11, 0, 0))  # 11:00 ET = 16:00 UTC
+        result = format_ib_datetime(dt)
+        assert result == '20260130-16:00:00'
+
+    def test_with_microseconds(self):
+        """Microseconds are truncated (IB doesn't use them)."""
+        dt = datetime(2026, 2, 1, 16, 30, 45, 123456, tzinfo=timezone.utc)
+        result = format_ib_datetime(dt)
+        assert result == '20260201-16:30:45'
+        assert '.' not in result  # No microseconds
+
+    def test_reconciliation_scenario(self):
+        """Reproduce the exact scenario that was failing: exit_time + 2 days."""
+        # Friday Jan 30 at 16:00 UTC (weekly close)
+        exit_time = datetime(2026, 1, 30, 16, 0, 0, tzinfo=timezone.utc)
+        # +2 days for the endDateTime buffer
+        end_dt = exit_time + timedelta(days=2)
+        result = format_ib_datetime(end_dt)
+        assert result == '20260201-16:00:00'
+        # This is what was being sent as '20260201-16:00:00 UTC' (broken)
+
+    def test_midnight_utc(self):
+        """Midnight UTC edge case."""
+        dt = datetime(2026, 3, 15, 0, 0, 0, tzinfo=timezone.utc)
+        result = format_ib_datetime(dt)
+        assert result == '20260315-00:00:00'
+
+    def test_end_of_day(self):
+        """23:59:59 edge case."""
+        dt = datetime(2026, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+        result = format_ib_datetime(dt)
+        assert result == '20261231-23:59:59'
 
 
 if __name__ == "__main__":

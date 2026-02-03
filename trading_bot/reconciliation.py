@@ -11,7 +11,7 @@ import pytz
 import pandas as pd
 from ib_insync import IB, Contract, util
 from trading_bot.brier_scoring import get_brier_tracker
-from trading_bot.timestamps import parse_ts_column, parse_ts_single
+from trading_bot.timestamps import parse_ts_column, parse_ts_single, format_ib_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -304,7 +304,7 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
 
                 # Fetch Historical Data
                 # Use IB's preferred UTC format to suppress Warning 2174
-                end_str = (target_exit_time + timedelta(days=2)).strftime('%Y%m%d-%H:%M:%S') + ' UTC'
+                end_str = format_ib_datetime(target_exit_time + timedelta(days=2))
                 bars = await ib.reqHistoricalDataAsync(
                     qualified_contract,
                     endDateTime=end_str,
