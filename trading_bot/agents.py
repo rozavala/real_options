@@ -569,7 +569,8 @@ OUTPUT FORMAT (JSON):
             structured_result = {
                 'data': formatted_text,
                 'confidence': float(data.get('confidence', 0.5)),
-                'sentiment': data.get('sentiment', 'NEUTRAL')
+                'sentiment': data.get('sentiment', 'NEUTRAL'),
+                'data_freshness_hours': grounded_data.data_freshness_hours
             }
 
             # Record Trace
@@ -965,6 +966,46 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         # Save ONLY the fresh update to StateManager
         # StateManager will handle the merge and timestamping
         StateManager.save_state({active_agent_key: fresh_report})
+
+        # === CROSS-CUE ACTIVATION (Fix #5) ===
+        # Check if the fresh insight generates cross-cues for other agents
+        if isinstance(fresh_report, dict):
+            insight_text = fresh_report.get('data', '')
+            cued_agents = self.tms.get_cross_cue_agents(active_agent_key, insight_text)
+
+            if cued_agents:
+                logger.info(f"Cross-Cue Triggered: {active_agent_key} -> {cued_agents}")
+
+                # Filter cues: only wake up agents that haven't run recently?
+                # For now, wake them all up to ensure responsiveness to the new insight.
+                # But prevent self-cue (unlikely but safe)
+                cues_to_run = [a for a in cued_agents if a != active_agent_key and a in self.personas]
+
+                if cues_to_run:
+                    # Construct context-aware prompt for cued agents
+                    cue_instruction = (
+                        f"{search_instruction}\n"
+                        f"NEW INSIGHT from {active_agent_key.upper()}:\n{insight_text}\n"
+                        f"TASK: Re-evaluate your domain in light of this new information."
+                    )
+
+                    # Run cued agents in parallel
+                    logger.info(f"Waking up cued agents: {cues_to_run}")
+                    cued_tasks = {
+                        agent: self.research_topic(agent, cue_instruction)
+                        for agent in cues_to_run
+                    }
+
+                    cued_results = await asyncio.gather(*cued_tasks.values(), return_exceptions=True)
+
+                    # Update reports
+                    for agent, res in zip(cued_tasks.keys(), cued_results):
+                        if not isinstance(res, Exception):
+                            final_reports[agent] = res
+                            # Save to state
+                            StateManager.save_state({agent: res})
+                        else:
+                            logger.error(f"Cued agent {agent} failed: {res}")
 
         # === NEW: Calculate Weighted Vote ===
         trigger_type = determine_trigger_type(trigger.source)

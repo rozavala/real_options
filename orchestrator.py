@@ -51,9 +51,11 @@ from trading_bot.state_manager import StateManager
 from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.compliance import ComplianceGuardian
 from trading_bot.position_sizer import DynamicPositionSizer
+from trading_bot.weighted_voting import RegimeDetector
 from trading_bot.brier_scoring import get_brier_tracker
 from trading_bot.tms import TransactiveMemory
 from trading_bot.budget_guard import BudgetGuard
+from trading_bot.drawdown_circuit_breaker import DrawdownGuard
 from trading_bot.cycle_id import generate_cycle_id
 
 # --- Logging Setup ---
@@ -63,6 +65,7 @@ logger = logging.getLogger("Orchestrator")
 # --- Global Process Handle for the monitor ---
 monitor_process = None
 GLOBAL_BUDGET_GUARD = None
+GLOBAL_DRAWDOWN_GUARD = None
 
 # Module-level shutdown state
 _SYSTEM_SHUTDOWN = False
@@ -363,27 +366,36 @@ def _infer_strategy_type(routed: dict) -> str:
     return 'NONE'
 
 
-def _detect_market_regime(config: dict, trigger=None) -> str:
+async def _detect_market_regime(config: dict, trigger=None, ib: IB = None, contract: Contract = None) -> str:
     """
     Detect current market regime for Brier scoring context.
 
-    Uses trigger source and recent price action to classify regime.
+    Uses actual market data if available, otherwise falls back to trigger source.
     Returns MarketRegime string value.
     """
-    regime = "NORMAL"
+    # 1. Try Actual Market Data
+    if ib and contract:
+        try:
+            regime = await RegimeDetector.detect_regime(ib, contract)
+            if regime != "UNKNOWN":
+                # Normalize terminology
+                if regime == "HIGH_VOLATILITY": return "HIGH_VOL"
+                return regime
+        except Exception as e:
+            logger.warning(f"Regime detection via IB failed: {e}")
 
+    # 2. Fallback to Trigger Source
     if trigger:
         source = getattr(trigger, 'source', '').lower()
 
         if 'weather' in source:
-            regime = "WEATHER_EVENT"
+            return "WEATHER_EVENT"
         elif 'prediction_market' in source or 'macro' in source:
-            regime = "MACRO_SHIFT"
+            return "MACRO_SHIFT"
         elif 'price' in source or 'microstructure' in source:
-            # Could refine this with actual volatility check
-            regime = "HIGH_VOL"
+            return "HIGH_VOL"
 
-    return regime
+    return "NORMAL"
 
 
 async def _get_current_regime(ib: IB, config: dict) -> str:
@@ -1187,6 +1199,15 @@ async def analyze_and_archive(config: dict):
     try:
         await run_performance_analysis(config)
         archive_trade_ledger()
+
+        # Log TMS Effectiveness
+        try:
+            tms = TransactiveMemory()
+            stats = tms.get_collection_stats()
+            logger.info(f"TMS Diagnostics: Status={stats.get('status')}, Docs={stats.get('document_count')}")
+        except Exception as e:
+            logger.warning(f"Failed to log TMS diagnostics: {e}")
+
         logger.info("--- End-of-day analysis and archiving complete ---")
     except Exception as e:
         logger.critical(f"An error occurred during the analysis and archiving process: {e}\n{traceback.format_exc()}")
@@ -1227,6 +1248,27 @@ async def reconcile_and_analyze(config: dict):
     logger.info("--- Kicking off end-of-day reconciliation and analysis process ---")
 
     await sync_equity_from_flex(config)
+
+    # Check equity staleness
+    try:
+        equity_file = "data/daily_equity.csv"
+        if os.path.exists(equity_file):
+            import pandas as pd
+            eq_df = pd.read_csv(equity_file)
+            if not eq_df.empty and 'timestamp' in eq_df.columns:
+                eq_df['timestamp'] = pd.to_datetime(eq_df['timestamp'], utc=True)
+                last_ts = eq_df['timestamp'].max()
+                now_utc = datetime.now(timezone.utc)
+                age_hours = (now_utc - last_ts).total_seconds() / 3600
+
+                # Check for staleness on weekdays (allow weekend staleness)
+                is_weekday = now_utc.weekday() < 5
+                if is_weekday and age_hours > 24:
+                    msg = f"⚠️ Equity data is {age_hours:.1f} hours stale."
+                    logger.warning(msg)
+                    send_pushover_notification(config.get('notifications', {}), "Equity Data Stale", msg)
+    except Exception as e:
+        logger.warning(f"Failed to check equity staleness: {e}")
 
     # Isolate reconciliation failures
     reconciliation_succeeded = False
@@ -1562,6 +1604,19 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 send_pushover_notification(config.get('notifications', {}), "Budget Guard",
                     f"Daily API budget hit. Sentinel-only mode active.")
                 return
+
+            # === Drawdown Circuit Breaker ===
+            if GLOBAL_DRAWDOWN_GUARD:
+                # Update P&L and Check
+                status = await GLOBAL_DRAWDOWN_GUARD.update_pnl(ib)
+                if not GLOBAL_DRAWDOWN_GUARD.is_entry_allowed():
+                    logger.warning(f"Drawdown Circuit Breaker ACTIVE ({status}) - Skipping Emergency Cycle")
+                    return
+
+                if GLOBAL_DRAWDOWN_GUARD.should_panic_close():
+                     logger.critical(f"Drawdown PANIC triggered during emergency cycle check. Triggering Hard Close.")
+                     await emergency_hard_close(config)
+                     return
 
             # === Generate Cycle ID for prediction tracking ===
             active_ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
@@ -1909,7 +1964,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     final_reports_for_scoring = StateManager.load_state()
 
                     # Determine current regime from council context
-                    current_regime = _detect_market_regime(config, trigger)
+                    current_regime = await _detect_market_regime(config, trigger, ib, target_contract)
 
                     BRIER_ELIGIBLE_AGENTS = set(CANONICAL_AGENTS) - {'master_decision'} - DEPRECATED_AGENTS
 
@@ -2420,6 +2475,21 @@ async def guarded_generate_orders(config: dict):
         logger.info(f"Order generation BLOCKED: Past daily cutoff ({cutoff_hour}:{cutoff_minute:02d} ET)")
         return
 
+    # Check Drawdown Guard
+    if GLOBAL_DRAWDOWN_GUARD:
+        try:
+             # Need a connection to check P&L.
+             # generate_and_execute_orders creates its own connection.
+             # We will rely on order_manager to check again, or check here if possible.
+             # Ideally we check here to avoid spinning up the order generation logic.
+             ib = await IBConnectionPool.get_connection("drawdown_check", config)
+             await GLOBAL_DRAWDOWN_GUARD.update_pnl(ib)
+             if not GLOBAL_DRAWDOWN_GUARD.is_entry_allowed():
+                 logger.warning("Order generation BLOCKED: Drawdown Guard Active")
+                 return
+        except Exception as e:
+             logger.warning(f"Failed to check drawdown guard before orders: {e}")
+
     await generate_and_execute_orders(config)
 
 schedule = {
@@ -2460,6 +2530,11 @@ async def main():
     global GLOBAL_BUDGET_GUARD
     GLOBAL_BUDGET_GUARD = BudgetGuard(config)
     logger.info(f"Budget Guard initialized. Daily limit: ${GLOBAL_BUDGET_GUARD.daily_budget}")
+
+    # Initialize Drawdown Guard
+    global GLOBAL_DRAWDOWN_GUARD
+    GLOBAL_DRAWDOWN_GUARD = DrawdownGuard(config)
+    logger.info("Drawdown Guard initialized.")
 
     # Process deferred triggers from overnight - ONLY if market is open
     if is_market_open():

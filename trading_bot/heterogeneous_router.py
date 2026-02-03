@@ -75,6 +75,7 @@ class ModelConfig:
     api_key: Optional[str] = None
     temperature: float = 0.3
     max_tokens: int = 4096
+    timeout: float = 60.0 # Explicit default 60s to prevent 3s truncations
 
 
 class ResponseCache:
@@ -255,12 +256,22 @@ class GeminiClient(LLMClient):
         if response_json:
             gen_config.response_mime_type = "application/json"
 
-        response = await self.client.aio.models.generate_content(
-            model=self.config.model_name,
-            contents=full_prompt,
-            config=gen_config
-        )
-        return response.text
+        # Explicit timeout (Google GenAI might not support timeout kwarg directly here,
+        # but usually does via request_options or similar.
+        # Standard asyncio.wait_for wrapper is safest if SDK is obscure.)
+        # But let's try assuming standard kwargs or wrapping.
+        try:
+            response = await asyncio.wait_for(
+                self.client.aio.models.generate_content(
+                    model=self.config.model_name,
+                    contents=full_prompt,
+                    config=gen_config
+                ),
+                timeout=self.config.timeout
+            )
+            return response.text
+        except asyncio.TimeoutError:
+            raise RuntimeError(f"Gemini timed out after {self.config.timeout}s")
 
 
 class OpenAIClient(LLMClient):
@@ -284,6 +295,7 @@ class OpenAIClient(LLMClient):
             "model": self.config.model_name,
             "messages": messages,
             "max_completion_tokens": self.config.max_tokens,
+            "timeout": self.config.timeout
         }
 
         if response_json:
@@ -309,6 +321,7 @@ class AnthropicClient(LLMClient):
             "model": self.config.model_name,
             "max_tokens": self.config.max_tokens,
             "messages": [{"role": "user", "content": prompt}],
+            "timeout": self.config.timeout
         }
 
         if system_prompt:
@@ -355,6 +368,7 @@ class XAIClient(LLMClient):
             messages=messages,
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
+            timeout=self.config.timeout
         )
         return response.choices[0].message.content
 

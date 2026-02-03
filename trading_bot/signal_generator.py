@@ -273,6 +273,28 @@ async def generate_signals(ib: IB, config: dict) -> list:
                 if successful_agents < total_agents * 0.5:
                     logger.warning(f"⚠️ LOW AGENT YIELD for {contract_name}: Only {successful_agents}/{total_agents} agents returned meaningful data")
 
+                # --- DATA FRESHNESS GATE (Fix #7) ---
+                MAX_ACCEPTABLE_FRESHNESS_HOURS = config.get('risk_management', {}).get('max_acceptable_freshness_hours', 4)
+                stale_agents = []
+                for k, v in reports.items():
+                    if isinstance(v, dict) and 'data_freshness_hours' in v:
+                        if v['data_freshness_hours'] > MAX_ACCEPTABLE_FRESHNESS_HOURS:
+                            stale_agents.append(k)
+                            v['is_stale'] = True # Mark for weighted voting
+
+                if len(stale_agents) > total_agents * 0.5:
+                     logger.warning(f"FRESHNESS GATE: {len(stale_agents)}/{total_agents} agents have stale data. Skipping {contract_name}.")
+                     return {
+                        **market_ctx,
+                        **final_data,
+                        "contract_month": contract.lastTradeDateOrContractMonth[:6],
+                        "prediction_type": "NEUTRAL",
+                        "direction": "NEUTRAL",
+                        "confidence": 0.0,
+                        "reason": f"Freshness Gate: {len(stale_agents)} agents returned stale data (> {MAX_ACCEPTABLE_FRESHNESS_HOURS}h)",
+                        "_agent_reports": reports
+                    }
+
                 # --- SAVE STATE (For Sentinel Context) ---
                 # DISABLED: Moved to post-gather consolidation to prevent race condition
                 # See Fix #2C in JULES_IMPLEMENTATION_GUIDE.md

@@ -75,6 +75,20 @@ NAME_ALIASES = {
     'ml_signal': 'ml_model',
 }
 
+# Display Names for Dashboards (Exported for external use)
+AGENT_DISPLAY_NAMES = {
+    'agronomist': '🌦️ Meteorologist',
+    'macro': '💵 Macro Economist',
+    'geopolitical': '🌍 Geopolitical',
+    'supply_chain': '🚢 Supply Chain',
+    'inventory': '📦 Fundamentalist',
+    'sentiment': '🧠 Sentiment/COT',
+    'technical': '📉 Technical',
+    'volatility': '⚡ Volatility',
+    'master_decision': '👑 Master Strategist',
+    'ml_model': '🤖 ML Model',
+}
+
 def normalize_agent_name(name: str) -> str:
     """
     Convert any agent name variant to canonical form.
@@ -103,16 +117,4 @@ def normalize_agent_name(name: str) -> str:
 
 def get_display_name(canonical_name: str) -> str:
     """Get pretty display name for dashboards."""
-    DISPLAY_NAMES = {
-        'agronomist': '🌦️ Meteorologist',
-        'macro': '💵 Macro Economist',
-        'geopolitical': '🌍 Geopolitical',
-        'supply_chain': '🚢 Supply Chain',
-        'inventory': '📦 Fundamentalist',
-        'sentiment': '🧠 Sentiment/COT',
-        'technical': '📉 Technical',
-        'volatility': '⚡ Volatility',
-        'master_decision': '👑 Master Strategist',
-        'ml_model': '🤖 ML Model',
-    }
-    return DISPLAY_NAMES.get(canonical_name, canonical_name.title())
+    return AGENT_DISPLAY_NAMES.get(canonical_name, canonical_name.title())

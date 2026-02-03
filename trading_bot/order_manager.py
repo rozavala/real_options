@@ -33,6 +33,7 @@ from trading_bot.utils import (
 from trading_bot.compliance import ComplianceGuardian, calculate_spread_max_risk
 from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.position_sizer import DynamicPositionSizer
+from trading_bot.drawdown_circuit_breaker import DrawdownGuard
 
 # --- Module-level storage for orders ---
 # Structure: [(contract, order, decision_data), ...]
@@ -687,6 +688,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
     # --- Initialize Compliance Guardian ---
     compliance = ComplianceGuardian(config)
 
+    # Initialize Drawdown Guard
+    drawdown_guard = DrawdownGuard(config)
+
     # Use Connection Pool
     ib = await IBConnectionPool.get_connection(connection_purpose, config)
     configure_market_data_type(ib)
@@ -814,7 +818,21 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     logger.error(f"Failed to refresh margin info: {e}")
 
             try:
-                # 0. Liquidity Gate (Fail Closed)
+                # 0a. Drawdown Gate
+                if drawdown_guard.enabled:
+                    # Update status before each order group or rely on initial check?
+                    # Safer to check once per batch or if we have a loop
+                    # But we are inside a loop.
+                    # Let's rely on status update from earlier?
+                    # No, update_pnl needs IB. We have IB.
+                    # Doing it for every order might be slow (AccountSummary).
+                    # Maybe check once before the loop?
+                    # Yes, but let's check strict status here.
+                    if not drawdown_guard.is_entry_allowed():
+                        logger.warning(f"DRAWDOWN GATE BLOCKED {display_name}: Circuit Breaker Active")
+                        continue
+
+                # 0b. Liquidity Gate (Fail Closed)
                 liq_ok, liq_msg = await check_liquidity_conditions(ib, contract, order.totalQuantity)
                 if not liq_ok:
                     logger.warning(f"LIQUIDITY GATE BLOCKED {contract.localSymbol}: {liq_msg}. Skipping order.")
