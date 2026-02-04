@@ -92,7 +92,7 @@ st.markdown("Quick access to log analysis utilities for the current environment.
 row1_cols = st.columns(2)
 
 with row1_cols[0]:
-    if st.button("📋 View Status", use_container_width=True):
+    if st.button("📋 View Status", width='stretch'):
         with st.spinner("Fetching status..."):
             try:
                 result = subprocess.run(
@@ -107,7 +107,7 @@ with row1_cols[0]:
                 st.error(f"Error: {e}")
 
 with row1_cols[1]:
-    if st.button(f"🔍 Analyze {current_env.upper()}", use_container_width=True):
+    if st.button(f"🔍 Analyze {current_env.upper()}", width='stretch'):
         with st.spinner(f"Analyzing {current_env} environment..."):
             try:
                 result = subprocess.run(
@@ -136,7 +136,7 @@ with error_cols[0]:
 
 with error_cols[1]:
     st.markdown("&nbsp;")  # Spacer
-    if st.button(f"🚨 Show Errors", use_container_width=True):
+    if st.button(f"🚨 Show Errors", width='stretch'):
         with st.spinner(f"Finding errors from last {hours_option} hours..."):
             try:
                 result = subprocess.run(
@@ -159,7 +159,7 @@ st.markdown("##### 📈 Performance & Health")
 perf_cols = st.columns(2)
 
 with perf_cols[0]:
-    if st.button(f"📈 Trading Performance", use_container_width=True):
+    if st.button(f"📈 Trading Performance", width='stretch'):
         with st.spinner("Loading performance data..."):
             try:
                 result = subprocess.run(
@@ -174,7 +174,7 @@ with perf_cols[0]:
                 st.error(f"Error: {e}")
 
 with perf_cols[1]:
-    if st.button(f"🏥 System Health", use_container_width=True):
+    if st.button(f"🏥 System Health", width='stretch'):
         with st.spinner("Checking system health..."):
             try:
                 result = subprocess.run(
@@ -547,7 +547,7 @@ This validates the entire architecture from sentinels to council to order execut
 validation_cols = st.columns([2, 1])
 
 with validation_cols[0]:
-    run_validation = st.button("🚀 Run System Validation", type="primary", use_container_width=True)
+    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch')
 
 with validation_cols[1]:
     json_output = st.checkbox("JSON Output", value=False)
@@ -667,7 +667,7 @@ with recon_row1[0]:
     st.markdown("**📊 Council History**")
     st.caption("Backfill exit prices and P&L for closed positions")
 
-    if st.button("🔄 Reconcile Council History", use_container_width=True, key="recon_council"):
+    if st.button("🔄 Reconcile Council History", width='stretch', key="recon_council"):
         with st.spinner("Reconciling council history with market outcomes..."):
             try:
                 result = subprocess.run(
@@ -701,7 +701,7 @@ with recon_row1[1]:
     st.markdown("**📝 Trade Ledger**")
     st.caption("Compare local ledger with IB Flex Query reports")
 
-    if st.button("🔄 Reconcile Trade Ledger", use_container_width=True, key="recon_trades"):
+    if st.button("🔄 Reconcile Trade Ledger", width='stretch', key="recon_trades"):
         with st.spinner("Reconciling trade ledger with IB reports..."):
             try:
                 result = subprocess.run(
@@ -739,7 +739,7 @@ with recon_row2[0]:
     st.markdown("**📍 Active Positions**")
     st.caption("Verify current positions against IB")
 
-    if st.button("🔄 Reconcile Positions", use_container_width=True, key="recon_positions"):
+    if st.button("🔄 Reconcile Positions", width='stretch', key="recon_positions"):
         with st.spinner("Reconciling active positions..."):
             try:
                 # Create a temporary script to run just the position reconciliation
@@ -788,7 +788,7 @@ with recon_row2[1]:
     st.markdown("**💰 Equity History (Subprocess)**")
     st.caption("Sync equity data from IBKR Flex Query (Legacy)")
 
-    if st.button("🔄 Sync Equity Data", use_container_width=True, key="recon_equity"):
+    if st.button("🔄 Sync Equity Data", width='stretch', key="recon_equity"):
         with st.spinner("Syncing equity data from Flex Query..."):
             try:
                 result = subprocess.run(
