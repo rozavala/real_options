@@ -86,11 +86,7 @@ async def main():
         configure_market_data_type(ib)
         # ------------------------------------------------------------
 
-        send_pushover_notification(
-            config.get('notifications', {}),
-            "Position Monitor Started",
-            "The position monitoring service has started and is now watching open positions."
-        )
+        logger.info("Position monitor connected and watching open positions.")
 
         # Start the main risk monitoring loop
         monitor_task = asyncio.create_task(monitor_positions_for_risk(ib, config))

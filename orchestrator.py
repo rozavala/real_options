@@ -806,13 +806,9 @@ def _reconcile_orphaned_theses(
         # 5. Notify
         try:
             summary = (
-                f"🧹 Thesis Reconciliation\n"
-                f"Found and invalidated {len(orphaned_ids)} ghost theses:\n"
-            )
-            for tid in orphaned_ids:
-                summary += f"  • {tid[:12]}...\n"
-            summary += (
-                f"\nActive theses checked: {len(active_thesis_ids)}\n"
+                f"🧹 Cleaned up {len(orphaned_ids)} ghost theses "
+                f"(active in system, no matching IB positions).\n"
+                f"Active theses checked: {len(active_thesis_ids)} | "
                 f"Live IB positions: {len(live_position_ids)}"
             )
             send_pushover_notification(
@@ -1005,7 +1001,9 @@ async def _close_spread_position(
 
     if success_count == total_legs:
         # Full success
-        title = f"✅ Position Closed: {position_id}"
+        leg_symbols = [sc['symbol'] for sc in successful_closes] if successful_closes else []
+        readable_symbol = leg_symbols[0].split()[0] if leg_symbols else "Unknown"
+        title = f"✅ Position Closed: {readable_symbol}"
         message = (
             f"Reason: {reason}\n"
             f"Closed {success_count}/{total_legs} legs successfully.\n"
@@ -1014,7 +1012,9 @@ async def _close_spread_position(
             message += f"  {sc['action']} {sc['qty']}x {sc['symbol']} @ ${sc['fill_price']:.4f}\n"
     elif success_count > 0:
         # Partial success — DANGEROUS, position is now unbalanced
-        title = f"⚠️ PARTIAL CLOSE: {position_id}"
+        leg_symbols = [sc['symbol'] for sc in successful_closes] + [fc['symbol'] for fc in failed_closes]
+        readable_symbol = leg_symbols[0].split()[0] if leg_symbols else "Unknown"
+        title = f"⚠️ PARTIAL CLOSE: {readable_symbol}"
         message = (
             f"Reason: {reason}\n"
             f"⚠️ ONLY {success_count}/{total_legs} legs closed!\n"
@@ -1028,7 +1028,9 @@ async def _close_spread_position(
             message += f"  ❌ {fc['symbol']}: {fc['status']} — {fc['error']}\n"
     else:
         # Total failure — DO NOT invalidate thesis
-        title = f"❌ CLOSE FAILED: {position_id}"
+        leg_symbols = [fc['symbol'] for fc in failed_closes]
+        readable_symbol = leg_symbols[0].split()[0] if leg_symbols else "Unknown"
+        title = f"❌ CLOSE FAILED: {readable_symbol}"
         message = (
             f"Reason: {reason}\n"
             f"ALL {total_legs} close orders FAILED.\n"
@@ -1194,7 +1196,8 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
                 f"via thesis invalidation:\n"
             )
             summary += "\n".join([
-                f"- {p['position_id']} ({len(p['legs'])} legs): {p['reason']}"
+                f"- {p['legs'][0].contract.localSymbol.split()[0] if p['legs'] else 'Unknown'} "
+                f"({len(p['legs'])} legs): {p['reason']}"
                 for p in positions_to_close
             ])
             send_pushover_notification(
@@ -1249,7 +1252,7 @@ async def start_monitoring(config: dict):
         asyncio.create_task(log_stream(monitor_process.stdout, logger.info))
         asyncio.create_task(log_stream(monitor_process.stderr, logger.error))
 
-        send_pushover_notification(config.get('notifications', {}), "Orchestrator", "Started position monitoring service.")
+        logger.info("Started position monitoring service.")
     except Exception as e:
         logger.critical(f"Failed to start position monitor: {e}\n{traceback.format_exc()}")
         send_pushover_notification(config.get('notifications', {}), "Orchestrator CRITICAL", "Failed to start position monitor.")
@@ -1267,7 +1270,6 @@ async def stop_monitoring(config: dict):
         monitor_process.terminate()
         await monitor_process.wait()
         logger.info("Position monitoring process has been successfully terminated.")
-        send_pushover_notification(config.get('notifications', {}), "Orchestrator", "Stopped position monitoring service.")
         monitor_process = None
     except ProcessLookupError:
         logger.warning("Process already terminated.")
@@ -2122,10 +2124,27 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 
                     if not audit.get('approved', True):
                         logger.warning(f"COMPLIANCE BLOCKED Emergency Trade: {audit.get('flagged_reason')}")
+                        flagged_reason = audit.get('flagged_reason', 'Unknown')
+                        # Truncate technical error traces for readability
+                        if len(flagged_reason) > 200:
+                            flagged_reason = flagged_reason[:200] + "..."
+
+                        # Distinguish system errors from genuine compliance vetoes
+                        if any(err_marker in flagged_reason for err_marker in ['Error:', 'Exception', 'object has no attribute', 'exhausted']):
+                            title = "⚠️ Emergency Trade Blocked (System Error)"
+                            message = (
+                                f"Compliance check could not complete due to a system error.\n"
+                                f"Trade was blocked as a safety precaution.\n"
+                                f"Error: {flagged_reason[:150]}"
+                            )
+                        else:
+                            title = "🛡️ Emergency Trade VETOED by Compliance"
+                            message = f"Reason: {flagged_reason}"
+
                         send_pushover_notification(
                             config.get('notifications', {}),
-                            "Emergency Trade VETOED by Compliance",
-                            f"Reason: {audit.get('flagged_reason')}"
+                            title,
+                            message
                         )
                         return
 
@@ -3014,18 +3033,19 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
             logger.info(f"⏭️ RECOVERY SKIP: {task_name} — {skip_reason}")
             skipped += 1
 
+    total_evaluated = recovered + skipped + already_ran
     summary = (
-        f"Recovery complete: {recovered} recovered, "
-        f"{skipped} skipped, {already_ran} already ran"
+        f"System restarted with {total_evaluated} missed tasks.\n"
+        f"✅ {recovered} recovered | ⏭️ {skipped} skipped | ✔️ {already_ran} already ran"
     )
     logger.info(summary)
 
-    if recovered > 0:
-        send_pushover_notification(
-            config.get('notifications', {}),
-            f"🔄 Recovery: {recovered} Tasks Recovered",
-            summary
-        )
+    # Always send ONE notification on restart (even if nothing recovered)
+    send_pushover_notification(
+        config.get('notifications', {}),
+        f"🔄 System Restart: {recovered} Tasks Recovered",
+        summary
+    )
 
 
 async def main():
@@ -3109,11 +3129,6 @@ async def main():
         logger.warning(
             f"⚠️ LATE START DETECTED: {len(missed_tasks)} scheduled tasks already passed:\n"
             + "\n".join(missed_names)
-        )
-        send_pushover_notification(
-            config.get('notifications', {}),
-            f"⚠️ Late Start: {len(missed_tasks)} Tasks Missed",
-            "\n".join(missed_names)
         )
 
         # === GENERIC RECOVERY: Run all valid missed tasks ===
