@@ -34,7 +34,7 @@ async def test_grounded_data_packet_formatting():
     assert "2026-01-14" in context
     assert "3°C" in context
     assert "Somar Meteorologia" in context
-    assert "Last 48 hours" in context
+    assert "Last 4 hours" in context
 
 @pytest.mark.asyncio
 async def test_gather_grounded_data_caching(mock_config):
@@ -111,7 +111,8 @@ async def test_research_topic_flow(mock_config):
         council._gather_grounded_data = AsyncMock(return_value=mock_packet)
 
         # Mock Phase 2 (Routing)
-        council._route_call = AsyncMock(return_value="Analysis Result")
+        # Fix: research_topic calls heterogeneous_router.route directly, not _route_call
+        council.heterogeneous_router.route = AsyncMock(return_value="Analysis Result")
 
         result = await council.research_topic("macro", "Analyze rates")
 
@@ -119,8 +120,8 @@ async def test_research_topic_flow(mock_config):
         council._gather_grounded_data.assert_called_once()
 
         # Check Phase 2 called with injected context
-        council._route_call.assert_called_once()
-        call_args = council._route_call.call_args
+        council.heterogeneous_router.route.assert_called_once()
+        call_args = council.heterogeneous_router.route.call_args
         prompt = call_args[0][1] # (role, prompt)
 
         assert "GROUNDED DATA PACKET" in prompt

@@ -196,6 +196,13 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             # --- FILTER 2: Parallel Volume Check (FIX-006 Optimized) ---
             min_vol = config.get('strategy', {}).get('min_underlying_volume', 20)
 
+            # Suppress expected Error 300 during snapshot cleanup
+            def _suppress_300(reqId, errorCode, errorString, contract):
+                if errorCode == 300:
+                    logger.debug(f"Suppressed expected Error 300 for reqId {reqId} (snapshot cleanup)")
+
+            ib.errorEvent += _suppress_300
+
             # Request market data for ALL candidates simultaneously (non-blocking)
             tickers = [ib.reqMktData(f, '', True, False) for f in date_filtered]
 
@@ -226,6 +233,8 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                     ib.cancelMktData(f)
                 except Exception:
                     pass  # Error 300 is expected if subscription already expired
+
+            ib.errorEvent -= _suppress_300
 
             futures = volume_filtered
 
