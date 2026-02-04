@@ -78,13 +78,31 @@ send_pushover_notification({}, 'DEPLOY ROLLBACK', 'Deploy of $CURR_COMMIT failed
 }
 
 # =========================================================================
-# STEP 1: Stop old processes
+# STEP 1: Stop old processes via systemd
 # =========================================================================
 echo "--- 1. Stopping old processes... ---"
-pkill -f orchestrator.py || true
-pkill -f position_monitor.py || true
-pkill -f dashboard.py || true
-sleep 2
+
+# Check if systemd service exists
+if sudo systemctl list-units --all | grep -q "coffee-bot.service"; then
+    echo "  🛑 Stopping coffee-bot systemd service..."
+    sudo systemctl stop coffee-bot || true
+    sleep 3  # Give systemd time to clean up
+else
+    echo "  ⚠️  No systemd service found, using pkill fallback..."
+    pkill -f orchestrator.py || true
+    pkill -f position_monitor.py || true
+    pkill -f dashboard.py || true
+    sleep 2
+fi
+
+# Verify all processes stopped
+if pgrep -f "orchestrator.py" > /dev/null; then
+    echo "  ⚠️  WARNING: orchestrator.py still running! Force killing..."
+    pkill -9 -f orchestrator.py || true
+    sleep 2
+fi
+
+echo "  ✅ All processes stopped"
 
 # =========================================================================
 # STEP 2: Rotate logs
@@ -155,15 +173,52 @@ fi
 # =========================================================================
 # STEP 9: Start services
 # =========================================================================
-echo "--- 9. Starting the new bot & dashboard... ---"
-if [ -f "scripts/start_orchestrator.sh" ]; then
-    chmod +x scripts/start_orchestrator.sh
-    nohup ./scripts/start_orchestrator.sh >> logs/orchestrator.log 2>&1 &
+echo "--- 9. Starting services... ---"
+
+# Check if systemd service exists
+if sudo systemctl list-units --all | grep -q "coffee-bot.service"; then
+    echo "  🚀 Starting coffee-bot systemd service..."
+    sudo systemctl start coffee-bot
+    
+    # Wait for service to start
+    sleep 5
+    
+    # Verify service started successfully
+    if sudo systemctl is-active --quiet coffee-bot; then
+        echo "  ✅ coffee-bot service started successfully"
+    else
+        echo "  ❌ coffee-bot service failed to start!"
+        echo "  📋 Service status:"
+        sudo systemctl status coffee-bot --no-pager
+        rollback_and_restart
+    fi
 else
-    nohup python -u orchestrator.py >> logs/orchestrator.log 2>&1 &
+    echo "  ⚠️  No systemd service found, using manual startup..."
+    if [ -f "scripts/start_orchestrator.sh" ]; then
+        chmod +x scripts/start_orchestrator.sh
+        nohup ./scripts/start_orchestrator.sh >> logs/orchestrator.log 2>&1 &
+    else
+        nohup python -u orchestrator.py >> logs/orchestrator.log 2>&1 &
+    fi
+    
+    nohup streamlit run dashboard.py --server.address 0.0.0.0 > logs/dashboard.log 2>&1 &
+    echo "  ✅ Services started manually"
 fi
 
-nohup streamlit run dashboard.py --server.address 0.0.0.0 > logs/dashboard.log 2>&1 &
+# Final verification: Check for duplicate processes
+sleep 3
+ORCH_COUNT=$(pgrep -f "orchestrator.py" | wc -l)
+if [ "$ORCH_COUNT" -gt 1 ]; then
+    echo "  ❌ ERROR: Multiple orchestrator processes detected ($ORCH_COUNT)!"
+    echo "  📋 Processes:"
+    ps aux | grep orchestrator.py | grep -v grep
+    rollback_and_restart
+elif [ "$ORCH_COUNT" -eq 0 ]; then
+    echo "  ❌ ERROR: No orchestrator process found!"
+    rollback_and_restart
+else
+    echo "  ✅ Single orchestrator process confirmed (PID: $(pgrep -f orchestrator.py))"
+fi
 
 echo ""
 echo "--- ✅ Deployment finished successfully! ---"
