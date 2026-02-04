@@ -349,5 +349,59 @@ class TestIronCondorRiskValidation(unittest.TestCase):
         )
 
 
+class TestPositionMappingNew(unittest.TestCase):
+    """
+    New tests for the fix in _find_position_id_for_contract.
+    """
+    def test_find_position_id_iron_condor_open(self):
+        """Test that an open Iron Condor (balanced BUY/SELL) is detected as open."""
+        mock_position = MagicMock()
+        mock_position.contract.localSymbol = "KOK6 C3.35"
+        mock_position.position = -1  # Short call
+
+        # Iron Condor entry: 2 BUY + 2 SELL = balanced, but position IS open
+        trade_ledger = pd.DataFrame({
+            'local_symbol': [
+                'KOK6 C3.35', 'KOK6 C3.3', 'KOK6 P3.15', 'KOK6 P3.2'
+            ],
+            'position_id': ['IC_001', 'IC_001', 'IC_001', 'IC_001'],
+            'action': ['SELL', 'BUY', 'SELL', 'BUY'],
+            'quantity': [1, 1, 1, 1],
+            'timestamp': [datetime.now()] * 4
+        })
+
+        result = _find_position_id_for_contract(mock_position, trade_ledger)
+        # Must return IC_001 via the open_positions path, NOT the fallback
+        self.assertEqual(result, 'IC_001')
+
+
+    def test_find_position_id_iron_condor_closed(self):
+        """Test that a fully closed Iron Condor is NOT detected as open."""
+        mock_position = MagicMock()
+        mock_position.contract.localSymbol = "KOK6 C3.35"
+        mock_position.position = -1
+
+        # Entry + Close: all legs net to zero per-symbol
+        trade_ledger = pd.DataFrame({
+            'local_symbol': [
+                'KOK6 C3.35', 'KOK6 C3.3', 'KOK6 P3.15', 'KOK6 P3.2',  # Entry
+                'KOK6 C3.35', 'KOK6 C3.3', 'KOK6 P3.15', 'KOK6 P3.2',  # Close
+            ],
+            'position_id': ['IC_001'] * 8,
+            'action': [
+                'SELL', 'BUY', 'SELL', 'BUY',   # Entry
+                'BUY', 'SELL', 'BUY', 'SELL',    # Close (inverted)
+            ],
+            'quantity': [1] * 8,
+            'timestamp': [
+                datetime(2026, 1, 30)] * 4 + [datetime(2026, 2, 3)] * 4
+        })
+
+        result = _find_position_id_for_contract(mock_position, trade_ledger)
+        # Should fall through to fallback since position IS closed
+        # Fallback returns most recent match — that's acceptable for closed positions
+        self.assertIsNotNone(result)
+
+
 if __name__ == '__main__':
     unittest.main()

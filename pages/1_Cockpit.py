@@ -147,8 +147,12 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
 
     # Render
     with st.container():
-        st.markdown(f"### 📋 {position_id}")
-        st.caption(f"Strategy: **{strategy}** | Guardian: {thesis.get('guardian_agent', 'Master')}")
+        st.markdown(f"### {thesis.get('display_name', position_id[:12])}")
+        st.caption(
+            f"{strategy.replace('_', ' ').title()} | "
+            f"Guardian: {thesis.get('guardian_agent', 'Master')} | "
+            f"ID: {position_id[:12]}..."
+        )
 
         cols = st.columns(4)
 

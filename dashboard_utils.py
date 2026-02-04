@@ -1136,6 +1136,85 @@ def get_status_color(status: str) -> str:
     return status_colors.get(status, 'gray')
 
 
+# === POSITION DISPLAY NAMES ===
+
+STRATEGY_ABBREVIATIONS = {
+    'IRON_CONDOR': 'IC',
+    'LONG_STRADDLE': 'LS',
+    'BULL_CALL_SPREAD': 'BCS',
+    'BEAR_PUT_SPREAD': 'BPS',
+    'LONG_STRANGLE': 'LG',
+    'CALENDAR_SPREAD': 'CAL',
+    'BUTTERFLY': 'BF',
+    'DIAGONAL': 'DIAG',
+}
+
+
+def build_thesis_display_name(thesis: dict) -> str:
+    """
+    Builds a human-readable display name for a thesis.
+
+    Format: "{STRATEGY_ABBREV} {CONTRACT} • {ENTRY_DATE}"
+    Example: "IC KOK6 • Jan 30"
+
+    Commodity-agnostic: Derives contract from supporting_data or
+    falls back to truncated UUID.
+
+    Args:
+        thesis: Dictionary from get_active_theses() with keys:
+                position_id, strategy_type, entry_timestamp,
+                and optionally supporting_data with contract info.
+
+    Returns:
+        Human-readable string for display.
+    """
+    parts = []
+
+    # 1. Strategy abbreviation
+    strategy = thesis.get('strategy_type', 'UNKNOWN')
+    abbrev = STRATEGY_ABBREVIATIONS.get(strategy, strategy[:3].upper())
+    parts.append(abbrev)
+
+    # 2. Contract name — try to extract from supporting_data or position metadata
+    contract_name = None
+
+    # Try supporting_data.contract (most reliable if present)
+    supporting = thesis.get('supporting_data', {})
+    if isinstance(supporting, dict):
+        contract_name = supporting.get('contract') or supporting.get('contract_name')
+
+        # Try to extract from leg symbols if contract not directly available
+        if not contract_name:
+            legs = supporting.get('legs', [])
+            if legs and isinstance(legs[0], dict):
+                first_symbol = legs[0].get('local_symbol', '')
+                # Extract root: "KOK6 C3.275" → "KOK6"
+                if first_symbol:
+                    contract_name = first_symbol.strip().split(' ')[0]
+
+    if contract_name:
+        parts.append(contract_name)
+
+    # 3. Entry date
+    entry_ts = thesis.get('entry_timestamp')
+    if entry_ts:
+        try:
+            if isinstance(entry_ts, str):
+                entry_ts = datetime.fromisoformat(entry_ts)
+            parts.append(f"• {entry_ts.strftime('%b %d')}")
+        except (ValueError, TypeError):
+            pass
+
+    display = ' '.join(parts)
+
+    # Fallback: if we only got the abbreviation, add truncated UUID
+    if len(parts) <= 1:
+        pid = thesis.get('position_id', 'Unknown')
+        display = f"{abbrev} {pid[:8]}"
+
+    return display
+
+
 # === THESIS STATUS FUNCTIONS ===
 
 def get_active_theses() -> list[dict]:
@@ -1167,18 +1246,24 @@ def get_active_theses() -> list[dict]:
                 entry_time = datetime.fromisoformat(thesis.get('entry_timestamp', ''))
                 age_hours = (now - entry_time).total_seconds() / 3600
 
-                theses.append({
+                # Parse supporting_data for display name construction
+                raw_supporting = thesis.get('supporting_data', {})
+
+                thesis_dict = {
                     'position_id': meta.get('trade_id', 'Unknown'),
                     'strategy_type': thesis.get('strategy_type', 'Unknown'),
                     'guardian_agent': thesis.get('guardian_agent', 'Unknown'),
                     'primary_rationale': thesis.get('primary_rationale', '')[:50] + '...',
                     'entry_regime': thesis.get('entry_regime', 'Unknown'),
                     'invalidation_triggers': thesis.get('invalidation_triggers', []),
-                    'entry_price': thesis.get('supporting_data', {}).get('entry_price', 0),
-                    'confidence': thesis.get('supporting_data', {}).get('confidence', 0),
+                    'entry_price': raw_supporting.get('entry_price', 0) if isinstance(raw_supporting, dict) else 0,
+                    'confidence': raw_supporting.get('confidence', 0) if isinstance(raw_supporting, dict) else 0,
                     'age_hours': age_hours,
-                    'entry_timestamp': entry_time
-                })
+                    'entry_timestamp': entry_time,
+                    'supporting_data': raw_supporting,
+                }
+                thesis_dict['display_name'] = build_thesis_display_name(thesis_dict)
+                theses.append(thesis_dict)
             except Exception as e:
                 logger.warning(f"Failed to parse thesis: {e}")
                 continue

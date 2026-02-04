@@ -1992,8 +1992,65 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                         )
                     else:
                         logger.info("✅ Post-close retry successful — all positions now flat.")
+
+                        # === CRITICAL FIX: Sweep-invalidate orphaned theses ===
+                        # The retry path closes positions via individual market orders
+                        # but has no position_id context to call invalidate_thesis().
+                        # Now that we've confirmed IB is flat, sweep ALL active theses
+                        # and invalidate any that were part of this close batch.
+                        try:
+                            sweep_tms = TransactiveMemory()
+                            if sweep_tms.collection:
+                                active_results = sweep_tms.collection.get(
+                                    where={"active": "true"},
+                                    include=['metadatas']
+                                )
+                                swept_count = 0
+                                for meta in active_results.get('metadatas', []):
+                                    tid = meta.get('trade_id')
+                                    if tid and tid in positions_to_close:
+                                        sweep_tms.invalidate_thesis(
+                                            tid,
+                                            f"Post-close sweep: {weekly_close_reason}"
+                                        )
+                                        swept_count += 1
+                                        logger.info(f"TMS sweep: Invalidated orphaned thesis {tid}")
+
+                                if swept_count > 0:
+                                    logger.warning(
+                                        f"TMS sweep: Invalidated {swept_count} orphaned theses "
+                                        f"after post-close retry"
+                                    )
+                        except Exception as sweep_err:
+                            logger.warning(f"TMS sweep failed (non-fatal): {sweep_err}")
                 else:
                     logger.info("✅ Post-close verification passed — all positions flat.")
+
+                    # Sweep-invalidate any theses that were marked for close
+                    # but whose invalidation may have silently failed
+                    try:
+                        sweep_tms = TransactiveMemory()
+                        if sweep_tms.collection:
+                            active_results = sweep_tms.collection.get(
+                                where={"active": "true"},
+                                include=['metadatas']
+                            )
+                            swept_count = 0
+                            for meta in active_results.get('metadatas', []):
+                                tid = meta.get('trade_id')
+                                if tid and tid in positions_to_close:
+                                    sweep_tms.invalidate_thesis(
+                                        tid,
+                                        f"Post-close sweep: {weekly_close_reason if is_weekly_close else 'Stale position close'}"
+                                    )
+                                    swept_count += 1
+                            if swept_count > 0:
+                                logger.warning(
+                                    f"TMS sweep: Fixed {swept_count} thesis(es) that "
+                                    f"survived initial invalidation"
+                                )
+                    except Exception as sweep_err:
+                        logger.warning(f"TMS sweep failed (non-fatal): {sweep_err}")
 
             except Exception as verify_e:
                 logger.error(f"Post-close verification failed: {verify_e}")
