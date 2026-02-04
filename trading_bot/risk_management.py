@@ -26,9 +26,6 @@ from trading_bot.ib_interface import place_order, get_active_futures
 from notifications import send_pushover_notification
 from trading_bot.tms import TransactiveMemory
 
-# --- Logging Setup ---
-setup_logging()
-
 
 async def check_iron_condor_theses(ib: IB, config: dict):
     """

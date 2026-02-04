@@ -7,6 +7,10 @@ Streamlit's native multi-page support handles routing via the pages/ directory.
 
 import streamlit as st
 from config_loader import load_config
+from trading_bot.logging_config import setup_logging
+
+# Set up dashboard-specific logging
+setup_logging(log_file="logs/dashboard.log")
 
 # Dynamic configuration for commodity-aware branding
 _cfg = load_config()

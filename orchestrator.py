@@ -60,7 +60,7 @@ from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.strategy_router import route_strategy, infer_strategy_type
 
 # --- Logging Setup ---
-setup_logging()
+setup_logging(log_file="logs/orchestrator.log")
 logger = logging.getLogger("Orchestrator")
 
 # --- Global Process Handle for the monitor ---

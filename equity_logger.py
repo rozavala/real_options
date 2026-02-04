@@ -217,7 +217,7 @@ if __name__ == "__main__":
     parser.add_argument('--sync', action='store_true', help='Sync equity from Flex Query')
     args = parser.parse_args()
 
-    setup_logging()
+    setup_logging(log_file="logs/equity_logger.log")
     cfg = load_config()
 
     if cfg:
