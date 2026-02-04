@@ -514,7 +514,10 @@ async def _get_market_data_for_leg(ib: IB, leg: ComboLeg) -> str:
             leg_vol = ticker.volume if not util.isNan(ticker.volume) else "N/A"
             leg_last = ticker.last if not util.isNan(ticker.last) else "N/A"
         finally:
-            ib.cancelMktData(ticker.contract)
+                try:
+                    ib.cancelMktData(ticker.contract)
+                except Exception:
+                    pass
         
         # Return a formatted string
         return f"Leg {leg_symbol}: {leg_bid}x{leg_ask}, V:{leg_vol}, L:{leg_last}"
@@ -673,14 +676,8 @@ async def check_liquidity_conditions(ib: IB, contract, order_size: int) -> tuple
         return True, f"Depth: {total_depth}, Spread: {spread_pct:.2f}%" if mid_price > 0 else "Depth OK, Spread Unknown"
 
     except Exception as e:
-        logger.warning(f"Liquidity check failed: {e}")
-        return True, ""  # Fail open (allow trade) if data missing, or should we fail closed?
-        # User requested FAIL CLOSED. But if API fails, maybe fail closed too?
-        # Let's fail CLOSED on error as well for strict safety.
-        # "Fail Closed" usually means if check fails (returns False), we block.
-        # If API exception, maybe we should block too?
-        # The prompt said: "Issue #9 (Liquidity) - Fail Open vs. Closed? Decision: FAIL CLOSED (Block the Trade)."
-        # So I will return False on exception.
+        logger.warning(f"Liquidity check failed (FAIL CLOSED): {e}")
+        # FAIL CLOSED: Block the trade when we can't verify liquidity
         return False, f"Liquidity Check Error: {e}"
 
 
@@ -945,6 +942,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         adaptive_interval = tuning.get('adaptive_step_interval_seconds', 15)
         adaptive_pct = tuning.get('adaptive_step_percentage', 0.05)
         
+        # Commodity-agnostic tick size (replaces hardcoded COFFEE_OPTIONS_TICK_SIZE)
+        TICK_SIZE = get_tick_size(config)
+
         # --- PLACEMENT LOOP (ENHANCED LOGGING & NOTIFICATIONS) ---
         for contract, order, decision_data in orders_to_place:
             
@@ -965,7 +965,10 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 bag_last = bag_ticker.last if not util.isNan(bag_ticker.last) else "N/A"
                 bag_last_time = bag_ticker.time.strftime('%H:%M:%S') if bag_ticker.time else "N/A"
             finally:
-                ib.cancelMktData(contract) # Cleanup
+                try:
+                    ib.cancelMktData(contract) # Cleanup
+                except Exception:
+                    pass
             
             bag_state_str = f"BAG: {bag_bid}x{bag_ask}, V:{bag_vol}, L:{bag_last}@{bag_last_time}"
 
@@ -1001,20 +1004,39 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
                 # Fetch first leg details
                 try:
-                    leg1_conid = contract.comboLegs[0].conId
-                    details = await ib.reqContractDetailsAsync(Contract(conId=leg1_conid))
-                    # Assuming Futures Option
-                    # Underlying is the Future.
-                    # details[0].contract.lastTradeDateOrContractMonth gives expiry.
-                    # We can construct the Future contract.
-                    opt_contract = details[0].contract
-                    underlying_future = Future(
-                        symbol=opt_contract.symbol,
-                        lastTradeDateOrContractMonth=opt_contract.lastTradeDateOrContractMonth,
-                        exchange=opt_contract.exchange,
-                        currency=opt_contract.currency
-                    )
-                    await ib.qualifyContractsAsync(underlying_future)
+                    underlying_future = None
+
+                    # --- Primary: Extract from decision_data pipeline (BUG-6 Fix) ---
+                    if isinstance(decision_data, dict):
+                        strategy_def = decision_data.get('strategy_def')
+                        # Amendment C: Explicit None guard
+                        if strategy_def and isinstance(strategy_def, dict):
+                            future_contract = strategy_def.get('future_contract')
+                            if future_contract is not None:
+                                underlying_future = future_contract
+                                logger.info(f"Catastrophe stop: Resolved underlying future from strategy_def: {underlying_future}")
+
+                    # --- Fallback: Resolve from first leg's underConId ---
+                    if underlying_future is None:
+                        leg1_conid = contract.comboLegs[0].conId
+                        leg_details = await ib.reqContractDetailsAsync(Contract(conId=leg1_conid))
+
+                        if leg_details:
+                            # BUG-6 Fix: Use underConId, NOT option expiry
+                            # Option expiry != Future expiry for FOPs
+                            under_conid = leg_details[0].underConId
+                            if under_conid:
+                                underlying_future = Contract(conId=under_conid)
+                                await ib.qualifyContractsAsync(underlying_future)
+                                logger.info(f"Catastrophe stop: Resolved underlying future from underConId: {underlying_future}")
+                            else:
+                                # Last ditch: try constructing from symbol if underConId missing (risky but better than nothing?)
+                                # Actually, without underConId or strategy_def, we can't reliably guess the future contract month
+                                # because option expiry is different. Failsafe to standard order.
+                                pass
+
+                    if underlying_future is None:
+                        raise ValueError("Could not resolve underlying future for catastrophe protection")
 
                     # Entry Price for Stop Calculation
                     # Use 'price' from decision_data (snapshot price at signal generation)
@@ -1112,7 +1134,17 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                         action = trade.order.action
 
                         new_price = None
-                        step_amount = abs(current_limit) * adaptive_pct
+
+                        # --- DYNAMIC STEP CALCULATION (BUG-2 Fix) ---
+                        # Use gap-based stepping to ensure we walk even in narrow bands
+                        remaining_gap = abs(ceiling - current_limit)
+                        target_steps = config.get('strategy_tuning', {}).get('adaptive_target_steps', 6)
+                        gap_based_step = remaining_gap / max(target_steps, 1) if remaining_gap > 0 else 0
+
+                        pct_based_step = abs(current_limit) * adaptive_pct
+
+                        # Use the smaller of gap/pct to ensure granularity, but respect min tick
+                        step_amount = max(min(gap_based_step, pct_based_step), TICK_SIZE)
 
                         # Skip if max errors reached
                         if details['modification_error_count'] >= details['max_modification_errors']:
@@ -1121,24 +1153,24 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                         if action == 'BUY':
                             if current_limit < ceiling:
                                 proposed_price = current_limit + step_amount
-                                new_price = round_to_tick(proposed_price, COFFEE_OPTIONS_TICK_SIZE, 'BUY')
+                                new_price = round_to_tick(proposed_price, TICK_SIZE, 'BUY')
                                 new_price = min(new_price, ceiling)
 
                                 if new_price <= current_limit and current_limit < ceiling:
                                     new_price = min(
-                                        round_to_tick(current_limit + COFFEE_OPTIONS_TICK_SIZE, COFFEE_OPTIONS_TICK_SIZE, 'BUY'),
+                                        round_to_tick(current_limit + TICK_SIZE, TICK_SIZE, 'BUY'),
                                         ceiling
                                     )
 
                         else: # SELL
                             if current_limit > ceiling: # Here 'ceiling' is actually floor
                                 proposed_price = current_limit - step_amount
-                                new_price = round_to_tick(proposed_price, COFFEE_OPTIONS_TICK_SIZE, 'SELL')
+                                new_price = round_to_tick(proposed_price, TICK_SIZE, 'SELL')
                                 new_price = max(new_price, ceiling)
 
                                 if new_price >= current_limit and current_limit > ceiling:
                                     new_price = max(
-                                        round_to_tick(current_limit - COFFEE_OPTIONS_TICK_SIZE, COFFEE_OPTIONS_TICK_SIZE, 'SELL'),
+                                        round_to_tick(current_limit - TICK_SIZE, TICK_SIZE, 'SELL'),
                                         ceiling
                                     )
 
@@ -1147,7 +1179,8 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                             price_actually_changed = abs(new_price - current_limit) > PRICE_TOLERANCE
 
                             if price_actually_changed:
-                                logger.info(f"Adaptive Update for Order {order_id} ({trade.contract.localSymbol}): {current_limit} -> {new_price} (Cap/Floor: {ceiling})")
+                                stored_display_name = details.get('display_name', trade.contract.localSymbol or 'UNKNOWN')
+                                logger.info(f"Adaptive Update for Order {order_id} ({stored_display_name}): {current_limit} -> {new_price} (Cap/Floor: {ceiling})")
                                 trade.order.lmtPrice = new_price
                                 ib.placeOrder(trade.contract, trade.order)
                                 details['last_update_time'] = time.time()
@@ -1157,7 +1190,8 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                             else:
                                 # Price at or very near cap/floor - log once then stop checking
                                 if not details.get('cap_reached_logged', False):
-                                    logger.info(f"Order {order_id} ({trade.contract.localSymbol}): Reached cap/floor at {ceiling:.2f}. Waiting for fill or timeout.")
+                                    stored_display_name = details.get('display_name', trade.contract.localSymbol or 'UNKNOWN')
+                                    logger.info(f"Order {order_id} ({stored_display_name}): Reached cap/floor at {ceiling:.2f}. Waiting for fill or timeout.")
                                     details['cap_reached_logged'] = True
                                     details['cap_reached_time'] = time.time()
 
@@ -1216,7 +1250,10 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     final_bag_last = final_bag_ticker.last if not util.isNan(final_bag_ticker.last) else "N/A"
                     final_bag_last_time = final_bag_ticker.time.strftime('%H:%M:%S') if final_bag_ticker.time else "N/A"
                 finally:
-                    ib.cancelMktData(trade.contract)
+                    try:
+                        ib.cancelMktData(trade.contract)
+                    except Exception:
+                        pass
                 
                 final_bag_state = (
                     f"BAG: {final_bag_bid}x{final_bag_ask}, V:{final_bag_vol}, L:{final_bag_last}@{final_bag_last_time}"

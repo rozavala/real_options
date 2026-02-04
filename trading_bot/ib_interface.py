@@ -276,6 +276,8 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
     tuning_params = config.get('strategy_tuning', {})
     max_spread_pct = tuning_params.get('max_liquidity_spread_percentage', 0.25)
     fixed_slippage = tuning_params.get('fixed_slippage_cents', 0.5)
+    # NEW: Configurable ceiling aggression (0.0 = mid, 1.0 = full ask/bid)
+    ceiling_aggression = tuning_params.get('ceiling_aggression_factor', 0.75)
 
     market_spread = combo_ask_price - combo_bid_price
 
@@ -288,43 +290,86 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         )
         return None
 
-    # Calculate Ceiling/Floor Price (Theoretical Max/Min)
-    start_offset = tick_size  # Start 1 tick into the book
+    tick_size = get_tick_size(config)  # Commodity-agnostic tick size
     market_mid = (combo_bid_price + combo_ask_price) / 2
 
-    if action == 'BUY':
-        # Theoretical ceiling with slippage - TICK ALIGNED
-        theoretical_ceiling = round_to_tick(net_theoretical_price + fixed_slippage, tick_size, 'BUY')
-        # Market-based ceiling: don't exceed the current ask - TICK ALIGNED
-        market_ceiling = round_to_tick(combo_ask_price + (market_spread * 0.1), tick_size, 'BUY')
-        # Use the more conservative (lower) ceiling
-        ceiling_price = min(theoretical_ceiling, market_ceiling)
-        # But ensure we can at least reach the market mid - TICK ALIGNED
-        ceiling_price = max(ceiling_price, round_to_tick(market_mid, tick_size, 'BUY'))
+    # ================================================================
+    # CEILING/FLOOR LOGIC (Amendment A — Flight Director Approved)
+    #
+    # BUY: ceiling = max(theoretical, market_aggressive), capped at ask
+    #   → "Take the HIGHER cap so we CAN reach a fillable price"
+    #   → Safety: never exceed the actual ask (negative edge)
+    #
+    # SELL: floor = min(theoretical, market_aggressive), floored at bid
+    #   → "Take the LOWER floor so we CAN reach a fillable price"
+    #   → Safety: never go below the actual bid (negative edge)
+    # ================================================================
 
-        # Initial price - TICK ALIGNED (round down for buys)
-        initial_price = round_to_tick(combo_bid_price + start_offset, tick_size, 'BUY')
+    if action == 'BUY':
+        # Theoretical ceiling with slippage
+        theoretical_ceiling = round_to_tick(
+            net_theoretical_price + fixed_slippage, tick_size, 'BUY'
+        )
+
+        # Market-aware ceiling: interpolate between mid and ask based on aggression
+        # aggression=0.0 → ceiling at mid (conservative, often unfillable)
+        # aggression=0.75 → ceiling at 75% between mid and ask (recommended)
+        # aggression=1.0 → ceiling at ask (most aggressive)
+        market_aggressive_ceiling = round_to_tick(
+            market_mid + (combo_ask_price - market_mid) * ceiling_aggression,
+            tick_size, 'BUY'
+        )
+
+        # USE MAX: When market diverges from theoretical, trust the market
+        # This ensures we can actually reach a fillable price
+        ceiling_price = max(theoretical_ceiling, market_aggressive_ceiling)
+
+        # SAFETY CAP: Never exceed the actual ask (paying above ask = negative edge)
+        ceiling_price = min(ceiling_price, round_to_tick(combo_ask_price, tick_size, 'BUY'))
+
+        # Start 1 tick above bid (passive entry)
+        initial_price = round_to_tick(combo_bid_price + tick_size, tick_size, 'BUY')
         initial_price = min(initial_price, ceiling_price)
 
-        logging.info(f"BUY Cap Calc: Theoretical={theoretical_ceiling:.2f}, Market={market_ceiling:.2f}, Mid={market_mid:.2f}, Final Cap={ceiling_price:.2f}")
+        logging.info(
+            f"BUY Cap Calc: Theoretical={theoretical_ceiling:.2f}, "
+            f"MarketAggressive={market_aggressive_ceiling:.2f} (aggression={ceiling_aggression}), "
+            f"Mid={market_mid:.2f}, Ask={combo_ask_price:.2f}, Final Cap={ceiling_price:.2f}"
+        )
 
     else:  # SELL
-        # Theoretical floor with slippage - TICK ALIGNED (round up for sells)
-        theoretical_floor = round_to_tick(net_theoretical_price - fixed_slippage, tick_size, 'SELL')
-        # Market-based floor - TICK ALIGNED
-        market_floor = round_to_tick(combo_bid_price - (market_spread * 0.1), tick_size, 'SELL')
-        # Use the more aggressive floor
-        floor_price = min(theoretical_floor, market_floor)
-        floor_price = min(floor_price, round_to_tick(market_mid, tick_size, 'SELL'))
+        # Theoretical floor with slippage
+        theoretical_floor = round_to_tick(
+            net_theoretical_price - fixed_slippage, tick_size, 'SELL'
+        )
 
-        # Initial price - TICK ALIGNED (round up for sells)
-        initial_price = round_to_tick(combo_ask_price - start_offset, tick_size, 'SELL')
+        # Market-aware floor: interpolate between mid and bid based on aggression
+        market_aggressive_floor = round_to_tick(
+            market_mid - (market_mid - combo_bid_price) * ceiling_aggression,
+            tick_size, 'SELL'
+        )
+
+        # USE MIN: Take the LOWER floor so we CAN reach a fillable price
+        floor_price = min(theoretical_floor, market_aggressive_floor)
+
+        # SAFETY FLOOR: Never go below the actual bid (selling below bid = negative edge)
+        floor_price = max(floor_price, round_to_tick(combo_bid_price, tick_size, 'SELL'))
+
+        # Start 1 tick below ask (passive entry)
+        initial_price = round_to_tick(combo_ask_price - tick_size, tick_size, 'SELL')
         initial_price = max(initial_price, floor_price)
 
-        logging.info(f"SELL Floor Calc: Theoretical={theoretical_floor:.2f}, Market={market_floor:.2f}, Mid={market_mid:.2f}, Final Floor={floor_price:.2f}")
+        logging.info(
+            f"SELL Floor Calc: Theoretical={theoretical_floor:.2f}, "
+            f"MarketAggressive={market_aggressive_floor:.2f} (aggression={ceiling_aggression}), "
+            f"Mid={market_mid:.2f}, Bid={combo_bid_price:.2f}, Final Floor={floor_price:.2f}"
+        )
 
     logging.info(f"Net Theoretical: {net_theoretical_price:.2f}, Market Spread: {market_spread:.2f}")
-    logging.info(f"Adaptive Strategy: Start @ {initial_price:.2f}, Cap/Floor @ {ceiling_price if action == 'BUY' else floor_price:.2f}")
+    logging.info(
+        f"Adaptive Strategy: Start @ {initial_price:.2f}, "
+        f"Cap/Floor @ {ceiling_price if action == 'BUY' else floor_price:.2f}"
+    )
 
     # 6. Build the Bag contract using qualified leg conIds
     combo = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')
