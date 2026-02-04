@@ -2,137 +2,121 @@ Verifying critical modules...
   ✅ All 14 critical modules present
 Checking optional modules...
 Starting orchestrator...
-2026-02-04 09:37:09,746 - Orchestrator - INFO - =============================================
-2026-02-04 09:37:09,746 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-04 09:37:09,746 - Orchestrator - INFO - =============================================
-2026-02-04 09:37:09,754 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-04 09:37:09,755 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
-2026-02-04 09:37:09,756 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-04 09:37:10,009 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-02-04 09:37:10,010 - Orchestrator - INFO - No deferred triggers to process.
-2026-02-04 09:37:10,010 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-04 09:37:10,010 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 2 scheduled tasks already passed:
+2026-02-04 13:20:55,080 - Orchestrator - INFO - =============================================
+2026-02-04 13:20:55,080 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-04 13:20:55,081 - Orchestrator - INFO - =============================================
+2026-02-04 13:20:55,084 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-04 13:20:55,084 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
+2026-02-04 13:20:55,084 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-04 13:20:55,203 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-02-04 13:20:55,203 - Orchestrator - INFO - No deferred triggers to process.
+2026-02-04 13:20:55,203 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-02-04 13:20:55,204 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 3 scheduled tasks already passed:
   - 03:20 ET: start_monitoring
   - 03:21 ET: process_deferred_triggers
-2026-02-04 09:37:10,343 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-04 09:37:10,346 - Orchestrator - INFO - --- Recovery: Evaluating 2 missed tasks ---
-2026-02-04 09:37:10,346 - Orchestrator - INFO - 🔄 RECOVERY: Running missed start_monitoring (was scheduled 03:20 ET)
-2026-02-04 09:37:10,347 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
-2026-02-04 09:37:10,348 - Orchestrator - INFO - --- Starting position monitoring process ---
-2026-02-04 09:37:10,350 - Orchestrator - INFO - Successfully started position monitor with PID: 769713
-2026-02-04 09:37:10,587 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-04 09:37:10,603 - Orchestrator - INFO - ✅ RECOVERY: start_monitoring completed
-2026-02-04 09:37:10,604 - Orchestrator - INFO - ✅ ALREADY RAN: process_deferred_triggers completed earlier today (before restart). Skipping re-execution.
-2026-02-04 09:37:10,604 - Orchestrator - INFO - Recovery complete: 1 recovered, 0 skipped, 1 already ran
-2026-02-04 09:37:10,877 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-04 09:37:10,889 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-04 13:20:00 UTC. Waiting for 3.71 hours.
-2026-02-04 09:37:10,890 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-04 09:37:10,892 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 10 active alerts from disk
-2026-02-04 09:37:11,525 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-04 09:37:11,527 - trading_bot.sentinels - INFO - Loaded state for 7 prediction market topics
-2026-02-04 09:37:11,527 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'US x Russia military clash by...?': title='How many people will Trump deport in 2025?'. Clearing cache.
-2026-02-04 09:37:11,527 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Fed decisions (Dec-Mar)': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
-2026-02-04 09:37:11,527 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Will tariffs generate >$250b in 2025?': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
-2026-02-04 09:37:11,527 - trading_bot.sentinels - INFO - Reloading prediction market topics...
-2026-02-04 09:37:11,527 - trading_bot.sentinels - INFO - Topics reloaded: 10
-2026-02-04 09:37:11,527 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 10 topics
-2026-02-04 09:37:11,533 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
-2026-02-04 09:37:11,534 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 115...
-2026-02-04 09:37:11,536 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-02-04 09:37:11,767 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 115
-2026-02-04 09:37:11,778 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-04 09:37:11,780 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
-2026-02-04 09:37:11,780 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
-2026-02-04 09:37:11,989 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
-2026-02-04 09:37:11,990 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-02-04 09:37:11,990 - Orchestrator - INFO - Refreshed contract cache: KCK6
-2026-02-04 09:37:11,990 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-02-04 09:37:11,998 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 205...
-2026-02-04 09:37:12,365 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 205
-2026-02-04 09:37:12,370 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-04 09:37:12,372 - trading_bot.microstructure_sentinel - INFO - MicrostructureSentinel initialized
-2026-02-04 09:37:14,374 - trading_bot.microstructure_sentinel - INFO - Subscribed to microstructure for KCK6
-2026-02-04 09:37:15,033 - trading_bot.sentinels - WARNING - WEATHER SENTINEL DETECTED: DROUGHT in Minas Gerais: 25.4mm (BULLISH, BEAN_FILLING stage)
-2026-02-04 09:37:15,056 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
-2026-02-04 09:37:15,120 - trading_bot.drawdown_circuit_breaker - INFO - DrawdownGuard initialized. Starting Equity: $43,588.97
-2026-02-04 09:37:15,127 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: DROUGHT in Minas Gerais: 25.4mm (BULLISH, BEAN_FILLING stage) (Cycle: KC-7011747c)
-2026-02-04 09:37:15,392 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-04 09:37:15,428 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-04 09:37:15,630 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-04 09:37:15,847 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-02-04 09:37:15,848 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'gemini', 'openai']
-2026-02-04 09:37:15,848 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'anthropic', 'gemini', 'openai'], 'diversity_score': 1.0}
-2026-02-04 09:37:15,855 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-04 09:37:15,858 - trading_bot.enhanced_brier - INFO - Loaded 208 predictions from ./data/enhanced_brier.json
-2026-02-04 09:37:15,858 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
-2026-02-04 09:37:15,858 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
-2026-02-04 09:37:15,858 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
-2026-02-04 09:37:15,859 - trading_bot.agents - INFO - Observability Hub initialized.
-2026-02-04 09:37:15,859 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
-2026-02-04 09:37:15,859 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
-2026-02-04 09:37:15,938 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
-2026-02-04 09:37:15,939 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
-2026-02-04 09:37:15,939 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
-2026-02-04 09:37:16,801 - Orchestrator - INFO - 2026-02-04 09:37:16,799 - __main__ - INFO - Connecting to 127.0.0.1:7497 with client ID 383 for monitoring...
-2026-02-04 09:37:16,927 - Orchestrator - INFO - 2026-02-04 09:37:16,925 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-04 09:37:17,109 - Orchestrator - INFO - 2026-02-04 09:37:17,109 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-04 09:37:17,112 - Orchestrator - INFO - 2026-02-04 09:37:17,111 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
-2026-02-04 09:37:17,112 - Orchestrator - INFO - 2026-02-04 09:37:17,112 - root - INFO - Order status and execution event handlers registered.
-2026-02-04 09:37:19,551 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-02-04 09:37:20,838 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
-2026-02-04 09:37:21,476 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=299.95, sma_200=335.43949999999995, regime=HIGH_VOLATILITY, vol_5d=0.0282
-2026-02-04 09:37:21,478 - Orchestrator - INFO - Emergency market context: price=299.95, regime=HIGH_VOLATILITY
-2026-02-04 09:37:21,478 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
-2026-02-04 09:37:21,479 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
-2026-02-04 09:37:21,479 - trading_bot.agents - INFO - Waking up agronomist...
-2026-02-04 09:37:22,027 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
-2026-02-04 09:37:22,027 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
-2026-02-04 09:37:41,137 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-02-04 09:37:52,366 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-04 09:37:52,369 - Orchestrator - INFO - TopicDiscovery: 6 topics, No changes
-2026-02-04 09:38:19,505 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:38:23,519 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-4o for agronomist after primary failure.
-2026-02-04 09:38:23,519 - trading_bot.router_metrics - WARNING - Fallback event: agronomist gemini -> openai. Reason: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:38:23,520 - trading_bot.heterogeneous_router - WARNING - Fallback openai/gpt-4o also failed for agronomist: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:38:33,256 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-opus-4-5-20251101 for agronomist after primary failure.
-2026-02-04 09:38:33,257 - trading_bot.router_metrics - WARNING - Fallback event: agronomist gemini -> anthropic. Reason: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:38:33,257 - trading_bot.heterogeneous_router - WARNING - Fallback anthropic/claude-opus-4-5-20251101 also failed for agronomist: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:38:33,257 - trading_bot.heterogeneous_router - ERROR - All providers exhausted for agronomist. Primary: gemini. Fallbacks tried: 2. Last error: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:39:11,964 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:39:17,587 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-4o for agronomist after primary failure.
-2026-02-04 09:39:17,588 - trading_bot.router_metrics - WARNING - Fallback event: agronomist gemini -> openai. Reason: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:39:17,588 - trading_bot.heterogeneous_router - WARNING - Fallback openai/gpt-4o also failed for agronomist: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:39:25,494 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-opus-4-5-20251101 for agronomist after primary failure.
-2026-02-04 09:39:25,495 - trading_bot.router_metrics - WARNING - Fallback event: agronomist gemini -> anthropic. Reason: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:39:25,496 - trading_bot.heterogeneous_router - WARNING - Fallback anthropic/claude-opus-4-5-20251101 also failed for agronomist: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:39:25,497 - trading_bot.heterogeneous_router - ERROR - All providers exhausted for agronomist. Primary: gemini. Fallbacks tried: 2. Last error: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:39:25,497 - trading_bot.agents - WARNING - Router failed for agronomist, falling back to Gemini: All providers exhausted for agronomist. Primary: gemini. Fallbacks tried: 2. Last error: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:39:48,477 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
-2026-02-04 09:39:48,478 - trading_bot.weighted_voting - INFO - Agent latest_ml_signals: Fresh NEUTRAL vote (not abstention)
-2026-02-04 09:39:48,478 - trading_bot.weighted_voting - WARNING - Agent latest_ml_signals: Using DEFAULT values (NEUTRAL/0.5). Report type: dict, is_stale: False, Report preview: {'data': [{'contract_month': '202603', 'prediction_type': 'VOLATILITY', 'level': 'LOW', 'direction':...
-2026-02-04 09:39:48,483 - trading_bot.enhanced_brier - INFO - Loaded 208 predictions from ./data/enhanced_brier.json
-2026-02-04 09:39:48,483 - trading_bot.brier_bridge - WARNING - Failed to get reliability for agronomist: 'EnhancedBrierTracker' object has no attribute 'get_agent_scores'
-2026-02-04 09:39:48,483 - trading_bot.brier_bridge - WARNING - Failed to get reliability for macro: 'EnhancedBrierTracker' object has no attribute 'get_agent_scores'
-2026-02-04 09:39:48,483 - trading_bot.brier_bridge - WARNING - Failed to get reliability for geopolitical: 'EnhancedBrierTracker' object has no attribute 'get_agent_scores'
-2026-02-04 09:39:48,483 - trading_bot.brier_bridge - WARNING - Failed to get reliability for supply_chain: 'EnhancedBrierTracker' object has no attribute 'get_agent_scores'
-2026-02-04 09:39:48,483 - trading_bot.brier_bridge - WARNING - Failed to get reliability for inventory: 'EnhancedBrierTracker' object has no attribute 'get_agent_scores'
-2026-02-04 09:39:48,483 - trading_bot.brier_bridge - WARNING - Failed to get reliability for sentiment: 'EnhancedBrierTracker' object has no attribute 'get_agent_scores'
-2026-02-04 09:39:48,483 - trading_bot.brier_bridge - WARNING - Failed to get reliability for technical: 'EnhancedBrierTracker' object has no attribute 'get_agent_scores'
-2026-02-04 09:39:48,483 - trading_bot.brier_bridge - WARNING - Failed to get reliability for volatility: 'EnhancedBrierTracker' object has no attribute 'get_agent_scores'
-2026-02-04 09:39:48,484 - trading_bot.brier_bridge - WARNING - Failed to get reliability for latest_ml_signals: 'EnhancedBrierTracker' object has no attribute 'get_agent_scores'
-2026-02-04 09:39:48,484 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=4.5 \u00d7 reliability=1.0 = 4.50", "macro": "domain=1.0 \u00d7 reliability=1.0 = 0.07", "geopolitical": "domain=0.5 \u00d7 reliability=1.0 = 0.04", "supply_chain": "domain=1.5 \u00d7 reliability=1.0 = 0.11", "inventory": "domain=1.5 \u00d7 reliability=1.0 = 0.11", "sentiment": "domain=1.0 \u00d7 reliability=1.0 = 0.07", "technical": "domain=1.0 \u00d7 reliability=1.0 = 0.30", "volatility": "domain=3.0 \u00d7 reliability=1.0 = 0.21", "latest_ml_signals": "domain=1.0 \u00d7 reliability=1.0 = 0.10"}
-2026-02-04 09:39:48,484 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.005, dominant=volatility)
-2026-02-04 09:39:48,484 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  - 08:20 ET: run_position_audit_cycle
+2026-02-04 13:20:55,519 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 13:20:55,521 - Orchestrator - INFO - --- Recovery: Evaluating 3 missed tasks ---
+2026-02-04 13:20:55,522 - Orchestrator - INFO - 🔄 RECOVERY: Running missed start_monitoring (was scheduled 03:20 ET)
+2026-02-04 13:20:55,522 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
+2026-02-04 13:20:55,523 - Orchestrator - INFO - --- Starting position monitoring process ---
+2026-02-04 13:20:55,524 - Orchestrator - INFO - Successfully started position monitor with PID: 780404
+2026-02-04 13:20:55,750 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 13:20:55,758 - Orchestrator - INFO - ✅ RECOVERY: start_monitoring completed
+2026-02-04 13:20:55,758 - Orchestrator - INFO - ✅ ALREADY RAN: process_deferred_triggers completed earlier today (before restart). Skipping re-execution.
+2026-02-04 13:20:55,759 - Orchestrator - INFO - 🔄 RECOVERY: Running missed run_position_audit_cycle (was scheduled 08:20 ET)
+2026-02-04 13:20:55,759 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-04 13:20:55,759 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 233...
+2026-02-04 13:20:55,983 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 233
+2026-02-04 13:20:55,994 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-04 13:20:56,103 - Orchestrator - INFO - No open positions to audit.
+2026-02-04 13:20:56,110 - Orchestrator - INFO - ✅ RECOVERY: run_position_audit_cycle completed
+2026-02-04 13:20:56,110 - Orchestrator - INFO - Recovery complete: 2 recovered, 0 skipped, 1 already ran
+2026-02-04 13:20:56,445 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 13:20:56,461 - Orchestrator - INFO - Next task 'guarded_generate_orders' scheduled for 2026-02-04 13:50:00 UTC. Waiting for 0.48 hours.
+2026-02-04 13:20:56,462 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-04 13:20:56,463 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 11 active alerts from disk
+2026-02-04 13:20:57,062 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-02-04 13:20:57,065 - trading_bot.sentinels - INFO - Loaded state for 7 prediction market topics
+2026-02-04 13:20:57,065 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'US x Russia military clash by...?': title='How many people will Trump deport in 2025?'. Clearing cache.
+2026-02-04 13:20:57,065 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Fed decisions (Dec-Mar)': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
+2026-02-04 13:20:57,065 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Will tariffs generate >$250b in 2025?': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
+2026-02-04 13:20:57,065 - trading_bot.sentinels - INFO - Reloading prediction market topics...
+2026-02-04 13:20:57,065 - trading_bot.sentinels - INFO - Topics reloaded: 10
+2026-02-04 13:20:57,065 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 10 topics
+2026-02-04 13:20:57,067 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-02-04 13:20:57,073 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 111...
+2026-02-04 13:20:57,074 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-04 13:20:57,417 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 111
+2026-02-04 13:20:57,424 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-04 13:20:57,426 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
+2026-02-04 13:20:57,426 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-04 13:20:57,636 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-04 13:20:57,638 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-04 13:20:57,640 - Orchestrator - INFO - Refreshed contract cache: KCK6
+2026-02-04 13:20:57,640 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-02-04 13:20:57,641 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 205...
+2026-02-04 13:20:57,772 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 205
+2026-02-04 13:20:57,785 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-04 13:20:57,786 - trading_bot.microstructure_sentinel - INFO - MicrostructureSentinel initialized
+2026-02-04 13:20:59,788 - trading_bot.microstructure_sentinel - INFO - Subscribed to microstructure for KCK6
+2026-02-04 13:20:59,845 - Orchestrator - INFO - 2026-02-04 13:20:59,845 - __main__ - INFO - Connecting to 127.0.0.1:7497 with client ID 381 for monitoring...
+2026-02-04 13:21:00,157 - Orchestrator - INFO - 2026-02-04 13:21:00,156 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-04 13:21:00,339 - Orchestrator - INFO - 2026-02-04 13:21:00,339 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 13:21:00,342 - Orchestrator - INFO - 2026-02-04 13:21:00,342 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
+2026-02-04 13:21:00,343 - Orchestrator - INFO - 2026-02-04 13:21:00,342 - root - INFO - Order status and execution event handlers registered.
+2026-02-04 13:21:03,088 - trading_bot.sentinels - WARNING - ESCALATION DETECTED for FLOOD_São Paulo: 100.30 -> 115.20 (14.9%)
+2026-02-04 13:21:03,089 - trading_bot.sentinels - WARNING - WEATHER SENTINEL DETECTED: FLOOD in São Paulo: 265.2mm (NEUTRAL, VEGETATIVE stage)
+2026-02-04 13:21:03,102 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-02-04 13:21:03,163 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: FLOOD in São Paulo: 265.2mm (NEUTRAL, VEGETATIVE stage) (Cycle: KC-7b1331fb)
+2026-02-04 13:21:03,365 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 13:21:03,462 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-04 13:21:03,463 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'anthropic', 'xai', 'openai']
+2026-02-04 13:21:03,463 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'anthropic', 'xai', 'openai'], 'diversity_score': 1.0}
+2026-02-04 13:21:03,482 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-04 13:21:03,564 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-04 13:21:03,567 - trading_bot.enhanced_brier - INFO - Loaded 208 predictions from ./data/enhanced_brier.json
+2026-02-04 13:21:03,567 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-04 13:21:03,567 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-04 13:21:03,567 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-04 13:21:03,568 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-04 13:21:03,568 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-04 13:21:03,568 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-04 13:21:03,631 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-04 13:21:03,632 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-04 13:21:03,632 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-04 13:21:08,131 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-04 13:21:08,628 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=300.90, sma_200=335.44425, regime=HIGH_VOLATILITY, vol_5d=0.0282
+2026-02-04 13:21:08,641 - Orchestrator - INFO - Emergency market context: price=300.9, regime=HIGH_VOLATILITY
+2026-02-04 13:21:08,646 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
+2026-02-04 13:21:08,648 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/flood)
+2026-02-04 13:21:08,648 - trading_bot.agents - INFO - Waking up agronomist...
+2026-02-04 13:21:09,182 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-04 13:21:09,182 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-04 13:21:12,619 - trading_bot.sentinels - WARNING - NewsSentinel AI returned list instead of dict for headline sentiment: [{'score': 0, 'summary': 'The headline focus is exclusively on the Chinese automotive industry and f
+2026-02-04 13:21:12,811 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 13:21:12,814 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-04 13:21:38,941 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-04 13:21:54,052 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-04 13:21:54,056 - Orchestrator - INFO - TopicDiscovery: 6 topics, No changes
+2026-02-04 13:22:18,725 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: agronomist - Cited source not found in retrieved documents
+2026-02-04 13:22:47,646 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-04 13:22:47,647 - trading_bot.weighted_voting - INFO - Agent latest_ml_signals: Fresh NEUTRAL vote (not abstention)
+2026-02-04 13:22:47,647 - trading_bot.weighted_voting - WARNING - Agent latest_ml_signals: Using DEFAULT values (NEUTRAL/0.5). Report type: dict, is_stale: False, Report preview: {'data': [{'contract_month': '202603', 'prediction_type': 'VOLATILITY', 'level': 'LOW', 'direction':...
+2026-02-04 13:22:47,649 - trading_bot.enhanced_brier - INFO - Loaded 208 predictions from ./data/enhanced_brier.json
+2026-02-04 13:22:47,649 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=4.5 \u00d7 reliability=1.0 = 4.50", "macro": "domain=1.0 \u00d7 reliability=1.0 = 0.05", "geopolitical": "domain=0.5 \u00d7 reliability=1.0 = 0.03", "supply_chain": "domain=1.5 \u00d7 reliability=1.0 = 0.08", "inventory": "domain=1.5 \u00d7 reliability=1.0 = 0.08", "sentiment": "domain=1.0 \u00d7 reliability=1.0 = 0.05", "technical": "domain=1.0 \u00d7 reliability=1.0 = 0.21", "volatility": "domain=3.0 \u00d7 reliability=1.0 = 0.15", "latest_ml_signals": "domain=1.0 \u00d7 reliability=1.0 = 0.10"}
+2026-02-04 13:22:47,649 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.812, dominant=agronomist)
+2026-02-04 13:22:47,650 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
   {
     "agent": "agronomist",
-    "direction": "NEUTRAL",
-    "confidence": 0.85,
+    "direction": "BEARISH",
+    "confidence": 0.95,
     "domain_weight": 4.5,
     "reliability_mult": 1.0,
     "staleness_weight": 1.0,
     "age_hours": 0.0,
     "final_weight": 4.5,
-    "contribution": 0.0
+    "contribution": -4.275
   },
   {
     "agent": "macro",
@@ -140,10 +124,10 @@ Starting orchestrator...
     "confidence": 0.9,
     "domain_weight": 1.0,
     "reliability_mult": 1.0,
-    "staleness_weight": 0.28,
-    "age_hours": 15.8,
-    "final_weight": 0.07,
-    "contribution": 0.064
+    "staleness_weight": 0.2,
+    "age_hours": 19.5,
+    "final_weight": 0.05,
+    "contribution": 0.045
   },
   {
     "agent": "geopolitical",
@@ -151,10 +135,10 @@ Starting orchestrator...
     "confidence": 0.85,
     "domain_weight": 0.5,
     "reliability_mult": 1.0,
-    "staleness_weight": 0.28,
-    "age_hours": 15.8,
-    "final_weight": 0.04,
-    "contribution": -0.03
+    "staleness_weight": 0.2,
+    "age_hours": 19.5,
+    "final_weight": 0.03,
+    "contribution": -0.021
   },
   {
     "agent": "supply_chain",
@@ -162,10 +146,10 @@ Starting orchestrator...
     "confidence": 0.95,
     "domain_weight": 1.5,
     "reliability_mult": 1.0,
-    "staleness_weight": 0.28,
-    "age_hours": 15.8,
-    "final_weight": 0.11,
-    "contribution": 0.101
+    "staleness_weight": 0.2,
+    "age_hours": 19.5,
+    "final_weight": 0.08,
+    "contribution": 0.072
   },
   {
     "agent": "inventory",
@@ -173,10 +157,10 @@ Starting orchestrator...
     "confidence": 0.9,
     "domain_weight": 1.5,
     "reliability_mult": 1.0,
-    "staleness_weight": 0.28,
-    "age_hours": 15.8,
-    "final_weight": 0.11,
-    "contribution": 0.096
+    "staleness_weight": 0.2,
+    "age_hours": 19.5,
+    "final_weight": 0.08,
+    "contribution": 0.068
   },
   {
     "agent": "sentiment",
@@ -184,9 +168,9 @@ Starting orchestrator...
     "confidence": 0.9,
     "domain_weight": 1.0,
     "reliability_mult": 1.0,
-    "staleness_weight": 0.28,
-    "age_hours": 15.8,
-    "final_weight": 0.07,
+    "staleness_weight": 0.2,
+    "age_hours": 19.5,
+    "final_weight": 0.05,
     "contribution": 0.0
   },
   {
@@ -195,9 +179,9 @@ Starting orchestrator...
     "confidence": 0.55,
     "domain_weight": 1.0499999999999998,
     "reliability_mult": 1.0,
-    "staleness_weight": 0.28,
-    "age_hours": 15.8,
-    "final_weight": 0.3,
+    "staleness_weight": 0.2,
+    "age_hours": 19.5,
+    "final_weight": 0.21,
     "contribution": 0.0
   },
   {
@@ -206,10 +190,10 @@ Starting orchestrator...
     "confidence": 0.95,
     "domain_weight": 3.0,
     "reliability_mult": 1.0,
-    "staleness_weight": 0.28,
-    "age_hours": 15.8,
-    "final_weight": 0.21,
-    "contribution": -0.202
+    "staleness_weight": 0.2,
+    "age_hours": 19.5,
+    "final_weight": 0.15,
+    "contribution": -0.144
   },
   {
     "agent": "latest_ml_signals",
@@ -218,70 +202,20 @@ Starting orchestrator...
     "domain_weight": 1.0,
     "reliability_mult": 1.0,
     "staleness_weight": 0.1,
-    "age_hours": 115.7,
+    "age_hours": 119.4,
     "final_weight": 0.1,
     "contribution": 0.0
   }
 ]
-2026-02-04 09:40:10,504 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-5-20251101 failed for permabear: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:40:19,145 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-4o for permabear after primary failure.
-2026-02-04 09:40:19,145 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:40:19,145 - trading_bot.heterogeneous_router - WARNING - Fallback openai/gpt-4o also failed for permabear: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:40:40,364 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for permabear after primary failure.
-2026-02-04 09:40:40,364 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> gemini. Reason: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:40:40,364 - trading_bot.heterogeneous_router - WARNING - Fallback gemini/gemini-3-pro-preview also failed for permabear: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:40:40,364 - trading_bot.heterogeneous_router - ERROR - All providers exhausted for permabear. Primary: anthropic. Fallbacks tried: 2. Last error: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:40:40,364 - trading_bot.agents - WARNING - Router failed for permabear, falling back to Gemini: All providers exhausted for permabear. Primary: anthropic. Fallbacks tried: 2. Last error: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:41:40,275 - trading_bot.heterogeneous_router - WARNING - xai/grok-4-1-fast-reasoning failed for permabull: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:41:48,971 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-4o for permabull after primary failure.
-2026-02-04 09:41:48,972 - trading_bot.router_metrics - WARNING - Fallback event: permabull xai -> openai. Reason: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:41:48,972 - trading_bot.heterogeneous_router - WARNING - Fallback openai/gpt-4o also failed for permabull: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:42:14,062 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-opus-4-5-20251101 for permabull after primary failure.
-2026-02-04 09:42:14,063 - trading_bot.router_metrics - WARNING - Fallback event: permabull xai -> anthropic. Reason: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:42:14,063 - trading_bot.heterogeneous_router - WARNING - Fallback anthropic/claude-opus-4-5-20251101 also failed for permabull: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:42:14,065 - trading_bot.heterogeneous_router - ERROR - All providers exhausted for permabull. Primary: xai. Fallbacks tried: 2. Last error: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:42:14,065 - trading_bot.agents - WARNING - Router failed for permabull, falling back to Gemini: All providers exhausted for permabull. Primary: xai. Fallbacks tried: 2. Last error: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:43:04,731 - trading_bot.heterogeneous_router - WARNING - openai/gpt-4o failed for master: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:43:19,575 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-opus-4-5-20251101 for master after primary failure.
-2026-02-04 09:43:19,576 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:43:19,576 - trading_bot.heterogeneous_router - WARNING - Fallback anthropic/claude-opus-4-5-20251101 also failed for master: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:44:00,519 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for master after primary failure.
-2026-02-04 09:44:00,520 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> gemini. Reason: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:44:00,520 - trading_bot.heterogeneous_router - WARNING - Fallback gemini/gemini-3-pro-preview also failed for master: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:44:00,520 - trading_bot.heterogeneous_router - ERROR - All providers exhausted for master. Primary: openai. Fallbacks tried: 2. Last error: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:44:00,520 - trading_bot.agents - WARNING - Router failed for master, falling back to Gemini: All providers exhausted for master. Primary: openai. Fallbacks tried: 2. Last error: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:44:47,308 - trading_bot.agents - INFO - Master Decision: BULLISH | Thesis: SPECULATIVE (conf=0.45) | Catalyst: Minas Gerais Drought (Bean-Filling Stage) & Port Logistical 
-2026-02-04 09:44:47,309 - Orchestrator - INFO - Emergency Decision: BULLISH (0.45)
-2026-02-04 09:44:47,309 - Orchestrator - INFO - EMERGENCY STRATEGY: DIRECTIONAL spread (thesis=SPECULATIVE, vol=BEARISH)
-2026-02-04 09:44:47,309 - trading_bot.strategy_router - INFO - STRATEGY (emergency): DIRECTIONAL spread (thesis=SPECULATIVE, vol=BEARISH)
-2026-02-04 09:44:47,309 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
-2026-02-04 09:44:47,321 - root - INFO - Logged council decision for KCK6 (202605)
-2026-02-04 09:44:47,327 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → BULLISH (DIRECTIONAL/DIRECTIONAL)
-2026-02-04 09:44:47,327 - Orchestrator - INFO - Emergency Cycle ACTION: BULLISH (DIRECTIONAL)
-2026-02-04 09:44:47,328 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-02-04 09:44:47,328 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'gemini', 'openai']
-2026-02-04 09:44:47,328 - trading_bot.compliance - WARNING - Concentration check failed: 'IB' object has no attribute 'reqPortfolioAsync'
-2026-02-04 09:44:53,338 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-5-20251101 failed for compliance: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:44:56,843 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-4o for compliance after primary failure.
-2026-02-04 09:44:56,844 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> openai. Reason: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:44:56,844 - trading_bot.heterogeneous_router - WARNING - Fallback openai/gpt-4o also failed for compliance: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:45:14,104 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for compliance after primary failure.
-2026-02-04 09:45:14,105 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> gemini. Reason: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:45:14,105 - trading_bot.heterogeneous_router - WARNING - Fallback gemini/gemini-3-pro-preview also failed for compliance: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:45:14,109 - trading_bot.heterogeneous_router - ERROR - All providers exhausted for compliance. Primary: anthropic. Fallbacks tried: 2. Last error: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:45:14,110 - trading_bot.compliance - ERROR - Compliance Audit failed: All providers exhausted for compliance. Primary: anthropic. Fallbacks tried: 2. Last error: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:45:14,113 - Orchestrator - WARNING - COMPLIANCE BLOCKED Emergency Trade: Audit Error: All providers exhausted for compliance. Primary: anthropic. Fallbacks tried: 2. Last error: 'SemanticCache' object has no attribute 'set'
-2026-02-04 09:45:14,321 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-04 09:45:14,324 - Orchestrator - INFO - Post-cycle debounce set for 1800s
-2026-02-04 11:08:01,422 - Orchestrator - ERROR - XSentimentSentinel check failed: AttributeError: 'str' object has no attribute 'get'
-2026-02-04 11:57:18,226 - Orchestrator - INFO - 2026-02-04 11:57:18,226 - root - INFO - Running Iron Condor thesis validation check...
-2026-02-04 11:57:18,250 - Orchestrator - INFO - 2026-02-04 11:57:18,249 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-04 11:57:18,343 - Orchestrator - INFO - 2026-02-04 11:57:18,343 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-04 11:57:18,410 - Orchestrator - INFO - 2026-02-04 11:57:18,410 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
-2026-02-04 11:57:18,518 - Orchestrator - INFO - 2026-02-04 11:57:18,518 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
-2026-02-04 11:57:18,519 - Orchestrator - INFO - 2026-02-04 11:57:18,518 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-02-04 11:57:19,521 - Orchestrator - INFO - 2026-02-04 11:57:19,521 - root - WARNING - IC thesis check: entry_price $5.59 < floor $100.00. Skipping — likely spread premium.
-2026-02-04 11:57:19,522 - Orchestrator - INFO - 2026-02-04 11:57:19,521 - root - WARNING - IC thesis check: entry_price $7.93 < floor $100.00. Skipping — likely spread premium.
-2026-02-04 11:57:19,522 - Orchestrator - INFO - 2026-02-04 11:57:19,521 - root - WARNING - IC thesis check: entry_price $6.90 < floor $100.00. Skipping — likely spread premium.
-2026-02-04 11:57:19,522 - Orchestrator - INFO - 2026-02-04 11:57:19,521 - root - WARNING - IC thesis check: entry_price $23.86 < floor $100.00. Skipping — likely spread premium.
-2026-02-04 11:57:19,536 - Orchestrator - INFO - 2026-02-04 11:57:19,536 - ib_insync.wrapper - ERROR - Error 300, reqId 7: Can't find EId with tickerId:7
+2026-02-04 13:23:42,923 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PROVEN (conf=0.9) | Catalyst: Rains improving crop prospects outweighing flood risks, lead
+2026-02-04 13:24:15,610 - trading_bot.agents - WARNING - DA Parse Fail (Attempt 1): Expecting value: line 1 column 1 (char 0). Retrying...
+2026-02-04 13:24:35,027 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. Critical flaws in the bearish thesis: (1) RECENCY BIAS - The 4.85% single-day drop is being extrapolated as a trend when technical indicators (RSI 35.99, bullish MA crossover) suggest exhaustion of downside momentum. (2) CONFIRMATION BIAS - The analysis cherry-picks the 'beneficial rain' narrative while dismissing the explicit flood warnings and structural port crisis that multiple reports corroborate. (3) DATA MISINTERPRETATION - The 35.8% export surge is cited as evidence against bottleneck concerns, when it actually CONFIRMS the supply_chain analyst's 'volume shock' thesis - more volume hitting an already broken infrastructure. (4) IGNORED EVIDENCE - ICE certified stocks drawing down (435,681 bags), persistent backwardation (March premium to May/Dec), and BRL strength constraining farmer selling all point to SUPPLY TIGHTNESS, not abundance. (5) CROWDED TRADE RISK - Entering bearish at 5.5-month lows with 0.9 confidence while 3 of 7 agents are bullish and 2 are neutral suggests overconfidence in a contested thesis. The weighted score of -0.812 masks significant dissent. RECOMMENDATION: Wait for confirmation of trend continuation below 300 support, or position via defined-risk bear call spreads to exploit elevated IV rather than outright directional bets.
+2026-02-04 13:24:35,028 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-04 13:24:35,029 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=HIGH_VOLATILITY
+2026-02-04 13:24:35,029 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=HIGH_VOLATILITY
+2026-02-04 13:24:35,030 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-04 13:24:35,040 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-04 13:24:35,046 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (DIRECTIONAL/NONE)
+2026-02-04 13:24:35,183 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.20, geopolitical: 0.17, inventory: 0.00, macro: 0.48, master_decision: 0.03, sentiment: 0.00, supply_chain: 0.03, technical: 0.12, volatility: 0.11}
+2026-02-04 13:24:35,193 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-02-04 13:24:35,194 - Orchestrator - INFO - Post-cycle debounce set for 1800s
