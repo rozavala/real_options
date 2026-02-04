@@ -1,168 +1,184 @@
 """
-Semantic Cache — Reduce redundant LLM calls via embedding similarity.
+Semantic Cache — Avoids redundant LLM calls when market state is unchanged.
 
-Uses ChromaDB (already deployed for TMS) with a SEPARATE persistent directory.
-Cache TTLs are role-dependent: sentinels (15min), analysts (2hr), master (NEVER cached).
+Roadmap Item C.1. Expected savings: $0.60–$0.90/day.
 
-IMPORTANT: Uses ./data/semantic_cache — NOT the TMS path (./data/tms).
+Uses ONLY keys that ACTUALLY EXIST in market_data_provider.py.
+If new keys are added to build_market_context(), update _vectorize_market_state().
+
+Vector dimensions: 8
+  [0]   price_vs_sma        — normalized momentum
+  [1]   volatility_5d       — realized volatility
+  [2:6] regime one-hot      — RANGE_BOUND, TRENDING_UP, TRENDING_DOWN, HIGH_VOLATILITY
+  [6]   sentiment_score     — from agent aggregation (if available)
+  [7]   alert_density       — normalized sentinel alert count (if available)
 """
 
 import logging
-import time
 import hashlib
-import os
-from typing import Optional, Dict, Tuple
+import json
+import math
+from datetime import datetime, timezone, timedelta
+from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
-# Role-based TTLs in seconds (0 = never cache)
-CACHE_TTLS = {
-    # Sentinels — short TTL
-    "weather_sentinel": 900, "logistics_sentinel": 900,
-    "news_sentinel": 900, "price_sentinel": 300,
-    "microstructure_sentinel": 300,
-    # Tier 2 Analysts — medium TTL
-    "agronomist": 7200, "macro": 7200, "geopolitical": 7200,
-    "sentiment": 3600, "technical": 3600, "volatility": 3600,
-    "inventory": 7200, "supply_chain": 7200,
-    # Tier 3 Decision Makers — NEVER cache
-    "permabear": 0, "permabull": 0, "master": 0, "compliance": 0,
-}
-
-# Approximate cost per LLM call by role (for savings tracking)
-COST_PER_CALL = {
-    "agronomist": 0.08, "macro": 0.08, "geopolitical": 0.08,
-    "supply_chain": 0.08, "inventory": 0.08,
-    "sentiment": 0.05, "technical": 0.05, "volatility": 0.05,
-    "weather_sentinel": 0.02, "news_sentinel": 0.02,
-    "logistics_sentinel": 0.02, "price_sentinel": 0.01,
-}
-
-# CRITICAL: Separate from TMS path (./data/tms)
-CACHE_PERSIST_PATH = "./data/semantic_cache"
-
 
 class SemanticCache:
-    """Embedding-based LLM response cache using ChromaDB."""
+    """Cache council decisions based on market state similarity."""
 
-    def __init__(self, cache_dir: str = CACHE_PERSIST_PATH):
-        self._hash_cache: Dict[str, Tuple[str, float, str]] = {}
-        self._hit_count = 0
-        self._miss_count = 0
-        self._savings_usd = 0.0
-        self._use_embeddings = False
+    def __init__(self, config: dict):
+        cache_config = config.get('semantic_cache', {})
+        self.enabled = cache_config.get('enabled', False)
+        self.similarity_threshold = cache_config.get('similarity_threshold', 0.92)
+        self.ttl_minutes = cache_config.get('ttl_minutes', 60)
+        self.max_entries = cache_config.get('max_entries', 100)
 
-        try:
-            import chromadb
-            os.makedirs(cache_dir, exist_ok=True)
-            self._client = chromadb.PersistentClient(path=cache_dir)
-            self._collection = self._client.get_or_create_collection(
-                name="semantic_cache",
-                metadata={"hnsw:space": "cosine"}
-            )
-            self._use_embeddings = True
-            logger.info(f"SemanticCache initialized with ChromaDB at {cache_dir}")
-        except Exception as e:
-            logger.warning(f"ChromaDB unavailable for semantic cache, using hash-only: {e}")
+        # In-memory cache: {contract: [(vector, result, timestamp), ...]}
+        self._cache: Dict[str, list] = {}
+        self._stats = {'hits': 0, 'misses': 0, 'invalidations': 0}
 
-    def get(self, prompt: str, role: str) -> Optional[str]:
-        """Check cache. Returns cached response or None."""
-        ttl = CACHE_TTLS.get(role, 0)
-        if ttl == 0:
+    def get(self, contract: str, market_state: dict) -> Optional[dict]:
+        """
+        Check cache for a similar market state.
+
+        Returns cached council result if found, None otherwise.
+        """
+        if not self.enabled:
             return None
 
-        now = time.time()
-        prompt_hash = self._hash_prompt(prompt, role)
+        vector = self._vectorize_market_state(market_state)
+        entries = self._cache.get(contract, [])
+        now = datetime.now(timezone.utc)
 
-        # Fast path: exact hash match
-        if prompt_hash in self._hash_cache:
-            response, timestamp, cached_role = self._hash_cache[prompt_hash]
-            if now - timestamp < ttl:
-                self._hit_count += 1
-                self._savings_usd += COST_PER_CALL.get(role, 0.05)
-                logger.debug(f"Cache HIT (exact) for {role}")
-                return response
-            else:
-                del self._hash_cache[prompt_hash]
+        for cached_vector, cached_result, cached_time in entries:
+            # TTL check
+            age = (now - cached_time).total_seconds() / 60
+            if age > self.ttl_minutes:
+                continue
 
-        # Slow path: embedding similarity
-        if self._use_embeddings:
-            try:
-                results = self._collection.query(
-                    query_texts=[prompt], n_results=1, where={"role": role}
+            # Similarity check
+            similarity = self._cosine_similarity(vector, cached_vector)
+            if similarity >= self.similarity_threshold:
+                self._stats['hits'] += 1
+                logger.info(
+                    f"CACHE HIT ({contract}): similarity={similarity:.4f}, "
+                    f"age={age:.0f}min"
                 )
-                if results and results['distances'] and results['distances'][0]:
-                    distance = results['distances'][0][0]
-                    similarity = 1.0 - distance
-                    if similarity > 0.92:
-                        metadata = results['metadatas'][0][0]
-                        cached_time = metadata.get('timestamp', 0)
-                        if now - cached_time < ttl:
-                            cached_response = metadata.get('response', '')
-                            if cached_response:
-                                self._hit_count += 1
-                                self._savings_usd += COST_PER_CALL.get(role, 0.05)
-                                logger.debug(f"Cache HIT (semantic, sim={similarity:.3f}) for {role}")
-                                return cached_response
-            except Exception as e:
-                logger.debug(f"Semantic cache query failed: {e}")
+                return cached_result
 
-        self._miss_count += 1
+        self._stats['misses'] += 1
         return None
 
-    def set(self, prompt: str, role: str, response: str):
-        """Store a prompt→response pair."""
-        ttl = CACHE_TTLS.get(role, 0)
-        if ttl == 0:
+    def put(self, contract: str, market_state: dict, result: dict):
+        """Store a council result for this market state."""
+        if not self.enabled:
             return
 
-        now = time.time()
-        prompt_hash = self._hash_prompt(prompt, role)
-        self._hash_cache[prompt_hash] = (response, now, role)
+        vector = self._vectorize_market_state(market_state)
+        now = datetime.now(timezone.utc)
 
-        if self._use_embeddings:
-            try:
-                self._collection.upsert(
-                    ids=[prompt_hash],
-                    documents=[prompt],
-                    metadatas=[{
-                        "role": role,
-                        "timestamp": now,
-                        "response": response[:5000],
-                    }]
-                )
-            except Exception as e:
-                logger.debug(f"Failed to store in embedding cache: {e}")
+        if contract not in self._cache:
+            self._cache[contract] = []
 
-    def invalidate_role(self, role: str):
-        """Invalidate all entries for a specific role."""
-        to_remove = [k for k, (_, _, r) in self._hash_cache.items() if r == role]
-        for k in to_remove:
-            del self._hash_cache[k]
-        logger.info(f"Invalidated {len(to_remove)} cache entries for {role}")
+        self._cache[contract].append((vector, result, now))
 
-    def invalidate_all_analysts(self):
-        """Invalidate all analyst caches (e.g., after >2% price move)."""
-        analyst_roles = [r for r, ttl in CACHE_TTLS.items()
-                        if ttl > 0 and "sentinel" not in r]
-        count = 0
-        for role in analyst_roles:
-            to_remove = [k for k, (_, _, r) in self._hash_cache.items() if r == role]
-            for k in to_remove:
-                del self._hash_cache[k]
-            count += len(to_remove)
-        logger.info(f"Invalidated {count} analyst cache entries")
+        # Evict old entries
+        self._cache[contract] = [
+            (v, r, t) for v, r, t in self._cache[contract]
+            if (now - t).total_seconds() / 60 <= self.ttl_minutes
+        ][-self.max_entries:]
 
-    def get_stats(self) -> dict:
-        total = self._hit_count + self._miss_count
-        return {
-            "hits": self._hit_count,
-            "misses": self._miss_count,
-            "hit_rate": round(self._hit_count / total, 3) if total > 0 else 0.0,
-            "estimated_savings_usd": round(self._savings_usd, 2),
-            "entries": len(self._hash_cache),
+    def invalidate(self, contract: str = None):
+        """
+        Invalidate cache entries.
+
+        Called by sentinel alerts when market conditions change rapidly.
+        """
+        if contract:
+            removed = len(self._cache.pop(contract, []))
+        else:
+            removed = sum(len(v) for v in self._cache.values())
+            self._cache.clear()
+
+        self._stats['invalidations'] += 1
+        logger.info(f"CACHE INVALIDATED: {removed} entries removed (contract={contract or 'ALL'})")
+
+    def _vectorize_market_state(self, state: dict) -> List[float]:
+        """
+        Convert market state to numerical vector for similarity matching.
+
+        IMPORTANT: Uses ONLY keys from market_data_provider.py::build_market_context().
+        If you add keys to build_market_context(), update this method.
+
+        Current schema (verified 2026-02-04):
+            price, sma_200, regime, volatility_5d, price_vs_sma
+        """
+        features = []
+
+        # [0] Price momentum (normalized: positive = above SMA)
+        # price_vs_sma = (price - sma_200) / sma_200, already normalized
+        price_vs_sma = state.get('price_vs_sma', 0.0)
+        if price_vs_sma is None:
+            price_vs_sma = 0.0
+        features.append(price_vs_sma)
+
+        # [1] Volatility (5-day realized)
+        vol_5d = state.get('volatility_5d', 0.02)  # Default 2% if missing
+        if vol_5d is None:
+            vol_5d = 0.02
+        features.append(vol_5d)
+
+        # [2:6] Regime (one-hot encoding, 4 dimensions)
+        regime = state.get('regime', 'UNKNOWN')
+        regime_map = {
+            'RANGE_BOUND':      [1, 0, 0, 0],
+            'TRENDING_UP':      [0, 1, 0, 0],
+            'TRENDING':         [0, 1, 0, 0],  # Alias
+            'TRENDING_DOWN':    [0, 0, 1, 0],
+            'HIGH_VOLATILITY':  [0, 0, 0, 1],
+            'HIGH_VOL':         [0, 0, 0, 1],  # Alias from _detect_market_regime
+            'UNKNOWN':          [0, 0, 0, 0],
         }
+        features.extend(regime_map.get(regime, [0, 0, 0, 0]))
+
+        # [6] Sentiment score (from agent aggregation, if available)
+        sentiment_score = state.get('sentiment_score', 0.0)
+        if sentiment_score is None:
+            sentiment_score = 0.0
+        features.append(sentiment_score)
+
+        # [7] Alert density (from sentinel, if available)
+        alert_count = state.get('recent_alert_count', 0)
+        if alert_count is None:
+            alert_count = 0
+        features.append(min(alert_count / 10.0, 1.0))  # Normalize to [0, 1]
+
+        return features  # 8 dimensions total
 
     @staticmethod
-    def _hash_prompt(prompt: str, role: str) -> str:
-        return hashlib.sha256(f"{role}:{prompt}".encode()).hexdigest()[:16]
+    def _cosine_similarity(a: List[float], b: List[float]) -> float:
+        """Cosine similarity between two vectors."""
+        if len(a) != len(b):
+            return 0.0
+
+        dot = sum(x * y for x, y in zip(a, b))
+        norm_a = math.sqrt(sum(x * x for x in a))
+        norm_b = math.sqrt(sum(x * x for x in b))
+
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+
+        return dot / (norm_a * norm_b)
+
+    def get_stats(self) -> dict:
+        """Cache performance statistics for dashboard."""
+        total = self._stats['hits'] + self._stats['misses']
+        return {
+            'enabled': self.enabled,
+            'hits': self._stats['hits'],
+            'misses': self._stats['misses'],
+            'hit_rate': self._stats['hits'] / total if total > 0 else 0.0,
+            'invalidations': self._stats['invalidations'],
+            'entries': sum(len(v) for v in self._cache.values()),
+        }

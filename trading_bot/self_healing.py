@@ -11,6 +11,8 @@ logging_config.py or OS-level logrotate. See Amendment Log.
 import logging
 import asyncio
 import shutil
+import subprocess  # NEW: for TCP zombie and orphan process detection
+import os
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -44,11 +46,14 @@ class SelfHealingMonitor:
         self._running = False
 
     async def _run_checks(self):
+        """Run all health checks. Subprocess calls are non-blocking."""
         await self._check_state_freshness()
         self._check_disk_space()
         self._check_memory_usage()
         self._check_stale_deferred_triggers()
-        # NOTE: _check_log_rotation intentionally OMITTED (see Amendment Log)
+        self._check_log_writability()       # NEW
+        await self._check_tcp_zombies()     # NEW — async (uses executor)
+        await self._check_orphan_processes()  # NEW — async (uses executor)
 
     async def _check_state_freshness(self):
         """Alert if state.json stale during trading hours."""
@@ -107,6 +112,108 @@ class SelfHealingMonitor:
                 )
         except Exception:
             pass
+
+    def _check_log_writability(self):
+        """Verify orchestrator.log is writable. Alert if permission denied."""
+        try:
+            log_file = Path("logs/orchestrator.log")
+            if log_file.exists():
+                # Try to open for append
+                with open(log_file, 'a') as f:
+                    pass  # Just test access
+            else:
+                # File doesn't exist — check if directory is writable
+                log_dir = Path("logs")
+                if log_dir.exists() and not os.access(log_dir, os.W_OK):
+                    logger.warning(
+                        "SELF-HEAL: logs/ directory not writable. "
+                        "Run: sudo chown rodrigo:rodrigo logs/"
+                    )
+        except PermissionError:
+            logger.critical(
+                "SELF-HEAL: Cannot write to logs/orchestrator.log! "
+                "Dashboard and log collection are blind. "
+                "Fix: sudo chown rodrigo:rodrigo logs/orchestrator.log"
+            )
+        except Exception as e:
+            logger.debug(f"Log writability check failed: {e}")
+
+    async def _check_tcp_zombies(self):
+        """Detect CLOSE_WAIT accumulation — non-blocking via executor."""
+        try:
+            port = self.config.get('connection', {}).get('port', 7497)
+            loop = asyncio.get_running_loop()
+
+            # AMENDMENT A: Run subprocess in thread pool to avoid blocking event loop
+            result = await loop.run_in_executor(
+                None,
+                lambda: subprocess.run(
+                    ['ss', '-tn', 'state', 'close-wait'],
+                    capture_output=True, text=True, timeout=5
+                )
+            )
+
+            if result.returncode != 0:
+                return
+
+            close_wait_count = sum(
+                1 for line in result.stdout.splitlines()
+                if f':{port}' in line
+            )
+
+            if close_wait_count >= 10:
+                logger.critical(
+                    f"SELF-HEAL: {close_wait_count} CLOSE_WAIT connections on port {port}! "
+                    f"Connection leak detected. Requesting pool cleanup."
+                )
+                self._recovery_count += 1
+                await self._attempt_connection_cleanup()
+            elif close_wait_count >= 5:
+                logger.warning(
+                    f"SELF-HEAL: {close_wait_count} CLOSE_WAIT connections on port {port}. "
+                    f"Monitoring — threshold is 10."
+                )
+        except FileNotFoundError:
+            logger.debug("SELF-HEAL: 'ss' command not found. Skipping TCP zombie check.")
+        except Exception as e:
+            logger.warning(f"SELF-HEAL: TCP zombie check failed: {e}")
+
+    async def _attempt_connection_cleanup(self):
+        """Request connection pool to release all connections."""
+        try:
+            from trading_bot.connection_pool import IBConnectionPool
+            await IBConnectionPool.release_all()
+            logger.info("SELF-HEAL: Connection pool release scheduled")
+        except Exception as e:
+            logger.warning(f"SELF-HEAL: Connection cleanup failed: {e}")
+
+    async def _check_orphan_processes(self):
+        """Detect orphaned Python trading processes — non-blocking via executor."""
+        try:
+            loop = asyncio.get_running_loop()
+
+            result = await loop.run_in_executor(
+                None,
+                lambda: subprocess.run(
+                    ['pgrep', '-af', 'python.*real_options'],
+                    capture_output=True, text=True, timeout=5
+                )
+            )
+
+            if result.returncode != 0:
+                return  # No matches or command failed
+
+            processes = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+            if len(processes) > 5:
+                logger.warning(
+                    f"SELF-HEAL: {len(processes)} Python/real_options processes "
+                    f"detected (expected ~2-3). Possible orphans."
+                )
+        except FileNotFoundError:
+            logger.debug("SELF-HEAL: 'pgrep' command not found. Skipping orphan check.")
+        except Exception as e:
+            logger.debug(f"SELF-HEAL: Orphan process check failed: {e}")
 
     def get_status(self) -> dict:
         return {
