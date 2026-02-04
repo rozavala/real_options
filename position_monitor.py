@@ -22,7 +22,7 @@ from trading_bot.risk_management import monitor_positions_for_risk
 from trading_bot.utils import configure_market_data_type
 
 # --- Logging Setup ---
-setup_logging()
+setup_logging(log_file=None)
 logger = logging.getLogger(__name__)
 
 
