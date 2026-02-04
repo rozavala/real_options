@@ -19,6 +19,7 @@ from collections import deque
 import time as time_module
 from datetime import datetime, time, timedelta, timezone
 import pytz
+import pandas as pd
 from ib_insync import IB, util, Contract, MarketOrder, OrderStatus, Future
 
 from config_loader import load_config
@@ -627,13 +628,22 @@ def _find_position_id_for_contract(position, trade_ledger) -> str | None:
     open_positions = []
     for pos_id in direction_matches['position_id'].unique():
         pos_entries = trade_ledger[trade_ledger['position_id'] == pos_id]
-        net_qty = 0
-        for _, row in pos_entries.iterrows():
-            net_qty += row['quantity'] if row['action'] == 'BUY' else -row['quantity']
 
-        if net_qty != 0:
+        # Calculate net quantity PER SYMBOL (per individual leg)
+        per_symbol_qty = {}
+        for _, row in pos_entries.iterrows():
+            sym = row['local_symbol']
+            qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
+            per_symbol_qty[sym] = per_symbol_qty.get(sym, 0) + qty
+
+        # Position is open if ANY leg still has non-zero quantity
+        has_open_legs = any(q != 0 for q in per_symbol_qty.values())
+
+        if has_open_legs:
             entry_time = pos_entries['timestamp'].min()
-            open_positions.append((pos_id, entry_time, net_qty))
+            # Use the net_qty of the QUERIED symbol for direction matching
+            queried_symbol_qty = per_symbol_qty.get(symbol, 0)
+            open_positions.append((pos_id, entry_time, queried_symbol_qty))
 
     if open_positions:
         # Match by direction sign (FIFO)
@@ -712,6 +722,113 @@ def _build_thesis_invalidation_notification(
 {pnl_section}"""
 
     return title, message
+
+def _reconcile_orphaned_theses(
+    ib: IB,
+    trade_ledger: pd.DataFrame,
+    tms: TransactiveMemory,
+    config: dict
+) -> int:
+    """
+    Identifies and invalidates 'ghost theses' — TMS records with active=true
+    that no longer have corresponding live positions in IB.
+
+    This is a defense-in-depth safety net. Ghost theses are created when:
+    - Post-close retry succeeds but thesis invalidation was skipped
+    - Positions close externally (manual TWS, expiration, margin call)
+    - System crash between fill and invalidation
+
+    Returns the count of orphaned theses found and invalidated.
+
+    Commodity-agnostic: Works for any symbol/exchange/strategy.
+    """
+    try:
+        if not tms.collection:
+            logger.debug("Reconciliation: TMS collection unavailable, skipping")
+            return 0
+
+        # 1. Get all active theses
+        active_results = tms.collection.get(
+            where={"active": "true"},
+            include=['metadatas', 'documents']
+        )
+
+        active_thesis_ids = [
+            meta.get('trade_id')
+            for meta in active_results.get('metadatas', [])
+            if meta.get('trade_id')
+        ]
+
+        if not active_thesis_ids:
+            logger.debug("Reconciliation: No active theses to reconcile")
+            return 0
+
+        # 2. Build set of position_ids with live IB exposure
+        live_positions = ib.positions()  # Use cached positions from earlier reqPositionsAsync
+        live_position_ids = set()
+
+        for pos in live_positions:
+            if pos.position == 0:
+                continue
+            pos_id = _find_position_id_for_contract(pos, trade_ledger)
+            if pos_id:
+                live_position_ids.add(pos_id)
+
+        # 3. Identify orphans: active in TMS but not in IB
+        orphaned_ids = [
+            tid for tid in active_thesis_ids
+            if tid not in live_position_ids
+        ]
+
+        if not orphaned_ids:
+            logger.info(
+                f"Reconciliation: All {len(active_thesis_ids)} active theses "
+                f"have matching IB positions ✓"
+            )
+            return 0
+
+        # 4. Invalidate orphans
+        logger.warning(
+            f"Reconciliation: Found {len(orphaned_ids)} orphaned theses "
+            f"(active in TMS, no IB position): {orphaned_ids}"
+        )
+
+        for tid in orphaned_ids:
+            try:
+                tms.invalidate_thesis(
+                    tid,
+                    "Reconciliation: position closed externally or expired"
+                )
+                logger.info(f"Reconciliation: Invalidated ghost thesis {tid}")
+            except Exception as e:
+                logger.error(f"Reconciliation: Failed to invalidate {tid}: {e}")
+
+        # 5. Notify
+        try:
+            summary = (
+                f"🧹 Thesis Reconciliation\n"
+                f"Found and invalidated {len(orphaned_ids)} ghost theses:\n"
+            )
+            for tid in orphaned_ids:
+                summary += f"  • {tid[:12]}...\n"
+            summary += (
+                f"\nActive theses checked: {len(active_thesis_ids)}\n"
+                f"Live IB positions: {len(live_position_ids)}"
+            )
+            send_pushover_notification(
+                config.get('notifications', {}),
+                "Thesis Reconciliation",
+                summary
+            )
+        except Exception:
+            pass  # Notification failure is non-fatal
+
+        return len(orphaned_ids)
+
+    except Exception as e:
+        logger.error(f"Reconciliation failed (non-fatal): {e}")
+        return 0
+
 
 def _group_positions_by_thesis(
     positions: list,
@@ -952,6 +1069,23 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
         live_positions = await ib.reqPositionsAsync()
         if not live_positions or all(p.position == 0 for p in live_positions):
             logger.info("No open positions to audit.")
+
+            # Reconcile: If TMS has active theses but IB has no positions,
+            # ALL active theses are ghosts
+            try:
+                tms = TransactiveMemory()
+                trade_ledger = get_trade_ledger_df()
+                orphan_count = _reconcile_orphaned_theses(
+                    ib, trade_ledger, tms, config
+                )
+                if orphan_count > 0:
+                    logger.warning(
+                        f"Reconciliation cleaned up {orphan_count} ghost theses "
+                        f"(IB has zero positions)"
+                    )
+            except Exception as e:
+                logger.warning(f"Post-audit reconciliation failed (non-fatal): {e}")
+
             return
 
         # 2. Initialize components
@@ -1037,6 +1171,21 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
                     f"close order did not fully succeed. "
                     f"Will retry on next audit cycle."
                 )
+
+        # 8.5 === Reconcile orphaned theses ===
+        # After auditing known positions, check for ghost theses that
+        # somehow stayed active despite their positions being closed.
+        try:
+            orphan_count = _reconcile_orphaned_theses(
+                ib, trade_ledger, tms, config
+            )
+            if orphan_count > 0:
+                logger.warning(
+                    f"Reconciliation cleaned up {orphan_count} ghost theses "
+                    f"during position audit"
+                )
+        except Exception as e:
+            logger.warning(f"Post-audit reconciliation failed (non-fatal): {e}")
 
         # 9. Summary notification
         if positions_to_close:
