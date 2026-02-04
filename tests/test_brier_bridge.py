@@ -49,8 +49,8 @@ class TestGetAgentReliability(unittest.TestCase):
         mock_tracker.return_value = mock_enhanced
 
         # Pass config to enable 100% enhanced weight
-        config = {'brier_scoring': {'enhanced_weight': 1.0}}
-        result = get_agent_reliability('agronomist', 'HIGH_VOL', config=config)
+        # config = {'brier_scoring': {'enhanced_weight': 1.0}}
+        result = get_agent_reliability('agronomist', 'HIGH_VOL')
         self.assertEqual(result, 1.5)
 
 

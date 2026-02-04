@@ -160,12 +160,13 @@ class ComplianceGuardian:
             return True, ""  # Fail open if no IB connection
 
         try:
-            # Get current portfolio
-            portfolio = await ib.reqPortfolioAsync() # Or portfolio() sync if updated?
-            # ib.portfolio() is sync property, assumes updates. reqPortfolioAsync updates it?
-            # ib_insync 'portfolio()' returns list of Position.
-            # Ideally we ensure we have fresh data.
-            # But let's use the property.
+            # FIX (P1-C, 2026-02-04): Use ib.portfolio() sync property.
+            # reqPortfolioAsync does not exist in ib_insync.
+            # ib.portfolio() returns list[PortfolioItem] with fields:
+            #   .contract, .position, .marketPrice, .marketValue, .averageCost,
+            #   .unrealizedPNL, .realizedPNL, .account
+            # The portfolio is kept current via IB's automatic subscription updates.
+            portfolio = ib.portfolio()
 
             # Define Brazil-correlated assets
             brazil_proxies = ['KC', 'SB', 'EWZ', 'BRL']  # Coffee, Sugar, Brazil ETF, BRL futures

@@ -570,11 +570,11 @@ class HeterogeneousRouter:
                 return cached_response
 
         # === SEMANTIC CACHE CHECK ===
-        role_key = role.value if hasattr(role, 'value') else str(role)
-        cached = self.semantic_cache.get(prompt, role_key)
-        if cached is not None:
-            logger.info(f"SEMANTIC CACHE HIT for {role_key} — skipping API call")
-            return cached
+        # REMOVED (P0-A fix, 2026-02-04): SemanticCache.get() requires
+        # (contract, market_state_dict) — not (prompt, role). This check
+        # never actually hit because SemanticCache.enabled defaults to False,
+        # but the wrong-signature call could mask future bugs.
+        # Market-state caching should be implemented at the orchestrator level.
 
         # 1. Get Primary Assignment
         primary_provider, primary_model = self.assignments.get(
@@ -603,7 +603,10 @@ class HeterogeneousRouter:
                     if use_cache:
                         self.cache.set(full_key_prompt, role.value, response)
 
-                    self.semantic_cache.set(prompt, role.value, response)
+                    # NOTE: SemanticCache removed from router (P0-A fix, 2026-02-04).
+                    # SemanticCache is a market-state similarity cache and requires
+                    # (contract, market_state_dict, result_dict) — not available here.
+                    # Prompt-level caching is handled by ResponseCache above.
 
                     # HOTFIX: Use correct API - record_request with success=True
                     metrics.record_request(
@@ -703,7 +706,8 @@ class HeterogeneousRouter:
                 if use_cache:
                     self.cache.set(full_key_prompt, role.value, response)
 
-                self.semantic_cache.set(prompt, role.value, response)
+                # NOTE: SemanticCache removed from router (P0-A fix, 2026-02-04).
+                # See primary path comment for rationale.
 
                 return response
 
