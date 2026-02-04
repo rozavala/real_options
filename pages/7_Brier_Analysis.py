@@ -136,7 +136,7 @@ if enhanced_data and enhanced_data.get('agent_scores'):
         # Color-code: lower Brier = better (green), higher = worse (red)
         st.dataframe(
             scores_df,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
 
@@ -189,7 +189,7 @@ if enhanced_data and enhanced_data.get('calibration_buckets'):
                 # Simple line chart (Streamlit native)
                 st.line_chart(
                     cal_df.set_index('Predicted Probability')['Actual Accuracy'],
-                    use_container_width=True,
+                    width="stretch",
                 )
 
                 # Show raw data
@@ -221,7 +221,7 @@ if not struct_df.empty and 'timestamp' in struct_df.columns:
 
     st.bar_chart(
         daily.set_index('date')[['resolved', 'pending']],
-        use_container_width=True,
+        width="stretch",
     )
 
     # Show per-agent breakdown
@@ -235,7 +235,7 @@ if not struct_df.empty and 'timestamp' in struct_df.columns:
                     if 'direction' in struct_df.columns else 0
                 )),
             ).sort_values('total', ascending=False)
-            st.dataframe(agent_summary, use_container_width=True)
+            st.dataframe(agent_summary, width="stretch")
 else:
     st.info("No prediction data available yet.")
 
@@ -269,7 +269,7 @@ try:
                 })
 
     if weight_rows:
-        st.dataframe(pd.DataFrame(weight_rows), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(weight_rows), hide_index=True, width="stretch")
     else:
         st.info("All agents at baseline (1.0). Weights will differentiate after sufficient resolved predictions.")
 

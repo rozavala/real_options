@@ -130,53 +130,46 @@ def resolve_agent_prediction(
         return None
 
 
-def get_agent_reliability(agent: str, regime: str = "NORMAL", config: dict = None) -> float:
+def get_agent_reliability(agent_name: str, regime: str = "NORMAL", window: int = 20) -> float:
     """
-    Blended reliability: gradually shift from legacy to enhanced.
+    Rolling reliability multiplier from Enhanced Brier scores.
 
-    Config controls blending:
-      enhanced_weight=0.0 → 100% legacy (safe default)
-      enhanced_weight=0.5 → 50/50 blend
-      enhanced_weight=1.0 → 100% enhanced
+    Returns multiplier in [0.3, 2.0]:
+    - Brier < 0.10 → 2.0x (excellent calibration)
+    - Brier ~ 0.25 → 1.0x (average / insufficient data)
+    - Brier > 0.40 → 0.3x (poor calibration)
     """
-    if config is None:
-        try:
-            from config_loader import load_config
-            config = load_config()
-        except Exception:
-            config = {}
-
-    brier_config = config.get('brier_scoring', {})
-    enhanced_weight = brier_config.get('enhanced_weight', 0.0)
-    legacy_weight = 1.0 - enhanced_weight
-
-    # Get enhanced reliability
-    enhanced_mult = 1.0
     try:
         tracker = _get_enhanced_tracker()
-        if tracker is not None:
-            enhanced_mult = tracker.get_agent_reliability(agent, regime)
-    except Exception:
-        enhanced_mult = 1.0
+        if tracker is None:
+            return 1.0
 
-    # Get legacy reliability
-    legacy_mult = 1.0
-    try:
-        from trading_bot.brier_scoring import get_brier_tracker
-        legacy_tracker = get_brier_tracker()
-        legacy_mult = legacy_tracker.get_agent_weight_multiplier(agent) # Note: method name in brier_scoring.py is get_agent_weight_multiplier or get_weight_multiplier?
-        # Checking brier_scoring.py content provided in memory/context
-        # It seems brier_scoring.py has `get_agent_weight_multiplier`
-    except AttributeError:
-         # Fallback if I recalled the name wrong, checking file content...
-         # File content says `get_agent_weight_multiplier`
-         pass
-    except Exception:
-        legacy_mult = 1.0
+        agent_scores = tracker.get_agent_scores(agent_name)
+        if not agent_scores or agent_scores.get('resolved_count', 0) < 5:
+            return 1.0  # Insufficient data → neutral weight
 
-    # Blend
-    blended = (legacy_weight * legacy_mult) + (enhanced_weight * enhanced_mult)
-    return max(0.1, min(2.0, blended))
+        brier_score = agent_scores.get('brier_score', 0.25)
+
+        # Piecewise linear mapping: Brier → multiplier
+        if brier_score <= 0.10:
+            multiplier = 2.0
+        elif brier_score <= 0.25:
+            multiplier = 2.0 - (brier_score - 0.10) * (1.0 / 0.15)
+        elif brier_score <= 0.40:
+            multiplier = 1.0 - (brier_score - 0.25) * (0.7 / 0.15)
+        else:
+            multiplier = 0.3
+
+        multiplier = round(max(0.3, min(2.0, multiplier)), 2)
+        logger.debug(
+            f"Agent {agent_name} reliability: "
+            f"Brier={brier_score:.3f} → multiplier={multiplier:.2f}"
+        )
+        return multiplier
+
+    except Exception as e:
+        logger.warning(f"Failed to get reliability for {agent_name}: {e}")
+        return 1.0  # Fail-safe: neutral weight
 
 
 def get_calibration_data(agent: str = None) -> Dict:

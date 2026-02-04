@@ -2757,6 +2757,11 @@ async def main():
     # Start Sentinels in background
     sentinel_task = asyncio.create_task(run_sentinels(config))
 
+    # Start Self-Healing Monitor
+    from trading_bot.self_healing import SelfHealingMonitor
+    healer = SelfHealingMonitor(config)
+    healing_task = asyncio.create_task(healer.run())
+
     try:
         while True:
             try:
@@ -2790,6 +2795,8 @@ async def main():
                 await asyncio.sleep(60)
     finally:
         logger.info("Orchestrator shutting down. Ensuring monitor is stopped.")
+        healer.stop()
+        healing_task.cancel()
         sentinel_task.cancel()
         if monitor_process and monitor_process.returncode is None:
             await stop_monitoring(config)

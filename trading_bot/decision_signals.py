@@ -90,6 +90,11 @@ def log_decision_signal(
     Returns True on success, False on failure (never raises).
     """
     try:
+        # Normalize trigger_type: handle enum objects, lowercase strings, etc.
+        if hasattr(trigger_type, 'value'):
+            trigger_type = trigger_type.value  # Extract enum value
+        trigger_type = str(trigger_type or 'SCHEDULED').upper()
+
         # Clamp confidence
         if confidence is not None:
             try:

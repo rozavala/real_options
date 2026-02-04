@@ -91,7 +91,7 @@ def create_process_outcome_matrix(df: pd.DataFrame):
     fig.add_hline(y=0, line_dash="dash", line_color="gray")
     fig.add_vline(x=process_threshold, line_dash="dash", line_color="gray")
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 st.set_page_config(layout="wide", page_title="Scorecard | Mission Control")
 

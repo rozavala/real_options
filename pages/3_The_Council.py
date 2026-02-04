@@ -156,7 +156,7 @@ with st.sidebar:
             }
         ))
         fig_gauge.update_layout(height=200, margin=dict(l=20, r=20, t=40, b=20))
-        st.plotly_chart(fig_gauge, use_container_width=True)
+        st.plotly_chart(fig_gauge, width='stretch')
     else:
         st.info("No consensus data for this decision")
 
@@ -307,7 +307,7 @@ if vote_breakdown_raw and pd.notna(vote_breakdown_raw) and str(vote_breakdown_ra
                 text_auto='.3f'
             )
             fig_vote.update_layout(height=350)
-            st.plotly_chart(fig_vote, use_container_width=True)
+            st.plotly_chart(fig_vote, width='stretch')
 
             # Metrics row
             metric_cols = st.columns(4)

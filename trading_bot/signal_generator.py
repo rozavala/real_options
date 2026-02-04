@@ -18,6 +18,7 @@ from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager # Import StateManager
 from trading_bot.compliance import ComplianceGuardian
 from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type, TriggerType, detect_market_regime_simple
+from trading_bot.heterogeneous_router import CriticalRPCError
 from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.brier_bridge import record_agent_prediction
 
@@ -254,6 +255,11 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None) -> list:
                 # Add slight stagger to avoid instantaneous burst
                 await asyncio.sleep(0.5)
                 research_results = await asyncio.gather(*tasks.values(), return_exceptions=True)
+
+                # Check for CriticalRPCError (Executor Shutdown)
+                for res in research_results:
+                    if isinstance(res, CriticalRPCError):
+                        raise res
 
                 # C. Format Reports
                 reports = {}
@@ -757,7 +763,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None) -> list:
                         sma_200=market_ctx.get('sma_200'),
                         confidence=final_data.get('confidence'),
                         regime=regime_log,
-                        trigger_type=trigger_type if trigger_type else 'SCHEDULED',
+                        trigger_type=trigger_type.value.upper() if isinstance(trigger_type, TriggerType) else str(trigger_type or 'SCHEDULED').upper(),
                     )
 
                     # === BRIER SCORE RECORDING (Dual-Write: Legacy CSV + Enhanced JSON) ===
@@ -816,6 +822,21 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None) -> list:
 
                 except Exception as log_e:
                     logger.error(f"Failed to log council decision for {contract_name}: {log_e}")
+
+            except CriticalRPCError as e:
+                logger.critical(
+                    f"CRITICAL: Executor shutdown for {contract_name}. "
+                    f"Aborting cycle — will not produce garbage decisions. Error: {e}"
+                )
+                return {
+                    **market_ctx,
+                    "contract_month": contract.lastTradeDateOrContractMonth[:6],
+                    "prediction_type": "NEUTRAL",
+                    "direction": "NEUTRAL",
+                    "confidence": 0.0,
+                    "reason": f"CYCLE ABORTED: {e}",
+                    "_aborted": True,  # Flag for downstream
+                }
 
             except Exception as e:
                 logger.error(f"Council execution failed for {contract_name}: {e}")

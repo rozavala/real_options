@@ -379,12 +379,40 @@ Answer ONLY with a JSON object: {{"relevant": true/false, "score": 0-5}}
 """
         try:
             response = await self._call_anthropic(prompt)
-            data = json.loads(response)
+
+            # Guard against empty/whitespace responses
+            if not response or not response.strip():
+                logger.warning(
+                    f"LLM assessment returned empty response for "
+                    f"'{candidate.get('title', 'unknown')}'"
+                )
+                return None
+
+            # Strip markdown code fences if present (handles single-line and multi-line)
+            cleaned = response.strip()
+            if "```" in cleaned:
+                import re
+                match = re.search(r"```(?:json)?\s*(.*?)```", cleaned, re.DOTALL)
+                if match:
+                    cleaned = match.group(1).strip()
+
+            data = json.loads(cleaned)
             if data.get('relevant'):
                 return int(data.get('score', 0))
             return 0
+
+        except json.JSONDecodeError as e:
+            logger.warning(
+                f"LLM assessment returned non-JSON for "
+                f"'{candidate.get('title', 'unknown')}': "
+                f"{response[:100] if response else '<empty>'}"
+            )
+            return None
         except Exception as e:
-            logger.error(f"LLM assessment failed: {e}")
+            logger.error(
+                f"LLM assessment failed for "
+                f"'{candidate.get('title', 'unknown')}': {e}"
+            )
             return None
 
     async def _call_anthropic(self, prompt: str) -> str:
