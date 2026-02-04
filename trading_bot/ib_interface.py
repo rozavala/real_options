@@ -19,9 +19,6 @@ from trading_bot.utils import (
     get_tick_size, get_contract_multiplier
 )
 
-# --- Logging Setup ---
-setup_logging()
-
 
 async def get_option_market_data(ib: IB, contract: Contract, underlying_future: Contract) -> dict | None:
     """

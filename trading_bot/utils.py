@@ -21,9 +21,6 @@ from scipy.stats import norm
 from trading_bot.logging_config import setup_logging
 from trading_bot.timestamps import format_ts
 
-# --- Logging Setup ---
-setup_logging()
-
 # --- COMMODITY PROFILE HELPERS (MECE Phase 0) ---
 CENTS_INDICATORS = ('cent', '¢', 'usc', 'pence', 'pennies')
 

@@ -14,9 +14,6 @@ from ib_insync import *
 from trading_bot.logging_config import setup_logging
 from trading_bot.utils import get_expiration_details
 
-# --- Logging Setup ---
-setup_logging()
-
 
 def find_closest_strike(target_strike: float, available_strikes: list[float]) -> float | None:
     """Finds the strike in a list that is closest to a target value.
