@@ -49,7 +49,7 @@ rollback_and_restart() {
         mkdir -p logs
         chmod 755 logs 2>/dev/null || true
         touch logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log 2>/dev/null || true
-        chmod 664 logs/*.log 2>/dev/null || true
+        chmod 664 logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log 2>/dev/null || true
 
         # Restart with old code
         if [ -f "scripts/start_orchestrator.sh" ]; then
@@ -97,8 +97,8 @@ mkdir -p logs
 # Ensure logs directory exists with correct permissions
 chmod 755 logs
 touch logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log
-chmod 664 logs/*.log
-chown rodrigo:rodrigo logs/*.log 2>/dev/null || true
+chmod 664 logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log
+chown rodrigo:rodrigo logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log 2>/dev/null || true
 
 # =========================================================================
 # STEP 3: Activate venv + install deps
