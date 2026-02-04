@@ -478,29 +478,53 @@ async def main(config: dict = None):
     if analysis_result:
         notification_config = config.get('notifications', {})
 
-        # --- Send Main Title ---
-        send_pushover_notification(notification_config, analysis_result['title'], f"Trading Performance Report for {analysis_result['date']}")
+        # --- Build consolidated text report ---
+        report_parts = []
 
-        # --- Send Report Sections ---
-        for title, content in analysis_result['reports'].items():
+        # Always include exec summary
+        exec_summary = analysis_result['reports'].get('Exec. Summary', '')
+        if exec_summary:
+            report_parts.append(exec_summary)
+
+        # Include Morning Signals (compact format)
+        signals = analysis_result['reports'].get('Morning Signals', '')
+        if signals and signals.strip():
+            report_parts.append(f"\n--- Signals ---\n{signals}")
+
+        # Only include Open/Closed positions if they have content
+        open_pos = analysis_result['reports'].get('Open Positions', '')
+        if open_pos and 'No open positions' not in open_pos:
+            report_parts.append(f"\n--- Open Positions ---\n{open_pos}")
+
+        closed_pos = analysis_result['reports'].get('Closed Positions', '')
+        if closed_pos and 'No trades resulting in a closed position' not in closed_pos:
+            report_parts.append(f"\n--- Closed Positions ---\n{closed_pos}")
+
+        report_text = "\n".join(report_parts)
+
+        # Send consolidated text report
+        send_pushover_notification(
+            notification_config,
+            analysis_result['title'],
+            report_text,
+            monospace=True
+        )
+
+        # Send only the most informative chart (P&L by Signal)
+        chart_paths = analysis_result.get('charts', [])
+        # ⚠️ CRITICAL GUARD — Do NOT remove this truthiness check.
+        # If matplotlib fails or there's no data, chart_paths will be [].
+        # Indexing an empty list raises IndexError. (Flight Director review)
+        if chart_paths:
+            # Pick the last chart (Pnl By Signal) or the first available
+            best_chart = chart_paths[-1] if len(chart_paths) >= 3 else chart_paths[0]
+            chart_title = os.path.splitext(os.path.basename(best_chart))[0].replace('_', ' ').title()
             send_pushover_notification(
                 notification_config,
-                f"Report Section: {title}",
-                content,  # Content is already formatted
-                monospace=True
+                f"📊 {chart_title}",
+                f"Daily chart for {analysis_result['date']}",
+                attachment_path=best_chart
             )
-            await asyncio.sleep(1) # Small delay to ensure notifications arrive in order
-
-        # --- Send Charts ---
-        for i, chart_path in enumerate(analysis_result['charts']):
-            chart_title = os.path.splitext(os.path.basename(chart_path))[0].replace('_', ' ').title()
-            send_pushover_notification(
-                notification_config,
-                f"Chart {i+1}/{len(analysis_result['charts'])}: {chart_title}",
-                f"See attached chart: {chart_title}",
-                attachment_path=chart_path
-            )
-            await asyncio.sleep(1)
 
     else:
         send_pushover_notification(

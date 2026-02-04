@@ -419,38 +419,20 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             for signal in signals:
                 future_month = signal.get("contract_month", "N/A")
                 confidence_val = signal.get("confidence", 0.0)
-                price = signal.get("price", "N/A")
-                sma_200 = signal.get("sma_200", "N/A")
-
-                # Format numbers if they are floats
-                if isinstance(confidence_val, (int, float)):
-                    conf_str = f"{confidence_val:.2%}"
-                else:
-                    conf_str = str(confidence_val)
-
-                if isinstance(price, (int, float)):
-                    price_str = f"${price:.2f}"
-                else:
-                    price_str = str(price)
-
-                if isinstance(sma_200, (int, float)):
-                    sma_str = f"${sma_200:.2f}"
-                else:
-                    sma_str = str(sma_200)
+                conf_str = f"{confidence_val:.0%}" if isinstance(confidence_val, (int, float)) else str(confidence_val)
 
                 if signal.get('prediction_type') == 'DIRECTIONAL':
                     direction = signal.get("direction", "N/A")
-                    reason = signal.get("reason", "N/A")
                     signal_summary_parts.append(
-                        f"  - <b>{future_month}</b>: {direction} ({conf_str})<br>"
-                        f"    Reason: {reason}<br>"
-                        f"    Price: {price_str} | SMA200: {sma_str}"
+                        f"  {future_month}: {direction} ({conf_str})"
                     )
                 elif signal.get('prediction_type') == 'VOLATILITY':
                     vol_level = signal.get("level", "N/A")
-                    signal_summary_parts.append(f"  - <b>{future_month}</b>: {vol_level} Volatility signal")
+                    signal_summary_parts.append(
+                        f"  {future_month}: {vol_level} VOL ({conf_str})"
+                    )
 
-        signal_summary = "<b>Signals from Council:</b>\n" + "\n".join(signal_summary_parts)
+        signal_summary = "<b>Signals:</b>\n" + "\n".join(signal_summary_parts) if signal_summary_parts else "No signals generated."
 
         # 2. Summarize the queued orders
         order_summary_parts = []
@@ -1087,11 +1069,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             # --- 5. Build Notification String (ENHANCED FOR ALL DATA) ---
             price_info_notify = f"LMT: {order.lmtPrice:.2f}" if order.orderType == "LMT" else "MKT"
             leg_state_for_notify = "<br>    ".join(leg_state_strings) # HTML newline
+            readable_symbol = _describe_bag(contract) if hasattr(contract, 'comboLegs') else contract.localSymbol
             summary_line = (
-                f"  - <b>{contract.localSymbol}</b> (ID: {trade.order.orderId})<br>"
-                f"    {price_info_notify}<br>"
-                f"    {bag_state_str}<br>"
-                f"    {leg_state_for_notify}"
+                f"  - {readable_symbol}: {trade.order.action} {trade.order.totalQuantity} @ {price_info_notify}"
             )
             placed_trades_summary.append(summary_line)
             await asyncio.sleep(0.5) # Throttle order placement
@@ -1225,9 +1205,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
                 # Use the official avgFillPrice from the parent trade status, which is correct for both combos and single legs
                 avg_fill_price = trade.orderStatus.avgFillPrice
+                readable_symbol = _describe_bag(trade.contract) if hasattr(trade.contract, 'comboLegs') else trade.contract.localSymbol
                 fill_line = (
-                    f"  - <b>{trade.contract.localSymbol}</b> ({trade.order.action})<br>"
-                    f"    {price_info} -> FILLED @ avg ${avg_fill_price:.2f}"
+                    f"  - ✅ {readable_symbol}: Filled @ ${avg_fill_price:.2f}"
                 )
                 filled_orders.append(fill_line)
             
@@ -1282,11 +1262,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 # --- 4. Update Notification String (ENHANCED FOR ALL DATA) ---
                 price_info_notify = f"LMT: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "MKT"
                 final_leg_state_for_notify = "<br>    ".join(final_leg_state_strings) # HTML newline
+                readable_symbol = _describe_bag(trade.contract) if hasattr(trade.contract, 'comboLegs') else trade.contract.localSymbol
                 cancel_line = (
-                    f"  - <b>{trade.contract.localSymbol}</b> (ID: {order_id})<br>"
-                    f"    {price_info_notify}<br>"
-                    f"    Final {final_bag_state}<br>"
-                    f"    Final {final_leg_state_for_notify}"
+                    f"  - {readable_symbol}: {price_info_notify} — Unfilled, cancelled"
                 )
                 cancelled_orders.append(cancel_line)
                 await asyncio.sleep(0.2)
@@ -1470,7 +1448,6 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
         live_positions = await ib.reqPositionsAsync()
         if not live_positions:
             logger.info("No open positions found in the IB account. Nothing to close.")
-            send_pushover_notification(config.get('notifications', {}), "Position Closing", "No open IB positions were found to close.")
             return
 
         logger.info(f"Found {len(live_positions)} live position legs in the IB account.")
@@ -1483,11 +1460,6 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
             )
         if not non_zero_positions:
             logger.info("All returned positions have zero quantity — nothing to close.")
-            send_pushover_notification(
-                config.get('notifications', {}),
-                "Position Closing",
-                "All IB positions already closed (zero quantity)."
-            )
             return
 
         # --- 2. Load trade ledger to get historical data (open dates) ---

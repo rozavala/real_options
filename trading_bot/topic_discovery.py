@@ -539,21 +539,5 @@ Answer ONLY with a JSON object: {{"relevant": true/false, "score": 0-5}}
         return changes
 
     def _notify_changes(self, changes: Dict):
-        """Send Pushover notification with human-readable topic names."""
-        from notifications import send_pushover_notification
-
-        msg = f"<b>Topic Discovery Update</b>\n{changes['summary']}\n"
-        if changes.get('added_display'):
-            display_items = [name[:60] for name in changes['added_display'][:5]]
-            msg += f"\n<b>Added:</b>\n" + "\n".join(f"• {name}" for name in display_items)
-        elif changes.get('added'):
-            # Fallback to tags if display names unavailable
-            msg += f"\n<b>Added:</b> {', '.join(changes['added'][:5])}"
-
-        if changes.get('removed_display'):
-            display_items = [name[:60] for name in changes['removed_display'][:5]]
-            msg += f"\n<b>Removed:</b>\n" + "\n".join(f"• {name}" for name in display_items)
-        elif changes.get('removed'):
-            msg += f"\n<b>Removed:</b> {', '.join(changes['removed'][:5])}"
-
-        send_pushover_notification(self.config.get('notifications', {}), "Topic Discovery", msg)
+        """Log changes (formerly Pushover notification)."""
+        logger.info(f"Topic Discovery: {changes['summary']}")
