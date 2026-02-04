@@ -2,47 +2,66 @@ Verifying critical modules...
   ✅ All 14 critical modules present
 Checking optional modules...
 Starting orchestrator...
-2026-02-04 08:25:43,625 - Orchestrator - INFO - =============================================
-2026-02-04 08:25:43,625 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-04 08:25:43,625 - Orchestrator - INFO - =============================================
-2026-02-04 08:25:43,627 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-04 08:25:43,627 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
-2026-02-04 08:25:43,627 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-04 08:25:43,753 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-04 08:25:43,753 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-04 08:25:43,753 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 2 scheduled tasks already passed:
-  - 03:20 UTC: start_monitoring
-  - 03:21 UTC: process_deferred_triggers
-2026-02-04 08:25:44,037 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-04 08:25:44,040 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-04 13:20:00 UTC. Waiting for 4.90 hours.
-2026-02-04 08:25:44,040 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-04 08:25:44,040 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 10 active alerts from disk
-2026-02-04 08:25:44,293 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-04 08:25:44,294 - trading_bot.sentinels - INFO - Loaded state for 7 prediction market topics
-2026-02-04 08:25:44,294 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'US x Russia military clash by...?': title='How many people will Trump deport in 2025?'. Clearing cache.
-2026-02-04 08:25:44,294 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Fed decisions (Dec-Mar)': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
-2026-02-04 08:25:44,294 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Will tariffs generate >$250b in 2025?': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
-2026-02-04 08:25:44,294 - trading_bot.sentinels - INFO - Reloading prediction market topics...
-2026-02-04 08:25:44,294 - trading_bot.sentinels - INFO - Topics reloaded: 10
-2026-02-04 08:25:44,294 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 10 topics
-2026-02-04 08:25:44,298 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-02-04 08:26:00,194 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-02-04 08:26:20,039 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-02-04 08:26:30,409 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-04 08:26:30,669 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-04 08:26:30,708 - Orchestrator - INFO - TopicDiscovery: 6 topics, No changes
-2026-02-04 08:30:30,892 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
-2026-02-04 08:30:30,895 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 119...
-2026-02-04 08:30:31,061 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 119
-2026-02-04 08:30:31,071 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-04 08:30:31,071 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
-2026-02-04 08:30:31,072 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
-2026-02-04 08:30:31,289 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
-2026-02-04 08:30:31,292 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-02-04 08:30:31,292 - Orchestrator - INFO - Refreshed contract cache: KCK6
-2026-02-04 08:30:31,292 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-02-04 08:30:31,292 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 205...
-2026-02-04 08:30:31,420 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 205
-2026-02-04 08:30:31,424 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-04 08:30:31,425 - trading_bot.microstructure_sentinel - INFO - MicrostructureSentinel initialized
-2026-02-04 08:30:33,428 - trading_bot.microstructure_sentinel - INFO - Subscribed to microstructure for KCK6
+2026-02-04 09:19:38,116 - Orchestrator - INFO - =============================================
+2026-02-04 09:19:38,117 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-04 09:19:38,117 - Orchestrator - INFO - =============================================
+2026-02-04 09:19:38,120 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-04 09:19:38,120 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
+2026-02-04 09:19:38,120 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-04 09:19:38,235 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-02-04 09:19:38,235 - Orchestrator - INFO - No deferred triggers to process.
+2026-02-04 09:19:38,235 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-02-04 09:19:38,235 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 2 scheduled tasks already passed:
+  - 03:20 ET: start_monitoring
+  - 03:21 ET: process_deferred_triggers
+2026-02-04 09:19:38,543 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 09:19:38,546 - Orchestrator - INFO - --- Recovery: Evaluating 2 missed tasks ---
+2026-02-04 09:19:38,546 - Orchestrator - INFO - 🔄 RECOVERY: Running missed start_monitoring (was scheduled 03:20 ET)
+2026-02-04 09:19:38,547 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
+2026-02-04 09:19:38,549 - Orchestrator - INFO - --- Starting position monitoring process ---
+2026-02-04 09:19:38,551 - Orchestrator - INFO - Successfully started position monitor with PID: 768153
+2026-02-04 09:19:38,770 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 09:19:38,782 - Orchestrator - INFO - ✅ RECOVERY: start_monitoring completed
+2026-02-04 09:19:38,783 - Orchestrator - INFO - 🔄 RECOVERY: Running missed process_deferred_triggers (was scheduled 03:21 ET)
+2026-02-04 09:19:38,785 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-02-04 09:19:38,785 - Orchestrator - INFO - No deferred triggers to process.
+2026-02-04 09:19:38,791 - Orchestrator - INFO - ✅ RECOVERY: process_deferred_triggers completed
+2026-02-04 09:19:38,791 - Orchestrator - INFO - Recovery complete: 2 recovered, 0 skipped, 0 already ran
+2026-02-04 09:19:39,100 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 09:19:39,119 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-04 13:20:00 UTC. Waiting for 4.01 hours.
+2026-02-04 09:19:39,121 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-04 09:19:39,122 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 10 active alerts from disk
+2026-02-04 09:19:39,805 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-02-04 09:19:39,806 - trading_bot.sentinels - INFO - Loaded state for 7 prediction market topics
+2026-02-04 09:19:39,807 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'US x Russia military clash by...?': title='How many people will Trump deport in 2025?'. Clearing cache.
+2026-02-04 09:19:39,808 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Fed decisions (Dec-Mar)': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
+2026-02-04 09:19:39,809 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Will tariffs generate >$250b in 2025?': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
+2026-02-04 09:19:39,809 - trading_bot.sentinels - INFO - Reloading prediction market topics...
+2026-02-04 09:19:39,809 - trading_bot.sentinels - INFO - Topics reloaded: 10
+2026-02-04 09:19:39,810 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 10 topics
+2026-02-04 09:19:39,814 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-02-04 09:19:39,815 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 111...
+2026-02-04 09:19:39,819 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-04 09:19:39,985 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 111
+2026-02-04 09:19:39,991 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-04 09:19:39,991 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
+2026-02-04 09:19:39,991 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-04 09:19:40,248 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-04 09:19:40,251 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-04 09:19:40,252 - Orchestrator - INFO - Refreshed contract cache: KCK6
+2026-02-04 09:19:40,252 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-02-04 09:19:40,255 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 201...
+2026-02-04 09:19:40,616 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 201
+2026-02-04 09:19:40,621 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-04 09:19:40,622 - trading_bot.microstructure_sentinel - INFO - MicrostructureSentinel initialized
+2026-02-04 09:19:42,623 - trading_bot.microstructure_sentinel - INFO - Subscribed to microstructure for KCK6
+2026-02-04 09:19:42,834 - Orchestrator - INFO - 2026-02-04 09:19:42,833 - __main__ - INFO - Connecting to 127.0.0.1:7497 with client ID 384 for monitoring...
+2026-02-04 09:19:42,949 - Orchestrator - INFO - 2026-02-04 09:19:42,949 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-04 09:19:43,128 - Orchestrator - INFO - 2026-02-04 09:19:43,128 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 09:19:43,129 - Orchestrator - INFO - 2026-02-04 09:19:43,129 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
+2026-02-04 09:19:43,130 - Orchestrator - INFO - 2026-02-04 09:19:43,129 - root - INFO - Order status and execution event handlers registered.
+2026-02-04 09:19:51,653 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-04 09:20:12,762 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-04 09:20:23,450 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-04 09:20:23,534 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-04 09:20:23,602 - Orchestrator - INFO - TopicDiscovery: 6 topics, No changes
