@@ -398,7 +398,7 @@ class HeterogeneousRouter:
 
         # Initialize Cache
         self.cache = ResponseCache(config)  # Now uses role-based TTL internally
-        self.semantic_cache = SemanticCache()
+        self.semantic_cache = SemanticCache(config)
 
         # 1. LOAD MODEL KEYS (With Defaults)
         gem_flash = self.registry.get('gemini', {}).get('flash', 'gemini-3-flash-preview')
