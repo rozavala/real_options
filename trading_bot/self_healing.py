@@ -29,6 +29,7 @@ class SelfHealingMonitor:
         self._running = False
         self._recovery_count = 0
         self._last_check = None
+        self._start_time = datetime.now(timezone.utc)
 
     async def run(self):
         """Main loop. Run as asyncio.create_task() in orchestrator."""
@@ -114,28 +115,44 @@ class SelfHealingMonitor:
             pass
 
     def _check_log_writability(self):
-        """Verify orchestrator.log is writable. Alert if permission denied."""
+        """Verify orchestrator.log has an active handler in the logging system.
+
+        Uses a grace period to avoid false positives during initialization.
+        """
+        # Skip check during first 60 seconds to avoid initialization race conditions
+        uptime = (datetime.now(timezone.utc) - self._start_time).total_seconds()
+        if uptime < 60:
+            return
+
         try:
-            log_file = Path("logs/orchestrator.log")
-            if log_file.exists():
-                # Try to open for append
-                with open(log_file, 'a') as f:
-                    pass  # Just test access
-            else:
-                # File doesn't exist — check if directory is writable
-                log_dir = Path("logs")
-                if log_dir.exists() and not os.access(log_dir, os.W_OK):
+            # Check if the root logger has any file handlers for orchestrator.log
+            root_logger = logging.getLogger()
+            has_file_handler = False
+
+            for handler in root_logger.handlers:
+                if isinstance(handler, logging.FileHandler):
+                    # Check if this handler's filename matches our log file
+                    if hasattr(handler, 'baseFilename'):
+                        if 'orchestrator.log' in handler.baseFilename:
+                            has_file_handler = True
+                            break
+
+            if not has_file_handler:
+                # Only warn if we're past initialization and the file exists
+                log_file = Path("logs/orchestrator.log")
+                if log_file.exists():
                     logger.warning(
-                        "SELF-HEAL: logs/ directory not writable. "
-                        "Run: sudo chown rodrigo:rodrigo logs/"
+                        "SELF-HEAL: orchestrator.log exists but no file handler attached. "
+                        "Logs may only be going to stdout. "
+                        "Check logging_config.py for permission issues."
                     )
-        except PermissionError:
-            logger.critical(
-                "SELF-HEAL: Cannot write to logs/orchestrator.log! "
-                "Dashboard and log collection are blind. "
-                "Fix: sudo chown rodrigo:rodrigo logs/orchestrator.log"
-            )
+                else:
+                    logger.debug(
+                        "SELF-HEAL: orchestrator.log not found and no file handler. "
+                        "This may be expected in certain deployment modes."
+                    )
         except Exception as e:
+            # Fail-safe: Don't crash the monitor if the check itself fails
             logger.debug(f"Log writability check failed: {e}")
 
     async def _check_tcp_zombies(self):
