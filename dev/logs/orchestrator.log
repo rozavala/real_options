@@ -2,28 +2,32 @@ Verifying critical modules...
   ✅ All 14 critical modules present
 Checking optional modules...
 Starting orchestrator...
-2026-02-04 07:49:11,253 - Orchestrator - INFO - =============================================
-2026-02-04 07:49:11,253 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-04 07:49:11,253 - Orchestrator - INFO - =============================================
-2026-02-04 07:49:11,255 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-04 07:49:11,255 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
-2026-02-04 07:49:11,255 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-04 07:49:11,376 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-04 07:49:11,376 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-04 07:49:11,377 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-04 08:20:00 UTC. Waiting for 0.51 hours.
-2026-02-04 07:49:11,377 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-04 07:49:11,377 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 10 active alerts from disk
-2026-02-04 07:49:11,597 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-04 07:49:11,598 - trading_bot.sentinels - INFO - Loaded state for 7 prediction market topics
-2026-02-04 07:49:11,598 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'US x Russia military clash by...?': title='How many people will Trump deport in 2025?'. Clearing cache.
-2026-02-04 07:49:11,598 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Fed decisions (Dec-Mar)': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
-2026-02-04 07:49:11,598 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Will tariffs generate >$250b in 2025?': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
-2026-02-04 07:49:11,598 - trading_bot.sentinels - INFO - Reloading prediction market topics...
-2026-02-04 07:49:11,598 - trading_bot.sentinels - INFO - Topics reloaded: 10
-2026-02-04 07:49:11,598 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 10 topics
-2026-02-04 07:49:11,603 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-02-04 07:49:21,655 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-02-04 07:49:43,794 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-02-04 07:49:54,522 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-04 07:49:54,783 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-04 07:49:54,839 - Orchestrator - INFO - TopicDiscovery: 6 topics, No changes
+2026-02-04 08:25:43,625 - Orchestrator - INFO - =============================================
+2026-02-04 08:25:43,625 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-04 08:25:43,625 - Orchestrator - INFO - =============================================
+2026-02-04 08:25:43,627 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-04 08:25:43,627 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
+2026-02-04 08:25:43,627 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-04 08:25:43,753 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-04 08:25:43,753 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-02-04 08:25:43,753 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 2 scheduled tasks already passed:
+  - 03:20 UTC: start_monitoring
+  - 03:21 UTC: process_deferred_triggers
+2026-02-04 08:25:44,037 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 08:25:44,040 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-04 13:20:00 UTC. Waiting for 4.90 hours.
+2026-02-04 08:25:44,040 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-04 08:25:44,040 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 10 active alerts from disk
+2026-02-04 08:25:44,293 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-02-04 08:25:44,294 - trading_bot.sentinels - INFO - Loaded state for 7 prediction market topics
+2026-02-04 08:25:44,294 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'US x Russia military clash by...?': title='How many people will Trump deport in 2025?'. Clearing cache.
+2026-02-04 08:25:44,294 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Fed decisions (Dec-Mar)': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
+2026-02-04 08:25:44,294 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Will tariffs generate >$250b in 2025?': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
+2026-02-04 08:25:44,294 - trading_bot.sentinels - INFO - Reloading prediction market topics...
+2026-02-04 08:25:44,294 - trading_bot.sentinels - INFO - Topics reloaded: 10
+2026-02-04 08:25:44,294 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 10 topics
+2026-02-04 08:25:44,298 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-04 08:26:00,194 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-04 08:26:20,039 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-04 08:26:30,409 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-04 08:26:30,669 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-04 08:26:30,708 - Orchestrator - INFO - TopicDiscovery: 6 topics, No changes
