@@ -58,6 +58,7 @@ from trading_bot.budget_guard import BudgetGuard
 from trading_bot.drawdown_circuit_breaker import DrawdownGuard
 from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.strategy_router import route_strategy, infer_strategy_type
+from trading_bot.task_tracker import record_task_completion, has_task_completed_today
 
 # --- Logging Setup ---
 setup_logging(log_file="logs/orchestrator.log")
@@ -2179,6 +2180,23 @@ async def run_sentinels(config: dict):
                         last_successful_ib_time = time_module.time()
                         outage_notification_sent = False
 
+                        # === SAFETY NET: Ensure position monitoring is running ===
+                        # Covers the gap where bot starts just before market open
+                        # and the scheduled start_monitoring was already missed.
+                        if not _SYSTEM_SHUTDOWN and (
+                            monitor_process is None or monitor_process.returncode is not None
+                        ):
+                            logger.info(
+                                "🔄 SENTINEL SAFETY NET: Market open but position "
+                                "monitor not running — starting it now"
+                            )
+                            try:
+                                await start_monitoring(config)
+                            except Exception as e:
+                                logger.error(
+                                    f"Safety net start_monitoring failed: {e}"
+                                )
+
                     except Exception as e:
                         # Log as WARNING during market hours (connection should be possible)
                         logger.warning(f"Sentinel IB connection deferred: {e}")
@@ -2686,6 +2704,181 @@ def apply_schedule_offset(original_schedule: dict, offset_minutes: int) -> dict:
         new_schedule[dt_shifted.time()] = task_func
     return new_schedule
 
+# =========================================================================
+# RECOVERY POLICIES — Controls which missed tasks run on late/restart startup
+# =========================================================================
+# policy:
+#   MARKET_OPEN   — Run if market is currently open (task has internal guards)
+#   BEFORE_CUTOFF — Run if market is open AND before daily trading cutoff
+#   ALWAYS        — Run regardless of market state (data/analysis tasks)
+#   NEVER         — Do not auto-recover (shutdown tasks)
+#
+# idempotent:
+#   True  — Safe to re-run (checks current state internally). No completion check needed.
+#   False — NOT safe to re-run. Recovery will skip if already completed today.
+#
+# IMPORTANT: Keys MUST match the function names in `schedule` exactly.
+# If a function is renamed, update this dict to match. The default fallback
+# for unknown tasks is {'policy': 'MARKET_OPEN', 'idempotent': False} which
+# is fail-safe (won't force-run a dangerous task), but recovery won't work
+# optimally for the renamed function until this dict is updated.
+#
+RECOVERY_POLICY = {
+    'start_monitoring':               {'policy': 'MARKET_OPEN',   'idempotent': True},
+    'process_deferred_triggers':      {'policy': 'MARKET_OPEN',   'idempotent': False},
+    'run_position_audit_cycle':       {'policy': 'MARKET_OPEN',   'idempotent': True},
+    'guarded_generate_orders':        {'policy': 'BEFORE_CUTOFF', 'idempotent': False},
+    'close_stale_positions':          {'policy': 'MARKET_OPEN',   'idempotent': True},
+    'close_stale_positions_fallback': {'policy': 'MARKET_OPEN',   'idempotent': True},
+    'emergency_hard_close':           {'policy': 'MARKET_OPEN',   'idempotent': True},
+    'cancel_and_stop_monitoring':     {'policy': 'NEVER',         'idempotent': False},
+    'log_equity_snapshot':            {'policy': 'ALWAYS',        'idempotent': False},
+    'run_brier_reconciliation':       {'policy': 'ALWAYS',        'idempotent': True},
+    'reconcile_and_analyze':          {'policy': 'ALWAYS',        'idempotent': False},
+}
+
+# Startup validation: warn if schedule has tasks not covered by RECOVERY_POLICY
+_schedule_names = {func.__name__ for func in schedule.values()}
+_policy_names = set(RECOVERY_POLICY.keys())
+_uncovered = _schedule_names - _policy_names
+if _uncovered:
+    import logging as _log
+    _log.getLogger(__name__).warning(
+        f"⚠️ Schedule tasks without RECOVERY_POLICY entries (will use safe defaults): "
+        f"{_uncovered}"
+    )
+
+
+async def recover_missed_tasks(missed_tasks: list, config: dict):
+    """
+    Generic recovery for missed scheduled tasks on late/restart startup.
+
+    Runs missed tasks in chronological order based on their recovery policy.
+    For non-idempotent tasks, checks the completion tracker to avoid
+    re-executing tasks that already ran before a crash.
+
+    Deduplicates repeated functions (e.g., multiple run_position_audit_cycle
+    instances) — each unique function runs at most once during recovery.
+
+    IMPORTANT — Crash-during-execution edge case:
+    If the orchestrator crashes AFTER a task sends an IB order but BEFORE
+    record_task_completion writes, recovery will re-run that task. This is
+    acceptable because non-idempotent tasks like guarded_generate_orders
+    have internal guards (checking existing positions and open orders before
+    submitting). Do NOT remove those internal guards — they are the last
+    line of defense for this edge case.
+
+    Args:
+        missed_tasks: List of (time, task_name, task_func) tuples
+        config: Application config dict
+    """
+    if not missed_tasks:
+        return
+
+    ny_tz = pytz.timezone('America/New_York')
+    now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
+
+    # Cutoff check for BEFORE_CUTOFF policy
+    trading_cutoff = config.get('schedule', {}).get(
+        'daily_trading_cutoff_et', {'hour': 10, 'minute': 45}
+    )
+    cutoff_hour = trading_cutoff.get('hour', 10)
+    cutoff_minute = trading_cutoff.get('minute', 45)
+    before_cutoff = (
+        now_ny.hour < cutoff_hour or
+        (now_ny.hour == cutoff_hour and now_ny.minute < cutoff_minute)
+    )
+    market_open = is_market_open()
+
+    # Sort chronologically by time object (time objects are directly comparable)
+    sorted_missed = sorted(missed_tasks, key=lambda x: x[0])
+
+    # Deduplicate: same function scheduled multiple times only runs once
+    seen_functions = set()
+    recovered = 0
+    skipped = 0
+    already_ran = 0
+
+    logger.info(f"--- Recovery: Evaluating {len(sorted_missed)} missed tasks ---")
+
+    for run_time, task_name, task_func in sorted_missed:
+        if task_name in seen_functions:
+            logger.debug(
+                f"  ⏭️ {task_name} @ {run_time.strftime('%H:%M')} ET "
+                f"(duplicate, already recovered)"
+            )
+            continue
+        seen_functions.add(task_name)
+
+        policy_entry = RECOVERY_POLICY.get(
+            task_name, {'policy': 'MARKET_OPEN', 'idempotent': False}
+        )
+        policy = policy_entry['policy']
+        is_idempotent = policy_entry['idempotent']
+
+        # --- Completion check for non-idempotent tasks ---
+        if not is_idempotent and has_task_completed_today(task_name):
+            logger.info(
+                f"✅ ALREADY RAN: {task_name} completed earlier today "
+                f"(before restart). Skipping re-execution."
+            )
+            already_ran += 1
+            continue
+
+        # --- Policy check ---
+        should_run = False
+        skip_reason = ""
+
+        if policy == 'NEVER':
+            skip_reason = "policy=NEVER (shutdown task)"
+        elif policy == 'ALWAYS':
+            should_run = True
+        elif policy == 'MARKET_OPEN':
+            if market_open:
+                should_run = True
+            else:
+                skip_reason = "market closed"
+        elif policy == 'BEFORE_CUTOFF':
+            if market_open and before_cutoff:
+                should_run = True
+            elif not market_open:
+                skip_reason = "market closed"
+            else:
+                skip_reason = f"past cutoff ({cutoff_hour}:{cutoff_minute:02d} ET)"
+
+        if should_run:
+            logger.info(
+                f"🔄 RECOVERY: Running missed {task_name} "
+                f"(was scheduled {run_time.strftime('%H:%M')} ET)"
+            )
+            try:
+                await task_func(config)
+                record_task_completion(task_name)
+                logger.info(f"✅ RECOVERY: {task_name} completed")
+                recovered += 1
+            except Exception as e:
+                logger.error(
+                    f"❌ RECOVERY: {task_name} failed: {e}\n"
+                    f"{traceback.format_exc()}"
+                )
+        else:
+            logger.info(f"⏭️ RECOVERY SKIP: {task_name} — {skip_reason}")
+            skipped += 1
+
+    summary = (
+        f"Recovery complete: {recovered} recovered, "
+        f"{skipped} skipped, {already_ran} already ran"
+    )
+    logger.info(summary)
+
+    if recovered > 0:
+        send_pushover_notification(
+            config.get('notifications', {}),
+            f"🔄 Recovery: {recovered} Tasks Recovered",
+            summary
+        )
+
+
 async def main():
     """The main long-running orchestrator process."""
     logger.info("=============================================")
@@ -2731,10 +2924,10 @@ async def main():
     for run_time, task_func in current_schedule.items():
         task_ny = now_ny.replace(hour=run_time.hour, minute=run_time.minute, second=0, microsecond=0)
         if task_ny < now_ny:
-            missed_tasks.append((run_time, task_func.__name__))
+            missed_tasks.append((run_time, task_func.__name__, task_func))
 
     if missed_tasks:
-        missed_names = [f"  - {t.strftime('%H:%M')} UTC: {name}" for t, name in missed_tasks]
+        missed_names = [f"  - {t.strftime('%H:%M')} ET: {name}" for t, name, _ in missed_tasks]
         logger.warning(
             f"⚠️ LATE START DETECTED: {len(missed_tasks)} scheduled tasks already passed:\n"
             + "\n".join(missed_names)
@@ -2745,41 +2938,8 @@ async def main():
             "\n".join(missed_names)
         )
 
-        # === RECOVERY: Attempt guarded_generate_orders if missed and before cutoff ===
-        trading_cutoff = config.get('schedule', {}).get(
-            'daily_trading_cutoff_et', {'hour': 10, 'minute': 45}
-        )
-        cutoff_hour = trading_cutoff.get('hour', 10)
-        cutoff_minute = trading_cutoff.get('minute', 45)
-
-        missed_order_gen = any(
-            name == 'guarded_generate_orders' for _, name in missed_tasks
-        )
-        before_cutoff = (
-            now_ny.hour < cutoff_hour or
-            (now_ny.hour == cutoff_hour and now_ny.minute < cutoff_minute)
-        )
-
-        if missed_order_gen and before_cutoff and is_market_open():
-            logger.info(
-                "🔄 RECOVERY: Running missed guarded_generate_orders "
-                f"(before cutoff {cutoff_hour}:{cutoff_minute:02d} ET)"
-            )
-            try:
-                await guarded_generate_orders(config)
-            except Exception as e:
-                logger.error(f"Recovery order generation failed: {e}")
-        elif missed_order_gen and not before_cutoff:
-            logger.warning(
-                f"⏭️ RECOVERY SKIPPED: guarded_generate_orders missed and past "
-                f"daily cutoff ({cutoff_hour}:{cutoff_minute:02d} ET). "
-                f"No signal generation today unless forced via dashboard."
-            )
-        elif missed_order_gen and not is_market_open():
-            logger.info(
-                "⏭️ RECOVERY SKIPPED: Market closed. "
-                "guarded_generate_orders deferred to next session."
-            )
+        # === GENERIC RECOVERY: Run all valid missed tasks ===
+        await recover_missed_tasks(missed_tasks, config)
 
     # Start Sentinels in background
     sentinel_task = asyncio.create_task(run_sentinels(config))
@@ -2810,6 +2970,7 @@ async def main():
 
                 try:
                     await next_task_func(config)
+                    record_task_completion(task_name)
                 finally:
                     # Clear cooldown immediately after task finishes
                     GLOBAL_DEDUPLICATOR.clear_cooldown("GLOBAL")
