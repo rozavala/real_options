@@ -57,6 +57,7 @@ from trading_bot.tms import TransactiveMemory
 from trading_bot.budget_guard import BudgetGuard
 from trading_bot.drawdown_circuit_breaker import DrawdownGuard
 from trading_bot.cycle_id import generate_cycle_id
+from trading_bot.strategy_router import route_strategy, infer_strategy_type
 
 # --- Logging Setup ---
 setup_logging()
@@ -1828,6 +1829,32 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     agent_reports=current_reports,
                     config=config
                 )
+
+                # === SHADOW RUN (Strategy Router) ===
+                try:
+                    routed_shadow = route_strategy(
+                        direction=decision.get('direction', 'NEUTRAL'),
+                        confidence=decision.get('confidence', 0.0),
+                        vol_sentiment=decision.get('volatility_sentiment', 'BEARISH'),
+                        regime=ml_signal.get('regime', 'UNKNOWN'),
+                        thesis_strength=decision.get('thesis_strength', 'SPECULATIVE'),
+                        conviction_multiplier=decision.get('conviction_multiplier', 1.0),
+                        reasoning=decision.get('reasoning', ''),
+                        agent_data=current_reports,
+                        mode="emergency",
+                    )
+
+                    if routed['prediction_type'] != routed_shadow['prediction_type'] or \
+                       routed['vol_level'] != routed_shadow['vol_level']:
+                        logger.critical(
+                            f"ROUTING MISMATCH (Emergency Shadow): "
+                            f"Legacy=[{routed['prediction_type']}, {routed['vol_level']}], "
+                            f"Router=[{routed_shadow['prediction_type']}, {routed_shadow['vol_level']}]"
+                        )
+                    else:
+                        logger.info("Emergency Router Shadow Run: MATCH ✅")
+                except Exception as e:
+                    logger.error(f"Emergency Router Shadow Run FAILED: {e}")
 
                 # === Log Emergency Decision to History ===
                 # Reconstruct full log entry for history

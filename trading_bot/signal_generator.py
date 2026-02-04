@@ -21,6 +21,7 @@ from trading_bot.weighted_voting import calculate_weighted_decision, determine_t
 from trading_bot.heterogeneous_router import CriticalRPCError
 from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.brier_bridge import record_agent_prediction
+from trading_bot.strategy_router import route_strategy, infer_strategy_type  # NEW
 
 logger = logging.getLogger(__name__)
 
@@ -909,6 +910,40 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None) -> list:
                 logger.info(f"STRATEGY: Directional spread with expensive vol (thesis={thesis_strength})")
             else:
                 logger.info(f"STRATEGY: Directional spread (thesis={thesis_strength}, vol={vol_sentiment})")
+
+        # === SHADOW RUN (v7.0 Strategy Router) ===
+        # Verify the new router produces identical results to the legacy logic
+        try:
+            routed_shadow = route_strategy(
+                direction=final_direction,
+                confidence=final_data["confidence"],
+                vol_sentiment=vol_sentiment,
+                regime=regime,
+                thesis_strength=thesis_strength,
+                conviction_multiplier=decision.get('conviction_multiplier', 1.0) if 'decision' in dir() else 1.0,
+                reasoning=final_data["reason"],
+                agent_data=agent_data,
+                mode="scheduled",
+            )
+
+            # Assertion: Check invariant
+            mismatch = False
+            if routed_shadow['prediction_type'] != prediction_type:
+                mismatch = True
+            if routed_shadow['vol_level'] != vol_level:
+                mismatch = True
+
+            if mismatch:
+                logger.critical(
+                    f"ROUTING MISMATCH (Shadow Run): "
+                    f"Legacy=[{prediction_type}, {vol_level}], "
+                    f"Router=[{routed_shadow['prediction_type']}, {routed_shadow['vol_level']}]"
+                )
+            else:
+                logger.info("Strategy Router Shadow Run: MATCH ✅")
+
+        except Exception as e:
+            logger.error(f"Strategy Router Shadow Run FAILED: {e}")
 
         # Construct final signal object
         if prediction_type == "VOLATILITY":

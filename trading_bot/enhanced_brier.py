@@ -170,6 +170,10 @@ class EnhancedBrierTracker:
         Returns:
             Prediction ID for later resolution
         """
+        # DEFENSIVE GUARD: Sanitize "nan" string that can leak from pandas
+        if cycle_id in ("nan", "None", "null", None):
+            cycle_id = ""
+
         pred = ProbabilisticPrediction(
             timestamp=timestamp or datetime.now(timezone.utc),
             agent=agent,
@@ -219,6 +223,10 @@ class EnhancedBrierTracker:
         Returns:
             Brier score for this prediction
         """
+        # DEFENSIVE GUARD
+        if cycle_id in ("nan", "None", "null", None):
+            cycle_id = ""
+
         from trading_bot.cycle_id import is_valid_cycle_id
 
         # Find matching prediction
