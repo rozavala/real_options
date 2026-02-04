@@ -551,7 +551,7 @@ if task_data['available']:
 
     import pandas as pd
     df = pd.DataFrame(table_rows)
-    st.dataframe(df, hide_index=True, use_container_width=True)
+    st.dataframe(df, hide_index=True, width="stretch")
 
     # Environment badge
     env = task_data['schedule_env']

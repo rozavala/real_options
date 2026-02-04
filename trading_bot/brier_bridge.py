@@ -134,36 +134,30 @@ def get_agent_reliability(agent_name: str, regime: str = "NORMAL", window: int =
     """
     Rolling reliability multiplier from Enhanced Brier scores.
 
-    Returns multiplier in [0.3, 2.0]:
-    - Brier < 0.10 → 2.0x (excellent calibration)
-    - Brier ~ 0.25 → 1.0x (average / insufficient data)
-    - Brier > 0.40 → 0.3x (poor calibration)
+    Delegates to EnhancedBrierTracker.get_agent_reliability() which
+    implements the Brier-to-multiplier conversion internally.
+
+    Returns multiplier in [0.1, 2.0]:
+    - Brier ~0.0  → 2.0x (excellent calibration)
+    - Brier ~0.25 → 1.0x (average / insufficient data)
+    - Brier ~0.5  → 0.1x (poor calibration)
     """
     try:
         tracker = _get_enhanced_tracker()
         if tracker is None:
             return 1.0
 
-        agent_scores = tracker.get_agent_scores(agent_name)
-        if not agent_scores or agent_scores.get('resolved_count', 0) < 5:
-            return 1.0  # Insufficient data → neutral weight
+        # FIX (P1-B, 2026-02-04): Call the correct method on the tracker.
+        # Previously called tracker.get_agent_scores() which doesn't exist.
+        # The tracker's get_agent_reliability() already handles:
+        #   - Minimum sample check (< 5 → returns 1.0)
+        #   - Regime-aware scoring
+        #   - Brier-to-multiplier conversion
+        multiplier = tracker.get_agent_reliability(agent_name, regime)
 
-        brier_score = agent_scores.get('brier_score', 0.25)
-
-        # Piecewise linear mapping: Brier → multiplier
-        if brier_score <= 0.10:
-            multiplier = 2.0
-        elif brier_score <= 0.25:
-            multiplier = 2.0 - (brier_score - 0.10) * (1.0 / 0.15)
-        elif brier_score <= 0.40:
-            multiplier = 1.0 - (brier_score - 0.25) * (0.7 / 0.15)
-        else:
-            multiplier = 0.3
-
-        multiplier = round(max(0.3, min(2.0, multiplier)), 2)
         logger.debug(
-            f"Agent {agent_name} reliability: "
-            f"Brier={brier_score:.3f} → multiplier={multiplier:.2f}"
+            f"Agent {agent_name} reliability (regime={regime}): "
+            f"multiplier={multiplier:.2f}"
         )
         return multiplier
 

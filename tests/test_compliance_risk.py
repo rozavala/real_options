@@ -31,8 +31,9 @@ async def test_debit_spread_risk_true_width():
 
     risk = await calculate_spread_max_risk(mock_ib, bag, order, config)
 
-    # Debit spread: risk = premium paid = 0.50 * 37500 = $18,750
-    assert risk == 18750.0, f"Expected $18,750, got ${risk}"
+    # Debit spread: risk = premium paid = 0.50 * 375 = $187.50
+    # Note: Multiplier is 375 for cents/lb (37500/100).
+    assert risk == 187.50, f"Expected $187.50, got ${risk}"
 
 
 @pytest.mark.asyncio
@@ -67,11 +68,11 @@ async def test_credit_spread_risk_narrow_wings():
     risk = await calculate_spread_max_risk(mock_ib, bag, order, config)
 
     # Credit spread: risk = (wing_width - credit) * multiplier
-    # = (0.5 - 0.30) * 37500 = 0.2 * 37500 = $7,500
-    expected = (0.5 - 0.30) * 37500
+    # = (0.5 - 0.30) * 375 = 0.2 * 375 = $75.00
+    expected = (0.5 - 0.30) * 375
     assert risk == expected, f"Expected ${expected:,.2f}, got ${risk:,.2f}"
 
-    # This $7,500 risk is 15% of $50K equity - PASSABLE at 40% limit
+    # This $75.00 risk is 0.15% of $50K equity - PASSABLE at 40% limit
 
 
 @pytest.mark.asyncio
@@ -86,12 +87,13 @@ async def test_credit_spread_risk_wide_wings_blocked():
 
     mock_ib = AsyncMock()
 
-    # WIDE Iron Condor (10 point wings - TOO RISKY for $50K):
+    # WIDE Iron Condor (100 point wings - TOO RISKY for $50K):
+    # Width 100 * 375 = $37,500 > $20,000 limit
     mock_ib.reqContractDetailsAsync.side_effect = [
-        [MagicMock(contract=MagicMock(strike=340.0, right='P'))],
+        [MagicMock(contract=MagicMock(strike=250.0, right='P'))],
         [MagicMock(contract=MagicMock(strike=350.0, right='P'))],
         [MagicMock(contract=MagicMock(strike=370.0, right='C'))],
-        [MagicMock(contract=MagicMock(strike=380.0, right='C'))]
+        [MagicMock(contract=MagicMock(strike=470.0, right='C'))]
     ]
 
     bag = Bag(symbol='KC')
@@ -101,8 +103,8 @@ async def test_credit_spread_risk_wide_wings_blocked():
 
     risk = await calculate_spread_max_risk(mock_ib, bag, order, config)
 
-    # Credit spread: risk = (10 - 0.30) * 37500 = $363,750
+    # Credit spread: risk = (100 - 0.30) * 375 = $37,387.50
     # This EXCEEDS 40% of $50K ($20K) and will be BLOCKED
-    expected = (10.0 - 0.30) * 37500
+    expected = (100.0 - 0.30) * 375
     assert risk == expected, f"Expected ${expected:,.2f}, got ${risk:,.2f}"
     assert risk > 50000 * 0.40, "Wide wings should exceed max_position_pct limit"
