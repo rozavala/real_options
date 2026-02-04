@@ -16,8 +16,6 @@ from trading_bot.decision_signals import get_decision_signals_df
 from trading_bot.performance_graphs import generate_performance_charts
 from config_loader import load_config
 
-# --- Logging Setup ---
-setup_logging()
 logger = logging.getLogger("PerformanceAnalyzer")
 
 # --- Constants ---
@@ -512,4 +510,5 @@ async def main(config: dict = None):
         )
 
 if __name__ == "__main__":
+    setup_logging(log_file="logs/performance_analyzer.log")
     asyncio.run(main())

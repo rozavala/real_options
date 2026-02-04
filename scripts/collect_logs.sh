@@ -54,14 +54,12 @@ if [ -d "$REPO_DIR/logs" ]; then
     echo "Copying specific log files..."
     mkdir -p "$DEST_DIR/logs"
     
-    # Copy only the main log files, not timestamped versions
-    if [ -f "$REPO_DIR/logs/orchestrator.log" ]; then
-        cp "$REPO_DIR/logs/orchestrator.log" "$DEST_DIR/logs/"
-    fi
-    
-    if [ -f "$REPO_DIR/logs/dashboard.log" ]; then
-        cp "$REPO_DIR/logs/dashboard.log" "$DEST_DIR/logs/"
-    fi
+    # Copy explicitly known active log files to avoid copying rotated/timestamped logs
+    for logfile in "orchestrator.log" "dashboard.log" "manual_test.log" "performance_analyzer.log" "equity_logger.log"; do
+        if [ -f "$REPO_DIR/logs/$logfile" ]; then
+            cp "$REPO_DIR/logs/$logfile" "$DEST_DIR/logs/"
+        fi
+    done
 fi
 
 # === DATA FILES ===
@@ -75,7 +73,18 @@ if [ -d "$REPO_DIR/data" ]; then
     # 2>/dev/null ensures it doesn't complain if no files of that specific type exist
     cp "$REPO_DIR/data/"*.csv "$DEST_DIR/data/" 2>/dev/null
     cp "$REPO_DIR/data/"*.json "$DEST_DIR/data/" 2>/dev/null
-    cp "$REPO_DIR/data/"*.log "$DEST_DIR/data/" 2>/dev/null
+
+    # Copy .log files but try to exclude obvious timestamped ones if any exist
+    # Standard globbing doesn't support exclusions easily, so we use a loop
+    for f in "$REPO_DIR/data/"*.log; do
+        if [ -f "$f" ]; then
+            filename=$(basename "$f")
+            # Simple check: if filename contains a 4-digit year pattern like -202X-, skip it
+            if [[ ! "$filename" =~ -202[0-9]- ]]; then
+                cp "$f" "$DEST_DIR/data/"
+            fi
+        fi
+    done
 
     # 2. EXPLICITLY SKIP HEAVY BINARIES
     # We do NOT copy the 'tms' folder or .sqlite3 files here
