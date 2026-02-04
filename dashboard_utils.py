@@ -12,6 +12,7 @@ import json
 import re
 import time
 import logging
+import pytz
 from datetime import datetime, timedelta, timezone
 import yfinance as yf
 import sys
@@ -234,6 +235,150 @@ def get_system_heartbeat():
         heartbeat['state_status'] = 'ONLINE' if minutes_since < heartbeat['alert_threshold_minutes'] else 'STALE'
 
     return heartbeat
+
+
+# === TASK SCHEDULE TRACKER ===
+
+ACTIVE_SCHEDULE_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    'data', 'active_schedule.json'
+)
+TASK_COMPLETIONS_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    'data', 'task_completions.json'
+)
+
+# Human-readable labels for task names (commodity-agnostic)
+TASK_LABELS = {
+    'start_monitoring':               '🟢 Start Position Monitoring',
+    'process_deferred_triggers':      '📬 Process Deferred Triggers',
+    'run_position_audit_cycle':       '🔍 Position Audit',
+    'guarded_generate_orders':        '🧠 Generate & Execute Orders',
+    'close_stale_positions':          '🔒 Close Stale Positions',
+    'close_stale_positions_fallback': '🔒 Close Stale (Fallback)',
+    'emergency_hard_close':           '🚨 Emergency Hard Close',
+    'cancel_and_stop_monitoring':     '🔴 End-of-Day Shutdown',
+    'log_equity_snapshot':            '📊 Log Equity Snapshot',
+    'run_brier_reconciliation':       '🎯 Brier Reconciliation',
+    'reconcile_and_analyze':          '📈 Reconcile & Analyze',
+}
+
+
+@st.cache_data(ttl=30)
+def load_task_schedule_status() -> dict:
+    """
+    Loads the active schedule and task completions, then computes
+    per-task status for today.
+
+    Returns:
+        dict with keys:
+        - 'tasks': list of dicts, each with:
+            - 'time_et': scheduled time string (HH:MM)
+            - 'name': function name
+            - 'label': human-readable label
+            - 'status': one of 'completed', 'overdue', 'skipped', 'upcoming'
+            - 'completed_at': ISO timestamp or None
+        - 'summary': dict with 'total', 'completed', 'upcoming', 'overdue', 'skipped'
+        - 'schedule_env': environment name
+        - 'available': bool — whether data files exist
+    """
+    result = {
+        'tasks': [],
+        'summary': {'total': 0, 'completed': 0, 'upcoming': 0, 'overdue': 0, 'skipped': 0},
+        'schedule_env': 'Unknown',
+        'available': False,
+    }
+
+    # Load active schedule
+    if not os.path.exists(ACTIVE_SCHEDULE_PATH):
+        return result
+
+    try:
+        with open(ACTIVE_SCHEDULE_PATH, 'r') as f:
+            schedule_data = json.load(f)
+    except Exception:
+        return result
+
+    # Load completions
+    completions = {}
+    try:
+        if os.path.exists(TASK_COMPLETIONS_PATH):
+            with open(TASK_COMPLETIONS_PATH, 'r') as f:
+                tracker_data = json.load(f)
+
+            # Only use completions from today (NY timezone)
+            ny_tz = pytz.timezone('America/New_York')
+            today_str = datetime.now(timezone.utc).astimezone(ny_tz).strftime('%Y-%m-%d')
+
+            if tracker_data.get('trading_date') == today_str:
+                completions = tracker_data.get('completions', {})
+    except Exception:
+        pass
+
+    # Current time in ET
+    ny_tz = pytz.timezone('America/New_York')
+    now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
+    now_minutes = now_ny.hour * 60 + now_ny.minute
+
+    # After market close (14:00 ET), tasks that never completed are
+    # "skipped" (informational) rather than "overdue" (alarming).
+    # This avoids visual noise from intentionally skipped tasks like
+    # guarded_generate_orders past cutoff. (Flight Director advisory)
+    market_closed = now_ny.hour >= 14
+
+    tasks = []
+    completed_count = 0
+    upcoming_count = 0
+    overdue_count = 0
+    skipped_count = 0
+
+    for task_entry in schedule_data.get('tasks', []):
+        time_str = task_entry['time_et']
+        name = task_entry['name']
+
+        # Parse scheduled time to minutes since midnight
+        parts = time_str.split(':')
+        task_minutes = int(parts[0]) * 60 + int(parts[1])
+
+        # Determine status
+        completed_at = completions.get(name)
+        if completed_at:
+            status = 'completed'
+            completed_count += 1
+        elif task_minutes > now_minutes:
+            status = 'upcoming'
+            upcoming_count += 1
+        elif market_closed:
+            # Market is closed and task never completed — end-of-day state.
+            # This is informational, not alarming (e.g., order gen past cutoff).
+            status = 'skipped'
+            skipped_count += 1
+        else:
+            # Scheduled time has passed but market is still open —
+            # something may be wrong.
+            status = 'overdue'
+            overdue_count += 1
+
+        tasks.append({
+            'time_et': time_str,
+            'name': name,
+            'label': TASK_LABELS.get(name, name),
+            'status': status,
+            'completed_at': completed_at,
+        })
+
+    result['tasks'] = tasks
+    result['summary'] = {
+        'total': len(tasks),
+        'completed': completed_count,
+        'upcoming': upcoming_count,
+        'overdue': overdue_count,
+        'skipped': skipped_count,
+    }
+    result['schedule_env'] = schedule_data.get('env', 'Unknown')
+    result['available'] = True
+
+    return result
 
 
 def get_ib_connection_health() -> dict:

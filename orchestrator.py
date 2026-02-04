@@ -2916,6 +2916,35 @@ async def main():
     else:
         logger.info("Environment: PROD 🚀. Using standard master schedule.")
 
+    # === WRITE ACTIVE SCHEDULE FOR DASHBOARD ===
+    # The dashboard can't import orchestrator.py (it would pull in IB, agents, etc.)
+    # so we write the effective schedule to a JSON file it can read independently.
+    try:
+        schedule_data = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "env": env_name,
+            "offset_minutes": 0 if is_prod else schedule_offset_minutes,
+            "tasks": sorted(
+                [
+                    {
+                        "time_et": rt.strftime('%H:%M'),
+                        "name": func.__name__,
+                    }
+                    for rt, func in current_schedule.items()
+                ],
+                key=lambda t: t["time_et"]
+            )
+        }
+        schedule_file = os.path.join(
+            os.path.dirname(__file__), 'data', 'active_schedule.json'
+        )
+        os.makedirs(os.path.dirname(schedule_file), exist_ok=True)
+        with open(schedule_file, 'w') as f:
+            json.dump(schedule_data, f, indent=2)
+        logger.debug(f"Active schedule written: {len(schedule_data['tasks'])} tasks")
+    except Exception as e:
+        logger.warning(f"Failed to write active schedule (non-fatal): {e}")
+
     # === MISSED TASK DETECTION & RECOVERY ===
     ny_tz = pytz.timezone('America/New_York')
     now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
