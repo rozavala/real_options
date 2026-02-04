@@ -19,7 +19,7 @@ from trading_bot.state_manager import StateManager
 from trading_bot.sentinels import SentinelTrigger
 from trading_bot.semantic_router import SemanticRouter
 from trading_bot.market_data_provider import format_market_context_for_prompt
-from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole, get_router
+from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole, get_router, CriticalRPCError
 from trading_bot.tms import TransactiveMemory
 from trading_bot.reliability_scorer import ReliabilityScorer
 from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type
@@ -54,9 +54,14 @@ provenance_logger = logging.getLogger("provenance")
 provenance_logger.setLevel(logging.INFO)
 provenance_logger.propagate = False
 if not provenance_logger.handlers:
+    from logging.handlers import RotatingFileHandler
     log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
     os.makedirs(log_dir, exist_ok=True)
-    fh = logging.FileHandler(os.path.join(log_dir, 'research_provenance.log'))
+    fh = RotatingFileHandler(
+        os.path.join(log_dir, 'research_provenance.log'),
+        maxBytes=10 * 1024 * 1024,
+        backupCount=3
+    )
     fh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     provenance_logger.addHandler(fh)
 
@@ -452,6 +457,48 @@ OUTPUT FORMAT (JSON):
             provenance_logger.warning(f"QUERY: {search_instruction} | FALLBACK TRIGGERED")
             return packet
 
+    async def _apply_reflexion(self, agent_name: str, base_prompt: str,
+                                contract_name: str = "") -> str:
+        """
+        Reflexion: Query TMS for past mistakes relevant to current analysis.
+        Returns enhanced prompt with past lessons injected.
+
+        Fail-safe: Returns base_prompt unchanged if TMS unavailable or query fails.
+        """
+        try:
+            if not self.tms or not self.tms.collection:
+                return base_prompt
+
+            # Query TMS for similar past situations where this agent was wrong
+            query = f"{agent_name} mistake prediction wrong {contract_name}"
+            results = self.tms.collection.query(
+                query_texts=[query],
+                n_results=3,
+                where={"agent": agent_name} if agent_name else None,
+            )
+
+            if not results or not results.get('documents') or not results['documents'][0]:
+                return base_prompt
+
+            lessons = results['documents'][0]
+
+            reflexion_block = (
+                "\n\n--- SELF-CRITIQUE (from your past mistakes) ---\n"
+                "Review these lessons from previous analyses where you were wrong:\n"
+            )
+            for i, lesson in enumerate(lessons[:3], 1):
+                reflexion_block += f"{i}. {lesson[:300]}\n"
+            reflexion_block += (
+                "Incorporate these lessons. Avoid repeating the same errors.\n"
+                "--- END SELF-CRITIQUE ---\n"
+            )
+
+            return base_prompt + reflexion_block
+
+        except Exception as e:
+            logger.warning(f"Reflexion query failed for {agent_name}: {e}")
+            return base_prompt  # Fail-safe: no reflexion is always better than crashing
+
     async def research_topic(self, persona_key: str, search_instruction: str, regime_context: str = "") -> str:
         """
         Conducts deep-dive research using a specialized agent persona.
@@ -526,6 +573,9 @@ OUTPUT FORMAT (JSON):
             f"  'sentiment': 'BULLISH'|'BEARISH'|'NEUTRAL'\n"
             f"}}"
         )
+
+        # Apply Reflexion: inject past mistake lessons (fail-safe, zero API cost)
+        full_prompt = await self._apply_reflexion(persona_key, full_prompt)
 
         # Determine Role for routing
         role_map = {
@@ -617,6 +667,8 @@ OUTPUT FORMAT (JSON):
                 })
 
             return structured_result
+        except CriticalRPCError:
+            raise  # Let executor shutdown bubble up
         except Exception as e:
             return {'data': f"Error conducting research: {str(e)}", 'confidence': 0.0, 'sentiment': 'NEUTRAL'}
 

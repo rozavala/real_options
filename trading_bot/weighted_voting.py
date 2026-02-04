@@ -580,6 +580,16 @@ async def calculate_weighted_decision(
     avg_conf = sum(v.confidence for v in votes) / len(votes)
     final_confidence = (unanimity * 0.4) + (avg_conf * 0.6)
 
+    weight_summary = {
+        v['agent']: (
+            f"domain={v.get('domain_weight', 1.0):.1f} × "
+            f"reliability={v.get('reliability_mult', 1.0):.1f} = "
+            f"{v.get('final_weight', 1.0):.2f}"
+        )
+        for v in vote_breakdown
+    }
+    logger.info(f"Dynamic Weights: {json.dumps(weight_summary)}")
+
     logger.info(f"Weighted Vote: {final_direction} (score={normalized_score:.3f}, dominant={dominant_agent})")
     logger.info(f"Vote Breakdown: {json.dumps(vote_breakdown, indent=2)}")
 

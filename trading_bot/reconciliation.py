@@ -12,8 +12,37 @@ import pandas as pd
 from ib_insync import IB, Contract, util
 from trading_bot.brier_scoring import get_brier_tracker
 from trading_bot.timestamps import parse_ts_column, parse_ts_single, format_ib_datetime
+from trading_bot.trade_journal import TradeJournal
+from trading_bot.tms import TransactiveMemory
+from trading_bot.heterogeneous_router import get_router
 
 logger = logging.getLogger(__name__)
+
+def store_reflexion_lesson(agent_name: str, contract: str,
+                            predicted: str, actual: str, reasoning: str):
+    """Store a lesson when an agent's prediction was wrong."""
+    try:
+        # TransactiveMemory imported at module level
+        tms = TransactiveMemory()
+
+        lesson = (
+            f"On {contract}, predicted {predicted} but actual was {actual}. "
+            f"Original reasoning: {reasoning[:200]}. "
+            f"Lesson: This prediction was incorrect — review the reasoning for bias."
+        )
+
+        tms.encode(agent_name, lesson, {
+            "agent": agent_name,
+            "contract": contract,
+            "predicted": predicted,
+            "actual": actual,
+            "type": "reflexion_lesson",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        logger.info(f"Stored reflexion lesson for {agent_name} on {contract}")
+
+    except Exception as e:
+        logger.warning(f"Failed to store reflexion lesson: {e}")
 
 async def reconcile_council_history(config: dict, ib: IB = None):
     """
@@ -208,6 +237,16 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
 
     now = datetime.now(timezone.utc)
     updates_made = False
+
+    # Initialize components for journaling
+    tms = TransactiveMemory()
+    router = None
+    try:
+        router = get_router(config)
+    except Exception:
+        pass
+
+    journal = TradeJournal(config, tms=tms, router=router)
 
     # Filter for rows that need processing
     for index, row in df.iterrows():
@@ -465,12 +504,59 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             df.at[index, 'pnl_realized'] = round(pnl, 4)
             df.at[index, 'actual_trend_direction'] = trend
 
+            # --- Reflexion: Store lessons for incorrect agents ---
+            if trend in ['BULLISH', 'BEARISH']: # Only learn from directional outcomes
+                agent_cols = [c for c in df.columns if c.endswith('_sentiment')]
+                for col in agent_cols:
+                    agent_name = col.replace('_sentiment', '')
+                    sentiment = row.get(col, 'NEUTRAL')
+                    summary_col = f"{agent_name}_summary"
+                    reasoning = row.get(summary_col, 'No summary')
+
+                    if sentiment in ['BULLISH', 'BEARISH'] and sentiment != trend:
+                        store_reflexion_lesson(
+                            agent_name=agent_name,
+                            contract=contract_str,
+                            predicted=sentiment,
+                            actual=trend,
+                            reasoning=str(reasoning)
+                        )
+
             updates_made = True
             logger.info(
                 f"Reconciled {contract_str}: Entry {entry_price:.2f} -> Exit {exit_price:.2f} "
                 f"({abs_pct_change:.2%} move) | Strategy: {strategy_type or 'DIRECTIONAL'} | "
                 f"Outcome: {vol_outcome or trend} | P&L: {pnl:.4f}"
             )
+
+            # --- Trade Journal ---
+            try:
+                # Construct entry decision object from row
+                entry_decision = {
+                    'reasoning': row.get('master_reasoning', ''),
+                    'direction': row.get('master_decision', ''),
+                    'confidence': float(row.get('master_confidence', 0.0) or 0.0),
+                    'strategy_type': row.get('strategy_type', ''),
+                    'trigger_type': row.get('trigger_type', ''),
+                }
+
+                # Construct exit data
+                exit_data = {
+                    'exit_price': exit_price,
+                    'exit_time': target_exit_time.isoformat(),
+                    'actual_trend': trend,
+                    'volatility_outcome': vol_outcome
+                }
+
+                await journal.generate_post_mortem(
+                    position_id=str(row.get('cycle_id', f"unknown_{index}")),
+                    entry_decision=entry_decision,
+                    exit_data=exit_data,
+                    pnl=pnl,
+                    contract=contract_str
+                )
+            except Exception as e:
+                logger.warning(f"Failed to generate trade journal entry: {e}")
 
             # Update Brier Score
             try:
