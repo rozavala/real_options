@@ -20,11 +20,12 @@ def setup_logging(log_file: str = None):
 
     This function configures the root logger to output messages of level
     INFO and higher. If log_file is provided, uses RotatingFileHandler.
-    Otherwise, logs only to stdout.
+    To prevent log duplication in environments where stdout is redirected
+    to the same log file (e.g. via nohup/deploy.sh), StreamHandler is
+    only attached if the session is interactive or no log_file is set.
     """
 
-    # Start with stdout handler
-    handlers = [logging.StreamHandler(sys.stdout)]
+    handlers = []
 
     # Add file handler if requested
     if log_file:
@@ -50,6 +51,16 @@ def setup_logging(log_file: str = None):
             # Fallback to stdout only if we can't write to the log file
             sys.stderr.write(f"WARNING: Could not create log file handler at {log_file}: {e}\n")
             sys.stderr.write("Logging will continue to stdout only.\n")
+            handlers.append(logging.StreamHandler(sys.stdout))
+
+    # Determine whether to add StreamHandler (Stdout)
+    # 1. Always add if no log_file is provided (default behavior)
+    # 2. If log_file IS provided, only add StreamHandler if we are in an interactive terminal.
+    #    This avoids duplication when running via deploy.sh/nohup where stdout is redirected to the log file.
+    should_add_stream = (log_file is None) or sys.stdout.isatty()
+
+    if should_add_stream:
+        handlers.append(logging.StreamHandler(sys.stdout))
 
     # Basic Config with handlers
     logging.basicConfig(
