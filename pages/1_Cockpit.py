@@ -30,7 +30,8 @@ from dashboard_utils import (
     get_current_market_regime,
     get_guardian_icon,
     get_strategy_color,
-    get_commodity_profile
+    get_commodity_profile,
+    load_task_schedule_status
 )
 
 def load_deduplicator_metrics() -> dict:
@@ -480,6 +481,90 @@ with st.expander("🔍 Sentinel Details"):
 
     except Exception as e:
         st.write(f"❓ Unable to fetch X sensor status: {e}")
+
+st.markdown("---")
+
+# === SECTION: Task Schedule Tracker ===
+st.subheader("📋 Today's Task Schedule")
+
+task_data = load_task_schedule_status()
+
+if task_data['available']:
+    summary = task_data['summary']
+    total = summary['total']
+    completed = summary['completed']
+    overdue = summary['overdue']
+    skipped = summary['skipped']
+    upcoming = summary['upcoming']
+
+    # Progress bar
+    progress = completed / total if total > 0 else 0
+    st.progress(progress, text=f"{completed}/{total} tasks completed")
+
+    # Summary metrics
+    ts_cols = st.columns(5)
+    with ts_cols[0]:
+        st.metric("Total Tasks", total)
+    with ts_cols[1]:
+        st.metric("Completed", f"✅ {completed}")
+    with ts_cols[2]:
+        if overdue > 0:
+            st.metric("Overdue", f"⚠️ {overdue}")
+        else:
+            st.metric("Overdue", "0")
+    with ts_cols[3]:
+        if skipped > 0:
+            st.metric("Skipped", f"⏭️ {skipped}")
+        else:
+            st.metric("Skipped", "0")
+    with ts_cols[4]:
+        st.metric("Upcoming", f"⏳ {upcoming}")
+
+    # Task timeline table
+    STATUS_ICONS = {
+        'completed': '✅',
+        'upcoming': '⏳',
+        'overdue': '⚠️',
+        'skipped': '⏭️',
+        'unknown': '❓',
+    }
+
+    table_rows = []
+    for task in task_data['tasks']:
+        status_icon = STATUS_ICONS.get(task['status'], '❓')
+        completed_at = ""
+        if task['completed_at']:
+            try:
+                ct = datetime.fromisoformat(task['completed_at'])
+                completed_at = ct.astimezone(
+                    pytz.timezone('America/New_York')
+                ).strftime('%H:%M:%S ET')
+            except Exception:
+                completed_at = task['completed_at']
+
+        table_rows.append({
+            "Status": status_icon,
+            "Scheduled (ET)": task['time_et'],
+            "Task": task['label'],
+            "Completed At": completed_at,
+        })
+
+    import pandas as pd
+    df = pd.DataFrame(table_rows)
+    st.dataframe(df, hide_index=True, use_container_width=True)
+
+    # Environment badge
+    env = task_data['schedule_env']
+    if env and 'PROD' not in env:
+        st.caption(f"⚙️ Schedule: {env} (offset applied)")
+    else:
+        st.caption(f"⚙️ Schedule: {env}")
+
+else:
+    st.info(
+        "Task schedule data not available. "
+        "The orchestrator needs to be running with the recovery system enabled."
+    )
 
 st.markdown("---")
 
