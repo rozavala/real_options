@@ -1,51 +1,22 @@
-Traceback (most recent call last):
-  File "/home/rodrigo/real_options/orchestrator.py", line 27, in <module>
-    from performance_analyzer import main as run_performance_analysis
-  File "/home/rodrigo/real_options/performance_analyzer.py", line 20, in <module>
-    setup_logging()
-  File "/home/rodrigo/real_options/trading_bot/logging_config.py", line 29, in setup_logging
-    file_handler = RotatingFileHandler(
-                   ^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.12/logging/handlers.py", line 155, in __init__
-    BaseRotatingHandler.__init__(self, filename, mode, encoding=encoding,
-  File "/usr/lib/python3.12/logging/handlers.py", line 58, in __init__
-    logging.FileHandler.__init__(self, filename, mode=mode,
-  File "/usr/lib/python3.12/logging/__init__.py", line 1231, in __init__
-    StreamHandler.__init__(self, self._open())
-                                 ^^^^^^^^^^^^
-  File "/usr/lib/python3.12/logging/__init__.py", line 1263, in _open
-    return open_func(self.baseFilename, self.mode,
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-PermissionError: [Errno 13] Permission denied: '/home/rodrigo/real_options/logs/orchestrator.log'
-Traceback (most recent call last):
-  File "/home/rodrigo/real_options/orchestrator.py", line 27, in <module>
-    from performance_analyzer import main as run_performance_analysis
-  File "/home/rodrigo/real_options/performance_analyzer.py", line 20, in <module>
-    setup_logging()
-  File "/home/rodrigo/real_options/trading_bot/logging_config.py", line 29, in setup_logging
-    file_handler = RotatingFileHandler(
-                   ^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.12/logging/handlers.py", line 155, in __init__
-    BaseRotatingHandler.__init__(self, filename, mode, encoding=encoding,
-  File "/usr/lib/python3.12/logging/handlers.py", line 58, in __init__
-    logging.FileHandler.__init__(self, filename, mode=mode,
-  File "/usr/lib/python3.12/logging/__init__.py", line 1231, in __init__
-    StreamHandler.__init__(self, self._open())
-                                 ^^^^^^^^^^^^
-  File "/usr/lib/python3.12/logging/__init__.py", line 1263, in _open
-    return open_func(self.baseFilename, self.mode,
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-PermissionError: [Errno 13] Permission denied: '/home/rodrigo/real_options/logs/orchestrator.log'
-2026-02-04 03:01:24,332 - Orchestrator - INFO - =============================================
-2026-02-04 03:01:24,333 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-04 03:01:24,333 - Orchestrator - INFO - =============================================
-2026-02-04 03:01:24,334 - trading_bot.budget_guard - INFO - Budget guard reset for 2026-02-04. Limit: $15.00
-2026-02-04 03:01:24,335 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-04 03:01:24,335 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
-2026-02-04 03:01:24,335 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-04 03:01:24,553 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-04 03:01:24,554 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-04 03:01:24,554 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 13 scheduled tasks already passed:
+WARNING: Could not create log file handler at logs/orchestrator.log: [Errno 13] Permission denied: '/home/rodrigo/real_options/logs/orchestrator.log'
+Logging will continue to stdout only.
+WARNING: Could not create log file handler at logs/orchestrator.log: [Errno 13] Permission denied: '/home/rodrigo/real_options/logs/orchestrator.log'
+Logging will continue to stdout only.
+WARNING: Could not create log file handler at logs/orchestrator.log: [Errno 13] Permission denied: '/home/rodrigo/real_options/logs/orchestrator.log'
+Logging will continue to stdout only.
+WARNING: Could not create log file handler at logs/orchestrator.log: [Errno 13] Permission denied: '/home/rodrigo/real_options/logs/orchestrator.log'
+Logging will continue to stdout only.
+WARNING: Could not create log file handler at logs/orchestrator.log: [Errno 13] Permission denied: '/home/rodrigo/real_options/logs/orchestrator.log'
+Logging will continue to stdout only.
+2026-02-04 03:31:52,410 - Orchestrator - INFO - =============================================
+2026-02-04 03:31:52,410 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-04 03:31:52,410 - Orchestrator - INFO - =============================================
+2026-02-04 03:31:52,412 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-04 03:31:52,412 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
+2026-02-04 03:31:52,412 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-04 03:31:52,564 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-04 03:31:52,564 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-02-04 03:31:52,564 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 13 scheduled tasks already passed:
   - 03:20 UTC: start_monitoring
   - 03:21 UTC: process_deferred_triggers
   - 08:20 UTC: run_position_audit_cycle
@@ -59,69 +30,27 @@ PermissionError: [Errno 13] Permission denied: '/home/rodrigo/real_options/logs/
   - 13:55 UTC: log_equity_snapshot
   - 14:00 UTC: run_brier_reconciliation
   - 14:05 UTC: reconcile_and_analyze
-2026-02-04 03:01:25,067 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-04 03:01:25,069 - Orchestrator - WARNING - ⏭️ RECOVERY SKIPPED: guarded_generate_orders missed and past daily cutoff (10:45 ET). No signal generation today unless forced via dashboard.
-2026-02-04 03:01:25,070 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-04 03:01:25,071 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 7 active alerts from disk
-2026-02-04 03:01:25,352 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-04 03:01:25,353 - trading_bot.sentinels - INFO - Loaded state for 5 prediction market topics
-2026-02-04 03:01:25,353 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'US x Russia military clash by...?': title='How many people will Trump deport in 2025?'. Clearing cache.
-2026-02-04 03:01:25,353 - trading_bot.sentinels - INFO - Reloading prediction market topics...
-2026-02-04 03:01:25,353 - trading_bot.sentinels - INFO - Topics reloaded: 8
-2026-02-04 03:01:25,354 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 8 topics
-Traceback (most recent call last):
-  File "/home/rodrigo/real_options/orchestrator.py", line 2820, in <module>
-    loop.close()
-    ^^^^^^^^^^^^^
-  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
-    return future.result()
-           ^^^^^^^^^^^^^^^
-  File "/home/rodrigo/real_options/orchestrator.py", line 2761, in main
-    while True:
-^^^^^^^^^^^^^^^^
-ModuleNotFoundError: No module named 'trading_bot.self_healing'
-2026-02-04 03:01:26,461 - asyncio - ERROR - Task was destroyed but it is pending!
-task: <Task pending name='Task-2' coro=<run_sentinels() running at /home/rodrigo/real_options/orchestrator.py:2269> wait_for=<Future pending cb=[_chain_future.<locals>._call_check_cancel() at /usr/lib/python3.12/asyncio/futures.py:387, Task.task_wakeup()]>>
-2026-02-04 03:01:36,482 - Orchestrator - INFO - =============================================
-2026-02-04 03:01:36,482 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-04 03:01:36,482 - Orchestrator - INFO - =============================================
-2026-02-04 03:01:36,484 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-04 03:01:36,484 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
-2026-02-04 03:01:36,484 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-04 03:01:36,622 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-04 03:01:36,622 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-04 03:01:36,622 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 13 scheduled tasks already passed:
-  - 03:20 UTC: start_monitoring
-  - 03:21 UTC: process_deferred_triggers
-  - 08:20 UTC: run_position_audit_cycle
-  - 08:50 UTC: guarded_generate_orders
-  - 10:50 UTC: close_stale_positions
-  - 11:05 UTC: run_position_audit_cycle
-  - 12:35 UTC: close_stale_positions_fallback
-  - 12:50 UTC: run_position_audit_cycle
-  - 13:05 UTC: emergency_hard_close
-  - 13:35 UTC: cancel_and_stop_monitoring
-  - 13:55 UTC: log_equity_snapshot
-  - 14:00 UTC: run_brier_reconciliation
-  - 14:05 UTC: reconcile_and_analyze
-2026-02-04 03:01:36,810 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-04 03:01:36,812 - Orchestrator - WARNING - ⏭️ RECOVERY SKIPPED: guarded_generate_orders missed and past daily cutoff (10:45 ET). No signal generation today unless forced via dashboard.
-2026-02-04 03:01:36,812 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-04 08:20:00 UTC. Waiting for 5.31 hours.
-2026-02-04 03:01:36,813 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-04 03:01:36,813 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 7 active alerts from disk
-2026-02-04 03:01:37,053 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-04 03:01:37,053 - trading_bot.sentinels - INFO - Loaded state for 5 prediction market topics
-2026-02-04 03:01:37,053 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'US x Russia military clash by...?': title='How many people will Trump deport in 2025?'. Clearing cache.
-2026-02-04 03:01:37,053 - trading_bot.sentinels - INFO - Reloading prediction market topics...
-2026-02-04 03:01:37,054 - trading_bot.sentinels - INFO - Topics reloaded: 8
-2026-02-04 03:01:37,054 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 8 topics
-2026-02-04 03:01:38,466 - trading_bot.sentinels - WARNING - WEATHER SENTINEL DETECTED: DROUGHT in Espirito Santo: 23.6mm (BULLISH, BEAN_FILLING stage)
-2026-02-04 03:01:38,467 - trading_bot.state_manager - INFO - Queued deferred trigger from WeatherSentinel
-2026-02-04 03:01:38,467 - Orchestrator - INFO - Deferred WeatherSentinel trigger for market open
-2026-02-04 03:01:42,976 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-02-04 03:02:04,434 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-02-04 03:02:05,412 - trading_bot.topic_discovery - ERROR - LLM assessment failed: Expecting value: line 1 column 1 (char 0)
-2026-02-04 03:02:07,644 - trading_bot.topic_discovery - ERROR - LLM assessment failed: Expecting value: line 1 column 1 (char 0)
-2026-02-04 03:02:14,157 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-04 03:02:14,441 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-04 03:02:14,510 - Orchestrator - INFO - TopicDiscovery: 4 topics, No changes
+2026-02-04 03:31:52,881 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 03:31:52,883 - Orchestrator - WARNING - ⏭️ RECOVERY SKIPPED: guarded_generate_orders missed and past daily cutoff (10:45 ET). No signal generation today unless forced via dashboard.
+2026-02-04 03:31:52,886 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-04 08:20:00 UTC. Waiting for 4.80 hours.
+2026-02-04 03:31:52,886 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-04 03:31:52,887 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 8 active alerts from disk
+2026-02-04 03:31:53,163 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-02-04 03:31:53,164 - trading_bot.sentinels - INFO - Loaded state for 5 prediction market topics
+2026-02-04 03:31:53,164 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'US x Russia military clash by...?': title='How many people will Trump deport in 2025?'. Clearing cache.
+2026-02-04 03:31:53,164 - trading_bot.sentinels - INFO - Reloading prediction market topics...
+2026-02-04 03:31:53,164 - trading_bot.sentinels - INFO - Topics reloaded: 8
+2026-02-04 03:31:53,164 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 8 topics
+2026-02-04 03:31:53,168 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-04 03:31:58,517 - trading_bot.sentinels - WARNING - WEATHER SENTINEL DETECTED: DROUGHT in Sidamo/Yirgacheffe: 10.1mm (NEUTRAL, VEGETATIVE stage)
+2026-02-04 03:31:58,518 - trading_bot.state_manager - INFO - Queued deferred trigger from WeatherSentinel
+2026-02-04 03:31:58,518 - Orchestrator - INFO - Deferred WeatherSentinel trigger for market open
+2026-02-04 03:32:09,748 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-04 03:32:30,707 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-04 03:32:40,202 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-04 03:32:40,567 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-04 03:32:40,668 - trading_bot.topic_discovery - INFO - Saved 6 discovered topics to data/discovered_topics.json
+2026-02-04 03:32:40,962 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 03:32:40,966 - Orchestrator - INFO - TopicDiscovery: 6 topics, Topics: +2 added, -0 removed
+2026-02-04 03:32:40,968 - trading_bot.sentinels - INFO - Reloading prediction market topics...
+2026-02-04 03:32:40,969 - trading_bot.sentinels - INFO - Topics reloaded: 10
