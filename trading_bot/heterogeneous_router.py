@@ -24,6 +24,7 @@ from dataclasses import dataclass
 import numpy as np
 from trading_bot.router_metrics import get_router_metrics
 from trading_bot.rate_limiter import acquire_api_slot
+from trading_bot.semantic_cache import SemanticCache
 
 logger = logging.getLogger(__name__)
 
@@ -397,6 +398,7 @@ class HeterogeneousRouter:
 
         # Initialize Cache
         self.cache = ResponseCache(config)  # Now uses role-based TTL internally
+        self.semantic_cache = SemanticCache()
 
         # 1. LOAD MODEL KEYS (With Defaults)
         gem_flash = self.registry.get('gemini', {}).get('flash', 'gemini-3-flash-preview')
@@ -567,6 +569,13 @@ class HeterogeneousRouter:
                 logger.debug(f"Cache hit for {role.value}")
                 return cached_response
 
+        # === SEMANTIC CACHE CHECK ===
+        role_key = role.value if hasattr(role, 'value') else str(role)
+        cached = self.semantic_cache.get(prompt, role_key)
+        if cached is not None:
+            logger.info(f"SEMANTIC CACHE HIT for {role_key} — skipping API call")
+            return cached
+
         # 1. Get Primary Assignment
         primary_provider, primary_model = self.assignments.get(
             role,
@@ -594,6 +603,8 @@ class HeterogeneousRouter:
                     if use_cache:
                         self.cache.set(full_key_prompt, role.value, response)
 
+                    self.semantic_cache.set(prompt, role.value, response)
+
                     # HOTFIX: Use correct API - record_request with success=True
                     metrics.record_request(
                         role=role.value,
@@ -603,6 +614,20 @@ class HeterogeneousRouter:
                         was_fallback=False
                     )
                     return response
+
+                except RuntimeError as e:
+                    if "cannot schedule new futures after shutdown" in str(e):
+                        logger.critical(
+                            f"EXECUTOR SHUTDOWN detected during {role.value} call to "
+                            f"{primary_provider.value}. Process may be restarting."
+                        )
+                        # All providers share the same broken executor — don't try fallbacks
+                        raise CriticalRPCError(
+                            f"Executor shutdown during {role.value}: {e}. "
+                            f"All providers will fail. Aborting cycle gracefully."
+                        ) from e
+                    # Re-raise other RuntimeErrors as generic exceptions to be caught below
+                    raise e
 
                 except Exception as e:
                     latency_ms = (time.time() - start_time) * 1000
@@ -678,7 +703,22 @@ class HeterogeneousRouter:
                 if use_cache:
                     self.cache.set(full_key_prompt, role.value, response)
 
+                self.semantic_cache.set(prompt, role.value, response)
+
                 return response
+
+            except RuntimeError as e:
+                if "cannot schedule new futures after shutdown" in str(e):
+                    logger.critical(
+                        f"EXECUTOR SHUTDOWN detected during {role.value} call to "
+                        f"{fallback_provider.value}. Process may be restarting."
+                    )
+                    raise CriticalRPCError(
+                        f"Executor shutdown during {role.value}: {e}. "
+                        f"Aborting cycle gracefully."
+                    ) from e
+                # Re-raise other RuntimeErrors as generic exceptions to be caught below
+                raise e
 
             except Exception as e:
                 latency_ms = (time.time() - start_time) * 1000
