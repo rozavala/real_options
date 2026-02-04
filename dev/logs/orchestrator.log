@@ -31,3 +31,18 @@ Starting orchestrator...
 2026-02-04 08:26:30,409 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
 2026-02-04 08:26:30,669 - trading_bot.tms - INFO - TMS initialized at ./data/tms
 2026-02-04 08:26:30,708 - Orchestrator - INFO - TopicDiscovery: 6 topics, No changes
+2026-02-04 08:30:30,892 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-02-04 08:30:30,895 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 119...
+2026-02-04 08:30:31,061 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 119
+2026-02-04 08:30:31,071 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-04 08:30:31,071 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
+2026-02-04 08:30:31,072 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-04 08:30:31,289 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-04 08:30:31,292 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-04 08:30:31,292 - Orchestrator - INFO - Refreshed contract cache: KCK6
+2026-02-04 08:30:31,292 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-02-04 08:30:31,292 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 205...
+2026-02-04 08:30:31,420 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 205
+2026-02-04 08:30:31,424 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-04 08:30:31,425 - trading_bot.microstructure_sentinel - INFO - MicrostructureSentinel initialized
+2026-02-04 08:30:33,428 - trading_bot.microstructure_sentinel - INFO - Subscribed to microstructure for KCK6
