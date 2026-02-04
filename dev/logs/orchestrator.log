@@ -93,3 +93,21 @@ Starting orchestrator...
 2026-02-04 17:14:46,011 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
 2026-02-04 17:21:49,369 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 31% of average (Sev: 6)
 2026-02-04 17:21:49,381 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-04 17:35:00,003 - Orchestrator - INFO - --- Running scheduled task: close_stale_positions_fallback ---
+2026-02-04 17:35:00,004 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-02-04 17:35:00,004 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-02-04 17:35:00,004 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-04 17:35:00,006 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-04 17:35:00,006 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-04 17:35:00,009 - OrderManager - INFO - Found 8 live position legs in the IB account.
+2026-02-04 17:35:00,009 - OrderManager - INFO -   Filtered to 0 positions with non-zero quantity (8 already closed/zero-qty excluded)
+2026-02-04 17:35:00,009 - OrderManager - INFO - All returned positions have zero quantity — nothing to close.
+2026-02-04 17:35:00,357 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-04 17:35:00,363 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-04 17:50:00 UTC. Waiting for 0.25 hours.
+2026-02-04 17:47:19,706 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 48% of average (Sev: 5)
+2026-02-04 17:47:19,712 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-04 17:50:00,004 - Orchestrator - INFO - --- Running scheduled task: run_position_audit_cycle ---
+2026-02-04 17:50:00,005 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-04 17:50:00,006 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-04 17:50:00,149 - Orchestrator - INFO - No open positions to audit.
+2026-02-04 17:50:00,152 - Orchestrator - INFO - Next task 'emergency_hard_close' scheduled for 2026-02-04 18:05:00 UTC. Waiting for 0.25 hours.
