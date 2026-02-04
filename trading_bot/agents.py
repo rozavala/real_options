@@ -73,7 +73,7 @@ class GroundedDataPacket:
     raw_findings: str = ""
     extracted_facts: List[Dict[str, str]] = field(default_factory=list)  # [{fact, date, source}]
     source_urls: List[str] = field(default_factory=list)
-    data_freshness_hours: int = 48  # How recent the data claims to be
+    data_freshness_hours: int = 4  # CHANGED from 48 → 4 (soft penalty zone default)
 
     def to_context_block(self) -> str:
         """Format as context block for analyst prompts."""
@@ -197,6 +197,13 @@ class TradingCouncil:
         self.brier_tracker = EnhancedBrierTracker()
         self._search_cache = {}  # Cache for grounded data
 
+        # Rate limiter state for grounded data gathering (Gemini with tools)
+        # Semaphore initialized lazily in _gather_grounded_data to ensure event loop safety.
+        # See Flag 1 in Flight Director review: asyncio.Semaphore binds to the running
+        # event loop at creation time; lazy init guarantees we're inside an async context.
+        self._grounded_data_min_interval = 2.5  # seconds between calls (25 RPM = 2.4s, with margin)
+        self._last_grounded_call_time = 0
+
         # ============================================================
         # NEW: Commodity Profile Integration (ADDITIVE)
         # This block is OPTIONAL - system works without it
@@ -263,9 +270,17 @@ class TradingCouncil:
         if total_directional >= 5:
             if 'BULLISH' in analysis_upper and bearish_evidence > bullish_evidence + 2:
                 issues.append(f"Direction-evidence mismatch: BULLISH call but {bearish_evidence} bearish vs {bullish_evidence} bullish evidence words")
+                # Penalize confidence proportional to mismatch severity
+                mismatch_ratio = bearish_evidence / max(total_directional, 1)
+                mismatch_adj = max(0.3, 1.0 - mismatch_ratio)  # Floor at 0.3
+                # Use min() to not overwrite a stricter penalty from another check
+                confidence_adjustment = min(confidence_adjustment, mismatch_adj) if confidence_adjustment is not None else mismatch_adj
 
             if 'BEARISH' in analysis_upper and bullish_evidence > bearish_evidence + 2:
                 issues.append(f"Direction-evidence mismatch: BEARISH call but {bullish_evidence} bullish vs {bearish_evidence} bearish evidence words")
+                mismatch_ratio = bullish_evidence / max(total_directional, 1)
+                mismatch_adj = max(0.3, 1.0 - mismatch_ratio)  # Floor at 0.3
+                confidence_adjustment = min(confidence_adjustment, mismatch_adj) if confidence_adjustment is not None else mismatch_adj
         else:
             logger.debug(f"[{agent_name}] Low directional word count ({total_directional}), skipping mismatch check")
 
@@ -280,7 +295,9 @@ class TradingCouncil:
                 # Clamp confidence proportional to evidence
                 # 0 evidence → max 0.55, 1 → 0.65, 2 → 0.75
                 max_allowed = 0.55 + (total_evidence * 0.10)
-                confidence_adjustment = min(conf, max_allowed)
+                overconf_adj = min(conf, max_allowed)
+                # Use min() to not overwrite a stricter penalty from Check 1
+                confidence_adjustment = min(confidence_adjustment, overconf_adj) if confidence_adjustment is not None else overconf_adj
 
         # Check 3: Hallucination flag — numbers not in grounded data (UNCHANGED)
         import re as re_mod
@@ -295,6 +312,71 @@ class TradingCouncil:
             logger.warning(f"[{agent_name}] Output validation issues: {issues}")
 
         return is_valid, issues, confidence_adjustment
+
+    def _compute_data_freshness(self, dated_facts: list, freshness_text: str) -> int:
+        """
+        Compute actual data freshness in hours from extracted facts.
+
+        Strategy:
+        1. Parse dates from dated_facts → compute hours since newest fact
+        2. If no parseable dates, use text heuristics on the freshness_text
+        3. Default to 4 hours (within soft penalty range, but NOT hard gate)
+
+        Returns:
+            Integer hours representing how old the data is.
+            Lower = fresher. 0-4 = fresh, 4-24 = moderately stale, >24 = critically stale.
+        """
+        now = datetime.now(timezone.utc)
+
+        # === STRATEGY 1: Parse actual dates from facts ===
+        if dated_facts:
+            newest_age_hours = None
+            for fact in dated_facts:
+                date_str = fact.get('date', '') if isinstance(fact, dict) else ''
+                date_str_lower = str(date_str).lower().strip()
+
+                try:
+                    if date_str_lower in ('today', 'now', 'current'):
+                        newest_age_hours = 0
+                        break  # Can't get fresher than today
+                    elif date_str_lower == 'yesterday':
+                        newest_age_hours = min(newest_age_hours or 999, 24)
+                    elif date_str_lower == 'this week':
+                        newest_age_hours = min(newest_age_hours or 999, 72)
+                    else:
+                        # Try parsing YYYY-MM-DD or other date formats
+                        from dateutil import parser as date_parser
+                        parsed_date = date_parser.parse(date_str)
+                        if parsed_date.tzinfo is None:
+                            parsed_date = parsed_date.replace(tzinfo=timezone.utc)
+                        age = (now - parsed_date).total_seconds() / 3600
+                        if age >= 0:  # Ignore future dates (hallucination guard — Flag 3)
+                            newest_age_hours = min(newest_age_hours or 999, age)
+                except (ValueError, TypeError, OverflowError):
+                    continue
+
+            if newest_age_hours is not None:
+                return max(0, int(newest_age_hours))
+
+        # === STRATEGY 2: Text heuristics on freshness_text ===
+        ft_lower = str(freshness_text).lower()
+        if any(kw in ft_lower for kw in ['today', 'last hour', 'minutes ago', 'just now', 'real-time']):
+            return 1
+        elif any(kw in ft_lower for kw in ['yesterday', 'last 24', '24 hour', 'past day']):
+            return 18  # Conservative — "yesterday" could be up to ~36h ago
+        elif any(kw in ft_lower for kw in ['last 48', '2 day', 'two day', 'past 48']):
+            return 36
+        elif any(kw in ft_lower for kw in ['this week', 'last week', 'past week', 'several day']):
+            return 96
+        elif 'no recent' in ft_lower or 'unavailable' in ft_lower:
+            return 999  # Genuinely stale — should trip the gate
+
+        # === STRATEGY 3: Default ===
+        # CRITICAL: Default must NOT auto-trip the 24h hard gate.
+        # 4 hours places it in the "soft penalty" zone, which is the
+        # correct conservative-but-not-blocking default.
+        logger.info(f"Data freshness unparseable ('{freshness_text}'). Defaulting to 4h (soft penalty zone).")
+        return 4
 
     def _clean_json_text(self, text: str) -> str:
         """Helper to strip markdown code blocks from JSON strings."""
@@ -403,23 +485,41 @@ OUTPUT FORMAT (JSON):
 """
 
         try:
-            # Force Gemini with tools - bypass router for data gathering
-            response = await self._call_model(
-                self.master_model_name,
-                gathering_prompt,
-                use_tools=True,
-                response_json=True
-            )
+            # === LAZY SEMAPHORE INIT (Flag 1: event loop safety) ===
+            if not hasattr(self, '_grounded_data_semaphore'):
+                self._grounded_data_semaphore = asyncio.Semaphore(3)
+
+            # Rate-limited Gemini call to prevent 429 errors
+            async with self._grounded_data_semaphore:
+                # Enforce minimum interval between calls
+                import time as _time
+                elapsed = _time.monotonic() - self._last_grounded_call_time
+                if elapsed < self._grounded_data_min_interval:
+                    await asyncio.sleep(self._grounded_data_min_interval - elapsed)
+
+                response = await self._call_model(
+                    self.master_model_name,
+                    gathering_prompt,
+                    use_tools=True,
+                    response_json=True
+                )
+                self._last_grounded_call_time = _time.monotonic()
 
             # Parse response
             data = json.loads(self._clean_json_text(response))
+
+            # === COMPUTE ACTUAL DATA FRESHNESS ===
+            freshness_hours = self._compute_data_freshness(
+                data.get('dated_facts', []),
+                data.get('data_freshness', '')
+            )
 
             packet = GroundedDataPacket(
                 search_query=search_instruction,
                 raw_findings=data.get('raw_summary', ''),
                 extracted_facts=data.get('dated_facts', []),
                 source_urls=data.get('search_queries_used', []),
-                data_freshness_hours=48 if 'today' in str(data.get('data_freshness', '')).lower() else 72
+                data_freshness_hours=freshness_hours
             )
 
             # Check for freshness/empty results
@@ -608,13 +708,15 @@ OUTPUT FORMAT (JSON):
             # Parse JSON
             try:
                 data = json.loads(self._clean_json_text(result_raw))
-                # Apply Confidence Correction
+                # Apply Confidence Correction (use min to never inflate)
                 if conf_adj is not None:
+                    original_conf = float(data.get('confidence', 0.5))
+                    adjusted_conf = min(original_conf, conf_adj)
                     logger.info(
                         f"[{persona_key}] Confidence clamped: "
-                        f"{data.get('confidence', 'N/A')} → {conf_adj:.2f}"
+                        f"{original_conf:.2f} → {adjusted_conf:.2f} (adjustment: {conf_adj:.2f})"
                     )
-                    data['confidence'] = conf_adj
+                    data['confidence'] = adjusted_conf
             except json.JSONDecodeError:
                 # Fallback to raw text if JSON fails
                 data = {
