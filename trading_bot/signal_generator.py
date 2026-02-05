@@ -30,7 +30,7 @@ from trading_bot.strategy_router import (
 
 logger = logging.getLogger(__name__)
 
-async def generate_signals(ib: IB, config: dict, shutdown_check=None) -> list:
+async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_type=None) -> list:
     """
     Generates trading signals via the Council's multi-agent analysis.
 
