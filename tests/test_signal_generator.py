@@ -30,7 +30,7 @@ async def test_generate_signals():
 
     with patch('trading_bot.signal_generator.get_active_futures', new_callable=AsyncMock) as mock_get_active_futures, \
          patch('trading_bot.signal_generator.build_all_market_contexts', new_callable=AsyncMock) as mock_build, \
-         patch('trading_bot.signal_generator.CoffeeCouncil') as MockCouncil:
+         patch('trading_bot.signal_generator.TradingCouncil') as MockCouncil:
 
         mock_get_active_futures.return_value = mock_futures
         mock_build.return_value = mock_contexts

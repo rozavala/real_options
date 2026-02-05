@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import get_config
+from trading_bot.weighted_voting import TriggerType
 
 # Load config at module level
 config = get_config()
@@ -227,7 +228,7 @@ with manual_cols[0]:
                     async def run_with_cleanup():
                         """Run order generation with guaranteed connection cleanup."""
                         try:
-                            await generate_and_execute_orders(config, connection_purpose="dashboard_orders")
+                            await generate_and_execute_orders(config, connection_purpose="dashboard_orders", trigger_type=TriggerType.MANUAL)
                         finally:
                             # Ensure pool connections are released before loop closes
                             try:

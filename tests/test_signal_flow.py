@@ -32,7 +32,7 @@ async def test_neutral_direction_triggers_volatility_signal_low():
     # Mock Active Futures
     future_contract = Future(conId=1, lastTradeDateOrContractMonth='202512', localSymbol='KCZ25')
 
-    with patch('trading_bot.signal_generator.CoffeeCouncil') as council_cls_mock, \
+    with patch('trading_bot.signal_generator.TradingCouncil') as council_cls_mock, \
          patch('trading_bot.signal_generator.ComplianceGuardian'), \
          patch('trading_bot.signal_generator.get_active_futures', new_callable=AsyncMock) as get_futures_mock, \
          patch('trading_bot.signal_generator.build_all_market_contexts', new_callable=AsyncMock) as build_ctx_mock, \
@@ -103,7 +103,7 @@ async def test_neutral_direction_triggers_volatility_signal_high():
 
     future_contract = Future(conId=1, lastTradeDateOrContractMonth='202512', localSymbol='KCZ25')
 
-    with patch('trading_bot.signal_generator.CoffeeCouncil') as council_cls_mock, \
+    with patch('trading_bot.signal_generator.TradingCouncil') as council_cls_mock, \
          patch('trading_bot.signal_generator.ComplianceGuardian'), \
          patch('trading_bot.signal_generator.get_active_futures', new_callable=AsyncMock) as get_futures_mock, \
          patch('trading_bot.signal_generator.build_all_market_contexts', new_callable=AsyncMock) as build_ctx_mock, \

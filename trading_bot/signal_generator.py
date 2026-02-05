@@ -39,6 +39,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
         config: Trading configuration
         shutdown_check: Optional callable returning True if system is shutting down.
                        Injected by orchestrator to avoid circular import.
+        trigger_type: Optional TriggerType to force cycle type (e.g. MANUAL)
 
     Market data is fetched directly from IBKR for each active contract.
     The Council (8 specialized agents + adversarial debate + weighted voting)
@@ -101,7 +102,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
     sem = asyncio.Semaphore(3)
 
     # 4. Define the async processor for a single contract
-    async def process_contract(contract, market_ctx):
+    async def process_contract(contract, market_ctx, trigger_type=trigger_type):
         contract_name = f"{contract.localSymbol} ({contract.lastTradeDateOrContractMonth[:6]})"
 
         # Default values
@@ -264,7 +265,10 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 # --- WEIGHTED VOTING (New) ---
                 # Determine trigger type from context
                 trigger_source = locals().get('trigger_reason', None)  # From sentinel if triggered
-                trigger_type = determine_trigger_type(trigger_source)
+
+                # Use passed trigger_type if available (e.g. MANUAL), else determine from source
+                if trigger_type is None:
+                    trigger_type = determine_trigger_type(trigger_source)
 
                 # Detect Regime for Voting
                 # Use volatility from market context directly
