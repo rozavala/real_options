@@ -21,7 +21,12 @@ from trading_bot.weighted_voting import calculate_weighted_decision, determine_t
 from trading_bot.heterogeneous_router import CriticalRPCError
 from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.brier_bridge import record_agent_prediction
-from trading_bot.strategy_router import route_strategy, infer_strategy_type  # NEW
+from trading_bot.strategy_router import (
+    route_strategy,
+    infer_strategy_type,
+    calculate_agent_conflict,
+    detect_imminent_catalyst,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -573,8 +578,8 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None) -> list:
                     regime_log = regime_for_voting if regime_for_voting != 'UNKNOWN' else market_ctx.get('regime', 'UNKNOWN')
 
                     if final_direction_log == 'NEUTRAL':
-                        agent_conflict_score_log = _calculate_agent_conflict(agent_data)
-                        imminent_catalyst_log = _detect_imminent_catalyst(agent_data)
+                        agent_conflict_score_log = calculate_agent_conflict(agent_data, mode="scheduled")
+                        imminent_catalyst_log = detect_imminent_catalyst(agent_data, mode="scheduled")
 
                         # v7.0: Mirror execution-path logic exactly
                         if regime_log == 'RANGE_BOUND' and vol_sentiment_log == 'BEARISH':
@@ -771,8 +776,8 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None) -> list:
 
         if final_direction == 'NEUTRAL':
             # === NEUTRAL PATH: Vol trade or No Trade ===
-            agent_conflict_score = _calculate_agent_conflict(agent_data)
-            imminent_catalyst = _detect_imminent_catalyst(agent_data)
+            agent_conflict_score = calculate_agent_conflict(agent_data, mode="scheduled")
+            imminent_catalyst = detect_imminent_catalyst(agent_data, mode="scheduled")
 
             # PATH 1: IRON CONDOR — sell premium in a range when vol is expensive
             if regime == 'RANGE_BOUND' and vol_sentiment == 'BEARISH':

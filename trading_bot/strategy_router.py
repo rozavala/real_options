@@ -69,11 +69,11 @@ def calculate_agent_conflict(agent_data: dict, mode: str = "scheduled") -> float
     avg = sum(sentiments) / len(sentiments)
 
     if mode == "scheduled":
-        # Variance-based (matches existing signal_generator.py)
+        # Variance-based (canonical implementation used by signal_generator.py)
         variance = sum((s - avg) ** 2 for s in sentiments) / len(sentiments)
         return min(1.0, variance)
     else:
-        # MAD-based (matches existing orchestrator.py)
+        # MAD-based (canonical implementation used by orchestrator.py)
         conflict = sum(abs(d - avg) for d in sentiments) / len(sentiments)
         return min(1.0, conflict)
 
@@ -101,7 +101,7 @@ def _detect_catalyst_scheduled(agent_data: dict) -> Optional[str]:
     """
     v7.0 catalyst detection with compound keywords and urgency co-occurrence.
 
-    Mirrors signal_generator.py::_detect_imminent_catalyst exactly.
+    Canonical implementation used by signal_generator.py.
     """
     # Compound keywords — trigger directly (high confidence)
     catalyst_keywords = [
@@ -166,7 +166,7 @@ def _detect_catalyst_emergency(agent_reports: dict) -> str:
     """
     Emergency catalyst detection — simple keyword scan.
 
-    Mirrors orchestrator.py::_detect_emergency_catalyst exactly.
+    Canonical implementation used by orchestrator.py.
     """
     catalyst_keywords = [
         'USDA report', 'FOMC', 'frost', 'freeze', 'hurricane',
