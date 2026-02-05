@@ -349,3 +349,38 @@ async def test_min_relevance_score_filters_partial_matches():
 
     # Only 1 keyword ("trump") matches → below threshold → None
     assert result is None
+
+# === TEST 10: XSentimentSentinel string response (Issue 1b) ===
+from trading_bot.sentinels import XSentimentSentinel
+
+@pytest.mark.asyncio
+async def test_x_sentinel_non_dict_return():
+    """Test that XSentimentSentinel handles non-dict returns (e.g. error strings) without crashing."""
+    config = {
+        'sentinels': {
+            'x_sentiment': {
+                'model': 'grok-4-1-fast-reasoning',
+                'search_queries': ['coffee futures'],
+                'sentiment_threshold': 6.5,
+                'min_engagement': 5,
+                'volume_spike_multiplier': 2.0,
+                'from_handles': [],
+                'exclude_keywords': ['meme']
+            }
+        },
+        'xai': {'api_key': 'test_key_12345'}
+    }
+
+    with patch('trading_bot.sentinels.AsyncOpenAI'):
+        sentinel = XSentimentSentinel(config)
+
+        # Mock _search_x_and_analyze to return a string (simulating the crash condition)
+        # Note: check() calls _sem_bound_search -> _search_x_and_analyze
+        # We mock _search_x_and_analyze directly as check() gathers results from it
+        sentinel._search_x_and_analyze = AsyncMock(return_value="Error: API rate limit exceeded")
+
+        # This should NOT crash with AttributeError: 'str' object has no attribute 'get'
+        trigger = await sentinel.check()
+
+        # Should return None because valid_results should be empty
+        assert trigger is None

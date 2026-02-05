@@ -728,6 +728,36 @@ def is_trading_day() -> bool:
 
     return True
 
+def get_effective_close_time(config: dict = None) -> tuple[int, int]:
+    """
+    Returns the effective (hour, minute) in ET when positions are actually closed.
+
+    This accounts for the schedule offset so all components agree on when
+    close_stale_positions actually runs.
+
+    Commodity-agnostic: reads from config, falls back to (11, 0) if not configured.
+
+    Returns:
+        Tuple of (hour, minute) in Eastern Time.
+    """
+    if config is None:
+        config = {}
+
+    schedule_cfg = config.get('schedule', {})
+
+    # Base close time from config, or default 11:00 ET
+    base_hour = schedule_cfg.get('position_close_hour', 11)
+    base_minute = schedule_cfg.get('position_close_minute', 0)
+
+    # Apply offset (same offset used by apply_schedule_offset in orchestrator)
+    offset_minutes = schedule_cfg.get('offset_minutes', 0)
+
+    from datetime import datetime, timedelta
+    base_dt = datetime(2000, 1, 1, base_hour, base_minute)
+    effective_dt = base_dt + timedelta(minutes=offset_minutes)
+
+    return (effective_dt.hour, effective_dt.minute)
+
 def hours_until_weekly_close(config: dict = None) -> float:
     """
     Calculate hours remaining until the next forced position close.
@@ -749,9 +779,8 @@ def hours_until_weekly_close(config: dict = None) -> float:
     today = now_ny.date()
     weekday = today.weekday()  # 0=Mon, 4=Fri
 
-    # Position close time (must match close_stale_positions schedule)
-    CLOSE_HOUR = 11
-    CLOSE_MINUTE = 0
+    # Position close time — derived from config to stay in sync with schedule offset
+    CLOSE_HOUR, CLOSE_MINUTE = get_effective_close_time(config)
 
     # Build holiday set
     profile_exchange = config.get('exchange', 'ICE') if config else 'ICE'
