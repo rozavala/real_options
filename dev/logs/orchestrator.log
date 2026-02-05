@@ -2,17 +2,19 @@ Verifying critical modules...
   ✅ All 14 critical modules present
 Checking optional modules...
 Starting orchestrator...
-2026-02-04 20:03:59,907 - Orchestrator - INFO - =============================================
-2026-02-04 20:03:59,907 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-04 20:03:59,907 - Orchestrator - INFO - =============================================
-2026-02-04 20:03:59,909 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-04 20:03:59,909 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
-2026-02-04 20:03:59,909 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-04 20:04:00,028 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-04 20:04:00,029 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-04 20:04:00,029 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 13 scheduled tasks already passed:
+2026-02-05 01:29:11,336 - Orchestrator - INFO - =============================================
+2026-02-05 01:29:11,337 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-05 01:29:11,337 - Orchestrator - INFO - =============================================
+2026-02-05 01:29:11,338 - trading_bot.budget_guard - INFO - Budget guard reset for 2026-02-05. Limit: $15.00
+2026-02-05 01:29:11,338 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-05 01:29:11,339 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
+2026-02-05 01:29:11,339 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-05 01:29:11,454 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-05 01:29:11,455 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-02-05 01:29:11,455 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 14 scheduled tasks already passed:
   - 03:20 ET: start_monitoring
   - 03:21 ET: process_deferred_triggers
+  - 04:50 ET: cleanup_orphaned_theses
   - 08:20 ET: run_position_audit_cycle
   - 08:50 ET: guarded_generate_orders
   - 10:50 ET: close_stale_positions
@@ -24,58 +26,62 @@ Starting orchestrator...
   - 13:55 ET: log_equity_snapshot
   - 14:00 ET: run_brier_reconciliation
   - 14:05 ET: reconcile_and_analyze
-2026-02-04 20:04:00,030 - Orchestrator - INFO - --- Recovery: Evaluating 13 missed tasks ---
-2026-02-04 20:04:00,030 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
-2026-02-04 20:04:00,030 - Orchestrator - INFO - ✅ ALREADY RAN: process_deferred_triggers completed earlier today (before restart). Skipping re-execution.
-2026-02-04 20:04:00,031 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: run_position_audit_cycle — market closed
-2026-02-04 20:04:00,031 - Orchestrator - INFO - ✅ ALREADY RAN: guarded_generate_orders completed earlier today (before restart). Skipping re-execution.
-2026-02-04 20:04:00,031 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions — market closed
-2026-02-04 20:04:00,031 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions_fallback — market closed
-2026-02-04 20:04:00,031 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
-2026-02-04 20:04:00,031 - Orchestrator - INFO - ✅ ALREADY RAN: cancel_and_stop_monitoring completed earlier today (before restart). Skipping re-execution.
-2026-02-04 20:04:00,031 - Orchestrator - INFO - ✅ ALREADY RAN: log_equity_snapshot completed earlier today (before restart). Skipping re-execution.
-2026-02-04 20:04:00,031 - Orchestrator - INFO - 🔄 RECOVERY: Running missed run_brier_reconciliation (was scheduled 14:00 ET)
-2026-02-04 20:04:00,063 - scripts.fix_brier_data - INFO - Found 44 pending predictions
-2026-02-04 20:04:00,064 - scripts.fix_brier_data - INFO - Total council decisions: 111
-2026-02-04 20:04:00,066 - scripts.fix_brier_data - WARNING - Found 5 corrupt council decisions (shutdown race condition). Marking associated predictions as ORPHANED.
-2026-02-04 20:04:00,067 - scripts.fix_brier_data - INFO - Reconciled council decisions: 104/111
-2026-02-04 20:04:00,078 - scripts.fix_brier_data - INFO - 
+2026-02-05 01:29:11,456 - Orchestrator - INFO - --- Recovery: Evaluating 14 missed tasks ---
+2026-02-05 01:29:11,456 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
+2026-02-05 01:29:11,456 - Orchestrator - INFO - ✅ ALREADY RAN: process_deferred_triggers completed earlier today (before restart). Skipping re-execution.
+2026-02-05 01:29:11,457 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses (was scheduled 04:50 ET)
+2026-02-05 01:29:11,457 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-05 01:29:11,457 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 208...
+2026-02-05 01:29:11,575 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 208
+2026-02-05 01:29:11,594 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-05 01:29:11,675 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-05 01:29:11,770 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-05 01:29:11,773 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-05 01:29:11,773 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: run_position_audit_cycle — market closed
+2026-02-05 01:29:11,773 - Orchestrator - INFO - ✅ ALREADY RAN: guarded_generate_orders completed earlier today (before restart). Skipping re-execution.
+2026-02-05 01:29:11,773 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions — market closed
+2026-02-05 01:29:11,773 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions_fallback — market closed
+2026-02-05 01:29:11,773 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
+2026-02-05 01:29:11,774 - Orchestrator - INFO - ✅ ALREADY RAN: cancel_and_stop_monitoring completed earlier today (before restart). Skipping re-execution.
+2026-02-05 01:29:11,774 - Orchestrator - INFO - ✅ ALREADY RAN: log_equity_snapshot completed earlier today (before restart). Skipping re-execution.
+2026-02-05 01:29:11,774 - Orchestrator - INFO - 🔄 RECOVERY: Running missed run_brier_reconciliation (was scheduled 14:00 ET)
+2026-02-05 01:29:11,804 - scripts.fix_brier_data - INFO - Found 44 pending predictions
+2026-02-05 01:29:11,805 - scripts.fix_brier_data - INFO - Total council decisions: 111
+2026-02-05 01:29:11,807 - scripts.fix_brier_data - WARNING - Found 5 corrupt council decisions (shutdown race condition). Marking associated predictions as ORPHANED.
+2026-02-05 01:29:11,808 - scripts.fix_brier_data - INFO - Reconciled council decisions: 104/111
+2026-02-05 01:29:11,819 - scripts.fix_brier_data - INFO - 
 ==================================================
-2026-02-04 20:04:00,079 - scripts.fix_brier_data - INFO - RESOLUTION BREAKDOWN:
-2026-02-04 20:04:00,079 - scripts.fix_brier_data - INFO -   Total predictions:            509
-2026-02-04 20:04:00,079 - scripts.fix_brier_data - INFO -   ✅ Resolved:                   208 (+0 new)
-2026-02-04 20:04:00,079 - scripts.fix_brier_data - INFO -   ⏳ Awaiting reconciliation:    44 (potential: 44)
-2026-02-04 20:04:00,079 - scripts.fix_brier_data - INFO -   🗑️  Orphaned (no council):     257 (+0 new)
-2026-02-04 20:04:00,079 - scripts.fix_brier_data - INFO -   📊 Effective resolution rate:  83% (excl. orphans)
-2026-02-04 20:04:00,079 - scripts.fix_brier_data - INFO - ==================================================
-2026-02-04 20:04:00,079 - scripts.fix_brier_data - INFO - 
+2026-02-05 01:29:11,819 - scripts.fix_brier_data - INFO - RESOLUTION BREAKDOWN:
+2026-02-05 01:29:11,819 - scripts.fix_brier_data - INFO -   Total predictions:            509
+2026-02-05 01:29:11,819 - scripts.fix_brier_data - INFO -   ✅ Resolved:                   208 (+0 new)
+2026-02-05 01:29:11,820 - scripts.fix_brier_data - INFO -   ⏳ Awaiting reconciliation:    44 (potential: 44)
+2026-02-05 01:29:11,820 - scripts.fix_brier_data - INFO -   🗑️  Orphaned (no council):     257 (+0 new)
+2026-02-05 01:29:11,820 - scripts.fix_brier_data - INFO -   📊 Effective resolution rate:  83% (excl. orphans)
+2026-02-05 01:29:11,820 - scripts.fix_brier_data - INFO - ==================================================
+2026-02-05 01:29:11,820 - scripts.fix_brier_data - INFO - 
 💡 Running 'python backfill_council_history.py' could unlock up to 44 more predictions
-2026-02-04 20:04:00,079 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
-2026-02-04 20:04:00,083 - Orchestrator - INFO - ✅ RECOVERY: run_brier_reconciliation completed
-2026-02-04 20:04:00,083 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
-2026-02-04 20:04:00,083 - Orchestrator - INFO - System restarted with 11 missed tasks.
-✅ 1 recovered | ⏭️ 5 skipped | ✔️ 5 already ran
-2026-02-04 20:04:00,399 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-04 20:04:00,405 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-05 08:20:00 UTC. Waiting for 12.27 hours.
-2026-02-04 20:04:00,405 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-04 20:04:00,405 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 11 active alerts from disk
-2026-02-04 20:04:00,639 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-04 20:04:00,639 - trading_bot.sentinels - INFO - Loaded state for 7 prediction market topics
-2026-02-04 20:04:00,640 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'US x Russia military clash by...?': title='How many people will Trump deport in 2025?'. Clearing cache.
-2026-02-04 20:04:00,640 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Fed decisions (Dec-Mar)': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
-2026-02-04 20:04:00,640 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Will tariffs generate >$250b in 2025?': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
-2026-02-04 20:04:00,640 - trading_bot.sentinels - INFO - Reloading prediction market topics...
-2026-02-04 20:04:00,640 - trading_bot.sentinels - INFO - Topics reloaded: 10
-2026-02-04 20:04:00,640 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 10 topics
-2026-02-04 20:04:00,643 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-02-04 20:04:16,908 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-02-04 20:04:39,399 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-02-04 20:04:49,238 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-04 20:04:49,322 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-04 20:04:49,398 - Orchestrator - INFO - TopicDiscovery: 6 topics, No changes
-2026-02-05 00:04:27,905 - trading_bot.sentinels - WARNING - WEATHER SENTINEL DETECTED: DROUGHT in Central Highlands: 0.0mm (BULLISH, FLOWERING stage)
-2026-02-05 00:04:27,906 - trading_bot.state_manager - INFO - Queued deferred trigger from WeatherSentinel
-2026-02-05 00:04:27,906 - Orchestrator - INFO - Deferred WeatherSentinel trigger for market open
-2026-02-05 00:05:31,684 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Fed decisions (Dec-Mar)': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
-2026-02-05 00:05:31,685 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Will tariffs generate >$250b in 2025?': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
-2026-02-05 00:05:31,685 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'US x Russia military clash by...?': title='How many people will Trump deport in 2025?'. Clearing cache.
+2026-02-05 01:29:11,820 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-02-05 01:29:11,822 - Orchestrator - INFO - ✅ RECOVERY: run_brier_reconciliation completed
+2026-02-05 01:29:11,822 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
+2026-02-05 01:29:11,822 - Orchestrator - INFO - System restarted with 12 missed tasks.
+✅ 2 recovered | ⏭️ 5 skipped | ✔️ 5 already ran
+2026-02-05 01:29:12,136 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-05 01:29:12,143 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-05 08:20:00 UTC. Waiting for 6.85 hours.
+2026-02-05 01:29:12,143 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-05 01:29:12,144 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 11 active alerts from disk
+2026-02-05 01:29:12,416 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-02-05 01:29:12,417 - trading_bot.sentinels - INFO - Loaded state for 7 prediction market topics
+2026-02-05 01:29:12,417 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'US x Russia military clash by...?': title='How many people will Trump deport in 2025?'. Clearing cache.
+2026-02-05 01:29:12,417 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Fed decisions (Dec-Mar)': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
+2026-02-05 01:29:12,417 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Will tariffs generate >$250b in 2025?': title='MicroStrategy sells any Bitcoin by ___ ?'. Clearing cache.
+2026-02-05 01:29:12,417 - trading_bot.sentinels - INFO - Reloading prediction market topics...
+2026-02-05 01:29:12,417 - trading_bot.sentinels - INFO - Topics reloaded: 10
+2026-02-05 01:29:12,417 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 10 topics
+2026-02-05 01:29:12,420 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-05 01:29:14,930 - trading_bot.sentinels - WARNING - WEATHER SENTINEL DETECTED: DROUGHT in Copan: 1.4mm (BEARISH, HARVEST stage)
+2026-02-05 01:29:14,930 - trading_bot.state_manager - INFO - Queued deferred trigger from WeatherSentinel
+2026-02-05 01:29:14,930 - Orchestrator - INFO - Deferred WeatherSentinel trigger for market open
+2026-02-05 01:29:19,423 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-05 01:29:40,544 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-05 01:29:51,924 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-05 01:29:51,928 - Orchestrator - INFO - TopicDiscovery: 6 topics, No changes
