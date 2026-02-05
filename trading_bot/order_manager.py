@@ -179,7 +179,7 @@ def _describe_bag(contract) -> str:
     return ticker
 
 
-async def generate_and_execute_orders(config: dict, connection_purpose: str = "orchestrator_orders", shutdown_check=None):
+async def generate_and_execute_orders(config: dict, connection_purpose: str = "orchestrator_orders", shutdown_check=None, trigger_type=None):
     """
     Generates, queues, and immediately places orders.
     This ensures that order placement isn't skipped if generation takes
@@ -210,7 +210,7 @@ async def generate_and_execute_orders(config: dict, connection_purpose: str = "o
         return
 
     logger.info(">>> Starting combined task: Generate and Execute Orders <<<")
-    await generate_and_queue_orders(config, connection_purpose=connection_purpose, shutdown_check=shutdown_check)
+    await generate_and_queue_orders(config, connection_purpose=connection_purpose, shutdown_check=shutdown_check, trigger_type=trigger_type)
 
     # Only proceed to placement if orders were actually queued
     if not ORDER_QUEUE.is_empty():
@@ -220,7 +220,7 @@ async def generate_and_execute_orders(config: dict, connection_purpose: str = "o
     logger.info(">>> Combined task 'Generate and Execute Orders' complete <<<")
 
 
-async def generate_and_queue_orders(config: dict, connection_purpose: str = "orchestrator_orders", shutdown_check=None):
+async def generate_and_queue_orders(config: dict, connection_purpose: str = "orchestrator_orders", shutdown_check=None, trigger_type=None):
     """
     Generates trading strategies based on market data and API predictions,
     and queues them for later execution.
@@ -236,7 +236,7 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             logger.info(f"Connected to IB for signal generation (purpose: {connection_purpose}).")
 
             logger.info("Step 1: Generating structured signals via Council...")
-            signals = await generate_signals(ib, config, shutdown_check=shutdown_check)
+            signals = await generate_signals(ib, config, shutdown_check=shutdown_check, trigger_type=trigger_type)
             logger.info(f"Generated {len(signals)} signals: {signals}")
 
             futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=5)
