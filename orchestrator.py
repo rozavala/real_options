@@ -74,6 +74,7 @@ GLOBAL_DRAWDOWN_GUARD = None
 
 # Module-level shutdown state
 _SYSTEM_SHUTDOWN = False
+_brier_zero_resolution_streak = 0
 
 def is_system_shutdown() -> bool:
     """Check if the system has entered end-of-day shutdown."""
@@ -1552,6 +1553,16 @@ async def cancel_and_stop_monitoring(config: dict):
 
     await cancel_all_open_orders(config)
     await stop_monitoring(config)
+
+    # v5.4 Fix: Release pooled connections to prevent "Peer closed" errors
+    # at 20:00 UTC Gateway restart. Post-shutdown tasks (equity logging,
+    # reconciliation) use their own self-managed connections, not the pool.
+    try:
+        await IBConnectionPool.release_all()
+        logger.info("Connection pool released — no stale connections for Gateway restart")
+    except Exception as e:
+        logger.warning(f"Pool cleanup during shutdown: {e}")
+
     logger.info("--- End-of-day shutdown sequence complete ---")
 
 
@@ -2626,6 +2637,25 @@ async def run_sentinels(config: dict):
 
     while True:
         try:
+            # v5.4: Shutdown gate — stop all sentinel activity post-shutdown
+            if _SYSTEM_SHUTDOWN:
+                # One-time microstructure cleanup (Issue 7 integrated)
+                if micro_sentinel is not None:
+                    logger.info("Shutdown: Gracefully disengaging Microstructure Sentinel")
+                    try:
+                        await micro_sentinel.unsubscribe_all()
+                    except Exception as e:
+                        logger.error(f"Shutdown microstructure cleanup error: {e}")
+                    micro_sentinel = None
+                    if micro_ib is not None:
+                        try:
+                            await IBConnectionPool.release_connection("microstructure")
+                        except Exception:
+                            pass
+                        micro_ib = None
+                await asyncio.sleep(60)
+                continue
+
             now = time_module.time()
             market_open = is_market_open()
             trading_day = is_trading_day()
@@ -3082,6 +3112,46 @@ async def run_brier_reconciliation(config: dict):
         from scripts.fix_brier_data import resolve_with_cycle_aware_match
         resolved = resolve_with_cycle_aware_match(dry_run=False)
         logger.info(f"Brier reconciliation complete: {resolved} predictions resolved")
+
+        # v5.4: Stall detection — alert after 3 consecutive days with 0 resolutions
+        global _brier_zero_resolution_streak
+        try:
+            import json
+            brier_path = os.path.join(os.path.dirname(__file__), 'data', 'enhanced_brier.json')
+            if os.path.exists(brier_path):
+                with open(brier_path, 'r') as f:
+                    brier_data = json.load(f)
+                pending = sum(
+                    1 for p in brier_data.get('predictions', [])
+                    if p.get('resolved_at') is None
+                )
+                resolved_today = sum(
+                    1 for p in brier_data.get('predictions', [])
+                    if p.get('resolved_at') and p['resolved_at'].startswith(
+                        datetime.now(timezone.utc).strftime('%Y-%m-%d')
+                    )
+                )
+                if resolved_today == 0 and pending > 0:
+                    _brier_zero_resolution_streak += 1
+                    logger.warning(
+                        f"Brier stall: {pending} pending, 0 resolved today "
+                        f"(streak: {_brier_zero_resolution_streak} days)"
+                    )
+                    if _brier_zero_resolution_streak >= 3:
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "⚠️ Brier Reconciliation Stall",
+                            f"{pending} predictions pending, 0 resolved for "
+                            f"{_brier_zero_resolution_streak} consecutive days. "
+                            f"Check council_history backfill and schedule ordering."
+                        )
+                else:
+                    _brier_zero_resolution_streak = 0
+                    if resolved_today > 0:
+                        logger.info(f"Brier reconciliation: {resolved_today} predictions resolved today")
+        except Exception as e:
+            logger.debug(f"Brier stall check error (non-critical): {e}")
+
     except Exception as e:
         logger.error(f"Brier reconciliation failed (non-fatal): {e}")
 
@@ -3186,8 +3256,8 @@ schedule = {
     time(13, 15): emergency_hard_close,           # SAFETY: Market orders
     time(13, 45): cancel_and_stop_monitoring,
     time(14, 5): log_equity_snapshot,
-    time(14, 10): run_brier_reconciliation,       # After equity logging, before end-of-day
-    time(14, 15): reconcile_and_analyze,
+    time(14, 10): reconcile_and_analyze,           # v5.4: Backfill council_history FIRST
+    time(14, 20): run_brier_reconciliation,        # v5.4: Score against freshly backfilled data
 }
 
 def apply_schedule_offset(original_schedule: dict, offset_minutes: int) -> dict:
@@ -3229,8 +3299,8 @@ RECOVERY_POLICY = {
     'emergency_hard_close':           {'policy': 'MARKET_OPEN',   'idempotent': True},
     'cancel_and_stop_monitoring':     {'policy': 'NEVER',         'idempotent': False},
     'log_equity_snapshot':            {'policy': 'ALWAYS',        'idempotent': False},
-    'run_brier_reconciliation':       {'policy': 'ALWAYS',        'idempotent': True},
     'reconcile_and_analyze':          {'policy': 'ALWAYS',        'idempotent': False},
+    'run_brier_reconciliation':       {'policy': 'ALWAYS',        'idempotent': True},
 }
 
 # Startup validation: warn if schedule has tasks not covered by RECOVERY_POLICY

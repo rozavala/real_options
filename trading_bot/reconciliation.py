@@ -103,119 +103,89 @@ async def reconcile_council_history(config: dict, ib: IB = None):
 
 def _calculate_actual_exit_time(entry_time: datetime, config: dict) -> datetime:
     """
-    Calculate the actual exit time for a council decision, respecting
-    the weekly close policy (close all positions before weekends/holidays).
+    Calculate when a position entered at entry_time would actually be closed.
 
-    This is commodity-agnostic — it uses the exchange calendar rather than
-    hardcoded dates. The function answers: "Given this entry time, when would
-    the position actually have been closed?"
+    v5.4 REWRITE: Deterministic calculation that mirrors close_stale_positions behavior.
 
-    Rules (matching close_stale_positions logic):
-    1. Default exit: entry + 27 hours (next session close)
-    2. Friday entries: exit at CLOSE_TIME on same Friday (weekly close)
-    3. Thursday entries when Friday is holiday: exit at CLOSE_TIME Thursday
-    4. Any entry where default exit lands on non-trading day:
-       exit at CLOSE_TIME on the last trading day before the weekend/holiday
+    Algorithm:
+    1. Get the effective close time from config (accounts for schedule offset)
+    2. If entry is before close time on a weekly-close day (Friday, or Thursday
+       before a holiday), exit is same-day at close time
+    3. Otherwise, walk forward to the next trading day and exit at close time
+    4. If that next trading day is a weekly-close day, cap at its close time
 
-    Args:
-        entry_time: Timezone-aware datetime of the council decision
-        config: System config (unused now, available for future exchange config)
+    This replaces the old entry+27h heuristic which didn't match actual execution.
 
-    Returns:
-        Timezone-aware datetime of the actual exit
+    Commodity-agnostic: uses exchange calendar and config-driven close time.
     """
     import pytz
+    from trading_bot.calendars import get_exchange_calendar
+    from trading_bot.utils import get_effective_close_time
 
     ny_tz = pytz.timezone('America/New_York')
+    CLOSE_HOUR, CLOSE_MINUTE = get_effective_close_time(config)
 
-    # Position close time from schedule (11:00 ET = primary close_stale_positions)
-    CLOSE_HOUR = 11
-    CLOSE_MINUTE = 0
-
-    # Convert entry to NY time for calendar logic
+    # Convert entry to NY time
     if entry_time.tzinfo is None:
         entry_time = pytz.UTC.localize(entry_time)
     entry_ny = entry_time.astimezone(ny_tz)
 
-    # Default: entry + 27 hours
-    default_exit = entry_time + timedelta(hours=27)
-    default_exit_ny = default_exit.astimezone(ny_tz)
-
-    # Build holiday set for the relevant year(s)
-    from trading_bot.calendars import get_exchange_calendar
-
-    profile_exchange = config.get('exchange', 'ICE')
-    cal = get_exchange_calendar(profile_exchange)
-
-    years_to_check = {entry_ny.year, default_exit_ny.year}
+    # Build exchange holiday set
+    cal = get_exchange_calendar(config.get('exchange', 'ICE'))
+    entry_year = entry_ny.year
     exchange_holidays = set()
-    for year in years_to_check:
-        start = date(year, 1, 1)
-        end = date(year, 12, 31)
-        exchange_holidays.update(
-            d.date() for d in cal.holidays(start=start, end=end)
-        )
+    for year in {entry_year, entry_year + 1}:
+        try:
+            hols = cal.holidays(
+                start=date(year, 1, 1),
+                end=date(year, 12, 31)
+            )
+            exchange_holidays.update(d.date() for d in hols)
+        except Exception:
+            pass
 
     def is_trading_day(d):
+        """Check if a date is a trading day (weekday + not exchange holiday)."""
         return d.weekday() < 5 and d not in exchange_holidays
 
-    def last_trading_day_close(from_date):
-        """Roll backward from from_date to find the last trading day's close."""
-        check_date = from_date
-        while not is_trading_day(check_date):
-            check_date -= timedelta(days=1)
-        return ny_tz.localize(
-            datetime.combine(check_date, datetime.min.time()).replace(
+    def make_close_time(d):
+        """Create a UTC datetime for close time on a given date."""
+        close_ny = ny_tz.localize(
+            datetime.combine(d, datetime.min.time()).replace(
                 hour=CLOSE_HOUR, minute=CLOSE_MINUTE, second=0, microsecond=0
             )
-        ).astimezone(pytz.UTC)
+        )
+        return close_ny.astimezone(pytz.UTC)
 
-    # --- RULE: Check if entry day itself triggers weekly close ---
+    def is_weekly_close_day(d):
+        """Check if this date triggers a weekly close (Friday, or Thu before holiday Friday)."""
+        if d.weekday() == 4:  # Friday
+            return True
+        if d.weekday() == 3:  # Thursday
+            friday = d + timedelta(days=1)
+            if friday in exchange_holidays or friday.weekday() >= 5:
+                return True
+        return False
+
     entry_date = entry_ny.date()
-    entry_weekday = entry_date.weekday()  # 0=Mon, 4=Fri
 
-    # Friday entry → weekly close same day
-    if entry_weekday == 4:
-        friday_close_ny = entry_ny.replace(
-            hour=CLOSE_HOUR, minute=CLOSE_MINUTE, second=0, microsecond=0
-        )
-        friday_close_utc = friday_close_ny.astimezone(pytz.UTC)
-        # Only use Friday close if entry is BEFORE close time
-        if entry_time < friday_close_utc:
-            return friday_close_utc
+    # RULE 1: If entry is on a weekly-close day AND before close time → exit same day
+    if is_weekly_close_day(entry_date):
+        same_day_close = make_close_time(entry_date)
+        if entry_time < same_day_close:
+            return same_day_close
 
-    # Thursday entry when Friday is a holiday → weekly close same day
-    if entry_weekday == 3:
-        friday_date = entry_date + timedelta(days=1)
-        if friday_date in us_holidays or friday_date.weekday() >= 5:
-            thursday_close_ny = entry_ny.replace(
-                hour=CLOSE_HOUR, minute=CLOSE_MINUTE, second=0, microsecond=0
-            )
-            thursday_close_utc = thursday_close_ny.astimezone(pytz.UTC)
-            if entry_time < thursday_close_utc:
-                return thursday_close_utc
+    # RULE 2: Walk forward to next trading day
+    next_day = entry_date + timedelta(days=1)
+    safety_limit = 10  # Prevent infinite loop (max gap: ~4 days for holiday weekends)
+    for _ in range(safety_limit):
+        if is_trading_day(next_day):
+            break
+        next_day += timedelta(days=1)
 
-    # --- RULE: Check if default exit (entry+27h) lands on non-trading period ---
-    default_exit_date = default_exit_ny.date()
-
-    if not is_trading_day(default_exit_date):
-        # Roll backward to the last trading day's close
-        return last_trading_day_close(default_exit_date)
-
-    # --- RULE: Check if default exit is after close time on a weekly-close day ---
-    default_exit_weekday = default_exit_date.weekday()
-
-    if default_exit_weekday == 4:  # Exits on a Friday
-        friday_close_ny = default_exit_ny.replace(
-            hour=CLOSE_HOUR, minute=CLOSE_MINUTE, second=0, microsecond=0
-        )
-        friday_close_utc = friday_close_ny.astimezone(pytz.UTC)
-        # Cap at Friday close (won't be held over the weekend)
-        if default_exit > friday_close_utc:
-            return friday_close_utc
-
-    # Default case: use entry + 27h (standard weekday exit)
-    return default_exit
+    # RULE 3: Exit at close time on the next trading day
+    # If that day is a weekly-close day, the close time already accounts for it
+    return make_close_time(next_day)
 
 
 async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_path: str):

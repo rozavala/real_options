@@ -1052,8 +1052,15 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
         all_results = await asyncio.gather(*tasks, return_exceptions=True)
         valid_results = []
         for i, result in enumerate(all_results):
-            if isinstance(result, Exception): logger.error(f"Query '{self.search_queries[i]}' failed: {result}")
-            elif result is not None: valid_results.append(result)
+            if isinstance(result, Exception):
+                logger.error(f"Query '{self.search_queries[i]}' failed: {result}")
+            elif isinstance(result, dict):
+                valid_results.append(result)
+            elif result is not None:
+                logger.warning(
+                    f"Query '{self.search_queries[i]}' returned non-dict type "
+                    f"({type(result).__name__}): {str(result)[:100]}"
+                )
         if not valid_results:
             self.consecutive_failures += 1
             if self.consecutive_failures >= 3:
