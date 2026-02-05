@@ -281,7 +281,7 @@ async def test_commodity_impact_field_in_trigger():
 
     # Mock a 20% swing (big enough to trigger)
     mock_response = [
-        {'slug': 'test-market', 'title': 'Test Market', 'markets': [
+        {'slug': 'test-market', 'title': 'Test Coffee Market', 'markets': [
             {'outcomePrices': ['0.70'], 'volume': '100000', 'liquidity': '50000'}
         ]}
     ]

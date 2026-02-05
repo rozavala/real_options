@@ -125,6 +125,7 @@ class CommodityProfile:
     weather_apis: List[str] = field(default_factory=list)
     news_keywords: List[str] = field(default_factory=list)
     social_accounts: List[str] = field(default_factory=list)
+    sentiment_search_queries: List[str] = field(default_factory=list)  # Added for XSentimentSentinel
 
     # Risk thresholds
     volatility_high_iv_rank: float = 0.7
@@ -377,6 +378,17 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
         "zerohedge",          # Macro/markets commentary
         "Barchart",           # Commodity data & charts
         "WSJ"                 # Wall Street Journal markets
+    ],
+
+    sentiment_search_queries=[
+        "coffee futures",
+        "arabica prices",
+        "KC futures",
+        "robusta market",
+        "coffee supply",
+        "Brazil coffee harvest",
+        "coffee supply chain",
+        "US coffee tariffs",
     ],
 
     volatility_high_iv_rank=0.70,
@@ -655,6 +667,7 @@ def _load_profile_from_json(path: str) -> CommodityProfile:
         supply_chain_context=data.get('supply_chain_context', ''),
         # V3 FIX: Load remaining configurable fields (defaults match dataclass)
         social_accounts=data.get('social_accounts', []),
+        sentiment_search_queries=data.get('sentiment_search_queries', []),
         weather_apis=data.get('weather_apis', []),
         volatility_high_iv_rank=data.get('volatility_high_iv_rank', 0.7),
         volatility_low_iv_rank=data.get('volatility_low_iv_rank', 0.3),
