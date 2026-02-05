@@ -187,20 +187,32 @@ class TopicDiscoveryAgent:
                     # Filter by Keywords (Layer 1)
                     relevance = self._score_relevance_keywords(market_data['title'], area)
 
-                    # Filter by Exclude Keywords
+                    # Filter by Exclude Keywords (now includes global excludes)
                     if self._check_exclusions(market_data['title'], area):
                         continue
 
-                    # LLM Assessment (Layer 2) - Only if enabled and ambiguous
-                    # Simple heuristic: If relevance is low but not zero, or if novel market detection is on
-                    if relevance > 0:
-                        # Keyword match found
-                        if relevance < area.get('min_relevance_score', 1):
-                            # Try LLM boost if enabled
-                            if self.discovery_config.get('novel_market_llm_assessment', False):
+                    # LLM Assessment (Layer 2)
+                    # Two modes:
+                    #   A) BOOST: relevance > 0 but below threshold → LLM can boost score
+                    #   B) GATE:  relevance >= threshold → LLM validates (rejects false positives)
+                    if self.discovery_config.get('novel_market_llm_assessment', False):
+                        if relevance > 0 and relevance < area.get('min_relevance_score', 1):
+                            # Mode A: Boost — keyword partial match, LLM might raise it
+                            llm_score = await self._llm_assess_relevance(market_data, area)
+                            if llm_score:
+                                relevance = max(relevance, llm_score)
+                        elif relevance >= area.get('min_relevance_score', 1):
+                            # Mode B: Gate — keyword match passes, but validate with LLM
+                            # Only for areas flagged as needing validation (broad keyword sets)
+                            if area.get('llm_validation_required', False):
                                 llm_score = await self._llm_assess_relevance(market_data, area)
-                                if llm_score:
-                                    relevance = max(relevance, llm_score)
+                                if llm_score is not None and llm_score == 0:
+                                    # LLM explicitly rejected this market
+                                    logger.info(
+                                        f"LLM GATE rejected '{market_data['title']}' "
+                                        f"for area '{area['name']}' (keyword score={relevance})"
+                                    )
+                                    relevance = 0  # Reset — LLM override
 
                     if relevance >= area.get('min_relevance_score', 1):
                         market_data['relevance_score'] = relevance
@@ -331,20 +343,54 @@ class TopicDiscoveryAgent:
 
         return f"D_{area_prefix}_{source_hash}"
 
+    @staticmethod
+    def _word_boundary_match(keyword: str, text: str) -> bool:
+        """
+        Match keyword using word boundaries to prevent substring false positives.
+
+        Examples:
+            "port" matches "port blockade" but NOT "deport" or "report"
+            "military" matches "military clash" and "the military"
+            "trade war" matches "trade war escalation" (multi-word phrases use simple `in`)
+
+        Commodity-agnostic: Works for any keyword set regardless of commodity.
+        """
+        import re
+        kw_lower = keyword.lower()
+        text_lower = text.lower()
+
+        # Multi-word phrases: use simple substring (phrase boundaries are natural)
+        if ' ' in kw_lower:
+            return kw_lower in text_lower
+
+        # Single words: enforce word boundaries
+        pattern = r'\b' + re.escape(kw_lower) + r'\b'
+        return bool(re.search(pattern, text_lower))
+
     def _score_relevance_keywords(self, title: str, area: Dict) -> int:
-        """Score title against area keywords."""
+        """Score relevance based on keyword matches in title (word-boundary safe)."""
         score = 0
-        title_lower = title.lower()
         for kw in area.get('relevance_keywords', []):
-            if kw.lower() in title_lower:
+            if self._word_boundary_match(kw, title):
                 score += 1
         return score
 
     def _check_exclusions(self, title: str, area: Dict) -> bool:
-        """Check if title contains excluded keywords."""
-        title_lower = title.lower()
-        for kw in area.get('exclude_keywords', []):
-            if kw.lower() in title_lower:
+        """
+        Check if title contains excluded keywords.
+
+        Uses BOTH area-level AND global exclude keywords.
+        Global excludes are defined at the prediction_markets config level.
+        """
+        # Area-specific excludes
+        area_excludes = area.get('exclude_keywords', [])
+        # Global excludes (from parent prediction_markets config)
+        global_excludes = self.sentinel_config.get('global_exclude_keywords', [])
+
+        all_excludes = area_excludes + global_excludes
+
+        for kw in all_excludes:
+            if self._word_boundary_match(kw, title):
                 return True
         return False
 
@@ -367,15 +413,26 @@ class TopicDiscoveryAgent:
 
         self._llm_calls_this_scan += 1
 
-        prompt = f"""
-You are a relevance filter for a Coffee Trading Bot.
-We are looking for prediction markets related to: {area['name']}
-Relevance Keywords: {', '.join(area['relevance_keywords'])}
+        # Commodity-agnostic: Pull active commodity from profile config
+        commodity_profile = self.config.get('commodity_profile', {})
+        commodity_name = commodity_profile.get('name', 'commodities')
+        commodity_description = commodity_profile.get('description', 'commodity futures')
+        impact_template = area.get('commodity_impact_template', '')
 
-Market Title: "{candidate['title']}"
+        prompt = f"""You are a relevance filter for an algorithmic {commodity_description} trading system.
 
-Question: Is this market substantively relevant to {area['name']}?
-Answer ONLY with a JSON object: {{"relevant": true/false, "score": 0-5}}
+Interest Area: {area['name']}
+Why We Track This: {impact_template}
+Relevance Keywords: {', '.join(area.get('relevance_keywords', []))}
+
+Candidate Market Title: "{candidate['title']}"
+
+Evaluation Criteria:
+1. Does this market have a PLAUSIBLE causal pathway to affect {commodity_name} prices, supply chains, or trading conditions?
+2. Is the connection direct (score 4-5), indirect but material (score 2-3), or tenuous/speculative (score 0-1)?
+3. A market about global geopolitics that doesn't specifically involve {commodity_name} producing/consuming regions should score 0.
+
+Answer ONLY with a JSON object: {{"relevant": true/false, "score": 0-5, "reasoning": "one sentence"}}
 """
         try:
             response = await self._call_anthropic(prompt)

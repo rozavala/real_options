@@ -213,7 +213,11 @@ def render_portfolio_risk_summary(live_data: dict):
             st.metric("Margin Util", "N/A")
 
     with cols[2]:
-        st.metric("Daily P&L", f"${daily_pnl:+,.0f}")
+        import math
+        if daily_pnl is None or (isinstance(daily_pnl, float) and math.isnan(daily_pnl)):
+            st.metric("Daily P&L", "$0", delta="No data", delta_color="off")
+        else:
+            st.metric("Daily P&L", f"${daily_pnl:+,.0f}")
 
     with cols[3]:
         pos_count = len([p for p in live_data.get('open_positions', []) if p.position != 0])
