@@ -299,13 +299,39 @@ class TradingCouncil:
                 # Use min() to not overwrite a stricter penalty from Check 1
                 confidence_adjustment = min(confidence_adjustment, overconf_adj) if confidence_adjustment is not None else overconf_adj
 
-        # Check 3: Hallucination flag — numbers not in grounded data (UNCHANGED)
+        # Check 3: Hallucination flag — numbers not in grounded data
+        # v5.2 FIX: Context-aware thresholds and price-level whitelisting
         import re as re_mod
         output_numbers = set(re_mod.findall(r'\b\d{3,}\b', analysis))
         source_numbers = set(re_mod.findall(r'\b\d{3,}\b', grounded_data))
         fabricated = output_numbers - source_numbers
-        if len(fabricated) > 3:
-            issues.append(f"Possible hallucination: {len(fabricated)} numbers not in grounded data: {list(fabricated)[:3]}")
+
+        # Whitelist price levels near the underlying price for technical/volatility/macro agents
+        # These agents CALCULATE support/resistance levels that won't appear in input data.
+        if agent_name in ('technical', 'volatility', 'macro'):
+            try:
+                price_numbers = [float(n) for n in source_numbers if 50 < float(n) < 1000]
+                if price_numbers:
+                    ref_price = max(price_numbers)  # Use highest as reference
+                    fabricated = {
+                        n for n in fabricated
+                        if not (ref_price * 0.7 < float(n) < ref_price * 1.3)
+                    }
+            except (ValueError, ZeroDivisionError):
+                pass  # If parsing fails, keep original check
+
+        # Agents with web search capability get a higher threshold
+        # (their LLM retrieved numbers via AFC that aren't in our local data)
+        if agent_name in ('sentiment', 'geopolitical'):
+            threshold = 5
+        else:
+            threshold = 3
+
+        if len(fabricated) > threshold:
+            issues.append(
+                f"Possible hallucination: {len(fabricated)} numbers not in grounded data: "
+                f"{list(fabricated)[:3]}"
+            )
 
         is_valid = len(issues) == 0
         if not is_valid:
@@ -796,7 +822,7 @@ OUTPUT FORMAT (JSON ONLY):
 {{
   'evidence': '...',
   'analysis': '...',
-  'confidence': 0.0-1.0,
+  'confidence': 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME',
   'sentiment': 'BULLISH'|'BEARISH'|'NEUTRAL'
 }}
 """

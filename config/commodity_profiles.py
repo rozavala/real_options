@@ -126,6 +126,7 @@ class CommodityProfile:
     news_keywords: List[str] = field(default_factory=list)
     social_accounts: List[str] = field(default_factory=list)
     sentiment_search_queries: List[str] = field(default_factory=list)  # Added for XSentimentSentinel
+    legitimate_data_sources: List[str] = field(default_factory=list)   # Added for Observability (Issue 3)
 
     # Risk thresholds
     volatility_high_iv_rank: float = 0.7
@@ -389,6 +390,11 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
         "Brazil coffee harvest",
         "coffee supply chain",
         "US coffee tariffs",
+    ],
+
+    legitimate_data_sources=[
+        'USDA', 'ICE', 'ICE Exchange', 'CONAB', 'CECAFE',
+        'ICO', 'Green Coffee Association', 'NOAA',
     ],
 
     volatility_high_iv_rank=0.70,
@@ -668,6 +674,7 @@ def _load_profile_from_json(path: str) -> CommodityProfile:
         # V3 FIX: Load remaining configurable fields (defaults match dataclass)
         social_accounts=data.get('social_accounts', []),
         sentiment_search_queries=data.get('sentiment_search_queries', []),
+        legitimate_data_sources=data.get('legitimate_data_sources', []),
         weather_apis=data.get('weather_apis', []),
         volatility_high_iv_rank=data.get('volatility_high_iv_rank', 0.7),
         volatility_low_iv_rank=data.get('volatility_low_iv_rank', 0.3),

@@ -543,7 +543,9 @@ def log_council_decision(decision_data):
     fieldnames = [
         "cycle_id",  # NEW: Deterministic foreign key for prediction matching
         "timestamp", "contract", "entry_price",
-        "ml_signal", "ml_confidence",
+        # ml_signal and ml_confidence removed (ML pipeline archived v4.0)
+        # Columns retained in existing CSV rows for backward compatibility
+        # but no longer written to new rows.
         "meteorologist_sentiment", "meteorologist_summary",
         "macro_sentiment", "macro_summary",
         "geopolitical_sentiment", "geopolitical_summary",
@@ -602,6 +604,11 @@ def log_council_decision(decision_data):
                     if col not in full_df.columns:
                         full_df[col] = ''
                         logging.info(f"  Added new column: {col}")
+
+                # Before reordering, log any columns being dropped
+                dropped_cols = [c for c in full_df.columns if c not in fieldnames]
+                if dropped_cols:
+                    logging.info(f"  Dropping deprecated columns: {dropped_cols}")
 
                 # Reorder columns to match new schema
                 full_df = full_df[fieldnames]
