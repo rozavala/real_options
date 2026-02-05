@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 from google import genai
 from google.genai import types
+from trading_bot.confidence_utils import parse_confidence
 from trading_bot.state_manager import StateManager
 from trading_bot.sentinels import SentinelTrigger
 from trading_bot.semantic_router import SemanticRouter
@@ -736,7 +737,7 @@ OUTPUT FORMAT (JSON):
                 data = json.loads(self._clean_json_text(result_raw))
                 # Apply Confidence Correction (use min to never inflate)
                 if conf_adj is not None:
-                    original_conf = float(data.get('confidence', 0.5))
+                    original_conf = parse_confidence(data.get('confidence', 0.5))
                     adjusted_conf = min(original_conf, conf_adj)
                     logger.info(
                         f"[{persona_key}] Confidence clamped: "
@@ -763,7 +764,7 @@ OUTPUT FORMAT (JSON):
 
             structured_result = {
                 'data': formatted_text,
-                'confidence': float(data.get('confidence', 0.5)),
+                'confidence': parse_confidence(data.get('confidence', 0.5)),
                 'sentiment': data.get('sentiment', 'NEUTRAL'),
                 'data_freshness_hours': grounded_data.data_freshness_hours
             }
@@ -779,7 +780,7 @@ OUTPUT FORMAT (JSON):
                         grounded_data=grounded_data.raw_findings, # Fix B3: Populate grounded data
                         output_text=formatted_text,
                         sentiment=data.get('sentiment', 'NEUTRAL'),
-                        confidence=float(data.get('confidence', 0.5)),
+                        confidence=parse_confidence(data.get('confidence', 0.5)),
                         model_name=self.agent_model_name # Approximation, router might differ
                     )
                     self.observability.record_trace(trace)
@@ -854,7 +855,7 @@ OUTPUT FORMAT (JSON ONLY):
 
         return {
             'data': formatted_text,
-            'confidence': float(data.get('confidence', 0.5)),
+            'confidence': parse_confidence(data.get('confidence', 0.5)),
             'sentiment': data.get('sentiment', 'NEUTRAL')
         }
 

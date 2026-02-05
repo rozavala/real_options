@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Optional, Any
 from trading_bot.brier_bridge import get_agent_reliability
 from trading_bot.strategy_router import extract_agent_prediction
+from trading_bot.confidence_utils import CONFIDENCE_BANDS
 
 logger = logging.getLogger(__name__)
 
@@ -429,12 +430,6 @@ async def calculate_weighted_decision(
                 # v7.0 philosophy: LLMs output bands, not precise numbers.
                 # Map categorical confidence to fixed values. Fall back to
                 # numeric parsing for backward compatibility with cached reports.
-                CONFIDENCE_BANDS = {
-                    'LOW': 0.55,
-                    'MODERATE': 0.65,
-                    'HIGH': 0.80,
-                    'EXTREME': 0.90,
-                }
                 raw_conf = report.get('confidence', 0.5)
                 if isinstance(raw_conf, str) and raw_conf.upper() in CONFIDENCE_BANDS:
                     confidence = CONFIDENCE_BANDS[raw_conf.upper()]
