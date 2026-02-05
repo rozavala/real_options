@@ -57,7 +57,25 @@ def load_config() -> dict | None:
     if os.getenv("STRATEGY_QTY"):
         config['strategy']['quantity'] = int(os.getenv("STRATEGY_QTY"))
 
-    # 6. Models
+    # 6. OVERRIDE: Notifications (Secrets)
+    if os.getenv("PUSHOVER_USER_KEY"):
+        if 'notifications' not in config:
+            config['notifications'] = {}
+        config['notifications']['pushover_user_key'] = os.getenv("PUSHOVER_USER_KEY")
+
+    if os.getenv("PUSHOVER_API_TOKEN"):
+        if 'notifications' not in config:
+            config['notifications'] = {}
+        config['notifications']['pushover_api_token'] = os.getenv("PUSHOVER_API_TOKEN")
+
+    # 7. OVERRIDE: Data Providers (Secrets)
+    if os.getenv("FRED_API_KEY"):
+        config['fred_api_key'] = os.getenv("FRED_API_KEY")
+
+    if os.getenv("NASDAQ_API_KEY"):
+        config['nasdaq_api_key'] = os.getenv("NASDAQ_API_KEY")
+
+    # 8. Models
     if config['gemini']['api_key'] == "LOADED_FROM_ENV":
         config['gemini']['api_key'] = os.getenv("GEMINI_API_KEY")
 
