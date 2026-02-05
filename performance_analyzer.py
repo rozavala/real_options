@@ -7,6 +7,7 @@ import logging
 import asyncio
 import random
 import math
+import functools
 from ib_insync import IB, PortfolioItem
 
 from trading_bot.logging_config import setup_logging
@@ -20,6 +21,15 @@ logger = logging.getLogger("PerformanceAnalyzer")
 
 # --- Constants ---
 DEFAULT_STARTING_CAPITAL = 250000
+
+
+@functools.lru_cache(maxsize=128)
+def _load_archive_file(filepath: str, mtime: float) -> pd.DataFrame:
+    """
+    Cached loader for archive files.
+    The mtime argument ensures that if the file changes, we reload it.
+    """
+    return pd.read_csv(filepath)
 
 
 def get_trade_ledger_df():
@@ -38,14 +48,25 @@ def get_trade_ledger_df():
         logger.debug("Main trade_ledger.csv not found. This is normal for new installations.")
 
     if os.path.exists(archive_dir):
-        archive_files = [os.path.join(archive_dir, f) for f in os.listdir(archive_dir) if f.startswith('trade_ledger_') and f.endswith('.csv')]
-        if archive_files:
-            logger.info(f"Found {len(archive_files)} archived trade ledger(s).")
-            for file in archive_files:
-                logger.info(f"Loading archived ledger: {os.path.basename(file)}")
-                dataframes.append(pd.read_csv(file))
-        else:
-            logger.info("No archived trade ledgers found.")
+        try:
+            # Use os.scandir for better performance (avoids extra stat calls)
+            with os.scandir(archive_dir) as entries:
+                found_archives = False
+                for entry in entries:
+                    if entry.is_file() and entry.name.startswith('trade_ledger_') and entry.name.endswith('.csv'):
+                        found_archives = True
+                        logger.info(f"Loading archived ledger: {entry.name}")
+                        try:
+                            # Pass mtime to cache key
+                            df = _load_archive_file(entry.path, entry.stat().st_mtime)
+                            dataframes.append(df)
+                        except Exception as e:
+                            logger.warning(f"Failed to load archive {entry.name}: {e}")
+
+                if not found_archives:
+                    logger.info("No archived trade ledgers found.")
+        except Exception as e:
+            logger.warning(f"Error scanning archive directory: {e}")
     else:
         logger.info("Archive directory not found, skipping.")
 
