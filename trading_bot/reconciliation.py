@@ -6,7 +6,7 @@ import csv
 import logging
 import os
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 import pytz
 import pandas as pd
 from ib_insync import IB, Contract, util
@@ -125,8 +125,6 @@ def _calculate_actual_exit_time(entry_time: datetime, config: dict) -> datetime:
         Timezone-aware datetime of the actual exit
     """
     import pytz
-    from pandas.tseries.holiday import USFederalHolidayCalendar
-    import holidays as holidays_lib
 
     ny_tz = pytz.timezone('America/New_York')
 
@@ -144,19 +142,22 @@ def _calculate_actual_exit_time(entry_time: datetime, config: dict) -> datetime:
     default_exit_ny = default_exit.astimezone(ny_tz)
 
     # Build holiday set for the relevant year(s)
+    from trading_bot.calendars import get_exchange_calendar
+
+    profile_exchange = config.get('exchange', 'ICE')
+    cal = get_exchange_calendar(profile_exchange)
+
     years_to_check = {entry_ny.year, default_exit_ny.year}
-    us_holidays = set()
+    exchange_holidays = set()
     for year in years_to_check:
-        us_holidays.update(holidays_lib.US(years=year, observed=True).keys())
-        try:
-            nyse = holidays_lib.financial_holidays('NYSE', years=year)
-            us_holidays.update(nyse.keys())
-        except (AttributeError, TypeError):
-            pass
+        start = date(year, 1, 1)
+        end = date(year, 12, 31)
+        exchange_holidays.update(
+            d.date() for d in cal.holidays(start=start, end=end)
+        )
 
     def is_trading_day(d):
-        """Check if a date is a trading day (weekday + not holiday)."""
-        return d.weekday() < 5 and d not in us_holidays
+        return d.weekday() < 5 and d not in exchange_holidays
 
     def last_trading_day_close(from_date):
         """Roll backward from from_date to find the last trading day's close."""

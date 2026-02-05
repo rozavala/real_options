@@ -7,25 +7,35 @@ from datetime import datetime
 
 @dataclass
 class CouncilHistoryRow:
-    """J2 FIX: Enforce council_history.csv schema."""
+    """J2 FIX: Enforce council_history.csv schema.
+
+    v5.1 FIX: Aligned field names with actual CSV schema in log_council_decision().
+    - Renamed 'cycle_type' → 'trigger_type' to match CSV column name
+    - Renamed 'direction' → 'master_decision' to match CSV column name
+    - Renamed 'vol_level' → 'volatility_level' to match CSV column name
+    - Renamed 'reason' → 'master_reasoning' to match CSV column name
+    """
     timestamp: str
     cycle_id: str
-    cycle_type: str  # SCHEDULED or EMERGENCY
+    trigger_type: str  # SCHEDULED or EMERGENCY (was 'cycle_type' — CSV uses 'trigger_type')
     contract: str
-    direction: str
+    master_decision: str  # BULLISH / BEARISH / NEUTRAL (was 'direction')
     prediction_type: str
-    vol_level: str
-    confidence: float
+    volatility_level: str  # (was 'vol_level')
+    master_confidence: float  # (was 'confidence')
     weighted_score: float
     thesis_strength: str
-    regime: str
+    regime: str  # NOTE: not in CSV fieldnames — captured via vote_breakdown or separate field
     compliance_approved: bool
-    reason: str
+    master_reasoning: str  # (was 'reason')
 
     @classmethod
     def validate_row(cls, row: dict) -> 'CouncilHistoryRow':
-        """Validate and coerce a dict to the expected schema."""
-        required_fields = ['timestamp', 'cycle_id', 'cycle_type', 'contract']
+        """Validate and coerce a dict to the expected schema.
+
+        v5.1: Field names now match log_council_decision() CSV columns exactly.
+        """
+        required_fields = ['timestamp', 'cycle_id', 'contract']
         for field in required_fields:
             if field not in row or not row[field]:
                 raise ValueError(f"Missing required field: {field}")
@@ -33,15 +43,15 @@ class CouncilHistoryRow:
         return cls(
             timestamp=str(row['timestamp']),
             cycle_id=str(row['cycle_id']),
-            cycle_type=str(row.get('cycle_type', 'UNKNOWN')),
+            trigger_type=str(row.get('trigger_type', 'UNKNOWN')),
             contract=str(row['contract']),
-            direction=str(row.get('direction', 'NEUTRAL')),
+            master_decision=str(row.get('master_decision', 'NEUTRAL')),
             prediction_type=str(row.get('prediction_type', 'UNKNOWN')),
-            vol_level=str(row.get('vol_level', 'UNKNOWN')),
-            confidence=float(row.get('confidence', 0.0)),
+            volatility_level=str(row.get('volatility_level', 'UNKNOWN')),
+            master_confidence=float(row.get('master_confidence', 0.0)),
             weighted_score=float(row.get('weighted_score', 0.0)),
             thesis_strength=str(row.get('thesis_strength', 'SPECULATIVE')),
             regime=str(row.get('regime', 'UNKNOWN')),
             compliance_approved=bool(row.get('compliance_approved', False)),
-            reason=str(row.get('reason', ''))
+            master_reasoning=str(row.get('master_reasoning', ''))
         )

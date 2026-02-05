@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # B1 FIX: Track legacy usage for migration
 _LEGACY_USAGE_COUNT = 0
-_LEGACY_DEPRECATION_DATE = "2026-03-01"
+_LEGACY_DEPRECATION_DATE = datetime(2026, 3, 1, tzinfo=timezone.utc)
 
 
 def record_agent_prediction(
@@ -83,7 +83,7 @@ def record_agent_prediction(
         logger.warning(f"Enhanced Brier recording failed for {agent}: {e}")
 
     # === LEGACY SYSTEM (CSV) — Deprecated ===
-    if datetime.now(timezone.utc).isoformat() < _LEGACY_DEPRECATION_DATE:
+    if datetime.now(timezone.utc) < _LEGACY_DEPRECATION_DATE:
         try:
             from trading_bot.brier_scoring import get_brier_tracker
             legacy_tracker = get_brier_tracker()

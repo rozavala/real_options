@@ -12,7 +12,7 @@ import csv
 import logging
 import os
 import shutil
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone, date
 import pytz
 from ib_insync import *
 import numpy as np
@@ -620,6 +620,17 @@ def log_council_decision(decision_data):
             shutil.move(file_path, legacy_path)
             logging.warning(f"Archived old file to {legacy_path} due to migration error.")
 
+    # === SCHEMA VALIDATION (v5.1 — centralized here to catch ALL callers) ===
+    try:
+        from trading_bot.schema import CouncilHistoryRow
+        CouncilHistoryRow.validate_row(row_data)
+    except ValueError as e:
+        logging.error(f"Schema validation failed for council_history row: {e}. Row keys: {list(row_data.keys())}")
+        # Do NOT block the write — log the violation and continue
+        # Once we confirm zero violations in production, we can make this a hard block
+    except ImportError:
+        logging.warning("Could not import CouncilHistoryRow for validation — skipping schema check")
+
     # === APPEND NEW ROW ===
     file_exists = os.path.exists(file_path)
     try:
@@ -710,7 +721,7 @@ def is_trading_day() -> bool:
 
     return True
 
-def hours_until_weekly_close() -> float:
+def hours_until_weekly_close(config: dict = None) -> float:
     """
     Calculate hours remaining until the next forced position close.
 
@@ -723,8 +734,7 @@ def hours_until_weekly_close() -> float:
     gate for order generation.
     """
     import pytz
-    from pandas.tseries.holiday import USFederalHolidayCalendar
-    import holidays as holidays_lib
+    from trading_bot.calendars import get_exchange_calendar
 
     ny_tz = pytz.timezone('America/New_York')
     now_utc = datetime.now(timezone.utc)
@@ -737,14 +747,16 @@ def hours_until_weekly_close() -> float:
     CLOSE_MINUTE = 0
 
     # Build holiday set
-    us_holidays = set()
+    profile_exchange = config.get('exchange', 'ICE') if config else 'ICE'
+    cal = get_exchange_calendar(profile_exchange)
+
+    exchange_holidays = set()
     for year in {today.year, today.year + 1}:
-        us_holidays.update(holidays_lib.US(years=year, observed=True).keys())
-        try:
-            nyse = holidays_lib.financial_holidays('NYSE', years=year)
-            us_holidays.update(nyse.keys())
-        except (AttributeError, TypeError):
-            pass
+        start = date(year, 1, 1)
+        end = date(year, 12, 31)
+        exchange_holidays.update(
+            d.date() for d in cal.holidays(start=start, end=end)
+        )
 
     is_weekly_close_day = False
 
@@ -755,7 +767,7 @@ def hours_until_weekly_close() -> float:
     # Thursday → check if Friday is holiday
     elif weekday == 3:
         friday = today + timedelta(days=1)
-        if friday in us_holidays or friday.weekday() >= 5:
+        if friday in exchange_holidays or friday.weekday() >= 5:
             is_weekly_close_day = True
 
     if not is_weekly_close_day:

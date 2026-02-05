@@ -644,7 +644,10 @@ def _find_position_id_for_contract(
 
     # === STRATEGY 1: Exact conId match with active thesis ===
     if tms is not None and conId:
-        conId_matches = matches[matches.get('conId', pd.Series()) == conId]
+        if 'conId' in matches.columns:
+            conId_matches = matches[matches['conId'] == conId]
+        else:
+            conId_matches = pd.DataFrame()
 
         for pos_id in conId_matches['position_id'].unique():
             # Check if thesis is still active

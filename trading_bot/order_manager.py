@@ -106,9 +106,18 @@ async def _reconcile_working_orders(ib: IB, config: dict) -> float:
             if trade.orderStatus.status in ('PreSubmitted', 'Submitted'):
                 # Estimate risk (conservative: use margin requirement)
                 # For spreads, this is approximate but safe
-                estimated_risk = abs(trade.order.totalQuantity) * 500  # $500 per contract estimate
+                # v5.1 FIX: Profile-driven estimate instead of hardcoded $500
+                from config import get_active_profile
+                profile = get_active_profile(config)
+                fallback_risk_per_contract = (
+                    profile.contract.tick_value * profile.contract.contract_size * 0.02
+                )
+                estimated_risk = abs(trade.order.totalQuantity) * fallback_risk_per_contract
                 total_committed += estimated_risk
-                logger.info(f"Working order {trade.order.orderId}: ~${estimated_risk:.0f} committed")
+                logger.info(
+                    f"Working order {trade.order.orderId}: ~${estimated_risk:.0f} committed "
+                    f"(Fallback: {profile.ticker} @ ${fallback_risk_per_contract:.0f}/contract)"
+                )
 
         if skipped_foreign > 0:
             logger.info(
@@ -185,7 +194,7 @@ async def generate_and_execute_orders(config: dict, connection_purpose: str = "o
     min_holding_hours = config.get('risk_management', {}).get(
         'min_holding_hours', 6.0
     )
-    remaining_hours = hours_until_weekly_close()
+    remaining_hours = hours_until_weekly_close(config)
 
     if remaining_hours < min_holding_hours:
         logger.info(
@@ -979,6 +988,11 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 except Exception as e:
                     logger.error(f"Failed to calculate trend for {contract.localSymbol}: {e}")
 
+                # v5.1 FIX: Determine cycle type from decision_data context
+                # Emergency orders pass through via orders_list parameter;
+                # global queue orders are always from scheduled cycles
+                _cycle_type = 'EMERGENCY' if orders_list is not None else 'SCHEDULED'
+
                 order_context = {
                     'symbol': _describe_bag(contract) if isinstance(contract, Bag) else contract.localSymbol,
                     'bid_ask_spread': spread_width * 100 if contract.secType == 'BAG' else spread_width,
@@ -988,7 +1002,8 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     'contract': contract,
                     'order_object': order,  # NEW: Pass full order for risk calculation
                     'order_quantity': order.totalQuantity,
-                    'account_equity': current_equity
+                    'account_equity': current_equity,
+                    'cycle_type': _cycle_type,  # v5.1: Required for Fix 6 volume retry logic
                 }
 
                 # 2. Compliance Review
@@ -1426,7 +1441,6 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 import pandas as pd
 from datetime import datetime, date, timedelta
 import os
-from pandas.tseries.holiday import USFederalHolidayCalendar
 
 def get_trade_ledger_df():
     """
@@ -1498,7 +1512,9 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
         logger.warning("Today is a weekend. Skipping position closing check.")
         return
 
-    cal = USFederalHolidayCalendar()
+    from trading_bot.calendars import get_exchange_calendar
+    cal = get_exchange_calendar(config.get('exchange', 'ICE'))
+
     # Check if today is Friday
     if weekday == 4:
         is_weekly_close = True
