@@ -25,109 +25,6 @@ from trading_bot.strategy_router import route_strategy, infer_strategy_type  # N
 
 logger = logging.getLogger(__name__)
 
-def _calculate_agent_conflict(agent_data: dict) -> float:
-    """
-    Returns 0.0-1.0 score indicating how much agents disagree.
-    High conflict = potential inflection point = good for straddle.
-    """
-    sentiments = []
-    for key in ['macro_sentiment', 'technical_sentiment', 'geopolitical_sentiment',
-                'sentiment_sentiment', 'agronomist_sentiment']:
-        s = agent_data.get(key, 'NEUTRAL')
-        if s == 'BULLISH':
-            sentiments.append(1)
-        elif s == 'BEARISH':
-            sentiments.append(-1)
-        else:
-            sentiments.append(0)
-
-    if not sentiments:
-        return 0.0
-
-    # High variance = high conflict
-    avg = sum(sentiments) / len(sentiments)
-    variance = sum((s - avg) ** 2 for s in sentiments) / len(sentiments)
-    # Normalize: max variance with [-1, 1] values is 1.0
-    return min(1.0, variance)
-
-
-def _detect_imminent_catalyst(agent_data: dict) -> str | None:
-    """
-    Scans agent reports for signs of IMMINENT, UNPRICED market-moving events.
-    Returns catalyst description if found, None otherwise.
-
-    v7.0: Previous version triggered on generic keywords like "drought" and "rain"
-    which appear in EVERY coffee report. Now requires:
-    1. Compound keywords (e.g. "frost warning") trigger directly — high confidence
-    2. Single keywords (e.g. "drought") require urgency co-occurrence
-    3. Resolved markers ("ended", "improving", "priced in") suppress false positives
-
-    This prevents the system from perpetually thinking there's an "imminent catalyst"
-    when reports are simply discussing normal weather conditions.
-    """
-    # Compound keywords — trigger directly (high confidence)
-    catalyst_keywords = [
-        ('frost warning', 'Active frost warning in growing regions'),
-        ('freeze warning', 'Active freeze warning'),
-        ('frost risk', 'Elevated frost risk detected'),
-        ('conab report', 'CONAB report imminent'),
-        ('usda report', 'USDA report pending'),
-        ('strike action', 'Labor strike in progress or imminent'),
-        ('port closure', 'Port closure affecting exports'),
-        ('export ban', 'Export restriction announced'),
-    ]
-
-    # Single-word triggers — REQUIRE urgency co-occurrence
-    conditional_keywords = [
-        ('drought', 'Drought conditions'),
-        ('frost', 'Frost conditions'),
-        ('freeze', 'Freeze conditions'),
-        ('strike', 'Labor disruption'),
-    ]
-
-    # Urgency markers — catalyst must be ACTIVE, not historical
-    urgency_markers = [
-        'imminent', 'warning', 'developing', 'worsening', 'escalating',
-        'confirmed', 'breaking', 'emergency', 'unprecedented', 'severe',
-        'expected this week', 'forecast for', 'risk elevated',
-    ]
-
-    # Resolved markers — catalyst is OVER, not actionable
-    resolved_markers = [
-        'ended', 'resolved', 'passed', 'recovered', 'abated', 'eased',
-        'improving', 'relief', 'normalized', 'subsided', 'historical',
-        'priced in', 'already reflected',
-    ]
-
-    # Check agronomist and geopolitical summaries
-    reports_to_check = [
-        agent_data.get('agronomist_summary', ''),
-        agent_data.get('geopolitical_summary', ''),
-        agent_data.get('sentiment_summary', ''),
-    ]
-
-    combined_text = ' '.join(str(r).lower() for r in reports_to_check)
-
-    # Check if text contains resolved markers (reduces false positives)
-    has_resolved = any(marker in combined_text for marker in resolved_markers)
-
-    # Phase 1: Check compound keywords (high confidence, don't need urgency)
-    for keyword, description in catalyst_keywords:
-        if keyword in combined_text and not has_resolved:
-            logger.info(f"CATALYST DETECTED (compound): '{keyword}' → {description}")
-            return description
-
-    # Phase 2: Check single keywords (require urgency co-occurrence)
-    if not has_resolved:
-        has_urgency = any(marker in combined_text for marker in urgency_markers)
-        if has_urgency:
-            for keyword, description in conditional_keywords:
-                if keyword in combined_text:
-                    logger.info(f"CATALYST DETECTED (conditional+urgent): '{keyword}' → {description}")
-                    return f"{description} (urgent)"
-
-    return None
-
 async def generate_signals(ib: IB, config: dict, shutdown_check=None) -> list:
     """
     Generates trading signals via the Council's multi-agent analysis.
@@ -911,39 +808,29 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None) -> list:
             else:
                 logger.info(f"STRATEGY: Directional spread (thesis={thesis_strength}, vol={vol_sentiment})")
 
-        # === SHADOW RUN (v7.0 Strategy Router) ===
-        # Verify the new router produces identical results to the legacy logic
-        try:
-            routed_shadow = route_strategy(
-                direction=final_direction,
-                confidence=final_data["confidence"],
-                vol_sentiment=vol_sentiment,
-                regime=regime,
-                thesis_strength=thesis_strength,
-                conviction_multiplier=decision.get('conviction_multiplier', 1.0) if 'decision' in dir() else 1.0,
-                reasoning=final_data["reason"],
-                agent_data=agent_data,
-                mode="scheduled",
-            )
+        # === v4.1: AUTHORITATIVE ROUTER ===
+        # Router is now the SINGLE SOURCE OF TRUTH for strategy selection.
+        # A1/H1 FIX: No more legacy inline logic.
 
-            # Assertion: Check invariant
-            mismatch = False
-            if routed_shadow['prediction_type'] != prediction_type:
-                mismatch = True
-            if routed_shadow['vol_level'] != vol_level:
-                mismatch = True
+        from trading_bot.strategy_router import route_strategy
 
-            if mismatch:
-                logger.critical(
-                    f"ROUTING MISMATCH (Shadow Run): "
-                    f"Legacy=[{prediction_type}, {vol_level}], "
-                    f"Router=[{routed_shadow['prediction_type']}, {routed_shadow['vol_level']}]"
-                )
-            else:
-                logger.info("Strategy Router Shadow Run: MATCH ✅")
+        routed = route_strategy(
+            direction=final_direction,
+            confidence=final_data["confidence"],
+            vol_sentiment=vol_sentiment,
+            regime=regime,
+            thesis_strength=thesis_strength,
+            conviction_multiplier=decision.get('conviction_multiplier', 1.0) if 'decision' in dir() else 1.0,
+            reasoning=final_data["reason"],
+            agent_data=agent_data,
+            mode="scheduled",
+        )
 
-        except Exception as e:
-            logger.error(f"Strategy Router Shadow Run FAILED: {e}")
+        prediction_type = routed['prediction_type']
+        vol_level = routed['vol_level']
+        reason = routed['reason']
+
+        logger.info(f"Router decision: {prediction_type}/{vol_level} for {contract.localSymbol}")
 
         # Construct final signal object
         if prediction_type == "VOLATILITY":
@@ -969,7 +856,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None) -> list:
             return {
                 "contract_month": contract.lastTradeDateOrContractMonth[:6],
                 "prediction_type": "DIRECTIONAL",
-                "direction": final_direction,
+                "direction": routed['direction'],
                 "reason": reason,
                 "regime": regime,
                 "volatility_sentiment": vol_sentiment,

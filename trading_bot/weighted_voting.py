@@ -14,6 +14,7 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import Optional, Any
 from trading_bot.brier_bridge import get_agent_reliability
+from trading_bot.strategy_router import extract_agent_prediction
 
 logger = logging.getLogger(__name__)
 

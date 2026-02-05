@@ -31,6 +31,8 @@ class IBConnectionPool:
         "test_utilities": 220,    # Range: 220-229 (Dashboard IB test button)
         "audit": 230,             # Range: 230-239 (Position audit cycle)
         "equity_logger": 250,     # Range: 250-259
+        "reconciliation": 260,    # Range: 260-269
+        "cleanup": 270,           # Range: 270-279
         # Note: position_monitor.py uses 300-399
         # Note: reconciliation uses random 5000-9999
         # DEFAULT for unknown purposes: 200-209 (avoid adding new purposes without explicit ID)

@@ -44,7 +44,7 @@ from trading_bot.utils import configure_market_data_type
 from trading_bot.timestamps import parse_ts_column
 
 # === CONFIGURATION ===
-DEFAULT_STARTING_CAPITAL = float(os.getenv("INITIAL_CAPITAL", "250000"))
+# E4 FIX: Dynamic starting capital handled in get_starting_capital function
 STATE_FILE_PATH = 'data/state.json'
 ORCHESTRATOR_LOG_PATH = 'logs/orchestrator.log'
 COUNCIL_HISTORY_PATH = 'data/council_history.csv'
@@ -52,6 +52,21 @@ DAILY_EQUITY_PATH = 'data/daily_equity.csv'
 
 
 # === DATA LOADING FUNCTIONS ===
+
+def get_starting_capital(config: dict) -> float:
+    """Get starting capital from config, not hardcoded."""
+    from config import get_active_profile
+    profile = get_active_profile(config)
+
+    # Priority: Env Var > Config > Profile > Default
+    env_cap = os.getenv("INITIAL_CAPITAL")
+    if env_cap:
+        return float(env_cap)
+
+    return config.get('account', {}).get(
+        'starting_capital',
+        profile.default_starting_capital if hasattr(profile, 'default_starting_capital') else 50000.0
+    )
 
 @st.cache_data
 def get_config():

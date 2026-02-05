@@ -70,21 +70,13 @@ async def main():
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(shutdown(s)))
 
+    from trading_bot.connection_pool import IBConnectionPool
+
     monitor_task = None
     try:
-        conn_settings = config.get('connection', {})
-        host = conn_settings.get('host', '127.0.0.1')
-        port = conn_settings.get('port', 7497)
-        # Use a client ID offset from the main one to avoid conflicts
-        # Using 300+ range to avoid collision with IBConnectionPool (100-200)
-        client_id = 300 + random.randint(0, 99)
-
-        logger.info(f"Connecting to {host}:{port} with client ID {client_id} for monitoring...")
-        await ib.connectAsync(host, port, clientId=client_id)
-
-        # --- FIX: Configure Market Data Type based on Environment ---
+        # C1 FIX: Use pool instead of manual connection
+        ib = await IBConnectionPool.get_connection("monitor", config)
         configure_market_data_type(ib)
-        # ------------------------------------------------------------
 
         logger.info("Position monitor connected and watching open positions.")
 
@@ -101,10 +93,10 @@ async def main():
     finally:
         if monitor_task and not monitor_task.done():
             monitor_task.cancel()
-        if ib.isConnected():
-            ib.disconnect()
-            # === NEW: Give Gateway time to cleanup ===
-            await asyncio.sleep(3.0)
+
+        # Pool handles cleanup
+        await IBConnectionPool.release_connection("monitor")
+
         logger.info("Position monitor has shut down.")
 
 

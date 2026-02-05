@@ -10,10 +10,15 @@ The enhanced system can fail without impacting legacy behavior.
 """
 
 import logging
+import warnings
 from datetime import datetime, timezone
 from typing import Optional, Dict
 
 logger = logging.getLogger(__name__)
+
+# B1 FIX: Track legacy usage for migration
+_LEGACY_USAGE_COUNT = 0
+_LEGACY_DEPRECATION_DATE = "2026-03-01"
 
 
 def record_agent_prediction(
@@ -26,7 +31,7 @@ def record_agent_prediction(
     timestamp: Optional[datetime] = None,
 ) -> None:
     """
-    Record an agent's prediction to BOTH legacy and enhanced Brier systems.
+    Record an agent's prediction with deprecation path for legacy system.
 
     This is the ONLY function that should be called from the orchestrator
     for recording predictions. It handles dual-write and error isolation.
@@ -41,21 +46,7 @@ def record_agent_prediction(
         timestamp: When prediction was made (default: now UTC)
     """
     ts = timestamp or datetime.now(timezone.utc)
-
-    # === LEGACY SYSTEM (CSV) — must succeed ===
-    try:
-        from trading_bot.brier_scoring import get_brier_tracker
-        legacy_tracker = get_brier_tracker()
-        legacy_tracker.record_prediction_structured(
-            agent=agent,
-            predicted_direction=predicted_direction,
-            predicted_confidence=predicted_confidence,
-            actual='PENDING',
-            timestamp=ts,
-            cycle_id=cycle_id,
-        )
-    except Exception as e:
-        logger.error(f"Legacy Brier recording failed for {agent}: {e}")
+    global _LEGACY_USAGE_COUNT
 
     # === ENHANCED SYSTEM (JSON) — fail-safe ===
     try:
@@ -63,33 +54,56 @@ def record_agent_prediction(
 
         tracker = _get_enhanced_tracker()
         if tracker is None:
-            return
+            pass # Fall through to legacy if enabled
+        else:
+            # Convert confidence to probability distribution
+            prob_bullish, prob_neutral, prob_bearish = _confidence_to_probs(
+                predicted_direction, predicted_confidence
+            )
 
-        # Convert confidence to probability distribution
-        prob_bullish, prob_neutral, prob_bearish = _confidence_to_probs(
-            predicted_direction, predicted_confidence
-        )
+            # Map regime string to enum
+            try:
+                regime_enum = MarketRegime(regime)
+            except (ValueError, KeyError):
+                regime_enum = MarketRegime.NORMAL
 
-        # Map regime string to enum
-        try:
-            regime_enum = MarketRegime(regime)
-        except (ValueError, KeyError):
-            regime_enum = MarketRegime.NORMAL
-
-        tracker.record_prediction(
-            agent=agent,
-            prob_bullish=prob_bullish,
-            prob_neutral=prob_neutral,
-            prob_bearish=prob_bearish,
-            regime=regime_enum,
-            contract=contract,
-            timestamp=ts,
-            cycle_id=cycle_id,
-        )
+            tracker.record_prediction(
+                agent=agent,
+                prob_bullish=prob_bullish,
+                prob_neutral=prob_neutral,
+                prob_bearish=prob_bearish,
+                regime=regime_enum,
+                contract=contract,
+                timestamp=ts,
+                cycle_id=cycle_id,
+            )
 
     except Exception as e:
         # Enhanced system failure MUST NOT block trading
         logger.warning(f"Enhanced Brier recording failed for {agent}: {e}")
+
+    # === LEGACY SYSTEM (CSV) — Deprecated ===
+    if datetime.now(timezone.utc).isoformat() < _LEGACY_DEPRECATION_DATE:
+        try:
+            from trading_bot.brier_scoring import get_brier_tracker
+            legacy_tracker = get_brier_tracker()
+            legacy_tracker.record_prediction_structured(
+                agent=agent,
+                predicted_direction=predicted_direction,
+                predicted_confidence=predicted_confidence,
+                actual='PENDING',
+                timestamp=ts,
+                cycle_id=cycle_id,
+            )
+            _LEGACY_USAGE_COUNT += 1
+
+            if _LEGACY_USAGE_COUNT % 100 == 0:
+                logger.warning(
+                    f"DEPRECATION: Legacy Brier system used {_LEGACY_USAGE_COUNT} times. "
+                    f"Will be removed after {_LEGACY_DEPRECATION_DATE}"
+                )
+        except Exception as e:
+            logger.error(f"Legacy Brier recording failed for {agent}: {e}")
 
 
 def resolve_agent_prediction(

@@ -162,7 +162,7 @@ class EnhancedBrierTracker:
         regime: MarketRegime = MarketRegime.NORMAL,
         contract: str = "",
         timestamp: Optional[datetime] = None,
-        cycle_id: str = ""  # NEW
+        cycle_id: str = ""  # B3 FIX: Now REQUIRED
     ) -> str:
         """
         Record a new prediction.
@@ -170,9 +170,8 @@ class EnhancedBrierTracker:
         Returns:
             Prediction ID for later resolution
         """
-        # DEFENSIVE GUARD: Sanitize "nan" string that can leak from pandas
-        if cycle_id in ("nan", "None", "null", None):
-            cycle_id = ""
+        if not cycle_id or cycle_id in ("nan", "None", "null"):
+            raise ValueError("cycle_id is required for prediction recording (B3 fix)")
 
         pred = ProbabilisticPrediction(
             timestamp=timestamp or datetime.now(timezone.utc),
@@ -182,7 +181,7 @@ class EnhancedBrierTracker:
             prob_bearish=prob_bearish,
             regime=regime,
             contract=contract,
-            cycle_id=cycle_id  # NEW
+            cycle_id=cycle_id
         )
 
         self.predictions.append(pred)

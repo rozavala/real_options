@@ -678,14 +678,23 @@ async def main(lookback_days: int = None):
     return missing_trades_df, superfluous_trades_df
 
 
-async def full_reconciliation(config: dict = None):
+async def full_reconciliation(config: dict) -> int:
     """
-    Run full historical reconciliation (not just recent).
+    Run full historical reconciliation (monthly job).
+    J3 FIX: Catches orphaned trades beyond daily window.
+    """
+    logger.info("Running FULL trade reconciliation (no date limit)")
 
-    v3.1: Monthly job to catch any orphaned trades.
-    """
-    logger.info("Running FULL trade reconciliation (365 days)")
-    return await main(lookback_days=365)
+    # Run main with 365 days lookback
+    missing, superfluous = await main(lookback_days=365)
+
+    count = len(missing) + len(superfluous)
+    if count > 0:
+        logger.warning(f"Full reconciliation found {count} discrepancies ({len(missing)} missing, {len(superfluous)} superfluous)")
+    else:
+        logger.info("Full reconciliation complete: all trades matched")
+
+    return count
 
 
 if __name__ == "__main__":

@@ -285,6 +285,44 @@ def route_strategy(
     }
 
 
+def extract_agent_prediction(report) -> tuple:
+    """
+    Extract direction and confidence from an agent report.
+
+    A4 FIX: Single canonical implementation.
+    Handles both structured dict reports and legacy string reports.
+
+    Returns: (direction: str, confidence: float)
+    """
+    direction = 'NEUTRAL'
+    confidence = 0.5
+
+    if isinstance(report, dict):
+        direction = report.get('sentiment', report.get('direction', 'NEUTRAL'))
+        confidence = report.get('confidence', 0.5)
+
+        if not direction or direction in ('N/A', ''):
+            report_str = str(report.get('data', '')).upper()
+            if 'BULLISH' in report_str:
+                direction = 'BULLISH'
+            elif 'BEARISH' in report_str:
+                direction = 'BEARISH'
+
+    elif isinstance(report, str):
+        report_str = report.upper()
+        if 'BULLISH' in report_str:
+            direction = 'BULLISH'
+        elif 'BEARISH' in report_str:
+            direction = 'BEARISH'
+
+        import re
+        conf_match = re.search(r'(\d+(?:\.\d+)?)\s*%?\s*(?:conf|certain|sure)', report_str, re.I)
+        if conf_match:
+            confidence = float(conf_match.group(1)) / 100 if float(conf_match.group(1)) > 1 else float(conf_match.group(1))
+
+    return direction, confidence
+
+
 def infer_strategy_type(routed: dict) -> str:
     """Infer human-readable strategy type from routed signal."""
     if routed['prediction_type'] == 'VOLATILITY':

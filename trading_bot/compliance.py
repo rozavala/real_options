@@ -3,6 +3,8 @@ import json
 import os
 import asyncio
 import re
+from dataclasses import dataclass
+from typing import Optional
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole
 from trading_bot.utils import get_dollar_multiplier
 import csv
@@ -10,6 +12,80 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
+
+@dataclass
+class ComplianceDecision:
+    """Structured compliance decision with fail-closed defaults."""
+    approved: bool = False  # Fail-closed default
+    reason: str = "Unknown"
+    raw_response: str = ""
+    parse_method: str = "unknown"
+
+    @classmethod
+    def from_llm_response(cls, response: str) -> 'ComplianceDecision':
+        """
+        Parse LLM response with strict validation.
+
+        G1 FIX: Multi-layer parsing with fail-closed default.
+        """
+        if not response or not response.strip():
+            return cls(
+                approved=False,
+                reason="Empty LLM response (fail-closed)",
+                parse_method="empty_response"
+            )
+
+        text = response.strip()
+
+        # Layer 1: Try direct JSON parse
+        try:
+            # Strip markdown fences
+            if text.startswith("```"):
+                text = text.split("```")[1]
+                if text.startswith("json"):
+                    text = text[4:]
+            text = text.strip()
+
+            result = json.loads(text)
+            if isinstance(result, dict) and 'approved' in result:
+                return cls(
+                    approved=bool(result.get('approved', False)),
+                    reason=str(result.get('reason', 'No reason provided')),
+                    raw_response=response[:500],
+                    parse_method="direct_json"
+                )
+        except json.JSONDecodeError:
+            pass
+
+        # Layer 2: Extract JSON from prose (strict pattern)
+        pattern = r'\{\s*"approved"\s*:\s*(true|false)\s*,\s*"reason"\s*:\s*"([^"]+)"\s*\}'
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return cls(
+                approved=match.group(1).lower() == 'true',
+                reason=match.group(2),
+                raw_response=response[:500],
+                parse_method="regex_strict"
+            )
+
+        # Layer 3: Reverse field order
+        pattern_rev = r'\{\s*"reason"\s*:\s*"([^"]+)"\s*,\s*"approved"\s*:\s*(true|false)\s*\}'
+        match = re.search(pattern_rev, text, re.IGNORECASE)
+        if match:
+            return cls(
+                approved=match.group(2).lower() == 'true',
+                reason=match.group(1),
+                raw_response=response[:500],
+                parse_method="regex_reverse"
+            )
+
+        # Layer 4: FAIL CLOSED - cannot parse
+        return cls(
+            approved=False,
+            reason=f"Cannot parse LLM response (fail-closed): {text[:100]}...",
+            raw_response=response[:500],
+            parse_method="fail_closed"
+        )
 
 # Module-level cache for ContractDetails (prevents redundant API calls during multi-signal bursts)
 _CONTRACT_DETAILS_CACHE: dict = {}
@@ -460,9 +536,14 @@ class ComplianceGuardian:
             profile = get_active_profile(self.config)
             straddle_threshold = profile.straddle_risk_threshold
 
-            if risk_per_contract > straddle_threshold:  # Likely straddle or large premium
-                limit_pct = self.limits.get('max_straddle_pct', 0.55)
-                logger.info(f"Using straddle limit ({limit_pct:.0%}) for high-premium trade")
+            # G2 FIX: Reject if straddle risk exceeds threshold (was previously just increasing limit)
+            # The guide mandates a hard block here if per-contract risk is too high.
+            if risk_per_contract > straddle_threshold:
+                logger.warning(
+                    f"Straddle risk ${risk_per_contract:,.0f} exceeds "
+                    f"threshold ${straddle_threshold:,.0f} for {profile.name}"
+                )
+                return False, f"Straddle risk too high for account size"
 
         max_allowed = equity * limit_pct
 
@@ -527,64 +608,28 @@ class ComplianceGuardian:
                 response_json=True
             )
 
-            # --- FIX: Validate raw response ---
-            if not response or not response.strip():
-                logger.error(f"Compliance LLM returned empty response for {symbol}")
-                return False, "Compliance Error: Empty LLM response (fail-closed)"
+            # G1 FIX: Use structured parser
+            decision = ComplianceDecision.from_llm_response(response)
 
-            text = response.strip()
+            logger.info(f"Compliance decision: approved={decision.approved}, method={decision.parse_method}")
 
-            # --- FIX: Regex extraction for chatty LLMs ---
-            # Try to find JSON object even if surrounded by prose
-            json_match = re.search(r'\{[^{}]*"approved"[^{}]*\}', text, re.DOTALL)
-            if json_match:
-                text = json_match.group(0)
-            else:
-                # Fallback: try to find ANY JSON object
-                json_match = re.search(r'\{.*\}', text, re.DOTALL)
-                if json_match:
-                    text = json_match.group(0)
-            # --- END Regex extraction ---
-
-            # Clean markdown code blocks (existing logic)
-            if text.startswith("```json"): text = text[7:]
-            if text.startswith("```"): text = text[3:]
-            if text.endswith("```"): text = text[:-3]
-            text = text.strip()
-
-            # Validate cleaned text
-            if not text:
-                logger.error(f"Compliance response empty after cleaning for {symbol}. Raw: {response[:500]}")
-                return False, "Compliance Error: Empty JSON after cleanup (fail-closed)"
-
-            result = json.loads(text)
-            approved = result.get('approved', False)
-            reason = result.get('reason', 'Vetoed')
-
-            # Log final decision
+            # K4 partial fix: Log for analysis
             log_compliance_decision(
                 cycle_id=cycle_id,
                 contract=symbol,
                 strategy_type=strategy_type,
-                approved=approved,
-                reason=reason,
+                approved=decision.approved,
+                reason=decision.reason,
                 risk_metrics=risk_metrics
             )
 
-            if not approved:
-                return False, reason
-
+            if not decision.approved:
+                return False, decision.reason
             return True, "Approved"
 
-        except json.JSONDecodeError as e:
-            logger.error(
-                f"Compliance Guardian JSON parse failed for {symbol}. "
-                f"Error at position {e.pos}: {e.msg}. "
-                f"Response preview: {response[:500] if response else 'None'}..."
-            )
-            return False, f"Compliance Error: Invalid JSON response (fail-closed)"
         except Exception as e:
-            logger.error(f"Compliance Guardian failed: {e}", exc_info=True)
+            # Ultimate fail-closed
+            logger.error(f"Compliance review failed: {e}")
             return False, f"Compliance Error: {e}"
 
     async def audit_decision(self, reports: dict, market_context: str, decision: dict, master_persona: str, ib=None) -> dict:

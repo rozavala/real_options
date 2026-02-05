@@ -28,14 +28,21 @@ import re
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import load_council_history, grade_decision_quality
 from trading_bot.timestamps import parse_ts_column
+from config import get_active_profile
+from dashboard_utils import get_config
 
 st.set_page_config(layout="wide", page_title="Signal Analysis | Mission Control")
+
+# E1: Dynamic profile loading
+config = get_config()
+profile = get_active_profile(config)
 
 st.title("🎯 Signal Overlay Analysis")
 st.caption("Forensic analysis of Council decisions against futures price action")
 
 # === CONFIGURATION CONSTANTS ===
 
+# E6: Removed archived ML Signal agent
 AGENT_MAPPING = {
     "👑 Master Decision": "master_decision",
     "🌱 Agronomist (Weather)": "meteorologist_sentiment",
@@ -183,34 +190,42 @@ def contract_to_yfinance_ticker(contract: str) -> str:
     """
     Convert contract symbol to yfinance ticker.
 
-    yfinance Coffee futures format: KC{MONTH}{YY}.NYB
+    Format: {TICKER}{MONTH}{YY}.{EXCHANGE_SUFFIX}
     Examples:
-        - KCH26.NYB (March 2026)
-        - KCK26.NYB (May 2026)
+        - KCH26.NYB (Coffee March 2026)
+        - KCK26.NYB (Coffee May 2026)
 
     Args:
         contract: Raw contract string (e.g., 'KCH6 (202603)' or 'FRONT_MONTH')
 
     Returns:
-        Valid yfinance ticker (e.g., 'KCH26.NYB') or 'KC=F' for front month/fallback
+        Valid yfinance ticker or '{ticker}=F' for front month/fallback
     """
+    # E1: Commodity-agnostic ticker
+    fallback_ticker = f"{profile.ticker}=F"
+
     # Front month option
     if contract == 'FRONT_MONTH' or not contract:
-        return 'KC=F'
+        return fallback_ticker
 
     # Clean the symbol
     clean_symbol = clean_contract_symbol(contract)
 
-    # Validate: must be exactly 5 chars (KC + month + 2-digit year)
-    if not clean_symbol or len(clean_symbol) != 5:
-        return 'KC=F'
+    # Validate: must be exactly 5 chars (TICKER + month + 2-digit year)
+    if not clean_symbol or len(clean_symbol) != (len(profile.ticker) + 3):
+        return fallback_ticker
 
-    # Validate format: KC + valid month + 2 digits
-    if not re.match(r'^KC[FGHJKMNQUVXZ]\d{2}$', clean_symbol):
-        return 'KC=F'
+    # Validate format: TICKER + valid month + 2 digits
+    pattern = rf'^{profile.ticker}[FGHJKMNQUVXZ]\d{{2}}$'
+    if not re.match(pattern, clean_symbol):
+        return fallback_ticker
 
-    # Add yfinance suffix for ICE/NYBOT
-    return f"{clean_symbol}.NYB"
+    # Add yfinance suffix based on exchange
+    # ICE -> NYB (for KC/CC), NYMEX -> NYM (for CL/NG), COMEX -> CMX (for GC/SI)
+    suffix_map = {'ICE': 'NYB', 'NYBOT': 'NYB', 'NYMEX': 'NYM', 'COMEX': 'CMX', 'CME': 'CME'}
+    suffix = suffix_map.get(profile.contract.exchange, 'NYB')
+
+    return f"{clean_symbol}.{suffix}"
 
 
 def get_contract_display_name(contract: str) -> str:

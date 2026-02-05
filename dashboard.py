@@ -75,7 +75,11 @@ with col2:
 
 with col3:
     benchmarks = fetch_todays_benchmark_data()
-    st.metric("Benchmark Today", f"{benchmarks.get('KC=F', 0):+.2f}%")
+    # E2 FIX: Commodity-agnostic benchmark
+    profile = _cfg.get('commodity', {})
+    ticker = profile.get('ticker', 'KC')
+    benchmark_symbol = f"{ticker}=F"
+    st.metric(f"{ticker} Benchmark", f"{benchmarks.get(benchmark_symbol, 0):+.2f}%")
 
 st.markdown("---")
 st.caption("Select a page from the sidebar to begin.")
