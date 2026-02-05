@@ -4,8 +4,7 @@ from pandas.tseries.holiday import (
     AbstractHolidayCalendar, Holiday, nearest_workday,
     USMemorialDay, USLaborDay, USThanksgivingDay, USFederalHolidayCalendar
 )
-from pandas.tseries.offsets import DateOffset
-from dateutil.easter import easter as Easter
+from pandas.tseries.offsets import DateOffset, Easter
 from datetime import date, timedelta
 import pandas as pd
 
