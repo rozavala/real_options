@@ -20,7 +20,7 @@ import time as time_module
 from datetime import datetime, time, timedelta, timezone
 import pytz
 import pandas as pd
-from ib_insync import IB, util, Contract, MarketOrder, OrderStatus, Future
+from ib_insync import IB, util, Contract, MarketOrder, LimitOrder, Order, OrderStatus, Future
 
 from config_loader import load_config
 from trading_bot.logging_config import setup_logging
