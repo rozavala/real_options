@@ -5,11 +5,57 @@ import asyncio
 import re
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole
 from trading_bot.utils import get_dollar_multiplier
+import csv
+from pathlib import Path
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
 # Module-level cache for ContractDetails (prevents redundant API calls during multi-signal bursts)
 _CONTRACT_DETAILS_CACHE: dict = {}
+
+COMPLIANCE_LOG_FILE = Path("data/compliance_decisions.csv")
+
+
+def log_compliance_decision(
+    cycle_id: str,
+    contract: str,
+    strategy_type: str,
+    approved: bool,
+    reason: str,
+    risk_metrics: dict = None
+):
+    """
+    Log compliance decision for aggregate analysis.
+
+    v3.1: Structured logging enables pattern analysis.
+    """
+    try:
+        file_exists = COMPLIANCE_LOG_FILE.exists()
+
+        with open(COMPLIANCE_LOG_FILE, 'a', newline='') as f:
+            writer = csv.writer(f)
+
+            if not file_exists:
+                # Write header
+                writer.writerow([
+                    'timestamp', 'cycle_id', 'contract', 'strategy_type',
+                    'approved', 'reason', 'max_risk', 'account_exposure'
+                ])
+
+            writer.writerow([
+                datetime.now(timezone.utc).isoformat(),
+                cycle_id,
+                contract,
+                strategy_type,
+                approved,
+                reason,
+                risk_metrics.get('max_risk', '') if risk_metrics else '',
+                risk_metrics.get('account_exposure', '') if risk_metrics else ''
+            ])
+
+    except Exception as e:
+        logger.warning(f"Failed to log compliance decision: {e}")
 
 async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
     """
@@ -315,6 +361,13 @@ class ComplianceGuardian:
         """
         # Extract context
         ib = order_context.get('ib')
+
+        # v3.1: Initialize decision tracking vars
+        cycle_id = order_context.get('cycle_id', 'UNKNOWN')
+        strategy_type = order_context.get('strategy_type', 'UNKNOWN')
+        approved = False
+        reason = "Pending"
+        risk_metrics = {}
         contract = order_context.get('contract')
         symbol = order_context.get('symbol', 'Unknown')
         qty = order_context.get('order_quantity', 0)
@@ -323,12 +376,34 @@ class ComplianceGuardian:
         # 1. Gather Data for Constitution
         volume_15m = await self._fetch_volume_stats(ib, contract)
 
+        # === G3 FIX: Retry once for volume=-1 ===
         if volume_15m < 0:
-            return False, "REVIEW REQUIRED - Volume data unavailable. Manual approval needed."
-        elif volume_15m == 0:
-            return False, f"REJECTED - Article II: Zero volume for {symbol}. Market illiquid."
-        elif qty > volume_15m * self.limits['max_volume_pct']:
-            return False, f"REJECTED - Article II: Order qty {qty} exceeds {self.limits['max_volume_pct']:.0%} of volume ({volume_15m:.0f})."
+            logger.warning(f"Volume data unavailable (-1). Retrying in 60s...")
+            await asyncio.sleep(60)
+
+            # Retry volume fetch
+            volume_15m_retry = await self._fetch_volume_stats(ib, contract)
+
+            if volume_15m_retry < 0:
+                logger.warning(
+                    f"Volume still unavailable after retry. "
+                    f"Proceeding with caution (volume check skipped)."
+                )
+                # Don't block - volume unavailability shouldn't prevent trading
+                # But log for monitoring
+                logger.warning(f"Volume check skipped for {contract.localSymbol}: Data unavailable after retry")
+            else:
+                volume_15m = volume_15m_retry
+                logger.info(f"Volume retry successful: {volume_15m:,}")
+
+        # Continue with normal volume threshold check if we have valid data
+        if volume_15m >= 0:
+            if volume_15m == 0:
+                reason = f"REJECTED - Article II: Zero volume for {symbol}. Market illiquid."
+                return False, reason
+            elif qty > volume_15m * self.limits['max_volume_pct']:
+                reason = f"REJECTED - Article II: Order qty {qty} exceeds {self.limits['max_volume_pct']:.0%} of volume ({volume_15m:.0f})."
+                return False, reason
 
         # Prepare Review Packet
         # Calculate actual capital at risk for spreads (not fictitious futures notional)
@@ -366,14 +441,26 @@ class ComplianceGuardian:
             }
         }
 
+        # Capture risk metrics for logging
+        risk_metrics = {
+            'max_risk': actual_capital_at_risk,
+            'account_exposure': actual_capital_at_risk / equity if equity > 0 else 0
+        }
+
         # --- DETERMINISTIC PRE-CHECK (Skip LLM for obvious violations) ---
         limit_pct = self.limits.get('max_position_pct', 0.40)
 
         # FLIGHT DIRECTOR FIX: Use higher limit for defined-risk strategies (straddles)
-        # Heuristic: If risk per contract > $10,000, it's likely a straddle/premium trade
+        # Heuristic: If risk per contract > threshold, it's likely a straddle/premium trade
         if actual_capital_at_risk > 0 and qty > 0:
             risk_per_contract = actual_capital_at_risk / qty
-            if risk_per_contract > 10000:  # Likely straddle or large premium
+
+            # v3.1: Use profile-driven threshold
+            from config import get_active_profile
+            profile = get_active_profile(self.config)
+            straddle_threshold = profile.straddle_risk_threshold
+
+            if risk_per_contract > straddle_threshold:  # Likely straddle or large premium
                 limit_pct = self.limits.get('max_straddle_pct', 0.55)
                 logger.info(f"Using straddle limit ({limit_pct:.0%}) for high-premium trade")
 
@@ -389,10 +476,20 @@ class ComplianceGuardian:
             )
 
         if actual_capital_at_risk > max_allowed:
-            return False, (
+            reason = (
                 f"REJECTED - Article I: Max capital at risk (${actual_capital_at_risk:,.2f}) "
                 f"exceeds {limit_pct:.0%} of equity (${max_allowed:,.2f})."
             )
+            # Log failure
+            log_compliance_decision(
+                cycle_id=cycle_id,
+                contract=symbol,
+                strategy_type=strategy_type,
+                approved=False,
+                reason=reason,
+                risk_metrics=risk_metrics
+            )
+            return False, reason
 
         # === FIX-003: Align LLM instructions with deterministic code logic ===
         # The limit_pct variable already contains the correct limit (40% standard or 55% for straddles)
@@ -461,8 +558,21 @@ class ComplianceGuardian:
                 return False, "Compliance Error: Empty JSON after cleanup (fail-closed)"
 
             result = json.loads(text)
-            if not result.get('approved'):
-                return False, result.get('reason', 'Vetoed')
+            approved = result.get('approved', False)
+            reason = result.get('reason', 'Vetoed')
+
+            # Log final decision
+            log_compliance_decision(
+                cycle_id=cycle_id,
+                contract=symbol,
+                strategy_type=strategy_type,
+                approved=approved,
+                reason=reason,
+                risk_metrics=risk_metrics
+            )
+
+            if not approved:
+                return False, reason
 
             return True, "Approved"
 

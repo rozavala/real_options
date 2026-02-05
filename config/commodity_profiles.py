@@ -130,6 +130,7 @@ class CommodityProfile:
     volatility_high_iv_rank: float = 0.7
     volatility_low_iv_rank: float = 0.3
     price_move_alert_pct: float = 2.0
+    straddle_risk_threshold: float = 10000.0  # Max straddle risk per contract (v3.1)
 
     # Price validation (from config.json commodity_profile — used by order manager)
     stop_parse_range: List[float] = field(default_factory=lambda: [0.0, 9999.0])
@@ -374,6 +375,7 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
     volatility_high_iv_rank=0.70,
     volatility_low_iv_rank=0.30,
     price_move_alert_pct=2.0,
+    straddle_risk_threshold=10000.0,
 
     # Price validation — MUST match config.json → commodity_profile.KC
     stop_parse_range=[80.0, 800.0],       # Valid stop-loss price range (cents/lb)
@@ -499,7 +501,8 @@ COCOA_PROFILE = CommodityProfile(
 
     volatility_high_iv_rank=0.65,
     volatility_low_iv_rank=0.25,
-    price_move_alert_pct=3.0
+    price_move_alert_pct=3.0,
+    straddle_risk_threshold=8000.0
 )
 
 
@@ -665,3 +668,21 @@ def list_available_profiles() -> List[str]:
             available.add(ticker)
 
     return sorted(available)
+
+
+def get_active_profile(config: dict) -> CommodityProfile:
+    """
+    Get the active commodity profile based on application config.
+
+    Args:
+        config: Application config dictionary
+
+    Returns:
+        CommodityProfile for the configured symbol
+    """
+    symbol = config.get('symbol', 'KC')
+    # Handle commodity dict if present (v2 format)
+    if isinstance(symbol, dict):
+        symbol = symbol.get('ticker', 'KC')
+
+    return get_commodity_profile(symbol)

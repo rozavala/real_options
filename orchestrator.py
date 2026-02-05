@@ -60,6 +60,7 @@ from trading_bot.drawdown_circuit_breaker import DrawdownGuard
 from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.strategy_router import route_strategy, infer_strategy_type
 from trading_bot.task_tracker import record_task_completion, has_task_completed_today
+from trading_bot.sentinel_stats import SENTINEL_STATS
 
 # --- Logging Setup ---
 setup_logging(log_file="logs/orchestrator.log")
@@ -609,53 +610,100 @@ Return JSON: {{"verdict": "HOLD" or "CLOSE", "confidence": 0.0-1.0, "reasoning":
     # Default: HOLD
     return {'action': 'HOLD', 'reason': 'Thesis intact'}
 
-def _find_position_id_for_contract(position, trade_ledger) -> str | None:
-    """Maps a live position contract to a position_id from the ledger."""
+def _find_position_id_for_contract(
+    position,
+    trade_ledger: pd.DataFrame,
+    tms: TransactiveMemory = None
+) -> str | None:
+    """
+    Map IB position to position_id using multi-strategy matching.
+
+    v3.1 FIX: Three-tier matching strategy:
+    1. Exact conId match with active thesis (highest confidence)
+    2. Symbol + direction + open status match
+    3. FIFO fallback with warning
+
+    Args:
+        position: IB Position object
+        trade_ledger: DataFrame with trade history
+        tms: TransactiveMemory for thesis status lookup (optional)
+
+    Returns:
+        position_id string or None
+    """
     symbol = position.contract.localSymbol
+    conId = position.contract.conId
     position_direction = 'BUY' if position.position > 0 else 'SELL'
 
+    # Filter to matching symbol
     matches = trade_ledger[trade_ledger['local_symbol'] == symbol].copy()
 
     if matches.empty:
         logger.debug(f"No ledger entries found for symbol {symbol}")
         return None
 
+    # === STRATEGY 1: Exact conId match with active thesis ===
+    if tms is not None and conId:
+        conId_matches = matches[matches.get('conId', pd.Series()) == conId]
+
+        for pos_id in conId_matches['position_id'].unique():
+            # Check if thesis is still active
+            thesis = tms.retrieve_thesis(pos_id)
+            if thesis and thesis.get('active', False):
+                logger.debug(f"Matched {symbol} to {pos_id} via conId + active thesis")
+                return pos_id
+
+    # === STRATEGY 2: Symbol + direction + open status ===
     direction_matches = matches[matches['action'] == position_direction]
     if direction_matches.empty:
         direction_matches = matches
 
-    # Find OPEN positions (net quantity != 0)
+    # Find positions with non-zero net quantity
     open_positions = []
     for pos_id in direction_matches['position_id'].unique():
         pos_entries = trade_ledger[trade_ledger['position_id'] == pos_id]
 
-        # Calculate net quantity PER SYMBOL (per individual leg)
-        per_symbol_qty = {}
+        # Calculate net quantity for this symbol
+        net_qty = 0
         for _, row in pos_entries.iterrows():
-            sym = row['local_symbol']
-            qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
-            per_symbol_qty[sym] = per_symbol_qty.get(sym, 0) + qty
+            if row['local_symbol'] == symbol:
+                qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
+                net_qty += qty
 
-        # Position is open if ANY leg still has non-zero quantity
-        has_open_legs = any(q != 0 for q in per_symbol_qty.values())
-
-        if has_open_legs:
+        if net_qty != 0:
             entry_time = pos_entries['timestamp'].min()
-            # Use the net_qty of the QUERIED symbol for direction matching
-            queried_symbol_qty = per_symbol_qty.get(symbol, 0)
-            open_positions.append((pos_id, entry_time, queried_symbol_qty))
+            open_positions.append((pos_id, entry_time, net_qty))
 
     if open_positions:
-        # Match by direction sign (FIFO)
-        matching_sign = [p for p in open_positions
-                        if (p[2] > 0 and position.position > 0) or (p[2] < 0 and position.position < 0)]
+        # Match by direction sign
+        matching_sign = [
+            p for p in open_positions
+            if (p[2] > 0 and position.position > 0) or (p[2] < 0 and position.position < 0)
+        ]
+
         if matching_sign:
+            # If multiple matches, prefer the one with active thesis
+            if tms is not None and len(matching_sign) > 1:
+                for pos_id, _, _ in matching_sign:
+                    thesis = tms.retrieve_thesis(pos_id)
+                    if thesis and thesis.get('active', False):
+                        logger.debug(f"Matched {symbol} to {pos_id} via direction + active thesis")
+                        return pos_id
+
+            # FIFO: oldest first
             matching_sign.sort(key=lambda x: x[1])
+            logger.debug(f"Matched {symbol} to {matching_sign[0][0]} via direction + FIFO")
             return matching_sign[0][0]
+
+        # No direction match - use oldest open
         open_positions.sort(key=lambda x: x[1])
+        logger.warning(
+            f"No direction match for {symbol}. Using oldest open position: {open_positions[0][0]}"
+        )
         return open_positions[0][0]
 
-    logger.warning(f"No open position found for {symbol}, using most recent")
+    # === STRATEGY 3: FIFO fallback with warning ===
+    logger.warning(f"No open position found for {symbol}. Using most recent entry (may be incorrect).")
     return matches.iloc[-1]['position_id']
 
 def _build_thesis_invalidation_notification(
@@ -722,6 +770,112 @@ def _build_thesis_invalidation_notification(
 {pnl_section}"""
 
     return title, message
+
+def _should_invalidate_futures_cache(cached_futures: list, config: dict) -> bool:
+    """
+    Check if if futures cache should be invalidated.
+
+    v3.1: Invalidate when any cached contract is within 5 days of expiry.
+    """
+    if not cached_futures:
+        return True
+
+    now = datetime.now()
+    warning_days = config.get('cache', {}).get('futures_expiry_warning_days', 5)
+
+    for future in cached_futures:
+        try:
+            exp_str = future.lastTradeDateOrContractMonth
+            if len(exp_str) == 8:
+                exp_date = datetime.strptime(exp_str, '%Y%m%d')
+                days_to_expiry = (exp_date - now).days
+
+                if days_to_expiry <= warning_days:
+                    logger.info(
+                        f"Futures cache invalidation: {future.localSymbol} "
+                        f"expires in {days_to_expiry} days"
+                    )
+                    return True
+        except Exception as e:
+            logger.debug(f"Could not parse expiry for {future}: {e}")
+
+    return False
+
+
+async def cleanup_orphaned_theses(config: dict):
+    """
+    Automated cleanup of orphaned theses.
+
+    v3.1: Runs daily at 5 AM to clean up theses without IB positions.
+    """
+    logger.info("--- AUTOMATED THESIS CLEANUP ---")
+
+    try:
+        ib = await IBConnectionPool.get_connection("cleanup", config)
+        tms = TransactiveMemory()
+        trade_ledger = get_trade_ledger_df()
+
+        cleaned = _reconcile_orphaned_theses(ib, trade_ledger, tms, config)
+
+        if cleaned > 0:
+            logger.info(f"Thesis cleanup complete: {cleaned} orphaned theses invalidated")
+            send_pushover_notification(
+                config.get('notifications', {}),
+                "🧹 Thesis Cleanup",
+                f"Automated cleanup invalidated {cleaned} orphaned theses"
+            )
+        else:
+            logger.info("Thesis cleanup: no orphans found")
+
+        return cleaned
+
+    except Exception as e:
+        logger.error(f"Thesis cleanup failed: {e}")
+        return 0
+
+
+async def check_and_recover_equity_data(config: dict) -> bool:
+    """
+    Check equity data freshness and trigger Flex query if stale.
+
+    v3.1: Auto-recovery instead of just alerting.
+
+    Returns:
+        True if data is fresh or recovery succeeded
+    """
+    from equity_logger import sync_equity_from_flex
+    from pathlib import Path
+
+    equity_file = Path("data/daily_equity.csv")
+    max_staleness_hours = config.get('monitoring', {}).get('equity_max_staleness_hours', 24)
+
+    # Check staleness
+    if equity_file.exists():
+        file_age_hours = (
+            datetime.now() - datetime.fromtimestamp(equity_file.stat().st_mtime)
+        ).total_seconds() / 3600
+
+        if file_age_hours <= max_staleness_hours:
+            return True  # Data is fresh
+
+        logger.warning(f"Equity data stale ({file_age_hours:.1f}h). Triggering Flex query...")
+    else:
+        logger.warning("Equity file missing. Triggering Flex query...")
+
+    # Trigger recovery
+    try:
+        await sync_equity_from_flex(config)
+        logger.info("Equity data recovery successful")
+        return True
+    except Exception as e:
+        logger.error(f"Equity data recovery failed: {e}")
+        send_pushover_notification(
+            config.get('notifications', {}),
+            "⚠️ Equity Data Stale",
+            f"Auto-recovery failed. Manual intervention required.\nError: {e}"
+        )
+        return False
+
 
 def _reconcile_orphaned_theses(
     ib: IB,
@@ -850,7 +1004,8 @@ def _group_positions_by_thesis(
         if pos.position == 0:
             continue
 
-        position_id = _find_position_id_for_contract(pos, trade_ledger)
+        # v3.1: Pass tms to _find_position_id_for_contract for robust matching
+        position_id = _find_position_id_for_contract(pos, trade_ledger, tms)
         if not position_id:
             unmapped.append(pos)
             continue
@@ -1052,6 +1207,89 @@ async def _close_spread_position(
     return success_count == total_legs
 
 
+async def _reconcile_state_stores(
+    ib: IB,
+    trade_ledger: pd.DataFrame,
+    tms: TransactiveMemory,
+    config: dict
+) -> dict:
+    """
+    Reconcile state across IBKR, CSV ledger, and TMS.
+
+    v3.1: Three-body sync check runs before every position audit.
+    IBKR is source of truth. Mismatches generate warnings for investigation.
+
+    Returns:
+        Dict with reconciliation results and any discrepancies found
+    """
+    results = {
+        'ibkr_positions': 0,
+        'ledger_open': 0,
+        'tms_active': 0,
+        'discrepancies': [],
+        'reconciled': True
+    }
+
+    try:
+        # 1. Count IBKR positions (ground truth)
+        ib_positions = [p for p in ib.positions() if p.position != 0]
+        results['ibkr_positions'] = len(ib_positions)
+
+        # 2. Count open positions in ledger
+        if not trade_ledger.empty and 'position_id' in trade_ledger.columns:
+            # Group by position_id and check net quantity
+            for pos_id in trade_ledger['position_id'].unique():
+                pos_entries = trade_ledger[trade_ledger['position_id'] == pos_id]
+                net_qty = 0
+                for _, row in pos_entries.iterrows():
+                    qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
+                    net_qty += qty
+                if net_qty != 0:
+                    results['ledger_open'] += 1
+
+        # 3. Count active theses in TMS
+        active_theses = tms.collection.get(
+            where={"active": "true"},
+            include=['metadatas']
+        )
+        results['tms_active'] = len(active_theses.get('metadatas', []))
+
+        # 4. Check for discrepancies
+        if results['ibkr_positions'] != results['ledger_open']:
+            results['discrepancies'].append(
+                f"IBKR has {results['ibkr_positions']} positions but ledger shows {results['ledger_open']} open"
+            )
+
+        if results['ibkr_positions'] != results['tms_active']:
+            results['discrepancies'].append(
+                f"IBKR has {results['ibkr_positions']} positions but TMS has {results['tms_active']} active theses"
+            )
+
+        if results['discrepancies']:
+            results['reconciled'] = False
+            for disc in results['discrepancies']:
+                logger.warning(f"State sync discrepancy: {disc}")
+
+            # Send notification for manual review
+            send_pushover_notification(
+                config.get('notifications', {}),
+                "⚠️ State Sync Warning",
+                f"Discrepancies found:\n" + "\n".join(results['discrepancies'])
+            )
+        else:
+            logger.info(
+                f"State stores reconciled: {results['ibkr_positions']} positions across all stores"
+            )
+
+        return results
+
+    except Exception as e:
+        logger.error(f"State reconciliation failed: {e}")
+        results['reconciled'] = False
+        results['discrepancies'].append(f"Reconciliation error: {e}")
+        return results
+
+
 async def run_position_audit_cycle(config: dict, trigger_source: str = "Scheduled"):
     """
     Reviews all active positions against their original theses.
@@ -1067,6 +1305,17 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
         ib = await IBConnectionPool.get_connection("audit", config)
         configure_market_data_type(ib)
 
+        # === L5 FIX: Reconcile state stores before audit ===
+        trade_ledger = get_trade_ledger_df()
+        tms = TransactiveMemory()
+
+        recon_results = await _reconcile_state_stores(ib, trade_ledger, tms, config)
+        if not recon_results['reconciled']:
+            logger.warning(
+                f"Proceeding with audit despite {len(recon_results['discrepancies'])} discrepancies. "
+                f"IBKR positions are source of truth."
+            )
+
         # 1. Get current positions from IB
         live_positions = await ib.reqPositionsAsync()
         if not live_positions or all(p.position == 0 for p in live_positions):
@@ -1075,8 +1324,6 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
             # Reconcile: If TMS has active theses but IB has no positions,
             # ALL active theses are ghosts
             try:
-                tms = TransactiveMemory()
-                trade_ledger = get_trade_ledger_df()
                 orphan_count = _reconcile_orphaned_theses(
                     ib, trade_ledger, tms, config
                 )
@@ -1110,9 +1357,22 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
         try:
             symbol = config.get('symbol', 'KC')
             exchange = config.get('exchange', 'NYBOT')
-            futures = await get_active_futures(ib, symbol, exchange, count=5)
-            if futures:
+
+            # === K1 FIX: Check cache validity before use ===
+            cached_futures = active_futures_cache.get(symbol)
+
+            if _should_invalidate_futures_cache(cached_futures, config):
+                logger.info("Refreshing active futures cache")
+                futures = await get_active_futures(ib, symbol, exchange, count=5)
                 active_futures_cache[symbol] = futures
+            else:
+                futures = cached_futures
+
+            # If still no futures (e.g. first run), fetch
+            if not futures:
+                 futures = await get_active_futures(ib, symbol, exchange, count=5)
+                 active_futures_cache[symbol] = futures
+
         except Exception as e:
             logger.warning(f"Failed to pre-cache active futures: {e}")
 
@@ -2104,6 +2364,12 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     (direction == 'VOLATILITY' and pred_type == 'VOLATILITY' and confidence > threshold)
                 )
 
+                # Record sentinel stats
+                SENTINEL_STATS.record_alert(
+                    sentinel_name=trigger.source,
+                    triggered_trade=is_actionable
+                )
+
                 if is_actionable:
                     logger.info(f"Emergency Cycle ACTION: {direction} ({pred_type})")
 
@@ -2765,6 +3031,10 @@ async def run_brier_reconciliation(config: dict):
 
 async def guarded_generate_orders(config: dict):
     """Generate orders with budget and cutoff guards."""
+
+    # v3.1: Check equity data freshness before cycle
+    await check_and_recover_equity_data(config)
+
     if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
         logger.warning("Budget hit - skipping scheduled orders.")
         return
@@ -2850,6 +3120,7 @@ async def guarded_generate_orders(config: dict):
 schedule = {
     time(3, 30): start_monitoring,
     time(3, 31): process_deferred_triggers,
+    time(5, 0): cleanup_orphaned_theses,          # v3.1: Daily thesis cleanup
     time(8, 30): run_position_audit_cycle,
     time(9, 0): guarded_generate_orders,
     time(11, 0): close_stale_positions,          # PRIMARY: Peak liquidity
@@ -2894,6 +3165,7 @@ def apply_schedule_offset(original_schedule: dict, offset_minutes: int) -> dict:
 RECOVERY_POLICY = {
     'start_monitoring':               {'policy': 'MARKET_OPEN',   'idempotent': True},
     'process_deferred_triggers':      {'policy': 'MARKET_OPEN',   'idempotent': False},
+    'cleanup_orphaned_theses':        {'policy': 'ALWAYS',        'idempotent': True},
     'run_position_audit_cycle':       {'policy': 'MARKET_OPEN',   'idempotent': True},
     'guarded_generate_orders':        {'policy': 'BEFORE_CUTOFF', 'idempotent': False},
     'close_stale_positions':          {'policy': 'MARKET_OPEN',   'idempotent': True},
@@ -3067,6 +3339,12 @@ async def main():
     global GLOBAL_DRAWDOWN_GUARD
     GLOBAL_DRAWDOWN_GUARD = DrawdownGuard(config)
     logger.info("Drawdown Guard initialized.")
+
+    # v3.1: Migrate legacy state entries
+    from trading_bot.state_manager import StateManager
+    migrated = StateManager.migrate_legacy_entries()
+    if migrated > 0:
+        logger.info(f"Startup: Migrated {migrated} legacy state entries")
 
     # Process deferred triggers from overnight - ONLY if market is open
     if is_market_open():

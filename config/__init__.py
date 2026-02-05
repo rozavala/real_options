@@ -6,6 +6,7 @@ This package contains commodity profiles and system configuration.
 
 from .commodity_profiles import (
     get_commodity_profile,
+    get_active_profile,
     CommodityProfile,
     CommodityType,
     ContractSpec,
@@ -16,6 +17,7 @@ from .commodity_profiles import (
 
 __all__ = [
     'get_commodity_profile',
+    'get_active_profile',
     'CommodityProfile',
     'CommodityType',
     'ContractSpec',

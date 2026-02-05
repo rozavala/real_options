@@ -911,3 +911,36 @@ if os.path.exists(logs_dir):
         st.info("No log files found.")
 else:
     st.warning("Logs directory not found.")
+
+st.markdown("---")
+
+# ==============================================================================
+# SECTION 10: Sentinel Statistics
+# ==============================================================================
+st.subheader("🛡️ Sentinel Statistics")
+
+try:
+    from trading_bot.sentinel_stats import SENTINEL_STATS
+
+    stats = SENTINEL_STATS.get_dashboard_stats()
+
+    if stats:
+        # Dynamically create columns (limit to 4 per row for layout sanity)
+        num_stats = len(stats)
+        rows = (num_stats + 3) // 4
+
+        for r in range(rows):
+            cols = st.columns(4)
+            batch = list(stats.items())[r*4 : (r+1)*4]
+
+            for idx, (name, data) in enumerate(batch):
+                with cols[idx]:
+                    st.metric(
+                        label=name.replace('Sentinel', '').strip(),
+                        value=f"{data['alerts_today']} today",
+                        delta=f"{data['conversion_rate']:.0%} → trades"
+                    )
+    else:
+        st.info("No sentinel alerts recorded yet.")
+except Exception as e:
+    st.warning(f"Could not load sentinel stats: {e}")

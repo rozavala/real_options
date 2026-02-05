@@ -34,10 +34,11 @@ from trading_bot.compliance import ComplianceGuardian, calculate_spread_max_risk
 from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.position_sizer import DynamicPositionSizer
 from trading_bot.drawdown_circuit_breaker import DrawdownGuard
+from trading_bot.order_queue import OrderQueueManager
 
 # --- Module-level storage for orders ---
 # Structure: [(contract, order, decision_data), ...]
-ORDER_QUEUE = []
+ORDER_QUEUE = OrderQueueManager()
 
 # Module-level lock for capital tracking
 _CAPITAL_LOCK = asyncio.Lock()
@@ -125,7 +126,7 @@ async def generate_and_execute_orders(config: dict, connection_purpose: str = "o
     await generate_and_queue_orders(config, connection_purpose=connection_purpose, shutdown_check=shutdown_check)
 
     # Only proceed to placement if orders were actually queued
-    if ORDER_QUEUE:
+    if not ORDER_QUEUE.is_empty():
         await place_queued_orders(config, connection_purpose=connection_purpose)
     else:
         logger.info("No orders were queued. Skipping placement step.")
@@ -138,8 +139,7 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
     and queues them for later execution.
     """
     logger.info("--- Starting order generation and queuing process ---")
-    global ORDER_QUEUE
-    ORDER_QUEUE.clear()  # Clear queue at the start of each day
+    await ORDER_QUEUE.clear()  # Clear queue at the start of each day
 
     try:
         # Use Connection Pool
@@ -402,7 +402,7 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
 
                             # Store signal data with the order
                             signal['strategy_def'] = strategy_def
-                            ORDER_QUEUE.append((contract, order, signal))
+                            await ORDER_QUEUE.add((contract, order, signal))
                             logger.info(f"Successfully queued order for {future.localSymbol}.")
         except Exception as e:
             logger.error(f"Error in order generation block: {e}")
@@ -436,8 +436,12 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
 
         # 2. Summarize the queued orders
         order_summary_parts = []
-        if ORDER_QUEUE:
-            for contract, order, _ in ORDER_QUEUE:
+        if not ORDER_QUEUE.is_empty():
+            # Access queue internals safely for reporting (no modification)
+            # Note: We access _queue directly here for read-only reporting which is acceptable
+            # as this runs in the same event loop and we just finished modification.
+            current_queue = ORDER_QUEUE._queue
+            for contract, order, _ in current_queue:
                 # Determine the strategy name from the contract symbol if possible
                 strategy_name = "Strategy" # Default
                 if "PUT" in contract.localSymbol and "CALL" in contract.localSymbol:
@@ -668,13 +672,19 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
     Connects to IB, places orders, and monitors them.
     If 'orders_list' is provided, it processes those orders instead of the global ORDER_QUEUE.
     """
-    # Use provided list or fall back to global queue
-    target_queue = orders_list if orders_list is not None else ORDER_QUEUE
+    # === D3 FIX: Explicit sequential processing ===
+    # Use pop_all to atomically get and clear, preventing any race
+    if orders_list is None:
+        target_queue = await ORDER_QUEUE.pop_all()
+    else:
+        target_queue = orders_list
 
     logger.info(f"--- Placing and monitoring {len(target_queue)} orders ---")
     if not target_queue:
         logger.info("Order queue is empty. Nothing to place.")
         return
+
+    logger.info(f"Processing {len(target_queue)} orders SEQUENTIALLY")
 
     # --- Initialize Compliance Guardian ---
     compliance = ComplianceGuardian(config)
@@ -789,7 +799,10 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         orders_to_place = []
         orders_checked_count = 0
 
-        for contract, order, decision_data in target_queue:
+        # Process one at a time with explicit ordering
+        for idx, (contract, order, decision_data) in enumerate(target_queue):
+            logger.info(f"Processing order {idx + 1}/{len(target_queue)}: {contract.localSymbol}")
+
             # === FIX-004: Capture display name for consistent logging ===
             strategy_def = decision_data.get('strategy_def') if isinstance(decision_data, dict) else None
             display_name = _get_order_display_name(contract, strategy_def)
@@ -1107,6 +1120,20 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
                 # --- Adaptive "Walking" Logic ---
                 if trade.order.orderType == 'LMT' and details['adaptive_ceiling_price'] is not None:
+                    # === L2 FIX: Skip walking for partially filled orders ===
+                    # Modifying a partially filled order can reset queue priority
+                    # and cause tracking desync. Let it fill naturally.
+                    if trade.orderStatus.status == 'PartiallyFilled':
+                        filled_qty = trade.orderStatus.filled
+                        total_qty = trade.order.totalQuantity
+                        if not details.get('partial_fill_logged', False):
+                            logger.info(
+                                f"Order {order_id}: PartiallyFilled ({filled_qty}/{total_qty}). "
+                                f"Skipping price walk to preserve queue priority."
+                            )
+                            details['partial_fill_logged'] = True
+                        continue  # Skip to next iteration without walking
+
                     # Check if enough time has passed for an update
                     if (time.time() - details['last_update_time']) >= adaptive_interval:
                         current_limit = trade.order.lmtPrice
@@ -1285,9 +1312,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
         send_pushover_notification(config.get('notifications', {}), "Order Monitoring Complete", summary_message)
 
-        # Only clear queue if we are processing the global one
-        if orders_list is None:
-            ORDER_QUEUE.clear()
+        # Queue is already cleared via pop_all() at the start
 
         logger.info("--- Finished monitoring and cleanup. ---")
 
@@ -1793,6 +1818,12 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                         break
 
                     # === UNIVERSAL PRICE WALKING LOGIC ===
+                    # === L2 FIX: Skip walking for partially filled close orders ===
+                    if trade.orderStatus.status == 'PartiallyFilled':
+                        filled = trade.orderStatus.filled
+                        logger.info(f"Close order {trade.order.orderId}: PartiallyFilled ({filled}). Preserving queue position.")
+                        continue
+
                     if is_limit_order and elapsed % PRICE_WALK_INTERVAL == 0 and walk_count < MAX_WALKS:
                         current_price = trade.order.lmtPrice
 

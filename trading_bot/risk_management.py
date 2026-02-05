@@ -360,9 +360,13 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
                     # If Long (pos > 0), we SELL. If Short (pos < 0), we BUY.
                     action = 'SELL' if leg_pos.position > 0 else 'BUY'
 
+                    # === M5 FIX: Use actual position size as ratio ===
+                    # For closing, ratio should match what we hold
+                    leg_qty = abs(int(leg_pos.position))
+
                     combo_legs_list.append(ComboLeg(
                         conId=leg_pos.contract.conId,
-                        ratio=1, # Assuming 1:1 ratio for simplicity of closing what we have
+                        ratio=leg_qty,  # v3.1: Use actual position size
                         action=action,
                         exchange=config.get('exchange', 'NYBOT')
                     ))
@@ -373,13 +377,23 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
 
                 # 2. Place the Order
                 # We "BUY" the BAG because we defined the legs with their specific closing actions (BUY/SELL).
-                # The quantity is the absolute size of the position (assuming equal size for all legs for now).
-                qty = abs(combo_legs[0].position)
+                # v3.1: Order quantity is 1 when ratios carry the size
+                qty = 1
 
                 order = MarketOrder("BUY", qty)
                 order.outsideRth = True
 
-                logging.info(f"Placing BAG Market Order to close {combo_desc} (Qty: {qty})")
+                # === v3.1: Calculate GCD for display ===
+                from math import gcd
+                from functools import reduce
+                ratios = [abs(int(p.position)) for p in combo_legs]
+                common_divisor = reduce(gcd, ratios) if ratios else 1
+                readable_qty = ratios[0] // common_divisor if common_divisor and ratios else 0
+
+                logging.info(
+                    f"Placing BAG Market Order to close {combo_desc} "
+                    f"(Ratios: {[r//common_divisor for r in ratios]}, Qty: {readable_qty})"
+                )
                 place_order(ib, contract, order)
 
             except Exception as e:
