@@ -78,6 +78,47 @@ class StateManager:
         os.replace(temp_file, STATE_FILE)
 
     @classmethod
+    def migrate_legacy_entries(cls) -> int:
+        """
+        Migrate legacy state format entries to new format.
+
+        v3.1: One-time migration for old entries.
+
+        Returns:
+            Number of entries migrated
+        """
+        migrated = 0
+
+        try:
+            raw_state = cls._load_raw_sync()
+
+            for namespace, entries in raw_state.items():
+                if not isinstance(entries, dict):
+                    continue
+
+                for key, entry in entries.items():
+                    # Check for legacy format (no 'data' wrapper)
+                    if not isinstance(entry, dict) or 'data' not in entry:
+                        # Wrap legacy entry in new format
+                        raw_state[namespace][key] = {
+                            'data': entry,
+                            'timestamp': time.time(),
+                            'migrated_from_legacy': True
+                        }
+                        migrated += 1
+                        logger.info(f"Migrated legacy entry: {namespace}/{key}")
+
+            if migrated > 0:
+                cls._save_raw_sync(raw_state)
+                logger.info(f"State migration complete: {migrated} entries updated")
+
+            return migrated
+
+        except Exception as e:
+            logger.error(f"State migration failed: {e}")
+            return 0
+
+    @classmethod
     def _load_raw_sync(cls) -> dict:
         """Internal sync load."""
         if not os.path.exists(STATE_FILE):
@@ -139,9 +180,19 @@ class StateManager:
 
         result = {}
         for key, entry in state.items():
-            if not isinstance(entry, dict) or 'timestamp' not in entry:
-                 # Attempt to handle legacy format if strictly necessary, but assuming clean slate/overwrite
-                 continue
+            # v3.1: Auto-migrate legacy entries on read
+            if not isinstance(entry, dict) or 'data' not in entry:
+                # This is a legacy entry - migrate it
+                logger.warning(f"Legacy format detected for {namespace}/{key}. Run migrate_legacy_entries().")
+                result[key] = {
+                    'data': entry,
+                    'age_seconds': float('inf'),
+                    'age_hours': float('inf'),
+                    'timestamp': 0,
+                    'is_available': False,
+                    'needs_migration': True
+                }
+                continue
 
             age = time.time() - entry.get("timestamp", 0)
             if age < max_age:
@@ -263,21 +314,66 @@ class StateManager:
             logger.error(f"Failed to queue deferred trigger: {e}")
 
     @classmethod
-    def get_deferred_triggers(cls) -> list:
-        """Get and clear deferred triggers."""
+    def get_deferred_triggers(cls, max_age_hours: float = 72.0) -> list:
+        """
+        Get and clear deferred triggers, filtering expired ones.
+
+        v3.1: Triggers older than max_age_hours are discarded.
+
+        Args:
+            max_age_hours: Maximum age in hours (default 72 = 3 days)
+
+        Returns:
+            List of valid (non-expired) triggers
+        """
         triggers = cls._load_deferred_triggers()
 
         if not triggers:
             return []
 
-        # Clear file
+        now = datetime.now(timezone.utc)
+        valid_triggers = []
+        expired_count = 0
+
+        for t in triggers:
+            try:
+                # Parse timestamp (handle Z for UTC)
+                ts_str = t['timestamp'].replace('Z', '+00:00')
+                trigger_time = datetime.fromisoformat(ts_str)
+
+                # Calculate age
+                age_hours = (now - trigger_time).total_seconds() / 3600
+
+                if age_hours <= max_age_hours:
+                    valid_triggers.append(t)
+                else:
+                    expired_count += 1
+                    logger.info(
+                        f"Discarding expired trigger from {t['source']} "
+                        f"(age: {age_hours:.1f}h > {max_age_hours}h)"
+                    )
+            except Exception as e:
+                logger.warning(f"Could not parse trigger timestamp: {e}")
+                # Include triggers with unparseable timestamps (fail-open)
+                valid_triggers.append(t)
+
+        if expired_count > 0:
+            logger.info(f"Filtered {expired_count} expired deferred triggers")
+
+        # Clear the file
+        cls._clear_deferred_triggers()
+
+        return valid_triggers
+
+    @classmethod
+    def _clear_deferred_triggers(cls):
+        """Clear the deferred triggers file."""
         try:
-            with open(cls.DEFERRED_TRIGGERS_FILE, 'w') as f:
-                json.dump([], f)
+            if os.path.exists(cls.DEFERRED_TRIGGERS_FILE):
+                with open(cls.DEFERRED_TRIGGERS_FILE, 'w') as f:
+                    json.dump([], f)
         except Exception as e:
             logger.error(f"Failed to clear deferred triggers: {e}")
-
-        return triggers
 
     @classmethod
     def _load_deferred_triggers(cls) -> list:
