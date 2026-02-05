@@ -22,7 +22,7 @@ from dashboard_utils import (
     fetch_benchmark_data,
     fetch_live_dashboard_data,
     get_config,
-    DEFAULT_STARTING_CAPITAL
+    get_starting_capital
 )
 
 st.set_page_config(layout="wide", page_title="Financials | Mission Control")
