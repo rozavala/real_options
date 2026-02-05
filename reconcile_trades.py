@@ -402,34 +402,87 @@ def get_trade_ledger_df() -> pd.DataFrame:
     return full_ledger
 
 
-async def fetch_flex_query_report(token: str, query_id: str) -> str | None:
+async def fetch_flex_query_report(
+    token: str,
+    query_id: str,
+    max_send_retries: int = 3,
+    send_retry_delay: int = 30
+) -> str | None:
     """
-    Connects to the IBKR Flex Web Service to request and download a trade report for a specific query ID.
-    """
-    base_url = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService."
-    request_url = f"{base_url}SendRequest?t={token}&q={query_id}&v=3"
-    
-    async with httpx.AsyncClient() as client:
-        try:
-            # --- 1. Send the initial request for the report ---
-            logger.info(f"Requesting Flex Query report (Query ID: {query_id})...")
-            resp = await client.get(request_url, timeout=30.0)
-            resp.raise_for_status()
+    Fetch Flex Query report with retry logic for both phases.
 
-            # --- 2. Parse the XML response to get the Reference Code ---
-            root = ET.fromstring(resp.content)
-            status = root.find('Status').text
-            if status != 'Success':
+    v5.1 FIX: SendRequest phase now retries on transient errors (1004, 1018, 1019).
+    These codes indicate IBKR maintenance or temporary unavailability.
+    """
+    # NOTE: httpx is already imported at module level — do NOT add a local import
+
+    TRANSIENT_ERROR_CODES = {'1004', '1018', '1019'}
+    
+    # Define base_url for Phase 2 usage
+    base_url = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService."
+
+    request_url = (
+        f"{base_url}SendRequest?t={token}&q={query_id}&v=3"
+    )
+
+    reference_code = None
+
+    async with httpx.AsyncClient() as client:
+
+        # === PHASE 1: SendRequest (WITH RETRY) ===
+        for attempt in range(1, max_send_retries + 1):
+            try:
+                resp = await client.get(request_url, timeout=30.0)
+                root = ET.fromstring(resp.content)
+                status = root.find('Status').text
+
+                if status == 'Success':
+                    reference_code = root.find('ReferenceCode').text
+                    logger.info(f"Flex Query SendRequest succeeded (attempt {attempt})")
+                    break
+
                 error_code = root.find('ErrorCode').text
                 error_msg = root.find('ErrorMessage').text
-                logger.error(f"IB Flex Query request failed. Code: {error_code}, Msg: {error_msg}")
-                return None
-            
-            ref_code = root.find('ReferenceCode').text
-            logger.info(f"Successfully requested report. Reference Code: {ref_code}")
 
-            # --- 3. Poll the server to get the statement ---
-            get_url = f"{base_url}GetStatement?t={token}&q={ref_code}&v=3"
+                if error_code in TRANSIENT_ERROR_CODES and attempt < max_send_retries:
+                    wait_time = send_retry_delay * attempt
+                    logger.warning(
+                        f"Flex Query transient error (attempt {attempt}/{max_send_retries}): "
+                        f"Code {error_code} — {error_msg}. Retrying in {wait_time}s..."
+                    )
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    logger.error(
+                        f"Flex Query SendRequest failed (attempt {attempt}): "
+                        f"Code {error_code} — {error_msg}"
+                    )
+                    return None
+
+            except (httpx.TimeoutException, httpx.ConnectError) as e:
+                if attempt < max_send_retries:
+                    wait_time = send_retry_delay * attempt
+                    logger.warning(
+                        f"Flex Query network error (attempt {attempt}): {e}. "
+                        f"Retrying in {wait_time}s..."
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    logger.error(f"Flex Query SendRequest failed after {max_send_retries} attempts: {e}")
+                    return None
+
+        if not reference_code:
+            logger.error("Flex Query SendRequest: no reference code obtained")
+            return None
+
+        # Mapping for legacy variable name in Phase 2
+        ref_code = reference_code
+
+        # === PHASE 2: GetStatement (EXISTING LOGIC — DO NOT MODIFY) ===
+        # Keep the existing polling loop with 10 attempts exactly as-is.
+        get_url = f"{base_url}GetStatement?t={token}&q={ref_code}&v=3"
+
+        try:
             for i in range(10):  # Poll up to 10 times
                 await asyncio.sleep(10)  # Wait 10 seconds between polls
                 logger.info(f"Polling for report (Attempt {i+1}/10)...")
@@ -439,8 +492,6 @@ async def fetch_flex_query_report(token: str, query_id: str) -> str | None:
                 # The report is ready when the response is not an XML error message
                 if not resp.text.strip().startswith('<?xml'):
                     logger.info("Successfully downloaded Flex Query report.")
-                    
-
                     return resp.text
                 
                 # If it IS an XML, it's a "still processing" or error message

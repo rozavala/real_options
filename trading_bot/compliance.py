@@ -452,25 +452,30 @@ class ComplianceGuardian:
         # 1. Gather Data for Constitution
         volume_15m = await self._fetch_volume_stats(ib, contract)
 
-        # === G3 FIX: Retry once for volume=-1 ===
+        # === v5.1 FIX: Shorter retry for scheduled, skip for emergency ===
         if volume_15m < 0:
-            logger.warning(f"Volume data unavailable (-1). Retrying in 60s...")
-            await asyncio.sleep(60)
+            is_emergency = order_context.get('cycle_type') == 'EMERGENCY'
 
-            # Retry volume fetch
-            volume_15m_retry = await self._fetch_volume_stats(ib, contract)
-
-            if volume_15m_retry < 0:
+            if is_emergency:
                 logger.warning(
-                    f"Volume still unavailable after retry. "
-                    f"Proceeding with caution (volume check skipped)."
+                    "Volume unavailable during emergency cycle — skipping retry (speed priority)"
                 )
-                # Don't block - volume unavailability shouldn't prevent trading
-                # But log for monitoring
-                logger.warning(f"Volume check skipped for {contract.localSymbol}: Data unavailable after retry")
+                # Proceed without volume gate for emergency cycles
             else:
-                volume_15m = volume_15m_retry
-                logger.info(f"Volume retry successful: {volume_15m:,}")
+                logger.warning("Volume data unavailable. Retrying in 15s...")
+                await asyncio.sleep(15)  # Was 60s
+
+                # v5.1 FIX: Correct method name and arguments
+                volume_15m_retry = await self._fetch_volume_stats(ib, contract)
+
+                if volume_15m_retry < 0:
+                    logger.warning(
+                        "Volume still unavailable after retry. "
+                        "Proceeding with caution (volume check skipped)."
+                    )
+                else:
+                    volume_15m = volume_15m_retry
+                    logger.info(f"Volume retry successful: {volume_15m:,}")
 
         # Continue with normal volume threshold check if we have valid data
         if volume_15m >= 0:
