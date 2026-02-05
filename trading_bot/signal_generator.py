@@ -19,6 +19,7 @@ from trading_bot.state_manager import StateManager # Import StateManager
 from trading_bot.compliance import ComplianceGuardian
 from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type, TriggerType, detect_market_regime_simple
 from trading_bot.heterogeneous_router import CriticalRPCError
+from trading_bot.confidence_utils import parse_confidence
 from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.brier_bridge import record_agent_prediction
 from trading_bot.strategy_router import (
@@ -706,7 +707,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                             record_agent_prediction(
                                 agent=agent_name,
                                 predicted_direction=direction,
-                                predicted_confidence=float(confidence),
+                                predicted_confidence=parse_confidence(confidence),
                                 cycle_id=cycle_id,
                                 regime=regime_log,
                                 contract=contract_name,
@@ -717,7 +718,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                         record_agent_prediction(
                             agent='master',
                             predicted_direction=decision.get('direction', 'NEUTRAL'),
-                            predicted_confidence=float(decision.get('confidence', 0.5)),
+                            predicted_confidence=parse_confidence(decision.get('confidence', 0.5)),
                             cycle_id=cycle_id,
                             regime=regime_log,
                             contract=contract_name,

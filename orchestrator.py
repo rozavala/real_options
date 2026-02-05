@@ -49,6 +49,7 @@ from trading_bot.ib_interface import (
 )
 from trading_bot.strategy import define_directional_strategy, define_volatility_strategy
 from trading_bot.state_manager import StateManager
+from trading_bot.confidence_utils import parse_confidence
 from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.compliance import ComplianceGuardian
 from trading_bot.position_sizer import DynamicPositionSizer
@@ -208,7 +209,8 @@ def _extract_agent_prediction(report) -> tuple:
 
     if isinstance(report, dict):
         direction = report.get('sentiment', 'NEUTRAL')
-        confidence = report.get('confidence', 0.5)
+        # v5.3.1 FIX: Parse band strings to float at the source
+        confidence = parse_confidence(report.get('confidence', 0.5))
 
         # Fallback parsing if sentiment missing
         if not direction or direction in ('N/A', ''):
@@ -2500,7 +2502,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         record_agent_prediction(
                             agent=agent_name,
                             predicted_direction=direction,
-                            predicted_confidence=float(confidence),
+                            predicted_confidence=parse_confidence(confidence),
                             cycle_id=cycle_id,
                             regime=current_regime,
                             contract=target_contract.lastTradeDateOrContractMonth[:6] if target_contract else "",
