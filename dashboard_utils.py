@@ -629,7 +629,11 @@ def fetch_all_live_data(_config: dict) -> dict:
             ib.sleep(1)
             pnl_data = ib.pnl()
             if pnl_data:
-                result['daily_pnl'] = pnl_data[0].dailyPnL or 0.0
+                raw_pnl = pnl_data[0].dailyPnL
+                # NaN is truthy in Python, so `or 0.0` doesn't catch it.
+                # Must use explicit math.isnan() check.
+                import math
+                result['daily_pnl'] = 0.0 if (raw_pnl is None or math.isnan(raw_pnl)) else raw_pnl
 
         # Positions & Portfolio
         result['open_positions'] = ib.positions()

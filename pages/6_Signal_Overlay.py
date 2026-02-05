@@ -168,22 +168,100 @@ def get_available_contracts(council_df: pd.DataFrame) -> list[str]:
     # Deduplicate
     contracts = sorted(set(cleaned))
 
-    # Sort by year (desc) then month (asc)
+    # Sort by expiration date ASCENDING (soonest first)
+    # This matches operator mental model: "what's trading NOW is at the top"
     month_order = 'FGHJKMNQUVXZ'
 
     def sort_key(symbol: str) -> tuple:
-        """Sort by year descending, then month ascending."""
+        """Sort by year ascending, then month ascending (soonest expiry first)."""
         try:
             if len(symbol) == 5 and symbol.startswith('KC'):
                 month = symbol[2]
                 year = int(symbol[3:5])
                 month_idx = month_order.find(month)
-                return (-year, month_idx if month_idx >= 0 else 99)
+                return (year, month_idx if month_idx >= 0 else 99)
         except:
             pass
-        return (0, 99)
+        return (99, 99)  # Unknown contracts sort last
 
     return sorted(contracts, key=sort_key)
+
+
+def resolve_front_month_ticker(config_path: str = "config.json") -> tuple[str, str]:
+    """
+    Resolve the trading system's actual front month contract using the
+    same DTE rules as the execution layer.
+
+    This ensures the Signal Overlay chart matches what the trading system
+    actually trades, not just the nearest calendar month.
+
+    Commodity-agnostic: Uses CommodityProfile.min_dte and contract_months.
+
+    Returns:
+        Tuple of (yfinance_ticker, display_symbol)
+        e.g., ('KCK26.NYB', 'KCK26') or ('KC=F', 'FRONT_MONTH') as fallback
+    """
+    try:
+        from config import get_active_profile
+        from config_loader import load_config
+
+        cfg = load_config()
+        profile = get_active_profile(cfg)
+        min_dte = profile.min_dte  # e.g., 45
+
+        # Get the valid contract month codes for this commodity
+        valid_months = profile.contract.contract_months  # e.g., ['H', 'K', 'N', 'U', 'Z']
+        ticker = profile.contract.symbol  # e.g., 'KC'
+
+        # Generate candidate contracts for the next ~2 years
+        from datetime import datetime, timedelta
+        today = datetime.now()
+
+        # Month code to calendar month mapping
+        month_code_to_num = {
+            'F': 1, 'G': 2, 'H': 3, 'J': 4, 'K': 5, 'M': 6,
+            'N': 7, 'Q': 8, 'U': 9, 'V': 10, 'X': 11, 'Z': 12
+        }
+
+        candidates = []
+        for year_offset in range(0, 3):  # Current year + next 2
+            year = today.year + year_offset
+            year_2digit = year % 100
+
+            for month_code in valid_months:
+                month_num = month_code_to_num.get(month_code)
+                if not month_num:
+                    continue
+
+                # Approximate expiration: ~20th of the contract month
+                # (exact date varies by exchange, but 20th is a safe approximation
+                # for determining DTE eligibility — the real filter happens in IB)
+                try:
+                    from calendar import monthrange
+                    # Use 3rd Friday as rough expiry estimate for ICE coffee
+                    approx_expiry = datetime(year, month_num, 19)
+                except ValueError:
+                    continue
+
+                dte = (approx_expiry - today).days
+
+                if dte >= min_dte:
+                    symbol = f"{ticker}{month_code}{year_2digit}"
+                    candidates.append((dte, symbol))
+
+        if candidates:
+            # Sort by DTE ascending — first one is the trading front month
+            candidates.sort(key=lambda x: x[0])
+            front_symbol = candidates[0][1]
+            yf_ticker = f"{front_symbol}.NYB"
+            return (yf_ticker, front_symbol)
+
+    except Exception as e:
+        import logging
+        logging.warning(f"Front month resolution failed, falling back to KC=F: {e}")
+
+    # Fallback: use yfinance continuous contract
+    return ('KC=F', 'FRONT_MONTH')
 
 
 def contract_to_yfinance_ticker(contract: str) -> str:
@@ -204,9 +282,10 @@ def contract_to_yfinance_ticker(contract: str) -> str:
     # E1: Commodity-agnostic ticker
     fallback_ticker = f"{profile.ticker}=F"
 
-    # Front month option
+    # Front month option — resolve using trading system's DTE rules
     if contract == 'FRONT_MONTH' or not contract:
-        return fallback_ticker
+        yf_ticker, _ = resolve_front_month_ticker()
+        return yf_ticker
 
     # Clean the symbol
     clean_symbol = clean_contract_symbol(contract)
@@ -238,6 +317,19 @@ def get_contract_display_name(contract: str) -> str:
         'KCH6 (202603)' -> 'KCH26 (Mar 2026)'
     """
     if contract == 'FRONT_MONTH':
+        _, resolved_symbol = resolve_front_month_ticker()
+        if resolved_symbol and resolved_symbol != 'FRONT_MONTH':
+            # Show which contract is actually being used
+            month_names = {
+                'F': 'Jan', 'G': 'Feb', 'H': 'Mar', 'J': 'Apr',
+                'K': 'May', 'M': 'Jun', 'N': 'Jul', 'Q': 'Aug',
+                'U': 'Sep', 'V': 'Oct', 'X': 'Nov', 'Z': 'Dec'
+            }
+            if len(resolved_symbol) == 5:
+                mc = resolved_symbol[2]
+                yr = resolved_symbol[3:5]
+                mn = month_names.get(mc, '???')
+                return f'📊 Front Month ({resolved_symbol} · {mn} 20{yr})'
         return '📊 Front Month (Continuous)'
 
     month_names = {

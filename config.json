@@ -254,6 +254,11 @@
       "min_volume_usd": 10000,
       "min_relevance_score": 1,
       "hwm_decay_hours": 24,
+      "global_exclude_keywords": [
+        "crypto", "bitcoin", "ethereum", "nft", "defi",
+        "nba", "nfl", "mlb", "sports", "football", "soccer",
+        "oscars", "grammy", "reality tv", "celebrity"
+      ],
       "providers": {
         "polymarket": {
           "api_url": "https://gamma-api.polymarket.com/events",
@@ -358,23 +363,28 @@
         {
           "name": "LatAm Geopolitics",
           "enabled": true,
+          "llm_validation_required": true,
           "discovery_methods": [
             {"type": "tag_scan", "tag_id": 100265, "limit": 15},
             {"type": "query", "q": "Colombia"},
-            {"type": "query", "q": "Latin America military"},
+            {"type": "query", "q": "Latin America"},
             {"type": "query", "q": "Venezuela"}
           ],
           "relevance_keywords": [
-            "colombia", "latin", "america", "venezuela", "brazil",
-            "mexico", "invade", "invasion", "military", "embargo",
-            "supply chain", "port", "blockade"
+            "colombia", "latin america", "venezuela", "brazil",
+            "mexico", "central america", "costa rica", "guatemala",
+            "honduras", "peru", "ecuador", "embargo",
+            "supply chain", "port strike", "blockade", "cartel"
           ],
-          "exclude_keywords": ["sports", "football", "soccer", "crypto"],
-          "min_relevance_score": 1,
+          "exclude_keywords": [
+            "russia", "nato", "ukraine", "china", "taiwan",
+            "middle east", "iran", "israel", "north korea"
+          ],
+          "min_relevance_score": 2,
           "max_topics": 2,
           "default_threshold_pct": 5.0,
           "importance": "supply_chain",
-          "commodity_impact_template": "LatAm geopolitical instability threatens coffee supply chains from origin countries"
+          "commodity_impact_template": "LatAm geopolitical instability threatens commodity supply chains from origin countries"
         },
         {
           "name": "Fed Leadership",
