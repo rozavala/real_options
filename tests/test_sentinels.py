@@ -99,10 +99,11 @@ async def test_weather_sentinel_frost():
     # Mock requests.get
     with patch('requests.get') as mock_get:
         mock_response = MagicMock()
-        # Mock API response: 3.0 degrees (Frost)
+        # Mock API response: 1.0 degrees (Frost < 2.0)
         mock_response.json.return_value = {
             'daily': {
-                'temperature_2m_min': [10.0, 3.0, 12.0],
+                'time': ['2023-01-01', '2023-01-02', '2023-01-03'],
+                'temperature_2m_min': [10.0, 1.0, 12.0],
                 'precipitation_sum': [0.0, 0.0, 0.0]
             }
         }
@@ -114,7 +115,7 @@ async def test_weather_sentinel_frost():
         assert trigger is not None
         assert trigger.source == "WeatherSentinel"
         assert trigger.payload['type'] == "FROST"
-        assert trigger.payload['value'] == 3.0
+        assert trigger.payload['min_temp_c'] == 1.0
         # Check if URL was used
         assert 'http://test-weather.com' in mock_get.call_args[0][0]
 

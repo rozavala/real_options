@@ -591,6 +591,10 @@ class LogisticsSentinel(Sentinel):
         self.client = genai.Client(api_key=api_key)
         self.model = self.sentinel_config.get('model', "gemini-3-flash-preview")
 
+        # Commodity-agnostic: load profile
+        ticker = config.get('commodity', {}).get('ticker', 'KC')
+        self.profile = get_commodity_profile(ticker)
+
     @with_retry(max_attempts=3)
     async def _analyze_with_ai(self, prompt: str) -> Optional[str]:
         """AI analysis with retry logic."""
@@ -617,9 +621,12 @@ class LogisticsSentinel(Sentinel):
         if self._is_duplicate_payload(payload):
             return None
 
+        commodity_name = self.profile.name
         prompt = (
-            "Analyze these headlines for Critical Coffee Supply Chain Bottlenecks (Strikes, Port Closures, Blockades).\n"
-            "Headlines:\n" + "\n".join(f"- {h}" for h in headlines) + "\n\n"
+            f"Do these headlines suggest a disruption to the {commodity_name} supply chain? "
+            f"Consider port strikes, shipping delays, export bans, or logistics failures "
+            f"affecting {commodity_name} producing or consuming regions.\n"
+            f"Headlines:\n" + "\n".join(f"- {h}" for h in headlines) + "\n\n"
             "Question: Is there a CRITICAL disruption mentioned? Answer only 'YES' or 'NO'."
         )
 
@@ -656,6 +663,10 @@ class NewsSentinel(Sentinel):
         self.client = genai.Client(api_key=api_key)
         self.model = self.sentinel_config.get('model', "gemini-3-flash-preview")
 
+        # Commodity-agnostic: load profile for prompt construction
+        ticker = config.get('commodity', {}).get('ticker', 'KC')
+        self.profile = get_commodity_profile(ticker)
+
     @with_retry(max_attempts=3)
     async def _analyze_with_ai(self, prompt: str) -> Optional[dict]:
         """AI analysis with retry logic."""
@@ -682,11 +693,15 @@ class NewsSentinel(Sentinel):
         if not headlines:
             return None
 
+        commodity_name = self.profile.name
         prompt = (
-            "Analyze these headlines for EXTREME Market Sentiment regarding Coffee Futures.\n"
-            "Headlines:\n" + "\n".join(f"- {h}" for h in headlines) + "\n\n"
-            "Task: Score the 'Sentiment Magnitude' from 0 to 10 (where 10 is Market Crashing or Exploding panic/euphoria).\n"
-            "Output JSON: {'score': int, 'summary': string}"
+            f"Analyze these headlines for EXTREME Market Sentiment regarding {commodity_name} Futures.\n"
+            f"Headlines:\n" + "\n".join(f"- {h}" for h in headlines) + "\n\n"
+            f"Task: Score the 'Sentiment Magnitude' from 0 to 10 "
+            f"(where 10 is Market Crashing or Exploding panic/euphoria) "
+            f"specifically as it relates to {commodity_name} markets.\n"
+            f"If headlines are unrelated to {commodity_name} or commodities, score 0.\n"
+            f"Output JSON: {{'score': int, 'summary': string}}"
         )
 
         data = self._validate_ai_response(
@@ -719,13 +734,15 @@ class XSentimentSentinel(Sentinel):
         super().__init__(config)
         self.sentinel_config = config.get('sentinels', {}).get('x_sentiment', {})
 
-        self.search_queries = self.sentinel_config.get('search_queries', [
-            'coffee futures',
-            'arabica prices',
-            'KC futures',
-            'robusta market',
-            'coffee supply'
-        ])
+        # Commodity-agnostic: load profile for search queries and prompts
+        ticker = config.get('commodity', {}).get('ticker', 'KC')
+        self.profile = get_commodity_profile(ticker)
+
+        self.search_queries = self.sentinel_config.get('search_queries')
+        if not self.search_queries:
+            # Fallback to profile queries if not explicitly overridden in config
+            self.search_queries = self.profile.sentiment_search_queries
+
         self.from_handles = self.sentinel_config.get('from_handles', [])
         self.exclude_keywords = self.sentinel_config.get('exclude_keywords',
             ['meme', 'joke', 'spam', 'giveaway'])
@@ -919,9 +936,10 @@ class XSentimentSentinel(Sentinel):
                 }
             }
         ]
-        system_prompt = """You are an expert commodities market sentiment analyst.
+        commodity_name = self.profile.name
+        system_prompt = f"""You are an expert commodities market sentiment analyst.
 Use the x_search tool to fetch live X data when needed.
-Analyze posts for bullish/bearish themes related to coffee futures.
+Analyze posts for bullish/bearish themes related to {commodity_name} futures.
 IMPORTANT: Prioritize RECENT posts. Use mode="Latest".
 After analyzing posts, provide a JSON response with:
 - sentiment_score: 0-10
@@ -1375,6 +1393,11 @@ class MacroContagionSentinel(Sentinel):
         # Base Sentinel only takes config.
         # Orchestrator instantiates sentinels with (config).
         super().__init__(config)
+
+        # Commodity-agnostic: load profile
+        ticker = config.get('commodity', {}).get('ticker', 'KC')
+        self.profile = get_commodity_profile(ticker)
+
         self.sentinel_config = config.get('sentinels', {}).get('MacroContagionSentinel', {})
         self.dxy_threshold_1d = 0.01  # 1% daily move
         self.dxy_threshold_2d = 0.02  # 2% two-day move
@@ -1473,7 +1496,7 @@ class MacroContagionSentinel(Sentinel):
                     "type": "CROSS_COMMODITY_CONTAGION",
                     "correlation_precious": avg_precious_corr,
                     "correlation_grains": avg_grain_corr,
-                    "interpretation": "Coffee trading as RISK ASSET (like Gold/Silver), not AG COMMODITY",
+                    "interpretation": f"{self.profile.name} trading as RISK ASSET (like Gold/Silver), not AG COMMODITY",
                     "severity": "HIGH"
                 }
 
