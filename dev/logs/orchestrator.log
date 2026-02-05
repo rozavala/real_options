@@ -170,3 +170,103 @@ Starting orchestrator from /home/rodrigo/real_options...
 💡 Running 'python backfill_council_history.py' could unlock up to 197 more predictions
 2026-02-05 19:00:00,097 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
 2026-02-05 19:00:00,101 - Orchestrator - INFO - Next task 'reconcile_and_analyze' scheduled for 2026-02-05 19:05:00 UTC. Waiting for 0.08 hours.
+2026-02-05 19:00:23,948 - Orchestrator - INFO - Market Closed: Disconnecting Sentinel IB to prevent zombie state.
+2026-02-05 19:00:26,949 - Orchestrator - INFO - Market Closed: Disengaging Microstructure Sentinel
+2026-02-05 19:00:26,949 - trading_bot.connection_pool - INFO - Disconnecting IB (microstructure)...
+2026-02-05 19:05:00,007 - Orchestrator - INFO - --- Running scheduled task: reconcile_and_analyze ---
+2026-02-05 19:05:00,008 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-02-05 19:05:00,008 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
+2026-02-05 19:05:00,300 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-05 19:05:10,311 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-05 19:05:10,568 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-05 19:05:10,576 - EquityLogger - INFO - Preserving 6 local equity records not present in Flex Query.
+2026-02-05 19:05:10,578 - EquityLogger - INFO - Successfully synced 15 equity records to data/daily_equity.csv.
+2026-02-05 19:05:10,580 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-02-05 19:05:10,580 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-02-05 19:05:10,582 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-02-05 19:05:10,829 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-05 19:05:20,837 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-05 19:05:20,967 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-05 19:05:20,970 - TradeReconciler - INFO - Parsed 44 executions from the Flex Query report.
+2026-02-05 19:05:20,984 - TradeReconciler - INFO - Successfully processed 44 trades into the reconciliation DataFrame.
+2026-02-05 19:05:20,985 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-02-05 19:05:21,159 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-05 19:05:31,163 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-05 19:05:31,311 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-05 19:05:31,315 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-02-05 19:05:31,316 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-02-05 19:05:31,319 - TradeReconciler - INFO - Consolidated to 44 unique trades from all reports.
+2026-02-05 19:05:31,319 - TradeReconciler - INFO - Found 4 archived ledger files.
+2026-02-05 19:05:31,326 - TradeReconciler - INFO - Consolidated a total of 44 trades from all ledgers.
+2026-02-05 19:05:31,327 - TradeReconciler - INFO - Filtered IB trades from 44 to 44 records within the last 90 days.
+2026-02-05 19:05:31,328 - TradeReconciler - INFO - Filtered local ledger from 44 to 44 records within the last 90 days.
+2026-02-05 19:05:31,394 - TradeReconciler - INFO - Reconciliation complete. Found 0 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
+2026-02-05 19:05:31,395 - TradeReconciler - INFO - No discrepancies found. The local ledger is perfectly in sync with the IB report.
+2026-02-05 19:05:31,395 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
+2026-02-05 19:05:31,395 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-02-05 19:05:31,592 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-05 19:05:41,598 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-05 19:05:42,666 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-05 19:05:42,669 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
+2026-02-05 19:05:42,669 - TradeReconciler - INFO - Found 4 archived ledger files.
+2026-02-05 19:05:42,679 - TradeReconciler - INFO - Consolidated a total of 44 trades from all ledgers.
+2026-02-05 19:05:42,687 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-02-05 19:05:42,688 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-02-05 19:05:43,029 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-05 19:05:43,029 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-05 19:05:43,029 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'anthropic', 'openai', 'xai']
+2026-02-05 19:05:43,038 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-04 09:44:47.311042+00:00: KCK6 (202605) (BULLISH)
+2026-02-05 19:05:43,212 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 299.95 -> Exit 296.15 (1.27% move) | Strategy: DIRECTIONAL | Outcome: BEARISH | P&L: -3.8000
+2026-02-05 19:05:51,905 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) LOSS ($-3.80)
+2026-02-05 19:05:51,927 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.19, geopolitical: 0.16, inventory: 0.00, macro: 0.45, master_decision: 0.03, sentiment: 0.00, supply_chain: 0.03, technical: 0.11, volatility: 0.10}
+2026-02-05 19:05:51,928 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BULLISH vs Actual BEARISH
+2026-02-05 19:05:52,029 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-04 13:24:35.031451+00:00: KCK6 (202605) (NEUTRAL)
+2026-02-05 19:05:52,195 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 300.90 -> Exit 296.15 (1.58% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
+2026-02-05 19:06:00,985 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) FLAT ($0.00)
+2026-02-05 19:06:00,986 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
+2026-02-05 19:06:01,086 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-04 16:20:39.234125+00:00: KCK6 (202605) (BEARISH)
+2026-02-05 19:06:01,147 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-04 16:22:27.019491+00:00: KCN6 (202607) (BEARISH)
+2026-02-05 19:06:01,209 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-04 16:24:50.454847+00:00: KCU6 (202609) (BEARISH)
+2026-02-05 19:06:01,271 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-04 16:25:27.091144+00:00: KCZ6 (202612) (BEARISH)
+2026-02-05 19:06:01,331 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-04 16:26:06.817608+00:00: KCH7 (202703) (BEARISH)
+2026-02-05 19:06:01,465 - trading_bot.reconciliation - INFO - Successfully updated council_history.csv with reconciliation results.
+2026-02-05 19:06:01,492 - trading_bot.brier_scoring - INFO - Found 197 pending predictions to check
+2026-02-05 19:06:01,494 - trading_bot.brier_scoring - INFO - Council decisions: 132 total, 106 reconciled
+2026-02-05 19:06:01,502 - trading_bot.brier_scoring - INFO - Built cycle_id lookup with 23 entries
+2026-02-05 19:06:03,371 - trading_bot.brier_scoring - INFO - Brier Resolution stats: cycle_id=1, nearest=0, orphaned=0, no_council_window=0
+2026-02-05 19:06:03,378 - trading_bot.brier_scoring - INFO - Resolved 1 predictions (cycle_id: 1, nearest: 0, orphans: 0)
+2026-02-05 19:06:03,381 - trading_bot.brier_scoring - INFO - Appended 1 resolved predictions to data/agent_accuracy.csv
+2026-02-05 19:06:03,381 - trading_bot.brier_scoring - INFO - Reset BrierScoreTracker singleton — will reload on next access
+2026-02-05 19:06:03,382 - trading_bot.reconciliation - INFO - Feedback Loop (Legacy): Resolved 1 agent predictions
+2026-02-05 19:06:03,387 - trading_bot.enhanced_brier - INFO - Loaded 384 predictions from ./data/enhanced_brier.json
+2026-02-05 19:06:03,396 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BEARISH, Brier=0.0013
+2026-02-05 19:06:03,396 - trading_bot.reconciliation - INFO - Feedback Loop (Enhanced): Scored 1 predictions with Brier scores
+2026-02-05 19:06:06,401 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-02-05 19:06:06,402 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-02-05 19:06:06,402 - PerformanceAnalyzer - INFO - Found 4 archived trade ledger(s).
+2026-02-05 19:06:06,402 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260129_190559.csv
+2026-02-05 19:06:06,405 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260130_190602.csv
+2026-02-05 19:06:06,408 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260202_190601.csv
+2026-02-05 19:06:06,412 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260203_190605.csv
+2026-02-05 19:06:06,417 - PerformanceAnalyzer - INFO - Consolidated a total of 44 trade records.
+2026-02-05 19:06:06,420 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-02-05 19:06:06,765 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $43,588.97
+2026-02-05 19:06:08,767 - PerformanceAnalyzer - INFO - Successfully fetched 0 execution(s) for today from IB.
+2026-02-05 19:06:11,771 - PerformanceAnalyzer - INFO - Loading daily_equity.csv for equity curve.
+2026-02-05 19:06:11,777 - PerformanceAnalyzer - INFO - Dynamic Starting Capital from History: $50,000.00
+2026-02-05 19:06:11,781 - PerformanceAnalyzer - INFO - Calculated LTD Total P&L (Equity): $-6,411.03
+2026-02-05 19:06:12,366 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-02-05 19:06:12,681 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-05 19:06:12,918 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-05 19:06:13,240 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
+2026-02-05 19:06:13,241 - root - INFO - 'trade_ledger.csv' not found, no action taken.
+2026-02-05 19:06:13,247 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-05 19:06:13,248 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=1086
+2026-02-05 19:06:13,248 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-02-05 19:06:13,248 - Orchestrator - INFO - Running feedback loop health check...
+2026-02-05 19:06:13,256 - Orchestrator - INFO - Feedback Loop Health: 196/405 PENDING (257 orphans excluded, resolution rate: 52%)
+2026-02-05 19:06:13,260 - trading_bot.enhanced_brier - INFO - Loaded 384 predictions from ./data/enhanced_brier.json
+2026-02-05 19:06:13,260 - Orchestrator - INFO - Enhanced Brier Health: 8 agents tracked, 209 total resolved predictions
+2026-02-05 19:06:13,260 - Orchestrator - INFO - Feedback loop health check complete.
+2026-02-05 19:06:13,261 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-02-05 19:06:13,266 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-06 08:20:00 UTC. Waiting for 13.23 hours.
