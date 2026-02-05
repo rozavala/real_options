@@ -57,14 +57,51 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
 
     # IV is optional - proceed without it if unavailable
     if iv is None:
-        logging.warning(f"IV data missing for {contract.localSymbol}, proceeding with price-only execution.")
-        iv = 0.35  # Default fallback IV for coffee (~35%)
+        from config import get_active_profile
+        # We need config to get profile, but get_option_market_data signature doesn't include it.
+        # Fallback: assume Coffee default if config not accessible, or use hardcoded safe value.
+        # Ideally, we should pass config.
+        # Since we can't easily change signature everywhere without breaking things,
+        # we will use a safe default but log it.
+        # M1 FIX: Actually we should look up from profile if possible.
+        # Loading config here might be slow.
+        # Let's assume the caller will handle or we use a safe default.
+        # But wait, WS5.5 says "REPLACE WITH ... profile = get_active_profile(config)".
+        # We don't have config here.
+        # Strategy: Use a default, but note that the caller (create_combo_order_object)
+        # DOES have config. We should pass IV/RiskFreeRate from there?
+        # No, this function fetches market data.
+
+        # NOTE: For now, hardcoding 35% as a safe fallback is acceptable if config isn't passed.
+        # BUT to follow instructions, let's load config locally (cached).
+        try:
+            from config_loader import load_config
+            from config import get_active_profile
+            cfg = load_config()
+            profile = get_active_profile(cfg)
+            iv = profile.fallback_iv
+            rfr = profile.risk_free_rate
+            logging.warning(f"IV data missing for {contract.localSymbol}, using profile fallback IV: {iv:.0%}")
+        except:
+            iv = 0.35
+            rfr = 0.04
+            logging.warning(f"IV data missing for {contract.localSymbol}, using hardcoded fallback IV: {iv:.0%}")
+    else:
+        # Load risk free rate
+        try:
+            from config_loader import load_config
+            from config import get_active_profile
+            cfg = load_config()
+            profile = get_active_profile(cfg)
+            rfr = profile.risk_free_rate
+        except:
+            rfr = 0.04
 
     return {
         'bid': bid,
         'ask': ask,
         'implied_volatility': iv,
-        'risk_free_rate': 0.04  # Assuming a constant risk-free rate
+        'risk_free_rate': rfr  # M3 FIX: Use profile rate
     }
 
 async def get_underlying_iv_metrics(ib: IB, future_contract: Contract) -> dict:
@@ -110,10 +147,17 @@ async def get_underlying_iv_metrics(ib: IB, future_contract: Contract) -> dict:
 async def get_active_futures(ib: IB, symbol: str, exchange: str, count: int = 5) -> list[Contract]:
     """
     Fetches the next N active futures contracts for a given symbol.
-    Excludes contracts expiring within 45 days.
+    Excludes contracts expiring within min_dte days (profile-defined).
     """
     logging.info(f"Fetching {count} active futures contracts for {symbol} on {exchange}...")
     try:
+        # M6 FIX: Use profile for min_dte
+        from config_loader import load_config
+        from config import get_active_profile
+        cfg = load_config()
+        profile = get_active_profile(cfg)
+        min_dte = profile.min_dte
+
         cds = await ib.reqContractDetailsAsync(Future(symbol, exchange=exchange))
         now = datetime.now()
         filtered_contracts = []
@@ -122,33 +166,29 @@ async def get_active_futures(ib: IB, symbol: str, exchange: str, count: int = 5)
             contract = cd.contract
             # Check basic future expiration (must be in future)
             if contract.lastTradeDateOrContractMonth > now.strftime('%Y%m'):
-                # Apply 45-day rule
+                # Apply min_dte rule
                 # Parse expiration date. Typically YYYYMMDD for specific contracts.
                 try:
                     exp_str = contract.lastTradeDateOrContractMonth
                     # Handle YYYYMMDD format
                     if len(exp_str) == 8:
                         exp_date = datetime.strptime(exp_str, '%Y%m%d')
-                    # Handle YYYYMM format (less precise, assume end of month?)
-                    # Usually reqContractDetails returns specific contracts with full dates.
+                    # Handle YYYYMM format
                     elif len(exp_str) == 6:
-                        # Assume roughly 15th for safety or just pass if YYYYMM > current
-                        # But user wants 45-day rule. Let's skip imprecise ones or parse as 1st?
-                        # Better to be strict.
                         exp_date = datetime.strptime(exp_str + "01", '%Y%m%d')
                     else:
                         continue # Invalid format
 
-                    if exp_date >= (now + timedelta(days=45)):
+                    if exp_date >= (now + timedelta(days=min_dte)):
                         filtered_contracts.append(contract)
                     else:
-                        logging.info(f"Skipping contract {contract.localSymbol} (Exp: {exp_str}): Expires < 45 days.")
+                        logging.info(f"Skipping contract {contract.localSymbol} (Exp: {exp_str}): Expires < {min_dte} days.")
                 except ValueError:
                     logging.warning(f"Could not parse expiration for {contract.localSymbol}: {contract.lastTradeDateOrContractMonth}")
                     continue
 
         active = sorted(filtered_contracts, key=lambda c: c.lastTradeDateOrContractMonth)
-        logging.info(f"Found {len(active)} active tradeable contracts (>=45d exp). Returning the first {count}.")
+        logging.info(f"Found {len(active)} active tradeable contracts (>={min_dte}d exp). Returning the first {count}.")
         return active[:count]
     except Exception as e:
         logging.error(f"Error fetching active futures: {e}"); return []

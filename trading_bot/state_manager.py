@@ -137,6 +137,37 @@ class StateManager:
             logger.error(f"Failed to load state: {e}")
             return {}
 
+    # F2 NOTE: fcntl locks are advisory-only on Linux. This means:
+    # - All processes accessing this file MUST use the same locking mechanism
+    # - External scripts that read/write state directly will NOT be blocked
+    # - For stronger guarantees, consider a SQLite backend (future enhancement)
+    #
+    # Current mitigation: All code paths go through StateManager.
+    # DO NOT add direct file access anywhere else.
+
+    @classmethod
+    def atomic_state_update(cls, namespace: str, key: str, value: dict):
+        """Thread-safe and process-safe state update."""
+        import fcntl
+        from pathlib import Path
+
+        lock_file = Path(f"data/.state_{namespace}.lock")
+        lock_file.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(lock_file, 'w') as lock_fd:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            try:
+                state = cls._load_raw_sync()
+                if namespace not in state:
+                    state[namespace] = {}
+                state[namespace][key] = {
+                    'data': value,
+                    'timestamp': time.time()
+                }
+                cls._save_raw_sync(state)
+            finally:
+                fcntl.flock(lock_fd, fcntl.LOCK_UN)
+
     @classmethod
     def save_state(cls, updates: Dict[str, Any], namespace: str = "reports"):
         """

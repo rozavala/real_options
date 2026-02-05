@@ -36,9 +36,12 @@ trade_df = load_trade_data()
 council_df = load_council_history()
 config = get_config()
 
-# Get starting capital
-starting_capital = DEFAULT_STARTING_CAPITAL
+# E4 FIX: Get starting capital from config/profile
+from dashboard_utils import get_starting_capital
+starting_capital = get_starting_capital(config)
+
 if not equity_df.empty:
+    # If we have equity history, use the first point as truth
     starting_capital = equity_df.iloc[0]['total_value_usd']
 
 st.markdown("---")
@@ -351,11 +354,16 @@ if not equity_df.empty:
                 line=dict(color='#FFA15A', width=1, dash='dot')
             ))
 
-        if 'KC=F' in benchmark_df.columns:
+        # E5 FIX: Commodity-agnostic benchmark
+        from config import get_active_profile
+        profile = get_active_profile(config)
+        benchmark_col = f"{profile.ticker}=F"
+
+        if benchmark_col in benchmark_df.columns:
             fig.add_trace(go.Scatter(
                 x=benchmark_df.index,
-                y=benchmark_df['KC=F'],
-                name='Coffee Futures',
+                y=benchmark_df[benchmark_col],
+                name=f'{profile.name} Futures',
                 line=dict(color='#00CC96', width=1, dash='dot')
             ))
 

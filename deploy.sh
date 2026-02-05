@@ -83,18 +83,19 @@ send_pushover_notification({}, 'DEPLOY ROLLBACK', 'Deploy of $CURR_COMMIT failed
 echo "--- 1. Stopping old processes... ---"
 
 # Stop the systemd service (passwordless sudo configured in /etc/sudoers.d/coffee-bot)
-echo "  🛑 Stopping coffee-bot service..."
-sudo systemctl stop coffee-bot
+SERVICE_NAME="${BOT_SERVICE_NAME:-trading-bot}"
+echo "  🛑 Stopping $SERVICE_NAME service..."
+sudo systemctl stop "$SERVICE_NAME"
 
 # Wait for systemd to fully stop the service
 echo "  ⏳ Waiting for clean shutdown..."
 sleep 5
 
 # Verify the service is actually stopped
-if sudo systemctl is-active --quiet coffee-bot; then
+if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
     echo "  ❌ ERROR: Service still active after stop command!"
     echo "  📋 Service status:"
-    sudo systemctl status coffee-bot --no-pager
+    sudo systemctl status "$SERVICE_NAME" --no-pager
     rollback_and_restart
 fi
 
@@ -190,17 +191,17 @@ echo "  🔄 Reloading systemd..."
 sudo systemctl daemon-reload
 
 # Start the orchestrator via systemd
-echo "  🚀 Starting coffee-bot service..."
-sudo systemctl start coffee-bot
+echo "  🚀 Starting $SERVICE_NAME service..."
+sudo systemctl start "$SERVICE_NAME"
 
 # Wait for service to initialize
 sleep 5
 
 # Verify service started successfully
-if ! sudo systemctl is-active --quiet coffee-bot; then
-    echo "  ❌ ERROR: coffee-bot service failed to start!"
+if ! sudo systemctl is-active --quiet "$SERVICE_NAME"; then
+    echo "  ❌ ERROR: $SERVICE_NAME service failed to start!"
     echo "  📋 Service status:"
-    sudo systemctl status coffee-bot --no-pager
+    sudo systemctl status "$SERVICE_NAME" --no-pager
     echo ""
     echo "  📋 Recent logs:"
     tail -50 logs/orchestrator.log
@@ -212,12 +213,12 @@ ORCH_COUNT=$(pgrep -f "orchestrator.py" | wc -l)
 if [ "$ORCH_COUNT" -ne 1 ]; then
     echo "  ❌ ERROR: Expected 1 orchestrator, found $ORCH_COUNT!"
     ps aux | grep orchestrator.py | grep -v grep
-    sudo systemctl stop coffee-bot
+    sudo systemctl stop "$SERVICE_NAME"
     rollback_and_restart
 fi
 
 ORCH_PID=$(pgrep -f "orchestrator.py")
-echo "  ✅ coffee-bot service started (PID: $ORCH_PID)"
+echo "  ✅ $SERVICE_NAME service started (PID: $ORCH_PID)"
 
 # Start dashboard (not managed by systemd)
 echo "  🚀 Starting dashboard..."

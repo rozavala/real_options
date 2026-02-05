@@ -132,6 +132,13 @@ class CommodityProfile:
     price_move_alert_pct: float = 2.0
     straddle_risk_threshold: float = 10000.0  # Max straddle risk per contract (v3.1)
 
+    # M1, M3, M7, E4 FIXES:
+    fallback_iv: float = 0.35  # Default 35% (commodity-specific)
+    risk_free_rate: float = 0.04  # M3 fix
+    default_starting_capital: float = 50000.0  # E4 fix
+    min_dte: int = 45  # M7 fix: minimum days to expiry
+    max_dte: int = 180  # M7 fix: maximum days to expiry
+
     # Price validation (from config.json commodity_profile — used by order manager)
     stop_parse_range: List[float] = field(default_factory=lambda: [0.0, 9999.0])
     typical_price_range: List[float] = field(default_factory=lambda: [0.0, 9999.0])
@@ -376,6 +383,11 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
     volatility_low_iv_rank=0.30,
     price_move_alert_pct=2.0,
     straddle_risk_threshold=10000.0,
+    fallback_iv=0.35,
+    risk_free_rate=0.04,
+    default_starting_capital=50000.0,
+    min_dte=45,
+    max_dte=180,
 
     # Price validation — MUST match config.json → commodity_profile.KC
     stop_parse_range=[80.0, 800.0],       # Valid stop-loss price range (cents/lb)

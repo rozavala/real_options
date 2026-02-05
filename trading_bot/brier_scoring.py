@@ -552,14 +552,15 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
                         f"(age: {pred_age_hours:.0f}h, no cycle_id, no council match within 120min)"
                     )
 
-            # Auto-ORPHAN stale legacy entries (>72h without match)
-            ORPHAN_AGE_HOURS = 72
-            if not actual_direction and pred_age_hours > ORPHAN_AGE_HOURS and not is_valid_cycle_id(pred_cycle_id):
+            # Auto-ORPHAN stale legacy entries
+            orphan_threshold = _get_orphan_window_hours(pred_row['timestamp'])
+
+            if not actual_direction and pred_age_hours > orphan_threshold and not is_valid_cycle_id(pred_cycle_id):
                 actual_direction = 'ORPHANED'
                 stats['orphaned'] += 1
                 logger.info(
                     f"Auto-ORPHANED: {pred_row.get('agent', '?')} at {pred_row['timestamp']} "
-                    f"(age: {pred_age_hours:.0f}h, no cycle_id, no match)"
+                    f"(age: {pred_age_hours:.0f}h > {orphan_threshold}h, no cycle_id)"
                 )
 
             # Apply resolution
@@ -665,6 +666,40 @@ def _reset_tracker_singleton():
         logger.info("Reset BrierScoreTracker singleton — will reload on next access")
     except Exception:
         pass
+
+
+def _get_orphan_window_hours(timestamp: datetime) -> int:
+    """
+    Calculate orphan window accounting for weekends/holidays.
+
+    B4 FIX: 72 base hours + adjustment for non-trading days.
+    """
+    try:
+        from pandas.tseries.holiday import USFederalHolidayCalendar
+        import pandas as pd
+        from datetime import timedelta
+
+        BASE_HOURS = 72
+        cal = USFederalHolidayCalendar()
+
+        # Count non-trading days in window
+        start = timestamp
+        end = timestamp + timedelta(hours=BASE_HOURS)
+
+        # Ensure datetimes are naive or normalized for pandas
+        if start.tzinfo: start = start.replace(tzinfo=None)
+        if end.tzinfo: end = end.replace(tzinfo=None)
+
+        holidays = cal.holidays(start=start.date(), end=end.date())
+        weekend_days = sum(1 for d in pd.date_range(start, end) if d.weekday() >= 5)
+        non_trading_days = len(holidays) + weekend_days
+
+        # Add 24 hours per non-trading day
+        adjusted_hours = BASE_HOURS + (non_trading_days * 24)
+
+        return min(adjusted_hours, 168)  # Cap at 1 week
+    except Exception:
+        return 72  # Fallback
 
 
 def _append_to_legacy_accuracy(resolved_df: pd.DataFrame):

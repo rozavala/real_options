@@ -30,6 +30,7 @@ from trading_bot.utils import (
     get_tick_size, get_contract_multiplier, get_dollar_multiplier,
     hours_until_weekly_close
 )
+from trading_bot.calendars import is_trading_day, get_exchange_calendar
 from trading_bot.compliance import ComplianceGuardian, calculate_spread_max_risk
 from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.position_sizer import DynamicPositionSizer
@@ -42,6 +43,83 @@ ORDER_QUEUE = OrderQueueManager()
 
 # Module-level lock for capital tracking
 _CAPITAL_LOCK = asyncio.Lock()
+
+from pathlib import Path
+import json
+
+CAPITAL_STATE_FILE = Path("data/capital_state.json")
+
+def _load_committed_capital() -> float:
+    """Load persisted committed capital or 0.0 if none."""
+    if CAPITAL_STATE_FILE.exists():
+        try:
+            with open(CAPITAL_STATE_FILE, 'r') as f:
+                data = json.load(f)
+                return data.get('committed_capital', 0.0)
+        except Exception as e:
+            logger.warning(f"Could not load capital state: {e}")
+    return 0.0
+
+def _save_committed_capital(amount: float):
+    """Persist committed capital to disk."""
+    CAPITAL_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(CAPITAL_STATE_FILE, 'w') as f:
+        json.dump({
+            'committed_capital': amount,
+            'last_updated': datetime.now(timezone.utc).isoformat()
+        }, f)
+
+async def _reconcile_working_orders(ib: IB, config: dict) -> float:
+    """
+    Query IBKR for working orders and calculate committed capital.
+
+    L1 FIX: Prevents double-leverage on restart by checking actual
+    working orders rather than trusting in-memory state.
+
+    v4.1 AMENDMENT: Filters by clientId/orderRef to count only THIS
+    bot instance's orders, preventing cross-bot capital stealing.
+    """
+    try:
+        open_orders = await ib.reqAllOpenOrdersAsync()
+        if not open_orders:
+            return 0.0
+
+        # v4.1: FILTER BY CLIENT ID OR ORDER REF
+        my_client_id = ib.client.clientId
+        my_order_ref_prefix = config.get('execution', {}).get('order_ref_prefix', 'MISSION_CTRL')
+
+        total_committed = 0.0
+        skipped_foreign = 0
+
+        for trade in open_orders:
+            # Check if order belongs to this instance
+            is_mine = (
+                (trade.order.clientId == my_client_id) or
+                (trade.order.orderRef and
+                 trade.order.orderRef.startswith(my_order_ref_prefix))
+            )
+
+            if not is_mine:
+                skipped_foreign += 1
+                continue
+
+            if trade.orderStatus.status in ('PreSubmitted', 'Submitted'):
+                # Estimate risk (conservative: use margin requirement)
+                # For spreads, this is approximate but safe
+                estimated_risk = abs(trade.order.totalQuantity) * 500  # $500 per contract estimate
+                total_committed += estimated_risk
+                logger.info(f"Working order {trade.order.orderId}: ~${estimated_risk:.0f} committed")
+
+        if skipped_foreign > 0:
+            logger.info(
+                f"L1: Filtered {skipped_foreign} foreign orders "
+                f"(client_id != {my_client_id}, ref != {my_order_ref_prefix}*)"
+            )
+
+        return total_committed
+    except Exception as e:
+        logger.warning(f"Working order query failed: {e}. Assuming no committed capital.")
+        return 0.0
 
 # Module-level set for TMS thesis deduplication
 _recorded_thesis_positions = set()
@@ -165,7 +243,11 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                 return
 
             # --- FILTER 1: Deferred Month (FIX-002) ---
-            max_days = config.get('strategy', {}).get('max_days_to_expiry', 180)
+            # M6/M7 FIX: Use profile for max_dte
+            from config import get_active_profile
+            profile = get_active_profile(config)
+            max_days = profile.max_dte  # Was hardcoded 180 or config strategy
+
             date_filtered = []
 
             for f in futures:
@@ -257,8 +339,15 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             account_value = float(net_liq_tag.value) if net_liq_tag else 0.0
             logger.info(f"Account Value for Sizing: ${account_value:,.2f}")
 
-            # Track committed capital to prevent over-leveraging
-            committed_capital = 0.0
+            # L1 FIX: Reconcile with IBKR before assuming zero committed
+            persisted_capital = _load_committed_capital()
+            working_capital = await _reconcile_working_orders(ib, config)  # v4.1: now takes config
+
+            # Use whichever is higher (conservative)
+            committed_capital = max(persisted_capital, working_capital)
+
+            if committed_capital > 0:
+                logger.info(f"L1 RECONCILED: Starting with ${committed_capital:,.2f} already committed")
 
             # === FLIGHT DIRECTOR WARNING ===
             # DO NOT PARALLELIZE THIS LOOP WITH asyncio.gather()
@@ -387,7 +476,10 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
 
                             # Calculate and track committed capital
                             estimated_risk = await calculate_spread_max_risk(ib, contract, order, config)
-                            committed_capital += estimated_risk
+
+                            async with _CAPITAL_LOCK:
+                                committed_capital += estimated_risk
+                                _save_committed_capital(committed_capital)
 
                             # Issue #4: Early abort if capital exhausted
                             if committed_capital > account_value:
@@ -1497,7 +1589,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
         trade_ledger.sort_values('timestamp', ascending=False, inplace=True)
 
         # --- 3. Calculate trading day logic ---
-        cal = USFederalHolidayCalendar()
+        # M4 FIX: Use Exchange Holiday Calendar
+        cal = get_exchange_calendar(config.get('exchange', 'ICE'))
         holidays = cal.holidays(start=date(date.today().year - 1, 1, 1), end=date.today()).to_pydatetime().tolist()
         today = datetime.now(timezone.utc).date()
         custom_bday = pd.offsets.CustomBusinessDay(holidays=holidays)
