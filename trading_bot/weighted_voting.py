@@ -425,10 +425,25 @@ async def calculate_weighted_decision(
         if isinstance(report, dict) and report.get('sentiment'):
             sentiment_tag = str(report['sentiment']).upper().strip()
             if sentiment_tag in ['BULLISH', 'BEARISH', 'NEUTRAL']:
-                try:
-                    confidence = float(report.get('confidence', 0.5))
-                except (ValueError, TypeError):
-                    confidence = 0.5
+                # === v5.2 FIX: Band-based confidence parsing ===
+                # v7.0 philosophy: LLMs output bands, not precise numbers.
+                # Map categorical confidence to fixed values. Fall back to
+                # numeric parsing for backward compatibility with cached reports.
+                CONFIDENCE_BANDS = {
+                    'LOW': 0.55,
+                    'MODERATE': 0.65,
+                    'HIGH': 0.80,
+                    'EXTREME': 0.90,
+                }
+                raw_conf = report.get('confidence', 0.5)
+                if isinstance(raw_conf, str) and raw_conf.upper() in CONFIDENCE_BANDS:
+                    confidence = CONFIDENCE_BANDS[raw_conf.upper()]
+                    logger.debug(f"Agent {agent_name}: Band confidence '{raw_conf}' -> {confidence}")
+                else:
+                    try:
+                        confidence = float(raw_conf)
+                    except (ValueError, TypeError):
+                        confidence = 0.5
                 logger.debug(f"Agent {agent_name}: Using structured data -> {sentiment_tag} ({confidence:.2f})")
             else:
                 # Invalid sentiment value, fall through to text parsing

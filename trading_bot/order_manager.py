@@ -325,6 +325,12 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                 except Exception:
                     pass  # Error 300 is expected if subscription already expired
 
+            # === v5.2 FIX: Explicit ticker cleanup after liquidity check ===
+            # IBKR Error 300 occurs when reqId mappings from liquidity checks
+            # collide with subsequent snapshot requests. Wait for cancellations.
+            await asyncio.sleep(0.5)  # Let IB API process cancellation acknowledgements
+            logger.info("Liquidity check cleanup complete.")
+
             ib.errorEvent -= _suppress_300
 
             futures = volume_filtered

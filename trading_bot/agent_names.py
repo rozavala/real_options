@@ -86,7 +86,8 @@ AGENT_DISPLAY_NAMES = {
     'technical': '📉 Technical',
     'volatility': '⚡ Volatility',
     'master_decision': '👑 Master Strategist',
-    'ml_model': '🤖 ML Model',
+    # ml_model display name removed — ML pipeline archived v4.0
+    # Historical CSV data still references 'ml_model' via DEPRECATED_AGENTS set
 }
 
 def normalize_agent_name(name: str) -> str:

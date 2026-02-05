@@ -187,6 +187,9 @@ class HallucinationDetector:
             # Data sources/organizations from profile
             'organizations': set(profile.inventory_sources),
 
+            # Legitimate data sources from profile (Issue 3)
+            'legitimate_data_sources': set(profile.legitimate_data_sources),
+
             # Commodity-specific keywords (derived from news_keywords)
             'keywords': set(profile.news_keywords) if profile.news_keywords else set(),
         }
@@ -327,8 +330,27 @@ class HallucinationDetector:
         source_words = set(re.findall(r'\b[a-zA-Z]{3,}\b', source_lower))
         known_orgs = {s.lower() for s in self.known_facts.get('organizations', set())}
 
+        # === v5.2 FIX: Tier 0 — Known legitimate data sources (never flag) ===
+        # Build from profile if available, with universal financial sources as baseline.
+        # These are standard research sources agents reference from prompt context,
+        # not from RAG retrieval. Commodity-agnostic: universal sources always included.
+        UNIVERSAL_FINANCIAL_SOURCES = {
+            'barchart', 'reuters', 'bloomberg', 'trading economics',
+            'world bank', 'imf', 'cftc', 'commitments of traders',
+            'cot report', 'raw research',
+        }
+        # Profile-specific sources (if available)
+        profile_sources = {
+            s.lower() for s in self.known_facts.get('legitimate_data_sources', set())
+        }
+        known_legitimate = UNIVERSAL_FINANCIAL_SOURCES | profile_sources
+
         for citation in citations:
             cit_lower = citation.lower().strip()
+
+            # Tier 0: Known legitimate source (NEVER flag)
+            if any(known_src in cit_lower for known_src in known_legitimate):
+                continue
 
             # Tier 1: Exact Match
             if cit_lower in source_lower:
