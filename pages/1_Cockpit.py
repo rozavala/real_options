@@ -436,7 +436,11 @@ with hb_cols[3]:
     ib_health = get_ib_connection_health()
     ib_status = "ONLINE" if ib_health.get("sentinel_ib") == "CONNECTED" else "OFFLINE"
     ib_color = "🟢" if ib_status == "ONLINE" else "🔴"
-    st.metric("IB Gateway", f"{ib_color} {ib_status}")
+    st.metric(
+        "IB Gateway",
+        f"{ib_color} {ib_status}",
+        help="Status of the connection to IBKR Gateway. Required for live trading and market data."
+    )
 
     if ib_health.get("reconnect_backoff", 0) > 0:
         st.caption(f"⏳ Backoff: {ib_health['reconnect_backoff']}s")
@@ -613,6 +617,10 @@ if config:
     live_data = fetch_all_live_data(config)
     benchmarks = fetch_todays_benchmark_data()
 
+    # Display refresh timestamp
+    if 'last_fetch_time' in live_data:
+        st.caption(f"🕒 Data last refreshed: {live_data['last_fetch_time'].strftime('%H:%M:%S')} UTC")
+
     # Render Portfolio Risk
     render_portfolio_risk_summary(live_data)
 
@@ -749,7 +757,14 @@ with ctrl_cols[0]:
     st.caption("No active cooldown")
 
 with ctrl_cols[1]:
-    if st.button("🛑 EMERGENCY HALT", type="primary", width="stretch"):
+    confirm_halt = st.checkbox("Confirm Halt", help="Check this to enable the emergency halt button")
+    if st.button(
+        "🛑 EMERGENCY HALT",
+        type="primary",
+        width="stretch",
+        disabled=not confirm_halt,
+        help="Immediately cancels all open orders in Interactive Brokers"
+    ):
         if config:
             with st.spinner("Cancelling all open orders..."):
                 try:
@@ -771,7 +786,11 @@ with ctrl_cols[1]:
             st.error("Config not loaded")
 
 with ctrl_cols[2]:
-    if st.button("🔄 Refresh All Data", width="stretch"):
+    if st.button(
+        "🔄 Refresh All Data",
+        width="stretch",
+        help="Clear application cache and reload all live data from sources"
+    ):
         st.cache_data.clear()
         st.rerun()
 
