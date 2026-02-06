@@ -38,7 +38,7 @@ from trading_bot.order_manager import (
     ORDER_QUEUE,
     get_trade_ledger_df
 )
-from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, round_to_tick, get_tick_size
+from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, round_to_tick, get_tick_size, word_boundary_match
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, PredictionMarketSentinel, SentinelTrigger
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
@@ -1923,18 +1923,10 @@ async def process_deferred_triggers(config: dict):
                 combined_text = f"{payload_text} {reason_lower}"
 
                 is_contaminated = False
-                import re
                 for kw in global_excludes:
-                    kw_lower = kw.lower()
-                    if ' ' in kw_lower:
-                        if kw_lower in combined_text:
-                            is_contaminated = True
-                            break
-                    else:
-                        # Plural-aware word-boundary match
-                        if re.search(r'\b' + re.escape(kw_lower) + r's?\b', combined_text):
-                            is_contaminated = True
-                            break
+                    if word_boundary_match(kw, combined_text):
+                        is_contaminated = True
+                        break
 
                 if is_contaminated:
                     logger.warning(
