@@ -1905,11 +1905,44 @@ async def process_deferred_triggers(config: dict):
         logger.info(f"Processing {len(deferred)} deferred triggers from overnight")
         ib_conn = await IBConnectionPool.get_connection("deferred", config)
 
+        # Load global excludes for payload validation
+        pm_config = config.get('sentinels', {}).get('prediction_markets', {})
+        global_excludes = pm_config.get('global_exclude_keywords', [])
+
         processed_count = 0
         skipped_count = 0
+        rejected_count = 0
 
         for t in deferred:
             trigger = SentinelTrigger(t['source'], t['reason'], t['payload'])
+
+            # === NEW: Validate PM trigger payloads against global excludes ===
+            if trigger.source == "PredictionMarketSentinel" and global_excludes:
+                payload_text = json.dumps(trigger.payload).lower()
+                reason_lower = trigger.reason.lower()
+                combined_text = f"{payload_text} {reason_lower}"
+
+                is_contaminated = False
+                import re
+                for kw in global_excludes:
+                    kw_lower = kw.lower()
+                    if ' ' in kw_lower:
+                        if kw_lower in combined_text:
+                            is_contaminated = True
+                            break
+                    else:
+                        # Plural-aware word-boundary match
+                        if re.search(r'\b' + re.escape(kw_lower) + r's?\b', combined_text):
+                            is_contaminated = True
+                            break
+
+                if is_contaminated:
+                    logger.warning(
+                        f"Rejecting contaminated deferred PM trigger: "
+                        f"{trigger.reason[:80]} (matched global exclude '{kw}')"
+                    )
+                    rejected_count += 1
+                    continue
 
             # === CRITICAL FIX: Check deduplicator before each cycle ===
             if GLOBAL_DEDUPLICATOR.should_process(trigger):
@@ -1920,7 +1953,10 @@ async def process_deferred_triggers(config: dict):
                 logger.info(f"Skipping deferred trigger (deduplicated): {trigger.source}")
                 skipped_count += 1
 
-        logger.info(f"Deferred triggers complete: {processed_count} processed, {skipped_count} skipped")
+        logger.info(
+            f"Deferred triggers complete: {processed_count} processed, "
+            f"{skipped_count} skipped, {rejected_count} rejected (contaminated)"
+        )
 
     except Exception as e:
         logger.error(f"Failed to process deferred triggers: {e}")

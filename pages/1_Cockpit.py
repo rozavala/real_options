@@ -227,77 +227,106 @@ def render_portfolio_risk_summary(live_data: dict):
 def render_prediction_markets():
     """
     Prediction Market Radar Panel.
-
-    CRITICAL: This provides visibility into Dynamic Discovery auto-selection.
-    Without this, you have no idea what markets the sentinel is actually tracking.
+    Displays actively tracked prediction markets with relevance validation.
     """
     st.subheader("🔮 Prediction Markets (Macro Radar)")
 
     try:
         from trading_bot.state_manager import StateManager
 
-        # Issue 1 Fix: Use load_state_with_metadata to prevent crash on stale string data
         state = StateManager.load_state_with_metadata(namespace="prediction_market_state")
 
         if not state:
             st.info("No prediction market data active. Sentinel may not have run yet.")
             return
 
-        # Handle varying number of topics (1-6)
-        num_topics = len(state)
-        cols_per_row = min(3, num_topics)
+        # Detect duplicate slugs (multiple topics resolving to same market)
+        slug_map = {}
+        for topic, meta in state.items():
+            data = meta.get('data', {})
+            if isinstance(data, dict):
+                slug = data.get('slug', '')
+                if slug:
+                    slug_map.setdefault(slug, []).append(topic)
 
-        # Create responsive columns
+        duplicates = {s: topics for s, topics in slug_map.items() if len(topics) > 1}
+
+        if duplicates:
+            st.warning(
+                f"⚠️ **Slug Collision Detected:** {len(duplicates)} market(s) matched by "
+                f"multiple topics. Discovery agent may need to re-scan."
+            )
+
+        # Filter out duplicate entries — show each unique slug only once
+        seen_slugs = set()
+        unique_entries = []
+        for topic, meta in state.items():
+            data = meta.get('data', {})
+            if not isinstance(data, dict):
+                continue
+            slug = data.get('slug', topic)
+            if slug in seen_slugs:
+                continue
+            seen_slugs.add(slug)
+            unique_entries.append((topic, meta))
+
+        if not unique_entries:
+            st.info("No valid prediction market data to display.")
+            return
+
+        num_topics = len(unique_entries)
+        cols_per_row = min(3, num_topics)
         cols = st.columns(cols_per_row)
 
-        for i, (topic, meta) in enumerate(state.items()):
+        for i, (topic, meta) in enumerate(unique_entries):
             col_idx = i % cols_per_row
 
             with cols[col_idx]:
-                # load_state_with_metadata returns:
-                #   {'data': <original_dict>, 'age_seconds': float, 'age_hours': float,
-                #    'timestamp': float, 'is_available': bool}
                 data = meta.get('data', {})
                 is_stale = not meta.get('is_available', True)
                 age_hours = meta.get('age_hours', 0)
 
-                # Defensive: if data is somehow not a dict, skip gracefully
                 if not isinstance(data, dict):
                     st.warning(f"⚠️ Invalid data for topic '{topic}' — skipping.")
                     continue
 
-                # Extract state data
-                title = data.get('title', topic)[:50]  # Truncate long titles
+                title = data.get('title', topic)
                 price = data.get('price', 0)
                 slug = data.get('slug', 'N/A')
                 hwm = data.get('severity_hwm', 0)
-                tag = data.get('tag', topic[:10])
                 timestamp = data.get('timestamp', 'Unknown')
 
-                # Color-code based on alert state
-                # "off" = red (alerting), "normal" = green (stable)
-                delta_color = "off" if hwm > 0 else "normal"
+                # Use full title for label — NOT the truncated tag
+                display_label = title[:40] if len(title) > 40 else title
 
-                # Staleness visual indicator
+                # Staleness indicator
                 if is_stale:
                     st.caption(f"⏳ Data is {age_hours:.1f}h old")
 
+                # Color-code based on alert state
+                delta_color = "off" if hwm > 0 else "normal"
+
                 # Display metric card
                 st.metric(
-                    label=f"{tag}: {price*100:.0f}%",
-                    value=f"{price:.2f}",
-                    delta=f"HWM: {hwm}" if hwm > 0 else "Stable",
+                    label=display_label,
+                    value=f"{price*100:.1f}%",
+                    delta=f"↕ HWM: {hwm}" if hwm > 0 else "↑ Stable",
                     delta_color=delta_color
                 )
 
-                # Market title (what the sentinel actually picked!)
-                st.caption(f"*{title}*")
+                # Show which topics map to this market (if duplicated)
+                if slug in duplicates:
+                    dupe_topics = duplicates[slug]
+                    st.caption(
+                        f"⚠️ Also tracked as: "
+                        f"{', '.join(t for t in dupe_topics if t != topic)}"
+                    )
 
-                # Link to Polymarket for verification
+                # Link to Polymarket
                 if slug and slug != 'N/A':
                     st.markdown(f"[View Market ↗](https://polymarket.com/event/{slug})")
 
-                # Show last update time
+                # Update timestamp
                 if timestamp and timestamp != 'Unknown':
                     try:
                         from datetime import datetime
@@ -312,15 +341,12 @@ def render_prediction_markets():
 
                 st.divider()
 
-        # Add refresh hint
         st.caption("💡 Data refreshes every 5 minutes via sentinel polling")
 
     except FileNotFoundError:
         st.info("Prediction market state file not found. Sentinel may not have run yet.")
     except Exception as e:
-        st.error(f"Radar Error: {e}")
-        import traceback
-        st.code(traceback.format_exc())
+        st.error(f"Error loading prediction market data: {e}")
 
 st.set_page_config(layout="wide", page_title="Cockpit | Mission Control")
 
