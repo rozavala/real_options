@@ -414,8 +414,14 @@ with hb_cols[1]:
 with hb_cols[2]:
     # Sentinel Status Summary
     sentinels = get_sentinel_status()
-    active_count = sum(1 for s in sentinels.values() if s == 'Active')
-    st.metric("Sentinels Active", f"{active_count}/{len(sentinels)}")
+    ok_count = sum(1 for s in sentinels.values()
+                   if s.get('status') in ('OK', 'IDLE', 'INITIALIZING'))
+    error_count = sum(1 for s in sentinels.values() if s.get('status') == 'ERROR')
+    sentinel_icon = "🟢" if error_count == 0 else "🟡" if error_count <= 2 else "🔴"
+    st.metric("Sentinel Array", f"{sentinel_icon} {ok_count}/{len(sentinels)}",
+              help="Sentinels reporting OK or IDLE vs total registered")
+    if error_count > 0:
+        st.caption(f"⚠️ {error_count} sentinel(s) in error state")
 
 with hb_cols[3]:
     ib_health = get_ib_connection_health()
@@ -443,78 +449,69 @@ if dedup_metrics.get('total_triggers', 0) > 0:
 
 # Sentinel Details Expander
 with st.expander("🔍 Sentinel Details"):
-    sentinel_cols = st.columns(4)
-    for idx, (name, status) in enumerate(get_sentinel_status().items()):
-        with sentinel_cols[idx % 4]:
-            icon = "🟢" if status == "Active" else "💤"
-            st.write(f"{icon} **{name}**: {status}")
+    sentinels = get_sentinel_status()
 
-    # === NEW: X Sentiment Sensor Status ===
-    st.markdown("---")
-    st.markdown("**📡 X Sentiment Sensor**")
+    # Group by availability
+    always_on = {k: v for k, v in sentinels.items() if v['availability'] == '24/7'}
+    market_dependent = {k: v for k, v in sentinels.items() if v['availability'] != '24/7'}
 
-    try:
-        from trading_bot.state_manager import StateManager
-        import json
-        import re
+    def _render_sentinel_row(name, info):
+        """Render a single sentinel status row."""
+        status = info['status']
+        icon = info['icon']
+        display = info['display_name']
+        minutes = info.get('minutes_since_check')
+        error = info.get('error')
+        is_stale = info.get('is_stale', False)
 
-        # Try fresh data first (max_age=3600 = 1 hour)
-        sensor_state = StateManager.load_state(namespace="sensors", max_age=3600)
-        x_status = sensor_state.get("x_sentiment", {})
-
-        is_stale = False
-        stale_minutes = 0
-
-        # CRITICAL FIX: Handle STALE string return from StateManager
-        # When data is older than max_age, StateManager returns a string like:
-        # "STALE (900min old) - {'sentiment_sensor_status': 'ONLINE', ...}"
-        if isinstance(x_status, str) and x_status.startswith("STALE"):
-            is_stale = True
-            # Extract minutes from "STALE (XXXmin old)"
-            match = re.search(r'STALE \((\d+)min old\)', x_status)
-            if match:
-                stale_minutes = int(match.group(1))
-
-            # Extract the JSON payload after the " - "
-            json_match = re.search(r' - ({.*})', x_status)
-            if json_match:
-                try:
-                    # Python dict uses single quotes, JSON needs double quotes
-                    x_status = json.loads(json_match.group(1).replace("'", '"'))
-                except json.JSONDecodeError:
-                    # Fallback: Load raw state directly
-                    raw_state = StateManager._load_raw_sync()
-                    x_entry = raw_state.get("sensors", {}).get("x_sentiment", {})
-                    x_status = x_entry.get("data", {}) if isinstance(x_entry, dict) else {}
-
-        # Now x_status should be a dict (or empty)
-        if isinstance(x_status, dict) and x_status:
-            status = x_status.get("sentiment_sensor_status", "UNKNOWN")
-            failures = x_status.get("consecutive_failures", 0)
-            degraded_until = x_status.get("degraded_until")
-
-            # Determine icon based on status AND staleness
-            if is_stale:
-                status_icon = "🟡"
-                status_display = f"{status} (data {stale_minutes}m old)"
-            else:
-                status_icon = "🟢" if status == "ONLINE" else "🔴" if status == "OFFLINE" else "🟡"
-                status_display = status
-
-            st.write(f"{status_icon} Status: **{status_display}**")
-
-            if failures > 0:
-                st.write(f"⚠️ Consecutive failures: {failures}")
-
-            if degraded_until:
-                st.write(f"⏰ Degraded until: {degraded_until}")
+        # Status indicator
+        if status == 'OK' and not is_stale:
+            status_icon = "🟢"
+            status_text = "Active"
+        elif status == 'OK' and is_stale:
+            status_icon = "🟡"
+            status_text = f"Stale ({minutes}m ago)"
+        elif status == 'IDLE':
+            status_icon = "💤"
+            status_text = "Idle"
+        elif status == 'INITIALIZING':
+            status_icon = "⏳"
+            status_text = "Initializing"
+        elif status == 'ERROR':
+            status_icon = "🔴"
+            status_text = "Error"
         else:
-            # Truly not initialized - no data ever saved
-            st.write("⚪ Status: Not initialized")
-            st.caption("X Sentiment Sentinel has not run yet")
+            status_icon = "❓"
+            status_text = "Unknown"
 
-    except Exception as e:
-        st.write(f"❓ Unable to fetch X sensor status: {e}")
+        col_status, col_last, col_freq = st.columns([3, 2, 2])
+        with col_status:
+            st.write(f"{status_icon} {icon} **{display}**  —  {status_text}")
+        with col_last:
+            if minutes is not None:
+                st.caption(f"Last check: {minutes}m ago")
+            else:
+                st.caption("Last check: —")
+        with col_freq:
+            interval = info.get('interval_seconds', 0)
+            if interval >= 3600:
+                st.caption(f"Every {interval // 3600}h")
+            elif interval > 0:
+                st.caption(f"Every {interval // 60}m")
+            else:
+                st.caption("")
+
+        if error:
+            st.caption(f"  ⚠️ `{error[:120]}`")
+
+    st.markdown("**Always-On Sentinels** (24/7, no IB required)")
+    for name, info in always_on.items():
+        _render_sentinel_row(name, info)
+
+    st.markdown("---")
+    st.markdown("**Market-Dependent Sentinels** (require IB or market-adjacent hours)")
+    for name, info in market_dependent.items():
+        _render_sentinel_row(name, info)
 
 st.markdown("---")
 

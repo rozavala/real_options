@@ -470,32 +470,85 @@ def extract_sentinel_status(report: any, sentinel_name: str) -> dict:
 
 def get_sentinel_status():
     """
-    Parses state.json to determine which Sentinels are active.
-    Returns a dict of sentinel names and their status.
+    Reads sentinel operational health from state.json (sentinel_health namespace).
+
+    Returns a dict of sentinel names -> status info with staleness detection.
+    Commodity-agnostic: sentinel list is derived from state data, not hardcoded.
     """
     import json
-    sentinels = {
-        'PriceSentinel': 'Unknown',
-        'WeatherSentinel': 'Unknown',
-        'NewsSentinel': 'Unknown',
-        'LogisticsSentinel': 'Unknown'
+    from datetime import datetime, timezone
+
+    # Complete sentinel registry with display metadata
+    # 'availability' helps the dashboard group sentinels logically
+    SENTINEL_REGISTRY = {
+        'WeatherSentinel':          {'display': 'Weather',          'availability': '24/7',          'icon': '🌦️'},
+        'LogisticsSentinel':        {'display': 'Logistics',        'availability': '24/7',          'icon': '🚢'},
+        'NewsSentinel':             {'display': 'News',             'availability': '24/7',          'icon': '📰'},
+        'XSentimentSentinel':       {'display': 'X Sentiment',      'availability': 'Market-Adjacent','icon': '📡'},
+        'PredictionMarketSentinel': {'display': 'Prediction Mkt',   'availability': '24/7',          'icon': '🎯'},
+        'MacroContagionSentinel':   {'display': 'Macro Contagion',  'availability': '24/7',          'icon': '🌐'},
+        'PriceSentinel':            {'display': 'Price',            'availability': 'Market Hours',  'icon': '📈'},
+        'MicrostructureSentinel':   {'display': 'Microstructure',   'availability': 'Market Hours',  'icon': '🔬'},
     }
+
+    result = {}
 
     try:
         if os.path.exists(STATE_FILE_PATH):
             with open(STATE_FILE_PATH, 'r') as f:
                 state = json.load(f)
-                # Parse sentinel status from state if available
-                sentinel_state = state.get('sentinels', {})
-                for name in sentinels:
-                    if name in sentinel_state:
-                        sentinels[name] = sentinel_state[name].get('status', 'Active')
-                    else:
-                        sentinels[name] = 'Active'  # Default assumption
-    except Exception:
-        pass
 
-    return sentinels
+            health_ns = state.get('sentinel_health', {})
+
+            for name, meta in SENTINEL_REGISTRY.items():
+                entry = health_ns.get(name, {})
+                data = entry.get('data', {}) if isinstance(entry, dict) else {}
+                timestamp = entry.get('timestamp', 0) if isinstance(entry, dict) else 0
+
+                status = data.get('status', 'Unknown')
+                interval = data.get('interval_seconds', 0)
+                error = data.get('error')
+                last_check = data.get('last_check_utc')
+
+                # Staleness detection: stale if no check within 2x expected interval
+                is_stale = False
+                minutes_since = None
+                if timestamp > 0:
+                    import time
+                    seconds_since = time.time() - timestamp
+                    minutes_since = round(seconds_since / 60)
+                    # Stale if more than 2x the check interval has elapsed
+                    if interval > 0 and seconds_since > (interval * 2):
+                        is_stale = True
+
+                result[name] = {
+                    'status': status,
+                    'display_name': meta['display'],
+                    'availability': meta['availability'],
+                    'icon': meta['icon'],
+                    'last_check_utc': last_check,
+                    'minutes_since_check': minutes_since,
+                    'is_stale': is_stale,
+                    'interval_seconds': interval,
+                    'error': error,
+                }
+
+    except Exception:
+        # Fallback: return registry with Unknown status
+        for name, meta in SENTINEL_REGISTRY.items():
+            result[name] = {
+                'status': 'Unknown',
+                'display_name': meta['display'],
+                'availability': meta['availability'],
+                'icon': meta['icon'],
+                'last_check_utc': None,
+                'minutes_since_check': None,
+                'is_stale': False,
+                'interval_seconds': 0,
+                'error': None,
+            }
+
+    return result
 
 
 # === LIVE DATA FUNCTIONS (IB Connection) ===
