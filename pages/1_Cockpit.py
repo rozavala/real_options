@@ -203,12 +203,20 @@ def render_portfolio_risk_summary(live_data: dict):
     cols = st.columns(4)
 
     with cols[0]:
-        st.metric("Net Liquidation", f"${net_liq:,.0f}")
+        st.metric(
+            "Net Liquidation",
+            f"${net_liq:,.0f}",
+            help="Total account value including cash and market value of positions"
+        )
 
     with cols[1]:
         if net_liq > 0:
             margin_util = (margin / net_liq) * 100
-            st.metric("Margin Util", f"{margin_util:.1f}%")
+            st.metric(
+                "Margin Util",
+                f"{margin_util:.1f}%",
+                help="Percentage of Net Liquidation currently used for maintenance margin"
+            )
         else:
             st.metric("Margin Util", "N/A")
 
@@ -311,7 +319,8 @@ def render_prediction_markets():
                     label=display_label,
                     value=f"{price*100:.1f}%",
                     delta=f"↕ HWM: {hwm}" if hwm > 0 else "↑ Stable",
-                    delta_color=delta_color
+                    delta_color=delta_color,
+                    help=title if len(title) > 40 else None
                 )
 
                 # Show which topics map to this market (if duplicated)
