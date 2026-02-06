@@ -338,6 +338,15 @@ class HallucinationDetector:
             'barchart', 'reuters', 'bloomberg', 'trading economics',
             'world bank', 'imf', 'cftc', 'commitments of traders',
             'cot report', 'raw research',
+            # === FIX A4: Expanded known sources ===
+            # Agents discover these via Phase 1 Gemini Search (AFC).
+            # General financial sources (commodity-agnostic):
+            'tradingview', 'trading view', 'investing.com', 'marketwatch',
+            'cnbc', 'financial times', 'wsj', 'wall street journal',
+            'yahoo finance', 'seeking alpha', 'refinitiv',
+            'cme group', 'ice futures', 'intercontinental exchange',
+            # Government/institutional sources:
+            'usda', 'noaa', 'accuweather', 'weather.com',
         }
         # Profile-specific sources (if available)
         profile_sources = {

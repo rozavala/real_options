@@ -656,19 +656,52 @@ class ComplianceGuardian:
             content_str = content.get('data', str(content)) if isinstance(content, dict) else str(content)
             reports_text += f"\n--- {agent.upper()} ---\n{content_str}\n"
 
+        # === FIX A5: Build agent availability context ===
+        unavailable_agents = [
+            agent for agent, content in reports.items()
+            if content == "Data Unavailable"
+            or (isinstance(content, dict) and "Error" in str(content.get('data', '')))
+        ]
+
+        availability_note = ""
+        if unavailable_agents:
+            availability_note = (
+                f"\n--- AGENT AVAILABILITY ---\n"
+                f"The following agents failed and returned no data: "
+                f"{', '.join(unavailable_agents)}.\n"
+                f"If the Master reasoning references data from these agents, "
+                f"flag as 'data gap' but DO NOT flag as hallucination — the Master "
+                f"may be citing cached context or weighted vote data.\n"
+            )
+
         prompt = (
             f"You are the Compliance Officer auditing a trading decision.\n"
             f"Your goal is to detect HALLUCINATIONS or violations of logic.\n\n"
             f"--- EVIDENCE (REPORTS) ---\n{reports_text}\n\n"
-            f"--- MARKET CONTEXT ---\n{market_context}\n\n"
+            f"--- MARKET CONTEXT ---\n{market_context}\n"
+            f"{availability_note}\n"
+            f"--- DECISION PROCESS CONTEXT ---\n"
+            f"The Master Strategist receives input from a structured adversarial "
+            f"debate between a 'Permabear' (bearish advocate) and 'Permabull' "
+            f"(bullish advocate). References to 'Permabear', 'Permabull', or "
+            f"debate arguments in the reasoning are EXPECTED and are NOT "
+            f"hallucinations. These debate positions are derived from the same "
+            f"agent reports shown above.\n\n"
             f"--- DECISION ---\n"
             f"Direction: {decision.get('direction')}\n"
             f"Reasoning: {decision.get('reasoning')}\n\n"
             f"TASK:\n"
             f"Check if the Decision Reasoning is supported by the Evidence.\n"
-            f"1. Does the reasoning cite facts NOT in the reports? (Hallucination)\n"
-            f"2. Does the reasoning ignore a 'CRITICAL RISK' explicitly stated in reports?\n"
-            f"3. Is the direction contradictory to the overwhelming sentiment of reports?\n\n"
+            f"1. Does the reasoning cite SPECIFIC FACTS (numbers, dates, "
+            f"percentages) NOT found in ANY report or market context? "
+            f"(Hallucination)\n"
+            f"   - Permabear/Permabull references are NOT hallucinations.\n"
+            f"   - References to data from unavailable agents should be flagged "
+            f"as 'data gap', not 'hallucination'.\n"
+            f"2. Does the reasoning ignore a 'CRITICAL RISK' explicitly stated "
+            f"in reports?\n"
+            f"3. Is the direction contradictory to the overwhelming sentiment "
+            f"of reports?\n\n"
             f"OUTPUT JSON: {{'approved': bool, 'flagged_reason': string}}"
         )
 

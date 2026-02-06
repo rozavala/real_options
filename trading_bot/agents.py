@@ -517,20 +517,46 @@ OUTPUT FORMAT (JSON):
                 self._grounded_data_semaphore = asyncio.Semaphore(3)
 
             # Rate-limited Gemini call to prevent 429 errors
-            async with self._grounded_data_semaphore:
-                # Enforce minimum interval between calls
-                import time as _time
-                elapsed = _time.monotonic() - self._last_grounded_call_time
-                if elapsed < self._grounded_data_min_interval:
-                    await asyncio.sleep(self._grounded_data_min_interval - elapsed)
+            # === FIX A2: Retry wrapper for transient 503 timeouts ===
+            max_attempts = 2
+            last_error = None
+            response = None
 
-                response = await self._call_model(
-                    self.master_model_name,
-                    gathering_prompt,
-                    use_tools=True,
-                    response_json=True
-                )
-                self._last_grounded_call_time = _time.monotonic()
+            async with self._grounded_data_semaphore:
+                for attempt in range(max_attempts):
+                    try:
+                        # Enforce minimum interval between calls
+                        import time as _time
+                        elapsed = _time.monotonic() - self._last_grounded_call_time
+                        if elapsed < self._grounded_data_min_interval:
+                            await asyncio.sleep(self._grounded_data_min_interval - elapsed)
+
+                        response = await self._call_model(
+                            self.master_model_name,
+                            gathering_prompt,
+                            use_tools=True,
+                            response_json=True
+                        )
+                        self._last_grounded_call_time = _time.monotonic()
+                        last_error = None
+                        break  # Success — exit retry loop
+
+                    except Exception as e:
+                        last_error = e
+                        self._last_grounded_call_time = _time.monotonic() # Update time even on fail
+                        if '503' in str(e) and attempt < max_attempts - 1:
+                            backoff_seconds = 5 * (attempt + 1)  # 5s first retry
+                            logger.warning(
+                                f"[{persona_key}] Gemini 503 (attempt {attempt + 1}/{max_attempts}) "
+                                f"— retrying after {backoff_seconds}s backoff..."
+                            )
+                            await asyncio.sleep(backoff_seconds)
+                            continue
+                        else:
+                            break  # Non-503 error or final attempt
+
+                if last_error:
+                    raise last_error
 
             # Parse response
             data = json.loads(self._clean_json_text(response))
@@ -735,9 +761,15 @@ OUTPUT FORMAT (JSON):
             # Parse JSON
             try:
                 data = json.loads(self._clean_json_text(result_raw))
+                # === A1-R1: Canonicalize confidence IMMEDIATELY after JSON parse ===
+                # Phase 2 LLMs may return band strings ('HIGH', 'MODERATE').
+                # Canonicalize here so ALL downstream code — including formatted_text,
+                # conf_adj, structured_result, traces — receives a float.
+                data['confidence'] = parse_confidence(data.get('confidence', 0.5))
+
                 # Apply Confidence Correction (use min to never inflate)
                 if conf_adj is not None:
-                    original_conf = parse_confidence(data.get('confidence', 0.5))
+                    original_conf = data['confidence']  # Already a float from above
                     adjusted_conf = min(original_conf, conf_adj)
                     logger.info(
                         f"[{persona_key}] Confidence clamped: "
@@ -843,6 +875,8 @@ OUTPUT FORMAT (JSON ONLY):
 
         try:
             data = json.loads(self._clean_json_text(revised_raw))
+            # === A1-R1: Canonicalize confidence immediately (reflexion path) ===
+            data['confidence'] = parse_confidence(data.get('confidence', 0.5))
         except:
              return initial_response_struct # Fallback to initial
 

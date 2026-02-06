@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from typing import Optional, Any
 from trading_bot.brier_bridge import get_agent_reliability
 from trading_bot.strategy_router import extract_agent_prediction
-from trading_bot.confidence_utils import CONFIDENCE_BANDS
+from trading_bot.confidence_utils import CONFIDENCE_BANDS, parse_confidence
 
 logger = logging.getLogger(__name__)
 
@@ -437,19 +437,9 @@ async def calculate_weighted_decision(
         if isinstance(report, dict) and report.get('sentiment'):
             sentiment_tag = str(report['sentiment']).upper().strip()
             if sentiment_tag in ['BULLISH', 'BEARISH', 'NEUTRAL']:
-                # === v5.2 FIX: Band-based confidence parsing ===
-                # v7.0 philosophy: LLMs output bands, not precise numbers.
-                # Map categorical confidence to fixed values. Fall back to
-                # numeric parsing for backward compatibility with cached reports.
+                # === v5.3.1: Use shared confidence parser (replaces inline logic) ===
                 raw_conf = report.get('confidence', 0.5)
-                if isinstance(raw_conf, str) and raw_conf.upper() in CONFIDENCE_BANDS:
-                    confidence = CONFIDENCE_BANDS[raw_conf.upper()]
-                    logger.debug(f"Agent {agent_name}: Band confidence '{raw_conf}' -> {confidence}")
-                else:
-                    try:
-                        confidence = float(raw_conf)
-                    except (ValueError, TypeError):
-                        confidence = 0.5
+                confidence = parse_confidence(raw_conf)
                 logger.debug(f"Agent {agent_name}: Using structured data -> {sentiment_tag} ({confidence:.2f})")
             else:
                 # Invalid sentiment value, fall through to text parsing

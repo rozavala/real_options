@@ -193,7 +193,10 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                         reports[key] = res
 
                 # --- METRICS LOGGING ---
-                successful_agents = sum(1 for r in reports.values() if isinstance(r, dict) and r.get('confidence', 0) != 0.5)
+                successful_agents = sum(
+                    1 for r in reports.values()
+                    if isinstance(r, dict) and parse_confidence(r.get('confidence', 0.5)) != 0.5
+                )
                 total_agents = len(reports)
                 logger.info(f"Agent research complete for {contract_name}: {successful_agents}/{total_agents} returned non-default results")
 
