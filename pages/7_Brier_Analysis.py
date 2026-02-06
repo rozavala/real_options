@@ -251,8 +251,8 @@ try:
     from trading_bot.brier_bridge import get_agent_reliability
     from trading_bot.agent_names import AGENT_DISPLAY_NAMES
 
-    agent_names = list(AGENT_DISPLAY_NAMES.values()) if hasattr(AGENT_DISPLAY_NAMES, 'values') else [
-        'agronomist', 'fundamentalist', 'macro', 'sentiment',
+    agent_names = list(AGENT_DISPLAY_NAMES.keys()) if hasattr(AGENT_DISPLAY_NAMES, 'keys') else [
+        'agronomist', 'inventory', 'macro', 'sentiment',
         'technical', 'volatility', 'geopolitical'
     ]
 
@@ -262,7 +262,7 @@ try:
             mult = get_agent_reliability(agent, regime)
             if mult != 1.0 or regime == 'NORMAL':
                 weight_rows.append({
-                    'Agent': agent,
+                    'Agent': AGENT_DISPLAY_NAMES.get(agent, agent),
                     'Regime': regime,
                     'Multiplier': round(mult, 3),
                     'Status': '🟢 Trusted' if mult > 1.2 else '🔴 Distrusted' if mult < 0.8 else '⚪ Baseline',
