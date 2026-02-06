@@ -129,14 +129,6 @@ class MicrostructureSentinel:
 
     async def check(self) -> Optional[SentinelTrigger]:
         """Check for microstructure anomalies."""
-        if not self.is_core_market_hours():
-            # Log only once per hour during closed periods
-            if not hasattr(self, '_last_closed_log') or \
-               (datetime.now(timezone.utc) - self._last_closed_log).seconds > 3600:
-                logger.debug("Market Closed - Microstructure monitoring paused")
-                self._last_closed_log = datetime.now(timezone.utc)
-            return None
-
         if not self.ib.isConnected():
             # DON'T clear history - preserve data across reconnects
             # The data may be slightly stale but maintains statistical context
@@ -223,8 +215,8 @@ class MicrostructureSentinel:
                         severity=int(min(10, volume_ratio))
                     )
 
-            # Check depth depletion
-            if hasattr(ticker, 'bidSize') and hasattr(ticker, 'askSize'):
+            # Check depth depletion (Only during core hours to preserve baseline integrity)
+            if self.is_core_market_hours() and hasattr(ticker, 'bidSize') and hasattr(ticker, 'askSize'):
                 if ticker.bidSize and ticker.askSize:
                     current_depth = ticker.bidSize + ticker.askSize
                     self.depth_history.append(current_depth)

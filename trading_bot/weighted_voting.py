@@ -28,6 +28,7 @@ class TriggerType(Enum):
     NEWS_SENTIMENT = "news"
     MICROSTRUCTURE = "microstructure"
     PREDICTION_MARKET = "prediction_market"
+    MACRO_SHIFT = "macro_shift"
     SCHEDULED = "scheduled"
     MANUAL = "manual"
 
@@ -138,6 +139,16 @@ DOMAIN_WEIGHTS = {
         "supply_chain": 1.0,
         "sentiment": 2.0,
         "technical": 1.0,
+        "volatility": 2.0,
+        "inventory": 0.5,
+    },
+    TriggerType.MACRO_SHIFT: {
+        "agronomist": 0.5,
+        "macro": 3.0,
+        "geopolitical": 2.0,
+        "supply_chain": 1.0,
+        "sentiment": 2.0,
+        "technical": 1.5,
         "volatility": 2.0,
         "inventory": 0.5,
     },
@@ -632,4 +643,6 @@ def determine_trigger_type(trigger_source: Optional[str]) -> TriggerType:
         return TriggerType.MICROSTRUCTURE
     elif "prediction" in source_lower:
         return TriggerType.PREDICTION_MARKET
+    elif "macro" in source_lower or "contagion" in source_lower:
+        return TriggerType.MACRO_SHIFT
     return TriggerType.MANUAL
