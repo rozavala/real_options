@@ -40,7 +40,7 @@ from trading_bot.order_manager import (
 )
 from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, round_to_tick, get_tick_size, word_boundary_match
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
-from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, PredictionMarketSentinel, SentinelTrigger
+from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, PredictionMarketSentinel, MacroContagionSentinel, SentinelTrigger
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
 from trading_bot.agents import TradingCouncil
 from trading_bot.ib_interface import (
@@ -2631,6 +2631,7 @@ async def run_sentinels(config: dict):
     news_sentinel = NewsSentinel(config)
     x_sentinel = XSentimentSentinel(config)
     prediction_market_sentinel = PredictionMarketSentinel(config)
+    macro_contagion_sentinel = MacroContagionSentinel(config)
 
     # Microstructure variables (also lazy)
     micro_sentinel = None
@@ -2652,6 +2653,7 @@ async def run_sentinels(config: dict):
     last_x_sentiment = 0
     last_prediction_market = 0
     last_topic_discovery = 0
+    last_macro_contagion = 0
 
     # Contract Cache
     cached_contract = None
@@ -2892,10 +2894,17 @@ async def run_sentinels(config: dict):
                 finally:
                     last_news = now
 
-            # 5. X Sentiment Sentinel (Every 90 min during trading day)
+            # 5. X Sentiment Sentinel (Every 90 min during market-adjacent hours on trading days)
             if trading_day and (now - last_x_sentiment) > 5400:
-                try:
-                    # Reset daily stats if new day
+                # Only run during market-adjacent hours (6:00 AM - 4:30 PM ET)
+                from datetime import time as dt_time
+                et_now = datetime.now(pytz.timezone('US/Eastern'))
+                x_start = dt_time(6, 0)
+                x_end = dt_time(16, 30)
+
+                if x_start <= et_now.time() <= x_end:
+                    try:
+                        # Reset daily stats if new day
                     if datetime.now().date() != x_sentinel_stats['last_reset']:
                         x_sentinel_stats = {
                             'checks_today': 0,
@@ -2917,11 +2926,11 @@ async def run_sentinels(config: dict):
                                 GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
                         else:
                             StateManager.queue_deferred_trigger(trigger)
-                            logger.info(f"Deferred {trigger.source} trigger for market open")
-                except Exception as e:
-                    logger.error(f"XSentimentSentinel check failed: {type(e).__name__}: {e}")
-                finally:
-                    last_x_sentiment = now
+                                logger.info(f"Deferred {trigger.source} trigger for market open")
+                    except Exception as e:
+                        logger.error(f"XSentimentSentinel check failed: {type(e).__name__}: {e}")
+                    finally:
+                        last_x_sentiment = now
 
             # 6. Prediction Market Sentinel (Every 5 minutes) - Runs 24/7, no IB needed
             prediction_config = config.get('sentinels', {}).get('prediction_markets', {})
@@ -2943,6 +2952,24 @@ async def run_sentinels(config: dict):
                     logger.error(f"PredictionMarketSentinel check failed: {type(e).__name__}: {e}")
                 finally:
                     last_prediction_market = now
+
+            # 7. Macro Contagion Sentinel (Every 4 hours) - Runs 24/7, no IB needed
+            if (now - last_macro_contagion) > 14400:
+                try:
+                    trigger = await macro_contagion_sentinel.check()
+                    trigger = validate_trigger(trigger)
+                    if trigger:
+                        if market_open and sentinel_ib and sentinel_ib.isConnected():
+                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                        else:
+                            StateManager.queue_deferred_trigger(trigger)
+                            logger.info(f"Deferred {trigger.source} trigger for market open")
+                except Exception as e:
+                    logger.error(f"MacroContagionSentinel check failed: {type(e).__name__}: {e}")
+                finally:
+                    last_macro_contagion = now
 
             # 8. Topic Discovery Agent (Every 12 hours) - Runs 24/7, no IB needed
             discovery_config = config.get('sentinels', {}).get('prediction_markets', {}).get('discovery_agent', {})
@@ -2986,6 +3013,8 @@ async def run_sentinels(config: dict):
                             # Liquidity depletion is informational, not actionable by council
                             logger.warning(f"MICROSTRUCTURE ALERT: {micro_trigger.reason}")
                             if GLOBAL_DEDUPLICATOR.should_process(micro_trigger):
+                                StateManager.log_sentinel_event(micro_trigger)
+                                SENTINEL_STATS.record_alert(micro_trigger.source, triggered_trade=False)
                                 send_pushover_notification(
                                     config.get('notifications', {}),
                                     "Microstructure Alert",

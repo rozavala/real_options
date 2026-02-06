@@ -360,18 +360,42 @@ class WeatherSentinel(Sentinel):
         self._alert_cooldown_hours = 24
         self._escalation_threshold = 0.05  # 5% worsening breaks cooldown
 
+    def _normalize_alert_key(self, alert_type: str, region_name: str) -> str:
+        """Standardize alert key format: UPPERCASE_TYPE_RegionName"""
+        # Remove parenthetical country names for consistency
+        import re
+        clean_name = re.sub(r'\s*\(.*?\)', '', region_name).strip()
+        return f"{alert_type.upper()}_{clean_name}"
+
     def _load_alert_state(self) -> Dict[str, dict]:
-        """Load alert state from disk."""
+        """Load alert state from disk, normalizing legacy keys."""
         if os.path.exists(self.ALERT_STATE_FILE):
             try:
                 with open(self.ALERT_STATE_FILE, 'r') as f:
                     data = json.load(f)
-                    # Parse ISO timestamps back to datetime
-                    for key, val in data.items():
-                        if 'time' in val and isinstance(val['time'], str):
-                            val['time'] = datetime.fromisoformat(val['time'])
-                    logger.info(f"WeatherSentinel: Loaded {len(data)} active alerts from disk")
-                    return data
+
+                # Normalize legacy keys
+                normalized = {}
+                for key, val in data.items():
+                    if 'time' in val and isinstance(val['time'], str):
+                        val['time'] = datetime.fromisoformat(val['time'])
+
+                    # Normalize: "drought_Central Highlands (Vietnam)" → "DROUGHT_Central Highlands"
+                    import re
+                    parts = key.split('_', 1)
+                    if len(parts) == 2:
+                        alert_type = parts[0].upper()
+                        region = re.sub(r'\s*\(.*?\)', '', parts[1]).strip()
+                        new_key = f"{alert_type}_{region}"
+                    else:
+                        new_key = key
+
+                    # Keep the most recent entry if duplicates exist
+                    if new_key not in normalized or val.get('time', datetime.min) > normalized[new_key].get('time', datetime.min):
+                        normalized[new_key] = val
+
+                logger.info(f"WeatherSentinel: Loaded {len(normalized)} active alerts from disk (normalized from {len(data)})")
+                return normalized
             except Exception as e:
                 logger.warning(f"Failed to load weather alert state: {e}")
         return {}
@@ -544,8 +568,11 @@ class WeatherSentinel(Sentinel):
             return "NEUTRAL"
 
     async def check(self) -> Optional[SentinelTrigger]:
+        """Check all regions, return the highest-severity alert."""
         if not self.profile:
             return None
+
+        all_alerts = []
 
         for region in self.profile.primary_regions:
             try:
@@ -553,7 +580,7 @@ class WeatherSentinel(Sentinel):
 
                 if alert:
                     # Alert Cooldown Logic
-                    alert_key = f"{alert['type']}_{region.name}"
+                    alert_key = self._normalize_alert_key(alert['type'], region.name)
                     current_value = alert.get('weekly_precip_mm', 0)
 
                     # Calculate a numeric severity for internal logic
@@ -568,18 +595,24 @@ class WeatherSentinel(Sentinel):
                             "time": datetime.now(timezone.utc),
                             "value": severity_val
                         }
-                        self._save_alert_state()
 
                         msg = f"{alert['type']} in {alert['region']}: {alert.get('weekly_precip_mm',0):.1f}mm ({alert.get('direction')}, {alert.get('stage')} stage)"
                         logger.warning(f"WEATHER SENTINEL DETECTED: {msg}")
 
-                        # Map severity string to int
-                        sev_int = 8 if "CRITICAL" in alert.get('severity','') else (6 if "HIGH" in alert.get('severity','') else 4)
+                        # Map severity string to int (9 for CRITICAL to bypass debounce)
+                        sev_int = 9 if "CRITICAL" in alert.get('severity','') else (7 if "HIGH" in alert.get('severity','') else 4)
 
-                        return SentinelTrigger("WeatherSentinel", msg, alert, severity=sev_int)
+                        all_alerts.append(SentinelTrigger("WeatherSentinel", msg, alert, severity=sev_int))
 
             except Exception as e:
                 logger.error(f"Weather Sentinel failed for {region.name}: {e}")
+
+        self._save_alert_state()
+
+        if all_alerts:
+            # Return the most severe alert
+            all_alerts.sort(key=lambda t: t.severity, reverse=True)
+            return all_alerts[0]
 
         return None
 
@@ -675,15 +708,28 @@ class LogisticsSentinel(Sentinel):
         return urls
 
     @with_retry(max_attempts=3)
-    async def _analyze_with_ai(self, prompt: str) -> Optional[str]:
+    async def _analyze_with_ai(self, prompt: str) -> Optional[dict]:
         """AI analysis with retry logic."""
         await acquire_api_slot('gemini')  # Respect global rate limits
 
         response = await self.client.aio.models.generate_content(
             model=self.model,
-            contents=prompt
+            contents=prompt,
+            config=types.GenerateContentConfig(response_mime_type="application/json")
         )
-        return response.text.strip().upper()
+        text = response.text.strip()
+        if text.startswith("```json"): text = text[7:]
+        if text.startswith("```"): text = text[:-3]
+        if text.endswith("```"): text = text[:-3]
+
+        parsed = json.loads(text)
+
+        # Unwrap arrays if needed
+        if isinstance(parsed, list) and len(parsed) > 0 and isinstance(parsed[0], dict):
+            logger.debug(f"LogisticsSentinel: Unwrapped list ({len(parsed)} items) from AI response")
+            parsed = parsed[0]
+
+        return parsed
 
     async def check(self) -> Optional[SentinelTrigger]:
         # Circuit breaker check
@@ -715,16 +761,22 @@ class LogisticsSentinel(Sentinel):
 
         commodity_name = self.profile.name
         prompt = (
-            f"Do these headlines suggest a disruption to the {commodity_name} supply chain? "
-            f"Consider port strikes, shipping delays, export bans, or logistics failures "
-            f"affecting {commodity_name} producing or consuming regions.\n"
+            f"Analyze these headlines for supply chain disruptions affecting {commodity_name}.\n"
+            f"Consider port strikes, shipping delays, export bans, logistics failures, "
+            f"and transport disruptions in {commodity_name}-producing or consuming regions.\n\n"
             f"Headlines:\n" + "\n".join(f"- {h}" for h in headlines) + "\n\n"
-            "Question: Is there a CRITICAL disruption mentioned? Answer only 'YES' or 'NO'."
+            f"Score the disruption severity from 0 to 10:\n"
+            f"  0 = No disruption\n"
+            f"  3-4 = Minor delay (1-2 day shipping delay)\n"
+            f"  5-6 = Moderate disruption (port congestion, partial strike)\n"
+            f"  7-8 = Major disruption (full port closure, export ban)\n"
+            f"  9-10 = Critical (complete trade route blocked)\n\n"
+            f"Output JSON: {{\"score\": int, \"summary\": string}}"
         )
 
-        answer = await self._analyze_with_ai(prompt)
+        data = await self._analyze_with_ai(prompt)
 
-        if answer is None:
+        if data is None:
             self._consecutive_failures += 1
             if self._consecutive_failures >= self.CIRCUIT_BREAKER_THRESHOLD:
                 self._circuit_tripped_until = time_module.time() + self.CIRCUIT_BREAKER_RESET_S
@@ -742,10 +794,22 @@ class LogisticsSentinel(Sentinel):
         # Success
         self._consecutive_failures = 0
 
-        if "YES" in answer:
-            msg = "Potential Supply Chain Disruption detected in headlines."
+        if not isinstance(data, dict):
+            logger.warning(f"LogisticsSentinel: AI returned {type(data).__name__} instead of dict")
+            return None
+
+        score = data.get('score', 0)
+        summary = data.get('summary', 'Unknown disruption')
+
+        # Threshold: only trigger at score >= 5 (moderate disruption or worse)
+        if score >= 5:
+            msg = f"Supply Chain Disruption (Score: {score}/10): {summary}"
             logger.warning(f"LOGISTICS SENTINEL DETECTED: {msg}")
-            return SentinelTrigger("LogisticsSentinel", msg, {"headlines": headlines[:3]}, severity=6)
+            return SentinelTrigger(
+                "LogisticsSentinel", msg,
+                {"headlines": headlines[:3], "score": score, "summary": summary},
+                severity=min(10, score)
+            )
 
         return None
 
@@ -835,9 +899,9 @@ class NewsSentinel(Sentinel):
 
         parsed = json.loads(text)
 
-        # Unwrap single-element arrays (Gemini sometimes wraps in [...])
-        if isinstance(parsed, list) and len(parsed) == 1 and isinstance(parsed[0], dict):
-            logger.debug("NewsSentinel: Unwrapped single-element list from AI response")
+        # Unwrap arrays (Gemini sometimes wraps in [...] or returns multiple items)
+        if isinstance(parsed, list) and len(parsed) > 0 and isinstance(parsed[0], dict):
+            logger.debug(f"NewsSentinel: Unwrapped list ({len(parsed)} items) from AI response, using first item")
             parsed = parsed[0]
 
         return parsed
@@ -980,7 +1044,33 @@ class XSentimentSentinel(Sentinel):
         self._request_interval = 1.5
         self._last_request_time = 0
 
+        self._volume_state_file = Path(self.CACHE_DIR) / "XSentimentSentinel_volume.json"
+        self._load_volume_state()
+
         logger.info(f"XSentimentSentinel initialized with model: {self.model}")
+
+    def _load_volume_state(self):
+        """Load volume baseline from disk."""
+        try:
+            if self._volume_state_file.exists():
+                with open(self._volume_state_file, 'r') as f:
+                    data = json.load(f)
+                    self.post_volume_history = data.get('history', [])[-30:]  # Keep last 30
+                    if len(self.post_volume_history) >= 5:
+                        self.volume_mean = statistics.mean(self.post_volume_history)
+                        self.volume_stddev = statistics.stdev(self.post_volume_history) if len(self.post_volume_history) > 1 else 0
+                        logger.info(f"XSentimentSentinel: Loaded volume baseline (mean={self.volume_mean:.1f}, n={len(self.post_volume_history)})")
+        except Exception as e:
+            logger.warning(f"Failed to load X volume state: {e}")
+
+    def _save_volume_state(self):
+        """Persist volume baseline to disk."""
+        try:
+            os.makedirs(self.CACHE_DIR, exist_ok=True)
+            with open(self._volume_state_file, 'w') as f:
+                json.dump({'history': self.post_volume_history[-30:]}, f)
+        except Exception as e:
+            logger.warning(f"Failed to save X volume state: {e}")
 
     def get_sensor_status(self) -> dict:
         return {
@@ -1073,6 +1163,7 @@ class XSentimentSentinel(Sentinel):
         if len(self.post_volume_history) >= 5:
             self.volume_mean = statistics.mean(self.post_volume_history)
             self.volume_stddev = statistics.stdev(self.post_volume_history) if len(self.post_volume_history) > 1 else 0
+        self._save_volume_state()
 
     async def _sem_bound_search(self, query: str) -> Optional[dict]:
         slot_acquired = await acquire_api_slot('xai', timeout=30.0)
@@ -1759,7 +1850,7 @@ class MacroContagionSentinel(Sentinel):
 
         api_key = config.get('gemini', {}).get('api_key')
         self.client = genai.Client(api_key=api_key)
-        self.model = "gemini-2.0-flash-exp" # Flight Director specific model
+        self.model = self.sentinel_config.get('model', "gemini-3-flash-preview")
 
     async def _get_history(self, ticker_symbol, period="5d", interval="1h"):
         import yfinance as yf
