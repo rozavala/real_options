@@ -44,14 +44,14 @@ class TopicDiscoveryAgent:
         self.llm_model = self.discovery_config.get('llm_model', "claude-3-haiku-20240307") # Fallback to known model if config has placeholder
         if "claude-haiku" in self.discovery_config.get('llm_model', ""):
              # Map config friendly name to actual model ID if needed, or trust config
-             # The prompt suggested "claude-haiku-4-5-20251001" which doesn't exist yet, likely futuristic.
-             # I will use the config value but fallback to a real model if it fails?
-             # No, I should use what's in config or a safe default.
-             # Let's use the config value.
              pass
 
         self.max_llm_calls = self.discovery_config.get('max_llm_calls_per_scan', 15)
         self._llm_calls_this_scan = 0
+
+        # Circuit Breaker State
+        self._llm_consecutive_failures = 0
+        self._llm_circuit_breaker_threshold = 3  # Trip after 3 consecutive failures
 
         # Filtering
         self.min_liquidity = self.discovery_config.get('min_liquidity_usd', 5000)
@@ -87,6 +87,7 @@ class TopicDiscoveryAgent:
 
         logger.info("Starting Topic Discovery Scan...")
         self._llm_calls_this_scan = 0
+        self._llm_consecutive_failures = 0  # Reset circuit breaker each scan
         discovered_raw = []
 
         # 1. Discover Candidates
@@ -220,6 +221,10 @@ class TopicDiscoveryAgent:
                         market_data['commodity_impact_template'] = area.get('commodity_impact_template')
                         market_data['importance'] = area.get('importance', 'macro')
                         market_data['default_threshold_pct'] = area.get('default_threshold_pct', 8.0)
+
+                        # NEW: Carry relevance config for sentinel propagation
+                        market_data['relevance_keywords'] = area.get('relevance_keywords', [])
+                        market_data['min_relevance_score'] = area.get('min_relevance_score', 2)
 
                         # === AMENDMENT B: Tag Generation with Event ID ===
                         market_data['tag'] = self._generate_tag(
@@ -399,7 +404,13 @@ class TopicDiscoveryAgent:
         Ask LLM if this market is relevant to the interest area.
 
         AMENDMENT E: Check Budget Guard.
+        AMENDMENT F: Circuit breaker — after N consecutive failures, skip remaining LLM calls.
         """
+        # AMENDMENT F: Circuit breaker check
+        if self._llm_consecutive_failures >= self._llm_circuit_breaker_threshold:
+            # Circuit is open — skip LLM calls for remainder of scan
+            return None
+
         # AMENDMENT E: Budget Check
         if self._budget_guard and self._budget_guard.is_budget_hit:
             logger.info("TopicDiscovery: Skipping LLM assessment (budget hit)")
@@ -437,6 +448,9 @@ Answer ONLY with a JSON object: {{"relevant": true/false, "score": 0-5, "reasoni
         try:
             response = await self._call_anthropic(prompt)
 
+            # Reset circuit breaker on success
+            self._llm_consecutive_failures = 0
+
             # Guard against empty/whitespace responses
             if not response or not response.strip():
                 logger.warning(
@@ -464,12 +478,23 @@ Answer ONLY with a JSON object: {{"relevant": true/false, "score": 0-5, "reasoni
                 f"'{candidate.get('title', 'unknown')}': "
                 f"{response[:100] if response else '<empty>'}"
             )
+            # JSON parse failure is not a connectivity issue — don't trip breaker
             return None
         except Exception as e:
-            logger.error(
-                f"LLM assessment failed for "
-                f"'{candidate.get('title', 'unknown')}': {e}"
-            )
+            # Connectivity/timeout/API error — increment circuit breaker
+            self._llm_consecutive_failures += 1
+            if self._llm_consecutive_failures >= self._llm_circuit_breaker_threshold:
+                logger.warning(
+                    f"LLM circuit breaker TRIPPED after {self._llm_consecutive_failures} "
+                    f"consecutive failures. Skipping remaining LLM assessments this scan. "
+                    f"Last error: {e}"
+                )
+            else:
+                logger.error(
+                    f"LLM assessment failed for "
+                    f"'{candidate.get('title', 'unknown')}': {e} "
+                    f"(failure {self._llm_consecutive_failures}/{self._llm_circuit_breaker_threshold})"
+                )
             return None
 
     async def _call_anthropic(self, prompt: str) -> str:
@@ -525,7 +550,11 @@ Answer ONLY with a JSON object: {{"relevant": true/false, "score": 0-5, "reasoni
         return protected
 
     def _convert_to_sentinel_config(self, cand: Dict) -> Dict:
-        """Convert discovery candidate to PredictionMarketSentinel topic config."""
+        """Convert discovery candidate to PredictionMarketSentinel topic config.
+
+        CRITICAL: Must propagate relevance_keywords and min_relevance_score
+        from the interest area so the sentinel can filter at resolution time.
+        """
         return {
             "query": cand['title'], # Using title as query for Sentinel is safe as it will resolve it
             "tag": cand['tag'],
@@ -533,7 +562,9 @@ Answer ONLY with a JSON object: {{"relevant": true/false, "score": 0-5, "reasoni
             "trigger_threshold_pct": cand['default_threshold_pct'],
             "importance": cand['importance'],
             "commodity_impact": cand['commodity_impact_template'],
-            "min_relevance_score": 1, # Already filtered
+            # CRITICAL: Propagate relevance filtering to sentinel
+            "relevance_keywords": cand.get('relevance_keywords', []),
+            "min_relevance_score": cand.get('min_relevance_score', 2),
             # Metadata for tracking
             "_discovery": {
                 "interest_area": cand['interest_area'],

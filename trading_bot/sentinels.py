@@ -25,13 +25,34 @@ from config.commodity_profiles import get_commodity_profile, GrowingRegion
 
 logger = logging.getLogger(__name__)
 
-# Domain whitelists for prediction market filtering
+# Domain whitelists for prediction market filtering.
+# IMPORTANT: Keep terms specific. Avoid generic words that appear in unrelated titles.
+# Commodity-agnostic: each commodity profile can extend these via config.
 DOMAIN_KEYWORD_WHITELISTS = {
-    'coffee': ['coffee', 'arabica', 'robusta', 'kc', 'bean', 'starbucks', 'peet', 'roast', 'harvest', 'crop'],
-    'macro': ['fed', 'rate', 'inflation', 'cpi', 'fomc', 'powell', 'yield', 'treasury', 'dollar', 'dxy', 'recession', 'gdp', 'employment', 'jobs', 'economy', 'market'],
-    'geopolitical': ['war', 'conflict', 'tariff', 'sanction', 'election', 'trade', 'china', 'russia', 'ukraine', 'israel', 'iran', 'houthi', 'suez', 'canal', 'panama', 'trump', 'biden', 'president'],
-    'weather': ['rain', 'drought', 'frost', 'el nino', 'la nina', 'monsoon', 'hurricane', 'cyclone', 'typhoon', 'temp', 'precipitation'],
-    'logistics': ['port', 'shipping', 'container', 'freight', 'strike', 'union', 'rail', 'supply chain']
+    'coffee': [
+        'coffee', 'arabica', 'robusta', 'kc', 'bean', 'starbucks',
+        'roast', 'harvest', 'crop'
+    ],
+    'macro': [
+        'fed', 'rate', 'inflation', 'cpi', 'fomc', 'powell',
+        'yield', 'treasury', 'dollar', 'dxy', 'recession', 'gdp',
+        'employment', 'jobs', 'economy', 'interest rate',
+        'rate cut', 'rate hike', 'basis points', 'monetary'
+    ],
+    'geopolitical': [
+        'war', 'conflict', 'tariff', 'sanction', 'trade war',
+        'embargo', 'invasion', 'nato', 'military',
+        'nuclear', 'ceasefire', 'peace deal'
+    ],
+    'weather': [
+        'rain', 'drought', 'frost', 'el nino', 'la nina',
+        'monsoon', 'hurricane', 'cyclone', 'typhoon',
+        'precipitation', 'temperature'
+    ],
+    'logistics': [
+        'port', 'shipping', 'container', 'freight', 'strike',
+        'rail', 'supply chain', 'suez', 'panama canal'
+    ]
 }
 
 def with_retry(max_attempts: int = 3, backoff: float = 2.0):
@@ -1152,17 +1173,73 @@ class PredictionMarketSentinel(Sentinel):
         self._last_slug_check = datetime.now(timezone.utc)
         logger.info(f"PredictionMarketSentinel v2.0 initialized: {len(self.topics)} topics")
 
+    @staticmethod
+    def _word_boundary_match(keyword: str, text: str) -> bool:
+        """Check if keyword matches in text using word-boundary matching.
+
+        Handles both single words and multi-word phrases.
+        Single words use plural-aware regex (appends optional 's').
+        Multi-word phrases use substring match (natural word boundaries).
+
+        Commodity-agnostic: works for any keyword vocabulary.
+        """
+        import re
+        kw_lower = keyword.lower()
+        text_lower = text.lower()
+
+        if ' ' in kw_lower:
+            # Multi-word phrase: substring match (natural boundaries)
+            return kw_lower in text_lower
+        else:
+            # Single word: word-boundary match with optional plural 's'
+            pattern = r'\b' + re.escape(kw_lower) + r's?\b'
+            return bool(re.search(pattern, text_lower))
+
+    def _passes_global_exclude_filter(self, title: str) -> bool:
+        """
+        Reject markets matching global exclude keywords.
+        Uses plural-tolerant word-boundary matching for single words, substring for phrases.
+
+        Plural-tolerant: \b{keyword}s?\b matches both "Bitcoin" and "Bitcoins",
+        "Tariff" and "Tariffs", etc. — prevents the "Pluralization Trap" where
+        Polymarket titles use plural forms that dodge exact word-boundary patterns.
+
+        Commodity-agnostic: exclude list comes from config, not hardcoded.
+        Returns True if market passes (is NOT excluded).
+        """
+        global_excludes = self.sentinel_config.get('global_exclude_keywords', [])
+
+        for kw in global_excludes:
+            if self._word_boundary_match(kw, title):
+                return False
+        return True
+
     def _validate_all_slugs(self):
         self._cleanup_misaligned_cache()
 
     def _cleanup_misaligned_cache(self):
+        """Detect and clear cache entries where the resolved slug doesn't match the query.
+
+        Uses plural-tolerant word-boundary matching for consistency with all other filter layers.
+        """
         for topic_key, cached in list(self.state_cache.items()):
             if cached.get('slug') and cached.get('title'):
                 query_lower = topic_key.lower()
                 title_lower = cached['title'].lower()
                 keywords = [kw for kw in query_lower.split() if len(kw) > 2]
-                if keywords and not any(kw in title_lower for kw in keywords):
-                    logger.warning(f"Stale/misaligned slug for '{topic_key}': title='{cached['title']}'. Clearing cache.")
+                if not keywords:
+                    continue
+
+                has_match = any(
+                    PredictionMarketSentinel._word_boundary_match(kw, title_lower)
+                    for kw in keywords
+                )
+
+                if not has_match:
+                    logger.warning(
+                        f"Stale/misaligned slug for '{topic_key}': "
+                        f"title='{cached['title']}'. Clearing cache."
+                    )
                     self.state_cache.pop(topic_key)
 
     def _merge_discovered_topics(self, static_topics: List[Dict]) -> List[Dict]:
@@ -1180,12 +1257,22 @@ class PredictionMarketSentinel(Sentinel):
             return static_topics
 
     def reload_topics(self):
+        """Reload topics from config + discovered topics, pruning orphaned cache entries."""
         logger.info("Reloading prediction market topics...")
         static_topics = self.sentinel_config.get('topics_to_watch', [])
         self.topics = self._merge_discovered_topics(static_topics)
-        for topic in list(self.state_cache.keys()):
-            if topic not in {t.get('query', '') for t in self.topics}:
-                logger.debug(f"Topic '{topic}' removed from active tracking")
+
+        # Prune orphaned cache entries for topics no longer active
+        active_queries = {t.get('query', '') for t in self.topics}
+        orphaned = [key for key in self.state_cache if key not in active_queries]
+        for key in orphaned:
+            logger.info(f"Pruning orphaned cache entry: '{key}'")
+            self.state_cache.pop(key)
+
+        if orphaned:
+            self._save_state_cache()
+            logger.info(f"Pruned {len(orphaned)} orphaned cache entries")
+
         logger.info(f"Topics reloaded: {len(self.topics)}")
 
     def _load_state_cache(self):
@@ -1221,21 +1308,99 @@ class PredictionMarketSentinel(Sentinel):
         except (ValueError, TypeError): return False
 
     def _infer_topic_category(self, query: str) -> str:
+        """Infer topic category from query using plural-tolerant word-boundary matching.
+
+        Commodity-agnostic: falls back to configured commodity name.
+        """
         query_lower = query.lower()
         for category, keywords in DOMAIN_KEYWORD_WHITELISTS.items():
-            if any(kw in query_lower for kw in keywords): return category
+            for kw in keywords:
+                if PredictionMarketSentinel._word_boundary_match(kw, query_lower):
+                    return category
         commodity = self.config.get('commodity', {}).get('name', 'coffee').lower()
         return commodity if commodity in DOMAIN_KEYWORD_WHITELISTS else 'coffee'
 
     def _passes_domain_filter(self, market: dict, query: str, topic_category: str = None) -> bool:
+        """Check if market title is relevant to the query domain.
+
+        Uses plural-tolerant word-boundary matching for single words.
+        Commodity-agnostic: whitelist is configurable per category.
+        """
         title = market.get('title', '').lower()
+
         if topic_category and topic_category in DOMAIN_KEYWORD_WHITELISTS:
             required_keywords = DOMAIN_KEYWORD_WHITELISTS[topic_category]
         else:
             query_keywords = [kw for kw in query.lower().split() if len(kw) > 2]
             required_keywords = query_keywords
-        if any(kw in title for kw in required_keywords): return True
+
+        for kw in required_keywords:
+            if self._word_boundary_match(kw, title):
+                return True
+
         return False
+
+    async def _fetch_by_slug(self, slug: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch a specific Polymarket event by slug.
+        Used for slug pinning — avoids re-searching the API.
+
+        Returns candidate dict or None if slug is invalid/closed/low-liquidity.
+        """
+        url = f"{self.api_url}?slug={slug}&closed=false&active=true&limit=1"
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
+                async with session.get(url) as response:
+                    if response.status != 200:
+                        return None
+                    data = await response.json()
+                    if not isinstance(data, list) or not data:
+                        return None
+
+                    event = data[0]
+                    if not isinstance(event, dict):
+                        return None
+
+                    markets = event.get('markets', [])
+                    if not markets:
+                        return None
+
+                    # Find best market by liquidity
+                    best_market = None
+                    best_liq = -1
+                    best_vol = 0
+                    for m in markets:
+                        if not isinstance(m, dict):
+                            continue
+                        try:
+                            m_liq = float(m.get('liquidity', 0) or 0)
+                        except (ValueError, TypeError):
+                            continue
+                        if m_liq > best_liq:
+                            best_liq = m_liq
+                            best_market = m
+                            try:
+                                best_vol = float(m.get('volume', 0) or 0)
+                            except:
+                                best_vol = 0
+
+                    if best_market is None:
+                        return None
+                    if best_liq < self.min_liquidity:
+                        return None
+                    if best_vol < self.min_volume:
+                        return None
+
+                    return {
+                        'slug': event.get('slug'),
+                        'title': event.get('title', ''),
+                        'market': best_market,
+                        'liquidity': best_liq,
+                        'volume': best_vol
+                    }
+        except Exception as e:
+            logger.debug(f"Slug pin fetch failed for '{slug}': {e}")
+            return None
 
     async def _resolve_active_market(self, query: str, **kwargs) -> Optional[Dict[str, Any]]:
         params = {"q": query, "closed": "false", "active": "true", "limit": str(self.search_limit)}
@@ -1274,16 +1439,25 @@ class PredictionMarketSentinel(Sentinel):
                         if volume < self.min_volume: continue
                         candidates.append({'slug': event.get('slug'), 'title': event.get('title', ''), 'market': market, 'liquidity': liquidity, 'volume': volume})
                     if not candidates: return None
+
+                    # Layer 0: Global exclude filter (reject Bitcoin, sports, etc.)
+                    candidates = [c for c in candidates if self._passes_global_exclude_filter(c.get('title', ''))]
+                    if not candidates: return None
+
+                    # Layer 1: Domain relevance filter
                     topic_category = self._infer_topic_category(query)
                     filtered_candidates = [m for m in candidates if self._passes_domain_filter(m, query, topic_category=topic_category)]
                     if not filtered_candidates: return None
                     candidates = filtered_candidates
                     relevance_keywords = kwargs.get('relevance_keywords', [])
-                    min_relevance = kwargs.get('min_relevance_score', 1)
+                    min_relevance = kwargs.get('min_relevance_score', 2)  # Fail-safe: default to strict, not permissive
                     if relevance_keywords:
                         for candidate in candidates:
                             title_lower = candidate['title'].lower()
-                            match_count = sum(1 for kw in relevance_keywords if kw.lower() in title_lower)
+                            match_count = 0
+                            for kw in relevance_keywords:
+                                if self._word_boundary_match(kw, title_lower):
+                                    match_count += 1
                             candidate['relevance_score'] = match_count
                         relevant = [c for c in candidates if c.get('relevance_score', 0) >= min_relevance]
                         if relevant:
@@ -1335,7 +1509,24 @@ class PredictionMarketSentinel(Sentinel):
                 commodity_impact = topic.get('commodity_impact', topic.get('coffee_impact', 'Potential macro impact'))
                 relevance_keywords = topic.get('relevance_keywords', [])
                 min_relevance = topic.get('min_relevance_score', self.sentinel_config.get('min_relevance_score', 1))
-                market_data = await self._resolve_active_market(query, relevance_keywords=relevance_keywords, min_relevance_score=min_relevance)
+
+                # Try pinned slug first (from discovery), fall back to query search
+                pinned_slug = topic.get('_discovery', {}).get('slug')
+                market_data = None
+
+                if pinned_slug:
+                    market_data = await self._fetch_by_slug(pinned_slug)
+                    if market_data:
+                        # Validate pinned result still passes global excludes
+                        if not self._passes_global_exclude_filter(market_data.get('title', '')):
+                            logger.warning(f"Pinned slug '{pinned_slug}' failed global exclude. Falling back to search.")
+                            market_data = None
+                    else:
+                        logger.info(f"Pinned slug '{pinned_slug}' no longer valid for '{display_name}'. Falling back to search.")
+
+                if not market_data:
+                    market_data = await self._resolve_active_market(query, relevance_keywords=relevance_keywords, min_relevance_score=min_relevance)
+
                 if not market_data:
                     self._topic_failure_counts[query] = self._topic_failure_counts.get(query, 0) + 1
                     fail_count = self._topic_failure_counts[query]
