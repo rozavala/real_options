@@ -677,6 +677,9 @@ class LogisticsSentinel(Sentinel):
         self._consecutive_failures = 0
         self._circuit_tripped_until = 0
 
+        logger.info(f"LogisticsSentinel initialized with model: {self.model} | "
+                     f"{len(self.urls)} RSS feeds | Commodity: {self.profile.name}")
+
     def _build_rss_urls(self) -> List[str]:
         """
         Generate RSS search URLs from commodity profile.
@@ -840,6 +843,10 @@ class NewsSentinel(Sentinel):
         # Circuit breaker state
         self._consecutive_failures = 0
         self._circuit_tripped_until = 0
+
+        logger.info(f"NewsSentinel initialized with model: {self.model} | "
+                     f"{len(self.urls)} RSS feeds | Threshold: {self.threshold} | "
+                     f"Commodity: {self.profile.name}")
 
     def _build_rss_urls(self) -> List[str]:
         """
@@ -1851,6 +1858,10 @@ class MacroContagionSentinel(Sentinel):
         api_key = config.get('gemini', {}).get('api_key')
         self.client = genai.Client(api_key=api_key)
         self.model = self.sentinel_config.get('model', "gemini-3-flash-preview")
+
+        logger.info(f"MacroContagionSentinel initialized with model: {self.model} | "
+                     f"DXY thresholds: 1d={self.dxy_threshold_1d:.0%}, 2d={self.dxy_threshold_2d:.0%} | "
+                     f"Commodity: {self.profile.name}")
 
     async def _get_history(self, ticker_symbol, period="5d", interval="1h"):
         import yfinance as yf
