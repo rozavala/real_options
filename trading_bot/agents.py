@@ -893,7 +893,7 @@ OUTPUT FORMAT (JSON ONLY):
             'sentiment': data.get('sentiment', 'NEUTRAL')
         }
 
-    async def _get_red_team_analysis(self, persona_key: str, reports_text: str, ml_signal: dict, opponent_argument: str = None) -> str:
+    async def _get_red_team_analysis(self, persona_key: str, reports_text: str, ml_signal: dict, opponent_argument: str = None, market_context: str = "") -> str:
         """Gets critique/defense from Permabear or Permabull."""
         persona_prompt = self.personas.get(persona_key, "")
 
@@ -903,10 +903,16 @@ OUTPUT FORMAT (JSON ONLY):
 
         market_data_str = format_market_context_for_prompt(ml_signal)
 
+        # Inject market context (includes sentinel briefing if emergency cycle)
+        market_context_section = ""
+        if market_context:
+            market_context_section = f"\n--- MARKET CONTEXT ---\n{market_context}\n"
+
         prompt = (
             f"{persona_prompt}\n\n"
             f"--- DESK REPORTS ---\n{reports_text}\n\n"
             f"--- MARKET DATA ---\n{market_data_str}\n"
+            f"{market_context_section}"
             f"{context_prompt}\n\n"
             f"Generate your response following the specified format:\n"
             f"{DEBATE_OUTPUT_SCHEMA}"
@@ -918,19 +924,18 @@ OUTPUT FORMAT (JSON ONLY):
         except Exception as e:
             return json.dumps({"error": str(e), "position": "NEUTRAL", "key_arguments": []})
 
-    async def run_debate(self, reports_text: str, ml_signal: dict) -> tuple[str, str]:
+    async def run_debate(self, reports_text: str, ml_signal: dict, market_context: str = "") -> tuple[str, str]:
         """
         Run sequential attack-defense debate.
         Step 1: PERMABEAR generates the Thesis (Attack).
         Step 2: PERMABULL must refute specific points (Defense).
         """
 
-        # Step 1: Bear attacks the thesis
-        bear_json = await self._get_red_team_analysis("permabear", reports_text, ml_signal)
+        # Step 1: Bear attacks the thesis (with market context including sentinel briefing)
+        bear_json = await self._get_red_team_analysis("permabear", reports_text, ml_signal, market_context=market_context)
 
         # Step 2: Bull must RESPOND to the specific critique
-        # We assume bear_json is a JSON string, let's pass it as context
-        bull_json = await self._get_red_team_analysis("permabull", reports_text, ml_signal, opponent_argument=bear_json)
+        bull_json = await self._get_red_team_analysis("permabull", reports_text, ml_signal, opponent_argument=bear_json, market_context=market_context)
 
         return bear_json, bull_json
 
@@ -1042,7 +1047,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                         'da_bypassed': True  # R3: Signal to downstream components
                     }
 
-    async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict, market_context: str, trigger_reason: str = None, cycle_id: str = "") -> dict:
+    async def decide(self, contract_name: str, ml_signal: dict, research_reports: dict, market_context: str, trigger_reason: str = None, cycle_id: str = "", trigger: SentinelTrigger = None) -> dict:
         """
         The Hegelian Loop: Thesis (Reports) -> Antithesis (Bear/Bull) -> Synthesis (Master).
         """
@@ -1076,17 +1081,38 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
 
             reports_text += f"\n--- {agent.upper()} REPORT ---\n{stale_warning}{report_content}\n"
 
-        # 2. Antithesis: The Dialectical Debate
-        # Run sequentially (Bear Attack -> Bull Defense)
-        bear_json, bull_json = await self.run_debate(reports_text, ml_signal)
-
-        # 3. Synthesis: Master Strategist
-        master_persona = self.personas.get('master', "You are the Chief Strategist.")
-
-        # Context Injection
+        # Build structured sentinel briefing for debate & master injection
+        sentinel_briefing = ""
         urgent_context = ""
         if trigger_reason:
             urgent_context = f"*** URGENT TRIGGER: {trigger_reason} ***\n\n"
+
+            if trigger:
+                sentinel_briefing = (
+                    f"\n\n--- 🚨 SENTINEL EMERGENCY BRIEFING ---\n"
+                    f"Source: {getattr(trigger, 'source', 'Unknown')}\n"
+                    f"Alert: {trigger_reason}\n"
+                    f"Severity: {getattr(trigger, 'severity', 'N/A')}/10\n"
+                )
+                if hasattr(trigger, 'payload') and trigger.payload:
+                    try:
+                        sentinel_briefing += f"Raw Payload: {json.dumps(trigger.payload, indent=2, default=str)}\n"
+                    except Exception:
+                        sentinel_briefing += f"Raw Payload: {str(trigger.payload)[:500]}\n"
+                sentinel_briefing += (
+                    f"INSTRUCTION: You MUST directly address this specific event in your analysis. "
+                    f"Generic market commentary without referencing this trigger is UNACCEPTABLE.\n"
+                    f"--- END SENTINEL BRIEFING ---\n"
+                )
+
+        # 2. Antithesis: The Dialectical Debate
+        # Run sequentially (Bear Attack -> Bull Defense)
+        # Inject sentinel briefing so debate agents know WHY this cycle exists
+        debate_market_context = market_context + sentinel_briefing if sentinel_briefing else market_context
+        bear_json, bull_json = await self.run_debate(reports_text, ml_signal, market_context=debate_market_context)
+
+        # 3. Synthesis: Master Strategist
+        master_persona = self.personas.get('master', "You are the Chief Strategist.")
 
         # Format market data context (replaces ML signal injection)
         market_data_str = format_market_context_for_prompt(ml_signal)
@@ -1094,6 +1120,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         full_prompt = (
             f"{master_persona}\n\n"
             f"{urgent_context}"
+            f"{sentinel_briefing}"
             f"You have received structured reports regarding {contract_name}.\n"
             f"{market_context}\n\n"
             f"MARKET DATA:\n{market_data_str}\n\n"
@@ -1327,7 +1354,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         enriched_context = market_context + weighted_context
 
         # Run Decision Loop with Context Injection
-        decision = await self.decide(contract_name, ml_signal, final_reports, enriched_context, trigger_reason=trigger.reason, cycle_id=cycle_id)
+        decision = await self.decide(contract_name, ml_signal, final_reports, enriched_context, trigger_reason=trigger.reason, cycle_id=cycle_id, trigger=trigger)
 
         # === v7.0: Consensus Sensor (Emergency Path) ===
         # Master's DIRECTION is trusted. Vote only adjusts CONVICTION (sizing).

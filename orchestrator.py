@@ -183,8 +183,13 @@ class TriggerDeduplicator:
 
         # Content-based deduplication
         # Sort keys to ensure stable hash
+        # For persistent environmental conditions, append date so they can re-trigger daily
+        date_suffix = ""
+        if trigger.source in ("WeatherSentinel", "LogisticsSentinel"):
+            date_suffix = datetime.now(timezone.utc).strftime("%Y%m%d")
+
         trigger_hash = hashlib.md5(
-            f"{trigger.reason[:50]}{json.dumps(trigger.payload, sort_keys=True)}".encode()
+            f"{trigger.reason[:50]}{json.dumps(trigger.payload, sort_keys=True)}{date_suffix}".encode()
         ).hexdigest()[:8]
 
         # Prune old triggers
@@ -1701,6 +1706,68 @@ async def reconcile_and_notify(config: dict):
         logger.critical(f"An error occurred during trade reconciliation: {e}\n{traceback.format_exc()}")
 
 
+async def sentinel_effectiveness_check(config: dict):
+    """
+    Meta-monitor: alerts if significant price move occurred with zero sentinel trades.
+    Runs daily at end of session.
+    """
+    logger.info("--- Sentinel Effectiveness Check ---")
+    try:
+        from config.commodity_profiles import get_commodity_profile
+
+        ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+        profile = get_commodity_profile(ticker)
+        significance_threshold = config.get('sentinels', {}).get('meta_monitor_threshold_pct', 5.0)
+
+        # Get weekly price change from IB or yfinance
+        weekly_change_pct = None
+        try:
+            import yfinance as yf
+            yf_ticker = getattr(profile, 'yfinance_ticker', f"{profile.contract.symbol}=F")
+            data = yf.Ticker(yf_ticker).history(period="5d")
+            if data is not None and len(data) >= 2:
+                weekly_change_pct = ((data['Close'].iloc[-1] - data['Close'].iloc[0]) / data['Close'].iloc[0]) * 100
+        except Exception as e:
+            logger.warning(f"yfinance fetch failed for meta-monitor: {e}")
+
+        if weekly_change_pct is None:
+            logger.info("Could not fetch weekly price data for meta-monitor. Skipping.")
+            return
+
+        # Check sentinel trade stats
+        stats = SENTINEL_STATS.get_all()
+        total_alerts = sum(s.get('total_alerts', 0) for s in stats.values())
+        total_sentinel_trades = sum(s.get('trades_triggered', 0) for s in stats.values())
+
+        if abs(weekly_change_pct) > significance_threshold and total_sentinel_trades == 0:
+            severity = "🔴" if abs(weekly_change_pct) > 10.0 else "🟡"
+            diagnosis = (
+                "No alerts fired — check sentinel thresholds and connectivity"
+                if total_alerts == 0
+                else "Alerts fired but no trades — check council pipeline (Fix 1) and debounce (Fix 2)"
+            )
+            msg = (
+                f"{severity} SENTINEL EFFECTIVENESS ALERT\n"
+                f"{profile.name} weekly change: {weekly_change_pct:+.1f}%\n"
+                f"Sentinel alerts: {total_alerts}, Trades from sentinels: {total_sentinel_trades}\n"
+                f"Diagnosis: {diagnosis}"
+            )
+            logger.warning(msg)
+            send_pushover_notification(
+                config.get('notifications', {}),
+                f"{severity} Sentinel Blind Spot Detected",
+                msg
+            )
+        else:
+            logger.info(
+                f"Sentinel effectiveness OK: weekly change {weekly_change_pct:+.1f}%, "
+                f"alerts: {total_alerts}, sentinel trades: {total_sentinel_trades}"
+            )
+
+    except Exception as e:
+        logger.error(f"Sentinel effectiveness check failed: {e}")
+
+
 async def reconcile_and_analyze(config: dict):
     """Runs reconciliation, then analysis and archiving."""
     logger.info("--- Kicking off end-of-day reconciliation and analysis process ---")
@@ -2020,9 +2087,20 @@ Supply and demand are roughly in equilibrium. Price moves will be driven by marg
         return ""
 
 async def _is_signal_priced_in(trigger: SentinelTrigger, ml_signal: dict, ib: IB, contract) -> tuple[bool, str]:
-    """Check if the signal has already been priced into the market."""
+    """
+    Check if the signal has already been priced into the market.
+
+    Directional logic:
+    - WeatherSentinel (typically bullish supply shock) → only priced-in if price already UP
+    - PriceSentinel → skip check entirely (DEFCON-1 handles extremes)
+    - NewsSentinel → only block on extreme moves (>5%) regardless of direction
+    - MicrostructureSentinel → skip (structural, not directional)
+    - Others → skip (let council decide)
+    """
+    PRICED_IN_THRESHOLD = 3.0
+    EXTREME_MOVE_THRESHOLD = 5.0
+
     try:
-        # Get 24h price change
         bars = await ib.reqHistoricalDataAsync(
             contract,
             endDateTime='',
@@ -2031,20 +2109,40 @@ async def _is_signal_priced_in(trigger: SentinelTrigger, ml_signal: dict, ib: IB
             whatToShow='TRADES',
             useRTH=True
         )
-        if len(bars) >= 2:
-            prev_close = bars[-2].close
-            current_close = bars[-1].close
-            change_pct = ((current_close - prev_close) / prev_close) * 100
+        if len(bars) < 2:
+            return False, ""
 
-            # PRICED IN: If bullish trigger + price already up >3%
-            if trigger.source in ['WeatherSentinel', 'NewsSentinel']:
-                if change_pct > 3.0:
-                    return True, f"Price already +{change_pct:.1f}% - signal likely priced in"
-                elif change_pct < -3.0:
-                    # Note: Original requirement said "If '24h Change' is UP >3% and agents report Bullish news"
-                    # We implement a symmetric check for now (extreme moves).
-                    return True, f"Price already {change_pct:.1f}% - signal likely priced in"
-        return False, ""
+        prev_close = bars[-2].close
+        current_close = bars[-1].close
+        change_pct = ((current_close - prev_close) / prev_close) * 100
+
+        if trigger.source == 'WeatherSentinel':
+            # Weather events are typically bullish (supply disruption)
+            # Only "priced in" if price already surged UP
+            if change_pct > PRICED_IN_THRESHOLD:
+                return True, f"Price already +{change_pct:.1f}% — bullish weather shock likely priced in"
+            return False, ""
+
+        elif trigger.source == 'PriceSentinel':
+            # Price sentinel IS the price move — skip priced-in check entirely
+            # DEFCON-1 (>5% flash crash) is handled separately upstream
+            return False, ""
+
+        elif trigger.source == 'NewsSentinel':
+            # News can be bullish or bearish — only block on extreme moves
+            if abs(change_pct) > EXTREME_MOVE_THRESHOLD:
+                return True, f"Price moved {change_pct:+.1f}% — extreme volatility, news likely priced in"
+            return False, ""
+
+        elif trigger.source == 'MicrostructureSentinel':
+            # Structural signals — not directional, let council decide
+            return False, ""
+
+        else:
+            # LogisticsSentinel, XSentimentSentinel, PredictionMarketSentinel, MacroContagionSentinel
+            # Let the council evaluate these — too context-dependent for a simple gate
+            return False, ""
+
     except Exception as e:
         logger.warning(f"Priced-in check failed: {e}")
         return False, ""  # Fail open
@@ -2078,11 +2176,25 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
     cutoff_minute = trading_cutoff.get('minute', 45)
 
     if now_ny.hour > cutoff_hour or (now_ny.hour == cutoff_hour and now_ny.minute >= cutoff_minute):
+        day_name = now_ny.strftime("%A")
+        next_session = "Monday" if now_ny.weekday() == 4 else "tomorrow"
         logger.info(
             f"Emergency cycle BLOCKED (daily trading cutoff {cutoff_hour}:{cutoff_minute:02d} ET): "
-            f"{trigger.source} — deferring to next session"
+            f"{trigger.source} — deferring to {next_session}"
         )
         StateManager.queue_deferred_trigger(trigger)
+
+        # Notify operator for potential manual intervention
+        send_pushover_notification(
+            config.get('notifications', {}),
+            f"⏸️ Post-Cutoff: {trigger.source}",
+            (
+                f"{trigger.reason[:200]}\n"
+                f"Deferred to {next_session} ({day_name} {cutoff_hour}:{cutoff_minute:02d} ET cutoff).\n"
+                f"Severity: {getattr(trigger, 'severity', 'N/A')}/10\n"
+                f"Manual intervention available via dashboard."
+            )
+        )
         return
 
     # === NEW: Log Trigger for Fallback ===
@@ -2093,6 +2205,8 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
         logger.warning(f"Emergency cycle for {trigger.source} queued (Lock active).")
 
     async with EMERGENCY_LOCK:
+        cycle_actually_ran = False  # Did we reach the council decision?
+        is_actionable = False       # Did the council produce a tradeable signal?
         try:
             # --- WEEKLY CLOSE WINDOW GUARD ---
             weekday = now_ny.weekday()
@@ -2261,13 +2375,13 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 iv_metrics = await get_underlying_iv_metrics(ib, target_contract)
 
                 market_context_str = (
-                    f"Contract: {target_contract.localSymbol}\n"
-                    f"Current Price: {ticker.last if ticker.last else 'N/A'}\n"
-                    f"--- VOLATILITY METRICS (IBKR Live) ---\n"
-                    f"Current IV: {iv_metrics['current_iv']}\n"
-                    f"IV Rank: {iv_metrics['iv_rank']}\n"
-                    f"IV Percentile: {iv_metrics['iv_percentile']}\n"
-                    f"Note: If IV data shows N/A, analyst should search Barchart for KC IV Rank.\n"
+                    f"Contract: {target_contract.localSymbol}\\n"
+                    f"Current Price: {ticker.last if ticker.last else 'N/A'}\\n"
+                    f"--- VOLATILITY METRICS (IBKR Live) ---\\n"
+                    f"Current IV: {iv_metrics['current_iv']}\\n"
+                    f"IV Rank: {iv_metrics['iv_rank']}\\n"
+                    f"IV Percentile: {iv_metrics['iv_percentile']}\\n"
+                    f"Note: If IV data shows N/A, analyst should search Barchart for KC IV Rank.\\n"
                 )
 
                 # 4. Build live market context from IBKR (replaces cached ML signal)
@@ -2292,6 +2406,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 )
 
                 logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
+                cycle_actually_ran = True
 
                 # Amendment A: Inject polymarket context into the decision for thesis recording
                 if trigger.source == "PredictionMarketSentinel":
@@ -2579,10 +2694,26 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 logger.error(f"Emergency Cycle Failed: {e}\n{traceback.format_exc()}")
 
         finally:
-            # Global post-cycle debounce (blocks ALL sentinels)
-            debounce_seconds = config.get('sentinels', {}).get('post_cycle_debounce_seconds', 1800)
-            GLOBAL_DEDUPLICATOR.set_cooldown("POST_CYCLE", debounce_seconds)
-            logger.info(f"Post-cycle debounce set for {debounce_seconds}s")
+            # Graduated post-cycle debounce based on cycle outcome
+            if not cycle_actually_ran:
+                # Gate-blocked (budget, drawdown, Friday, priced-in) — don't punish next trigger
+                debounce_seconds = 0
+                debounce_reason = "gate-blocked (no debounce)"
+            elif is_actionable:
+                # Council produced a trade — full debounce to prevent overtrading
+                debounce_seconds = config.get('sentinels', {}).get('post_cycle_debounce_seconds', 1800)
+                debounce_reason = "actionable trade"
+            else:
+                # Council ran but decided NEUTRAL — short debounce then re-evaluate
+                debounce_seconds = config.get('sentinels', {}).get('post_cycle_debounce_neutral_seconds', 300)
+                debounce_reason = "neutral decision"
+
+            if debounce_seconds > 0:
+                GLOBAL_DEDUPLICATOR.set_cooldown("POST_CYCLE", debounce_seconds)
+            else:
+                GLOBAL_DEDUPLICATOR.clear_cooldown("POST_CYCLE")
+
+            logger.info(f"Post-cycle debounce: {debounce_seconds}s ({debounce_reason})")
 
 
 def validate_trigger(trigger):
@@ -2627,6 +2758,30 @@ def _create_protective_close_order(contract: Contract, action: str, qty: int, co
     # However, I will add the function signature to satisfy the requirement if I can.
     # For now, I will modify emergency_hard_close directly to implement the logic.
     return MarketOrder(action, qty)
+
+
+def _emergency_cycle_done_callback(task: asyncio.Task, trigger_source: str, config: dict):
+    """Callback to catch and report crashes in fire-and-forget emergency cycle tasks."""
+    try:
+        exc = task.exception()
+    except asyncio.CancelledError:
+        logger.info(f"Emergency cycle for {trigger_source} was cancelled")
+        return
+
+    if exc is not None:
+        logger.error(
+            f"🔥 Emergency cycle for {trigger_source} CRASHED: "
+            f"{type(exc).__name__}: {exc}"
+        )
+        SENTINEL_STATS.record_error(trigger_source, f"CRASH: {type(exc).__name__}")
+        try:
+            send_pushover_notification(
+                config.get('notifications', {}),
+                f"🔥 Emergency Cycle Crashed: {trigger_source}",
+                f"Error: {str(exc)[:200]}\nSentinel loop continues normally."
+            )
+        except Exception:
+            pass  # Don't let notification failure cascade
 
 
 async def run_sentinels(config: dict):
@@ -2855,7 +3010,7 @@ async def run_sentinels(config: dict):
             if sentinel_ib and sentinel_ib.isConnected():
                 _health_error = None
                 try:
-                    trigger = await price_sentinel.check(cached_contract=cached_contract)
+                    trigger = await asyncio.wait_for(price_sentinel.check(cached_contract=cached_contract), timeout=30)
                     trigger = validate_trigger(trigger)
 
                     # === NEW: Price Move Triggers Position Audit ===
@@ -2870,8 +3025,15 @@ async def run_sentinels(config: dict):
                             ))
 
                     if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
-                        asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                        task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                        task.add_done_callback(
+                            lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
+                        )
                         GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                except asyncio.TimeoutError:
+                    logger.error(f"PriceSentinel TIMED OUT after 30s")
+                    _health_error = "TIMEOUT after 30s"
+                    SENTINEL_STATS.record_error("PriceSentinel", "TIMEOUT")
                 except Exception as e:
                     logger.error(f"PriceSentinel check failed: {type(e).__name__}: {e}")
                     _health_error = str(e)
@@ -2887,17 +3049,24 @@ async def run_sentinels(config: dict):
             if (now - last_weather) > 14400:
                 _health_error = None
                 try:
-                    trigger = await weather_sentinel.check()
+                    trigger = await asyncio.wait_for(weather_sentinel.check(), timeout=60)
                     trigger = validate_trigger(trigger)
                     if trigger:
                         if market_open and sentinel_ib and sentinel_ib.isConnected():
                             if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                task.add_done_callback(
+                                    lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
+                                )
                                 GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
                         else:
                             # Defer for market open
                             StateManager.queue_deferred_trigger(trigger)
                             logger.info(f"Deferred {trigger.source} trigger for market open")
+                except asyncio.TimeoutError:
+                    logger.error(f"WeatherSentinel TIMED OUT after 60s")
+                    _health_error = "TIMEOUT after 60s"
+                    SENTINEL_STATS.record_error("WeatherSentinel", "TIMEOUT")
                 except Exception as e:
                     logger.error(f"WeatherSentinel check failed: {type(e).__name__}: {e}")
                     _health_error = str(e)
@@ -2914,16 +3083,23 @@ async def run_sentinels(config: dict):
             if (now - last_logistics) > 21600:
                 _health_error = None
                 try:
-                    trigger = await logistics_sentinel.check()
+                    trigger = await asyncio.wait_for(logistics_sentinel.check(), timeout=90)
                     trigger = validate_trigger(trigger)
                     if trigger:
                         if market_open and sentinel_ib and sentinel_ib.isConnected():
                             if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                task.add_done_callback(
+                                    lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
+                                )
                                 GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
                         else:
                             StateManager.queue_deferred_trigger(trigger)
                             logger.info(f"Deferred {trigger.source} trigger for market open")
+                except asyncio.TimeoutError:
+                    logger.error(f"LogisticsSentinel TIMED OUT after 90s")
+                    _health_error = "TIMEOUT after 90s"
+                    SENTINEL_STATS.record_error("LogisticsSentinel", "TIMEOUT")
                 except Exception as e:
                     logger.error(f"LogisticsSentinel check failed: {type(e).__name__}: {e}")
                     _health_error = str(e)
@@ -2940,16 +3116,23 @@ async def run_sentinels(config: dict):
             if (now - last_news) > 7200:
                 _health_error = None
                 try:
-                    trigger = await news_sentinel.check()
+                    trigger = await asyncio.wait_for(news_sentinel.check(), timeout=90)
                     trigger = validate_trigger(trigger)
                     if trigger:
                         if market_open and sentinel_ib and sentinel_ib.isConnected():
                             if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                task.add_done_callback(
+                                    lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
+                                )
                                 GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
                         else:
                             StateManager.queue_deferred_trigger(trigger)
                             logger.info(f"Deferred {trigger.source} trigger for market open")
+                except asyncio.TimeoutError:
+                    logger.error(f"NewsSentinel TIMED OUT after 90s")
+                    _health_error = "TIMEOUT after 90s"
+                    SENTINEL_STATS.record_error("NewsSentinel", "TIMEOUT")
                 except Exception as e:
                     logger.error(f"NewsSentinel check failed: {type(e).__name__}: {e}")
                     _health_error = str(e)
@@ -2983,7 +3166,7 @@ async def run_sentinels(config: dict):
                                 'last_reset': datetime.now().date()
                             }
 
-                        trigger = await x_sentinel.check()
+                        trigger = await asyncio.wait_for(x_sentinel.check(), timeout=120)
                         trigger = validate_trigger(trigger)
                         x_sentinel_stats['checks_today'] += 1
 
@@ -2991,11 +3174,18 @@ async def run_sentinels(config: dict):
                             x_sentinel_stats['triggers_today'] += 1
                             if market_open and sentinel_ib and sentinel_ib.isConnected():
                                 if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                                    asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                    task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                    task.add_done_callback(
+                                        lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
+                                    )
                                     GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
                             else:
                                 StateManager.queue_deferred_trigger(trigger)
                                 logger.info(f"Deferred {trigger.source} trigger for market open")
+                    except asyncio.TimeoutError:
+                        logger.error(f"XSentimentSentinel TIMED OUT after 120s")
+                        _health_error = "TIMEOUT after 120s"
+                        SENTINEL_STATS.record_error("XSentimentSentinel", "TIMEOUT")
                     except Exception as e:
                         logger.error(f"XSentimentSentinel check failed: {type(e).__name__}: {e}")
                         _health_error = str(e)
@@ -3024,16 +3214,23 @@ async def run_sentinels(config: dict):
             if (now - last_prediction_market) > prediction_interval:
                 _health_error = None
                 try:
-                    trigger = await prediction_market_sentinel.check()
+                    trigger = await asyncio.wait_for(prediction_market_sentinel.check(), timeout=120)
                     trigger = validate_trigger(trigger)
                     if trigger:
                         if market_open and sentinel_ib and sentinel_ib.isConnected():
                             if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                task.add_done_callback(
+                                    lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
+                                )
                                 GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 1800)  # 30 min cooldown
                         else:
                             StateManager.queue_deferred_trigger(trigger)
                             logger.info(f"Deferred {trigger.source} trigger for market open")
+                except asyncio.TimeoutError:
+                    logger.error(f"PredictionMarketSentinel TIMED OUT after 120s")
+                    _health_error = "TIMEOUT after 120s"
+                    SENTINEL_STATS.record_error("PredictionMarketSentinel", "TIMEOUT")
                 except Exception as e:
                     logger.error(f"PredictionMarketSentinel check failed: {type(e).__name__}: {e}")
                     _health_error = str(e)
@@ -3050,16 +3247,23 @@ async def run_sentinels(config: dict):
             if (now - last_macro_contagion) > 14400:
                 _health_error = None
                 try:
-                    trigger = await macro_contagion_sentinel.check()
+                    trigger = await asyncio.wait_for(macro_contagion_sentinel.check(), timeout=60)
                     trigger = validate_trigger(trigger)
                     if trigger:
                         if market_open and sentinel_ib and sentinel_ib.isConnected():
                             if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                task.add_done_callback(
+                                    lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
+                                )
                                 GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
                         else:
                             StateManager.queue_deferred_trigger(trigger)
                             logger.info(f"Deferred {trigger.source} trigger for market open")
+                except asyncio.TimeoutError:
+                    logger.error(f"MacroContagionSentinel TIMED OUT after 60s")
+                    _health_error = "TIMEOUT after 60s"
+                    SENTINEL_STATS.record_error("MacroContagionSentinel", "TIMEOUT")
                 except Exception as e:
                     logger.error(f"MacroContagionSentinel check failed: {type(e).__name__}: {e}")
                     _health_error = str(e)
@@ -3099,7 +3303,7 @@ async def run_sentinels(config: dict):
             if micro_sentinel and micro_ib and micro_ib.isConnected():
                 _health_error = None
                 try:
-                    micro_trigger = await micro_sentinel.check()
+                    micro_trigger = await asyncio.wait_for(micro_sentinel.check(), timeout=30)
                     if micro_trigger:
                         from trading_bot.notifications import get_notification_tier, NotificationTier
                         tier = get_notification_tier(micro_trigger.severity)
@@ -3108,7 +3312,10 @@ async def run_sentinels(config: dict):
                             # Severity 9-10: Full emergency cycle (must still pass deduplicator)
                             logger.warning(f"MICROSTRUCTURE CRITICAL: {micro_trigger.reason}")
                             if GLOBAL_DEDUPLICATOR.should_process(micro_trigger):
-                                asyncio.create_task(run_emergency_cycle(micro_trigger, config, sentinel_ib))
+                                task = asyncio.create_task(run_emergency_cycle(micro_trigger, config, sentinel_ib))
+                                task.add_done_callback(
+                                    lambda t, src=micro_trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
+                                )
                                 GLOBAL_DEDUPLICATOR.set_cooldown(micro_trigger.source, 900)
                         elif tier == NotificationTier.PUSHOVER:
                             # Severity 7-8: Log + Pushover but NO emergency cycle
@@ -3130,6 +3337,10 @@ async def run_sentinels(config: dict):
                         else:
                             # Severity 0-4: Debug log only
                             logger.debug(f"MICROSTRUCTURE LOW: {micro_trigger.reason}")
+                except asyncio.TimeoutError:
+                    logger.error(f"MicrostructureSentinel TIMED OUT after 30s")
+                    _health_error = "TIMEOUT after 30s"
+                    SENTINEL_STATS.record_error("MicrostructureSentinel", "TIMEOUT")
                 except Exception as e:
                     logger.error(f"MicrostructureSentinel check failed: {type(e).__name__}: {e}")
                     _health_error = str(e)
@@ -3425,6 +3636,7 @@ schedule = {
     time(14, 5): log_equity_snapshot,
     time(14, 10): reconcile_and_analyze,           # v5.4: Backfill council_history FIRST
     time(14, 20): run_brier_reconciliation,        # v5.4: Score against freshly backfilled data
+    time(14, 25): sentinel_effectiveness_check,    # Meta-monitor
 }
 
 def apply_schedule_offset(original_schedule: dict, offset_minutes: int) -> dict:
@@ -3468,6 +3680,7 @@ RECOVERY_POLICY = {
     'log_equity_snapshot':            {'policy': 'ALWAYS',        'idempotent': False},
     'reconcile_and_analyze':          {'policy': 'ALWAYS',        'idempotent': False},
     'run_brier_reconciliation':       {'policy': 'ALWAYS',        'idempotent': True},
+    'sentinel_effectiveness_check':   {'policy': 'ALWAYS',        'idempotent': True},
 }
 
 # Startup validation: warn if schedule has tasks not covered by RECOVERY_POLICY

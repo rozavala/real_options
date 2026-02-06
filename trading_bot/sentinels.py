@@ -17,6 +17,7 @@ import pytz
 import aiohttp
 import json
 import re
+import functools
 from functools import wraps
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager
@@ -337,6 +338,56 @@ class PriceSentinel(Sentinel):
         except Exception as e:
             logger.error(f"Price Sentinel check failed: {e}")
 
+        # === CUMULATIVE MULTI-DAY CHECK ===
+        cumulative_threshold = self.sentinel_config.get('cumulative_pct_threshold', 5.0)
+        cumulative_days = self.sentinel_config.get('cumulative_lookback_days', 3)
+        cumulative_cooldown = 86400  # 24h cooldown between cumulative triggers
+
+        if not hasattr(self, '_last_cumulative_trigger'):
+            self._last_cumulative_trigger = 0
+
+        now_ts = time.time()
+        if (now_ts - self._last_cumulative_trigger) >= cumulative_cooldown:
+            try:
+                daily_bars = await self.ib.reqHistoricalDataAsync(
+                    contract,
+                    endDateTime='',
+                    durationStr=f'{cumulative_days + 1} D',
+                    barSizeSetting='1 day',
+                    whatToShow='TRADES',
+                    useRTH=True
+                )
+                if daily_bars and len(daily_bars) >= 2:
+                    start_close = daily_bars[0].close
+                    end_close = daily_bars[-1].close
+                    cumulative_pct = ((end_close - start_close) / start_close) * 100
+
+                    if abs(cumulative_pct) >= cumulative_threshold:
+                        direction = "BEARISH" if cumulative_pct < 0 else "BULLISH"
+                        severity = 8 if abs(cumulative_pct) > 8.0 else 6
+                        msg = (
+                            f"Cumulative {cumulative_pct:+.1f}% move over "
+                            f"{len(daily_bars)-1} days ({direction})"
+                        )
+                        logger.warning(f"🚨 PRICE SENTINEL (CUMULATIVE): {msg}")
+                        self._last_cumulative_trigger = now_ts
+                        return SentinelTrigger(
+                            source="PriceSentinel",
+                            reason=msg,
+                            payload={
+                                "contract": contract.localSymbol,
+                                "change_pct": round(cumulative_pct, 2),
+                                "type": "CUMULATIVE",
+                                "days": len(daily_bars) - 1,
+                                "start_price": round(start_close, 2),
+                                "end_price": round(end_close, 2),
+                                "direction": direction,
+                            },
+                            severity=severity
+                        )
+            except Exception as e:
+                logger.debug(f"Cumulative price check failed: {e}")
+
         return None
 
 class WeatherSentinel(Sentinel):
@@ -422,7 +473,9 @@ class WeatherSentinel(Sentinel):
             url = f"{self.api_url}?latitude={region.latitude}&longitude={region.longitude}&{self.params}"
 
             loop = asyncio.get_running_loop()
-            response = await loop.run_in_executor(None, requests.get, url)
+            response = await loop.run_in_executor(
+                None, functools.partial(requests.get, url, timeout=15)
+            )
             data = response.json()
 
             if 'daily' not in data:
