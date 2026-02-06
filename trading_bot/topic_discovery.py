@@ -7,6 +7,7 @@ import aiohttp
 from datetime import datetime, timezone
 from typing import List, Dict, Set, Optional, Any
 from pathlib import Path
+from trading_bot.utils import word_boundary_match
 
 # Try importing Anthropic, handle failure gracefully (though it should be installed)
 try:
@@ -348,35 +349,11 @@ class TopicDiscoveryAgent:
 
         return f"D_{area_prefix}_{source_hash}"
 
-    @staticmethod
-    def _word_boundary_match(keyword: str, text: str) -> bool:
-        """
-        Match keyword using word boundaries to prevent substring false positives.
-
-        Examples:
-            "port" matches "port blockade" but NOT "deport" or "report"
-            "military" matches "military clash" and "the military"
-            "trade war" matches "trade war escalation" (multi-word phrases use simple `in`)
-
-        Commodity-agnostic: Works for any keyword set regardless of commodity.
-        """
-        import re
-        kw_lower = keyword.lower()
-        text_lower = text.lower()
-
-        # Multi-word phrases: use simple substring (phrase boundaries are natural)
-        if ' ' in kw_lower:
-            return kw_lower in text_lower
-
-        # Single words: enforce word boundaries
-        pattern = r'\b' + re.escape(kw_lower) + r'\b'
-        return bool(re.search(pattern, text_lower))
-
     def _score_relevance_keywords(self, title: str, area: Dict) -> int:
         """Score relevance based on keyword matches in title (word-boundary safe)."""
         score = 0
         for kw in area.get('relevance_keywords', []):
-            if self._word_boundary_match(kw, title):
+            if word_boundary_match(kw, title):
                 score += 1
         return score
 
@@ -395,7 +372,7 @@ class TopicDiscoveryAgent:
         all_excludes = area_excludes + global_excludes
 
         for kw in all_excludes:
-            if self._word_boundary_match(kw, title):
+            if word_boundary_match(kw, title):
                 return True
         return False
 

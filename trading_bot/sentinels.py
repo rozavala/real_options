@@ -21,6 +21,7 @@ from functools import wraps
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager
 from trading_bot.rate_limiter import acquire_api_slot
+from trading_bot.utils import word_boundary_match
 from config.commodity_profiles import get_commodity_profile, GrowingRegion
 
 logger = logging.getLogger(__name__)
@@ -1173,28 +1174,6 @@ class PredictionMarketSentinel(Sentinel):
         self._last_slug_check = datetime.now(timezone.utc)
         logger.info(f"PredictionMarketSentinel v2.0 initialized: {len(self.topics)} topics")
 
-    @staticmethod
-    def _word_boundary_match(keyword: str, text: str) -> bool:
-        """Check if keyword matches in text using word-boundary matching.
-
-        Handles both single words and multi-word phrases.
-        Single words use plural-aware regex (appends optional 's').
-        Multi-word phrases use substring match (natural word boundaries).
-
-        Commodity-agnostic: works for any keyword vocabulary.
-        """
-        import re
-        kw_lower = keyword.lower()
-        text_lower = text.lower()
-
-        if ' ' in kw_lower:
-            # Multi-word phrase: substring match (natural boundaries)
-            return kw_lower in text_lower
-        else:
-            # Single word: word-boundary match with optional plural 's'
-            pattern = r'\b' + re.escape(kw_lower) + r's?\b'
-            return bool(re.search(pattern, text_lower))
-
     def _passes_global_exclude_filter(self, title: str) -> bool:
         """
         Reject markets matching global exclude keywords.
@@ -1210,7 +1189,7 @@ class PredictionMarketSentinel(Sentinel):
         global_excludes = self.sentinel_config.get('global_exclude_keywords', [])
 
         for kw in global_excludes:
-            if self._word_boundary_match(kw, title):
+            if word_boundary_match(kw, title):
                 return False
         return True
 
@@ -1231,7 +1210,7 @@ class PredictionMarketSentinel(Sentinel):
                     continue
 
                 has_match = any(
-                    PredictionMarketSentinel._word_boundary_match(kw, title_lower)
+                    word_boundary_match(kw, title_lower)
                     for kw in keywords
                 )
 
@@ -1315,7 +1294,7 @@ class PredictionMarketSentinel(Sentinel):
         query_lower = query.lower()
         for category, keywords in DOMAIN_KEYWORD_WHITELISTS.items():
             for kw in keywords:
-                if PredictionMarketSentinel._word_boundary_match(kw, query_lower):
+                if word_boundary_match(kw, query_lower):
                     return category
         commodity = self.config.get('commodity', {}).get('name', 'coffee').lower()
         return commodity if commodity in DOMAIN_KEYWORD_WHITELISTS else 'coffee'
@@ -1335,7 +1314,7 @@ class PredictionMarketSentinel(Sentinel):
             required_keywords = query_keywords
 
         for kw in required_keywords:
-            if self._word_boundary_match(kw, title):
+            if word_boundary_match(kw, title):
                 return True
 
         return False
@@ -1456,7 +1435,7 @@ class PredictionMarketSentinel(Sentinel):
                             title_lower = candidate['title'].lower()
                             match_count = 0
                             for kw in relevance_keywords:
-                                if self._word_boundary_match(kw, title_lower):
+                                if word_boundary_match(kw, title_lower):
                                     match_count += 1
                             candidate['relevance_score'] = match_count
                         relevant = [c for c in candidates if c.get('relevance_score', 0) >= min_relevance]
@@ -1508,7 +1487,7 @@ class PredictionMarketSentinel(Sentinel):
                 importance = topic.get('importance', 'macro')
                 commodity_impact = topic.get('commodity_impact', topic.get('coffee_impact', 'Potential macro impact'))
                 relevance_keywords = topic.get('relevance_keywords', [])
-                min_relevance = topic.get('min_relevance_score', self.sentinel_config.get('min_relevance_score', 1))
+                min_relevance = topic.get('min_relevance_score', self.sentinel_config.get('min_relevance_score', 2))
 
                 # Try pinned slug first (from discovery), fall back to query search
                 pinned_slug = topic.get('_discovery', {}).get('slug')

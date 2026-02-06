@@ -852,3 +852,24 @@ def round_to_tick(price: float, tick_size: float = COFFEE_OPTIONS_TICK_SIZE, act
         val = math.ceil(price / tick_size) * tick_size
 
     return round(val, 2)
+
+def word_boundary_match(keyword: str, text: str) -> bool:
+    """Check if keyword matches in text using word-boundary matching.
+
+    Handles both single words and multi-word phrases.
+    Single words use plural-aware regex (appends optional 's').
+    Multi-word phrases use substring match (natural word boundaries).
+
+    Commodity-agnostic: works for any keyword vocabulary.
+    """
+    import re
+    kw_lower = keyword.lower()
+    text_lower = text.lower()
+
+    if ' ' in kw_lower:
+        # Multi-word phrase: substring match (natural boundaries)
+        return kw_lower in text_lower
+    else:
+        # Single word: word-boundary match with optional plural 's'
+        pattern = r'\b' + re.escape(kw_lower) + r's?\b'
+        return bool(re.search(pattern, text_lower))
