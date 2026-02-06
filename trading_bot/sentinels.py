@@ -101,6 +101,7 @@ class Sentinel:
 
         # Persistent seen cache
         self._cache_file = Path(self.CACHE_DIR) / f"{self.__class__.__name__}_seen.json"
+        self._seen_timestamps = {}  # link -> first_seen_timestamp
         self._seen_links = self._load_seen_cache()
 
     def _validate_ai_response(self, data: Any, context: str = "") -> Optional[dict]:
@@ -134,7 +135,15 @@ class Sentinel:
                     # Only keep links from last 7 days
                     import time as time_module
                     cutoff = time_module.time() - (7 * 24 * 3600)
-                    return {k for k, v in data.items() if v > cutoff}
+
+                    # Handle legacy list format if encountered
+                    if isinstance(data, list):
+                        now = time_module.time()
+                        self._seen_timestamps = {k: now for k in data}
+                    else:
+                        self._seen_timestamps = {k: v for k, v in data.items() if v > cutoff}
+
+                    return set(self._seen_timestamps.keys())
             except Exception as e:
                 logger.warning(f"Failed to load seen cache: {e}")
         return set()
@@ -144,10 +153,19 @@ class Sentinel:
         try:
             os.makedirs(self.CACHE_DIR, exist_ok=True)
             import time as time_module
-            # Store with timestamps for pruning
-            data = {link: time_module.time() for link in self._seen_links}
+            now = time_module.time()
+
+            # Rebuild dict ensuring only current _seen_links are saved,
+            # preserving timestamps for existing ones.
+            data_to_save = {}
+            for link in self._seen_links:
+                data_to_save[link] = self._seen_timestamps.get(link, now)
+
+            # Sync internal map
+            self._seen_timestamps = data_to_save
+
             with open(self._cache_file, 'w') as f:
-                json.dump(data, f)
+                json.dump(data_to_save, f)
         except Exception as e:
             logger.warning(f"Failed to save seen cache: {e}")
 
@@ -604,10 +622,12 @@ class LogisticsSentinel(Sentinel):
     Scans for supply chain disruptions using RSS + Gemini Flash.
     Frequency: Every 6 Hours (24/7).
     """
+    CIRCUIT_BREAKER_THRESHOLD = 3   # Trip after 3 consecutive failures
+    CIRCUIT_BREAKER_RESET_S = 1800  # Reset after 30 minutes
+
     def __init__(self, config: dict):
         super().__init__(config)
         self.sentinel_config = config.get('sentinels', {}).get('logistics', {})
-        self.urls = self.sentinel_config.get('rss_urls', [])
 
         api_key = config.get('gemini', {}).get('api_key')
         self.client = genai.Client(api_key=api_key)
@@ -617,9 +637,48 @@ class LogisticsSentinel(Sentinel):
         ticker = config.get('commodity', {}).get('ticker', 'KC')
         self.profile = get_commodity_profile(ticker)
 
+        # Commodity-agnostic RSS URL generation
+        self.urls = self._build_rss_urls()
+
+        # Circuit breaker state
+        self._consecutive_failures = 0
+        self._circuit_tripped_until = 0
+
+    def _build_rss_urls(self) -> List[str]:
+        """
+        Generate RSS search URLs from commodity profile.
+        Falls back to config if hubs are empty.
+        """
+        config_urls = self.sentinel_config.get('rss_urls_override', [])
+        if config_urls:
+            return config_urls
+
+        base = "https://news.google.com/rss/search?q="
+        commodity_name = self.profile.name.lower().replace(' ', '+')
+
+        urls = []
+
+        # Monitor specific logistics hubs defined in profile
+        for hub in self.profile.logistics_hubs:
+            hub_name = hub.name.replace(' ', '+')
+            urls.append(f"{base}{hub_name}+logistics+{commodity_name}")
+
+        # General supply chain search
+        urls.append(f"{base}{commodity_name}+supply+chain+bottlenecks")
+        urls.append(f"{base}Red+Sea+Suez+{commodity_name}+shipping+delays")
+
+        if not urls:
+             # Fallback to legacy key
+             return self.sentinel_config.get('rss_urls', [])
+
+        logger.info(f"LogisticsSentinel: Generated {len(urls)} RSS URLs for {self.profile.name}")
+        return urls
+
     @with_retry(max_attempts=3)
     async def _analyze_with_ai(self, prompt: str) -> Optional[str]:
         """AI analysis with retry logic."""
+        await acquire_api_slot('gemini')  # Respect global rate limits
+
         response = await self.client.aio.models.generate_content(
             model=self.model,
             contents=prompt
@@ -627,6 +686,17 @@ class LogisticsSentinel(Sentinel):
         return response.text.strip().upper()
 
     async def check(self) -> Optional[SentinelTrigger]:
+        # Circuit breaker check
+        import time as time_module
+        if time_module.time() < self._circuit_tripped_until:
+            logger.info("LogisticsSentinel: Circuit breaker active, skipping AI analysis")
+            return None
+
+        if self._circuit_tripped_until > 0 and time_module.time() >= self._circuit_tripped_until:
+             self._circuit_tripped_until = 0
+             self._consecutive_failures = 0
+             logger.info("LogisticsSentinel: Circuit breaker reset")
+
         headlines = []
         for url in self.urls:
             new_titles = await self._fetch_rss_safe(url, self._seen_links, max_age_hours=48)
@@ -655,13 +725,22 @@ class LogisticsSentinel(Sentinel):
         answer = await self._analyze_with_ai(prompt)
 
         if answer is None:
-            # AI failed even after retries
-            send_pushover_notification(
-                self.config.get('notifications', {}),
-                "Sentinel Degraded",
-                f"LogisticsSentinel AI analysis failed. Manual monitoring recommended."
-            )
+            self._consecutive_failures += 1
+            if self._consecutive_failures >= self.CIRCUIT_BREAKER_THRESHOLD:
+                self._circuit_tripped_until = time_module.time() + self.CIRCUIT_BREAKER_RESET_S
+                logger.warning(
+                    f"LogisticsSentinel: Circuit breaker TRIPPED after {self._consecutive_failures} "
+                    f"consecutive failures. Cooling down for {self.CIRCUIT_BREAKER_RESET_S}s"
+                )
+                send_pushover_notification(
+                    self.config.get('notifications', {}),
+                    "Sentinel Circuit Breaker",
+                    f"LogisticsSentinel AI circuit breaker tripped. Will retry in 30 min."
+                )
             return None
+
+        # Success
+        self._consecutive_failures = 0
 
         if "YES" in answer:
             msg = "Potential Supply Chain Disruption detected in headlines."
@@ -673,12 +752,14 @@ class LogisticsSentinel(Sentinel):
 class NewsSentinel(Sentinel):
     """
     Monitors broad market sentiment using RSS + Gemini Flash.
-    Frequency: Every 1 Hour (Market Hours).
+    Frequency: Every 2 Hours (24/7).
     """
+    CIRCUIT_BREAKER_THRESHOLD = 3   # Trip after 3 consecutive failures
+    CIRCUIT_BREAKER_RESET_S = 1800  # Reset after 30 minutes
+
     def __init__(self, config: dict):
         super().__init__(config)
         self.sentinel_config = config.get('sentinels', {}).get('news', {})
-        self.urls = self.sentinel_config.get('rss_urls', [])
         self.threshold = self.sentinel_config.get('sentiment_magnitude_threshold', 8)
 
         api_key = config.get('gemini', {}).get('api_key')
@@ -689,9 +770,59 @@ class NewsSentinel(Sentinel):
         ticker = config.get('commodity', {}).get('ticker', 'KC')
         self.profile = get_commodity_profile(ticker)
 
+        # Commodity-agnostic RSS URL generation
+        self.urls = self._build_rss_urls()
+
+        # Circuit breaker state
+        self._consecutive_failures = 0
+        self._circuit_tripped_until = 0
+
+    def _build_rss_urls(self) -> List[str]:
+        """
+        Generate RSS search URLs from commodity profile.
+        Falls back to config if profile keywords are empty.
+        """
+        # Allow config override for custom feeds
+        config_urls = self.sentinel_config.get('rss_urls_override', [])
+        if config_urls:
+            return config_urls
+
+        base = "https://news.google.com/rss/search?q="
+        commodity_name = self.profile.name.lower().replace(' ', '+')
+        keywords = self.profile.news_keywords or [commodity_name]
+
+        urls = []
+
+        # Core market feeds (site-restricted for quality)
+        for source in ['reuters.com', 'bloomberg.com']:
+            primary_kw = keywords[0].replace(' ', '+')
+            urls.append(f"{base}{primary_kw}+markets+site:{source}")
+
+        # Region-specific feeds (top 2 producing regions)
+        sorted_regions = sorted(self.profile.primary_regions, key=lambda r: r.production_share, reverse=True)
+        top_regions = sorted_regions[:2]
+
+        for region in top_regions:
+            region_name = region.name.replace(' ', '+')
+            urls.append(f"{base}{region_name}+{commodity_name}")
+
+        # General sentiment feed
+        primary_kw = keywords[0].replace(' ', '+')
+        urls.append(f"{base}{primary_kw}+futures+market+sentiment")
+
+        if not urls:
+            # Absolute fallback to config
+            urls = self.sentinel_config.get('rss_urls', [])
+            logger.warning("NewsSentinel: No profile keywords, falling back to config RSS URLs")
+
+        logger.info(f"NewsSentinel: Generated {len(urls)} RSS URLs for {self.profile.name}")
+        return urls
+
     @with_retry(max_attempts=3)
     async def _analyze_with_ai(self, prompt: str) -> Optional[dict]:
         """AI analysis with retry logic."""
+        await acquire_api_slot('gemini')  # Respect global rate limits
+
         response = await self.client.aio.models.generate_content(
             model=self.model,
             contents=prompt,
@@ -701,9 +832,29 @@ class NewsSentinel(Sentinel):
         if text.startswith("```json"): text = text[7:]
         if text.startswith("```"): text = text[:-3]
         if text.endswith("```"): text = text[:-3]
-        return json.loads(text)
+
+        parsed = json.loads(text)
+
+        # Unwrap single-element arrays (Gemini sometimes wraps in [...])
+        if isinstance(parsed, list) and len(parsed) == 1 and isinstance(parsed[0], dict):
+            logger.debug("NewsSentinel: Unwrapped single-element list from AI response")
+            parsed = parsed[0]
+
+        return parsed
 
     async def check(self) -> Optional[SentinelTrigger]:
+        # Circuit breaker check
+        import time as time_module
+        if time_module.time() < self._circuit_tripped_until:
+            logger.info("NewsSentinel: Circuit breaker active, skipping AI analysis")
+            return None
+
+        # Reset if circuit was tripped and cooldown expired
+        if self._circuit_tripped_until > 0 and time_module.time() >= self._circuit_tripped_until:
+            self._circuit_tripped_until = 0
+            self._consecutive_failures = 0
+            logger.info("NewsSentinel: Circuit breaker reset")
+
         headlines = []
         for url in self.urls:
             new_titles = await self._fetch_rss_safe(url, self._seen_links, max_age_hours=48)
@@ -713,6 +864,11 @@ class NewsSentinel(Sentinel):
         self._save_seen_cache()
 
         if not headlines:
+            return None
+
+        # === PAYLOAD DEDUPLICATION ===
+        payload_preview = {"headlines": headlines[:3]}
+        if self._is_duplicate_payload(payload_preview):
             return None
 
         commodity_name = self.profile.name
@@ -726,25 +882,43 @@ class NewsSentinel(Sentinel):
             f"Output JSON: {{'score': int, 'summary': string}}"
         )
 
-        data = self._validate_ai_response(
-            await self._analyze_with_ai(prompt),
-            context="headline sentiment"
-        )
+        raw_response = await self._analyze_with_ai(prompt)
+
+        if raw_response is None:
+            self._consecutive_failures += 1
+            if self._consecutive_failures >= self.CIRCUIT_BREAKER_THRESHOLD:
+                self._circuit_tripped_until = time_module.time() + self.CIRCUIT_BREAKER_RESET_S
+                logger.warning(
+                    f"NewsSentinel: Circuit breaker TRIPPED after {self._consecutive_failures} "
+                    f"consecutive failures. Cooling down for {self.CIRCUIT_BREAKER_RESET_S}s"
+                )
+                send_pushover_notification(
+                    self.config.get('notifications', {}),
+                    "Sentinel Circuit Breaker",
+                    f"NewsSentinel AI circuit breaker tripped. Will retry in 30 min."
+                )
+            return None
+
+        # Success — reset counter
+        self._consecutive_failures = 0
+
+        data = self._validate_ai_response(raw_response, context="headline sentiment")
 
         if data is None:
-            # AI failed even after retries
-            send_pushover_notification(
-                self.config.get('notifications', {}),
-                "Sentinel Degraded",
-                f"NewsSentinel AI analysis failed. Manual monitoring recommended."
+            # AI returned something, but wrong format — log only, don't alarm
+            logger.warning(
+                f"NewsSentinel: AI returned unparseable format ({type(raw_response).__name__}). "
+                f"Skipping this cycle."
             )
             return None
 
         score = data.get('score', 0)
         if score >= self.threshold:
+            # Normalize: LLM score 8-10 maps to system severity 6-8
+            severity = min(8, max(6, int(score - 2)))
             msg = f"Extreme Sentiment Detected (Score: {score}/10): {data.get('summary')}"
             logger.warning(f"NEWS SENTINEL DETECTED: {msg}")
-            return SentinelTrigger("NewsSentinel", msg, {"score": score, "summary": data.get('summary')}, severity=int(score))
+            return SentinelTrigger("NewsSentinel", msg, {"score": score, "summary": data.get('summary')}, severity=severity)
 
         return None
 
