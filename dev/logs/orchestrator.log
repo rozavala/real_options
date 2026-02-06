@@ -89,3 +89,13 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-06 13:50:15,321 - OrderManager - INFO - Holding-time gate: Only 2.2h until weekly close (minimum: 6.0h). Skipping order generation.
 2026-02-06 13:50:15,605 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
 2026-02-06 13:50:15,610 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-02-06 15:50:00 UTC. Waiting for 2.00 hours.
+2026-02-06 15:50:00,066 - Orchestrator - INFO - --- Running scheduled task: close_stale_positions ---
+2026-02-06 15:50:00,067 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-06 15:50:00,067 - OrderManager - INFO - --- Weekly Close Triggered: Friday Weekly Close. Closing ALL positions. ---
+2026-02-06 15:50:00,069 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 145...
+2026-02-06 15:50:15,205 - ib_insync.ib - ERROR - completed orders request timed out
+2026-02-06 15:50:15,207 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 145
+2026-02-06 15:50:15,213 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-06 15:50:15,214 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-06 15:50:15,215 - OrderManager - INFO - No open positions found in the IB account. Nothing to close.
+2026-02-06 15:50:15,219 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-06 16:05:00 UTC. Waiting for 0.25 hours.
