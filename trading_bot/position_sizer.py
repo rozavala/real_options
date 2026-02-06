@@ -27,6 +27,10 @@ class DynamicPositionSizer:
                 0.75 = partial alignment
                 0.5 = vote diverges (half size)
         """
+        # Safety check: No trading if account value is non-positive
+        if account_value <= 0:
+            logger.warning(f"Account value is {account_value}. Returning size 0.")
+            return 0
 
         # Base size from confidence
         confidence = signal.get('confidence', 0.5)
