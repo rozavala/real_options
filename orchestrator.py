@@ -3680,7 +3680,7 @@ RECOVERY_POLICY = {
     'log_equity_snapshot':            {'policy': 'ALWAYS',        'idempotent': False},
     'reconcile_and_analyze':          {'policy': 'ALWAYS',        'idempotent': False},
     'run_brier_reconciliation':       {'policy': 'ALWAYS',        'idempotent': True},
-    'sentinel_effectiveness_check':   {'policy': 'ALWAYS',        'idempotent': True},
+    'sentinel_effectiveness_check':   {'policy': 'ALWAYS',        'idempotent': False},
 }
 
 # Startup validation: warn if schedule has tasks not covered by RECOVERY_POLICY
