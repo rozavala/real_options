@@ -39,6 +39,13 @@ def load_config() -> dict | None:
     if os.getenv("IB_CLIENT_ID"):
         config['connection']['clientId'] = int(os.getenv("IB_CLIENT_ID"))
 
+    # Validate Connection Settings
+    if 'connection' in config:
+        if 'port' not in config['connection']:
+            logger.warning("Config validation: 'connection.port' is missing!")
+        if 'clientId' not in config['connection']:
+            logger.warning("Config validation: 'connection.clientId' is missing!")
+
     # 4. OVERRIDE: Flex Query (Secrets)
     if os.getenv("FLEX_TOKEN"):
         config['flex_query']['token'] = os.getenv("FLEX_TOKEN")
@@ -68,6 +75,28 @@ def load_config() -> dict | None:
             config['notifications'] = {}
         config['notifications']['pushover_api_token'] = os.getenv("PUSHOVER_API_TOKEN")
 
+    # Validate Notifications
+    notifications = config.get('notifications', {})
+    if notifications.get('enabled'):
+        user_key = notifications.get('pushover_user_key')
+        api_token = notifications.get('pushover_api_token')
+
+        # Check if values are still the placeholders (meaning env var was missing)
+        # or if they are missing/empty
+
+        missing_creds = []
+        if not user_key or user_key == "LOADED_FROM_ENV":
+            # If overridden by env above, it would have the value.
+            # If not overridden, it stays "LOADED_FROM_ENV" (if config.json has that).
+            # So if it is "LOADED_FROM_ENV", it means env var was missing.
+            missing_creds.append("PUSHOVER_USER_KEY")
+
+        if not api_token or api_token == "LOADED_FROM_ENV":
+            missing_creds.append("PUSHOVER_API_TOKEN")
+
+        if missing_creds:
+            logger.warning(f"Notifications enabled but credentials missing: {', '.join(missing_creds)}")
+
     # 7. OVERRIDE: Data Providers (Secrets)
     if os.getenv("FRED_API_KEY"):
         config['fred_api_key'] = os.getenv("FRED_API_KEY")
@@ -90,6 +119,6 @@ def load_config() -> dict | None:
         
     # Safety Check (Optional but recommended)
     if not config['gemini']['api_key']:
-        print("⚠️ WARNING: GEMINI_API_KEY not found in environment!")
+        logger.warning("WARNING: GEMINI_API_KEY not found in environment!")
 
     return config
