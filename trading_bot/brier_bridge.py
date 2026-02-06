@@ -157,6 +157,9 @@ def get_agent_reliability(agent_name: str, regime: str = "NORMAL", window: int =
     - Brier ~0.5  → 0.1x (poor calibration)
     """
     try:
+        from trading_bot.agent_names import normalize_agent_name
+        agent_name = normalize_agent_name(agent_name)
+
         tracker = _get_enhanced_tracker()
         if tracker is None:
             return 1.0

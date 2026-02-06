@@ -274,6 +274,10 @@ class EnhancedBrierTracker:
             - 1.0 = baseline reliability (Brier ~0.25)
             - 2.0 = very reliable (Brier close to 0)
         """
+        # FIX (P1-C, 2026-02-06): Normalize agent name to prevent lookup misses.
+        from trading_bot.agent_names import normalize_agent_name
+        agent = normalize_agent_name(agent)
+
         scores = self.agent_scores.get(agent, {}).get(regime, [])
 
         if len(scores) < 5:
