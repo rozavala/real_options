@@ -80,6 +80,28 @@ def is_system_shutdown() -> bool:
     """Check if the system has entered end-of-day shutdown."""
     return _SYSTEM_SHUTDOWN
 
+def _record_sentinel_health(name: str, status: str, interval_seconds: int, error: str = None):
+    """
+    Record sentinel operational health to state.json for dashboard consumption.
+
+    Args:
+        name: Sentinel class name (e.g. 'WeatherSentinel')
+        status: 'OK', 'ERROR', 'IDLE', 'INITIALIZING'
+        interval_seconds: Expected check interval for staleness calculation
+        error: Error message if status is 'ERROR'
+    """
+    try:
+        health_data = {
+            'status': status,
+            'last_check_utc': datetime.now(timezone.utc).isoformat(),
+            'interval_seconds': interval_seconds,
+            'error': error,
+        }
+        StateManager.atomic_state_update("sentinel_health", name, health_data)
+    except Exception as e:
+        # Never let health reporting crash the sentinel loop
+        logger.debug(f"Failed to record sentinel health for {name}: {e}")
+
 class TriggerDeduplicator:
     def __init__(self, window_seconds: int = 7200, state_file="data/deduplicator_state.json"):
         self.state_file = state_file
@@ -2665,6 +2687,14 @@ async def run_sentinels(config: dict):
     outage_notification_sent = False
     OUTAGE_THRESHOLD_SECONDS = 600  # 10 minutes
 
+    # Record initial sentinel health state
+    for name in ["WeatherSentinel", "LogisticsSentinel", "NewsSentinel",
+                  "XSentimentSentinel", "PredictionMarketSentinel", "MacroContagionSentinel"]:
+        _record_sentinel_health(name, "INITIALIZING", 0)
+
+    _record_sentinel_health("PriceSentinel", "IDLE", 60)
+    _record_sentinel_health("MicrostructureSentinel", "IDLE", 60)
+
     while True:
         try:
             # v5.4: Shutdown gate — stop all sentinel activity post-shutdown
@@ -2765,6 +2795,8 @@ async def run_sentinels(config: dict):
                     last_successful_ib_time = None
                     outage_notification_sent = False
 
+                    _record_sentinel_health("PriceSentinel", "IDLE", 60)
+
             # === CONTRACT CACHE REFRESH ===
             if sentinel_ib and sentinel_ib.isConnected() and (now - last_contract_refresh > CONTRACT_REFRESH_INTERVAL):
                 try:
@@ -2784,6 +2816,7 @@ async def run_sentinels(config: dict):
                     micro_ib = await IBConnectionPool.get_connection("microstructure", config)
                     configure_market_data_type(micro_ib)
                     micro_sentinel = MicrostructureSentinel(config, micro_ib)
+                    _record_sentinel_health("MicrostructureSentinel", "OK", 60)
 
                     target = cached_contract
                     if not target and sentinel_ib.isConnected():
@@ -2799,6 +2832,7 @@ async def run_sentinels(config: dict):
                 except Exception as e:
                     logger.error(f"Failed to engage MicrostructureSentinel: {e}")
                     micro_sentinel = None
+                    _record_sentinel_health("MicrostructureSentinel", "ERROR", 60, str(e))
 
             elif market_open and micro_sentinel is None and not gateway_available:
                 logger.debug("Skipping Microstructure engagement - Gateway unavailable")
@@ -2813,11 +2847,13 @@ async def run_sentinels(config: dict):
                 micro_sentinel = None
                 await IBConnectionPool.release_connection("microstructure")
                 micro_ib = None
+                _record_sentinel_health("MicrostructureSentinel", "IDLE", 60)
 
             # === RUN SENTINELS ===
 
             # 1. Price Sentinel (Every 1 min) - ONLY if IB connected
             if sentinel_ib and sentinel_ib.isConnected():
+                _health_error = None
                 try:
                     trigger = await price_sentinel.check(cached_contract=cached_contract)
                     trigger = validate_trigger(trigger)
@@ -2838,9 +2874,18 @@ async def run_sentinels(config: dict):
                         GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
                 except Exception as e:
                     logger.error(f"PriceSentinel check failed: {type(e).__name__}: {e}")
+                    _health_error = str(e)
+                finally:
+                    _record_sentinel_health(
+                        "PriceSentinel",
+                        "ERROR" if _health_error else "OK",
+                        60,
+                        _health_error
+                    )
 
             # 2. Weather Sentinel (Every 4 hours) - Runs 24/7, no IB needed
             if (now - last_weather) > 14400:
+                _health_error = None
                 try:
                     trigger = await weather_sentinel.check()
                     trigger = validate_trigger(trigger)
@@ -2855,11 +2900,19 @@ async def run_sentinels(config: dict):
                             logger.info(f"Deferred {trigger.source} trigger for market open")
                 except Exception as e:
                     logger.error(f"WeatherSentinel check failed: {type(e).__name__}: {e}")
+                    _health_error = str(e)
                 finally:
                     last_weather = now
+                    _record_sentinel_health(
+                        "WeatherSentinel",
+                        "ERROR" if _health_error else "OK",
+                        14400,
+                        _health_error
+                    )
 
             # 3. Logistics Sentinel (Every 6 hours) - Runs 24/7, no IB needed
             if (now - last_logistics) > 21600:
+                _health_error = None
                 try:
                     trigger = await logistics_sentinel.check()
                     trigger = validate_trigger(trigger)
@@ -2873,11 +2926,19 @@ async def run_sentinels(config: dict):
                             logger.info(f"Deferred {trigger.source} trigger for market open")
                 except Exception as e:
                     logger.error(f"LogisticsSentinel check failed: {type(e).__name__}: {e}")
+                    _health_error = str(e)
                 finally:
                     last_logistics = now
+                    _record_sentinel_health(
+                        "LogisticsSentinel",
+                        "ERROR" if _health_error else "OK",
+                        21600,
+                        _health_error
+                    )
 
             # 4. News Sentinel (Every 2 hours) - Runs 24/7, no IB needed
             if (now - last_news) > 7200:
+                _health_error = None
                 try:
                     trigger = await news_sentinel.check()
                     trigger = validate_trigger(trigger)
@@ -2891,8 +2952,15 @@ async def run_sentinels(config: dict):
                             logger.info(f"Deferred {trigger.source} trigger for market open")
                 except Exception as e:
                     logger.error(f"NewsSentinel check failed: {type(e).__name__}: {e}")
+                    _health_error = str(e)
                 finally:
                     last_news = now
+                    _record_sentinel_health(
+                        "NewsSentinel",
+                        "ERROR" if _health_error else "OK",
+                        7200,
+                        _health_error
+                    )
 
             # 5. X Sentiment Sentinel (Every 90 min during market-adjacent hours on trading days)
             if trading_day and (now - last_x_sentiment) > 5400:
@@ -2903,6 +2971,7 @@ async def run_sentinels(config: dict):
                 x_end = dt_time(16, 30)
 
                 if x_start <= et_now.time() <= x_end:
+                    _health_error = None
                     try:
                         # Reset daily stats if new day
                         if datetime.now().date() != x_sentinel_stats['last_reset']:
@@ -2929,14 +2998,31 @@ async def run_sentinels(config: dict):
                                 logger.info(f"Deferred {trigger.source} trigger for market open")
                     except Exception as e:
                         logger.error(f"XSentimentSentinel check failed: {type(e).__name__}: {e}")
+                        _health_error = str(e)
                     finally:
                         last_x_sentiment = now
+                        _record_sentinel_health(
+                            "XSentimentSentinel",
+                            "ERROR" if _health_error else "OK",
+                            5400,
+                            _health_error
+                        )
+                else:
+                    # Outside operating window - IDLE
+                    _record_sentinel_health("XSentimentSentinel", "IDLE", 5400)
+                    last_x_sentiment = now
+
+            elif not trading_day and (now - last_x_sentiment) > 5400:
+                # Weekend/Holiday update - IDLE
+                _record_sentinel_health("XSentimentSentinel", "IDLE", 5400)
+                last_x_sentiment = now
 
             # 6. Prediction Market Sentinel (Every 5 minutes) - Runs 24/7, no IB needed
             prediction_config = config.get('sentinels', {}).get('prediction_markets', {})
             prediction_interval = prediction_config.get('poll_interval_seconds', 300)
 
             if (now - last_prediction_market) > prediction_interval:
+                _health_error = None
                 try:
                     trigger = await prediction_market_sentinel.check()
                     trigger = validate_trigger(trigger)
@@ -2950,11 +3036,19 @@ async def run_sentinels(config: dict):
                             logger.info(f"Deferred {trigger.source} trigger for market open")
                 except Exception as e:
                     logger.error(f"PredictionMarketSentinel check failed: {type(e).__name__}: {e}")
+                    _health_error = str(e)
                 finally:
                     last_prediction_market = now
+                    _record_sentinel_health(
+                        "PredictionMarketSentinel",
+                        "ERROR" if _health_error else "OK",
+                        prediction_interval,
+                        _health_error
+                    )
 
             # 7. Macro Contagion Sentinel (Every 4 hours) - Runs 24/7, no IB needed
             if (now - last_macro_contagion) > 14400:
+                _health_error = None
                 try:
                     trigger = await macro_contagion_sentinel.check()
                     trigger = validate_trigger(trigger)
@@ -2968,8 +3062,15 @@ async def run_sentinels(config: dict):
                             logger.info(f"Deferred {trigger.source} trigger for market open")
                 except Exception as e:
                     logger.error(f"MacroContagionSentinel check failed: {type(e).__name__}: {e}")
+                    _health_error = str(e)
                 finally:
                     last_macro_contagion = now
+                    _record_sentinel_health(
+                        "MacroContagionSentinel",
+                        "ERROR" if _health_error else "OK",
+                        14400,
+                        _health_error
+                    )
 
             # 7. Macro Contagion Sentinel (Every 4 hours) - Runs 24/7, no IB needed
             if (now - last_macro_contagion) > 14400:
@@ -3014,6 +3115,7 @@ async def run_sentinels(config: dict):
 
             # 7. Microstructure Sentinel (Every 1 min with Price Sentinel)
             if micro_sentinel and micro_ib and micro_ib.isConnected():
+                _health_error = None
                 try:
                     micro_trigger = await micro_sentinel.check()
                     if micro_trigger:
@@ -3048,6 +3150,14 @@ async def run_sentinels(config: dict):
                             logger.debug(f"MICROSTRUCTURE LOW: {micro_trigger.reason}")
                 except Exception as e:
                     logger.error(f"MicrostructureSentinel check failed: {type(e).__name__}: {e}")
+                    _health_error = str(e)
+                finally:
+                    _record_sentinel_health(
+                        "MicrostructureSentinel",
+                        "ERROR" if _health_error else "OK",
+                        60,
+                        _health_error
+                    )
 
             await asyncio.sleep(60)  # Loop tick
 
