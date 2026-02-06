@@ -3095,7 +3095,7 @@ async def run_sentinels(config: dict):
                 finally:
                     last_topic_discovery = now
 
-            # 7. Microstructure Sentinel (Every 1 min with Price Sentinel)
+            # 9. Microstructure Sentinel (Every 1 min with Price Sentinel)
             if micro_sentinel and micro_ib and micro_ib.isConnected():
                 _health_error = None
                 try:
