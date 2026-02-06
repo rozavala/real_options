@@ -63,9 +63,55 @@ class SentinelStats:
 
         self._save_stats()
 
+    def record_error(self, sentinel_name: str, error_type: str):
+        """
+        Record a sentinel error (timeout, crash, API failure, etc.).
+
+        Called by:
+        - All 8 sentinel timeout handlers in run_sentinels() (Fix 0)
+        - _emergency_cycle_done_callback() crash handler (Fix 8)
+
+        Args:
+            sentinel_name: Name of the sentinel (e.g., 'WeatherSentinel')
+            error_type: Type of error (e.g., 'TIMEOUT', 'CRASH: ValueError')
+        """
+        if sentinel_name not in self.stats['sentinels']:
+            self.stats['sentinels'][sentinel_name] = {
+                'total_alerts': 0,
+                'trades_triggered': 0,
+                'last_alert': None,
+                'daily_counts': {},
+                'errors': {}
+            }
+
+        s = self.stats['sentinels'][sentinel_name]
+
+        # Ensure 'errors' key exists (backward compat with pre-existing stats)
+        if 'errors' not in s:
+            s['errors'] = {}
+
+        today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        s['errors'][today] = s['errors'].get(today, 0) + 1
+
+        self._save_stats()
+
+    def get_all(self) -> dict:
+        """
+        Get raw stats dict for all sentinels.
+
+        Called by sentinel_effectiveness_check() (Fix 7) which reads:
+        - s.get('total_alerts', 0)
+        - s.get('trades_triggered', 0)
+
+        Returns:
+            Dict of {sentinel_name: stats_dict}
+        """
+        return self.stats.get('sentinels', {})
+
     def get_dashboard_stats(self) -> dict:
         """Get stats formatted for dashboard display."""
         result = {}
+        today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
 
         for name, data in self.stats.get('sentinels', {}).items():
             total = data['total_alerts']
@@ -76,9 +122,8 @@ class SentinelStats:
                 'trades_triggered': trades,
                 'conversion_rate': trades / total if total > 0 else 0,
                 'last_alert': data['last_alert'],
-                'alerts_today': data['daily_counts'].get(
-                    datetime.now(timezone.utc).strftime('%Y-%m-%d'), 0
-                )
+                'alerts_today': data['daily_counts'].get(today, 0),
+                'errors_today': data.get('errors', {}).get(today, 0)
             }
 
         return result
