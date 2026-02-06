@@ -2971,6 +2971,24 @@ async def run_sentinels(config: dict):
                 finally:
                     last_macro_contagion = now
 
+            # 7. Macro Contagion Sentinel (Every 4 hours) - Runs 24/7, no IB needed
+            if (now - last_macro_contagion) > 14400:
+                try:
+                    trigger = await macro_contagion_sentinel.check()
+                    trigger = validate_trigger(trigger)
+                    if trigger:
+                        if market_open and sentinel_ib and sentinel_ib.isConnected():
+                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                        else:
+                            StateManager.queue_deferred_trigger(trigger)
+                            logger.info(f"Deferred {trigger.source} trigger for market open")
+                except Exception as e:
+                    logger.error(f"MacroContagionSentinel check failed: {type(e).__name__}: {e}")
+                finally:
+                    last_macro_contagion = now
+
             # 8. Topic Discovery Agent (Every 12 hours) - Runs 24/7, no IB needed
             discovery_config = config.get('sentinels', {}).get('prediction_markets', {}).get('discovery_agent', {})
             discovery_interval = discovery_config.get('scan_interval_hours', 12) * 3600
