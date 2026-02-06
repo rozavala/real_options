@@ -2905,27 +2905,27 @@ async def run_sentinels(config: dict):
                 if x_start <= et_now.time() <= x_end:
                     try:
                         # Reset daily stats if new day
-                    if datetime.now().date() != x_sentinel_stats['last_reset']:
-                        x_sentinel_stats = {
-                            'checks_today': 0,
-                            'triggers_today': 0,
-                            'estimated_tokens': 0,
-                            'estimated_cost_usd': 0.0,
-                            'last_reset': datetime.now().date()
-                        }
+                        if datetime.now().date() != x_sentinel_stats['last_reset']:
+                            x_sentinel_stats = {
+                                'checks_today': 0,
+                                'triggers_today': 0,
+                                'estimated_tokens': 0,
+                                'estimated_cost_usd': 0.0,
+                                'last_reset': datetime.now().date()
+                            }
 
-                    trigger = await x_sentinel.check()
-                    trigger = validate_trigger(trigger)
-                    x_sentinel_stats['checks_today'] += 1
+                        trigger = await x_sentinel.check()
+                        trigger = validate_trigger(trigger)
+                        x_sentinel_stats['checks_today'] += 1
 
-                    if trigger:
-                        x_sentinel_stats['triggers_today'] += 1
-                        if market_open and sentinel_ib and sentinel_ib.isConnected():
-                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                        else:
-                            StateManager.queue_deferred_trigger(trigger)
+                        if trigger:
+                            x_sentinel_stats['triggers_today'] += 1
+                            if market_open and sentinel_ib and sentinel_ib.isConnected():
+                                if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                                    asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                            else:
+                                StateManager.queue_deferred_trigger(trigger)
                                 logger.info(f"Deferred {trigger.source} trigger for market open")
                     except Exception as e:
                         logger.error(f"XSentimentSentinel check failed: {type(e).__name__}: {e}")
@@ -2952,6 +2952,24 @@ async def run_sentinels(config: dict):
                     logger.error(f"PredictionMarketSentinel check failed: {type(e).__name__}: {e}")
                 finally:
                     last_prediction_market = now
+
+            # 7. Macro Contagion Sentinel (Every 4 hours) - Runs 24/7, no IB needed
+            if (now - last_macro_contagion) > 14400:
+                try:
+                    trigger = await macro_contagion_sentinel.check()
+                    trigger = validate_trigger(trigger)
+                    if trigger:
+                        if market_open and sentinel_ib and sentinel_ib.isConnected():
+                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                                asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                        else:
+                            StateManager.queue_deferred_trigger(trigger)
+                            logger.info(f"Deferred {trigger.source} trigger for market open")
+                except Exception as e:
+                    logger.error(f"MacroContagionSentinel check failed: {type(e).__name__}: {e}")
+                finally:
+                    last_macro_contagion = now
 
             # 7. Macro Contagion Sentinel (Every 4 hours) - Runs 24/7, no IB needed
             if (now - last_macro_contagion) > 14400:
