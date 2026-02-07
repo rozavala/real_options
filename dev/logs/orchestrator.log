@@ -1,14 +1,14 @@
 Starting orchestrator from /home/rodrigo/real_options...
-2026-02-07 03:13:55,861 - Orchestrator - INFO - =============================================
-2026-02-07 03:13:55,861 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-07 03:13:55,861 - Orchestrator - INFO - =============================================
-2026-02-07 03:13:55,863 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-07 03:13:55,863 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
-2026-02-07 03:13:55,863 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-07 03:13:55,864 - Orchestrator - INFO - Expiry filter window: 45-180 DTE
-2026-02-07 03:13:55,998 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-07 03:13:55,998 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-07 03:13:55,999 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 15 scheduled tasks already passed:
+2026-02-07 17:50:55,619 - Orchestrator - INFO - =============================================
+2026-02-07 17:50:55,619 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-07 17:50:55,619 - Orchestrator - INFO - =============================================
+2026-02-07 17:50:55,621 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-07 17:50:55,621 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
+2026-02-07 17:50:55,621 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-07 17:50:55,621 - Orchestrator - INFO - Expiry filter window: 45-180 DTE
+2026-02-07 17:50:55,631 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-07 17:50:55,632 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-02-07 17:50:55,632 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 9 scheduled tasks already passed:
   - 03:20 ET: start_monitoring
   - 03:21 ET: process_deferred_triggers
   - 04:50 ET: cleanup_orphaned_theses
@@ -18,210 +18,34 @@ Starting orchestrator from /home/rodrigo/real_options...
   - 11:05 ET: run_position_audit_cycle
   - 12:35 ET: close_stale_positions_fallback
   - 12:50 ET: run_position_audit_cycle
-  - 13:05 ET: emergency_hard_close
-  - 13:35 ET: cancel_and_stop_monitoring
-  - 13:55 ET: log_equity_snapshot
-  - 14:00 ET: reconcile_and_analyze
-  - 14:10 ET: run_brier_reconciliation
-  - 14:15 ET: sentinel_effectiveness_check
-2026-02-07 03:13:56,000 - Orchestrator - INFO - --- Recovery: Evaluating 15 missed tasks ---
-2026-02-07 03:13:56,000 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
-2026-02-07 03:13:56,001 - Orchestrator - INFO - ✅ ALREADY RAN: process_deferred_triggers completed earlier today (before restart). Skipping re-execution.
-2026-02-07 03:13:56,001 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses (was scheduled 04:50 ET)
-2026-02-07 03:13:56,001 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
-2026-02-07 03:13:56,001 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 271...
-2026-02-07 03:13:56,316 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 271
-2026-02-07 03:13:56,343 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-07 03:13:56,458 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-07 03:13:56,616 - Orchestrator - INFO - Thesis cleanup: no orphans found
-2026-02-07 03:13:56,619 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
-2026-02-07 03:13:56,619 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: run_position_audit_cycle — market closed
-2026-02-07 03:13:56,619 - Orchestrator - INFO - ✅ ALREADY RAN: guarded_generate_orders completed earlier today (before restart). Skipping re-execution.
-2026-02-07 03:13:56,619 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions — market closed
-2026-02-07 03:13:56,619 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions_fallback — market closed
-2026-02-07 03:13:56,619 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
-2026-02-07 03:13:56,620 - Orchestrator - INFO - ✅ ALREADY RAN: cancel_and_stop_monitoring completed earlier today (before restart). Skipping re-execution.
-2026-02-07 03:13:56,620 - Orchestrator - INFO - ✅ ALREADY RAN: log_equity_snapshot completed earlier today (before restart). Skipping re-execution.
-2026-02-07 03:13:56,620 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
-2026-02-07 03:13:56,620 - Orchestrator - INFO - 🔄 RECOVERY: Running missed run_brier_reconciliation (was scheduled 14:10 ET)
-2026-02-07 03:13:56,646 - scripts.fix_brier_data - INFO - No pending predictions to resolve
-2026-02-07 03:13:56,647 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
-2026-02-07 03:13:56,648 - Orchestrator - WARNING - Brier stall: 50 pending, 0 resolved today (streak: 1 days)
-2026-02-07 03:13:56,651 - Orchestrator - INFO - ✅ RECOVERY: run_brier_reconciliation completed
-2026-02-07 03:13:56,652 - Orchestrator - INFO - ✅ ALREADY RAN: sentinel_effectiveness_check completed earlier today (before restart). Skipping re-execution.
-2026-02-07 03:13:56,652 - Orchestrator - INFO - System restarted with 13 missed tasks.
-✅ 2 recovered | ⏭️ 5 skipped | ✔️ 6 already ran
-2026-02-07 03:13:56,965 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-07 03:13:56,972 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-09 08:20:00 UTC. Waiting for 53.10 hours.
-2026-02-07 03:13:56,973 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-07 03:13:56,973 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 10 active alerts from disk (normalized from 10)
-2026-02-07 03:13:57,172 - trading_bot.sentinels - INFO - LogisticsSentinel initialized with model: gemini-3-flash-preview | 3 RSS feeds | Commodity: Coffee (Arabica)
-2026-02-07 03:13:57,280 - trading_bot.sentinels - INFO - NewsSentinel initialized with model: gemini-3-flash-preview | 6 RSS feeds | Threshold: 8 | Commodity: Coffee (Arabica)
-2026-02-07 03:13:57,314 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-07 03:13:57,315 - trading_bot.sentinels - INFO - Loaded state for 3 prediction market topics
-2026-02-07 03:13:57,315 - trading_bot.sentinels - INFO - Reloading prediction market topics...
-2026-02-07 03:13:57,316 - trading_bot.sentinels - INFO - Topics reloaded: 3
-2026-02-07 03:13:57,316 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 3 topics
-2026-02-07 03:13:57,419 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-02-07 05:03:16,941 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:03:17,359 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:03:27,660 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:03:33,181 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:03:37,369 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:03:40,655 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:03:51,701 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:04:00,741 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:04:12,546 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:04:28,930 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:04:48,558 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:05:21,075 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:05:57,971 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:06:27,126 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:07:11,044 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:07:43,423 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:08:22,911 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:08:59,033 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:09:44,898 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:10:17,959 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:11:00,587 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:11:33,220 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:12:16,817 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:12:48,971 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:13:26,128 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:14:01,080 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:14:37,307 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:15:10,042 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:15:48,159 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:16:22,834 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:17:04,605 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:17:36,512 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:18:43,462 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:19:06,887 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:19:43,787 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:20:13,497 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:20:54,431 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:21:29,741 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:22:12,721 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:22:50,242 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:23:29,528 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:23:59,847 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:24:36,600 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:25:08,007 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:25:53,150 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:26:26,140 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:27:05,616 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:27:38,634 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:28:14,286 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:28:45,757 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:29:23,475 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:29:54,102 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:30:29,471 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:31:00,915 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:31:41,388 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:32:15,145 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:32:48,944 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:33:26,840 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:34:02,324 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:34:33,445 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:35:12,958 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:35:47,535 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:36:31,568 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:37:01,431 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:37:44,531 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:38:19,929 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:38:53,563 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:39:33,296 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:40:11,595 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:40:44,219 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:41:28,238 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:42:05,260 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:42:49,477 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:43:20,786 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:43:59,658 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:44:29,514 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:45:06,118 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:45:39,793 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:46:22,523 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:46:59,311 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:47:37,161 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:48:08,179 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:48:48,620 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:49:20,115 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:50:02,534 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:50:40,182 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:51:19,557 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:51:55,507 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:52:32,310 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:53:06,560 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:53:43,203 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:54:20,518 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:54:58,188 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:55:37,589 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:56:18,591 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:56:53,040 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:57:32,572 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:58:08,701 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:58:42,718 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:59:16,818 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 05:59:58,471 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:00:36,226 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:01:21,466 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:01:54,744 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:02:39,441 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:03:10,893 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:03:52,187 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:04:30,038 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:05:11,364 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:05:46,733 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:06:26,195 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:06:59,293 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:07:41,340 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:08:20,525 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:08:57,691 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:09:31,490 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:10:05,320 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-02-07 06:10:44,012 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-Starting orchestrator from /home/rodrigo/real_options...
-2026-02-07 06:11:17,175 - Orchestrator - INFO - =============================================
-2026-02-07 06:11:17,175 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-07 06:11:17,176 - Orchestrator - INFO - =============================================
-2026-02-07 06:11:17,181 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-07 06:11:17,183 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
-2026-02-07 06:11:17,184 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-07 06:11:17,185 - Orchestrator - INFO - Expiry filter window: 45-180 DTE
-2026-02-07 06:11:17,209 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-07 06:11:17,210 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-07 06:11:17,214 - Orchestrator - INFO - Weekend detected (Saturday). Next trading day: Monday 2026-02-09
-2026-02-07 06:11:17,214 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-09 08:20:00 UTC. Waiting for 50.15 hours.
-2026-02-07 06:11:17,215 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-07 06:11:17,215 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 10 active alerts from disk (normalized from 10)
-2026-02-07 06:11:17,412 - trading_bot.sentinels - INFO - LogisticsSentinel initialized with model: gemini-3-flash-preview | 3 RSS feeds | Commodity: Coffee (Arabica)
-2026-02-07 06:11:17,538 - trading_bot.sentinels - INFO - NewsSentinel initialized with model: gemini-3-flash-preview | 6 RSS feeds | Threshold: 8 | Commodity: Coffee (Arabica)
-2026-02-07 06:11:17,585 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-07 06:11:17,586 - trading_bot.sentinels - INFO - Loaded state for 3 prediction market topics
-2026-02-07 06:11:17,588 - trading_bot.sentinels - INFO - Reloading prediction market topics...
-2026-02-07 06:11:17,589 - trading_bot.sentinels - INFO - Topics reloaded: 3
-2026-02-07 06:11:17,589 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 3 topics
-2026-02-07 06:11:17,692 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-Starting orchestrator from /home/rodrigo/real_options...
-2026-02-07 06:11:30,060 - Orchestrator - INFO - =============================================
-2026-02-07 06:11:30,060 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-07 06:11:30,060 - Orchestrator - INFO - =============================================
-2026-02-07 06:11:30,061 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-07 06:11:30,062 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
-2026-02-07 06:11:30,062 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-07 06:11:30,062 - Orchestrator - INFO - Expiry filter window: 45-180 DTE
-2026-02-07 06:11:30,074 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-07 06:11:30,074 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-07 06:11:30,075 - Orchestrator - INFO - Weekend detected (Saturday). Next trading day: Monday 2026-02-09
-2026-02-07 06:11:30,075 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-09 08:20:00 UTC. Waiting for 50.14 hours.
-2026-02-07 06:11:30,075 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-07 06:11:30,076 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 10 active alerts from disk (normalized from 10)
-2026-02-07 06:11:30,189 - trading_bot.sentinels - INFO - LogisticsSentinel initialized with model: gemini-3-flash-preview | 3 RSS feeds | Commodity: Coffee (Arabica)
-2026-02-07 06:11:30,280 - trading_bot.sentinels - INFO - NewsSentinel initialized with model: gemini-3-flash-preview | 6 RSS feeds | Threshold: 8 | Commodity: Coffee (Arabica)
-2026-02-07 06:11:30,312 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-07 06:11:30,313 - trading_bot.sentinels - INFO - Loaded state for 3 prediction market topics
-2026-02-07 06:11:30,313 - trading_bot.sentinels - INFO - Reloading prediction market topics...
-2026-02-07 06:11:30,313 - trading_bot.sentinels - INFO - Topics reloaded: 3
-2026-02-07 06:11:30,313 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 3 topics
-2026-02-07 06:11:30,404 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-07 17:50:55,632 - Orchestrator - INFO - --- Recovery: Evaluating 9 missed tasks ---
+2026-02-07 17:50:55,632 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
+2026-02-07 17:50:55,633 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
+2026-02-07 17:50:55,633 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses (was scheduled 04:50 ET)
+2026-02-07 17:50:55,633 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-07 17:50:55,633 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 279...
+2026-02-07 17:51:10,656 - ib_insync.ib - ERROR - completed orders request timed out
+2026-02-07 17:51:10,660 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 279
+2026-02-07 17:51:10,685 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-07 17:51:10,780 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-07 17:51:10,882 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-07 17:51:10,885 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-07 17:51:10,885 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: run_position_audit_cycle — market closed
+2026-02-07 17:51:10,885 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: guarded_generate_orders — market closed
+2026-02-07 17:51:10,885 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions — market closed
+2026-02-07 17:51:10,885 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions_fallback — market closed
+2026-02-07 17:51:10,885 - Orchestrator - INFO - System restarted with 7 missed tasks.
+✅ 1 recovered | ⏭️ 6 skipped | ✔️ 0 already ran
+2026-02-07 17:51:11,191 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-07 17:51:11,194 - Orchestrator - INFO - Weekend detected (Saturday). Next trading day: Monday 2026-02-09
+2026-02-07 17:51:11,194 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-09 08:20:00 UTC. Waiting for 38.48 hours.
+2026-02-07 17:51:11,194 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-07 17:51:11,195 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 10 active alerts from disk (normalized from 10)
+2026-02-07 17:51:11,314 - trading_bot.sentinels - INFO - LogisticsSentinel initialized with model: gemini-3-flash-preview | 3 RSS feeds | Commodity: Coffee (Arabica)
+2026-02-07 17:51:11,477 - trading_bot.sentinels - INFO - NewsSentinel initialized with model: gemini-3-flash-preview | 6 RSS feeds | Threshold: 8 | Commodity: Coffee (Arabica)
+2026-02-07 17:51:11,507 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-02-07 17:51:11,508 - trading_bot.sentinels - INFO - Loaded state for 3 prediction market topics
+2026-02-07 17:51:11,508 - trading_bot.sentinels - INFO - Reloading prediction market topics...
+2026-02-07 17:51:11,508 - trading_bot.sentinels - INFO - Topics reloaded: 3
+2026-02-07 17:51:11,508 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 3 topics
+2026-02-07 17:51:11,596 - trading_bot.self_healing - INFO - Self-Healing Monitor started
