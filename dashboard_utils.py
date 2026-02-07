@@ -183,6 +183,49 @@ def load_equity_data():
         return pd.DataFrame()
 
 
+def tail_file(filepath: str, n_lines: int = 50, block_size: int = 4096) -> list[str]:
+    """
+    Reads the last n_lines of a file efficiently without reading the entire file.
+
+    This function seeks to the end of the file and reads backwards in blocks
+    until it finds enough newlines, making it much faster for large log files
+    than readlines().
+    """
+    if not os.path.exists(filepath):
+        return [f"Error: File {filepath} not found"]
+
+    try:
+        with open(filepath, 'rb') as f:
+            f.seek(0, 2)
+            file_size = f.tell()
+            if file_size == 0:
+                return []
+
+            # Read backwards
+            pos = file_size
+            lines_found = 0
+
+            while pos > 0 and lines_found < n_lines + 1:
+                step = min(block_size, pos)
+                pos -= step
+                f.seek(pos)
+                block = f.read(step)
+                lines_found += block.count(b'\n')
+
+            # seek to the calculated position
+            f.seek(pos)
+            content = f.read()
+
+            # Decode safely (ignore partial multibyte chars at start of block)
+            text = content.decode('utf-8', errors='replace')
+            lines = text.splitlines(keepends=True)
+
+            return lines[-n_lines:]
+
+    except Exception as e:
+        return [f"Error reading file: {e}"]
+
+
 @st.cache_data(ttl=60)
 def load_log_data():
     """Finds all relevant log files and returns last 50 lines of each."""
@@ -197,12 +240,8 @@ def load_log_data():
             if any(char.isdigit() for char in filename):
                 continue
             name = filename.split('.')[0].capitalize()
-            try:
-                with open(log_path, 'r') as f:
-                    lines = f.readlines()
-                logs_content[name] = lines[-50:]
-            except Exception as e:
-                logs_content[name] = [f"Error reading file: {e}"]
+            logs_content[name] = tail_file(log_path, n_lines=50)
+
         return logs_content
     except Exception as e:
         return {}
