@@ -1,6 +1,6 @@
-# Agent Instructions for Mission Control
+# Agent Instructions for Real Options
 
-This document provides instructions and guidelines for AI agents (like Jules) working on the Mission Control trading system.
+This document provides instructions and guidelines for AI agents (like Jules) working on the Real Options trading system.
 
 ## Principles
 

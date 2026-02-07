@@ -1,5 +1,5 @@
 """
-Shared utilities for the Coffee Bot Mission Control dashboard.
+Shared utilities for the Coffee Bot Real Options dashboard.
 Contains data loading, caching, and decision grading logic.
 """
 

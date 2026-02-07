@@ -1,4 +1,4 @@
-# Mission Control — Algorithmic Commodity Futures Trading
+# Real Options — Algorithmic Commodity Futures Trading
 
 An event-driven, multi-agent AI trading system for commodity futures options. Uses a Council of specialized AI analysts with adversarial debate to generate trading decisions, managed by a constitutional compliance framework.
 
@@ -78,7 +78,7 @@ graph TD
 
 ## Dashboard
 
-Streamlit-based Mission Control with pages:
+Streamlit-based Real Options with pages:
 
 1. **🦅 Cockpit** — Live operations, system health, emergency controls
 2. **⚖️ Scorecard** — Decision quality analysis, win rates

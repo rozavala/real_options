@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Coffee Bot Mission Control — Post-Deploy Verification Gate
+# Coffee Bot Real Options — Post-Deploy Verification Gate
 #
 # Runs lightweight checks that MUST pass before the orchestrator starts.
 # If any check fails, returns non-zero → deploy.sh triggers rollback.

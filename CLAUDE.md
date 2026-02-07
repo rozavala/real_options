@@ -1,8 +1,8 @@
-# CLAUDE.md - Mission Control Trading System
+# CLAUDE.md - Real Options Trading System
 
 ## What This Project Is
 
-Mission Control is an event-driven, multi-agent AI trading system for commodity futures options (currently Coffee Arabica / KC on NYBOT). It uses a 4-tier hierarchical decision-making architecture ("Federated Cognitive Lattice") with multiple LLM providers to prevent algorithmic monoculture.
+Real Options is an event-driven, multi-agent AI trading system for commodity futures options (currently Coffee Arabica / KC on NYBOT). It uses a 4-tier hierarchical decision-making architecture ("Federated Cognitive Lattice") with multiple LLM providers to prevent algorithmic monoculture.
 
 **Production system.** This trades real money via Interactive Brokers. Every change must be treated with the care that implies.
 

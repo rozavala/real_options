@@ -1,5 +1,5 @@
 #!/bin/bash
-# === Coffee Bot Mission Control - Log Analysis Utilities ===
+# === Coffee Bot Real Options - Log Analysis Utilities ===
 # This script provides utilities for analyzing collected logs and managing
 # the logs branch effectively.
 
@@ -35,7 +35,7 @@ return_to_original_branch() {
 }
 
 usage() {
-    echo "☕ Coffee Bot Mission Control - Log Analysis Utilities"
+    echo "☕ Coffee Bot Real Options - Log Analysis Utilities"
     echo ""
     echo "Usage: $0 [COMMAND] [OPTIONS]"
     echo ""

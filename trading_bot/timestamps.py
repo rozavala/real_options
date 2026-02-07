@@ -1,5 +1,5 @@
 """
-Centralized timestamp parsing and formatting for Mission Control.
+Centralized timestamp parsing and formatting for Real Options.
 
 WHY THIS EXISTS:
 Our CSV files contain timestamps written by different subsystems over time:
