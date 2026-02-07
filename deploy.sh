@@ -51,14 +51,31 @@ rollback_and_restart() {
         touch logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log 2>/dev/null || true
         chmod 664 logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log 2>/dev/null || true
 
-        # Restart with old code
-        if [ -f "scripts/start_orchestrator.sh" ]; then
-            chmod +x scripts/start_orchestrator.sh
-            nohup ./scripts/start_orchestrator.sh >> logs/orchestrator.log 2>&1 &
+        # Kill any orphaned processes before restarting
+        pkill -9 -f "orchestrator.py" 2>/dev/null || true
+        pkill -f "streamlit run dashboard.py" 2>/dev/null || true
+        sleep 2
+
+        # Restart orchestrator via systemd (keeps it visible to future deploys)
+        sudo systemctl daemon-reload
+        sudo systemctl start "$SERVICE_NAME"
+        sleep 3
+
+        # Verify systemd started it
+        if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
+            ORCH_PID=$(pgrep -f "orchestrator.py")
+            echo "  ✅ Rollback: $SERVICE_NAME restarted via systemd (PID: ${ORCH_PID:-unknown})"
         else
-            nohup python -u orchestrator.py >> logs/orchestrator.log 2>&1 &
+            echo "  ⚠️  Rollback: systemd start failed, falling back to nohup"
+            if [ -f "scripts/start_orchestrator.sh" ]; then
+                chmod +x scripts/start_orchestrator.sh
+                nohup ./scripts/start_orchestrator.sh >> logs/orchestrator.log 2>&1 &
+            else
+                nohup python -u orchestrator.py >> logs/orchestrator.log 2>&1 &
+            fi
         fi
 
+        # Restart dashboard (not managed by systemd — manual start is correct here)
         nohup streamlit run dashboard.py --server.address 0.0.0.0 > logs/dashboard.log 2>&1 &
 
         echo "--- Rollback complete. Old version restarted. ---"
@@ -232,7 +249,7 @@ FINAL_COUNT=$(pgrep -f "orchestrator.py" | wc -l)
 if [ "$FINAL_COUNT" -ne 1 ]; then
     echo "  ❌ ERROR: Process count changed! Expected 1, got $FINAL_COUNT"
     ps aux | grep orchestrator.py | grep -v grep
-    sudo systemctl stop coffee-bot
+    sudo systemctl stop "$SERVICE_NAME"
     rollback_and_restart
 fi
 
