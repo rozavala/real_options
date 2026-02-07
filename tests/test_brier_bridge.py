@@ -61,7 +61,7 @@ class TestGetAgentReliability(unittest.TestCase):
 
         # Setup: HIGH_VOLATILITY returns 1.0 (no data), NORMAL returns 1.5
         def side_effect(agent, regime):
-            if regime == "HIGH_VOLATILITY":
+            if regime == "HIGH_VOL":
                 return 1.0
             if regime == "NORMAL":
                 return 1.5
@@ -77,7 +77,7 @@ class TestGetAgentReliability(unittest.TestCase):
 
         # Verify both calls were made
         expected_calls = [
-            unittest.mock.call('agronomist', 'HIGH_VOLATILITY'),
+            unittest.mock.call('agronomist', 'HIGH_VOL'),
             unittest.mock.call('agronomist', 'NORMAL')
         ]
         mock_tracker.get_agent_reliability.assert_has_calls(expected_calls)
