@@ -315,6 +315,74 @@ class EnhancedBrierTracker:
         logger.warning(f"No matching prediction found for {agent} (cycle={cycle_id})")
         return None
 
+    def backfill_from_resolved_csv(self, structured_csv_path: str = "data/agent_accuracy_structured.csv") -> int:
+        """
+        Catch-up mechanism: resolve Enhanced Brier predictions that were
+        resolved in the legacy CSV but missed in the JSON.
+
+        This handles the pipeline gap where fix_brier_data.py resolves the CSV
+        without calling resolve_agent_prediction().
+
+        Returns:
+            Number of predictions backfilled
+        """
+        import pandas as pd
+        from trading_bot.cycle_id import is_valid_cycle_id
+
+        if not os.path.exists(structured_csv_path):
+            return 0
+
+        try:
+            csv_df = pd.read_csv(structured_csv_path)
+        except Exception as e:
+            logger.error(f"Backfill: Failed to read CSV: {e}")
+            return 0
+
+        # Build lookup of resolved CSV predictions: cycle_id+agent → actual_direction
+        csv_resolved = {}
+        for _, row in csv_df.iterrows():
+            actual = str(row.get('actual', 'PENDING'))
+            if actual in ('PENDING', 'ORPHANED', ''):
+                continue
+            cycle_id = str(row.get('cycle_id', '')).strip()
+            agent = str(row.get('agent', '')).strip()
+            if cycle_id and agent:
+                csv_resolved[(cycle_id, agent)] = actual
+
+        if not csv_resolved:
+            return 0
+
+        # Find unresolved Enhanced Brier predictions that have CSV resolutions
+        backfilled = 0
+        for pred in self.predictions:
+            if pred.actual_outcome is not None:
+                continue  # Already resolved
+
+            key = (pred.cycle_id, pred.agent)
+            if key in csv_resolved:
+                actual = csv_resolved[key]
+                pred.actual_outcome = actual
+                pred.resolved_at = datetime.now(timezone.utc)
+
+                brier = pred.calc_brier_score()
+                if brier is not None:
+                    self._update_agent_score(pred.agent, pred.regime.value, brier)
+                    self._update_calibration(pred)
+
+                backfilled += 1
+                brier_str = f"{brier:.4f}" if brier is not None else "N/A"
+                logger.info(
+                    f"Backfilled {pred.agent} (cycle={pred.cycle_id}): "
+                    f"{pred.predicted_direction} vs {actual}, "
+                    f"Brier={brier_str}"
+                )
+
+        if backfilled > 0:
+            self._save()
+            logger.info(f"Enhanced Brier backfill complete: {backfilled} predictions resolved")
+
+        return backfilled
+
     def get_agent_reliability(self, agent: str, regime: str = "NORMAL") -> float:
         """
         Get reliability multiplier for an agent in a specific regime.

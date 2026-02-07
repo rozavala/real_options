@@ -8,6 +8,7 @@ from trading_bot.brier_bridge import (
     resolve_agent_prediction,
     get_agent_reliability,
     _confidence_to_probs,
+    backfill_enhanced_from_csv,
 )
 
 
@@ -105,6 +106,19 @@ class TestRecordAgentPrediction(unittest.TestCase):
 
         # Verify enhanced was called
         mock_enhanced_tracker.record_prediction.assert_called_once()
+
+
+class TestBackfill(unittest.TestCase):
+    @patch('trading_bot.brier_bridge._get_enhanced_tracker')
+    def test_backfill_calls_tracker(self, mock_get_tracker):
+        mock_tracker = MagicMock()
+        mock_get_tracker.return_value = mock_tracker
+        mock_tracker.backfill_from_resolved_csv.return_value = 5
+
+        result = backfill_enhanced_from_csv()
+
+        self.assertEqual(result, 5)
+        mock_tracker.backfill_from_resolved_csv.assert_called_once()
 
 
 if __name__ == '__main__':
