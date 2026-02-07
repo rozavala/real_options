@@ -25,6 +25,7 @@ DIRTY=$(git status --porcelain 2>/dev/null | wc -l)
 # --- Guard: uncommitted changes ---
 if [ "$DIRTY" -gt 0 ]; then
     echo "  ⚠️  Worktree has $DIRTY uncommitted change(s) on '$BRANCH' — skipping sync"
+    cd "$WORKTREE_DIR" && git status --short 2>/dev/null | sed 's/^/       /'
     echo "     Run manually when ready: cd $WORKTREE_DIR && git stash && git rebase origin/$MAIN_BRANCH && git stash pop"
     exit 0
 fi
