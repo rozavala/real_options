@@ -280,6 +280,9 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
         # Get profile-driven dollar multiplier
         dollar_mult = get_dollar_multiplier(config)
 
+        # Fallback multiplier for undefined profit potential (e.g., single legs)
+        FALLBACK_PROFIT_MULTIPLIER = 2.0
+
         if total_entry_cost > 0:
             # DEBIT SPREAD (Bull Call / Bear Put)
             # Max Risk = What we paid (Entry Cost)
@@ -287,8 +290,9 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
             # Max Profit = (Width * Size * Multiplier) - Cost.
             # MECE FIX: Use profile-driven multiplier
             max_profit_potential = (spread_width * abs(combo_legs[0].position) * dollar_mult) - total_entry_cost
-            # Fallback if huge multiplier makes this weird:
-            if max_profit_potential < 0: max_profit_potential = total_entry_cost * 2 # Fallback logic
+            # Fallback if huge multiplier makes this weird OR single leg (width=0):
+            if max_profit_potential <= 0:
+                max_profit_potential = total_entry_cost * FALLBACK_PROFIT_MULTIPLIER # Fallback logic
 
         else:
             # CREDIT SPREAD (Iron Condor / Short Vertical)
@@ -297,14 +301,23 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
             # Max Loss = Width - Credit
             max_loss_potential = (spread_width * abs(combo_legs[0].position) * dollar_mult) - max_profit_potential
 
+            # FIX: Handle single-leg credit positions (width=0) resulting in negative max_loss
+            if max_loss_potential <= 0:
+                # Infinite risk scenario (naked short)
+                max_loss_potential = float('inf')
+
         # C. Calculate "Capture" and "Risk" Metrics
         capture_pct = 0.0
         risk_pct = 0.0
 
         if max_profit_potential > 0:
             capture_pct = total_unrealized_pnl / max_profit_potential
+        else:
+            capture_pct = 0.0 # Safety default
 
-        if max_loss_potential > 0:
+        if max_loss_potential == float('inf'):
+             risk_pct = 0.0 # Cannot calculate % of infinity
+        elif max_loss_potential > 0:
             risk_pct = total_unrealized_pnl / max_loss_potential
             # Note: total_unrealized_pnl is negative when losing, so risk_pct will be negative.
 
