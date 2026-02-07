@@ -2784,6 +2784,60 @@ def _emergency_cycle_done_callback(task: asyncio.Task, trigger_source: str, conf
             pass  # Don't let notification failure cascade
 
 
+async def _run_periodic_sentinel(
+    sentinel_instance,
+    last_run_time: float,
+    interval: int,
+    timeout: int,
+    config: dict,
+    sentinel_ib,
+    market_open: bool,
+    cooldown_seconds: int = 900
+) -> float:
+    """
+    Helper to run a periodic sentinel check.
+    Returns the updated last_run_time (current timestamp if ran, else original).
+    """
+    import time as time_module
+    now = time_module.time()
+
+    if (now - last_run_time) <= interval:
+        return last_run_time
+
+    _health_error = None
+    sentinel_name = sentinel_instance.__class__.__name__
+
+    try:
+        trigger = await asyncio.wait_for(sentinel_instance.check(), timeout=timeout)
+        trigger = validate_trigger(trigger)
+        if trigger:
+            if market_open and sentinel_ib and sentinel_ib.isConnected():
+                if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                    task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                    task.add_done_callback(
+                        lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
+                    )
+                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, cooldown_seconds)
+            else:
+                StateManager.queue_deferred_trigger(trigger)
+                logger.info(f"Deferred {trigger.source} trigger for market open")
+    except asyncio.TimeoutError:
+        logger.error(f"{sentinel_name} TIMED OUT after {timeout}s")
+        _health_error = f"TIMEOUT after {timeout}s"
+        SENTINEL_STATS.record_error(sentinel_name, "TIMEOUT")
+    except Exception as e:
+        logger.error(f"{sentinel_name} check failed: {type(e).__name__}: {e}")
+        _health_error = str(e)
+    finally:
+        _record_sentinel_health(
+            sentinel_name,
+            "ERROR" if _health_error else "OK",
+            interval,
+            _health_error
+        )
+        return now
+
+
 async def run_sentinels(config: dict):
     """
     Main loop for Sentinels. Runs concurrently with the scheduler.
@@ -3046,104 +3100,19 @@ async def run_sentinels(config: dict):
                     )
 
             # 2. Weather Sentinel (Every 4 hours) - Runs 24/7, no IB needed
-            if (now - last_weather) > 14400:
-                _health_error = None
-                try:
-                    trigger = await asyncio.wait_for(weather_sentinel.check(), timeout=60)
-                    trigger = validate_trigger(trigger)
-                    if trigger:
-                        if market_open and sentinel_ib and sentinel_ib.isConnected():
-                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                                task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                                task.add_done_callback(
-                                    lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
-                                )
-                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                        else:
-                            # Defer for market open
-                            StateManager.queue_deferred_trigger(trigger)
-                            logger.info(f"Deferred {trigger.source} trigger for market open")
-                except asyncio.TimeoutError:
-                    logger.error(f"WeatherSentinel TIMED OUT after 60s")
-                    _health_error = "TIMEOUT after 60s"
-                    SENTINEL_STATS.record_error("WeatherSentinel", "TIMEOUT")
-                except Exception as e:
-                    logger.error(f"WeatherSentinel check failed: {type(e).__name__}: {e}")
-                    _health_error = str(e)
-                finally:
-                    last_weather = now
-                    _record_sentinel_health(
-                        "WeatherSentinel",
-                        "ERROR" if _health_error else "OK",
-                        14400,
-                        _health_error
-                    )
+            last_weather = await _run_periodic_sentinel(
+                weather_sentinel, last_weather, 14400, 60, config, sentinel_ib, market_open
+            )
 
             # 3. Logistics Sentinel (Every 6 hours) - Runs 24/7, no IB needed
-            if (now - last_logistics) > 21600:
-                _health_error = None
-                try:
-                    trigger = await asyncio.wait_for(logistics_sentinel.check(), timeout=90)
-                    trigger = validate_trigger(trigger)
-                    if trigger:
-                        if market_open and sentinel_ib and sentinel_ib.isConnected():
-                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                                task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                                task.add_done_callback(
-                                    lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
-                                )
-                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                        else:
-                            StateManager.queue_deferred_trigger(trigger)
-                            logger.info(f"Deferred {trigger.source} trigger for market open")
-                except asyncio.TimeoutError:
-                    logger.error(f"LogisticsSentinel TIMED OUT after 90s")
-                    _health_error = "TIMEOUT after 90s"
-                    SENTINEL_STATS.record_error("LogisticsSentinel", "TIMEOUT")
-                except Exception as e:
-                    logger.error(f"LogisticsSentinel check failed: {type(e).__name__}: {e}")
-                    _health_error = str(e)
-                finally:
-                    last_logistics = now
-                    _record_sentinel_health(
-                        "LogisticsSentinel",
-                        "ERROR" if _health_error else "OK",
-                        21600,
-                        _health_error
-                    )
+            last_logistics = await _run_periodic_sentinel(
+                logistics_sentinel, last_logistics, 21600, 90, config, sentinel_ib, market_open
+            )
 
             # 4. News Sentinel (Every 2 hours) - Runs 24/7, no IB needed
-            if (now - last_news) > 7200:
-                _health_error = None
-                try:
-                    trigger = await asyncio.wait_for(news_sentinel.check(), timeout=90)
-                    trigger = validate_trigger(trigger)
-                    if trigger:
-                        if market_open and sentinel_ib and sentinel_ib.isConnected():
-                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                                task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                                task.add_done_callback(
-                                    lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
-                                )
-                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                        else:
-                            StateManager.queue_deferred_trigger(trigger)
-                            logger.info(f"Deferred {trigger.source} trigger for market open")
-                except asyncio.TimeoutError:
-                    logger.error(f"NewsSentinel TIMED OUT after 90s")
-                    _health_error = "TIMEOUT after 90s"
-                    SENTINEL_STATS.record_error("NewsSentinel", "TIMEOUT")
-                except Exception as e:
-                    logger.error(f"NewsSentinel check failed: {type(e).__name__}: {e}")
-                    _health_error = str(e)
-                finally:
-                    last_news = now
-                    _record_sentinel_health(
-                        "NewsSentinel",
-                        "ERROR" if _health_error else "OK",
-                        7200,
-                        _health_error
-                    )
+            last_news = await _run_periodic_sentinel(
+                news_sentinel, last_news, 7200, 90, config, sentinel_ib, market_open
+            )
 
             # 5. X Sentiment Sentinel (Every 90 min during market-adjacent hours on trading days)
             if trading_day and (now - last_x_sentiment) > 5400:
@@ -3211,70 +3180,14 @@ async def run_sentinels(config: dict):
             prediction_config = config.get('sentinels', {}).get('prediction_markets', {})
             prediction_interval = prediction_config.get('poll_interval_seconds', 300)
 
-            if (now - last_prediction_market) > prediction_interval:
-                _health_error = None
-                try:
-                    trigger = await asyncio.wait_for(prediction_market_sentinel.check(), timeout=120)
-                    trigger = validate_trigger(trigger)
-                    if trigger:
-                        if market_open and sentinel_ib and sentinel_ib.isConnected():
-                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                                task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                                task.add_done_callback(
-                                    lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
-                                )
-                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 1800)  # 30 min cooldown
-                        else:
-                            StateManager.queue_deferred_trigger(trigger)
-                            logger.info(f"Deferred {trigger.source} trigger for market open")
-                except asyncio.TimeoutError:
-                    logger.error(f"PredictionMarketSentinel TIMED OUT after 120s")
-                    _health_error = "TIMEOUT after 120s"
-                    SENTINEL_STATS.record_error("PredictionMarketSentinel", "TIMEOUT")
-                except Exception as e:
-                    logger.error(f"PredictionMarketSentinel check failed: {type(e).__name__}: {e}")
-                    _health_error = str(e)
-                finally:
-                    last_prediction_market = now
-                    _record_sentinel_health(
-                        "PredictionMarketSentinel",
-                        "ERROR" if _health_error else "OK",
-                        prediction_interval,
-                        _health_error
-                    )
+            last_prediction_market = await _run_periodic_sentinel(
+                prediction_market_sentinel, last_prediction_market, prediction_interval, 120, config, sentinel_ib, market_open, cooldown_seconds=1800
+            )
 
             # 7. Macro Contagion Sentinel (Every 4 hours) - Runs 24/7, no IB needed
-            if (now - last_macro_contagion) > 14400:
-                _health_error = None
-                try:
-                    trigger = await asyncio.wait_for(macro_contagion_sentinel.check(), timeout=60)
-                    trigger = validate_trigger(trigger)
-                    if trigger:
-                        if market_open and sentinel_ib and sentinel_ib.isConnected():
-                            if GLOBAL_DEDUPLICATOR.should_process(trigger):
-                                task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                                task.add_done_callback(
-                                    lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
-                                )
-                                GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
-                        else:
-                            StateManager.queue_deferred_trigger(trigger)
-                            logger.info(f"Deferred {trigger.source} trigger for market open")
-                except asyncio.TimeoutError:
-                    logger.error(f"MacroContagionSentinel TIMED OUT after 60s")
-                    _health_error = "TIMEOUT after 60s"
-                    SENTINEL_STATS.record_error("MacroContagionSentinel", "TIMEOUT")
-                except Exception as e:
-                    logger.error(f"MacroContagionSentinel check failed: {type(e).__name__}: {e}")
-                    _health_error = str(e)
-                finally:
-                    last_macro_contagion = now
-                    _record_sentinel_health(
-                        "MacroContagionSentinel",
-                        "ERROR" if _health_error else "OK",
-                        14400,
-                        _health_error
-                    )
+            last_macro_contagion = await _run_periodic_sentinel(
+                macro_contagion_sentinel, last_macro_contagion, 14400, 60, config, sentinel_ib, market_open
+            )
 
             # 8. Topic Discovery Agent (Every 12 hours) - Runs 24/7, no IB needed
             discovery_config = config.get('sentinels', {}).get('prediction_markets', {}).get('discovery_agent', {})
