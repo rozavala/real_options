@@ -314,6 +314,61 @@ def load_task_schedule_status() -> dict:
     except Exception:
         return result
 
+    # === WEEKEND / HOLIDAY AWARENESS ===
+    # The orchestrator writes the full weekday schedule to active_schedule.json
+    # regardless of day. On non-trading days, all tasks should show as 'inactive'
+    # rather than 'overdue' — matching the orchestrator's own weekend skip logic.
+    ny_tz_check = pytz.timezone('America/New_York')
+    now_ny_check = datetime.now(timezone.utc).astimezone(ny_tz_check)
+    _is_trading_day = now_ny_check.weekday() < 5  # Mon-Fri
+
+    if _is_trading_day:
+        # Also check US holidays (consistent with trading_bot/utils.py is_trading_day)
+        try:
+            import holidays as holidays_lib
+            us_holidays = holidays_lib.US(years=now_ny_check.year, observed=True)
+            if now_ny_check.date() in us_holidays:
+                _is_trading_day = False
+        except ImportError:
+            pass  # holidays lib not available — weekday check is sufficient
+
+    if not _is_trading_day:
+        # Non-trading day: return all tasks as 'inactive' with metadata
+        inactive_tasks = []
+        for task_entry in schedule_data.get('tasks', []):
+            time_str = task_entry['time_et']
+            name = task_entry['name']
+            label = TASK_LABELS.get(name, name)
+            inactive_tasks.append({
+                'time_et': time_str,
+                'name': name,
+                'label': label,
+                'status': 'inactive',
+                'completed_at': None,
+            })
+
+        # Calculate next trading day for display
+        next_trading = now_ny_check + timedelta(days=1)
+        while next_trading.weekday() >= 5:
+            next_trading += timedelta(days=1)
+        # Note: doesn't check holidays for next day — acceptable simplification
+
+        return {
+            'tasks': inactive_tasks,
+            'summary': {
+                'total': len(inactive_tasks),
+                'completed': 0,
+                'upcoming': 0,
+                'overdue': 0,
+                'skipped': 0,
+                'inactive': len(inactive_tasks),
+            },
+            'schedule_env': schedule_data.get('env', 'Unknown'),
+            'available': True,
+            'is_trading_day': False,
+            'next_trading_day': next_trading.strftime('%A, %b %d'),
+        }
+
     # Load completions
     completions = {}
     try:
@@ -392,6 +447,7 @@ def load_task_schedule_status() -> dict:
     }
     result['schedule_env'] = schedule_data.get('env', 'Unknown')
     result['available'] = True
+    result['is_trading_day'] = True
 
     return result
 
