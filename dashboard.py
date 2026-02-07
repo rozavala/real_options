@@ -1,5 +1,5 @@
 """
-Coffee Bot Mission Control - Main Entry Point
+Coffee Bot Real Options - Main Entry Point
 
 This file serves as the entry point and redirects to the multi-page app.
 Streamlit's native multi-page support handles routing via the pages/ directory.
@@ -19,7 +19,7 @@ _commodity_emoji = {'Coffee': '☕', 'Cocoa': '🍫', 'Sugar': '🍬'}.get(_comm
 
 st.set_page_config(
     layout="wide",
-    page_title=f"{_commodity_name} Mission Control",
+    page_title=f"{_commodity_name} Real Options",
     page_icon=_commodity_emoji,
     initial_sidebar_state="expanded"
 )
@@ -27,7 +27,7 @@ st.set_page_config(
 # The presence of files in pages/ directory enables multi-page mode automatically.
 # This file becomes the "home" page or can redirect.
 
-st.title(f"{_commodity_emoji} {_commodity_name} Mission Control")
+st.title(f"{_commodity_emoji} {_commodity_name} Real Options")
 st.markdown("---")
 
 st.markdown("### Navigation")

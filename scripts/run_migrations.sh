@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Coffee Bot Mission Control — Idempotent Migration Runner
+# Coffee Bot Real Options — Idempotent Migration Runner
 #
 # Discovers and runs pending migrations from scripts/migrations/ in order.
 # Tracks completion in data/.migrations_applied to skip already-run scripts.

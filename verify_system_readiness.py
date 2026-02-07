@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-☕ COFFEE BOT MISSION CONTROL: COMPREHENSIVE PRE-FLIGHT CHECK
+☕ COFFEE BOT REAL OPTIONS: COMPREHENSIVE PRE-FLIGHT CHECK
 ==============================================================
 
 This script performs a complete diagnostic of the trading system to validate

@@ -2788,7 +2788,7 @@ async def run_sentinels(config: dict):
     """
     Main loop for Sentinels. Runs concurrently with the scheduler.
 
-    ARCHITECTURE (per Mission Control):
+    ARCHITECTURE (per Real Options):
     - Weather/News/Logistics/X sentinels run 24/7 (no IB needed)
     - Price/Microstructure sentinels only run during market hours (IB needed)
     - IB connection is LAZY: only established when market is actually open

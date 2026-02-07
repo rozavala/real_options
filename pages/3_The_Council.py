@@ -16,7 +16,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import load_council_history, get_status_color
 
-st.set_page_config(layout="wide", page_title="Council | Mission Control")
+st.set_page_config(layout="wide", page_title="Council | Real Options")
 
 st.title("🧠 The Council Chamber")
 st.caption("Agent Explainability - Understand the reasoning behind every trade decision")

@@ -394,7 +394,7 @@ def render_prediction_markets():
     except Exception as e:
         st.error(f"Error loading prediction market data: {e}")
 
-st.set_page_config(layout="wide", page_title="Cockpit | Mission Control")
+st.set_page_config(layout="wide", page_title="Cockpit | Real Options")
 
 st.title("🦅 The Cockpit")
 st.caption("Situational Awareness - System health, capital safety, and emergency controls")

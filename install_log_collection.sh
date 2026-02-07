@@ -1,10 +1,10 @@
 #!/bin/bash
-# === Coffee Bot Mission Control - Log Collection System Installer ===
+# === Coffee Bot Real Options - Log Collection System Installer ===
 # This script automates the setup of the repository-based log collection system
 
 set -e  # Exit on any error
 
-echo "☕ Coffee Bot Mission Control - Log Collection System Installer"
+echo "☕ Coffee Bot Real Options - Log Collection System Installer"
 echo "================================================================"
 
 # Check if we're in the right directory
@@ -26,7 +26,7 @@ mkdir -p scripts
 echo "📝 Creating collect_logs.sh..."
 cat > scripts/collect_logs.sh << 'EOF'
 #!/bin/bash
-# === Coffee Bot Mission Control - Log Collection (Environment Configurable) ===
+# === Coffee Bot Real Options - Log Collection (Environment Configurable) ===
 # This script collects logs and output files for the specified environment
 
 # Load environment variables from .env if present
@@ -309,7 +309,7 @@ EOF
 echo "📝 Creating log_analysis.sh..."
 cat > scripts/log_analysis.sh << 'EOF'
 #!/bin/bash
-# === Coffee Bot Mission Control - Log Analysis Utilities ===
+# === Coffee Bot Real Options - Log Analysis Utilities ===
 # This script provides utilities for analyzing collected logs
 
 # Load environment variables from .env if present
@@ -328,7 +328,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 usage() {
-    echo "☕ Coffee Bot Mission Control - Log Analysis Utilities"
+    echo "☕ Coffee Bot Real Options - Log Analysis Utilities"
     echo ""
     echo "Usage: $0 [COMMAND] [OPTIONS]"
     echo ""
@@ -394,7 +394,7 @@ EOF
 echo "📝 Creating setup_logs_infrastructure.sh..."
 cat > scripts/setup_logs_infrastructure.sh << 'EOF'
 #!/bin/bash
-# === Coffee Bot Mission Control - Logs Branch Setup ===
+# === Coffee Bot Real Options - Logs Branch Setup ===
 
 # Load environment variables from .env if present
 if [ -f .env ]; then
@@ -404,7 +404,7 @@ fi
 REPO_DIR="${COFFEE_BOT_PATH:-$(pwd)}"
 BRANCH="${LOG_BRANCH:-logs}"
 
-echo "🚀 Setting up Coffee Bot Mission Control logs branch infrastructure..."
+echo "🚀 Setting up Coffee Bot Real Options logs branch infrastructure..."
 echo "Repository: $REPO_DIR"
 echo "Branch: $BRANCH"
 
@@ -430,7 +430,7 @@ else
         mkdir -p dev prod scripts
         
         cat > README.md << 'EOL'
-# Coffee Bot Mission Control - Logs Branch
+# Coffee Bot Real Options - Logs Branch
 
 This branch contains operational logs and output files from both development and production environments.
 

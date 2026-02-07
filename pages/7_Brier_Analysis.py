@@ -17,7 +17,7 @@ from datetime import datetime, timezone, timedelta
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-st.set_page_config(layout="wide", page_title="Brier Analysis | Mission Control")
+st.set_page_config(layout="wide", page_title="Brier Analysis | Real Options")
 st.title("🎯 Brier Analysis")
 st.caption("Agent prediction quality, calibration curves, and learning feedback")
 
@@ -396,4 +396,4 @@ st.caption(
 
 
 st.markdown("---")
-st.caption("Brier Analysis | Coffee Bot Mission Control v6.4")
+st.caption("Brier Analysis | Coffee Bot Real Options v6.4")

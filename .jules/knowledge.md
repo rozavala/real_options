@@ -1,6 +1,6 @@
-# Mission Control: System Architecture and Knowledge
+# Real Options: System Architecture and Knowledge
 
-This document provides a detailed breakdown of how the Mission Control system operates.
+This document provides a detailed breakdown of how the Real Options system operates.
 
 ## Architecture: The Federated Cognitive Lattice
 

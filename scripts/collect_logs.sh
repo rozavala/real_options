@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# === Coffee Bot Mission Control - Log Collection (Environment Configurable) ===
+# === Coffee Bot Real Options - Log Collection (Environment Configurable) ===
 # This script collects logs and output files for the specified environment
 
 # Load environment variables from .env if present

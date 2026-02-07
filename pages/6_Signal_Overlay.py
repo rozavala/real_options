@@ -31,7 +31,7 @@ from trading_bot.timestamps import parse_ts_column
 from config import get_active_profile
 from dashboard_utils import get_config
 
-st.set_page_config(layout="wide", page_title="Signal Analysis | Mission Control")
+st.set_page_config(layout="wide", page_title="Signal Analysis | Real Options")
 
 # E1: Dynamic profile loading
 config = get_config()

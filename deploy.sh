@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Coffee Bot Mission Control — Production Deployment Script
+# Coffee Bot Real Options — Production Deployment Script
 #
 # HRO-Enhanced: Adds directory scaffolding, migration framework, post-deploy
 # verification gate, and automatic rollback on failure.

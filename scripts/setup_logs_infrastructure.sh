@@ -1,5 +1,5 @@
 #!/bin/bash
-# === Coffee Bot Mission Control - Logs Branch Setup ===
+# === Coffee Bot Real Options - Logs Branch Setup ===
 # This script sets up the logs branch infrastructure for collecting
 # dev and prod environment logs and output files.
 
@@ -11,7 +11,7 @@ fi
 REPO_DIR="${COFFEE_BOT_PATH:-$(pwd)}"
 BRANCH="${LOG_BRANCH:-logs}"
 
-echo "🚀 Setting up Coffee Bot Mission Control logs branch infrastructure..."
+echo "🚀 Setting up Coffee Bot Real Options logs branch infrastructure..."
 echo "Repository: $REPO_DIR"
 echo "Branch: $BRANCH"
 
@@ -44,7 +44,7 @@ else
         
         # Create README for the logs branch
         cat > README.md << 'EOL'
-# Coffee Bot Mission Control - Logs Branch
+# Coffee Bot Real Options - Logs Branch
 
 This branch contains operational logs and output files from both development and production environments.
 
