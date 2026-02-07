@@ -253,8 +253,19 @@ if [ "$FINAL_COUNT" -ne 1 ]; then
     rollback_and_restart
 fi
 
+# =========================================================================
+# STEP 10: Sync Claude Code worktree (non-destructive, skips if unsafe)
+# =========================================================================
+echo "--- 10. Syncing Claude Code worktree... ---"
+chmod +x scripts/sync_worktree.sh 2>/dev/null || true
+if [ -f "scripts/sync_worktree.sh" ]; then
+    bash scripts/sync_worktree.sh || echo "  ⚠️  Worktree sync encountered an issue (non-blocking)"
+else
+    echo "  ⏭️  No worktree sync script found, skipping"
+fi
+
 echo ""
 echo "--- ✅ Deployment finished successfully! ---"
 echo "--- Commit: $CURR_COMMIT ---"
-echo "--- Services: coffee-bot (systemd) + dashboard (manual) ---"
+echo "--- Services: trading-bot (systemd) + dashboard (manual) ---"
 echo "--- $(date) ---"
