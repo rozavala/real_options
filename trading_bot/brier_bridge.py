@@ -165,12 +165,28 @@ def get_agent_reliability(agent_name: str, regime: str = "NORMAL", window: int =
             return 1.0
 
         # FIX (P1-B, 2026-02-04): Call the correct method on the tracker.
-        # Previously called tracker.get_agent_scores() which doesn't exist.
-        # The tracker's get_agent_reliability() already handles:
-        #   - Minimum sample check (< 5 → returns 1.0)
-        #   - Regime-aware scoring
-        #   - Brier-to-multiplier conversion
         multiplier = tracker.get_agent_reliability(agent_name, regime)
+
+        # FIX (P0-REGIME, 2026-02-07): Regime fallback to NORMAL.
+        # Most predictions are stored under "NORMAL" because detect_market_regime_simple()
+        # returns strings ("HIGH_VOLATILITY", "RANGE_BOUND") that don't map to MarketRegime
+        # enum values ("HIGH_VOL", etc.) — the recording path silently falls back to NORMAL.
+        #
+        # LONG-TERM: Harmonize regime naming across the system to eliminate the root cause.
+        # Currently weighted_voting.py asks for 'HIGH_VOLATILITY' which never matches
+        # 'HIGH_VOL' in Brier data until harmonization occurs (Separate Ticket).
+        #
+        # Without this fallback, the lookup against "HIGH_VOLATILITY" always finds no data,
+        # returning 1.0 and making all reliability multipliers inert.
+        # When regime-specific data eventually accumulates, it takes priority (non-1.0).
+        if multiplier == 1.0 and regime != "NORMAL":
+            fallback_mult = tracker.get_agent_reliability(agent_name, "NORMAL")
+            if fallback_mult != 1.0:
+                logger.info(
+                    f"Agent {agent_name}: No Brier data for regime={regime}, "
+                    f"using NORMAL fallback (multiplier={fallback_mult:.2f})"
+                )
+                multiplier = fallback_mult
 
         logger.debug(
             f"Agent {agent_name} reliability (regime={regime}): "

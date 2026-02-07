@@ -53,6 +53,35 @@ class TestGetAgentReliability(unittest.TestCase):
         result = get_agent_reliability('agronomist', 'HIGH_VOL')
         self.assertEqual(result, 1.5)
 
+    @patch('trading_bot.brier_bridge._get_enhanced_tracker')
+    def test_regime_fallback_to_normal(self, mock_get_tracker):
+        # Mock tracker
+        mock_tracker = MagicMock()
+        mock_get_tracker.return_value = mock_tracker
+
+        # Setup: HIGH_VOLATILITY returns 1.0 (no data), NORMAL returns 1.5
+        def side_effect(agent, regime):
+            if regime == "HIGH_VOLATILITY":
+                return 1.0
+            if regime == "NORMAL":
+                return 1.5
+            return 1.0
+
+        mock_tracker.get_agent_reliability.side_effect = side_effect
+
+        # Action: request for HIGH_VOLATILITY
+        result = get_agent_reliability('agronomist', 'HIGH_VOLATILITY')
+
+        # Assert: should return NORMAL value (1.5)
+        self.assertEqual(result, 1.5)
+
+        # Verify both calls were made
+        expected_calls = [
+            unittest.mock.call('agronomist', 'HIGH_VOLATILITY'),
+            unittest.mock.call('agronomist', 'NORMAL')
+        ]
+        mock_tracker.get_agent_reliability.assert_has_calls(expected_calls)
+
 
 class TestRecordAgentPrediction(unittest.TestCase):
     @patch('trading_bot.brier_bridge._get_enhanced_tracker')
