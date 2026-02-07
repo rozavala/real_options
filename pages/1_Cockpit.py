@@ -350,6 +350,43 @@ def render_prediction_markets():
 
                 st.divider()
 
+        # === Surface unresolved topics ===
+        # Cross-reference configured topics against state to detect silent failures.
+        # This prevents monitoring blind spots where topics are loaded but never resolve.
+        try:
+            from config_loader import load_config
+            cfg = load_config()
+            pm_cfg = cfg.get('sentinels', {}).get('prediction_markets', {})
+
+            # Reconstruct the same merge the sentinel does
+            static_topics = pm_cfg.get('topics_to_watch', [])
+            enabled_static = [t for t in static_topics if t.get('enabled', True)]
+
+            discovered_file = "data/discovered_topics.json"
+            all_topic_queries = set()
+            for t in enabled_static:
+                q = t.get('query', '')
+                if q: all_topic_queries.add(q)
+
+            if os.path.exists(discovered_file):
+                import json as _json
+                with open(discovered_file, 'r') as f:
+                    for t in _json.load(f):
+                        q = t.get('query', '')
+                        if q: all_topic_queries.add(q)
+
+            # state.keys() = topics with data; all_topic_queries = all enabled topics
+            resolved_queries = set(state.keys()) if state else set()
+            unresolved = all_topic_queries - resolved_queries
+
+            if unresolved:
+                st.markdown("---")
+                st.caption(f"⚠️ {len(unresolved)} topic(s) configured but no market data resolved:")
+                for uq in sorted(unresolved):
+                    st.caption(f"  · `{uq}` — no Polymarket match found")
+        except Exception:
+            pass  # Non-critical diagnostic — never crash the dashboard
+
         st.caption("💡 Data refreshes every 5 minutes via sentinel polling")
 
     except FileNotFoundError:

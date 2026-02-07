@@ -90,7 +90,8 @@ async def test_dynamic_discovery_selects_highest_liquidity(mock_config):
         mock_ctx.__aexit__ = AsyncMock(return_value=None)
         mock_get.return_value = mock_ctx
 
-        result = await sentinel._resolve_active_market("Federal Reserve")
+        # Use a query that matches the hardcoded macro whitelist ('fed', 'rate')
+        result = await sentinel._resolve_active_market("Fed Rate")
 
     # Should select fed-june (highest liquidity)
     assert result is not None
