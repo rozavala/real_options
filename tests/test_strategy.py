@@ -100,8 +100,13 @@ class TestStrategy(unittest.TestCase):
         was set to 0.5 (float) causing TypeError: list indices must be integers.
         """
         from config_loader import load_config
+        from unittest.mock import patch
+        import os
 
-        config = load_config()
+        # Patch environment with fake LLM key to pass validation
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_key"}):
+            config = load_config()
+
         tuning = config.get('strategy_tuning', {})
 
         short_dist = tuning.get('iron_condor_short_strikes_from_atm', 2)

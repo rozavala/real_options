@@ -26,7 +26,7 @@ def load_config() -> dict | None:
             config = json.load(f)
     except Exception as e:
         logger.error(f"Failed to load config.json: {e}")
-        return None
+        raise
 
     # 2. Load .env file (Environment Specifics)
     load_dotenv(env_path)
@@ -42,9 +42,14 @@ def load_config() -> dict | None:
     # Validate Connection Settings
     if 'connection' in config:
         if 'port' not in config['connection']:
-            logger.warning("Config validation: 'connection.port' is missing!")
+            raise ValueError("Config validation: 'connection.port' is missing!")
         if 'clientId' not in config['connection']:
-            logger.warning("Config validation: 'connection.clientId' is missing!")
+            raise ValueError("Config validation: 'connection.clientId' is missing!")
+
+        if not isinstance(config['connection']['port'], int):
+            raise TypeError(f"Config validation: 'connection.port' must be an integer, got {type(config['connection']['port']).__name__}")
+        if not isinstance(config['connection']['clientId'], int):
+            raise TypeError(f"Config validation: 'connection.clientId' must be an integer, got {type(config['connection']['clientId']).__name__}")
 
     # 4. OVERRIDE: Flex Query (Secrets)
     if os.getenv("FLEX_TOKEN"):
@@ -118,6 +123,17 @@ def load_config() -> dict | None:
         config['xai']['api_key'] = os.getenv("XAI_API_KEY")
         
     # Safety Check (Optional but recommended)
+    # Check for at least one LLM key
+    llm_keys = [
+        config['gemini']['api_key'],
+        config['anthropic']['api_key'],
+        config['openai']['api_key'],
+        config['xai']['api_key']
+    ]
+
+    if not any(llm_keys):
+        raise RuntimeError("CRITICAL: No LLM API keys found! Please set at least one of GEMINI_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, or XAI_API_KEY.")
+
     if not config['gemini']['api_key']:
         logger.warning("WARNING: GEMINI_API_KEY not found in environment!")
 

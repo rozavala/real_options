@@ -12,7 +12,8 @@ class TestSecretLoading:
         "PUSHOVER_USER_KEY": "env_pushover_user",
         "PUSHOVER_API_TOKEN": "env_pushover_token",
         "FRED_API_KEY": "env_fred_key",
-        "NASDAQ_API_KEY": "env_nasdaq_key"
+        "NASDAQ_API_KEY": "env_nasdaq_key",
+        "GEMINI_API_KEY": "fake_gemini_key"
     }, clear=False)
     def test_load_config_secrets_from_env(self):
         """Test that secrets are loaded from environment variables."""
@@ -29,7 +30,8 @@ class TestSecretLoading:
     def test_load_config_defaults_without_env(self):
         """Test that defaults are kept if env vars are missing (sanity check)."""
         # We need to un-patch the dict for this one, or just patch with empty values for these specific keys
-        with patch.dict(os.environ, {}, clear=True):
+        # We need at least one LLM key to pass validation
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_key"}, clear=True):
              # Note: clear=True might remove PATH etc, which could break things.
              # Safer to just ensure specific keys are absent.
              # However, load_config reads .env file, so we might need to mock load_dotenv too or accept that .env might influence it.
