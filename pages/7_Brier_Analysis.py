@@ -258,7 +258,7 @@ try:
 
     weight_rows = []
     for agent in agent_names:
-        for regime in ['NORMAL', 'HIGH_VOL', 'WEATHER_EVENT', 'MACRO_SHIFT']:
+        for regime in ['NORMAL', 'HIGH_VOL', 'RANGE_BOUND', 'WEATHER_EVENT', 'MACRO_SHIFT']:
             mult = get_agent_reliability(agent, regime)
             if mult != 1.0 or regime == 'NORMAL':
                 weight_rows.append({
