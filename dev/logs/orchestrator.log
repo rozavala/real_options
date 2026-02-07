@@ -1,14 +1,14 @@
 Starting orchestrator from /home/rodrigo/real_options...
-2026-02-07 17:50:55,619 - Orchestrator - INFO - =============================================
-2026-02-07 17:50:55,619 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-07 17:50:55,619 - Orchestrator - INFO - =============================================
-2026-02-07 17:50:55,621 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-07 17:50:55,621 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
-2026-02-07 17:50:55,621 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-07 17:50:55,621 - Orchestrator - INFO - Expiry filter window: 45-180 DTE
-2026-02-07 17:50:55,631 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-07 17:50:55,632 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-07 17:50:55,632 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 9 scheduled tasks already passed:
+2026-02-07 18:05:49,417 - Orchestrator - INFO - =============================================
+2026-02-07 18:05:49,417 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-07 18:05:49,417 - Orchestrator - INFO - =============================================
+2026-02-07 18:05:49,419 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-07 18:05:49,419 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
+2026-02-07 18:05:49,419 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-07 18:05:49,420 - Orchestrator - INFO - Expiry filter window: 45-180 DTE
+2026-02-07 18:05:49,431 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-07 18:05:49,431 - Orchestrator - INFO - Environment: DEV. Applying -10 minute 'Civil War' avoidance offset.
+2026-02-07 18:05:49,432 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 10 scheduled tasks already passed:
   - 03:20 ET: start_monitoring
   - 03:21 ET: process_deferred_triggers
   - 04:50 ET: cleanup_orphaned_theses
@@ -18,34 +18,36 @@ Starting orchestrator from /home/rodrigo/real_options...
   - 11:05 ET: run_position_audit_cycle
   - 12:35 ET: close_stale_positions_fallback
   - 12:50 ET: run_position_audit_cycle
-2026-02-07 17:50:55,632 - Orchestrator - INFO - --- Recovery: Evaluating 9 missed tasks ---
-2026-02-07 17:50:55,632 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
-2026-02-07 17:50:55,633 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
-2026-02-07 17:50:55,633 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses (was scheduled 04:50 ET)
-2026-02-07 17:50:55,633 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
-2026-02-07 17:50:55,633 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 279...
-2026-02-07 17:51:10,656 - ib_insync.ib - ERROR - completed orders request timed out
-2026-02-07 17:51:10,660 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 279
-2026-02-07 17:51:10,685 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-07 17:51:10,780 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-07 17:51:10,882 - Orchestrator - INFO - Thesis cleanup: no orphans found
-2026-02-07 17:51:10,885 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
-2026-02-07 17:51:10,885 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: run_position_audit_cycle — market closed
-2026-02-07 17:51:10,885 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: guarded_generate_orders — market closed
-2026-02-07 17:51:10,885 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions — market closed
-2026-02-07 17:51:10,885 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions_fallback — market closed
-2026-02-07 17:51:10,885 - Orchestrator - INFO - System restarted with 7 missed tasks.
-✅ 1 recovered | ⏭️ 6 skipped | ✔️ 0 already ran
-2026-02-07 17:51:11,191 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-07 17:51:11,194 - Orchestrator - INFO - Weekend detected (Saturday). Next trading day: Monday 2026-02-09
-2026-02-07 17:51:11,194 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-09 08:20:00 UTC. Waiting for 38.48 hours.
-2026-02-07 17:51:11,194 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-07 17:51:11,195 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 10 active alerts from disk (normalized from 10)
-2026-02-07 17:51:11,314 - trading_bot.sentinels - INFO - LogisticsSentinel initialized with model: gemini-3-flash-preview | 3 RSS feeds | Commodity: Coffee (Arabica)
-2026-02-07 17:51:11,477 - trading_bot.sentinels - INFO - NewsSentinel initialized with model: gemini-3-flash-preview | 6 RSS feeds | Threshold: 8 | Commodity: Coffee (Arabica)
-2026-02-07 17:51:11,507 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-07 17:51:11,508 - trading_bot.sentinels - INFO - Loaded state for 3 prediction market topics
-2026-02-07 17:51:11,508 - trading_bot.sentinels - INFO - Reloading prediction market topics...
-2026-02-07 17:51:11,508 - trading_bot.sentinels - INFO - Topics reloaded: 3
-2026-02-07 17:51:11,508 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 3 topics
-2026-02-07 17:51:11,596 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+  - 13:05 ET: emergency_hard_close
+2026-02-07 18:05:49,432 - Orchestrator - INFO - --- Recovery: Evaluating 10 missed tasks ---
+2026-02-07 18:05:49,432 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
+2026-02-07 18:05:49,432 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
+2026-02-07 18:05:49,433 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses (was scheduled 04:50 ET)
+2026-02-07 18:05:49,433 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-07 18:05:49,433 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 272...
+2026-02-07 18:06:04,494 - ib_insync.ib - ERROR - completed orders request timed out
+2026-02-07 18:06:04,497 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 272
+2026-02-07 18:06:04,522 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-07 18:06:04,609 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-07 18:06:04,707 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-07 18:06:04,744 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-07 18:06:04,744 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: run_position_audit_cycle — market closed
+2026-02-07 18:06:04,744 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: guarded_generate_orders — market closed
+2026-02-07 18:06:04,745 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions — market closed
+2026-02-07 18:06:04,745 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions_fallback — market closed
+2026-02-07 18:06:04,745 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
+2026-02-07 18:06:04,745 - Orchestrator - INFO - System restarted with 8 missed tasks.
+✅ 1 recovered | ⏭️ 7 skipped | ✔️ 0 already ran
+2026-02-07 18:06:05,072 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-07 18:06:05,077 - Orchestrator - INFO - Weekend detected (Saturday). Next trading day: Monday 2026-02-09
+2026-02-07 18:06:05,078 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-09 08:20:00 UTC. Waiting for 38.23 hours.
+2026-02-07 18:06:05,078 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-07 18:06:05,079 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 10 active alerts from disk (normalized from 10)
+2026-02-07 18:06:05,228 - trading_bot.sentinels - INFO - LogisticsSentinel initialized with model: gemini-3-flash-preview | 3 RSS feeds | Commodity: Coffee (Arabica)
+2026-02-07 18:06:05,331 - trading_bot.sentinels - INFO - NewsSentinel initialized with model: gemini-3-flash-preview | 6 RSS feeds | Threshold: 8 | Commodity: Coffee (Arabica)
+2026-02-07 18:06:05,361 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-02-07 18:06:05,361 - trading_bot.sentinels - INFO - Loaded state for 3 prediction market topics
+2026-02-07 18:06:05,362 - trading_bot.sentinels - INFO - Reloading prediction market topics...
+2026-02-07 18:06:05,362 - trading_bot.sentinels - INFO - Topics reloaded: 3
+2026-02-07 18:06:05,362 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 3 topics
+2026-02-07 18:06:05,467 - trading_bot.self_healing - INFO - Self-Healing Monitor started
