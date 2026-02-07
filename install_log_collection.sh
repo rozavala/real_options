@@ -29,6 +29,8 @@ cat > scripts/collect_logs.sh << 'EOF'
 # === Coffee Bot Real Options - Log Collection (Environment Configurable) ===
 # This script collects logs and output files for the specified environment
 
+set -e  # Exit on any error
+
 # Load environment variables from .env if present
 if [ -f .env ]; then
     export $(grep -v '^#' .env | xargs)
@@ -312,6 +314,8 @@ cat > scripts/log_analysis.sh << 'EOF'
 # === Coffee Bot Real Options - Log Analysis Utilities ===
 # This script provides utilities for analyzing collected logs
 
+set -e  # Exit on any error
+
 # Load environment variables from .env if present
 if [ -f .env ]; then
     export $(grep -v '^#' .env | xargs)
@@ -395,6 +399,8 @@ echo "📝 Creating setup_logs_infrastructure.sh..."
 cat > scripts/setup_logs_infrastructure.sh << 'EOF'
 #!/bin/bash
 # === Coffee Bot Real Options - Logs Branch Setup ===
+
+set -e  # Exit on any error
 
 # Load environment variables from .env if present
 if [ -f .env ]; then
