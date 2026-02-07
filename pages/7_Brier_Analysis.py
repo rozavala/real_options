@@ -256,17 +256,40 @@ try:
         'technical', 'volatility', 'geopolitical'
     ]
 
+    NON_NORMAL_REGIMES = ['HIGH_VOL', 'RANGE_BOUND', 'WEATHER_EVENT', 'MACRO_SHIFT']
     weight_rows = []
+    has_regime_specific = False
+
     for agent in agent_names:
-        for regime in ['NORMAL', 'HIGH_VOL', 'RANGE_BOUND', 'WEATHER_EVENT', 'MACRO_SHIFT']:
-            mult = get_agent_reliability(agent, regime)
-            if mult != 1.0 or regime == 'NORMAL':
+        # Always get NORMAL baseline
+        normal_mult = get_agent_reliability(agent, 'NORMAL')
+        status = '🟢 Trusted' if normal_mult > 1.2 else '🔴 Distrusted' if normal_mult < 0.8 else '⚪ Baseline'
+
+        weight_rows.append({
+            'Agent': AGENT_DISPLAY_NAMES.get(agent, agent),
+            'Regime': 'ALL (baseline)',
+            'Multiplier': round(normal_mult, 3),
+            'Status': status,
+        })
+
+        # Only show non-NORMAL regimes if they differ from NORMAL (i.e., have regime-specific data)
+        for regime in NON_NORMAL_REGIMES:
+            regime_mult = get_agent_reliability(agent, regime)
+            if regime_mult != 1.0 and abs(regime_mult - normal_mult) > 0.001:
+                has_regime_specific = True
+                regime_status = '🟢 Trusted' if regime_mult > 1.2 else '🔴 Distrusted' if regime_mult < 0.8 else '⚪ Baseline'
                 weight_rows.append({
                     'Agent': AGENT_DISPLAY_NAMES.get(agent, agent),
                     'Regime': regime,
-                    'Multiplier': round(mult, 3),
-                    'Status': '🟢 Trusted' if mult > 1.2 else '🔴 Distrusted' if mult < 0.8 else '⚪ Baseline',
+                    'Multiplier': round(regime_mult, 3),
+                    'Status': regime_status,
                 })
+
+    if not has_regime_specific:
+        st.caption(
+            "ℹ️ Showing baseline multipliers only. Regime-specific rows will appear "
+            "as Brier data accumulates under different market regimes (HIGH_VOL, RANGE_BOUND, etc.)."
+        )
 
     if weight_rows:
         st.dataframe(pd.DataFrame(weight_rows), hide_index=True, width="stretch")
