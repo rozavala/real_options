@@ -3491,6 +3491,18 @@ async def run_brier_reconciliation(config: dict):
         resolved = resolve_with_cycle_aware_match(dry_run=False)
         logger.info(f"Brier reconciliation complete: {resolved} predictions resolved")
 
+        # v5.5: Enhanced Brier catch-up — resolve JSON predictions from CSV data.
+        # This fixes the pipeline gap where resolve_with_cycle_aware_match resolves
+        # the CSV but doesn't update enhanced_brier.json.
+        try:
+            from trading_bot.brier_bridge import backfill_enhanced_from_csv, reset_enhanced_tracker
+            backfilled = backfill_enhanced_from_csv()
+            if backfilled > 0:
+                logger.info(f"Enhanced Brier backfill: {backfilled} predictions caught up from CSV")
+                reset_enhanced_tracker()  # Reset singleton so voting picks up new scores
+        except Exception as backfill_e:
+            logger.warning(f"Enhanced Brier backfill failed (non-fatal): {backfill_e}")
+
         # v5.4: Stall detection — alert after 3 consecutive days with 0 resolutions
         global _brier_zero_resolution_streak
         try:

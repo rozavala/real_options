@@ -141,6 +141,28 @@ def resolve_agent_prediction(
         return None
 
 
+def backfill_enhanced_from_csv() -> int:
+    """
+    Catch-up: resolve Enhanced Brier predictions using already-resolved CSV data.
+
+    Called from orchestrator's run_brier_reconciliation to handle the pipeline
+    gap where fix_brier_data.py resolves the CSV without updating the JSON.
+
+    Returns:
+        Number of predictions backfilled
+    """
+    try:
+        tracker = _get_enhanced_tracker()
+        if tracker is None:
+            return 0
+
+        return tracker.backfill_from_resolved_csv()
+
+    except Exception as e:
+        logger.warning(f"Enhanced Brier backfill failed (non-fatal): {e}")
+        return 0
+
+
 def get_agent_reliability(agent_name: str, regime: str = "NORMAL", window: int = 20) -> float:
     """
     Rolling reliability multiplier from Enhanced Brier scores.
