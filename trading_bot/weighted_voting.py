@@ -602,6 +602,65 @@ async def calculate_weighted_decision(
     }
     logger.info(f"Dynamic Weights: {json.dumps(weight_summary)}")
 
+    # === WEIGHT EVOLUTION PERSISTENCE ===
+    # Track weight changes over time for dashboard visualization.
+    # Uses asyncio.run_in_executor to avoid blocking the event loop
+    # (calculate_weighted_decision is async, so no sync I/O in hot path).
+    try:
+        import asyncio
+        import os
+
+        def _write_weight_csv(vote_breakdown_snapshot, trigger_str, regime_str):
+            """Sync CSV writer — runs in thread pool."""
+            import csv
+            from datetime import datetime, timezone
+
+            weight_csv = os.path.join('data', 'weight_evolution.csv')
+            file_exists = os.path.exists(weight_csv)
+
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(weight_csv), exist_ok=True)
+
+            with open(weight_csv, 'a', newline='') as f:
+                writer = csv.writer(f)
+                if not file_exists:
+                    writer.writerow([
+                        'timestamp', 'cycle_key', 'agent', 'regime',
+                        'domain_weight', 'reliability_mult', 'final_weight'
+                    ])
+
+                timestamp = datetime.now(timezone.utc).isoformat()
+                # Composite key from trigger_type + timestamp
+                # (cycle_id is not available in this function's signature)
+                cycle_key = f"{trigger_str}_{timestamp[:19]}"
+
+                for vote in vote_breakdown_snapshot:
+                    agent = vote.get('agent', 'unknown')
+                    writer.writerow([
+                        timestamp,
+                        cycle_key,
+                        agent,
+                        regime_str,
+                        round(vote.get('domain_weight', 1.0), 3),
+                        round(vote.get('reliability_mult', 1.0), 3),
+                        round(vote.get('final_weight', 1.0), 3),
+                    ])
+
+        # Snapshot vote_breakdown (list of dicts is safe to pass to thread)
+        trigger_str = trigger_type.value if hasattr(trigger_type, 'value') else str(trigger_type)
+
+        # Fire-and-forget: don't await — CSV write must never block voting
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(
+            None,  # Default thread pool
+            _write_weight_csv,
+            list(vote_breakdown),  # Defensive copy
+            trigger_str,
+            regime
+        )
+    except Exception as e:
+        logger.warning(f"Weight evolution tracking failed (non-fatal): {e}")
+
     logger.info(f"Weighted Vote: {final_direction} (score={normalized_score:.3f}, dominant={dominant_agent})")
     logger.info(f"Vote Breakdown: {json.dumps(vote_breakdown, indent=2)}")
 

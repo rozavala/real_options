@@ -14,6 +14,7 @@ import logging
 import os
 import json
 from typing import List, Optional
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +99,96 @@ class TransactiveMemory:
         """Check if TMS is in backtest mode."""
         return self._simulation_time is not None
 
+    def _compute_decay_factor(
+        self,
+        document_metadata: dict,
+        query_time: datetime,
+        decay_rates: dict = None
+    ) -> float:
+        """
+        Compute temporal relevance decay factor for a document.
+
+        Returns a multiplier in (0.0, 1.0] where 1.0 = brand new,
+        approaching 0.0 = very stale.
+
+        Formula: decay = exp(-lambda × age_days)
+
+        Args:
+            document_metadata: ChromaDB document metadata dict
+            query_time: The reference time to compute age against
+            decay_rates: Dict mapping document types to lambda values
+
+        Returns:
+            Float decay factor, floored at 0.01 (never fully zero)
+        """
+        if decay_rates is None:
+            decay_rates = {'default': 0.05}
+
+        # Get document timestamp (prefer valid_from, fall back to timestamp)
+        valid_from_str = document_metadata.get('valid_from')
+        if valid_from_str:
+            try:
+                if isinstance(valid_from_str, str):
+                    doc_time = datetime.fromisoformat(
+                        valid_from_str.replace('Z', '+00:00')
+                    )
+                else:
+                    doc_time = valid_from_str
+            except (ValueError, TypeError):
+                ts_str = document_metadata.get('timestamp')
+                if ts_str:
+                    try:
+                        doc_time = datetime.fromisoformat(
+                            ts_str.replace('Z', '+00:00')
+                        )
+                    except (ValueError, TypeError):
+                        return 1.0  # Can't compute age, assume fresh
+                else:
+                    return 1.0
+        else:
+            ts_str = document_metadata.get('timestamp')
+            if ts_str:
+                try:
+                    doc_time = datetime.fromisoformat(
+                        ts_str.replace('Z', '+00:00')
+                    )
+                except (ValueError, TypeError):
+                    return 1.0
+            else:
+                return 1.0
+
+        # Ensure timezone-aware comparison
+        if doc_time.tzinfo is None:
+            doc_time = doc_time.replace(tzinfo=timezone.utc)
+        if query_time.tzinfo is None:
+            query_time = query_time.replace(tzinfo=timezone.utc)
+
+        # Calculate age in days
+        age_days = max(0, (query_time - doc_time).total_seconds() / 86400.0)
+
+        # Determine document type for decay rate lookup
+        # Priority: explicit 'type' metadata → 'agent' name → substring match → default
+        doc_type = document_metadata.get('type', '').lower()
+        agent = document_metadata.get('agent', '').lower()
+
+        lambda_val = decay_rates.get(doc_type, None)
+        if lambda_val is None:
+            lambda_val = decay_rates.get(agent, None)
+        if lambda_val is None:
+            # Check if agent name contains a known type keyword
+            for key in decay_rates:
+                if key in agent or key in doc_type:
+                    lambda_val = decay_rates[key]
+                    break
+        if lambda_val is None:
+            lambda_val = decay_rates.get('default', 0.05)
+
+        # Exponential decay
+        decay = math.exp(-lambda_val * age_days)
+
+        return max(0.01, decay)  # Floor at 1% — never fully zero
+
+
     # =========================================================================
     # ENHANCED: Encode with valid_from timestamp
     # =========================================================================
@@ -167,7 +258,8 @@ class TransactiveMemory:
         agent_filter: str = None,
         n_results: int = 5,
         max_age_days: int = 30,
-        simulation_time: Optional[datetime] = None
+        simulation_time: Optional[datetime] = None,
+        decay_rates: dict = None
     ) -> list:
         """
         Retrieve relevant insights with temporal filtering.
@@ -180,6 +272,7 @@ class TransactiveMemory:
             n_results: Maximum number of results to return
             max_age_days: Only return insights from the last N days
             simulation_time: Override simulation clock for this query
+            decay_rates: Dict of decay rates per doc type
 
         Returns:
             List of insight strings matching the query
@@ -214,49 +307,85 @@ class TransactiveMemory:
             if not results or not results['documents'] or not results['documents'][0]:
                 return []
 
-            # Post-filter for temporal validity
-            filtered_insights = []
-            for doc, meta in zip(results['documents'][0], results['metadatas'][0]):
+            # Post-filter for temporal validity + inline decay scoring
+            use_decay = decay_rates is not None
+            scored_insights = []  # List of (decay_score, doc) tuples
+
+            for rank, (doc, meta) in enumerate(
+                zip(results['documents'][0], results['metadatas'][0])
+            ):
+                # Handle None metadata from ChromaDB
+                if meta is None:
+                    meta = {}
+
                 # Parse valid_from timestamp
                 valid_from_str = meta.get('valid_from')
                 if valid_from_str:
                     try:
-                        valid_from = datetime.fromisoformat(valid_from_str.replace('Z', '+00:00'))
+                        valid_from = datetime.fromisoformat(
+                            valid_from_str.replace('Z', '+00:00')
+                        )
                     except (ValueError, TypeError):
-                        # If parsing fails, use timestamp field
                         valid_from_ts = meta.get('valid_from_ts')
                         if valid_from_ts:
-                            valid_from = datetime.fromtimestamp(valid_from_ts, tz=timezone.utc)
+                            valid_from = datetime.fromtimestamp(
+                                valid_from_ts, tz=timezone.utc
+                            )
                         else:
-                            # Legacy document without valid_from - skip in backtest
                             if self.is_backtest_mode():
-                                logger.warning(f"TMS: Skipping legacy document without valid_from in backtest mode")
+                                logger.warning(
+                                    "TMS: Skipping legacy document without "
+                                    "valid_from in backtest mode"
+                                )
                                 continue
-                            # LIVE MODE: Include legacy documents unconditionally (backward compat)
-                            # Set flag to skip temporal filtering for this doc
-                            valid_from = None  # Signals "legacy, skip temporal check"
+                            valid_from = None
                 else:
-                    # No valid_from metadata
                     if self.is_backtest_mode():
                         continue
-                    # LIVE MODE: Include legacy documents unconditionally
-                    valid_from = None  # Signals "legacy, skip temporal check"
+                    valid_from = None
 
-                # CRITICAL: Temporal filtering
-                # In backtest mode, only return documents valid BEFORE simulation time
-                # FIX (MECE 1.1): Skip this check for legacy documents (valid_from=None) in live mode
+                # CRITICAL: Temporal filtering (future documents)
                 if valid_from is not None and valid_from > effective_time:
-                    logger.debug(f"TMS: Filtered out future document (valid_from: {valid_from}, sim_time: {effective_time})")
+                    logger.debug(
+                        f"TMS: Filtered out future document "
+                        f"(valid_from: {valid_from}, sim_time: {effective_time})"
+                    )
                     continue
 
-                # Age filtering (only applies if valid_from is known)
-                if valid_from is not None and cutoff_time and valid_from < cutoff_time:
+                # Age filtering (hard cutoff — preserved from original)
+                if (valid_from is not None and cutoff_time
+                        and valid_from < cutoff_time):
                     continue
 
-                filtered_insights.append(doc)
+                # === DECAY SCORING (computed inline where metadata is accessible) ===
+                if use_decay:
+                    # ChromaDB returns results by semantic similarity rank.
+                    # Base score: gentle rank penalty (rank 0 = 1.0, rank 5 = 0.67)
+                    base_similarity = 1.0 / (1.0 + rank * 0.1)
+                    decay_factor = self._compute_decay_factor(
+                        meta, effective_time, decay_rates
+                    )
+                    combined_score = base_similarity * decay_factor
+                    scored_insights.append((combined_score, doc))
+                else:
+                    # No decay — preserve ChromaDB's original ranking
+                    scored_insights.append((1.0, doc))
 
-                if len(filtered_insights) >= n_results:
+                # Over-fetch limit: collect up to 3x n_results for re-ranking
+                if len(scored_insights) >= n_results * 3:
                     break
+
+            # === RE-RANK BY DECAY-ADJUSTED SCORE ===
+            if use_decay and len(scored_insights) > 1:
+                scored_insights.sort(key=lambda x: x[0], reverse=True)
+                logger.debug(
+                    f"TMS: Decay re-ranked {len(scored_insights)} results. "
+                    f"Top score: {scored_insights[0][0]:.3f}, "
+                    f"Bottom: {scored_insights[-1][0]:.3f}"
+                )
+
+            # Extract doc strings, trim to n_results
+            filtered_insights = [doc for _, doc in scored_insights[:n_results]]
 
             return filtered_insights
 
