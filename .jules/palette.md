@@ -9,3 +9,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2025-02-23 - Tooltip verification in Streamlit
 **Learning:** Verifying tooltips in Streamlit via Playwright requires targeting `[data-testid="stTooltipHoverTarget"]`. This element wraps the help icon inside the metric container.
 **Action:** Use this locator pattern for future Streamlit tooltip tests.
+
+## 2026-02-07 - Safety Interlock Pattern for High-Impact Controls
+**Learning:** For high-stakes actions (emergency halts, order cancellations) in trading dashboards, a single-click interface is dangerous. A "Safety Interlock" (a mandatory confirmation checkbox that enables the action button) significantly reduces the risk of accidental execution while maintaining accessibility.
+**Action:** Implement this pattern for all destructive or high-impact manual controls. Use clear, imperative labels for the checkbox (e.g., "I confirm I want to...") and provide tooltips explaining the button's action.

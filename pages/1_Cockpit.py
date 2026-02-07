@@ -818,7 +818,14 @@ with ctrl_cols[0]:
     st.caption("No active cooldown")
 
 with ctrl_cols[1]:
-    if st.button("🛑 EMERGENCY HALT", type="primary", width="stretch"):
+    confirm_halt = st.checkbox("I confirm I want to HALT all orders", key="confirm_halt")
+    if st.button(
+        "🛑 EMERGENCY HALT",
+        type="primary",
+        width="stretch",
+        disabled=not confirm_halt,
+        help="Immediately cancels all unfilled DAY orders in Interactive Brokers."
+    ):
         if config:
             with st.spinner("Cancelling all open orders..."):
                 try:
