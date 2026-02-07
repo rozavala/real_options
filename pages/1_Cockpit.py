@@ -320,7 +320,7 @@ def render_prediction_markets():
                     value=f"{price*100:.1f}%",
                     delta=f"↕ HWM: {hwm}" if hwm > 0 else "↑ Stable",
                     delta_color=delta_color,
-                    help=title if len(title) > 40 else None
+                    help=f"**{title}**\n\nProbability: {price*100:.1f}%\nSeverity HWM: {hwm} (Max risk level observed)"
                 )
 
                 # Show which topics map to this market (if duplicated)
@@ -428,7 +428,7 @@ with clock_cols[0]:
 with clock_cols[1]:
     st.metric("New York Time (Market)", ny_now.strftime("%H:%M:%S"))
 with clock_cols[2]:
-    st.metric("Market Status", f"{status_color} {status_text}")
+    st.metric("Market Status", f"{status_color} {status_text}", help="Trading Hours (ET): 03:30 - 14:00 (Mon-Fri)")
 
 st.markdown("---")
 
@@ -473,7 +473,7 @@ with hb_cols[3]:
     ib_health = get_ib_connection_health()
     ib_status = "ONLINE" if ib_health.get("sentinel_ib") == "CONNECTED" else "OFFLINE"
     ib_color = "🟢" if ib_status == "ONLINE" else "🔴"
-    st.metric("IB Gateway", f"{ib_color} {ib_status}")
+    st.metric("IB Gateway", f"{ib_color} {ib_status}", help="Connection status to Interactive Brokers Gateway")
 
     if ib_health.get("reconnect_backoff", 0) > 0:
         st.caption(f"⏳ Backoff: {ib_health['reconnect_backoff']}s")
