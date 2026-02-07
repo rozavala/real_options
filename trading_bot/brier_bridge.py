@@ -50,7 +50,7 @@ def record_agent_prediction(
 
     # === ENHANCED SYSTEM (JSON) — fail-safe ===
     try:
-        from trading_bot.enhanced_brier import EnhancedBrierTracker, MarketRegime
+        from trading_bot.enhanced_brier import EnhancedBrierTracker, MarketRegime, normalize_regime
 
         tracker = _get_enhanced_tracker()
         if tracker is None:
@@ -61,11 +61,8 @@ def record_agent_prediction(
                 predicted_direction, predicted_confidence
             )
 
-            # Map regime string to enum
-            try:
-                regime_enum = MarketRegime(regime)
-            except (ValueError, KeyError):
-                regime_enum = MarketRegime.NORMAL
+            # Map regime string to enum using canonical normalizer
+            regime_enum = normalize_regime(regime)
 
             tracker.record_prediction(
                 agent=agent,
@@ -165,20 +162,15 @@ def get_agent_reliability(agent_name: str, regime: str = "NORMAL", window: int =
             return 1.0
 
         # FIX (P1-B, 2026-02-04): Call the correct method on the tracker.
-        multiplier = tracker.get_agent_reliability(agent_name, regime)
+        from trading_bot.enhanced_brier import normalize_regime
+        canonical_regime = normalize_regime(regime).value  # .value → string for dict lookup
+        multiplier = tracker.get_agent_reliability(agent_name, canonical_regime)
 
         # FIX (P0-REGIME, 2026-02-07): Regime fallback to NORMAL.
-        # Most predictions are stored under "NORMAL" because detect_market_regime_simple()
-        # returns strings ("HIGH_VOLATILITY", "RANGE_BOUND") that don't map to MarketRegime
-        # enum values ("HIGH_VOL", etc.) — the recording path silently falls back to NORMAL.
-        #
-        # LONG-TERM: Harmonize regime naming across the system to eliminate the root cause.
-        # Currently weighted_voting.py asks for 'HIGH_VOLATILITY' which never matches
-        # 'HIGH_VOL' in Brier data until harmonization occurs (Separate Ticket).
-        #
-        # Without this fallback, the lookup against "HIGH_VOLATILITY" always finds no data,
-        # returning 1.0 and making all reliability multipliers inert.
-        # When regime-specific data eventually accumulates, it takes priority (non-1.0).
+        # Although we now normalize regime strings (harmonization complete),
+        # historical data may still be stored under "NORMAL" due to previous mismatches.
+        # This fallback ensures we don't return 1.0 (inert) when specific regime data
+        # is missing but general "NORMAL" data exists.
         if multiplier == 1.0 and regime != "NORMAL":
             fallback_mult = tracker.get_agent_reliability(agent_name, "NORMAL")
             if fallback_mult != 1.0:
