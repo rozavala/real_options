@@ -232,6 +232,11 @@ class TradingCouncil:
         commodity_label = self.commodity_profile.name if self.commodity_profile else "General"
         logger.info(f"Trading Council initialized for {commodity_label}. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
 
+        # Load TMS decay rates from commodity profile
+        self._tms_decay_rates = getattr(
+            self.commodity_profile, 'tms_decay_rates', {'default': 0.05}
+        ) if self.commodity_profile else {'default': 0.05}
+
     def invalidate_grounded_data_cache(self):
         """Force-clear the grounded data cache.
 
@@ -667,7 +672,8 @@ OUTPUT FORMAT (JSON):
         relevant_context = self.tms.retrieve(
             search_instruction,
             n_results=3,
-            max_age_days=14
+            max_age_days=14,
+            decay_rates=self._tms_decay_rates
         )
         if relevant_context:
             logger.info(f"Retrieved {len(relevant_context)} TMS insights for {persona_key}.")

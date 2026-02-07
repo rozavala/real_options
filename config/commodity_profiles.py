@@ -145,6 +145,27 @@ class CommodityProfile:
     stop_parse_range: List[float] = field(default_factory=lambda: [0.0, 9999.0])
     typical_price_range: List[float] = field(default_factory=lambda: [0.0, 9999.0])
 
+    # TMS Temporal Decay Rates (lambda values for exponential decay)
+    # Higher lambda = faster decay = shorter useful life
+    # relevance = base_score × exp(-lambda × age_days)
+    # Half-life formula: t½ = ln(2) / lambda ≈ 0.693 / lambda
+    tms_decay_rates: Dict[str, float] = field(default_factory=lambda: {
+        'weather': 0.15,        # Half-life ≈ 4.6 days — weather is very perishable
+        'logistics': 0.10,      # Half-life ≈ 6.9 days — port/shipping disruptions
+        'news': 0.08,           # Half-life ≈ 8.7 days — news cycle
+        'sentiment': 0.08,      # Half-life ≈ 8.7 days — market sentiment shifts
+        'price': 0.20,          # Half-life ≈ 3.5 days — price data is very time-sensitive
+        'microstructure': 0.25, # Half-life ≈ 2.8 days — order book data is extremely perishable
+        'technical': 0.05,      # Half-life ≈ 13.9 days — technical patterns persist longer
+        'macro': 0.02,          # Half-life ≈ 34.7 days — macro trends are slow-moving
+        'geopolitical': 0.03,   # Half-life ≈ 23.1 days — geopolitical shifts persist
+        'inventory': 0.04,      # Half-life ≈ 17.3 days — warehouse reports update weekly
+        'supply_chain': 0.05,   # Half-life ≈ 13.9 days
+        'research': 0.005,      # Half-life ≈ 138.6 days — academic findings persist very long
+        'trade_journal': 0.01,  # Half-life ≈ 69.3 days — trade lessons persist
+        'default': 0.05         # Default decay if type not specified
+    })
+
     def get_region_coords(self) -> List[Dict]:
         """Return lat/lon for weather API queries."""
         return [
@@ -679,6 +700,14 @@ def _load_profile_from_json(path: str) -> CommodityProfile:
         volatility_high_iv_rank=data.get('volatility_high_iv_rank', 0.7),
         volatility_low_iv_rank=data.get('volatility_low_iv_rank', 0.3),
         price_move_alert_pct=data.get('price_move_alert_pct', 2.0),
+        # V3 FIX: Load TMS decay rates if present
+        tms_decay_rates=data.get('tms_decay_rates', {
+            'weather': 0.15, 'logistics': 0.10, 'news': 0.08, 'sentiment': 0.08,
+            'price': 0.20, 'microstructure': 0.25, 'technical': 0.05,
+            'macro': 0.02, 'geopolitical': 0.03, 'inventory': 0.04,
+            'supply_chain': 0.05, 'research': 0.005, 'trade_journal': 0.01,
+            'default': 0.05
+        }),
     )
 
 

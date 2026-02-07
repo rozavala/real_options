@@ -279,5 +279,98 @@ except Exception as e:
     st.error(f"Error loading reliability data: {e}")
 
 
+# === WEIGHT EVOLUTION OVER TIME ===
+st.markdown("---")
+st.subheader("📈 Weight Evolution")
+
+weight_csv = os.path.join('data', 'weight_evolution.csv')
+if os.path.exists(weight_csv):
+    try:
+        weight_df = pd.read_csv(weight_csv, parse_dates=['timestamp'])
+
+        if not weight_df.empty:
+            # Let user select agents to compare
+            available_agents = sorted(weight_df['agent'].unique())
+            selected_agents = st.multiselect(
+                "Select agents to compare:",
+                available_agents,
+                default=available_agents[:4]  # Show first 4 by default
+            )
+
+            if selected_agents:
+                filtered = weight_df[weight_df['agent'].isin(selected_agents)]
+
+                # Pivot for plotting
+                pivot = filtered.pivot_table(
+                    index='timestamp',
+                    columns='agent',
+                    values='reliability_mult',
+                    aggfunc='last'
+                )
+
+                st.line_chart(pivot)
+
+                # Summary table: current state
+                latest = weight_df.sort_values('timestamp').groupby('agent').last()
+                st.dataframe(
+                    latest[['regime', 'domain_weight', 'reliability_mult', 'final_weight']],
+                    use_container_width=True
+                )
+        else:
+            st.info("Weight evolution data will appear after the next trading cycle.")
+    except Exception as e:
+        st.warning(f"Could not load weight evolution data: {e}")
+else:
+    st.info("Weight evolution tracking not yet active. Data will appear after the next trading cycle.")
+
+
+# === TMS TEMPORAL DECAY VISUALIZATION ===
+st.markdown("---")
+st.subheader("🕐 TMS Temporal Decay Curves")
+st.caption("Shows how different document types lose relevance over time")
+
+import math
+import numpy as np
+
+# Load decay rates from commodity profile
+try:
+    from config.commodity_profiles import get_active_profile
+    # Config is not available in this scope, try loading default/mock
+    # In a real app, config is loaded from config_loader
+    from config_loader import load_config
+    config = load_config()
+    profile = get_active_profile(config)
+    decay_rates = getattr(profile, 'tms_decay_rates', {
+        'weather': 0.15, 'logistics': 0.10, 'news': 0.08,
+        'macro': 0.02, 'technical': 0.05, 'default': 0.05
+    })
+except Exception:
+    decay_rates = {
+        'weather': 0.15, 'logistics': 0.10, 'news': 0.08,
+        'macro': 0.02, 'technical': 0.05, 'default': 0.05
+    }
+
+# Generate decay curves
+days = np.arange(0, 60, 0.5)
+chart_data = {}
+
+display_types = ['weather', 'logistics', 'news', 'macro', 'technical', 'trade_journal']
+for doc_type in display_types:
+    lam = decay_rates.get(doc_type, 0.05)
+    chart_data[f"{doc_type} (λ={lam})"] = [math.exp(-lam * d) for d in days]
+
+import pandas as pd
+decay_df = pd.DataFrame(chart_data, index=days)
+decay_df.index.name = 'Age (days)'
+
+st.line_chart(decay_df)
+
+st.caption(
+    "**Reading the chart:** A document at 50% relevance has lost half its informational value. "
+    "Weather data (λ=0.15) hits 50% at ~4.6 days. Macro data (λ=0.02) takes ~34.7 days. "
+    "Decay rates are configurable per commodity profile."
+)
+
+
 st.markdown("---")
 st.caption("Brier Analysis | Coffee Bot Mission Control v6.4")
