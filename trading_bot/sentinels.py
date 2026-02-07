@@ -1550,17 +1550,26 @@ class PredictionMarketSentinel(Sentinel):
 
     def _merge_discovered_topics(self, static_topics: List[Dict]) -> List[Dict]:
         discovered_file = "data/discovered_topics.json"
-        if not os.path.exists(discovered_file): return static_topics
+
+        # Filter out disabled static topics BEFORE merging.
+        # Disabled topics should not inflate the active count or occupy
+        # merge slots that discovered topics could use.
+        enabled_static = [t for t in static_topics if t.get('enabled', True)]
+        disabled_count = len(static_topics) - len(enabled_static)
+        if disabled_count > 0:
+            logger.debug(f"Excluded {disabled_count} disabled static topic(s) from merge")
+
+        if not os.path.exists(discovered_file): return enabled_static
         try:
             with open(discovered_file, 'r') as f: discovered = json.load(f)
-            merged = {t.get('tag', t.get('query')): t for t in static_topics}
+            merged = {t.get('tag', t.get('query')): t for t in enabled_static}
             for topic in discovered:
                 key = topic.get('tag', topic.get('query'))
                 if key not in merged: merged[key] = topic
             return list(merged.values())
         except Exception as e:
             logger.warning(f"Failed to merge discovered topics: {e}")
-            return static_topics
+            return enabled_static
 
     def reload_topics(self):
         """Reload topics from config + discovered topics, pruning orphaned cache entries."""
