@@ -29,6 +29,57 @@ class MarketRegime(Enum):
     MACRO_SHIFT = "MACRO_SHIFT"
     TRENDING_UP = "TRENDING_UP"
     TRENDING_DOWN = "TRENDING_DOWN"
+    RANGE_BOUND = "RANGE_BOUND"
+    UNKNOWN = "UNKNOWN"
+
+
+# Canonical mapping: any regime string → MarketRegime enum
+# This is the SINGLE SOURCE OF TRUTH for regime normalization.
+_REGIME_ALIASES: Dict[str, MarketRegime] = {
+    # Exact matches (already correct)
+    "NORMAL": MarketRegime.NORMAL,
+    "HIGH_VOL": MarketRegime.HIGH_VOL,
+    "WEATHER_EVENT": MarketRegime.WEATHER_EVENT,
+    "MACRO_SHIFT": MarketRegime.MACRO_SHIFT,
+    "TRENDING_UP": MarketRegime.TRENDING_UP,
+    "TRENDING_DOWN": MarketRegime.TRENDING_DOWN,
+    "RANGE_BOUND": MarketRegime.RANGE_BOUND,
+    "UNKNOWN": MarketRegime.UNKNOWN,
+    # Aliases from detect_market_regime_simple() and RegimeDetector
+    "HIGH_VOLATILITY": MarketRegime.HIGH_VOL,
+    "TRENDING": MarketRegime.TRENDING_UP,  # Ambiguous → default to UP
+    # Edge cases
+    "LOW_VOL": MarketRegime.RANGE_BOUND,
+    "": MarketRegime.NORMAL,
+}
+
+
+def normalize_regime(regime_str: str) -> MarketRegime:
+    """
+    Normalize any regime string to a MarketRegime enum value.
+
+    Call this at every system boundary where a regime string enters
+    the Brier scoring pipeline.
+
+    Args:
+        regime_str: Raw regime string from any producer
+
+    Returns:
+        MarketRegime enum value (never raises, defaults to NORMAL)
+    """
+    if isinstance(regime_str, MarketRegime):
+        return regime_str
+
+    cleaned = str(regime_str).strip().upper()
+    result = _REGIME_ALIASES.get(cleaned, MarketRegime.NORMAL)
+
+    if cleaned and cleaned not in _REGIME_ALIASES:
+        logger.warning(
+            f"Unknown regime '{regime_str}' normalized to NORMAL. "
+            f"Add it to _REGIME_ALIASES if this is a valid regime."
+        )
+
+    return result
 
 
 @dataclass
@@ -278,7 +329,9 @@ class EnhancedBrierTracker:
         from trading_bot.agent_names import normalize_agent_name
         agent = normalize_agent_name(agent)
 
-        scores = self.agent_scores.get(agent, {}).get(regime, [])
+        # Normalize regime (P0-REGIME)
+        canonical = normalize_regime(regime).value
+        scores = self.agent_scores.get(agent, {}).get(canonical, [])
 
         if len(scores) < 5:
             # Not enough data, return baseline
