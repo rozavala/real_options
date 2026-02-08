@@ -279,7 +279,7 @@ class ComplianceGuardian:
     async def _check_concentration_risk(self, proposed_direction: str, ib) -> tuple[bool, str]:
         """Check if proposed trade increases concentration risk."""
         if not ib or not ib.isConnected():
-            return True, ""  # Fail open if no IB connection
+            return False, "Concentration check blocked: no IB connection (fail-closed)"
 
         try:
             # FIX (P1-C, 2026-02-04): Use ib.portfolio() sync property.
@@ -327,7 +327,7 @@ class ComplianceGuardian:
 
         except Exception as e:
             logger.warning(f"Concentration check failed: {e}")
-            return True, ""  # Fail open
+            return False, f"Concentration check blocked: {e} (fail-closed)"
 
     async def _fetch_volume_stats(self, ib, contract) -> float:
         """

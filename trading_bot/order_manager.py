@@ -7,6 +7,7 @@ strategy definition from the execution timing.
 """
 import asyncio
 import logging
+import os
 import random
 import time
 import traceback
@@ -61,13 +62,15 @@ def _load_committed_capital() -> float:
     return 0.0
 
 def _save_committed_capital(amount: float):
-    """Persist committed capital to disk."""
+    """Persist committed capital to disk (atomic write)."""
     CAPITAL_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(CAPITAL_STATE_FILE, 'w') as f:
+    temp_path = str(CAPITAL_STATE_FILE) + ".tmp"
+    with open(temp_path, 'w') as f:
         json.dump({
             'committed_capital': amount,
             'last_updated': datetime.now(timezone.utc).isoformat()
         }, f)
+    os.replace(temp_path, str(CAPITAL_STATE_FILE))
 
 async def _reconcile_working_orders(ib: IB, config: dict) -> float:
     """
