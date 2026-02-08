@@ -346,7 +346,8 @@ class PriceSentinel(Sentinel):
         if not hasattr(self, '_last_cumulative_trigger'):
             self._last_cumulative_trigger = 0
 
-        now_ts = time.time()
+        import time as time_module
+        now_ts = time_module.time()
         if (now_ts - self._last_cumulative_trigger) >= cumulative_cooldown:
             try:
                 daily_bars = await self.ib.reqHistoricalDataAsync(
