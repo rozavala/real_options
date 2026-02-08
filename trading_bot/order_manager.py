@@ -495,9 +495,9 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                             # Calculate and track committed capital
                             estimated_risk = await calculate_spread_max_risk(ib, contract, order, config)
 
-                            async with _CAPITAL_LOCK:
-                                committed_capital += estimated_risk
-                                _save_committed_capital(committed_capital)
+                            # Already inside outer _CAPITAL_LOCK (line 451); no nested acquire
+                            committed_capital += estimated_risk
+                            _save_committed_capital(committed_capital)
 
                             # Issue #4: Early abort if capital exhausted
                             if committed_capital > account_value:
@@ -1024,8 +1024,15 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     logger.warning(f"Order for {display_name} blocked by Compliance: {reason}")
                     continue
 
-                # 3. Margin Check
-                what_if = await ib.whatIfOrderAsync(contract, order)
+                # 3. Margin Check (30s timeout to prevent one contract blocking all orders)
+                try:
+                    what_if = await asyncio.wait_for(ib.whatIfOrderAsync(contract, order), timeout=30)
+                except asyncio.TimeoutError:
+                    logger.error(f"whatIfOrderAsync timed out (30s) for {display_name}. Skipping.")
+                    continue
+                if what_if is None or what_if.initMarginChange == '':
+                    logger.error(f"whatIfOrderAsync returned empty result for {display_name}. Skipping.")
+                    continue
                 margin_impact = float(what_if.initMarginChange)
 
                 if margin_impact < current_available_funds:
