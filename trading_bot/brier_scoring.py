@@ -398,7 +398,7 @@ class BrierScoreTracker:
                 df = pd.read_csv(self.history_file)
                 diagnostics['legacy_record_count'] = len(df)
                 diagnostics['legacy_agents'] = df['agent'].unique().tolist() if 'agent' in df.columns else []
-            except:
+            except (pd.errors.EmptyDataError, pd.errors.ParserError, KeyError, ValueError):
                 diagnostics['legacy_record_count'] = 'ERROR'
 
         structured_file = self.history_file.replace('.csv', '_structured.csv')
@@ -408,7 +408,7 @@ class BrierScoreTracker:
                 diagnostics['structured_record_count'] = len(df)
                 diagnostics['pending_count'] = len(df[df['actual'] == 'PENDING'])
                 diagnostics['resolved_count'] = len(df[df['actual'] != 'PENDING'])
-            except:
+            except (pd.errors.EmptyDataError, pd.errors.ParserError, KeyError, ValueError):
                 diagnostics['structured_record_count'] = 'ERROR'
 
         return diagnostics

@@ -883,7 +883,7 @@ OUTPUT FORMAT (JSON ONLY):
             data = json.loads(self._clean_json_text(revised_raw))
             # === A1-R1: Canonicalize confidence immediately (reflexion path) ===
             data['confidence'] = parse_confidence(data.get('confidence', 0.5))
-        except:
+        except (json.JSONDecodeError, ValueError, TypeError, KeyError):
              return initial_response_struct # Fallback to initial
 
         formatted_text = (
@@ -1081,7 +1081,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                         ts = ts.replace(tzinfo=timezone.utc)
                     if (datetime.now(timezone.utc) - ts) > timedelta(hours=24):
                         stale_warning = "[WARNING: DATA IS STALE] "
-                 except:
+                 except (ValueError, TypeError, OSError):
                     pass
 
             reports_text += f"\n--- {agent.upper()} REPORT ---\n{stale_warning}{report_content}\n"

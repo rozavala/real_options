@@ -345,7 +345,7 @@ def render_prediction_markets():
                             st.caption(f"Updated {age_min:.0f}m ago")
                         else:
                             st.caption(f"Updated {age_min/60:.1f}h ago")
-                    except:
+                    except (ValueError, TypeError, AttributeError):
                         pass
 
                 st.divider()

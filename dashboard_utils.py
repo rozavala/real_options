@@ -829,10 +829,10 @@ def fetch_todays_benchmark_data():
                     changes[ticker] = ((series.iloc[-1] - series.iloc[-2]) / series.iloc[-2]) * 100
                 else:
                     changes[ticker] = 0.0
-            except:
+            except (ValueError, TypeError, KeyError, IndexError):
                 changes[ticker] = 0.0
         return changes
-    except:
+    except Exception:
         return {}
 
 

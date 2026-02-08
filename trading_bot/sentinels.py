@@ -1709,7 +1709,7 @@ class PredictionMarketSentinel(Sentinel):
                             best_market = m
                             try:
                                 best_vol = float(m.get('volume', 0) or 0)
-                            except:
+                            except (ValueError, TypeError):
                                 best_vol = 0
 
                     if best_market is None:
