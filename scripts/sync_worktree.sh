@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 # =============================================================================
 # Coffee Bot — Worktree Sync (called by deploy.sh after successful deploy)
 #

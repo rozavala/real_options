@@ -237,7 +237,7 @@ with manual_cols[0]:
                                 await IBConnectionPool.release_all()
                                 logger.info("Connection pool released successfully")
                             except Exception as e:
-                                print(f"Error releasing connection pool: {e}")
+                                logging.getLogger("Utilities").error(f"Error releasing connection pool: {e}")
 
                     # Run the async function
                     try:
