@@ -78,9 +78,9 @@ class TestExitLogic(unittest.IsolatedAsyncioTestCase):
         mock_council = MagicMock()
         mock_position = MagicMock()
 
-        # Mock _get_current_regime to return HIGH_VOLATILITY
-        with patch('orchestrator._get_current_regime', new_callable=AsyncMock) as mock_regime:
-            mock_regime.return_value = 'HIGH_VOLATILITY'
+        # Mock _get_current_regime_and_iv to return HIGH_VOLATILITY with high IV rank
+        with patch('orchestrator._get_current_regime_and_iv', new_callable=AsyncMock) as mock_regime:
+            mock_regime.return_value = ('HIGH_VOLATILITY', 75.0)
 
             result = await _validate_thesis(thesis, mock_position, mock_council, mock_config, mock_ib)
 
