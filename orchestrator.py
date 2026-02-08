@@ -12,7 +12,6 @@ import logging
 import sys
 import traceback
 import os
-import random
 import json
 import hashlib
 from collections import deque
@@ -20,7 +19,7 @@ import time as time_module
 from datetime import datetime, time, timedelta, timezone
 import pytz
 import pandas as pd
-from ib_insync import IB, util, Contract, MarketOrder, LimitOrder, Order, OrderStatus, Future
+from ib_insync import IB, util, Contract, MarketOrder, LimitOrder, Order, Future
 
 from config_loader import load_config
 from trading_bot.logging_config import setup_logging
@@ -35,7 +34,6 @@ from trading_bot.order_manager import (
     close_stale_positions,
     cancel_all_open_orders,
     place_queued_orders,
-    ORDER_QUEUE,
     get_trade_ledger_df
 )
 from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, round_to_tick, get_tick_size, word_boundary_match
@@ -54,12 +52,11 @@ from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.compliance import ComplianceGuardian
 from trading_bot.position_sizer import DynamicPositionSizer
 from trading_bot.weighted_voting import RegimeDetector
-from trading_bot.brier_scoring import get_brier_tracker
 from trading_bot.tms import TransactiveMemory
 from trading_bot.budget_guard import BudgetGuard
 from trading_bot.drawdown_circuit_breaker import DrawdownGuard
 from trading_bot.cycle_id import generate_cycle_id
-from trading_bot.strategy_router import route_strategy, infer_strategy_type
+from trading_bot.strategy_router import route_strategy
 from trading_bot.task_tracker import record_task_completion, has_task_completed_today
 from trading_bot.sentinel_stats import SENTINEL_STATS
 
@@ -316,7 +313,7 @@ def _route_emergency_strategy(decision: dict, market_context: dict, agent_report
         if regime == 'RANGE_BOUND' and vol_sentiment == 'BEARISH':
             prediction_type = "VOLATILITY"
             vol_level = "LOW"
-            reason = f"Emergency Iron Condor: Range-bound + expensive vol (sell premium)"
+            reason = "Emergency Iron Condor: Range-bound + expensive vol (sell premium)"
             logger.info(f"EMERGENCY STRATEGY: IRON_CONDOR | regime={regime}, vol={vol_sentiment}")
 
         # PATH 2: LONG STRADDLE — expect big move, options not expensive
@@ -427,7 +424,8 @@ async def _detect_market_regime(config: dict, trigger=None, ib: IB = None, contr
             regime = await RegimeDetector.detect_regime(ib, contract)
             if regime != "UNKNOWN":
                 # Normalize terminology
-                if regime == "HIGH_VOLATILITY": return "HIGH_VOL"
+                if regime == "HIGH_VOLATILITY":
+                    return "HIGH_VOL"
                 return regime
         except Exception as e:
             logger.warning(f"Regime detection via IB failed: {e}")
@@ -460,7 +458,8 @@ async def _get_current_regime_and_iv(ib: IB, config: dict) -> tuple:
         if futures:
             metrics = await get_underlying_iv_metrics(ib, futures[0])
             iv_rank = metrics.get('iv_rank', 50)
-            if isinstance(iv_rank, str): iv_rank = 50.0  # Fallback
+            if isinstance(iv_rank, str):
+                iv_rank = 50.0  # Fallback
             iv_rank = float(iv_rank)
             iv_threshold = config.get('exit_logic', {}).get('condor_iv_rank_breach', 70)
             if iv_rank > iv_threshold:
@@ -476,8 +475,10 @@ async def _get_current_price(ib: IB, contract: Contract) -> float:
     ticker = ib.reqMktData(contract, '', True, False)
     await asyncio.sleep(1)
     price = 0.0
-    if not util.isNan(ticker.last): price = ticker.last
-    elif not util.isNan(ticker.close): price = ticker.close
+    if not util.isNan(ticker.last):
+        price = ticker.last
+    elif not util.isNan(ticker.close):
+        price = ticker.close
     # For snapshot requests, IB auto-cleans the ticker.
     # Do NOT call cancelMktData — it causes Error 300 spam.
     return price
@@ -535,6 +536,237 @@ async def _get_context_for_guardian(guardian: str, config: dict) -> str:
 
     return "\n\n".join(parts)
 
+async def _validate_iron_condor(thesis: dict, config: dict, ib: IB, active_futures_cache: dict) -> dict:
+    """Validate Iron Condor against regime, IV, and price breaches."""
+    exit_cfg = config.get('exit_logic', {})
+    regime_exits_enabled = exit_cfg.get('enable_regime_breach_exits', True)
+
+    # Get current regime AND iv_rank
+    current_regime, current_iv_rank = await _get_current_regime_and_iv(ib, config)
+    entry_regime = thesis.get('entry_regime', 'RANGE_BOUND')
+    iv_breach_threshold = exit_cfg.get('condor_iv_rank_breach', 70)
+
+    if regime_exits_enabled:
+        if current_regime == 'HIGH_VOLATILITY' and entry_regime == 'RANGE_BOUND':
+            return {
+                'action': 'CLOSE',
+                'reason': "REGIME BREACH: Entered as RANGE_BOUND, now HIGH_VOLATILITY. Iron Condor invalid."
+            }
+
+        # Standalone IV rank check — high IV threatens all iron condors
+        if current_iv_rank > iv_breach_threshold:
+            return {
+                'action': 'CLOSE',
+                'reason': (
+                    f"IV RANK BREACH: Current IV rank {current_iv_rank:.1f} exceeds "
+                    f"threshold {iv_breach_threshold}. Iron Condor at risk."
+                )
+            }
+
+    # === PRICE BREACH CHECK ===
+    supporting_data = thesis.get('supporting_data', {})
+    underlying_symbol = supporting_data.get('underlying_symbol', config.get('symbol', 'KC'))
+    contract_month = supporting_data.get('contract_month')
+
+    underlying_contract = None
+
+    if contract_month:
+        # Build underlying future contract from stored metadata
+        underlying_contract = Future(
+            symbol=underlying_symbol,
+            lastTradeDateOrContractMonth=contract_month,
+            exchange=config.get('exchange', 'NYBOT')
+        )
+        try:
+            await ib.qualifyContractsAsync(underlying_contract)
+        except Exception as e:
+            logger.warning(f"Failed to qualify stored underlying contract: {e}")
+            underlying_contract = None
+
+    if not underlying_contract:
+        # Fallback: Get front-month future (with caching)
+        symbol = config.get('symbol', 'KC')
+        if active_futures_cache and symbol in active_futures_cache:
+            futures = active_futures_cache[symbol]
+            underlying_contract = futures[0] if futures else None
+            logger.debug(f"Using cached active future for {symbol}")
+        else:
+            try:
+                futures = await get_active_futures(ib, symbol, config['exchange'], count=1)
+                underlying_contract = futures[0] if futures else None
+                if active_futures_cache is not None and futures:
+                    active_futures_cache[symbol] = futures
+            except Exception as e:
+                logger.warning(f"Failed to get active futures for IC validation: {e}")
+
+    if not underlying_contract:
+        logger.error("Cannot validate IC thesis - no underlying contract available")
+        return {'action': 'HOLD', 'reason': 'Unable to fetch underlying price for validation'}
+
+    # Fetch current underlying price
+    current_price = await _get_current_price(ib, underlying_contract)
+    entry_price = supporting_data.get('entry_price', 0)
+
+    # SANITY CHECK: Detect legacy theses where entry_price is a spread premium
+    price_floor = config.get('validation', {}).get('underlying_price_floor', 100.0)
+
+    if 0 < entry_price < price_floor:
+        # spread_credit = supporting_data.get('spread_credit', entry_price)
+        logger.warning(
+            f"SEMANTIC GUARD: entry_price ${entry_price:.2f} < floor "
+            f"${price_floor:.2f} for thesis {thesis.get('trade_id', '?')}. "
+            f"Likely a spread premium, not underlying price. "
+            f"Skipping price breach check. Run migration script."
+        )
+        entry_price = 0  # Disable price breach check for this thesis
+
+    price_breach_pct = exit_cfg.get('condor_price_breach_pct', 2.0)
+    if entry_price > 0 and current_price > 0:
+        move_pct = abs((current_price - entry_price) / entry_price) * 100
+
+        if move_pct > price_breach_pct:
+            return {
+                'action': 'CLOSE',
+                'reason': f"PRICE BREACH: Underlying moved {move_pct:.2f}% from entry (threshold: {price_breach_pct}%). "
+                          f"Entry: ${entry_price:.2f}, Current: ${current_price:.2f}"
+            }
+    else:
+        logger.warning(f"Invalid prices for IC validation: entry={entry_price}, current={current_price}")
+
+    return None
+
+
+async def _validate_long_straddle(thesis: dict, position, config: dict, ib: IB, active_futures_cache: dict) -> dict:
+    """Validate Long Straddle against theta burn."""
+    exit_cfg = config.get('exit_logic', {})
+    theta_check_enabled = exit_cfg.get('enable_theta_hurdle_check', True)
+    if not theta_check_enabled:
+        logger.debug("Theta hurdle check disabled via config — skipping LONG_STRADDLE validation")
+        return None
+
+    # Check theta efficiency
+    theta_hours = exit_cfg.get('theta_hurdle_hours', 4)
+    theta_min_move = exit_cfg.get('theta_minimum_move_pct', 1.0)
+
+    entry_time_str = thesis.get('entry_timestamp', '')
+    if entry_time_str:
+        entry_time = datetime.fromisoformat(entry_time_str)
+        hours_held = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600
+
+        if hours_held > theta_hours:
+            supporting_data = thesis.get('supporting_data', {})
+            entry_price = supporting_data.get('entry_price', 0)
+            if entry_price:
+                # Fix 5: Fetch underlying future price, not option/combo price
+                underlying_symbol = supporting_data.get('underlying_symbol', config.get('symbol', 'KC'))
+                contract_month = supporting_data.get('contract_month')
+                underlying_contract = None
+
+                if contract_month:
+                    underlying_contract = Future(
+                        symbol=underlying_symbol,
+                        lastTradeDateOrContractMonth=contract_month,
+                        exchange=config.get('exchange', 'NYBOT')
+                    )
+                    try:
+                        await ib.qualifyContractsAsync(underlying_contract)
+                    except Exception as e:
+                        logger.warning(f"Failed to qualify underlying for straddle: {e}")
+                        underlying_contract = None
+
+                if not underlying_contract:
+                    symbol = config.get('symbol', 'KC')
+                    if active_futures_cache and symbol in active_futures_cache:
+                        futures = active_futures_cache[symbol]
+                        underlying_contract = futures[0] if futures else None
+                    else:
+                        try:
+                            futures = await get_active_futures(ib, symbol, config['exchange'], count=1)
+                            underlying_contract = futures[0] if futures else None
+                            if active_futures_cache is not None and futures:
+                                active_futures_cache[symbol] = futures
+                        except Exception as e:
+                            logger.warning(f"Failed to get active futures for straddle validation: {e}")
+
+                if underlying_contract:
+                    current_price = await _get_current_price(ib, underlying_contract)
+                else:
+                    logger.warning("Cannot fetch underlying price for straddle — falling back to position contract")
+                    current_price = await _get_current_price(ib, position.contract)
+
+                if current_price > 0:
+                    move_pct = abs((current_price - entry_price) / entry_price) * 100
+
+                    if move_pct < theta_min_move:
+                        return {
+                            'action': 'CLOSE',
+                            'reason': (
+                                f"THETA BURN: {hours_held:.1f}h elapsed, only {move_pct:.2f}% move "
+                                f"(threshold: {theta_min_move}%). Salvage residual value."
+                            )
+                        }
+    return None
+
+
+async def _validate_directional_spread(thesis: dict, guardian: str, council, config: dict, llm_budget_available: bool) -> dict:
+    """Validate Directional Spread using LLM narrative check."""
+    exit_cfg = config.get('exit_logic', {})
+    narrative_exits_enabled = exit_cfg.get('enable_narrative_exits', True)
+    if not narrative_exits_enabled:
+        logger.debug("Narrative exits disabled via config — skipping directional spread validation")
+        return None
+    elif not llm_budget_available:
+        logger.info("LLM budget exhausted — skipping narrative thesis validation for directional spread")
+        return None
+
+    # Query the guardian agent for thesis validity
+    primary_rationale = thesis.get('primary_rationale', '')
+    invalidation_triggers = thesis.get('invalidation_triggers', [])
+
+    # Get current sentinel data relevant to this thesis
+    current_context = await _get_context_for_guardian(guardian, config)
+
+    # Permabear Attack prompt
+    attack_prompt = f"""You are stress-testing an existing position.
+
+POSITION: {thesis.get('strategy_type')}
+ORIGINAL THESIS: {primary_rationale}
+KNOWN INVALIDATION TRIGGERS: {invalidation_triggers}
+
+CURRENT MARKET CONTEXT:
+{current_context}
+
+QUESTION: Does the original thesis STILL HOLD?
+- If ANY invalidation trigger has fired, return CLOSE.
+- If the thesis is weakening but not dead, return HOLD with concerns.
+- Be aggressive - we'd rather close early than ride a dead thesis.
+
+Return JSON: {{"verdict": "HOLD" or "CLOSE", "confidence": 0.0-1.0, "reasoning": "..."}}
+"""
+    confidence_threshold = exit_cfg.get('thesis_validation_confidence_threshold', 0.6)
+    # Note: calling router directly requires accessing it from council or passing router
+    if hasattr(council, 'router'):
+        verdict_response = await council.router.route_and_call(
+            model_key='permabear', # Use permabear model
+            prompt=attack_prompt,
+            response_model=None # Expecting JSON string or use strict mode if available
+        )
+
+        try:
+            # Clean up response if needed (remove markdown)
+            clean_response = verdict_response.replace('```json', '').replace('```', '')
+            verdict_data = json.loads(clean_response)
+            if verdict_data.get('verdict') == 'CLOSE' and verdict_data.get('confidence', 0) > confidence_threshold:
+                return {
+                    'action': 'CLOSE',
+                    'reason': f"NARRATIVE INVALIDATION: {verdict_data.get('reasoning', 'Thesis degraded')}"
+                }
+        except Exception as e:
+            logger.warning(f"Could not parse thesis validation response: {e}")
+
+    return None
+
+
 async def _validate_thesis(
     thesis: dict,
     position,
@@ -555,224 +787,23 @@ async def _validate_thesis(
     strategy_type = thesis.get('strategy_type', 'UNKNOWN')
     guardian = thesis.get('guardian_agent', 'Master')
 
-    exit_cfg = config.get('exit_logic', {})
-
-    # A. REGIME-BASED VALIDATION (Iron Condor / Long Straddle)
+    # A. REGIME-BASED VALIDATION (Iron Condor)
     if strategy_type == 'IRON_CONDOR':
-        regime_exits_enabled = exit_cfg.get('enable_regime_breach_exits', True)
+        result = await _validate_iron_condor(thesis, config, ib, active_futures_cache)
+        if result:
+            return result
 
-        # Get current regime AND iv_rank
-        current_regime, current_iv_rank = await _get_current_regime_and_iv(ib, config)
-        entry_regime = thesis.get('entry_regime', 'RANGE_BOUND')
-        iv_breach_threshold = exit_cfg.get('condor_iv_rank_breach', 70)
-
-        if regime_exits_enabled:
-            if current_regime == 'HIGH_VOLATILITY' and entry_regime == 'RANGE_BOUND':
-                return {
-                    'action': 'CLOSE',
-                    'reason': f"REGIME BREACH: Entered as RANGE_BOUND, now HIGH_VOLATILITY. Iron Condor invalid."
-                }
-
-            # Standalone IV rank check — high IV threatens all iron condors
-            if current_iv_rank > iv_breach_threshold:
-                return {
-                    'action': 'CLOSE',
-                    'reason': (
-                        f"IV RANK BREACH: Current IV rank {current_iv_rank:.1f} exceeds "
-                        f"threshold {iv_breach_threshold}. Iron Condor at risk."
-                    )
-                }
-
-        # === PRICE BREACH CHECK ===
-        # FIX: Get underlying future price, NOT combo contract price
-        supporting_data = thesis.get('supporting_data', {})
-        underlying_symbol = supporting_data.get('underlying_symbol', config.get('symbol', 'KC'))
-        contract_month = supporting_data.get('contract_month')
-
-        underlying_contract = None
-
-        if contract_month:
-            # Build underlying future contract from stored metadata
-            underlying_contract = Future(
-                symbol=underlying_symbol,
-                lastTradeDateOrContractMonth=contract_month,
-                exchange=config.get('exchange', 'NYBOT')
-            )
-            try:
-                await ib.qualifyContractsAsync(underlying_contract)
-            except Exception as e:
-                logger.warning(f"Failed to qualify stored underlying contract: {e}")
-                underlying_contract = None
-
-        if not underlying_contract:
-            # Fallback: Get front-month future (with caching)
-            symbol = config.get('symbol', 'KC')
-            if active_futures_cache and symbol in active_futures_cache:
-                futures = active_futures_cache[symbol]
-                underlying_contract = futures[0] if futures else None
-                logger.debug(f"Using cached active future for {symbol}")
-            else:
-                try:
-                    futures = await get_active_futures(ib, symbol, config['exchange'], count=1)
-                    underlying_contract = futures[0] if futures else None
-                    if active_futures_cache is not None and futures:
-                         active_futures_cache[symbol] = futures
-                except Exception as e:
-                    logger.warning(f"Failed to get active futures for IC validation: {e}")
-
-        if not underlying_contract:
-            logger.error(f"Cannot validate IC thesis - no underlying contract available")
-            return {'action': 'HOLD', 'reason': 'Unable to fetch underlying price for validation'}
-
-        # Fetch current underlying price
-        current_price = await _get_current_price(ib, underlying_contract)
-        entry_price = supporting_data.get('entry_price', 0)
-
-        # SANITY CHECK: Detect legacy theses where entry_price is a spread premium
-        price_floor = config.get('validation', {}).get('underlying_price_floor', 100.0)
-
-        if 0 < entry_price < price_floor:
-            spread_credit = supporting_data.get('spread_credit', entry_price)
-            logger.warning(
-                f"SEMANTIC GUARD: entry_price ${entry_price:.2f} < floor "
-                f"${price_floor:.2f} for thesis {thesis.get('trade_id', '?')}. "
-                f"Likely a spread premium, not underlying price. "
-                f"Skipping price breach check. Run migration script."
-            )
-            entry_price = 0  # Disable price breach check for this thesis
-
-        price_breach_pct = exit_cfg.get('condor_price_breach_pct', 2.0)
-        if entry_price > 0 and current_price > 0:
-            move_pct = abs((current_price - entry_price) / entry_price) * 100
-
-            if move_pct > price_breach_pct:
-                return {
-                    'action': 'CLOSE',
-                    'reason': f"PRICE BREACH: Underlying moved {move_pct:.2f}% from entry (threshold: {price_breach_pct}%). "
-                              f"Entry: ${entry_price:.2f}, Current: ${current_price:.2f}"
-                }
-        else:
-            logger.warning(f"Invalid prices for IC validation: entry={entry_price}, current={current_price}")
-
+    # B. VOLATILITY/THETA VALIDATION (Long Straddle)
     elif strategy_type == 'LONG_STRADDLE':
-        theta_check_enabled = exit_cfg.get('enable_theta_hurdle_check', True)
-        if not theta_check_enabled:
-            logger.debug("Theta hurdle check disabled via config — skipping LONG_STRADDLE validation")
-        else:
-            # Check theta efficiency
-            theta_hours = exit_cfg.get('theta_hurdle_hours', 4)
-            theta_min_move = exit_cfg.get('theta_minimum_move_pct', 1.0)
+        result = await _validate_long_straddle(thesis, position, config, ib, active_futures_cache)
+        if result:
+            return result
 
-            entry_time_str = thesis.get('entry_timestamp', '')
-            if entry_time_str:
-                entry_time = datetime.fromisoformat(entry_time_str)
-                hours_held = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600
-
-                if hours_held > theta_hours:
-                    supporting_data = thesis.get('supporting_data', {})
-                    entry_price = supporting_data.get('entry_price', 0)
-                    if entry_price:
-                        # Fix 5: Fetch underlying future price, not option/combo price
-                        underlying_symbol = supporting_data.get('underlying_symbol', config.get('symbol', 'KC'))
-                        contract_month = supporting_data.get('contract_month')
-                        underlying_contract = None
-
-                        if contract_month:
-                            underlying_contract = Future(
-                                symbol=underlying_symbol,
-                                lastTradeDateOrContractMonth=contract_month,
-                                exchange=config.get('exchange', 'NYBOT')
-                            )
-                            try:
-                                await ib.qualifyContractsAsync(underlying_contract)
-                            except Exception as e:
-                                logger.warning(f"Failed to qualify underlying for straddle: {e}")
-                                underlying_contract = None
-
-                        if not underlying_contract:
-                            symbol = config.get('symbol', 'KC')
-                            if active_futures_cache and symbol in active_futures_cache:
-                                futures = active_futures_cache[symbol]
-                                underlying_contract = futures[0] if futures else None
-                            else:
-                                try:
-                                    futures = await get_active_futures(ib, symbol, config['exchange'], count=1)
-                                    underlying_contract = futures[0] if futures else None
-                                    if active_futures_cache is not None and futures:
-                                        active_futures_cache[symbol] = futures
-                                except Exception as e:
-                                    logger.warning(f"Failed to get active futures for straddle validation: {e}")
-
-                        if underlying_contract:
-                            current_price = await _get_current_price(ib, underlying_contract)
-                        else:
-                            logger.warning("Cannot fetch underlying price for straddle — falling back to position contract")
-                            current_price = await _get_current_price(ib, position.contract)
-
-                        if current_price > 0:
-                            move_pct = abs((current_price - entry_price) / entry_price) * 100
-
-                            if move_pct < theta_min_move:
-                                return {
-                                    'action': 'CLOSE',
-                                    'reason': (
-                                        f"THETA BURN: {hours_held:.1f}h elapsed, only {move_pct:.2f}% move "
-                                        f"(threshold: {theta_min_move}%). Salvage residual value."
-                                    )
-                                }
-
-    # B. NARRATIVE-BASED VALIDATION (Directional Spreads)
+    # C. NARRATIVE-BASED VALIDATION (Directional Spreads)
     elif strategy_type in ['BULL_CALL_SPREAD', 'BEAR_PUT_SPREAD']:
-        narrative_exits_enabled = exit_cfg.get('enable_narrative_exits', True)
-        if not narrative_exits_enabled:
-            logger.debug("Narrative exits disabled via config — skipping directional spread validation")
-        elif not llm_budget_available:
-            logger.info("LLM budget exhausted — skipping narrative thesis validation for directional spread")
-        else:
-            # Query the guardian agent for thesis validity
-            primary_rationale = thesis.get('primary_rationale', '')
-            invalidation_triggers = thesis.get('invalidation_triggers', [])
-
-            # Get current sentinel data relevant to this thesis
-            current_context = await _get_context_for_guardian(guardian, config)
-
-            # Permabear Attack prompt
-            attack_prompt = f"""You are stress-testing an existing position.
-
-POSITION: {strategy_type}
-ORIGINAL THESIS: {primary_rationale}
-KNOWN INVALIDATION TRIGGERS: {invalidation_triggers}
-
-CURRENT MARKET CONTEXT:
-{current_context}
-
-QUESTION: Does the original thesis STILL HOLD?
-- If ANY invalidation trigger has fired, return CLOSE.
-- If the thesis is weakening but not dead, return HOLD with concerns.
-- Be aggressive - we'd rather close early than ride a dead thesis.
-
-Return JSON: {{"verdict": "HOLD" or "CLOSE", "confidence": 0.0-1.0, "reasoning": "..."}}
-"""
-            confidence_threshold = exit_cfg.get('thesis_validation_confidence_threshold', 0.6)
-            # Note: calling router directly requires accessing it from council or passing router
-            if hasattr(council, 'router'):
-                verdict_response = await council.router.route_and_call(
-                    model_key='permabear', # Use permabear model
-                    prompt=attack_prompt,
-                    response_model=None # Expecting JSON string or use strict mode if available
-                )
-
-                try:
-                    # Clean up response if needed (remove markdown)
-                    clean_response = verdict_response.replace('```json', '').replace('```', '')
-                    verdict_data = json.loads(clean_response)
-                    if verdict_data.get('verdict') == 'CLOSE' and verdict_data.get('confidence', 0) > confidence_threshold:
-                        return {
-                            'action': 'CLOSE',
-                            'reason': f"NARRATIVE INVALIDATION: {verdict_data.get('reasoning', 'Thesis degraded')}"
-                        }
-                except Exception as e:
-                    logger.warning(f"Could not parse thesis validation response: {e}")
+        result = await _validate_directional_spread(thesis, guardian, council, config, llm_budget_available)
+        if result:
+            return result
 
     # Default: HOLD
     return {'action': 'HOLD', 'reason': 'Thesis intact'}
@@ -1333,7 +1364,7 @@ async def _close_spread_position(
     # --- Step 4: Send accurate notification ---
     total_legs = len(qualified_legs)
     success_count = len(successful_closes)
-    fail_count = len(failed_closes)
+    # fail_count = len(failed_closes)
 
     if success_count == total_legs:
         # Full success
@@ -1359,7 +1390,7 @@ async def _close_spread_position(
         )
         for sc in successful_closes:
             message += f"  ✅ {sc['action']} {sc['qty']}x {sc['symbol']} @ ${sc['fill_price']:.4f}\n"
-        message += f"\nFailed:\n"
+        message += "\nFailed:\n"
         for fc in failed_closes:
             message += f"  ❌ {fc['symbol']}: {fc['status']} — {fc['error']}\n"
     else:
@@ -1460,7 +1491,7 @@ async def _reconcile_state_stores(
             send_pushover_notification(
                 config.get('notifications', {}),
                 "⚠️ State Sync Warning",
-                f"Discrepancies found:\n" + "\n".join(results['discrepancies'])
+                "Discrepancies found:\n" + "\n".join(results['discrepancies'])
             )
         else:
             logger.info(
@@ -1961,10 +1992,10 @@ async def reconcile_and_analyze(config: dict):
         logger.warning(f"Failed to check equity staleness: {e}")
 
     # Isolate reconciliation failures
-    reconciliation_succeeded = False
+    # reconciliation_succeeded = False
     try:
         await reconcile_and_notify(config)
-        reconciliation_succeeded = True
+        # reconciliation_succeeded = True
     except Exception as e:
         logger.critical(f"Reconciliation FAILED: {e}\n{traceback.format_exc()}")
         send_pushover_notification(
@@ -2424,7 +2455,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
             if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
                 logger.warning("Budget hit — skipping Emergency Cycle (Sentinel-only mode)")
                 send_pushover_notification(config.get('notifications', {}), "Budget Guard",
-                    f"Daily API budget hit. Sentinel-only mode active.")
+                    "Daily API budget hit. Sentinel-only mode active.")
                 return
 
             # === Drawdown Circuit Breaker ===
@@ -2440,7 +2471,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     return
 
                 if GLOBAL_DRAWDOWN_GUARD.should_panic_close():
-                     logger.critical(f"Drawdown PANIC triggered during emergency cycle check. Triggering Hard Close.")
+                     logger.critical("Drawdown PANIC triggered during emergency cycle check. Triggering Hard Close.")
                      await emergency_hard_close(config)
                      return
 
@@ -2679,7 +2710,8 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     agent_data = {}
 
                     def extract_sentiment(text):
-                        if not text or not isinstance(text, str): return "N/A"
+                        if not text or not isinstance(text, str):
+                            return "N/A"
                         import re
                         match = re.search(r'\[SENTIMENT: (\w+)\]', text)
                         return match.group(1) if match else "N/A"
@@ -2949,7 +2981,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 def validate_trigger(trigger):
     """Defensive check for sentinel triggers."""
     if isinstance(trigger, list):
-        logger.warning(f"Sentinel returned list instead of single trigger. Using first item.")
+        logger.warning("Sentinel returned list instead of single trigger. Using first item.")
         trigger = trigger[0] if trigger else None
 
     if trigger is not None and not hasattr(trigger, 'source'):
@@ -3342,7 +3374,7 @@ async def run_sentinels(config: dict):
                         )
                         GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
                 except asyncio.TimeoutError:
-                    logger.error(f"PriceSentinel TIMED OUT after 30s")
+                    logger.error("PriceSentinel TIMED OUT after 30s")
                     _health_error = "TIMEOUT after 30s"
                     SENTINEL_STATS.record_error("PriceSentinel", "TIMEOUT")
                 except Exception as e:
@@ -3409,7 +3441,7 @@ async def run_sentinels(config: dict):
                                 StateManager.queue_deferred_trigger(trigger)
                                 logger.info(f"Deferred {trigger.source} trigger for market open")
                     except asyncio.TimeoutError:
-                        logger.error(f"XSentimentSentinel TIMED OUT after 120s")
+                        logger.error("XSentimentSentinel TIMED OUT after 120s")
                         _health_error = "TIMEOUT after 120s"
                         SENTINEL_STATS.record_error("XSentimentSentinel", "TIMEOUT")
                     except Exception as e:
@@ -3508,7 +3540,7 @@ async def run_sentinels(config: dict):
                             # Severity 0-4: Debug log only
                             logger.debug(f"MICROSTRUCTURE LOW: {micro_trigger.reason}")
                 except asyncio.TimeoutError:
-                    logger.error(f"MicrostructureSentinel TIMED OUT after 30s")
+                    logger.error("MicrostructureSentinel TIMED OUT after 30s")
                     _health_error = "TIMEOUT after 30s"
                     SENTINEL_STATS.record_error("MicrostructureSentinel", "TIMEOUT")
                 except Exception as e:
@@ -3667,7 +3699,7 @@ async def emergency_hard_close(config: dict):
                         if tid:
                             sweep_tms.invalidate_thesis(
                                 tid,
-                                f"Emergency hard close sweep"
+                                "Emergency hard close sweep"
                             )
                             swept += 1
                     if swept > 0:
@@ -4070,8 +4102,9 @@ async def main():
 
     config = load_config()
     if not config:
-        logger.critical("Orchestrator cannot start without a valid configuration."); return
-    
+        logger.critical("Orchestrator cannot start without a valid configuration.")
+        return
+
     # Initialize Budget Guard
     global GLOBAL_BUDGET_GUARD
     GLOBAL_BUDGET_GUARD = BudgetGuard(config)
@@ -4199,7 +4232,8 @@ async def main():
                     GLOBAL_DEDUPLICATOR.clear_cooldown("GLOBAL")
 
             except asyncio.CancelledError:
-                logger.info("Orchestrator main loop cancelled."); break
+                logger.info("Orchestrator main loop cancelled.")
+                break
             except Exception as e:
                 error_msg = f"A critical error occurred in the main orchestrator loop: {e}\n{traceback.format_exc()}"
                 logger.critical(error_msg)

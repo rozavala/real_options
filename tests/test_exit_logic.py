@@ -1,7 +1,19 @@
-import unittest
+import sys
 from unittest.mock import MagicMock, AsyncMock, patch
 import json
 from datetime import datetime, timezone, timedelta
+
+# Mock matplotlib to avoid dependency
+sys.modules['matplotlib'] = MagicMock()
+sys.modules['matplotlib.pyplot'] = MagicMock()
+sys.modules['matplotlib.dates'] = MagicMock()
+sys.modules['matplotlib.ticker'] = MagicMock()
+
+# Mock chromadb to avoid heavy dependency
+sys.modules['chromadb'] = MagicMock()
+sys.modules['pysqlite3'] = MagicMock()
+
+import unittest
 
 # Import functions to test (assuming they are accessible or I mock them)
 # Some functions are internal to orchestrator.py or order_manager.py
