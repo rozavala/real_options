@@ -149,7 +149,12 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
                 if contract_to_close.strike > 100: contract_to_close.strike /= 100.0
                 order = MarketOrder('BUY' if pos_to_close.position < 0 else 'SELL', abs(pos_to_close.position))
                 trade = ib.placeOrder(contract_to_close, order)
+                # Wait for fill with 60s timeout to prevent infinite blocking
+                close_deadline = asyncio.get_event_loop().time() + 60
                 while not trade.isDone():
+                    if asyncio.get_event_loop().time() > close_deadline:
+                        logging.error(f"Position close timed out (60s) for conId {pos_to_close.contract.conId}. Order may still be working.")
+                        break
                     await ib.sleepAsync(0.1)
                 if trade.orderStatus.status == OrderStatus.Filled:
                     log_trade_to_ledger(ib, trade, "Position Misaligned", combo_id=trade.order.permId)
