@@ -3,6 +3,7 @@ import json
 import os
 import asyncio
 import re
+import time
 from dataclasses import dataclass
 from typing import Optional
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole
@@ -88,7 +89,10 @@ class ComplianceDecision:
         )
 
 # Module-level cache for ContractDetails (prevents redundant API calls during multi-signal bursts)
-_CONTRACT_DETAILS_CACHE: dict = {}
+# TTL: 1 hour, Max entries: 500 (FIFO eviction)
+_CONTRACT_DETAILS_CACHE: dict = {}  # {conId: {'data': ..., 'ts': time.time()}}
+_CACHE_TTL_SECONDS = 3600
+_CACHE_MAX_SIZE = 500
 
 COMPLIANCE_LOG_FILE = Path("data/compliance_decisions.csv")
 
@@ -171,11 +175,12 @@ async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
     try:
         # === LATENCY MITIGATION: Parallel fetch with caching ===
         async def get_leg_details(leg):
-            """Fetch leg details with caching."""
+            """Fetch leg details with TTL-bounded caching."""
             cache_key = leg.conId
-            if cache_key in _CONTRACT_DETAILS_CACHE:
+            cached = _CONTRACT_DETAILS_CACHE.get(cache_key)
+            if cached and (time.time() - cached['ts']) < _CACHE_TTL_SECONDS:
                 logger.debug(f"Cache hit for conId {cache_key}")
-                return _CONTRACT_DETAILS_CACHE[cache_key]
+                return cached['data']
 
             details = await ib.reqContractDetailsAsync(Contract(conId=leg.conId))
             if details:
@@ -186,7 +191,11 @@ async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
                     'right': leg_contract.right,  # 'C' or 'P'
                     'action': leg.action  # 'BUY' or 'SELL'
                 }
-                _CONTRACT_DETAILS_CACHE[cache_key] = result
+                # Evict oldest entries if cache is full
+                if len(_CONTRACT_DETAILS_CACHE) >= _CACHE_MAX_SIZE:
+                    oldest_key = min(_CONTRACT_DETAILS_CACHE, key=lambda k: _CONTRACT_DETAILS_CACHE[k]['ts'])
+                    del _CONTRACT_DETAILS_CACHE[oldest_key]
+                _CONTRACT_DETAILS_CACHE[cache_key] = {'data': result, 'ts': time.time()}
                 return result
             return None
 
