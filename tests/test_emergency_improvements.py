@@ -96,7 +96,10 @@ async def test_emergency_cycle_runs_when_open():
 
                  mock_ib = MagicMock()
                  trigger = SentinelTrigger("TestSentinel", "Test Reason", {})
-                 config = {'notifications': {}}
+                 config = {
+                     'notifications': {},
+                     'schedule': {'daily_trading_cutoff_et': {'hour': 23, 'minute': 59}}
+                 }
 
                  # Mock get_active_futures to return empty so it exits early safely
                  with patch('orchestrator.get_active_futures', return_value=[]):

@@ -1,13 +1,6 @@
 import unittest
 import asyncio
-import sys
 from unittest.mock import MagicMock, patch, AsyncMock
-
-# Mock heavy dependencies to avoid installation requirement
-sys.modules['chromadb'] = MagicMock()
-sys.modules['google.generativeai'] = MagicMock()
-sys.modules['tensorflow'] = MagicMock()
-sys.modules['xgboost'] = MagicMock()
 
 from ib_insync import IB, Contract, Future, Bag, ComboLeg, Position, OrderStatus, Trade, FuturesOption, PnLSingle
 import pandas as pd

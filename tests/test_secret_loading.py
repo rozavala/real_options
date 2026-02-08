@@ -28,14 +28,8 @@ class TestSecretLoading:
         assert config['nasdaq_api_key'] == "env_nasdaq_key"
 
     def test_load_config_defaults_without_env(self):
-        """Test that defaults are kept if env vars are missing (sanity check)."""
-        # Mock load_dotenv to prevent .env file from re-populating env vars
+        """Test that validation rejects config when notifications enabled but creds missing."""
         with patch('config_loader.load_dotenv'):
             with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_key"}, clear=True):
-                config = load_config()
-
-                # Verify that without env vars, it falls back to the placeholders in config.json
-                assert config['notifications']['pushover_user_key'] == "LOADED_FROM_ENV"
-                assert config['notifications']['pushover_api_token'] == "LOADED_FROM_ENV"
-                assert config['fred_api_key'] == "LOADED_FROM_ENV"
-                assert config['nasdaq_api_key'] == "LOADED_FROM_ENV"
+                with pytest.raises(ValueError, match="credentials missing"):
+                    load_config()
