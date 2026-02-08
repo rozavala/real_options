@@ -1228,8 +1228,14 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [Protected]")
                 except Exception as e:
                     logger.error(f"Failed to place protected order, falling back to standard: {e}")
+                    send_pushover_notification(
+                        config.get('notifications', {}),
+                        "CATASTROPHE STOP FAILED",
+                        f"Protection failed for {display_name}: {e}\nOrder placed WITHOUT stop protection.",
+                        priority=1
+                    )
                     trade = place_order(ib, contract, order)
-                    log_order_event(trade, trade.orderStatus.status, market_state_message)
+                    log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [UNPROTECTED FALLBACK]")
             else:
                 trade = place_order(ib, contract, order)
                 log_order_event(trade, trade.orderStatus.status, market_state_message)
@@ -2295,9 +2301,11 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
         msg = f"A critical error occurred while closing positions: {e}\n{traceback.format_exc()}"
         logger.critical(msg)
         send_pushover_notification(config.get('notifications', {}), "Position Closing CRITICAL", msg)
-    finally:
-        # Do not disconnect pool
-        pass
+        # Force-reset pooled connection on critical error so next get_connection() creates fresh
+        try:
+            await IBConnectionPool._force_reset_connection(connection_purpose)
+        except Exception:
+            pass
 
 async def record_entry_thesis_for_trade(
     position_id: str,
@@ -2447,6 +2455,8 @@ async def cancel_all_open_orders(config: dict, connection_purpose: str = "orches
         msg = f"A critical error occurred while canceling orders: {e}\n{traceback.format_exc()}"
         logger.critical(msg)
         send_pushover_notification(config.get('notifications', {}), "Order Cancellation CRITICAL", msg)
-    finally:
-        # Do not disconnect pool
-        pass
+        # Force-reset pooled connection on critical error so next get_connection() creates fresh
+        try:
+            await IBConnectionPool._force_reset_connection(connection_purpose)
+        except Exception:
+            pass

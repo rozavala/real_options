@@ -1709,7 +1709,7 @@ class PredictionMarketSentinel(Sentinel):
                             best_market = m
                             try:
                                 best_vol = float(m.get('volume', 0) or 0)
-                            except:
+                            except (ValueError, TypeError):
                                 best_vol = 0
 
                     if best_market is None:
@@ -1758,7 +1758,7 @@ class PredictionMarketSentinel(Sentinel):
                                 best_liq = m_liq
                                 best_market = m
                                 try: best_vol = float(m.get('volume', 0) or 0)
-                                except: best_vol = 0
+                                except (ValueError, TypeError): best_vol = 0
                         if best_market is None: continue
                         market = best_market
                         liquidity = best_liq

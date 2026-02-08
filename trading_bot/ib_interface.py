@@ -82,7 +82,7 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
             iv = profile.fallback_iv
             rfr = profile.risk_free_rate
             logging.warning(f"IV data missing for {contract.localSymbol}, using profile fallback IV: {iv:.0%}")
-        except:
+        except Exception:
             iv = 0.35
             rfr = 0.04
             logging.warning(f"IV data missing for {contract.localSymbol}, using hardcoded fallback IV: {iv:.0%}")
@@ -94,7 +94,7 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
             cfg = load_config()
             profile = get_active_profile(cfg)
             rfr = profile.risk_free_rate
-        except:
+        except Exception:
             rfr = 0.04
 
     return {

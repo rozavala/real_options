@@ -374,7 +374,7 @@ async def calculate_weighted_decision(
                 curr = market_data['price']
                 exp = market_data['expected_price']
                 if curr: price_change = (exp - curr) / curr
-            except: pass
+            except (TypeError, ValueError, ZeroDivisionError): pass
 
         regime = detect_market_regime_simple(str(vol_report), price_change)
 

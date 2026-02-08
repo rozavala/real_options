@@ -180,7 +180,7 @@ def get_available_contracts(council_df: pd.DataFrame) -> list[str]:
                 year = int(symbol[3:5])
                 month_idx = month_order.find(month)
                 return (year, month_idx if month_idx >= 0 else 99)
-        except:
+        except (ValueError, IndexError):
             pass
         return (99, 99)  # Unknown contracts sort last
 
