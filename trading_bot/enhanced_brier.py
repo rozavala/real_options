@@ -201,8 +201,14 @@ class EnhancedBrierTracker:
         # Per-agent, per-regime Brier scores
         self.agent_scores: Dict[str, Dict[str, List[float]]] = {}
 
-        # Load existing data
+        # Load existing data and sync with CSV
         self._load()
+        # Auto-backfill only for the default production data path
+        if os.path.abspath(data_path) == os.path.abspath("./data/enhanced_brier.json"):
+            try:
+                self.backfill_from_resolved_csv()
+            except Exception as e:
+                logger.warning(f"Auto-backfill on init failed (non-fatal): {e}")
 
     def record_prediction(
         self,
@@ -644,6 +650,7 @@ class EnhancedBrierTracker:
 
             if dupes_removed > 0:
                 logger.info(f"Removed {dupes_removed} duplicate predictions on load")
+                self._save()  # Persist deduped state to disk
 
             # Load agent scores
             self.agent_scores = data.get('agent_scores', {})
