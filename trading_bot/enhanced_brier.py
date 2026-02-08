@@ -443,14 +443,47 @@ class EnhancedBrierTracker:
             json_keys.add((cycle_id, agent))
             created += 1
 
-        if backfilled > 0 or created > 0:
+        # Pass 3: Resolve still-pending predictions from council_history outcomes
+        council_path = os.path.join(os.path.dirname(structured_csv_path), "council_history.csv")
+        resolved_from_ch = 0
+        if os.path.exists(council_path):
+            try:
+                ch_df = pd.read_csv(council_path)
+                # Build cycle_id → actual_trend_direction lookup
+                ch_outcomes = {}
+                for _, row in ch_df.iterrows():
+                    cid = str(row.get('cycle_id', '')).strip()
+                    atd = str(row.get('actual_trend_direction', '')).strip().upper()
+                    if cid and atd and atd in ('BULLISH', 'BEARISH', 'NEUTRAL'):
+                        ch_outcomes[cid] = atd
+
+                for pred in self.predictions:
+                    if pred.actual_outcome is not None:
+                        continue
+                    if pred.cycle_id in ch_outcomes:
+                        pred.actual_outcome = ch_outcomes[pred.cycle_id]
+                        pred.resolved_at = datetime.now(timezone.utc)
+                        brier = pred.calc_brier_score()
+                        if brier is not None:
+                            self._update_agent_score(pred.agent, pred.regime.value, brier)
+                            self._update_calibration(pred)
+                        resolved_from_ch += 1
+                        logger.info(
+                            f"Resolved from council_history: {pred.agent} "
+                            f"(cycle={pred.cycle_id}) → {pred.actual_outcome}"
+                        )
+            except Exception as e:
+                logger.warning(f"Council history backfill failed (non-fatal): {e}")
+
+        total_changes = backfilled + created + resolved_from_ch
+        if total_changes > 0:
             self._save()
             logger.info(
-                f"Enhanced Brier backfill complete: {backfilled} resolved, "
-                f"{created} created from CSV"
+                f"Enhanced Brier backfill complete: {backfilled} resolved from CSV, "
+                f"{created} created from CSV, {resolved_from_ch} resolved from council_history"
             )
 
-        return backfilled + created
+        return total_changes
 
     def get_agent_reliability(self, agent: str, regime: str = "NORMAL") -> float:
         """
