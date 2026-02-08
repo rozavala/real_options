@@ -154,9 +154,9 @@ class TestThesisLifecycleIntegration(unittest.IsolatedAsyncioTestCase):
         mock_council = MagicMock()
 
         # Test with RANGE_BOUND regime (should HOLD)
-        with patch('orchestrator._get_current_regime', new_callable=AsyncMock) as mock_regime, \
+        with patch('orchestrator._get_current_regime_and_iv', new_callable=AsyncMock) as mock_regime, \
              patch('orchestrator._get_current_price', new_callable=AsyncMock) as mock_price:
-            mock_regime.return_value = 'RANGE_BOUND'
+            mock_regime.return_value = ('RANGE_BOUND', 25.0)
             mock_price.return_value = 345.0
 
             result = await _validate_thesis(
@@ -166,9 +166,9 @@ class TestThesisLifecycleIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result['action'], 'HOLD', "Should HOLD when regime unchanged")
 
         # Test with HIGH_VOLATILITY regime (should CLOSE)
-        with patch('orchestrator._get_current_regime', new_callable=AsyncMock) as mock_regime, \
+        with patch('orchestrator._get_current_regime_and_iv', new_callable=AsyncMock) as mock_regime, \
              patch('orchestrator._get_current_price', new_callable=AsyncMock) as mock_price:
-            mock_regime.return_value = 'HIGH_VOLATILITY'
+            mock_regime.return_value = ('HIGH_VOLATILITY', 75.0)
             mock_price.return_value = 345.0
 
             result = await _validate_thesis(

@@ -446,23 +446,30 @@ async def _detect_market_regime(config: dict, trigger=None, ib: IB = None, contr
     return "NORMAL"
 
 
-async def _get_current_regime(ib: IB, config: dict) -> str:
-    """Estimates the current market regime based on simple VIX/Price metrics."""
-    # Simplified placeholder logic - ideally fetch from Volatility Agent or State
-    # Here we check IV Rank of the front month
+async def _get_current_regime_and_iv(ib: IB, config: dict) -> tuple:
+    """
+    Estimates the current market regime and returns IV rank.
+
+    Returns:
+        (regime: str, iv_rank: float) — regime is one of
+        'HIGH_VOLATILITY', 'RANGE_BOUND', 'TRENDING'; iv_rank is 0-100.
+    """
+    iv_rank = 50.0  # default
     try:
         futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=1)
         if futures:
             metrics = await get_underlying_iv_metrics(ib, futures[0])
             iv_rank = metrics.get('iv_rank', 50)
-            if isinstance(iv_rank, str): iv_rank = 50 # Fallback
-            if iv_rank > 70:
-                return 'HIGH_VOLATILITY'
+            if isinstance(iv_rank, str): iv_rank = 50.0  # Fallback
+            iv_rank = float(iv_rank)
+            iv_threshold = config.get('exit_logic', {}).get('condor_iv_rank_breach', 70)
+            if iv_rank > iv_threshold:
+                return 'HIGH_VOLATILITY', iv_rank
             elif iv_rank < 30:
-                return 'RANGE_BOUND'
+                return 'RANGE_BOUND', iv_rank
     except Exception:
         pass
-    return 'TRENDING' # Default
+    return 'TRENDING', iv_rank
 
 async def _get_current_price(ib: IB, contract: Contract) -> float:
     """Fetches current price snapshot."""
@@ -476,11 +483,57 @@ async def _get_current_price(ib: IB, contract: Contract) -> float:
     return price
 
 async def _get_context_for_guardian(guardian: str, config: dict) -> str:
-    """Fetches relevant context (news/weather) for a specific guardian."""
-    # Simplified: Returns recent sentinel alerts or agent memory
-    # In a full impl, query the specific agent's memory
-    tms = TransactiveMemory()
-    return f"Context for {guardian}: " + str(tms.retrieve(f"{guardian} context", n_results=3))
+    """Fetches relevant context for a specific guardian's thesis validation.
+
+    Combines three sources:
+    1. Recent sentinel events (last 5 triggers from StateManager)
+    2. Guardian's latest analyst report from state
+    3. TMS memory for the guardian (ChromaDB vector store)
+    """
+    parts = []
+
+    # 1. Recent sentinel events
+    try:
+        sentinel_state = StateManager.load_state_raw("sentinel_history")
+        sentinel_events = sentinel_state.get("events", [])
+        if sentinel_events:
+            event_lines = []
+            for evt in sentinel_events[-5:]:
+                if isinstance(evt, dict):
+                    event_lines.append(
+                        f"  - [{evt.get('timestamp', '?')}] {evt.get('source', '?')}: {evt.get('reason', '?')}"
+                    )
+            if event_lines:
+                parts.append("Recent Sentinel Events:\n" + "\n".join(event_lines))
+    except Exception as e:
+        logger.debug(f"Could not load sentinel history for guardian context: {e}")
+
+    # 2. Guardian's latest report from state
+    try:
+        reports = StateManager.load_state_raw("reports")
+        guardian_report = reports.get(guardian)
+        if guardian_report:
+            # Truncate if very long to fit LLM context
+            report_str = str(guardian_report)
+            if len(report_str) > 2000:
+                report_str = report_str[:2000] + "... [truncated]"
+            parts.append(f"Guardian '{guardian}' Latest Report:\n{report_str}")
+    except Exception as e:
+        logger.debug(f"Could not load guardian report for context: {e}")
+
+    # 3. TMS memory (existing)
+    try:
+        tms = TransactiveMemory()
+        tms_results = tms.retrieve(f"{guardian} analysis", n_results=3)
+        if tms_results:
+            parts.append(f"Memory Context:\n{tms_results}")
+    except Exception as e:
+        logger.debug(f"Could not query TMS for guardian context: {e}")
+
+    if not parts:
+        return f"No recent context available for {guardian}."
+
+    return "\n\n".join(parts)
 
 async def _validate_thesis(
     thesis: dict,
@@ -488,7 +541,8 @@ async def _validate_thesis(
     council,
     config: dict,
     ib: IB,
-    active_futures_cache: dict = None
+    active_futures_cache: dict = None,
+    llm_budget_available: bool = True
 ) -> dict:
     """
     Validates if a trade thesis still holds given current market conditions.
@@ -501,17 +555,33 @@ async def _validate_thesis(
     strategy_type = thesis.get('strategy_type', 'UNKNOWN')
     guardian = thesis.get('guardian_agent', 'Master')
 
+    exit_cfg = config.get('exit_logic', {})
+
     # A. REGIME-BASED VALIDATION (Iron Condor / Long Straddle)
     if strategy_type == 'IRON_CONDOR':
-        # Get current regime
-        current_regime = await _get_current_regime(ib, config)
-        entry_regime = thesis.get('entry_regime', 'RANGE_BOUND')
+        regime_exits_enabled = exit_cfg.get('enable_regime_breach_exits', True)
 
-        if current_regime == 'HIGH_VOLATILITY' and entry_regime == 'RANGE_BOUND':
-            return {
-                'action': 'CLOSE',
-                'reason': f"REGIME BREACH: Entered as RANGE_BOUND, now HIGH_VOLATILITY. Iron Condor invalid."
-            }
+        # Get current regime AND iv_rank
+        current_regime, current_iv_rank = await _get_current_regime_and_iv(ib, config)
+        entry_regime = thesis.get('entry_regime', 'RANGE_BOUND')
+        iv_breach_threshold = exit_cfg.get('condor_iv_rank_breach', 70)
+
+        if regime_exits_enabled:
+            if current_regime == 'HIGH_VOLATILITY' and entry_regime == 'RANGE_BOUND':
+                return {
+                    'action': 'CLOSE',
+                    'reason': f"REGIME BREACH: Entered as RANGE_BOUND, now HIGH_VOLATILITY. Iron Condor invalid."
+                }
+
+            # Standalone IV rank check — high IV threatens all iron condors
+            if current_iv_rank > iv_breach_threshold:
+                return {
+                    'action': 'CLOSE',
+                    'reason': (
+                        f"IV RANK BREACH: Current IV rank {current_iv_rank:.1f} exceeds "
+                        f"threshold {iv_breach_threshold}. Iron Condor at risk."
+                    )
+                }
 
         # === PRICE BREACH CHECK ===
         # FIX: Get underlying future price, NOT combo contract price
@@ -571,51 +641,103 @@ async def _validate_thesis(
             )
             entry_price = 0  # Disable price breach check for this thesis
 
+        price_breach_pct = exit_cfg.get('condor_price_breach_pct', 2.0)
         if entry_price > 0 and current_price > 0:
             move_pct = abs((current_price - entry_price) / entry_price) * 100
 
-            if move_pct > 2.0:
+            if move_pct > price_breach_pct:
                 return {
                     'action': 'CLOSE',
-                    'reason': f"PRICE BREACH: Underlying moved {move_pct:.2f}% from entry (threshold: 2%). "
+                    'reason': f"PRICE BREACH: Underlying moved {move_pct:.2f}% from entry (threshold: {price_breach_pct}%). "
                               f"Entry: ${entry_price:.2f}, Current: ${current_price:.2f}"
                 }
         else:
             logger.warning(f"Invalid prices for IC validation: entry={entry_price}, current={current_price}")
 
     elif strategy_type == 'LONG_STRADDLE':
-        # Check theta efficiency
-        entry_time_str = thesis.get('entry_timestamp', '')
-        if entry_time_str:
-            entry_time = datetime.fromisoformat(entry_time_str)
-            hours_held = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600
+        theta_check_enabled = exit_cfg.get('enable_theta_hurdle_check', True)
+        if not theta_check_enabled:
+            logger.debug("Theta hurdle check disabled via config — skipping LONG_STRADDLE validation")
+        else:
+            # Check theta efficiency
+            theta_hours = exit_cfg.get('theta_hurdle_hours', 4)
+            theta_min_move = exit_cfg.get('theta_minimum_move_pct', 1.0)
 
-            # If held > 4 hours with minimal movement, consider closing
-            if hours_held > 4:
-                entry_price = thesis.get('supporting_data', {}).get('entry_price', 0)
-                if entry_price:
-                    current_price = await _get_current_price(ib, position.contract)
-                    if current_price > 0:
-                        move_pct = abs((current_price - entry_price) / entry_price) * 100
+            entry_time_str = thesis.get('entry_timestamp', '')
+            if entry_time_str:
+                entry_time = datetime.fromisoformat(entry_time_str)
+                hours_held = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600
 
-                        # Theta hurdle: should have moved at least 1% to justify theta burn
-                        if move_pct < 1.0:
-                            return {
-                                'action': 'CLOSE',
-                                'reason': f"THETA BURN: {hours_held:.1f}h elapsed, only {move_pct:.2f}% move. Salvage residual value."
-                            }
+                if hours_held > theta_hours:
+                    supporting_data = thesis.get('supporting_data', {})
+                    entry_price = supporting_data.get('entry_price', 0)
+                    if entry_price:
+                        # Fix 5: Fetch underlying future price, not option/combo price
+                        underlying_symbol = supporting_data.get('underlying_symbol', config.get('symbol', 'KC'))
+                        contract_month = supporting_data.get('contract_month')
+                        underlying_contract = None
+
+                        if contract_month:
+                            underlying_contract = Future(
+                                symbol=underlying_symbol,
+                                lastTradeDateOrContractMonth=contract_month,
+                                exchange=config.get('exchange', 'NYBOT')
+                            )
+                            try:
+                                await ib.qualifyContractsAsync(underlying_contract)
+                            except Exception as e:
+                                logger.warning(f"Failed to qualify underlying for straddle: {e}")
+                                underlying_contract = None
+
+                        if not underlying_contract:
+                            symbol = config.get('symbol', 'KC')
+                            if active_futures_cache and symbol in active_futures_cache:
+                                futures = active_futures_cache[symbol]
+                                underlying_contract = futures[0] if futures else None
+                            else:
+                                try:
+                                    futures = await get_active_futures(ib, symbol, config['exchange'], count=1)
+                                    underlying_contract = futures[0] if futures else None
+                                    if active_futures_cache is not None and futures:
+                                        active_futures_cache[symbol] = futures
+                                except Exception as e:
+                                    logger.warning(f"Failed to get active futures for straddle validation: {e}")
+
+                        if underlying_contract:
+                            current_price = await _get_current_price(ib, underlying_contract)
+                        else:
+                            logger.warning("Cannot fetch underlying price for straddle — falling back to position contract")
+                            current_price = await _get_current_price(ib, position.contract)
+
+                        if current_price > 0:
+                            move_pct = abs((current_price - entry_price) / entry_price) * 100
+
+                            if move_pct < theta_min_move:
+                                return {
+                                    'action': 'CLOSE',
+                                    'reason': (
+                                        f"THETA BURN: {hours_held:.1f}h elapsed, only {move_pct:.2f}% move "
+                                        f"(threshold: {theta_min_move}%). Salvage residual value."
+                                    )
+                                }
 
     # B. NARRATIVE-BASED VALIDATION (Directional Spreads)
     elif strategy_type in ['BULL_CALL_SPREAD', 'BEAR_PUT_SPREAD']:
-        # Query the guardian agent for thesis validity
-        primary_rationale = thesis.get('primary_rationale', '')
-        invalidation_triggers = thesis.get('invalidation_triggers', [])
+        narrative_exits_enabled = exit_cfg.get('enable_narrative_exits', True)
+        if not narrative_exits_enabled:
+            logger.debug("Narrative exits disabled via config — skipping directional spread validation")
+        elif not llm_budget_available:
+            logger.info("LLM budget exhausted — skipping narrative thesis validation for directional spread")
+        else:
+            # Query the guardian agent for thesis validity
+            primary_rationale = thesis.get('primary_rationale', '')
+            invalidation_triggers = thesis.get('invalidation_triggers', [])
 
-        # Get current sentinel data relevant to this thesis
-        current_context = await _get_context_for_guardian(guardian, config)
+            # Get current sentinel data relevant to this thesis
+            current_context = await _get_context_for_guardian(guardian, config)
 
-        # Permabear Attack prompt
-        attack_prompt = f"""You are stress-testing an existing position.
+            # Permabear Attack prompt
+            attack_prompt = f"""You are stress-testing an existing position.
 
 POSITION: {strategy_type}
 ORIGINAL THESIS: {primary_rationale}
@@ -631,25 +753,26 @@ QUESTION: Does the original thesis STILL HOLD?
 
 Return JSON: {{"verdict": "HOLD" or "CLOSE", "confidence": 0.0-1.0, "reasoning": "..."}}
 """
-        # Note: calling router directly requires accessing it from council or passing router
-        if hasattr(council, 'router'):
-            verdict_response = await council.router.route_and_call(
-                model_key='permabear', # Use permabear model
-                prompt=attack_prompt,
-                response_model=None # Expecting JSON string or use strict mode if available
-            )
+            confidence_threshold = exit_cfg.get('thesis_validation_confidence_threshold', 0.6)
+            # Note: calling router directly requires accessing it from council or passing router
+            if hasattr(council, 'router'):
+                verdict_response = await council.router.route_and_call(
+                    model_key='permabear', # Use permabear model
+                    prompt=attack_prompt,
+                    response_model=None # Expecting JSON string or use strict mode if available
+                )
 
-            try:
-                # Clean up response if needed (remove markdown)
-                clean_response = verdict_response.replace('```json', '').replace('```', '')
-                verdict_data = json.loads(clean_response)
-                if verdict_data.get('verdict') == 'CLOSE' and verdict_data.get('confidence', 0) > 0.6:
-                    return {
-                        'action': 'CLOSE',
-                        'reason': f"NARRATIVE INVALIDATION: {verdict_data.get('reasoning', 'Thesis degraded')}"
-                    }
-            except Exception as e:
-                logger.warning(f"Could not parse thesis validation response: {e}")
+                try:
+                    # Clean up response if needed (remove markdown)
+                    clean_response = verdict_response.replace('```json', '').replace('```', '')
+                    verdict_data = json.loads(clean_response)
+                    if verdict_data.get('verdict') == 'CLOSE' and verdict_data.get('confidence', 0) > confidence_threshold:
+                        return {
+                            'action': 'CLOSE',
+                            'reason': f"NARRATIVE INVALIDATION: {verdict_data.get('reasoning', 'Thesis degraded')}"
+                        }
+                except Exception as e:
+                    logger.warning(f"Could not parse thesis validation response: {e}")
 
     # Default: HOLD
     return {'action': 'HOLD', 'reason': 'Thesis intact'}
@@ -1360,9 +1483,9 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
     """
     logger.info(f"--- POSITION AUDIT CYCLE ({trigger_source}) ---")
 
-    if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
-        logger.warning("Budget hit — skipping Position Audit (LLM disabled)")
-        return
+    llm_budget_available = not (GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit)
+    if not llm_budget_available:
+        logger.info("Budget hit — position audit will skip LLM-based checks (IC/straddle checks still active)")
 
     ib = None
     try:
@@ -1467,7 +1590,8 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
                 council=council,
                 config=config,
                 ib=ib,
-                active_futures_cache=active_futures_cache  # Issue 9 fix
+                active_futures_cache=active_futures_cache,  # Issue 9 fix
+                llm_budget_available=llm_budget_available
             )
 
             if verdict['action'] == 'CLOSE':
