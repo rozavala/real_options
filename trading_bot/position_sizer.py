@@ -3,7 +3,17 @@ import asyncio
 import logging
 import math
 
+from trading_bot.confidence_utils import parse_confidence
+
 logger = logging.getLogger(__name__)
+
+# === CONSTANTS ===
+BASE_CONFIDENCE_MULTIPLIER = 0.5
+CONFIDENCE_SCALING_FACTOR = 0.5
+
+VOLATILITY_SCALE_BULLISH = 1.2
+VOLATILITY_SCALE_NEUTRAL = 1.0
+VOLATILITY_SCALE_BEARISH = 0.6
 
 class DynamicPositionSizer:
     def __init__(self, config: dict):
@@ -34,20 +44,21 @@ class DynamicPositionSizer:
             return 0
 
         # Base size from confidence
-        confidence = signal.get('confidence', 0.5)
+        # Use parse_confidence to handle strings, bands, and None safe-defaults
+        confidence = parse_confidence(signal.get('confidence'), default=0.5)
         # 0.5 confidence -> 0.75x
         # 1.0 confidence -> 1.0x
         # Wait, user snippet was: 0.5 + (confidence * 0.5) -> range [0.5, 1.0]
-        confidence_multiplier = 0.5 + (confidence * 0.5)
+        confidence_multiplier = BASE_CONFIDENCE_MULTIPLIER + (confidence * CONFIDENCE_SCALING_FACTOR)
 
         # Volatility adjustment
         # BULLISH: Favorable vol (cheap options?), size up.
         # BEARISH: Unfavorable vol (expensive?), size down.
         vol_multiplier = {
-            "BULLISH": 1.2,
-            "NEUTRAL": 1.0,
-            "BEARISH": 0.6
-        }.get(volatility_sentiment, 1.0)
+            "BULLISH": VOLATILITY_SCALE_BULLISH,
+            "NEUTRAL": VOLATILITY_SCALE_NEUTRAL,
+            "BEARISH": VOLATILITY_SCALE_BEARISH
+        }.get(volatility_sentiment, VOLATILITY_SCALE_NEUTRAL)
 
         # Portfolio heat check — commodity-agnostic (v7.1)
         # Match positions whose root symbol equals our active ticker.
