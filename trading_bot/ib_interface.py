@@ -111,12 +111,12 @@ async def get_underlying_iv_metrics(ib: IB, future_contract: Contract) -> dict:
     """
     try:
         # Get ATM option for IV proxy
-        chains = await ib.reqSecDefOptParamsAsync(
+        chains = await asyncio.wait_for(ib.reqSecDefOptParamsAsync(
             future_contract.symbol,
             future_contract.exchange,
             future_contract.secType,
             future_contract.conId
-        )
+        ), timeout=10)
 
         if not chains:
             return {'iv_rank': 'N/A', 'iv_percentile': 'N/A', 'current_iv': 'N/A'}
@@ -160,7 +160,9 @@ async def get_active_futures(ib: IB, symbol: str, exchange: str, count: int = 5)
         profile = get_active_profile(cfg)
         min_dte = profile.min_dte
 
-        cds = await ib.reqContractDetailsAsync(Future(symbol, exchange=exchange))
+        cds = await asyncio.wait_for(
+            ib.reqContractDetailsAsync(Future(symbol, exchange=exchange)), timeout=15
+        )
         now = datetime.now()
         filtered_contracts = []
 
@@ -200,7 +202,10 @@ async def build_option_chain(ib: IB, future_contract: Contract) -> dict | None:
     """Fetches the full option chain for a given futures contract."""
     logging.info(f"Fetching option chain for future {future_contract.localSymbol}...")
     try:
-        chains = await ib.reqSecDefOptParamsAsync(future_contract.symbol, future_contract.exchange, 'FUT', future_contract.conId)
+        chains = await asyncio.wait_for(
+            ib.reqSecDefOptParamsAsync(future_contract.symbol, future_contract.exchange, 'FUT', future_contract.conId),
+            timeout=10
+        )
         if not chains:
             logging.warning(f"No option chains found for future {future_contract.localSymbol} (conId: {future_contract.conId})")
             return None
@@ -257,7 +262,7 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
 
     # 2. Qualify all leg contracts in a single batch
     try:
-        qualified_legs = await ib.qualifyContractsAsync(*leg_contracts)
+        qualified_legs = await asyncio.wait_for(ib.qualifyContractsAsync(*leg_contracts), timeout=12)
     except Exception as e:
         logging.error(f"Exception during contract qualification: {e}")
         for lc in leg_contracts:
@@ -555,7 +560,11 @@ async def close_spread_with_protection_cleanup(
         return
 
     # Find and cancel the orphaned stop order
-    open_orders = await ib.reqAllOpenOrdersAsync()
+    try:
+        open_orders = await asyncio.wait_for(ib.reqAllOpenOrdersAsync(), timeout=8)
+    except asyncio.TimeoutError:
+        logging.warning(f"reqAllOpenOrdersAsync timed out (8s) when cleaning up stop {stop_order_ref}")
+        return
     for trade in open_orders:
         if trade.order.orderRef == stop_order_ref:
             ib.cancelOrder(trade.order)

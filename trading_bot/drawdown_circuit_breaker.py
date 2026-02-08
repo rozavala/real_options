@@ -97,7 +97,7 @@ class DrawdownGuard:
 
         try:
             # 1. Get Account Summary
-            summary = await ib.accountSummaryAsync()
+            summary = await asyncio.wait_for(ib.accountSummaryAsync(), timeout=10)
             net_liq = 0.0
 
             for item in summary:

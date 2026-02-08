@@ -280,7 +280,9 @@ async def get_position_details(ib: IB, position: Position) -> dict:
     # To get the right and strike, we need the full contract for each leg
     for leg in contract.comboLegs:
         try:
-            leg_details = await ib.reqContractDetailsAsync(Contract(conId=leg.conId))
+            leg_details = await asyncio.wait_for(
+                ib.reqContractDetailsAsync(Contract(conId=leg.conId)), timeout=5
+            )
             if leg_details:
                 leg_contracts.append(leg_details[0].contract)
         except Exception as e:
@@ -354,7 +356,7 @@ async def _generate_position_id_from_trade(ib: IB, trade: Trade) -> str:
     if isinstance(trade.contract, Bag) and trade.contract.comboLegs:
         leg_symbols = []
         leg_contracts = [Contract(conId=leg.conId) for leg in trade.contract.comboLegs]
-        qualified_legs = await ib.qualifyContractsAsync(*leg_contracts)
+        qualified_legs = await asyncio.wait_for(ib.qualifyContractsAsync(*leg_contracts), timeout=5)
 
         if qualified_legs:
             leg_symbols = sorted([c.localSymbol for c in qualified_legs])
@@ -417,7 +419,7 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
         # If localSymbol is missing (common in single-leg closes), fetch it.
         if not contract.localSymbol or not hasattr(contract, 'right'):
             try:
-                details = await ib.qualifyContractsAsync(contract)
+                details = await asyncio.wait_for(ib.qualifyContractsAsync(contract), timeout=5)
                 if details:
                     contract = details[0]
             except Exception as e:

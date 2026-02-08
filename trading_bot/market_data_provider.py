@@ -217,14 +217,14 @@ async def _get_technical_indicators(
     volatility_5d = None
 
     try:
-        bars = await ib.reqHistoricalDataAsync(
+        bars = await asyncio.wait_for(ib.reqHistoricalDataAsync(
             contract,
             endDateTime='',
             durationStr=HISTORICAL_DATA_DURATION,
             barSizeSetting='1 day',
             whatToShow='TRADES',
             useRTH=True
-        )
+        ), timeout=10)
 
         if not bars or len(bars) < 5:
             logger.warning(f"Insufficient historical data for {contract.localSymbol}: {len(bars) if bars else 0} bars")
