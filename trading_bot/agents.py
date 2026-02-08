@@ -1021,12 +1021,11 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                                                          'proceed with', 'approved']):
                         proceed = True
                     else:
-                        # Ambiguous — default to PROCEED (fail-open for parse errors)
-                        # Rationale: The DA already has 2 safety nets downstream
-                        # (Compliance Guardian + position sizer). A parse error
-                        # should not be the reason a trade is blocked.
-                        proceed = True
-                        logger.warning("DA text ambiguous — defaulting to PROCEED (fail-open for parse errors)")
+                        # Ambiguous — default to BLOCK (fail-closed for parse errors)
+                        # Rationale: The DA is an adversarial review gate. If we can't
+                        # parse the verdict, the safe default is to block the trade.
+                        proceed = False
+                        logger.warning("DA text ambiguous — defaulting to BLOCK (fail-closed)")
 
                     # Extract risks via regex
                     import re
@@ -1044,12 +1043,12 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
 
                 except Exception as fallback_err:
                     logger.error(f"DA text fallback also failed: {fallback_err}")
-                    # Ultimate fallback: PROCEED (fail-open)
+                    # Ultimate fallback: BLOCK (fail-closed)
                     return {
-                        'proceed': True,
-                        'risks': ['DA system completely failed — defaulting to proceed'],
-                        'recommendation': 'PROCEED: DA system failure (fail-open)',
-                        'da_block_reason': 'TOTAL_FAILURE_FAILOPEN',
+                        'proceed': False,
+                        'risks': ['DA system completely failed — defaulting to block'],
+                        'recommendation': 'BLOCK: DA system failure (fail-closed)',
+                        'da_block_reason': 'TOTAL_FAILURE_FAILCLOSED',
                         'da_bypassed': True  # R3: Signal to downstream components
                     }
 

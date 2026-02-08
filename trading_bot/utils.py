@@ -613,8 +613,10 @@ def log_council_decision(decision_data):
                 # Reorder columns to match new schema
                 full_df = full_df[fieldnames]
 
-                # Write back migrated data
-                full_df.to_csv(file_path, index=False)
+                # Write back migrated data (atomic: temp file + rename)
+                temp_path = file_path + ".tmp"
+                full_df.to_csv(temp_path, index=False)
+                os.replace(temp_path, file_path)
                 logging.info(f"Schema migration complete. {len(full_df)} records preserved.")
 
         except pd.errors.EmptyDataError:

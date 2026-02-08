@@ -843,6 +843,7 @@ async def cleanup_orphaned_theses(config: dict):
     """
     logger.info("--- AUTOMATED THESIS CLEANUP ---")
 
+    ib = None
     try:
         ib = await IBConnectionPool.get_connection("cleanup", config)
         tms = TransactiveMemory()
@@ -865,6 +866,12 @@ async def cleanup_orphaned_theses(config: dict):
     except Exception as e:
         logger.error(f"Thesis cleanup failed: {e}")
         return 0
+    finally:
+        if ib is not None:
+            try:
+                await IBConnectionPool.release_connection("cleanup")
+            except Exception:
+                pass
 
 
 async def check_and_recover_equity_data(config: dict) -> bool:
@@ -1334,6 +1341,7 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
         logger.warning("Budget hit — skipping Position Audit (LLM disabled)")
         return
 
+    ib = None
     try:
         ib = await IBConnectionPool.get_connection("audit", config)
         configure_market_data_type(ib)
@@ -1503,6 +1511,12 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
 
     except Exception as e:
         logger.error(f"Position Audit Cycle failed: {e}\n{traceback.format_exc()}")
+    finally:
+        if ib is not None:
+            try:
+                await IBConnectionPool.release_connection("audit")
+            except Exception:
+                pass
 
 
 async def log_stream(stream, logger_func):
@@ -1985,6 +1999,7 @@ async def process_deferred_triggers(config: dict):
         return
 
     logger.info("--- Processing Deferred Triggers ---")
+    ib_conn = None
     try:
         deferred = StateManager.get_deferred_triggers()
         if not deferred:
@@ -2041,6 +2056,12 @@ async def process_deferred_triggers(config: dict):
 
     except Exception as e:
         logger.error(f"Failed to process deferred triggers: {e}")
+    finally:
+        if ib_conn is not None:
+            try:
+                await IBConnectionPool.release_connection("deferred")
+            except Exception:
+                pass
 
 
 # --- SENTINEL LOGIC ---
@@ -2204,7 +2225,12 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
     if EMERGENCY_LOCK.locked():
         logger.warning(f"Emergency cycle for {trigger.source} queued (Lock active).")
 
-    async with EMERGENCY_LOCK:
+    try:
+        await asyncio.wait_for(EMERGENCY_LOCK.acquire(), timeout=300)
+    except asyncio.TimeoutError:
+        logger.error(f"EMERGENCY_LOCK acquisition timed out (300s) for {trigger.source}. Skipping cycle.")
+        return
+    try:
         cycle_actually_ran = False  # Did we reach the council decision?
         is_actionable = False       # Did the council produce a tradeable signal?
         try:
@@ -2714,6 +2740,8 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 GLOBAL_DEDUPLICATOR.clear_cooldown("POST_CYCLE")
 
             logger.info(f"Post-cycle debounce: {debounce_seconds}s ({debounce_reason})")
+    finally:
+        EMERGENCY_LOCK.release()
 
 
 def validate_trigger(trigger):
@@ -2774,6 +2802,8 @@ def _emergency_cycle_done_callback(task: asyncio.Task, trigger_source: str, conf
             f"{type(exc).__name__}: {exc}"
         )
         SENTINEL_STATS.record_error(trigger_source, f"CRASH: {type(exc).__name__}")
+        # Prevent crash-loop: cooldown so the sentinel doesn't immediately re-trigger
+        GLOBAL_DEDUPLICATOR.set_cooldown(trigger_source, 1800)  # 30-min crash cooldown
         try:
             send_pushover_notification(
                 config.get('notifications', {}),
@@ -3294,6 +3324,7 @@ async def emergency_hard_close(config: dict):
     """
     logger.info("--- Emergency Hard Close Check (T-45 min) ---")
 
+    ib = None
     try:
         ib = await IBConnectionPool.get_connection("orchestrator_orders", config)
         configure_market_data_type(ib)
@@ -3390,6 +3421,12 @@ async def emergency_hard_close(config: dict):
             f"Could not execute emergency hard close: {str(e)[:200]}\n"
             f"MANUAL INTERVENTION REQUIRED IMMEDIATELY."
         )
+    finally:
+        if ib is not None:
+            try:
+                await IBConnectionPool.release_connection("orchestrator_orders")
+            except Exception:
+                pass
 
 async def close_stale_positions_fallback(config: dict):
     """Fallback close attempt at 12:45 ET. Only acts if 11:00 primary close missed anything."""
@@ -3531,6 +3568,7 @@ async def guarded_generate_orders(config: dict):
 
     # Check Drawdown Guard
     if GLOBAL_DRAWDOWN_GUARD:
+        ib = None
         try:
              # Need a connection to check P&L.
              # generate_and_execute_orders creates its own connection.
@@ -3543,6 +3581,12 @@ async def guarded_generate_orders(config: dict):
                  return
         except Exception as e:
              logger.warning(f"Failed to check drawdown guard before orders: {e}")
+        finally:
+             if ib is not None:
+                 try:
+                     await IBConnectionPool.release_connection("drawdown_check")
+                 except Exception:
+                     pass
 
     await generate_and_execute_orders(config, shutdown_check=is_system_shutdown)
 
