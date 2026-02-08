@@ -355,9 +355,6 @@ class EnhancedBrierTracker:
             if cycle_id and agent:
                 csv_resolved[(cycle_id, agent)] = actual
 
-        if not csv_resolved:
-            return 0
-
         # Find unresolved Enhanced Brier predictions that have CSV resolutions
         backfilled = 0
         for pred in self.predictions:
