@@ -33,9 +33,8 @@ async def build_market_context(
     """
     Build a commodity-agnostic market context dict for a single contract.
 
-    This replaces the ML signal dict with live IBKR data.
-    The returned dict has the same keys the Council expects,
-    ensuring backward compatibility with agents.py and signal_generator.py.
+    The returned dict has the same keys the Council expects
+    (agents.py and signal_generator.py).
 
     Args:
         ib: Connected IB instance
@@ -78,7 +77,7 @@ async def build_market_context(
         "price": price,
         "sma_200": sma_200,
         "expected_price": price,        # No prediction — use current price
-        "predicted_return": 0.0,        # No ML prediction
+        "predicted_return": 0.0,        # Reserved for future use
         "action": "NEUTRAL",            # No ML prior — Council decides
         "confidence": 0.5,              # Neutral prior
         "reason": "Council-only mode: Market data from IBKR",
@@ -143,9 +142,6 @@ async def build_all_market_contexts(
 def format_market_context_for_prompt(market_context: dict) -> str:
     """
     Format market context as a human-readable string for agent prompts.
-    Replaces the raw JSON dump of ML signal.
-
-    This is what agents see instead of "QUANT MODEL SIGNAL: {...}".
     """
     price = market_context.get('price', 'N/A')
     sma = market_context.get('sma_200')
@@ -200,6 +196,10 @@ async def _get_current_price(ib: IB, contract: Future) -> Optional[float]:
 
     except Exception as e:
         logger.error(f"Error fetching price for {contract.localSymbol}: {e}")
+        try:
+            ib.cancelMktData(contract)
+        except Exception:
+            pass
         return None
 
 

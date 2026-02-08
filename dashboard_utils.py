@@ -1473,8 +1473,6 @@ def get_current_market_regime() -> str:
     1. council_history -> entry_regime column (most recent council decision)
     2. "UNKNOWN" if no data
 
-    Note: latest_ml_signals was removed as a source — ML pipeline
-    archived in v4.0 and the data in state.json is permanently stale.
     """
     try:
         # Priority 1: Council history (most recent regime from actual decisions)

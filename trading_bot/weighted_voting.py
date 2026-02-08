@@ -342,7 +342,7 @@ def get_regime_adjusted_weights(trigger_type: TriggerType, regime: str) -> dict:
 async def calculate_weighted_decision(
     agent_reports: dict[str, str],
     trigger_type: TriggerType,
-    ml_signal: Optional[dict] = None,
+    market_data: Optional[dict] = None,
     ib: Optional[Any] = None,
     contract: Optional[Any] = None,
     regime: str = "UNKNOWN",
@@ -366,12 +366,12 @@ async def calculate_weighted_decision(
         vol_report = agent_reports.get('volatility', '')
         if isinstance(vol_report, dict): vol_report = vol_report.get('data', '')
 
-        # Estimate price change from ML signal if available
+        # Estimate price change from market data if available
         price_change = 0.0
-        if ml_signal and 'price' in ml_signal and 'expected_price' in ml_signal:
+        if market_data and 'price' in market_data and 'expected_price' in market_data:
             try:
-                curr = ml_signal['price']
-                exp = ml_signal['expected_price']
+                curr = market_data['price']
+                exp = market_data['expected_price']
                 if curr: price_change = (exp - curr) / curr
             except: pass
 
@@ -564,14 +564,9 @@ async def calculate_weighted_decision(
 
     normalized_score = total_weighted_score / total_weight if total_weight > 0 else 0.0
 
-    # NOTE: ML blending removed in v4.0 (ML pipeline archived).
-    # The ml_signal parameter is retained in the function signature for backward
-    # compatibility (market_data_provider passes context data through it),
-    # but it no longer influences the weighted score.
-    # Agents now operate at 100% weight — no ML dampening.
-    if ml_signal:
-        logger.debug(f"Market context received (informational only, not blended): "
-                     f"regime={ml_signal.get('regime')}, price={ml_signal.get('price')}")
+    if market_data:
+        logger.debug(f"Market context received: "
+                     f"regime={market_data.get('regime')}, price={market_data.get('price')}")
 
     # v7.0: Widen deadlock zone from ±0.15 to ±0.10
     # RATIONALE: With 7 agents designed to disagree (Permabear vs Permabull),

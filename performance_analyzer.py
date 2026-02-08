@@ -171,9 +171,10 @@ def generate_executive_summary(
         return {"pnl": net_pnl, "trades_executed": trades_executed, "win_rate": win_rate}
 
     # --- Calculate metrics ---
-    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date]
-    signals_fired_today = len(today_signals[today_signals['signal'] != 'NEUTRAL'])
-    signals_fired_ltd = len(signals_df[signals_df['signal'] != 'NEUTRAL'])
+    signal_col = 'signal' if 'signal' in signals_df.columns else 'master_decision'
+    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date] if 'timestamp' in signals_df.columns else signals_df
+    signals_fired_today = len(today_signals[today_signals[signal_col] != 'NEUTRAL']) if signal_col in today_signals.columns else 0
+    signals_fired_ltd = len(signals_df[signals_df[signal_col] != 'NEUTRAL']) if signal_col in signals_df.columns else 0
 
     # LTD metrics are always from the ledger (realized P&L)
     ltd_metrics = calculate_ledger_metrics(trade_df, signals_df)
@@ -395,7 +396,6 @@ async def analyze_performance(config: dict) -> dict | None:
     """
     # Ledger is still needed for LTD stats and charts
     trade_df = get_trade_ledger_df()
-    # ML signals removed — morning signal report now uses decision_signals.csv
     signals_df = get_decision_signals_df()
 
     logger.info("--- Starting Daily Performance Analysis ---")

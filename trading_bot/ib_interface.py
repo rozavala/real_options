@@ -123,22 +123,24 @@ async def get_underlying_iv_metrics(ib: IB, future_contract: Contract) -> dict:
 
         # Get ticker with model greeks (generic tick 106)
         ticker = ib.reqMktData(future_contract, '106', False, False)
-        await asyncio.sleep(2)
+        try:
+            await asyncio.sleep(2)
 
-        iv_data = {
-            'iv_rank': 'N/A',
-            'iv_percentile': 'N/A',
-            'current_iv': 'N/A'
-        }
+            iv_data = {
+                'iv_rank': 'N/A',
+                'iv_percentile': 'N/A',
+                'current_iv': 'N/A'
+            }
 
-        # IBKR provides impliedVolatility on the underlying ticker for index options
-        # For futures, we approximate from near-term ATM option
-        if hasattr(ticker, 'modelGreeks') and ticker.modelGreeks:
-            if not util.isNan(ticker.modelGreeks.impliedVol):
-                iv_data['current_iv'] = f"{ticker.modelGreeks.impliedVol:.1%}"
+            # IBKR provides impliedVolatility on the underlying ticker for index options
+            # For futures, we approximate from near-term ATM option
+            if hasattr(ticker, 'modelGreeks') and ticker.modelGreeks:
+                if not util.isNan(ticker.modelGreeks.impliedVol):
+                    iv_data['current_iv'] = f"{ticker.modelGreeks.impliedVol:.1%}"
 
-        ib.cancelMktData(future_contract)
-        return iv_data
+            return iv_data
+        finally:
+            ib.cancelMktData(future_contract)
 
     except Exception as e:
         logging.warning(f"Failed to fetch IV metrics: {e}")

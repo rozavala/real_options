@@ -2107,7 +2107,7 @@ Supply and demand are roughly in equilibrium. Price moves will be driven by marg
     else:
         return ""
 
-async def _is_signal_priced_in(trigger: SentinelTrigger, ml_signal: dict, ib: IB, contract) -> tuple[bool, str]:
+async def _is_signal_priced_in(trigger: SentinelTrigger, ib: IB, contract) -> tuple[bool, str]:
     """
     Check if the signal has already been priced into the market.
 
@@ -2387,7 +2387,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 logger.info(f"Targeting contract: {contract_name}")
 
                 # === NEW: PRICED IN CHECK ===
-                priced_in, reason = await _is_signal_priced_in(trigger, {}, ib, target_contract)
+                priced_in, reason = await _is_signal_priced_in(trigger, ib, target_contract)
                 if priced_in:
                     logger.warning(f"PRICED IN CHECK FAILED: {reason}. Skipping emergency cycle.")
                     send_pushover_notification(config.get('notifications', {}), "Signal Priced In", reason)
@@ -2410,11 +2410,10 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     f"Note: If IV data shows N/A, analyst should search Barchart for KC IV Rank.\\n"
                 )
 
-                # 4. Build live market context from IBKR (replaces cached ML signal)
                 from trading_bot.market_data_provider import build_market_context
-                ml_signal = await build_market_context(ib, target_contract, config)
-                ml_signal['reason'] = f"Emergency Cycle triggered by {trigger.source}"
-                logger.info(f"Emergency market context: price={ml_signal.get('price')}, regime={ml_signal.get('regime')}")
+                market_data = await build_market_context(ib, target_contract, config)
+                market_data['reason'] = f"Emergency Cycle triggered by {trigger.source}"
+                logger.info(f"Emergency market context: price={market_data.get('price')}, regime={market_data.get('regime')}")
 
                 # Load Regime Context
                 regime_context = load_regime_context()
@@ -2423,7 +2422,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 decision = await council.run_specialized_cycle(
                     trigger,
                     contract_name,
-                    ml_signal,
+                    market_data,
                     market_context_str,
                     ib=ib,
                     target_contract=target_contract,
@@ -2444,7 +2443,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 current_reports = StateManager.load_state()
                 routed = _route_emergency_strategy(
                     decision=decision,
-                    market_context=ml_signal,  # Contains regime, price, etc.
+                    market_context=market_data,  # Contains regime, price, etc.
                     agent_reports=current_reports,
                     config=config
                 )
@@ -2455,7 +2454,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         direction=decision.get('direction', 'NEUTRAL'),
                         confidence=decision.get('confidence', 0.0),
                         vol_sentiment=decision.get('volatility_sentiment', 'BEARISH'),
-                        regime=ml_signal.get('regime', 'UNKNOWN'),
+                        regime=market_data.get('regime', 'UNKNOWN'),
                         thesis_strength=decision.get('thesis_strength', 'SPECULATIVE'),
                         conviction_multiplier=decision.get('conviction_multiplier', 1.0),
                         reasoning=decision.get('reasoning', ''),
@@ -2503,7 +2502,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         "cycle_id": cycle_id,
                         "timestamp": datetime.now(timezone.utc),
                         "contract": contract_name,
-                        "entry_price": ml_signal.get('price'),
+                        "entry_price": market_data.get('price'),
 
                         "meteorologist_sentiment": agent_data.get("agronomist_sentiment"),
                         "meteorologist_summary": agent_data.get("agronomist_summary"),

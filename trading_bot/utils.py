@@ -543,9 +543,6 @@ def log_council_decision(decision_data):
     fieldnames = [
         "cycle_id",  # NEW: Deterministic foreign key for prediction matching
         "timestamp", "contract", "entry_price",
-        # ml_signal and ml_confidence removed (ML pipeline archived v4.0)
-        # Columns retained in existing CSV rows for backward compatibility
-        # but no longer written to new rows.
         "meteorologist_sentiment", "meteorologist_summary",
         "macro_sentiment", "macro_summary",
         "geopolitical_sentiment", "geopolitical_summary",
