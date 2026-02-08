@@ -3,6 +3,13 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from trading_bot.sentinels import XSentimentSentinel
 
+@pytest.fixture(autouse=True)
+def mock_market_status():
+    """Ensure market is always open for tests."""
+    with patch('trading_bot.utils.is_trading_day', return_value=True), \
+         patch('trading_bot.utils.is_market_open', return_value=True):
+        yield
+
 @pytest.fixture
 def mock_config():
     return {
