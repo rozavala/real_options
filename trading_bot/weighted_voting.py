@@ -7,6 +7,7 @@ Domain experts get higher weights on relevant events:
 - Geopolitical Analyst gets 3x weight on logistics events
 """
 
+import asyncio
 import logging
 import re
 import json
@@ -276,9 +277,9 @@ class RegimeDetector:
             return 'UNKNOWN'
 
         try:
-            bars = await ib.reqHistoricalDataAsync(
+            bars = await asyncio.wait_for(ib.reqHistoricalDataAsync(
                 contract, '', '5 D', '1 day', 'TRADES', True
-            )
+            ), timeout=10)
             if not bars or len(bars) < 2:
                 return 'UNKNOWN'
 

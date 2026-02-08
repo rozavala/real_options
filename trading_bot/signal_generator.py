@@ -334,14 +334,14 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
 
                 try:
                     # End time = now, Duration = 1 week, Bar size = 1 day
-                    bars = await ib.reqHistoricalDataAsync(
+                    bars = await asyncio.wait_for(ib.reqHistoricalDataAsync(
                         contract,
                         endDateTime='',
                         durationStr='1 W',
                         barSizeSetting='1 day',
                         whatToShow='TRADES',
                         useRTH=True
-                    )
+                    ), timeout=10)
 
                     if bars and len(bars) >= 2:
                         current_close = bars[-1].close

@@ -106,13 +106,15 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
     target_future_conId = future_contract.conId
     logging.info(f"--- Managing Positions for Future Contract: {future_contract.localSymbol} (conId: {target_future_conId}) ---")
 
-    all_positions = await ib.reqPositionsAsync()
+    all_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=15)
     positions_for_this_future = []
 
     for p in all_positions:
         if p.contract.symbol != config['symbol'] or p.position == 0: continue
         try:
-            details_list = await ib.reqContractDetailsAsync(Contract(conId=p.contract.conId))
+            details_list = await asyncio.wait_for(
+                ib.reqContractDetailsAsync(Contract(conId=p.contract.conId)), timeout=5
+            )
             if details_list and hasattr(details_list[0], 'underConId') and details_list[0].underConId == target_future_conId:
                 positions_for_this_future.append(p)
         except Exception as e:
@@ -145,7 +147,7 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
         for pos_to_close in trades_to_close:
             try:
                 contract_to_close = Contract(conId=pos_to_close.contract.conId)
-                await ib.qualifyContractsAsync(contract_to_close)
+                await asyncio.wait_for(ib.qualifyContractsAsync(contract_to_close), timeout=5)
                 if contract_to_close.strike > 100: contract_to_close.strike /= 100.0
                 order = MarketOrder('BUY' if pos_to_close.position < 0 else 'SELL', abs(pos_to_close.position))
                 trade = ib.placeOrder(contract_to_close, order)
@@ -225,14 +227,14 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
         position_open_dates = open_positions_from_ledger.groupby('position_id')['timestamp'].min().dt.tz_localize(utc).to_dict()
 
     # --- 1. Group Positions by Underlying ---
-    all_positions = [p for p in await ib.reqPositionsAsync() if p.position != 0 and p.contract.conId not in closed_ids]
+    all_positions = [p for p in await asyncio.wait_for(ib.reqPositionsAsync(), timeout=15) if p.position != 0 and p.contract.conId not in closed_ids]
     if not all_positions: return
 
     positions_by_underlying = {}
     for p in all_positions:
         if not isinstance(p.contract, (FuturesOption, Option)): continue
         try:
-            details = await ib.reqContractDetailsAsync(p.contract)
+            details = await asyncio.wait_for(ib.reqContractDetailsAsync(p.contract), timeout=5)
             if details and details[0].underConId:
                 under_con_id = details[0].underConId
                 if under_con_id not in positions_by_underlying: positions_by_underlying[under_con_id] = []
@@ -519,7 +521,7 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
     logging.info("Order status and execution event handlers registered.")
 
     # Request all open orders to ensure we are tracking everything upon startup.
-    await ib.reqAllOpenOrdersAsync()
+    await asyncio.wait_for(ib.reqAllOpenOrdersAsync(), timeout=15)
 
     closed_ids = set()
     ic_check_counter = 0

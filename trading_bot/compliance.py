@@ -182,7 +182,7 @@ async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
                 logger.debug(f"Cache hit for conId {cache_key}")
                 return cached['data']
 
-            details = await ib.reqContractDetailsAsync(Contract(conId=leg.conId))
+            details = await asyncio.wait_for(ib.reqContractDetailsAsync(Contract(conId=leg.conId)), timeout=10)
             if details:
                 leg_contract = details[0].contract
                 result = {
@@ -364,7 +364,9 @@ class ComplianceGuardian:
                     query_contract = Contract(conId=contract.conId) if contract.conId else contract
 
                 # 2. Get ContractDetails to find the Hard Link
-                details_list = await ib.reqContractDetailsAsync(query_contract)
+                details_list = await asyncio.wait_for(
+                    ib.reqContractDetailsAsync(query_contract), timeout=10
+                )
 
                 if details_list:
                     fop_details = details_list[0]
@@ -375,7 +377,9 @@ class ComplianceGuardian:
 
                     if under_id:
                         fut_contract = Contract(conId=under_id)
-                        qualified = await ib.qualifyContractsAsync(fut_contract)
+                        qualified = await asyncio.wait_for(
+                            ib.qualifyContractsAsync(fut_contract), timeout=8
+                        )
 
                         if qualified:
                             target_contract = qualified[0]
@@ -394,14 +398,14 @@ class ComplianceGuardian:
         # === PRIMARY: IB ===
         if target_contract and ib and ib.isConnected():
             try:
-                bars = await ib.reqHistoricalDataAsync(
+                bars = await asyncio.wait_for(ib.reqHistoricalDataAsync(
                     target_contract,
                     endDateTime='',
                     durationStr='900 S',
                     barSizeSetting='1 min',
                     whatToShow='TRADES',
                     useRTH=False
-                )
+                ), timeout=12)
                 if bars:
                     total_vol = sum(b.volume for b in bars)
                     if total_vol > 0:
