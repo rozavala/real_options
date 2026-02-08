@@ -108,7 +108,7 @@ async def test_decide_success(mock_genai_client, mock_config):
 
     # Setup mock master response (JSON)
     mock_response = MagicMock()
-    mock_response.text = '{"direction": "BULLISH", "confidence": 0.85, "reasoning": "Rain good."}'
+    mock_response.text = '{"direction": "BULLISH", "confidence": 0.85, "reasoning": "Rain good.", "thesis_strength": "PROVEN"}'
     mock_generate_content.return_value = mock_response
 
     council = CoffeeCouncil(mock_config)
@@ -120,7 +120,7 @@ async def test_decide_success(mock_genai_client, mock_config):
     decision = await council.decide("KC H25", market_data, reports, market_context)
 
     assert decision['direction'] == "BULLISH"
-    assert decision['confidence'] == 0.85
+    assert decision['confidence'] == 0.90
     assert decision['reasoning'] == "Rain good."
 
     # Verify call arguments

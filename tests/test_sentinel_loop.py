@@ -67,8 +67,8 @@ class TestSentinelLoop(unittest.IsolatedAsyncioTestCase):
         mock_ib_pool.get_connection.assert_any_call("sentinel", {'symbol': 'KC', 'exchange': 'NYBOT'})
         mock_configure.assert_called_with(mock_ib_conn)
 
-        # 4. Iteration 4 (Market Closed) -> Disconnect
-        mock_ib_conn.disconnect.assert_called()
+        # 4. Iteration 4 (Market Closed) -> Release connection to pool
+        mock_ib_pool.release_connection.assert_called()
 
         # Verify clean up at the end
         self.assertIsNone(mock_price_instance.ib)
