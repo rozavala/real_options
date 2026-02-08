@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 class DrawdownGuard:
     def __init__(self, config: dict):
         self.config = config.get('drawdown_circuit_breaker', {})
+        self.notification_config = config.get('notifications', {})
         self.enabled = self.config.get('enabled', False)
         self.warning_pct = self.config.get('warning_pct', 1.5)
         self.halt_pct = self.config.get('halt_pct', 2.5)
@@ -63,8 +64,10 @@ class DrawdownGuard:
             # Create dir if needed
             os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
             self.state['last_updated'] = datetime.now(timezone.utc).isoformat()
-            with open(self.state_file, 'w') as f:
+            temp_path = self.state_file + ".tmp"
+            with open(temp_path, 'w') as f:
                 json.dump(self.state, f, indent=2)
+            os.replace(temp_path, self.state_file)
         except Exception as e:
             logger.warning(f"Failed to save drawdown state: {e}")
 
@@ -158,19 +161,19 @@ class DrawdownGuard:
                 # Notifications
                 if new_status == "WARNING":
                     send_pushover_notification(
-                        self.config.get('notifications', {}),
+                        self.notification_config,
                         "⚠️ Drawdown Warning",
                         f"Portfolio down {drawdown_pct:.2f}% today."
                     )
                 elif new_status == "HALT":
                     send_pushover_notification(
-                        self.config.get('notifications', {}),
+                        self.notification_config,
                         "🛑 TRADING HALTED",
                         f"Daily loss limit hit ({drawdown_pct:.2f}%). New trades blocked."
                     )
                 elif new_status == "PANIC":
                     send_pushover_notification(
-                        self.config.get('notifications', {}),
+                        self.notification_config,
                         "🚨 PANIC CLOSE TRIGGERED",
                         f"Critical loss ({drawdown_pct:.2f}%). Closing ALL positions."
                     )
