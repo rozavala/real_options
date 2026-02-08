@@ -29,22 +29,13 @@ class TestSecretLoading:
 
     def test_load_config_defaults_without_env(self):
         """Test that defaults are kept if env vars are missing (sanity check)."""
-        # We need to un-patch the dict for this one, or just patch with empty values for these specific keys
-        # We need at least one LLM key to pass validation
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_key"}, clear=True):
-             # Note: clear=True might remove PATH etc, which could break things.
-             # Safer to just ensure specific keys are absent.
-             # However, load_config reads .env file, so we might need to mock load_dotenv too or accept that .env might influence it.
-             # But here we just want to ensure that if we DON'T set them in os.environ (and assuming they aren't in .env or we mock load_dotenv),
-             # it falls back to config.json (which currently has hardcoded values, but we will change them later).
+        # Mock load_dotenv to prevent .env file from re-populating env vars
+        with patch('config_loader.load_dotenv'):
+            with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_key"}, clear=True):
+                config = load_config()
 
-             # Actually, since we haven't changed config.json yet, this test would pass with current hardcoded values.
-             # But after we change config.json to "LOADED_FROM_ENV", this test would verify that it returns "LOADED_FROM_ENV".
-
-             config = load_config()
-
-             # Verify that without env vars, it falls back to the placeholders in config.json
-             assert config['notifications']['pushover_user_key'] == "LOADED_FROM_ENV"
-             assert config['notifications']['pushover_api_token'] == "LOADED_FROM_ENV"
-             assert config['fred_api_key'] == "LOADED_FROM_ENV"
-             assert config['nasdaq_api_key'] == "LOADED_FROM_ENV"
+                # Verify that without env vars, it falls back to the placeholders in config.json
+                assert config['notifications']['pushover_user_key'] == "LOADED_FROM_ENV"
+                assert config['notifications']['pushover_api_token'] == "LOADED_FROM_ENV"
+                assert config['fred_api_key'] == "LOADED_FROM_ENV"
+                assert config['nasdaq_api_key'] == "LOADED_FROM_ENV"

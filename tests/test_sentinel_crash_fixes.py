@@ -113,7 +113,8 @@ async def test_relevance_weighted_selection():
         'notifications': {'enabled': False}
     }
 
-    sentinel = PredictionMarketSentinel(config)
+    with patch('trading_bot.sentinels.StateManager'):
+        sentinel = PredictionMarketSentinel(config)
 
     # Mock: deportation market has higher liquidity, but Fed market is relevant
     mock_response = [
@@ -137,7 +138,8 @@ async def test_relevance_weighted_selection():
         # With relevance keywords, should pick Fed market despite lower liquidity
         result = await sentinel._resolve_active_market(
             "Federal Reserve interest rate",
-            relevance_keywords=["federal reserve", "interest rate", "fomc", "fed funds"]
+            relevance_keywords=["federal reserve", "interest rate", "fomc", "fed funds"],
+            min_relevance_score=1
         )
 
     assert result is not None

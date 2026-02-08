@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, AsyncMock, patch
 from datetime import datetime, timezone
 import pytz
 
@@ -90,9 +90,9 @@ async def test_emergency_cycle_runs_when_open():
     with patch('orchestrator.is_market_open', return_value=True):
          with patch('orchestrator.StateManager') as mock_sm:
              with patch('orchestrator.EMERGENCY_LOCK') as mock_lock:
-                 # We need to mock the context manager of the lock
-                 mock_lock.__aenter__.return_value = None
-                 mock_lock.__aexit__.return_value = None
+                 # Mock the lock's acquire as an AsyncMock (used with asyncio.wait_for)
+                 mock_lock.acquire = AsyncMock()
+                 mock_lock.locked.return_value = False
 
                  mock_ib = MagicMock()
                  trigger = SentinelTrigger("TestSentinel", "Test Reason", {})

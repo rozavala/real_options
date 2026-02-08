@@ -21,10 +21,12 @@ def mock_ib():
         ib_instance.connectAsync = AsyncMock()
         ib_instance.disconnect = MagicMock()
         ib_instance.reqPositionsAsync = AsyncMock()
+        ib_instance.qualifyContractsAsync = AsyncMock(return_value=[])
+        ib_instance.reqAllOpenOrdersAsync = AsyncMock(return_value=[])
         ib_instance.reqMktData = MagicMock()
         ib_instance.cancelMktData = MagicMock()
         ib_instance.placeOrder = MagicMock()
-        ib_instance.sleep = AsyncMock() # Use asyncio.sleep in code, but IB object might have sleep mocked just in case
+        ib_instance.sleep = AsyncMock()
         ib_instance.isConnected.return_value = True
 
         # Mock ticker for price discovery

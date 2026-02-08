@@ -100,7 +100,7 @@ def _record_sentinel_health(name: str, status: str, interval_seconds: int, error
         StateManager.atomic_state_update("sentinel_health", name, health_data)
     except Exception as e:
         # Never let health reporting crash the sentinel loop
-        logger.debug(f"Failed to record sentinel health for {name}: {e}")
+        logger.warning(f"Failed to record sentinel health for {name}: {e}")
 
 class TriggerDeduplicator:
     def __init__(self, window_seconds: int = 7200, state_file="data/deduplicator_state.json"):
@@ -114,7 +114,8 @@ class TriggerDeduplicator:
             'filtered_post_cycle': 0,
             'filtered_source_cooldown': 0,
             'filtered_duplicate_content': 0,
-            'processed': 0
+            'processed': 0,
+            '_last_reset_date': datetime.now(timezone.utc).strftime('%Y-%m-%d')
         }
         self._load_state()
 
@@ -133,7 +134,16 @@ class TriggerDeduplicator:
                          self.recent_triggers.append(tuple(t)) # (hash, timestamp)
 
                     if 'metrics' in data and isinstance(data['metrics'], dict):
-                        self.metrics.update(data['metrics'])
+                        loaded_metrics = data['metrics']
+                        # Daily reset: if metrics are from a previous day, reset counters
+                        last_reset = loaded_metrics.get('_last_reset_date', '')
+                        today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+                        if last_reset != today:
+                            logger.info(f"Deduplicator metrics stale (last reset: {last_reset or 'never'}), resetting counters")
+                            loaded_metrics = {}
+                        loaded_metrics.pop('_last_reset_date', None)
+                        self.metrics.update(loaded_metrics)
+                        self.metrics['_last_reset_date'] = today
             except Exception as e:
                 logger.warning(f"Failed to load deduplicator state: {e}")
 
@@ -146,8 +156,12 @@ class TriggerDeduplicator:
                 'recent_triggers': list(self.recent_triggers),
                 'metrics': self.metrics
             }
-            with open(self.state_file, 'w') as f:
+            tmp_path = self.state_file + ".tmp"
+            with open(tmp_path, 'w') as f:
                 json.dump(data, f)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, self.state_file)
         except Exception as e:
              logger.warning(f"Failed to save deduplicator state: {e}")
 
@@ -849,7 +863,7 @@ async def cleanup_orphaned_theses(config: dict):
         tms = TransactiveMemory()
         trade_ledger = get_trade_ledger_df()
 
-        cleaned = _reconcile_orphaned_theses(ib, trade_ledger, tms, config)
+        cleaned = await _reconcile_orphaned_theses(ib, trade_ledger, tms, config)
 
         if cleaned > 0:
             logger.info(f"Thesis cleanup complete: {cleaned} orphaned theses invalidated")
@@ -917,7 +931,7 @@ async def check_and_recover_equity_data(config: dict) -> bool:
         return False
 
 
-def _reconcile_orphaned_theses(
+async def _reconcile_orphaned_theses(
     ib: IB,
     trade_ledger: pd.DataFrame,
     tms: TransactiveMemory,
@@ -958,7 +972,11 @@ def _reconcile_orphaned_theses(
             return 0
 
         # 2. Build set of position_ids with live IB exposure
-        live_positions = ib.positions()  # Use cached positions from earlier reqPositionsAsync
+        try:
+            live_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
+        except asyncio.TimeoutError:
+            logger.error("Reconciliation: reqPositionsAsync timed out (30s), treating as empty")
+            live_positions = []
         live_position_ids = set()
 
         for pos in live_positions:
@@ -1358,14 +1376,18 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
             )
 
         # 1. Get current positions from IB
-        live_positions = await ib.reqPositionsAsync()
+        try:
+            live_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
+        except asyncio.TimeoutError:
+            logger.error("reqPositionsAsync timed out (30s) in position audit, treating as empty")
+            live_positions = []
         if not live_positions or all(p.position == 0 for p in live_positions):
             logger.info("No open positions to audit.")
 
             # Reconcile: If TMS has active theses but IB has no positions,
             # ALL active theses are ghosts
             try:
-                orphan_count = _reconcile_orphaned_theses(
+                orphan_count = await _reconcile_orphaned_theses(
                     ib, trade_ledger, tms, config
                 )
                 if orphan_count > 0:
@@ -1479,7 +1501,7 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
         # After auditing known positions, check for ghost theses that
         # somehow stayed active despite their positions being closed.
         try:
-            orphan_count = _reconcile_orphaned_theses(
+            orphan_count = await _reconcile_orphaned_theses(
                 ib, trade_ledger, tms, config
             )
             if orphan_count > 0:
@@ -2077,8 +2099,12 @@ def load_regime_context() -> str:
 
     regime_file = Path("data/fundamental_regime.json")
     if regime_file.exists():
-        with open(regime_file, 'r') as f:
-            regime = json.load(f)
+        try:
+            with open(regime_file, 'r') as f:
+                regime = json.load(f)
+        except (json.JSONDecodeError, IOError, AttributeError) as e:
+            logger.warning(f"Failed to load regime context: {e}")
+            return ""
 
         regime_type = regime.get('regime', 'UNKNOWN')
         confidence = regime.get('confidence', 0.0)
@@ -2275,7 +2301,11 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
             # === Drawdown Circuit Breaker ===
             if GLOBAL_DRAWDOWN_GUARD:
                 # Update P&L and Check
-                status = await GLOBAL_DRAWDOWN_GUARD.update_pnl(ib)
+                if not ib.isConnected():
+                    logger.warning("IB disconnected — skipping drawdown P&L update (guard state preserved)")
+                    status = "IB_DISCONNECTED"
+                else:
+                    status = await GLOBAL_DRAWDOWN_GUARD.update_pnl(ib)
                 if not GLOBAL_DRAWDOWN_GUARD.is_entry_allowed():
                     logger.warning(f"Drawdown Circuit Breaker ACTIVE ({status}) - Skipping Emergency Cycle")
                     return
@@ -2319,7 +2349,12 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 
                     if affected_theses:
                         # We have potential victims. We need to map them to live positions to close them.
-                        live_positions = await ib.reqPositionsAsync()
+                        try:
+                            live_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
+                        except asyncio.TimeoutError:
+                            logger.error("reqPositionsAsync timed out (30s) in defense check, skipping")
+                            live_positions = None
+                    if affected_theses and live_positions is not None:
                         trade_ledger = get_trade_ledger_df()
 
                         for thesis in affected_theses:
@@ -2369,7 +2404,13 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 # For simplicity, target the Front Month or the one from the trigger payload
                 contract_name_hint = trigger.payload.get('contract')
 
-                active_futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=2)
+                try:
+                    active_futures = await asyncio.wait_for(
+                        get_active_futures(ib, config['symbol'], config['exchange'], count=2), timeout=30
+                    )
+                except asyncio.TimeoutError:
+                    logger.error("get_active_futures timed out (30s) in emergency cycle")
+                    return
                 if not active_futures:
                     logger.error("No active futures found for emergency cycle.")
                     return
@@ -2398,7 +2439,13 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 await asyncio.sleep(2)
 
                 # Fetch IV Metrics
-                iv_metrics = await get_underlying_iv_metrics(ib, target_contract)
+                try:
+                    iv_metrics = await asyncio.wait_for(
+                        get_underlying_iv_metrics(ib, target_contract), timeout=30
+                    )
+                except asyncio.TimeoutError:
+                    logger.warning("get_underlying_iv_metrics timed out (30s), using empty metrics")
+                    iv_metrics = {'current_iv': 'N/A', 'iv_rank': 'N/A', 'iv_percentile': 'N/A'}
 
                 market_context_str = (
                     f"Contract: {target_contract.localSymbol}\\n"
@@ -2411,7 +2458,13 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 )
 
                 from trading_bot.market_data_provider import build_market_context
-                market_data = await build_market_context(ib, target_contract, config)
+                try:
+                    market_data = await asyncio.wait_for(
+                        build_market_context(ib, target_contract, config), timeout=30
+                    )
+                except asyncio.TimeoutError:
+                    logger.error("build_market_context timed out (30s) in emergency cycle")
+                    return
                 market_data['reason'] = f"Emergency Cycle triggered by {trigger.source}"
                 logger.info(f"Emergency market context: price={market_data.get('price')}, regime={market_data.get('regime')}")
 
@@ -2643,7 +2696,13 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     )
 
                     # Build Strategy
-                    chain = await build_option_chain(ib, target_contract)
+                    try:
+                        chain = await asyncio.wait_for(
+                            build_option_chain(ib, target_contract), timeout=45
+                        )
+                    except asyncio.TimeoutError:
+                        logger.error("build_option_chain timed out (45s)")
+                        return
                     if not chain:
                         logger.warning("No option chain available.")
                         return
@@ -2785,6 +2844,18 @@ def _create_protective_close_order(contract: Contract, action: str, qty: int, co
     # However, I will add the function signature to satisfy the requirement if I can.
     # For now, I will modify emergency_hard_close directly to implement the logic.
     return MarketOrder(action, qty)
+
+
+def _log_task_exception(task: asyncio.Task, name: str):
+    """Generic callback to log exceptions from fire-and-forget tasks."""
+    try:
+        exc = task.exception()
+    except asyncio.CancelledError:
+        logger.info(f"Task '{name}' was cancelled")
+        return
+
+    if exc is not None:
+        logger.error(f"Fire-and-forget task '{name}' CRASHED: {type(exc).__name__}: {exc}")
 
 
 def _emergency_cycle_done_callback(task: asyncio.Task, trigger_source: str, config: dict):
@@ -3022,9 +3093,13 @@ async def run_sentinels(config: dict):
             else:
                 # === 4. MARKET CLOSED: Disconnect to prevent zombie state ===
                 if sentinel_ib is not None and sentinel_ib.isConnected():
-                    logger.info("Market Closed: Disconnecting Sentinel IB to prevent zombie state.")
-                    sentinel_ib.disconnect()
-                    # === NEW: Give Gateway time to cleanup ===
+                    logger.info("Market Closed: Releasing Sentinel IB connection to pool.")
+                    try:
+                        await IBConnectionPool.release_connection("sentinel")
+                    except Exception as e:
+                        logger.warning(f"Failed to release sentinel connection to pool, disconnecting directly: {e}")
+                        sentinel_ib.disconnect()
+                    # === Give Gateway time to cleanup ===
                     await asyncio.sleep(3.0)
                     sentinel_ib = None
                     price_sentinel.ib = None
@@ -3070,6 +3145,12 @@ async def run_sentinels(config: dict):
                 except Exception as e:
                     logger.error(f"Failed to engage MicrostructureSentinel: {e}")
                     micro_sentinel = None
+                    # Release connection on failure to prevent pool exhaustion
+                    try:
+                        await IBConnectionPool.release_connection("microstructure")
+                    except Exception:
+                        pass
+                    micro_ib = None
                     _record_sentinel_health("MicrostructureSentinel", "ERROR", 60, str(e))
 
             elif market_open and micro_sentinel is None and not gateway_available:
@@ -3102,10 +3183,13 @@ async def run_sentinels(config: dict):
                         price_change = abs(trigger.payload.get('change', 0))
                         if price_change >= 1.5:  # Pre-emptive at 1.5% (before 2% breach)
                             logger.info(f"PriceSentinel detected {price_change:.1f}% move - triggering position audit")
-                            asyncio.create_task(run_position_audit_cycle(
+                            audit_task = asyncio.create_task(run_position_audit_cycle(
                                 config,
                                 f"PriceSentinel trigger ({price_change:.1f}% move)"
                             ))
+                            audit_task.add_done_callback(
+                                lambda t: _log_task_exception(t, "position_audit_price_trigger")
+                            )
 
                     if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                         task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
@@ -3328,7 +3412,11 @@ async def emergency_hard_close(config: dict):
         ib = await IBConnectionPool.get_connection("orchestrator_orders", config)
         configure_market_data_type(ib)
 
-        live_positions = await ib.reqPositionsAsync()
+        try:
+            live_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
+        except asyncio.TimeoutError:
+            logger.error("reqPositionsAsync timed out (30s) in emergency hard close, aborting")
+            return
         open_positions = [p for p in live_positions if p.position != 0]
 
         if not open_positions:
@@ -3358,7 +3446,14 @@ async def emergency_hard_close(config: dict):
 
                 # CRITICAL FIX: Re-qualify by conId only to get correct strike format
                 minimal = Contract(conId=pos.contract.conId)
-                qualified = await ib.qualifyContractsAsync(minimal)
+                try:
+                    qualified = await asyncio.wait_for(
+                        ib.qualifyContractsAsync(minimal), timeout=15
+                    )
+                except asyncio.TimeoutError:
+                    logger.error(f"qualifyContractsAsync timed out (15s) for {pos.contract.localSymbol}")
+                    failed += 1
+                    continue
                 if not qualified or qualified[0].conId == 0:
                     logger.error(f"Could not qualify {pos.contract.localSymbol} (conId={pos.contract.conId})")
                     failed += 1
@@ -3574,7 +3669,10 @@ async def guarded_generate_orders(config: dict):
              # We will rely on order_manager to check again, or check here if possible.
              # Ideally we check here to avoid spinning up the order generation logic.
              ib = await IBConnectionPool.get_connection("drawdown_check", config)
-             await GLOBAL_DRAWDOWN_GUARD.update_pnl(ib)
+             if not ib.isConnected():
+                 logger.warning("IB disconnected — skipping drawdown P&L update (guard state preserved)")
+             else:
+                 await GLOBAL_DRAWDOWN_GUARD.update_pnl(ib)
              if not GLOBAL_DRAWDOWN_GUARD.is_entry_allowed():
                  logger.warning("Order generation BLOCKED: Drawdown Guard Active")
                  return
