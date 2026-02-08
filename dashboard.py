@@ -75,12 +75,20 @@ col1, col2, col3 = st.columns(3)
 with col1:
     status = heartbeat['orchestrator_status']
     color = "🟢" if status == "ONLINE" else "🔴" if status == "OFFLINE" else "🟡"
-    st.metric("Orchestrator", f"{color} {status}")
+    st.metric(
+        "Orchestrator",
+        f"{color} {status}",
+        help="System health based on recent activity logs. Green indicates active polling within the last 10 minutes."
+    )
 
 with col2:
     if config:
         live_data = fetch_live_dashboard_data(config)
-        st.metric("Net Liquidation", f"${live_data['NetLiquidation']:,.2f}")
+        st.metric(
+            "Net Liquidation",
+            f"${live_data['NetLiquidation']:,.2f}",
+            help="Total account value (Cash + Market Value of Positions) from live Interactive Brokers data."
+        )
     else:
         st.metric("Net Liquidation", "Offline")
 
@@ -90,7 +98,11 @@ with col3:
     profile = _cfg.get('commodity', {})
     ticker = profile.get('ticker', 'KC')
     benchmark_symbol = f"{ticker}=F"
-    st.metric(f"{ticker} Benchmark", f"{benchmarks.get(benchmark_symbol, 0):+.2f}%")
+    st.metric(
+        f"{ticker} Benchmark",
+        f"{benchmarks.get(benchmark_symbol, 0):+.2f}%",
+        help=f"Today's percentage change for {ticker} futures, sourced from Yahoo Finance."
+    )
 
 st.markdown("---")
 st.caption("Select a page from the sidebar to begin.")
