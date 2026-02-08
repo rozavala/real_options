@@ -230,6 +230,10 @@ class EnhancedBrierTracker:
         if not cycle_id or cycle_id in ("nan", "None", "null"):
             raise ValueError("cycle_id is required for prediction recording (B3 fix)")
 
+        # Normalize agent name to canonical form
+        from trading_bot.agent_names import normalize_agent_name
+        agent = normalize_agent_name(agent)
+
         # Dedup: skip if (cycle_id, agent) already recorded
         for existing in self.predictions:
             if existing.cycle_id == cycle_id and existing.agent == agent:
@@ -620,12 +624,13 @@ class EnhancedBrierTracker:
                     f"Data may need migration."
                 )
 
-            # Load predictions (with dedup on cycle_id+agent)
+            # Load predictions (normalize names + dedup on cycle_id+agent)
+            from trading_bot.agent_names import normalize_agent_name
             seen_keys = set()
             dupes_removed = 0
             for p in data.get('predictions', []):
                 cycle_id = p.get('cycle_id', '')
-                agent = p.get('agent', '')
+                agent = normalize_agent_name(p.get('agent', ''))
                 # Dedup: keep first occurrence (which has the original timestamp)
                 if cycle_id and agent:
                     key = (cycle_id, agent)
