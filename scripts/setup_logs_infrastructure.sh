@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 # === Coffee Bot Real Options - Logs Branch Setup ===
 # This script sets up the logs branch infrastructure for collecting
 # dev and prod environment logs and output files.

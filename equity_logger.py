@@ -226,4 +226,5 @@ if __name__ == "__main__":
         else:
             asyncio.run(log_equity_snapshot(cfg))
     else:
-        print("Could not load config.")
+        logger.error("Could not load config.")
+        sys.exit(1)

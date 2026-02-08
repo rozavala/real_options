@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 # === Coffee Bot Real Options - Log Analysis Utilities ===
 # This script provides utilities for analyzing collected logs and managing
 # the logs branch effectively.

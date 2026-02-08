@@ -100,14 +100,31 @@ def load_config() -> dict | None:
             missing_creds.append("PUSHOVER_API_TOKEN")
 
         if missing_creds:
-            logger.warning(f"Notifications enabled but credentials missing: {', '.join(missing_creds)}")
+            # MECHANIC FIX: Fail fast if notifications are enabled but credentials are missing
+            raise ValueError(f"Config validation: Notifications enabled but credentials missing: {', '.join(missing_creds)}")
 
     # 7. OVERRIDE: Data Providers (Secrets)
     if os.getenv("FRED_API_KEY"):
         config['fred_api_key'] = os.getenv("FRED_API_KEY")
 
+    if config.get('fred_api_key') == "LOADED_FROM_ENV" or not config.get('fred_api_key'):
+        logger.warning("WARNING: FRED_API_KEY not found in environment! Macro features may be limited.")
+
     if os.getenv("NASDAQ_API_KEY"):
         config['nasdaq_api_key'] = os.getenv("NASDAQ_API_KEY")
+
+    if config.get('nasdaq_api_key') == "LOADED_FROM_ENV" or not config.get('nasdaq_api_key'):
+        logger.warning("WARNING: NASDAQ_API_KEY not found in environment! Data feeds may be limited.")
+
+    # Check X API Bearer Token
+    if os.getenv("X_BEARER_TOKEN"):
+        if 'x_api' not in config:
+            config['x_api'] = {}
+        config['x_api']['bearer_token'] = os.getenv("X_BEARER_TOKEN")
+
+    x_api = config.get('x_api', {})
+    if x_api.get('bearer_token') == "LOADED_FROM_ENV" or not x_api.get('bearer_token'):
+        logger.warning("WARNING: X_BEARER_TOKEN not found! XSentimentSentinel will be disabled.")
 
     # 8. Models
     if config['gemini']['api_key'] == "LOADED_FROM_ENV":

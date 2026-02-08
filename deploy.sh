@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 # =============================================================================
 # Coffee Bot Real Options — Production Deployment Script
 #
