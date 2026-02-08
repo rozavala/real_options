@@ -115,6 +115,29 @@ def load_trade_data():
         return pd.DataFrame()
 
 
+@st.cache_data(ttl=3600)
+def _load_legacy_council_history(data_dir: str) -> pd.DataFrame:
+    """Loads and caches legacy council history files (long TTL)."""
+    legacy_dfs = []
+    if os.path.exists(data_dir):
+        legacy_files = [
+            os.path.join(data_dir, f)
+            for f in os.listdir(data_dir)
+            if f.startswith('council_history_legacy') and f.endswith('.csv')
+        ]
+        for legacy_file in legacy_files:
+            try:
+                legacy_df = pd.read_csv(legacy_file)
+                if not legacy_df.empty:
+                    legacy_dfs.append(legacy_df)
+            except Exception as e:
+                logger.warning(f"Could not load legacy file {legacy_file}: {e}")
+
+    if legacy_dfs:
+        return pd.concat(legacy_dfs, ignore_index=True)
+    return pd.DataFrame()
+
+
 @st.cache_data(ttl=60)
 def load_council_history():
     """
@@ -131,20 +154,10 @@ def load_council_history():
             if not df.empty:
                 dataframes.append(df)
 
-        # Load any legacy/archived files (safety net)
-        if os.path.exists(data_dir):
-            legacy_files = [
-                os.path.join(data_dir, f)
-                for f in os.listdir(data_dir)
-                if f.startswith('council_history_legacy') and f.endswith('.csv')
-            ]
-            for legacy_file in legacy_files:
-                try:
-                    legacy_df = pd.read_csv(legacy_file)
-                    if not legacy_df.empty:
-                        dataframes.append(legacy_df)
-                except Exception as e:
-                    logger.warning(f"Could not load legacy file {legacy_file}: {e}")
+        # Load any legacy/archived files (cached separately)
+        legacy_df = _load_legacy_council_history(data_dir)
+        if not legacy_df.empty:
+            dataframes.append(legacy_df)
 
         if not dataframes:
             return pd.DataFrame()
