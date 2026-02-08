@@ -87,16 +87,21 @@ if enhanced_data:
         f"{resolved_enhanced / total_enhanced * 100:.0f}%" if total_enhanced > 0 else "N/A"
     )
 
-    # Sync status with legacy CSV
+    # Sync status with legacy CSV (compare resolved counts, not totals)
     if not struct_df.empty:
-        csv_total = len(struct_df)
-        diff = abs(total_enhanced - csv_total)
-        if diff <= 5:
-            st.success(f"Stores in sync: Enhanced JSON ({total_enhanced}) ~ CSV ({csv_total})")
+        csv_resolved = len(struct_df) - (struct_df['actual'] == 'PENDING').sum() - (
+            (struct_df['actual'] == 'ORPHANED').sum() if 'actual' in struct_df.columns else 0
+        )
+        resolved_diff = abs(resolved_enhanced - csv_resolved)
+        if resolved_diff <= 5:
+            st.success(
+                f"Stores in sync: {resolved_enhanced} resolved in JSON, "
+                f"{csv_resolved} resolved in CSV"
+            )
         else:
             st.warning(
-                f"Store drift detected: Enhanced JSON has {total_enhanced} predictions, "
-                f"CSV has {csv_total} ({diff} difference). "
+                f"Resolution drift: Enhanced JSON has {resolved_enhanced} resolved, "
+                f"CSV has {csv_resolved} resolved ({resolved_diff} difference). "
                 f"Run backfill to converge."
             )
 
