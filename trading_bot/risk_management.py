@@ -388,8 +388,6 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
                         action=action,
                         exchange=config.get('exchange', 'NYBOT')
                     ))
-                    # Mark as closed in our local set immediately to prevent double-action
-                    closed_ids.add(leg_pos.contract.conId)
 
                 contract.comboLegs = combo_legs_list
 
@@ -413,6 +411,11 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
                     f"(Ratios: {[r//common_divisor for r in ratios]}, Qty: {readable_qty})"
                 )
                 place_order(ib, contract, order)
+
+                # Mark as closed AFTER order placement succeeds — if place_order
+                # throws, legs stay visible to future risk checks instead of becoming zombies
+                for leg_pos in combo_legs:
+                    closed_ids.add(leg_pos.contract.conId)
 
             except Exception as e:
                 logging.error(f"Failed to close combo {combo_desc} as BAG: {e}")
@@ -505,6 +508,10 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
         asyncio.create_task(_on_order_status(ib, trade))
 
     fill_handler = lambda t, f: _on_fill(t, f, config)
+
+    # Clear filled order tracking from previous session to prevent unbounded growth
+    # and avoid stale ID collisions after IB Gateway restarts
+    _filled_order_ids.clear()
 
     # Register the event handlers before starting the tasks.
     ib.orderStatusEvent += order_status_handler
