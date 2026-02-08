@@ -71,10 +71,53 @@ enhanced_data = load_enhanced_brier()
 struct_df = load_structured_predictions()
 legacy_df = load_legacy_accuracy()
 
-# Health metrics
-col1, col2, col3, col4, col5 = st.columns(5)
+# Primary metrics from Enhanced Brier (source of truth)
+if enhanced_data:
+    preds = enhanced_data.get('predictions', [])
+    total_enhanced = len(preds)
+    resolved_enhanced = sum(1 for p in preds if p.get('actual_outcome'))
+    pending_enhanced = total_enhanced - resolved_enhanced
 
-if not struct_df.empty:
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Predictions", total_enhanced)
+    col2.metric("Resolved", resolved_enhanced)
+    col3.metric("Pending", pending_enhanced)
+    col4.metric(
+        "Resolution Rate",
+        f"{resolved_enhanced / total_enhanced * 100:.0f}%" if total_enhanced > 0 else "N/A"
+    )
+
+    # Sync status with legacy CSV
+    if not struct_df.empty:
+        csv_total = len(struct_df)
+        diff = abs(total_enhanced - csv_total)
+        if diff <= 5:
+            st.success(f"Stores in sync: Enhanced JSON ({total_enhanced}) ~ CSV ({csv_total})")
+        else:
+            st.warning(
+                f"Store drift detected: Enhanced JSON has {total_enhanced} predictions, "
+                f"CSV has {csv_total} ({diff} difference). "
+                f"Run backfill to converge."
+            )
+
+    # Legacy CSV details in expander
+    if not struct_df.empty:
+        with st.expander("Legacy CSV Pipeline Details"):
+            csv_total = len(struct_df)
+            csv_pending = (struct_df['actual'] == 'PENDING').sum()
+            csv_orphaned = (struct_df['actual'] == 'ORPHANED').sum() if 'actual' in struct_df.columns else 0
+            csv_resolved = csv_total - csv_pending - csv_orphaned
+
+            lc1, lc2, lc3, lc4 = st.columns(4)
+            lc1.metric("CSV Total", csv_total)
+            lc2.metric("CSV Resolved", csv_resolved)
+            lc3.metric("CSV Pending", csv_pending)
+            lc4.metric("CSV Orphaned", csv_orphaned)
+            st.caption("The CSV pipeline is deprecated and will be removed after 2026-03-01.")
+
+elif not struct_df.empty:
+    # Fallback: no enhanced data, show CSV metrics directly
+    col1, col2, col3, col4, col5 = st.columns(5)
     total = len(struct_df)
     pending = (struct_df['actual'] == 'PENDING').sum()
     orphaned = (struct_df['actual'] == 'ORPHANED').sum() if 'actual' in struct_df.columns else 0
@@ -89,21 +132,9 @@ if not struct_df.empty:
         "Resolution Rate",
         f"{resolved / resolvable * 100:.0f}%" if resolvable > 0 else "N/A"
     )
+    st.info("Enhanced Brier tracker has no data yet. Showing legacy CSV metrics.")
 else:
-    st.info("No structured prediction data available yet.")
-
-# Enhanced system status
-if enhanced_data:
-    preds = enhanced_data.get('predictions', [])
-    resolved_enhanced = sum(1 for p in preds if p.get('actual_outcome'))
-    unresolved_enhanced = sum(1 for p in preds if not p.get('actual_outcome'))
-
-    st.success(
-        f"✅ Enhanced Brier Active: {len(preds)} predictions tracked "
-        f"({resolved_enhanced} resolved, {unresolved_enhanced} pending)"
-    )
-else:
-    st.warning("⚠️ Enhanced Brier tracker has no data yet. Predictions will accumulate after v6.4 deployment.")
+    st.info("No prediction data available yet.")
 
 st.markdown("---")
 

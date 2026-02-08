@@ -224,6 +224,12 @@ class EnhancedBrierTracker:
         if not cycle_id or cycle_id in ("nan", "None", "null"):
             raise ValueError("cycle_id is required for prediction recording (B3 fix)")
 
+        # Dedup: skip if (cycle_id, agent) already recorded
+        for existing in self.predictions:
+            if existing.cycle_id == cycle_id and existing.agent == agent:
+                logger.debug(f"Skipping duplicate: {agent} already recorded for cycle {cycle_id}")
+                return f"{agent}_{cycle_id}_dup"
+
         pred = ProbabilisticPrediction(
             timestamp=timestamp or datetime.now(timezone.utc),
             agent=agent,
@@ -377,11 +383,67 @@ class EnhancedBrierTracker:
                     f"Brier={brier_str}"
                 )
 
-        if backfilled > 0:
-            self._save()
-            logger.info(f"Enhanced Brier backfill complete: {backfilled} predictions resolved")
+        # Pass 2: Create predictions that exist in CSV but not in JSON
+        json_keys = {(p.cycle_id, p.agent) for p in self.predictions}
+        created = 0
 
-        return backfilled
+        for _, row in csv_df.iterrows():
+            cycle_id = str(row.get('cycle_id', '')).strip()
+            agent = str(row.get('agent', '')).strip()
+            if not cycle_id or not agent or cycle_id in ("nan", "None", "null"):
+                continue
+            if (cycle_id, agent) in json_keys:
+                continue
+
+            # Reconstruct probability distribution from CSV direction + confidence
+            direction = str(row.get('direction', 'NEUTRAL')).strip().upper()
+            confidence = float(row.get('confidence', 0.5)) if pd.notna(row.get('confidence')) else 0.5
+            confidence = max(0.0, min(1.0, confidence))
+
+            from trading_bot.brier_bridge import _confidence_to_probs
+            prob_bullish, prob_neutral, prob_bearish = _confidence_to_probs(direction, confidence)
+
+            # Parse timestamp
+            ts = datetime.now(timezone.utc)
+            if pd.notna(row.get('timestamp')):
+                try:
+                    ts = pd.to_datetime(row['timestamp'], utc=True).to_pydatetime()
+                except Exception:
+                    pass
+
+            pred = ProbabilisticPrediction(
+                timestamp=ts,
+                agent=agent,
+                prob_bullish=prob_bullish,
+                prob_neutral=prob_neutral,
+                prob_bearish=prob_bearish,
+                regime=MarketRegime.NORMAL,
+                contract=str(row.get('contract', '')) if pd.notna(row.get('contract')) else '',
+                cycle_id=cycle_id,
+            )
+
+            # Resolve immediately if CSV has an outcome
+            actual = str(row.get('actual', 'PENDING')).strip()
+            if actual not in ('PENDING', 'ORPHANED', ''):
+                pred.actual_outcome = actual
+                pred.resolved_at = datetime.now(timezone.utc)
+                brier = pred.calc_brier_score()
+                if brier is not None:
+                    self._update_agent_score(pred.agent, pred.regime.value, brier)
+                    self._update_calibration(pred)
+
+            self.predictions.append(pred)
+            json_keys.add((cycle_id, agent))
+            created += 1
+
+        if backfilled > 0 or created > 0:
+            self._save()
+            logger.info(
+                f"Enhanced Brier backfill complete: {backfilled} resolved, "
+                f"{created} created from CSV"
+            )
+
+        return backfilled + created
 
     def get_agent_reliability(self, agent: str, regime: str = "NORMAL") -> float:
         """
@@ -555,21 +617,36 @@ class EnhancedBrierTracker:
                     f"Data may need migration."
                 )
 
-            # Load predictions
+            # Load predictions (with dedup on cycle_id+agent)
+            seen_keys = set()
+            dupes_removed = 0
             for p in data.get('predictions', []):
+                cycle_id = p.get('cycle_id', '')
+                agent = p.get('agent', '')
+                # Dedup: keep first occurrence (which has the original timestamp)
+                if cycle_id and agent:
+                    key = (cycle_id, agent)
+                    if key in seen_keys:
+                        dupes_removed += 1
+                        continue
+                    seen_keys.add(key)
+
                 pred = ProbabilisticPrediction(
                     timestamp=datetime.fromisoformat(p['timestamp']),
-                    agent=p['agent'],
+                    agent=agent,
                     prob_bullish=p['prob_bullish'],
                     prob_neutral=p['prob_neutral'],
                     prob_bearish=p['prob_bearish'],
                     regime=MarketRegime(p.get('regime', 'NORMAL')),
                     contract=p.get('contract', ''),
-                    cycle_id=p.get('cycle_id', ''),  # NEW
+                    cycle_id=cycle_id,
                     actual_outcome=p.get('actual_outcome'),
                     resolved_at=datetime.fromisoformat(p['resolved_at']) if p.get('resolved_at') else None
                 )
                 self.predictions.append(pred)
+
+            if dupes_removed > 0:
+                logger.info(f"Removed {dupes_removed} duplicate predictions on load")
 
             # Load agent scores
             self.agent_scores = data.get('agent_scores', {})
