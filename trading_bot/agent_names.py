@@ -16,7 +16,6 @@ CANONICAL_AGENTS = [
     'technical',       # Technical Analyst
     'volatility',      # Volatility Analyst
     'master_decision', # Master Strategist
-    # 'ml_model' removed in v4.0 — ML pipeline archived
 ]
 
 # Agents no longer active but kept for backward compat with historical data
@@ -69,10 +68,6 @@ NAME_ALIASES = {
     'master_decision': 'master_decision',
     'master_strategist': 'master_decision',
 
-    # ML (archived v4.0 — aliases kept for backward compat with historical data)
-    'ml_model': 'ml_model',
-    'ml': 'ml_model',
-    'ml_signal': 'ml_model',
 }
 
 # Display Names for Dashboards (Exported for external use)
@@ -86,8 +81,6 @@ AGENT_DISPLAY_NAMES = {
     'technical': '📉 Technical',
     'volatility': '⚡ Volatility',
     'master_decision': '👑 Master Strategist',
-    # ml_model display name removed — ML pipeline archived v4.0
-    # Historical CSV data still references 'ml_model' via DEPRECATED_AGENTS set
 }
 
 def normalize_agent_name(name: str) -> str:

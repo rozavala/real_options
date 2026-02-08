@@ -76,9 +76,9 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
         send_pushover_notification(
             config.get('notifications', {}),
             "Trading Council Startup Failed",
-            f"Error: {e}. No ML fallback — aborting signal generation."
+            f"Error: {e}. Council initialization failed — aborting signal generation."
         )
-        return []  # No ML fallback — Council is required
+        return []
 
     # 2. Get Active Futures
     active_futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=5)
@@ -290,7 +290,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 weighted_result = await calculate_weighted_decision(
                     agent_reports=reports,
                     trigger_type=trigger_type,
-                    ml_signal=market_ctx,
+                    market_data=market_ctx,
                     ib=ib,
                     contract=contract,
                     regime=regime_for_voting,
@@ -754,7 +754,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 send_pushover_notification(
                     config.get('notifications', {}),
                     "Trading Council Error",
-                    f"Council failed for {contract_name}. Using ML fallback. Error: {e}"
+                    f"Council failed for {contract_name}. Error: {e}"
                 )
                 # We silently fall back to the ML defaults set at start of function
 

@@ -40,10 +40,10 @@ def mocks(ib_mock):
     mock_get_active_futures = active_futures_patcher.start()
     mock_get_active_futures.return_value = contracts
 
-    # Patch CoffeeCouncil
-    council_patcher = patch('trading_bot.signal_generator.CoffeeCouncil')
-    MockCoffeeCouncil = council_patcher.start()
-    council_instance = MockCoffeeCouncil.return_value
+    # Patch TradingCouncil (renamed from CoffeeCouncil)
+    council_patcher = patch('trading_bot.signal_generator.TradingCouncil')
+    MockTradingCouncil = council_patcher.start()
+    council_instance = MockTradingCouncil.return_value
 
     # Patch ComplianceGuardian
     compliance_patcher = patch('trading_bot.signal_generator.ComplianceGuardian')
@@ -73,16 +73,11 @@ async def test_compliance_audit_rejects(config, ib_mock, mocks):
     council_instance = mocks["council"]
     compliance_instance = mocks["compliance"]
 
-    # Setup ML Signal - Need 5 signals
-    base_signal = {'confidence': 0.8, 'action': 'LONG', 'expected_price': 105.0, 'price': 100.0}
-    signals_list = [base_signal.copy() for _ in range(5)]
-
     # Setup Master Decision
     council_instance.decide.return_value = {
         'direction': 'BULLISH',
         'confidence': 0.9,
-        'reasoning': 'Because I say so',
-        'projected_price_5_day': 105.0
+        'reasoning': 'Because I say so'
     }
 
     # Setup Audit Rejection
@@ -91,7 +86,7 @@ async def test_compliance_audit_rejects(config, ib_mock, mocks):
         'flagged_reason': 'Hallucination detected'
     }
 
-    results = await generate_signals(ib_mock, signals_list, config)
+    results = await generate_signals(ib_mock, config)
 
     assert len(results) == 5
     # Check the first one (they are processed in parallel/order)
@@ -105,14 +100,10 @@ async def test_compliance_audit_fail_closed(config, ib_mock, mocks):
     council_instance = mocks["council"]
     compliance_instance = mocks["compliance"]
 
-    base_signal = {'confidence': 0.8, 'action': 'LONG', 'expected_price': 105.0, 'price': 100.0}
-    signals_list = [base_signal.copy() for _ in range(5)]
-
     council_instance.decide.return_value = {
         'direction': 'BULLISH',
         'confidence': 0.9,
-        'reasoning': 'Valid',
-        'projected_price_5_day': 105.0
+        'reasoning': 'Valid'
     }
 
     # Simulate the agents.py method returning False due to exception
@@ -121,7 +112,7 @@ async def test_compliance_audit_fail_closed(config, ib_mock, mocks):
         'flagged_reason': 'AUDIT SYSTEM FAILURE: Timeout'
     }
 
-    results = await generate_signals(ib_mock, signals_list, config)
+    results = await generate_signals(ib_mock, config)
 
     result = results[0]
     assert result['direction'] == 'NEUTRAL'
@@ -137,9 +128,6 @@ async def test_price_sanity_check_fails(config, ib_mock, mocks):
     current_price = 100.0
     projected_price = 130.0
 
-    base_signal = {'confidence': 0.8, 'action': 'LONG', 'expected_price': 105.0, 'price': current_price}
-    signals_list = [base_signal.copy() for _ in range(5)]
-
     council_instance.decide.return_value = {
         'direction': 'BULLISH',
         'confidence': 0.9,
@@ -149,7 +137,7 @@ async def test_price_sanity_check_fails(config, ib_mock, mocks):
 
     compliance_instance.audit_decision.return_value = {'approved': True}
 
-    results = await generate_signals(ib_mock, signals_list, config)
+    results = await generate_signals(ib_mock, config)
 
     result = results[0]
     assert result['direction'] == 'NEUTRAL'
@@ -167,9 +155,6 @@ async def test_both_checks_pass(config, ib_mock, mocks):
     current_price = 100.0
     projected_price = 110.0
 
-    base_signal = {'confidence': 0.8, 'action': 'LONG', 'expected_price': 105.0, 'price': current_price}
-    signals_list = [base_signal.copy() for _ in range(5)]
-
     council_instance.decide.return_value = {
         'direction': 'BULLISH',
         'confidence': 0.9,
@@ -179,7 +164,7 @@ async def test_both_checks_pass(config, ib_mock, mocks):
 
     compliance_instance.audit_decision.return_value = {'approved': True}
 
-    results = await generate_signals(ib_mock, signals_list, config)
+    results = await generate_signals(ib_mock, config)
 
     result = results[0]
     assert result['direction'] == 'BULLISH'
