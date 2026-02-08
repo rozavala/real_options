@@ -131,7 +131,9 @@ def log_decision_signal(
                             full_df[col] = None
                     full_df = full_df[SCHEMA_COLUMNS]
                     combined = pd.concat([full_df, new_row], ignore_index=True)
-                    combined.to_csv(SIGNALS_FILE_PATH, index=False)
+                    temp_path = SIGNALS_FILE_PATH + ".tmp"
+                    combined.to_csv(temp_path, index=False)
+                    os.replace(temp_path, SIGNALS_FILE_PATH)
                 else:
                     new_row.to_csv(SIGNALS_FILE_PATH, mode='a', header=False, index=False)
             except pd.errors.EmptyDataError:
