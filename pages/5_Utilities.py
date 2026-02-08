@@ -296,7 +296,8 @@ with manual_cols[1]:
     st.warning("⚠️ **Cancel All Open Orders**")
     st.caption("Immediately cancels all unfilled DAY orders in IB")
 
-    if st.button("🛑 Cancel All Open Orders"):
+    confirm_cancel_all = st.checkbox("I confirm I want to CANCEL all open orders", key="confirm_cancel_all")
+    if st.button("🛑 Cancel All Open Orders", disabled=not confirm_cancel_all):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -327,7 +328,8 @@ with manual_cols2[0]:
     st.warning("⚠️ **Close Stale Positions**")
     st.caption("Closes positions held longer than max_holding_days")
 
-    if st.button("🔄 Force Close Stale Positions"):
+    confirm_close_stale = st.checkbox("I confirm I want to CLOSE stale positions", key="confirm_close_stale")
+    if st.button("🔄 Force Close Stale Positions", disabled=not confirm_close_stale):
         if not config:
             st.error("❌ Config not loaded")
         else:
