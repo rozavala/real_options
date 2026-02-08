@@ -567,8 +567,10 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
 
     if updates_made:
         try:
-            # Use columns order from utils.py to keep it clean
-            df.to_csv(file_path, index=False)
+            # Use columns order from utils.py to keep it clean (atomic write)
+            temp_path = file_path + ".tmp"
+            df.to_csv(temp_path, index=False)
+            os.replace(temp_path, file_path)
             logger.info("Successfully updated council_history.csv with reconciliation results.")
 
             # === RESOLVE INDIVIDUAL AGENT PREDICTIONS ===

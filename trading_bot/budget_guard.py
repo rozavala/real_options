@@ -13,6 +13,7 @@ until the next reset. This prevents oscillating between modes.
 
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -69,8 +70,10 @@ class BudgetGuard:
                 'budget_hit': self._budget_hit,
                 'warning_sent': self._warning_sent
             }
-            with open(self.state_file, 'w') as f:
+            temp_path = str(self.state_file) + ".tmp"
+            with open(temp_path, 'w') as f:
                 json.dump(data, f)
+            os.replace(temp_path, str(self.state_file))
         except Exception as e:
             logger.error(f"Failed to save budget state: {e}")
 

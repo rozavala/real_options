@@ -1,4 +1,5 @@
 from ib_insync import IB
+import asyncio
 import logging
 import math
 
@@ -54,7 +55,11 @@ class DynamicPositionSizer:
         from trading_bot.utils import get_active_ticker
         _active_symbol = get_active_ticker(self.config)
 
-        positions = await ib.reqPositionsAsync()
+        try:
+            positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=15)
+        except asyncio.TimeoutError:
+            logger.error("reqPositionsAsync timed out (15s) in position sizer. Using base quantity.")
+            return max(1, self.base_qty)
         current_exposure = sum(
             abs(p.position * p.avgCost)
             for p in positions
