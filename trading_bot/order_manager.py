@@ -83,7 +83,11 @@ async def _reconcile_working_orders(ib: IB, config: dict) -> float:
     bot instance's orders, preventing cross-bot capital stealing.
     """
     try:
-        open_orders = await ib.reqAllOpenOrdersAsync()
+        try:
+            open_orders = await asyncio.wait_for(ib.reqAllOpenOrdersAsync(), timeout=15)
+        except asyncio.TimeoutError:
+            logger.warning("reqAllOpenOrdersAsync timed out (15s). Assuming no committed capital.")
+            return 0.0
         if not open_orders:
             return 0.0
 
@@ -139,6 +143,16 @@ _recorded_thesis_positions = set()
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("OrderManager")
+
+
+def _log_task_exception(task: asyncio.Task, name: str):
+    """Generic callback to log exceptions from fire-and-forget tasks."""
+    try:
+        exc = task.exception()
+    except asyncio.CancelledError:
+        return
+    if exc is not None:
+        logger.error(f"Fire-and-forget task '{name}' CRASHED: {type(exc).__name__}: {exc}")
 
 
 def _get_order_display_name(contract, strategy_def: dict = None) -> str:
@@ -352,7 +366,11 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             sizer = DynamicPositionSizer(config)
 
             # Fetch Account Value
-            account_summary = await ib.accountSummaryAsync()
+            try:
+                account_summary = await asyncio.wait_for(ib.accountSummaryAsync(), timeout=15)
+            except asyncio.TimeoutError:
+                logger.error("accountSummaryAsync timed out (15s) in order generation")
+                return
             net_liq_tag = next((v for v in account_summary if v.tag == 'NetLiquidation' and v.currency == 'USD'), None)
             account_value = float(net_liq_tag.value) if net_liq_tag else 0.0
             logger.info(f"Account Value for Sizing: ${account_value:,.2f}")
@@ -401,7 +419,12 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                 try:
                     # Retry loop for snapshot data
                     for attempt in range(3):
-                        tickers = await ib.reqTickersAsync(future)
+                        try:
+                            tickers = await asyncio.wait_for(ib.reqTickersAsync(future), timeout=10)
+                        except asyncio.TimeoutError:
+                            logger.warning(f"reqTickersAsync timed out (10s) for {future.localSymbol} (Attempt {attempt+1}/3)")
+                            await asyncio.sleep(2)
+                            continue
                         if not tickers:
                             logger.warning(f"No ticker returned for {future.localSymbol} (Attempt {attempt+1}/3)")
                             await asyncio.sleep(2)
@@ -577,6 +600,11 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
         msg = f"A critical error occurred during order generation: {e}\n{traceback.format_exc()}"
         logger.critical(msg)
         send_pushover_notification(config.get('notifications', {}), "Order Generation CRITICAL", msg)
+        # Force-reset pooled connection on critical error so next get_connection() creates fresh
+        try:
+            await IBConnectionPool._force_reset_connection(connection_purpose)
+        except Exception:
+            pass
 
 
 async def _get_market_data_for_leg(ib: IB, leg: ComboLeg) -> str:
@@ -585,7 +613,11 @@ async def _get_market_data_for_leg(ib: IB, leg: ComboLeg) -> str:
     Returns a formatted string for logging and notifications.
     """
     try:
-        contract = await ib.reqContractDetailsAsync(Contract(conId=leg.conId))
+        try:
+            contract = await asyncio.wait_for(ib.reqContractDetailsAsync(Contract(conId=leg.conId)), timeout=10)
+        except asyncio.TimeoutError:
+            logger.warning(f"reqContractDetailsAsync timed out (10s) for leg conId {leg.conId}")
+            return f"Leg conId {leg.conId}: N/A (timeout)"
         if not contract:
             logger.warning(f"Could not resolve contract for leg conId {leg.conId}")
             return f"Leg conId {leg.conId}: N/A"
@@ -634,7 +666,7 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
             return
 
         detailed_contract = Contract(conId=fill.contract.conId)
-        await ib.qualifyContractsAsync(detailed_contract)
+        await asyncio.wait_for(ib.qualifyContractsAsync(detailed_contract), timeout=10)
 
         corrected_fill = Fill(
             contract=detailed_contract,
@@ -782,6 +814,10 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
     Connects to IB, places orders, and monitors them.
     If 'orders_list' is provided, it processes those orders instead of the global ORDER_QUEUE.
     """
+    # Clear thesis tracking at START of run (not in finally) to avoid racing
+    # with fire-and-forget _handle_and_log_fill tasks still inflight
+    _recorded_thesis_positions.clear()
+
     # === D3 FIX: Explicit sequential processing ===
     # Use pop_all to atomically get and clear, preventing any race
     if orders_list is None:
@@ -839,7 +875,8 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             decision_data = order_details.get('decision_data')
 
             logger.info(f"Fill received for leg {leg_con_id} in order {order_id}. Processing with Position ID {position_uuid}.")
-            asyncio.create_task(_handle_and_log_fill(ib, trade, fill, combo_perm_id, position_uuid, decision_data, config))
+            fill_task = asyncio.create_task(_handle_and_log_fill(ib, trade, fill, combo_perm_id, position_uuid, decision_data, config))
+            fill_task.add_done_callback(lambda t: _log_task_exception(t, f"fill_logging_{order_id}"))
 
             order_details['filled_legs'].add(leg_con_id)
             order_details['fill_prices'][leg_con_id] = fill.execution.avgPrice
@@ -886,7 +923,11 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         logger.info("Sorted orders by expiration proximity.")
 
         # --- NEW: Margin & Funds Check ---
-        account_summary = await ib.accountSummaryAsync()
+        try:
+            account_summary = await asyncio.wait_for(ib.accountSummaryAsync(), timeout=15)
+        except asyncio.TimeoutError:
+            logger.error("accountSummaryAsync timed out (15s) in order placement. Aborting.")
+            return
         avail_funds_tag = next((v for v in account_summary if v.tag == 'AvailableFunds' and v.currency == 'USD'), None)
         net_liq_tag = next((v for v in account_summary if v.tag == 'NetLiquidation' and v.currency == 'USD'), None)
 
@@ -902,7 +943,11 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             logger.info(f"Current Available Funds: ${current_available_funds:,.2f} | Equity: ${current_equity:,.2f}")
 
         # Fetch Current Positions for Compliance
-        positions = await ib.reqPositionsAsync()
+        try:
+            positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=15)
+        except asyncio.TimeoutError:
+            logger.error("reqPositionsAsync timed out (15s) in order placement. Aborting.")
+            return
         current_position_count = sum(1 for p in positions if p.position != 0)
 
         # Filter Queue based on Margin Impact AND Compliance Review
@@ -923,7 +968,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             if orders_checked_count % 3 == 0:
                 try:
                     logger.info("Refreshing account summary for margin safety...")
-                    account_summary = await ib.accountSummaryAsync()
+                    account_summary = await asyncio.wait_for(ib.accountSummaryAsync(), timeout=15)
                     avail_funds_tag = next((v for v in account_summary if v.tag == 'AvailableFunds' and v.currency == 'USD'), None)
                     if avail_funds_tag:
                         current_available_funds = float(avail_funds_tag.value)
@@ -973,7 +1018,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                         # Extract first leg
                         if contract.comboLegs:
                             first_leg_conid = contract.comboLegs[0].conId
-                            details = await ib.reqContractDetailsAsync(Contract(conId=first_leg_conid))
+                            details = await asyncio.wait_for(
+                                ib.reqContractDetailsAsync(Contract(conId=first_leg_conid)), timeout=10
+                            )
                             if details:
                                 target_contract = details[0].contract
                     else:
@@ -981,14 +1028,14 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
                     if target_contract:
                         # Fetch 2 days of daily bars
-                        bars = await ib.reqHistoricalDataAsync(
+                        bars = await asyncio.wait_for(ib.reqHistoricalDataAsync(
                             target_contract,
                             endDateTime='',
                             durationStr='2 D',
                             barSizeSetting='1 day',
                             whatToShow='TRADES',
                             useRTH=True
-                        )
+                        ), timeout=15)
                         if bars and len(bars) >= 2:
                             close_curr = bars[-1].close
                             close_prev = bars[-2].close
@@ -1137,7 +1184,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     # --- Fallback: Resolve from first leg's underConId ---
                     if underlying_future is None:
                         leg1_conid = contract.comboLegs[0].conId
-                        leg_details = await ib.reqContractDetailsAsync(Contract(conId=leg1_conid))
+                        leg_details = await asyncio.wait_for(
+                            ib.reqContractDetailsAsync(Contract(conId=leg1_conid)), timeout=10
+                        )
 
                         if leg_details:
                             # BUG-6 Fix: Use underConId, NOT option expiry
@@ -1145,7 +1194,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                             under_conid = leg_details[0].underConId
                             if under_conid:
                                 underlying_future = Contract(conId=under_conid)
-                                await ib.qualifyContractsAsync(underlying_future)
+                                await asyncio.wait_for(ib.qualifyContractsAsync(underlying_future), timeout=10)
                                 logger.info(f"Catastrophe stop: Resolved underlying future from underConId: {underlying_future}")
                             else:
                                 # Last ditch: try constructing from symbol if underConId missing (risky but better than nothing?)
@@ -1443,16 +1492,24 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         msg = f"A critical error occurred during order placement/monitoring: {e}\n{traceback.format_exc()}"
         logger.critical(msg)
         send_pushover_notification(config.get('notifications', {}), "Order Placement CRITICAL", msg)
+        # Force-reset pooled connection on critical error so next get_connection() creates fresh
+        try:
+            await IBConnectionPool._force_reset_connection(connection_purpose)
+        except Exception:
+            pass
     finally:
-        # Clear thesis tracking for next run (FIX-005)
-        _recorded_thesis_positions.clear()
+        # NOTE: _recorded_thesis_positions is cleared at START of next run,
+        # not here, to avoid racing with inflight _handle_and_log_fill tasks.
 
-        if ib.isConnected():
-            ib.orderStatusEvent -= on_order_status
-            ib.execDetailsEvent -= on_exec_details
-            ib.errorEvent -= on_error
-            # Do NOT disconnect pooled connection
-            logger.info("Order placement complete. Releasing event handlers.")
+        try:
+            if ib.isConnected():
+                ib.orderStatusEvent -= on_order_status
+                ib.execDetailsEvent -= on_exec_details
+                ib.errorEvent -= on_error
+                # Do NOT disconnect pooled connection
+                logger.info("Order placement complete. Releasing event handlers.")
+        except Exception:
+            pass  # ib may be in broken state
 
 import pandas as pd
 from datetime import datetime, date, timedelta
@@ -1594,7 +1651,11 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
         logger.info(f"Connected to IB for closing positions (purpose: {connection_purpose}).")
 
-        live_positions = await ib.reqPositionsAsync()
+        try:
+            live_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
+        except asyncio.TimeoutError:
+            logger.error("reqPositionsAsync timed out (30s) in close_stale_positions")
+            return
         if not live_positions:
             logger.info("No open positions found in the IB account. Nothing to close.")
             return
@@ -1769,7 +1830,11 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
                     # CRITICAL FIX: Re-qualify by conId only to get correct strike format
                     minimal = Contract(conId=leg['conId'])
-                    qualified = await ib.qualifyContractsAsync(minimal)
+                    try:
+                        qualified = await asyncio.wait_for(ib.qualifyContractsAsync(minimal), timeout=10)
+                    except asyncio.TimeoutError:
+                        logger.error(f"qualifyContractsAsync timed out (10s) for conId {leg['conId']}")
+                        qualified = None
                     if qualified and qualified[0].conId != 0:
                         contract = qualified[0]
                     else:
@@ -1811,7 +1876,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                         try:
                             # Fetch individual leg contract
                             leg_contract = Contract(conId=combo_leg.conId)
-                            await ib.qualifyContractsAsync(leg_contract)
+                            await asyncio.wait_for(ib.qualifyContractsAsync(leg_contract), timeout=10)
 
                             leg_ticker = ib.reqMktData(leg_contract, '', True, False)
                             await asyncio.sleep(1.5)  # Slightly longer wait for leg data
@@ -2064,7 +2129,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
             await asyncio.sleep(5)  # Allow IB to settle
 
             try:
-                verify_positions = await ib.reqPositionsAsync()
+                verify_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
                 remaining = [p for p in (verify_positions or []) if p.position != 0]
 
                 if remaining:
@@ -2083,7 +2148,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
                             # Re-qualify to get correct strike format
                             minimal = Contract(conId=pos.contract.conId)
-                            requalified = await ib.qualifyContractsAsync(minimal)
+                            requalified = await asyncio.wait_for(ib.qualifyContractsAsync(minimal), timeout=10)
                             close_contract = requalified[0] if requalified and requalified[0].conId != 0 else pos.contract
 
                             trade = ib.placeOrder(close_contract, order)
@@ -2101,7 +2166,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
                     # Re-verify after retries
                     await asyncio.sleep(5)
-                    final_check = await ib.reqPositionsAsync()
+                    final_check = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
                     final_remaining = [p for p in (final_check or []) if p.position != 0]
 
                     if final_remaining:
@@ -2353,7 +2418,11 @@ async def cancel_all_open_orders(config: dict, connection_purpose: str = "orches
         logger.info(f"Connected to IB for canceling open orders (purpose: {connection_purpose}).")
 
         # Use ib.reqAllOpenOrdersAsync() to get all open orders from the broker
-        open_trades = await ib.reqAllOpenOrdersAsync()
+        try:
+            open_trades = await asyncio.wait_for(ib.reqAllOpenOrdersAsync(), timeout=15)
+        except asyncio.TimeoutError:
+            logger.error("reqAllOpenOrdersAsync timed out (15s) in cancel_all_open_orders")
+            return
         if not open_trades:
             logger.info("No open orders found to cancel.")
             return
