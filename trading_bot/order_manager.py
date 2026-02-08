@@ -1228,8 +1228,14 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [Protected]")
                 except Exception as e:
                     logger.error(f"Failed to place protected order, falling back to standard: {e}")
+                    send_pushover_notification(
+                        config.get('notifications', {}),
+                        "CATASTROPHE STOP FAILED",
+                        f"Protection failed for {display_name}: {e}\nOrder placed WITHOUT stop protection.",
+                        priority=1
+                    )
                     trade = place_order(ib, contract, order)
-                    log_order_event(trade, trade.orderStatus.status, market_state_message)
+                    log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [UNPROTECTED FALLBACK]")
             else:
                 trade = place_order(ib, contract, order)
                 log_order_event(trade, trade.orderStatus.status, market_state_message)
