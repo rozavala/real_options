@@ -630,12 +630,12 @@ if task_data['available']:
 
         # Task timeline table
         STATUS_ICONS = {
-            'completed': '✅',
-            'upcoming': '⏳',
-            'overdue': '⚠️',
-            'skipped': '⏭️',
-            'inactive': '💤',
-            'unknown': '❓',
+            'completed': '✅ Completed',
+            'upcoming': '⏳ Upcoming',
+            'overdue': '⚠️ Overdue',
+            'skipped': '⏭️ Skipped',
+            'inactive': '💤 Inactive',
+            'unknown': '❓ Unknown',
         }
 
         table_rows = []
@@ -842,14 +842,23 @@ with ctrl_cols[1]:
 
                     st.success("All open orders cancelled.")
                 except Exception as e:
-                    st.error(f"Failed to cancel orders: {e}")
+                    st.error(
+                        f"❌ **Failed to cancel orders**\n\n"
+                        f"Error details: `{e}`\n\n"
+                        "Please check IB Gateway connection manually."
+                    )
         else:
             st.error("Config not loaded")
 
 with ctrl_cols[2]:
-    if st.button("🔄 Refresh All Data", width="stretch"):
-        st.cache_data.clear()
-        st.rerun()
+    if st.button(
+        "🔄 Refresh All Data",
+        width="stretch",
+        help="Clears application cache and forces a full data reload from IB/APIs"
+    ):
+        with st.spinner("Refreshing data..."):
+            st.cache_data.clear()
+            st.rerun()
 
 st.markdown("---")
 
