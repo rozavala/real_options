@@ -1289,8 +1289,13 @@ async def _reconcile_state_stores(
     }
 
     try:
-        # 1. Count IBKR positions (ground truth)
-        ib_positions = [p for p in ib.positions() if p.position != 0]
+        # 1. Count IBKR positions (ground truth) — use fresh data, not stale cache
+        try:
+            all_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
+        except asyncio.TimeoutError:
+            logger.error("reqPositionsAsync timed out (30s) in state reconciliation")
+            all_positions = ib.positions()  # Fall back to cached if timeout
+        ib_positions = [p for p in all_positions if p.position != 0]
         results['ibkr_positions'] = len(ib_positions)
 
         # 2. Count open positions in ledger
@@ -2358,6 +2363,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         trade_ledger = get_trade_ledger_df()
 
                         for thesis in affected_theses:
+                          try:
                             # Check if this trigger invalidates the thesis
                             invalidation_triggers = thesis.get('invalidation_triggers', [])
                             trigger_keywords = trigger.reason.lower()
@@ -2370,31 +2376,45 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                                     break
 
                             if thesis_killed:
-                                # Find the matching live position
-                                target_pos = None
                                 thesis_id = thesis.get('trade_id')
 
+                                # Collect ALL legs for this thesis (spreads have multiple legs)
+                                thesis_legs = []
                                 for pos in live_positions:
-                                    if pos.position == 0: continue
-                                    # Map pos to ID
+                                    if pos.position == 0:
+                                        continue
                                     pos_id = _find_position_id_for_contract(pos, trade_ledger)
                                     if pos_id == thesis_id:
-                                        target_pos = pos
-                                        break
+                                        thesis_legs.append(pos)
 
-                                if target_pos:
-                                    await _close_position_with_thesis_reason(
+                                if thesis_legs:
+                                    fully_closed = await _close_spread_position(
                                         ib=ib,
-                                        position=target_pos,
+                                        legs=thesis_legs,
                                         position_id=thesis_id,
                                         reason=f"Sentinel Invalidation: {trigger.reason}",
                                         config=config,
                                         thesis=thesis
                                     )
+                                    if fully_closed:
+                                        tms.invalidate_thesis(thesis_id, f"Sentinel: {trigger.source}")
+                                    else:
+                                        logger.error(
+                                            f"Thesis {thesis_id} NOT invalidated — "
+                                            f"sentinel close did not fully succeed. "
+                                            f"Will retry on next audit cycle."
+                                        )
                                 else:
-                                    logger.warning(f"Could not find live position for invalidated thesis {thesis_id}. Marking thesis as invalid anyway.")
-
-                                tms.invalidate_thesis(thesis_id, f"Sentinel: {trigger.source}")
+                                    logger.warning(
+                                        f"No live IB legs found for thesis {thesis_id}. "
+                                        f"Position may have closed externally — invalidating thesis."
+                                    )
+                                    tms.invalidate_thesis(thesis_id, f"Sentinel: {trigger.source} (no IB position)")
+                          except Exception as thesis_err:
+                            logger.error(
+                                f"Failed to process sentinel invalidation for thesis "
+                                f"{thesis.get('trade_id', 'UNKNOWN')}: {thesis_err}"
+                            )
 
             try:
                 # 1. Initialize Council
@@ -3506,6 +3526,32 @@ async def emergency_hard_close(config: dict):
         summary = f"Emergency hard close: {closed} closed, {failed} failed"
         logger.info(summary)
         send_pushover_notification(config.get('notifications', {}), "Emergency Close Result", summary)
+
+        # Sweep-invalidate active theses for positions we just closed.
+        # Without this, ghost theses remain active until the 5AM cleanup job.
+        if closed > 0:
+            try:
+                sweep_tms = TransactiveMemory()
+                if sweep_tms.collection:
+                    active_results = sweep_tms.collection.get(
+                        where={"active": "true"},
+                        include=['metadatas']
+                    )
+                    swept = 0
+                    for meta in active_results.get('metadatas', []):
+                        tid = meta.get('trade_id')
+                        if tid:
+                            sweep_tms.invalidate_thesis(
+                                tid,
+                                f"Emergency hard close sweep"
+                            )
+                            swept += 1
+                    if swept > 0:
+                        logger.warning(
+                            f"Emergency hard close: Swept {swept} active theses"
+                        )
+            except Exception as sweep_err:
+                logger.warning(f"Thesis sweep after emergency hard close failed (non-fatal): {sweep_err}")
 
     except Exception as e:
         logger.critical(f"Emergency hard close FAILED entirely: {e}")
