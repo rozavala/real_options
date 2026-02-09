@@ -525,13 +525,18 @@ async def place_directional_spread_with_protection(
         stop_action = 'BUY'  # Buy future to hedge
 
     # 3. Create stop order on underlying
+    # Round to valid tick increment to avoid IB Warning 110.
+    # For stops, round conservatively (triggers sooner = safer):
+    #   SELL stop → round UP (ceil), BUY stop → round DOWN (floor)
+    stop_price = round_to_tick(stop_price, action=stop_action)
+
     # NOTE: This creates a DELTA MISMATCH by design.
     stop_order = StopOrder(
         action=stop_action,
         totalQuantity=1,  # Single future hedges ~100 delta (approx for 1 spread?)
         # Ideally this should match spread delta, but spec says "Single future".
         # Spread is usually size 1. Future size 1.
-        stopPrice=round(stop_price, 2),
+        stopPrice=stop_price,
         tif='GTC',  # Good-til-cancelled
         outsideRth=True  # Active outside regular hours
     )
