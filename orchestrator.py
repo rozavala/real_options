@@ -236,6 +236,9 @@ GLOBAL_DEDUPLICATOR = TriggerDeduplicator()
 # Concurrent Cycle Lock (Global)
 EMERGENCY_LOCK = asyncio.Lock()
 
+# Track fire-and-forget tasks so they can be cancelled on shutdown
+_INFLIGHT_TASKS: set[asyncio.Task] = set()
+
 
 def _extract_agent_prediction(report) -> tuple:
     """
@@ -2993,6 +2996,7 @@ def validate_trigger(trigger):
 
 def _log_task_exception(task: asyncio.Task, name: str):
     """Generic callback to log exceptions from fire-and-forget tasks."""
+    _INFLIGHT_TASKS.discard(task)
     try:
         exc = task.exception()
     except asyncio.CancelledError:
@@ -3005,6 +3009,7 @@ def _log_task_exception(task: asyncio.Task, name: str):
 
 def _emergency_cycle_done_callback(task: asyncio.Task, trigger_source: str, config: dict):
     """Callback to catch and report crashes in fire-and-forget emergency cycle tasks."""
+    _INFLIGHT_TASKS.discard(task)
     try:
         exc = task.exception()
     except asyncio.CancelledError:
@@ -3059,6 +3064,7 @@ async def _run_periodic_sentinel(
             if market_open and sentinel_ib and sentinel_ib.isConnected():
                 if GLOBAL_DEDUPLICATOR.should_process(trigger):
                     task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                    _INFLIGHT_TASKS.add(task)
                     task.add_done_callback(
                         lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
                     )
@@ -3332,12 +3338,14 @@ async def run_sentinels(config: dict):
                                 config,
                                 f"PriceSentinel trigger ({price_change:.1f}% move)"
                             ))
+                            _INFLIGHT_TASKS.add(audit_task)
                             audit_task.add_done_callback(
                                 lambda t: _log_task_exception(t, "position_audit_price_trigger")
                             )
 
                     if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
                         task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                        _INFLIGHT_TASKS.add(task)
                         task.add_done_callback(
                             lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
                         )
@@ -3402,6 +3410,7 @@ async def run_sentinels(config: dict):
                             if market_open and sentinel_ib and sentinel_ib.isConnected():
                                 if GLOBAL_DEDUPLICATOR.should_process(trigger):
                                     task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                                    _INFLIGHT_TASKS.add(task)
                                     task.add_done_callback(
                                         lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
                                     )
@@ -3484,6 +3493,7 @@ async def run_sentinels(config: dict):
                             logger.warning(f"MICROSTRUCTURE CRITICAL: {micro_trigger.reason}")
                             if GLOBAL_DEDUPLICATOR.should_process(micro_trigger):
                                 task = asyncio.create_task(run_emergency_cycle(micro_trigger, config, sentinel_ib))
+                                _INFLIGHT_TASKS.add(task)
                                 task.add_done_callback(
                                     lambda t, src=micro_trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
                                 )
@@ -4216,6 +4226,17 @@ async def main():
         healer.stop()
         healing_task.cancel()
         sentinel_task.cancel()
+
+        # Cancel any in-flight fire-and-forget tasks (emergency cycles, audits)
+        # before releasing connections they may be using
+        if _INFLIGHT_TASKS:
+            logger.info(f"Cancelling {len(_INFLIGHT_TASKS)} in-flight tasks...")
+            for t in list(_INFLIGHT_TASKS):
+                t.cancel()
+            # Give tasks a moment to handle CancelledError gracefully
+            await asyncio.sleep(1)
+            _INFLIGHT_TASKS.clear()
+
         if monitor_process and monitor_process.returncode is None:
             await stop_monitoring(config)
         await IBConnectionPool.release_all()
