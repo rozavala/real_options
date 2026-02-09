@@ -21,6 +21,19 @@ echo "Repository: $REPO_DIR"
 echo "Branch: $BRANCH"
 echo "=========================="
 
+# Skip if deploy is in progress
+DEPLOY_LOCK="/tmp/trading-bot-deploy.lock"
+if [ -f "$DEPLOY_LOCK" ]; then
+    LOCK_PID=$(cat "$DEPLOY_LOCK" 2>/dev/null)
+    if kill -0 "$LOCK_PID" 2>/dev/null; then
+        echo "⏭️  Deploy in progress (PID $LOCK_PID), skipping log collection"
+        exit 0
+    else
+        echo "🧹 Stale deploy lock found, removing"
+        rm -f "$DEPLOY_LOCK"
+    fi
+fi
+
 # 1. CAPTURE ORIGINAL BRANCH (Fix for Bug #1)
 # We must do this BEFORE we switch branches
 cd "$REPO_DIR" || exit
