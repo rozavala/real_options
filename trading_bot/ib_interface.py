@@ -454,7 +454,7 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
     return (combo, order)
 
 
-def place_order(ib: IB, contract: Contract, order: Order) -> Trade:
+def place_order(ib: IB, contract: Contract, order: Order) -> Trade | None:
     """
     Places a pre-constructed order, ensuring it has a unique `orderRef`.
 
@@ -469,8 +469,16 @@ def place_order(ib: IB, contract: Contract, order: Order) -> Trade:
         order (Order): The order object to be placed.
 
     Returns:
-        The `ib_insync.Trade` object for the placed order.
+        The `ib_insync.Trade` object for the placed order, or None if trading is OFF.
     """
+    from trading_bot.utils import is_trading_off
+    if is_trading_off():
+        logging.info(
+            f"[OFF] WOULD PLACE {order.action} {order.totalQuantity} "
+            f"{contract.localSymbol} @ {getattr(order, 'lmtPrice', 'MKT')}"
+        )
+        return None
+
     if not order.orderRef:
         order.orderRef = str(uuid.uuid4())
         logging.info(f"Assigned new unique OrderRef for tracking: {order.orderRef}")
@@ -509,6 +517,15 @@ async def place_directional_spread_with_protection(
     """
     if not combo_order.orderRef:
         combo_order.orderRef = str(uuid.uuid4())
+
+    from trading_bot.utils import is_trading_off
+    if is_trading_off():
+        logging.info(
+            f"[OFF] WOULD PLACE protected spread {combo_order.action} "
+            f"{combo_contract.localSymbol} @ {getattr(combo_order, 'lmtPrice', 'MKT')} "
+            f"+ catastrophe stop on {underlying_contract.localSymbol}"
+        )
+        return (None, None)
 
     # 1. Place the spread order
     logging.info(f"Placing protected spread order for {combo_contract.localSymbol}...")
@@ -562,6 +579,11 @@ async def close_spread_with_protection_cleanup(
 ):
     """Cancels the associated catastrophe stop when a spread is closed."""
     if not stop_order_ref:
+        return
+
+    from trading_bot.utils import is_trading_off
+    if is_trading_off():
+        logging.info(f"[OFF] WOULD CANCEL catastrophe stop: {stop_order_ref}")
         return
 
     # Find and cancel the orphaned stop order

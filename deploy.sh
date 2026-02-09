@@ -170,19 +170,7 @@ mkdir -p config/profiles          # Custom JSON commodity profiles
 mkdir -p trading_bot/prompts      # Templatized agent prompts
 mkdir -p backtesting              # Backtesting framework
 mkdir -p data/surrogate_models    # Surrogate model cache (runtime)
-mkdir -p scripts/migrations       # Migration scripts
 echo "  ✅ Directories OK"
-
-# =========================================================================
-# STEP 6: Run pending migrations (idempotent)
-# =========================================================================
-echo "--- 6. Running database migrations... ---"
-chmod +x scripts/run_migrations.sh 2>/dev/null || true
-if [ -f "scripts/run_migrations.sh" ]; then
-    bash scripts/run_migrations.sh || rollback_and_restart
-else
-    echo "  ⏭️  No migration runner found, skipping"
-fi
 
 # =========================================================================
 # STEP 7: Sync equity data

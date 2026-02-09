@@ -399,6 +399,9 @@ st.set_page_config(layout="wide", page_title="Cockpit | Real Options")
 st.title("🦅 The Cockpit")
 st.caption("Situational Awareness - System health, capital safety, and emergency controls")
 
+if os.getenv("TRADING_MODE", "LIVE").upper().strip() == "OFF":
+    st.warning("TRADING OFF — No real orders are being placed. Analysis pipeline runs normally.")
+
 # --- Global Time Settings ---
 st.markdown("### 🕒 **All times displayed in UTC**")
 

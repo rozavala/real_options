@@ -78,47 +78,6 @@ class StateManager:
         os.replace(temp_file, STATE_FILE)
 
     @classmethod
-    def migrate_legacy_entries(cls) -> int:
-        """
-        Migrate legacy state format entries to new format.
-
-        v3.1: One-time migration for old entries.
-
-        Returns:
-            Number of entries migrated
-        """
-        migrated = 0
-
-        try:
-            raw_state = cls._load_raw_sync()
-
-            for namespace, entries in raw_state.items():
-                if not isinstance(entries, dict):
-                    continue
-
-                for key, entry in entries.items():
-                    # Check for legacy format (no 'data' wrapper)
-                    if not isinstance(entry, dict) or 'data' not in entry:
-                        # Wrap legacy entry in new format
-                        raw_state[namespace][key] = {
-                            'data': entry,
-                            'timestamp': time.time(),
-                            'migrated_from_legacy': True
-                        }
-                        migrated += 1
-                        logger.info(f"Migrated legacy entry: {namespace}/{key}")
-
-            if migrated > 0:
-                cls._save_raw_sync(raw_state)
-                logger.info(f"State migration complete: {migrated} entries updated")
-
-            return migrated
-
-        except Exception as e:
-            logger.error(f"State migration failed: {e}")
-            return 0
-
-    @classmethod
     def _load_raw_sync(cls) -> dict:
         """Internal sync load."""
         if not os.path.exists(STATE_FILE):

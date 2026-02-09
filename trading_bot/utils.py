@@ -21,6 +21,20 @@ from scipy.stats import norm
 from trading_bot.logging_config import setup_logging
 from trading_bot.timestamps import format_ts
 
+# --- TRADING MODE HELPERS ---
+_TRADING_MODE = None
+
+def set_trading_mode(config: dict):
+    """Called once at startup to cache trading mode."""
+    global _TRADING_MODE
+    _TRADING_MODE = config.get('trading_mode', 'LIVE')
+
+def is_trading_off() -> bool:
+    """Returns True if trading is OFF (training/observation mode)."""
+    if _TRADING_MODE is None:
+        return os.getenv("TRADING_MODE", "LIVE").upper().strip() == "OFF"
+    return _TRADING_MODE == "OFF"
+
 # --- COMMODITY PROFILE HELPERS (MECE Phase 0) ---
 CENTS_INDICATORS = ('cent', '¢', 'usc', 'pence', 'pennies')
 
@@ -584,49 +598,6 @@ def log_council_decision(decision_data):
     # Ensure timestamp exists
     if not row_data.get('timestamp'):
         row_data['timestamp'] = format_ts()
-
-    # === IN-PLACE SCHEMA MIGRATION (replaces archive approach) ===
-    if os.path.exists(file_path):
-        try:
-            existing_df = pd.read_csv(file_path, nrows=0)  # Just read headers
-            existing_cols = list(existing_df.columns)
-
-            if existing_cols != fieldnames:
-                logging.info(f"Schema mismatch detected. Migrating council_history.csv in-place.")
-                logging.info(f"  Old columns: {len(existing_cols)}, New columns: {len(fieldnames)}")
-
-                # Read full existing data
-                full_df = pd.read_csv(file_path)
-
-                # Add any missing columns with empty values
-                for col in fieldnames:
-                    if col not in full_df.columns:
-                        full_df[col] = ''
-                        logging.info(f"  Added new column: {col}")
-
-                # Before reordering, log any columns being dropped
-                dropped_cols = [c for c in full_df.columns if c not in fieldnames]
-                if dropped_cols:
-                    logging.info(f"  Dropping deprecated columns: {dropped_cols}")
-
-                # Reorder columns to match new schema
-                full_df = full_df[fieldnames]
-
-                # Write back migrated data (atomic: temp file + rename)
-                temp_path = file_path + ".tmp"
-                full_df.to_csv(temp_path, index=False)
-                os.replace(temp_path, file_path)
-                logging.info(f"Schema migration complete. {len(full_df)} records preserved.")
-
-        except pd.errors.EmptyDataError:
-            logging.info("Council history file exists but is empty. Will create with new schema.")
-        except Exception as e:
-            logging.error(f"Error during schema migration: {e}")
-            # Fall back to archive approach as safety net
-            timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-            legacy_path = os.path.join(data_dir, f"council_history_legacy_{timestamp_str}.csv")
-            shutil.move(file_path, legacy_path)
-            logging.warning(f"Archived old file to {legacy_path} due to migration error.")
 
     # === SCHEMA VALIDATION (v5.1 — centralized here to catch ALL callers) ===
     try:
