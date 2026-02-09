@@ -246,49 +246,6 @@ class BrierScoreTracker:
                     pass  # If dedup check fails, record anyway (safe to have dupes)
 
             CANONICAL_HEADER = "cycle_id,timestamp,agent,direction,confidence,prob_bullish,actual"
-            CANONICAL_COLUMNS = CANONICAL_HEADER.split(',')
-            MIGRATION_FLAG = os.path.join(os.path.dirname(structured_file), '.brier_schema_v2')
-
-            # === One-time migration (separate from append to avoid file handle fragility) ===
-            if exists_struct and not os.path.exists(MIGRATION_FLAG):
-                try:
-                    with open(structured_file, 'r') as rf:
-                        existing_header = rf.readline().strip()
-                    if existing_header != CANONICAL_HEADER:
-                        existing_cols = existing_header.split(',')
-                        if set(existing_cols) == set(CANONICAL_COLUMNS):
-                            logger.warning(
-                                f"Header mismatch in {structured_file}: "
-                                f"expected '{CANONICAL_HEADER}', got '{existing_header}'. "
-                                f"Rewriting with canonical column order."
-                            )
-                            df_fix = pd.read_csv(structured_file)
-                            df_fix = df_fix[CANONICAL_COLUMNS]
-                            df_fix.to_csv(structured_file, index=False)
-                            with open(MIGRATION_FLAG, 'w') as mf:
-                                mf.write(datetime.now(timezone.utc).isoformat())
-                            logger.info("One-time schema migration complete.")
-                        else:
-                            logger.error(
-                                f"Column set mismatch in {structured_file}: "
-                                f"expected {set(CANONICAL_COLUMNS)}, got {set(existing_cols)}. "
-                                f"Appending anyway but data may be misaligned."
-                            )
-                except Exception as mig_err:
-                    logger.error(f"Schema migration check failed: {mig_err}")
-            elif exists_struct and os.path.exists(MIGRATION_FLAG):
-                # Verify header post-migration
-                try:
-                    with open(structured_file, 'r') as rf:
-                        existing_header = rf.readline().strip()
-                    if existing_header != CANONICAL_HEADER:
-                        logger.error(
-                            f"Header mismatch AFTER migration (flag exists). "
-                            f"Expected: {CANONICAL_HEADER}, Got: {existing_header}. "
-                            f"Investigate: something is writing non-canonical column order."
-                        )
-                except Exception:
-                    pass
 
             # === Append the new prediction (clean file handle) ===
             with open(structured_file, 'a') as f:

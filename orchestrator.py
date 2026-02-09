@@ -1516,6 +1516,11 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
     Reviews all active positions against their original theses.
     Now operates on GROUPED positions (spread-aware).
     """
+    from trading_bot.utils import is_trading_off
+    if is_trading_off():
+        logger.info("[OFF] run_position_audit_cycle skipped — no positions exist in OFF mode")
+        return
+
     logger.info(f"--- POSITION AUDIT CYCLE ({trigger_source}) ---")
 
     llm_budget_available = not (GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit)
@@ -3560,6 +3565,11 @@ async def emergency_hard_close(config: dict):
     at this point, limit orders have failed and we accept slippage to protect
     against overnight/weekend risk.
     """
+    from trading_bot.utils import is_trading_off
+    if is_trading_off():
+        logger.info("[OFF] emergency_hard_close skipped — no positions exist in OFF mode")
+        return
+
     logger.info("--- Emergency Hard Close Check (T-45 min) ---")
 
     ib = None
@@ -3705,6 +3715,11 @@ async def emergency_hard_close(config: dict):
 
 async def close_stale_positions_fallback(config: dict):
     """Fallback close attempt at 12:45 ET. Only acts if 11:00 primary close missed anything."""
+    from trading_bot.utils import is_trading_off
+    if is_trading_off():
+        logger.info("[OFF] close_stale_positions_fallback skipped — no positions exist in OFF mode")
+        return
+
     logger.info("--- Fallback Close Attempt (12:45 ET) ---")
     logger.info("This is a retry for any positions the 11:00 primary close failed to handle.")
     await close_stale_positions(config)
@@ -3712,7 +3727,7 @@ async def close_stale_positions_fallback(config: dict):
 async def run_brier_reconciliation(config: dict):
     """Automated Brier prediction reconciliation."""
     try:
-        from scripts.fix_brier_data import resolve_with_cycle_aware_match
+        from trading_bot.brier_reconciliation import resolve_with_cycle_aware_match
         resolved = resolve_with_cycle_aware_match(dry_run=False)
         logger.info(f"Brier reconciliation complete: {resolved} predictions resolved")
 
@@ -4084,6 +4099,20 @@ async def main():
         logger.critical("Orchestrator cannot start without a valid configuration.")
         return
 
+    # Initialize trading mode
+    from trading_bot.utils import set_trading_mode, is_trading_off
+    set_trading_mode(config)
+    if is_trading_off():
+        logger.warning("=" * 60)
+        logger.warning("  TRADING MODE: OFF — Training/Observation Only")
+        logger.warning("  No real orders will be placed via IB")
+        logger.warning("=" * 60)
+        send_pushover_notification(
+            config.get('notifications', {}),
+            "Orchestrator Started (OFF Mode)",
+            "Trading mode is OFF. Analysis pipeline runs normally. No orders will be placed."
+        )
+
     # Update deduplicator with config values
     global GLOBAL_DEDUPLICATOR
     GLOBAL_DEDUPLICATOR.critical_severity_threshold = config.get('sentinels', {}).get('critical_severity_threshold', 9)
@@ -4097,12 +4126,6 @@ async def main():
     global GLOBAL_DRAWDOWN_GUARD
     GLOBAL_DRAWDOWN_GUARD = DrawdownGuard(config)
     logger.info("Drawdown Guard initialized.")
-
-    # v3.1: Migrate legacy state entries
-    from trading_bot.state_manager import StateManager
-    migrated = StateManager.migrate_legacy_entries()
-    if migrated > 0:
-        logger.info(f"Startup: Migrated {migrated} legacy state entries")
 
     # M6 FIX: Validate expiry overlap
     from config import get_active_profile

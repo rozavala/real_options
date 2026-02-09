@@ -141,4 +141,13 @@ def load_config() -> dict | None:
     if not config['gemini']['api_key']:
         logger.warning("WARNING: GEMINI_API_KEY not found in environment!")
 
+    # 9. TRADING MODE: LIVE (default, backward compatible) or OFF (training/observation)
+    trading_mode = os.getenv("TRADING_MODE", "LIVE").upper().strip()
+    if trading_mode not in ("LIVE", "OFF"):
+        logger.warning(f"Invalid TRADING_MODE '{trading_mode}', defaulting to LIVE")
+        trading_mode = "LIVE"
+    config['trading_mode'] = trading_mode
+    if trading_mode == "OFF":
+        logger.warning("*** TRADING MODE OFF — No real orders will be placed ***")
+
     return config

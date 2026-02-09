@@ -1121,6 +1121,22 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             logger.warning("No orders fit within available funds or compliance limits. Aborting placement.")
             return
 
+        # OFF mode: log approved orders but skip actual placement
+        from trading_bot.utils import is_trading_off
+        if is_trading_off():
+            for contract, order, decision_data in orders_to_place:
+                display_name = _get_order_display_name(contract, decision_data.get('strategy_def') if isinstance(decision_data, dict) else None)
+                logger.info(
+                    f"[OFF] WOULD PLACE {order.action} {order.totalQuantity} "
+                    f"{display_name} @ {getattr(order, 'lmtPrice', 'MKT')}"
+                )
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    f"[OFF] Order Approved",
+                    f"{order.action} {display_name} @ {getattr(order, 'lmtPrice', 'MKT')} — not placed (OFF mode)"
+                )
+            return
+
         # Attach event handlers
         ib.orderStatusEvent += on_order_status
         ib.execDetailsEvent += on_exec_details
@@ -1625,6 +1641,11 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
     reconstructs position ages using a FIFO stack from the ledger, and
     groups closing orders by Position ID to ensure spreads are closed as combos.
     """
+    from trading_bot.utils import is_trading_off
+    if is_trading_off():
+        logger.info("[OFF] close_stale_positions skipped — no positions exist in OFF mode")
+        return
+
     max_holding_days = config.get('risk_management', {}).get('max_holding_days', 2)
     logger.info(f"--- Initiating position closing based on {max_holding_days}-day holding period ---")
 
@@ -2477,6 +2498,11 @@ async def cancel_all_open_orders(config: dict, connection_purpose: str = "orches
     """
     Fetches and cancels all open (non-filled) orders.
     """
+    from trading_bot.utils import is_trading_off
+    if is_trading_off():
+        logger.info("[OFF] cancel_all_open_orders skipped — no real orders exist in OFF mode")
+        return
+
     logger.info("--- Canceling any remaining open DAY orders ---")
     ib = None
     try:

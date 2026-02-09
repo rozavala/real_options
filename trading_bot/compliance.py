@@ -8,9 +8,6 @@ from dataclasses import dataclass
 from typing import Optional
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole
 from trading_bot.utils import get_dollar_multiplier
-import csv
-from pathlib import Path
-from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -103,49 +100,6 @@ class ComplianceDecision:
 _CONTRACT_DETAILS_CACHE: dict = {}  # {conId: {'data': ..., 'ts': time.time()}}
 _CACHE_TTL_SECONDS = 3600
 _CACHE_MAX_SIZE = 500
-
-COMPLIANCE_LOG_FILE = Path("data/compliance_decisions.csv")
-
-
-def log_compliance_decision(
-    cycle_id: str,
-    contract: str,
-    strategy_type: str,
-    approved: bool,
-    reason: str,
-    risk_metrics: dict = None
-):
-    """
-    Log compliance decision for aggregate analysis.
-
-    v3.1: Structured logging enables pattern analysis.
-    """
-    try:
-        file_exists = COMPLIANCE_LOG_FILE.exists()
-
-        with open(COMPLIANCE_LOG_FILE, 'a', newline='') as f:
-            writer = csv.writer(f)
-
-            if not file_exists:
-                # Write header
-                writer.writerow([
-                    'timestamp', 'cycle_id', 'contract', 'strategy_type',
-                    'approved', 'reason', 'max_risk', 'account_exposure'
-                ])
-
-            writer.writerow([
-                datetime.now(timezone.utc).isoformat(),
-                cycle_id,
-                contract,
-                strategy_type,
-                approved,
-                reason,
-                risk_metrics.get('max_risk', '') if risk_metrics else '',
-                risk_metrics.get('account_exposure', '') if risk_metrics else ''
-            ])
-
-    except Exception as e:
-        logger.warning(f"Failed to log compliance decision: {e}")
 
 async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
     """
@@ -461,12 +415,8 @@ class ComplianceGuardian:
         # Extract context
         ib = order_context.get('ib')
 
-        # v3.1: Initialize decision tracking vars
-        cycle_id = order_context.get('cycle_id', 'UNKNOWN')
-        strategy_type = order_context.get('strategy_type', 'UNKNOWN')
         approved = False
         reason = "Pending"
-        risk_metrics = {}
         contract = order_context.get('contract')
         symbol = order_context.get('symbol', 'Unknown')
         qty = order_context.get('order_quantity', 0)
@@ -545,12 +495,6 @@ class ComplianceGuardian:
             }
         }
 
-        # Capture risk metrics for logging
-        risk_metrics = {
-            'max_risk': actual_capital_at_risk,
-            'account_exposure': actual_capital_at_risk / equity if equity > 0 else 0
-        }
-
         # --- DETERMINISTIC PRE-CHECK (Skip LLM for obvious violations) ---
         limit_pct = self.limits.get('max_position_pct', 0.40)
 
@@ -588,15 +532,6 @@ class ComplianceGuardian:
             reason = (
                 f"REJECTED - Article I: Max capital at risk (${actual_capital_at_risk:,.2f}) "
                 f"exceeds {limit_pct:.0%} of equity (${max_allowed:,.2f})."
-            )
-            # Log failure
-            log_compliance_decision(
-                cycle_id=cycle_id,
-                contract=symbol,
-                strategy_type=strategy_type,
-                approved=False,
-                reason=reason,
-                risk_metrics=risk_metrics
             )
             return False, reason
 
@@ -640,16 +575,6 @@ class ComplianceGuardian:
             decision = ComplianceDecision.from_llm_response(response)
 
             logger.info(f"Compliance decision: approved={decision.approved}, method={decision.parse_method}")
-
-            # K4 partial fix: Log for analysis
-            log_compliance_decision(
-                cycle_id=cycle_id,
-                contract=symbol,
-                strategy_type=strategy_type,
-                approved=decision.approved,
-                reason=decision.reason,
-                risk_metrics=risk_metrics
-            )
 
             if not decision.approved:
                 return False, decision.reason
