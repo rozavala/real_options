@@ -2991,38 +2991,6 @@ def validate_trigger(trigger):
     return trigger
 
 
-def _create_protective_close_order(contract: Contract, action: str, qty: int, config: dict) -> Order:
-    """
-    Create close order with slippage protection.
-
-    L3 FIX: Use limit order with 2% slippage cap instead of market.
-    """
-    # Helper to get last price (synchronous-like via reqMktData snapshot if possible, or assume caller provides context?)
-    # Since we are in async function usually, but this is a helper.
-    # In emergency_hard_close, we have IB connection.
-    # We will assume MarketOrder if we can't get price, but ideally we use the price from ticker.
-    # However, emergency_hard_close doesn't pass ticker.
-    # We will return MarketOrder by default if price is unknown, but here we construct the object.
-    # Wait, we need price to set LMT.
-    # We will assume MarketOrder for simplicity in this helper if we can't fetch price,
-    # BUT the guide implies we should look it up.
-    # "from trading_bot.ib_interface import get_last_price" - let's see if that exists or we make it.
-
-    # Actually, emergency_hard_close loop iterates positions.
-    # We can fetch price there.
-    # Let's make this function return a MarketOrder with a "Protection" attribute/warning if we can't price it,
-    # or just return MarketOrder.
-    # But the guide code:
-    # from trading_bot.ib_interface import get_last_price
-    # last_price = get_last_price(contract)
-
-    # I will stick to MarketOrder for now as `get_last_price` is not standard async in `ib_interface`.
-    # And `emergency_hard_close` needs to be fast.
-    # However, I will add the function signature to satisfy the requirement if I can.
-    # For now, I will modify emergency_hard_close directly to implement the logic.
-    return MarketOrder(action, qty)
-
-
 def _log_task_exception(task: asyncio.Task, name: str):
     """Generic callback to log exceptions from fire-and-forget tasks."""
     try:
