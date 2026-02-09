@@ -455,9 +455,9 @@ async def _get_current_regime_and_iv(ib: IB, config: dict) -> tuple:
     """
     iv_rank = 50.0  # default
     try:
-        futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=1)
+        futures = await asyncio.wait_for(get_active_futures(ib, config['symbol'], config['exchange'], count=1), timeout=15)
         if futures:
-            metrics = await get_underlying_iv_metrics(ib, futures[0])
+            metrics = await asyncio.wait_for(get_underlying_iv_metrics(ib, futures[0]), timeout=15)
             iv_rank = metrics.get('iv_rank', 50)
             if isinstance(iv_rank, str):
                 iv_rank = 50.0  # Fallback
@@ -579,7 +579,7 @@ async def _validate_iron_condor(thesis: dict, config: dict, ib: IB, active_futur
             exchange=config.get('exchange', 'NYBOT')
         )
         try:
-            await ib.qualifyContractsAsync(underlying_contract)
+            await asyncio.wait_for(ib.qualifyContractsAsync(underlying_contract), timeout=15)
         except Exception as e:
             logger.warning(f"Failed to qualify stored underlying contract: {e}")
             underlying_contract = None
@@ -593,7 +593,7 @@ async def _validate_iron_condor(thesis: dict, config: dict, ib: IB, active_futur
             logger.debug(f"Using cached active future for {symbol}")
         else:
             try:
-                futures = await get_active_futures(ib, symbol, config['exchange'], count=1)
+                futures = await asyncio.wait_for(get_active_futures(ib, symbol, config['exchange'], count=1), timeout=15)
                 underlying_contract = futures[0] if futures else None
                 if active_futures_cache is not None and futures:
                     active_futures_cache[symbol] = futures
@@ -670,7 +670,7 @@ async def _validate_long_straddle(thesis: dict, position, config: dict, ib: IB, 
                         exchange=config.get('exchange', 'NYBOT')
                     )
                     try:
-                        await ib.qualifyContractsAsync(underlying_contract)
+                        await asyncio.wait_for(ib.qualifyContractsAsync(underlying_contract), timeout=15)
                     except Exception as e:
                         logger.error(f"Failed to qualify underlying for straddle: {e}")
                         underlying_contract = None
@@ -682,7 +682,7 @@ async def _validate_long_straddle(thesis: dict, position, config: dict, ib: IB, 
                         underlying_contract = futures[0] if futures else None
                     else:
                         try:
-                            futures = await get_active_futures(ib, symbol, config['exchange'], count=1)
+                            futures = await asyncio.wait_for(get_active_futures(ib, symbol, config['exchange'], count=1), timeout=15)
                             underlying_contract = futures[0] if futures else None
                             if active_futures_cache is not None and futures:
                                 active_futures_cache[symbol] = futures
@@ -1279,7 +1279,7 @@ async def _close_spread_position(
             # This forces IB to populate all fields from its database,
             # including the correctly-formatted strike price.
             minimal = Contract(conId=original_contract.conId)
-            qualified = await ib.qualifyContractsAsync(minimal)
+            qualified = await asyncio.wait_for(ib.qualifyContractsAsync(minimal), timeout=15)
             if qualified and qualified[0].conId != 0:
                 qualified_legs.append(type(leg)(
                     account=leg.account,
@@ -1586,14 +1586,14 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
 
             if _should_invalidate_futures_cache(cached_futures, config):
                 logger.info("Refreshing active futures cache")
-                futures = await get_active_futures(ib, symbol, exchange, count=5)
+                futures = await asyncio.wait_for(get_active_futures(ib, symbol, exchange, count=5), timeout=30)
                 active_futures_cache[symbol] = futures
             else:
                 futures = cached_futures
 
             # If still no futures (e.g. first run), fetch
             if not futures:
-                 futures = await get_active_futures(ib, symbol, exchange, count=5)
+                 futures = await asyncio.wait_for(get_active_futures(ib, symbol, exchange, count=5), timeout=30)
                  active_futures_cache[symbol] = futures
 
         except Exception as e:
@@ -2309,14 +2309,14 @@ async def _is_signal_priced_in(trigger: SentinelTrigger, ib: IB, contract) -> tu
     EXTREME_MOVE_THRESHOLD = 5.0
 
     try:
-        bars = await ib.reqHistoricalDataAsync(
+        bars = await asyncio.wait_for(ib.reqHistoricalDataAsync(
             contract,
             endDateTime='',
             durationStr='2 D',
             barSizeSetting='1 day',
             whatToShow='TRADES',
             useRTH=True
-        )
+        ), timeout=15)
         if len(bars) < 2:
             return False, ""
 
@@ -2856,7 +2856,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     sizer = DynamicPositionSizer(config)
 
                     # Get account value
-                    account_summary = await ib.accountSummaryAsync()
+                    account_summary = await asyncio.wait_for(ib.accountSummaryAsync(), timeout=15)
                     net_liq_tag = next((v for v in account_summary if v.tag == 'NetLiquidation' and v.currency == 'USD'), None)
                     account_value = float(net_liq_tag.value) if net_liq_tag else 100000.0
 
@@ -3258,7 +3258,7 @@ async def run_sentinels(config: dict):
             # === CONTRACT CACHE REFRESH ===
             if sentinel_ib and sentinel_ib.isConnected() and (now - last_contract_refresh > CONTRACT_REFRESH_INTERVAL):
                 try:
-                    active_futures = await get_active_futures(sentinel_ib, config['symbol'], config['exchange'], count=1)
+                    active_futures = await asyncio.wait_for(get_active_futures(sentinel_ib, config['symbol'], config['exchange'], count=1), timeout=15)
                     cached_contract = active_futures[0] if active_futures else None
                     last_contract_refresh = now
                     logger.info(f"Refreshed contract cache: {cached_contract.localSymbol if cached_contract else 'None'}")
@@ -3278,7 +3278,7 @@ async def run_sentinels(config: dict):
 
                     target = cached_contract
                     if not target and sentinel_ib.isConnected():
-                        active_futures = await get_active_futures(sentinel_ib, config['symbol'], config['exchange'], count=1)
+                        active_futures = await asyncio.wait_for(get_active_futures(sentinel_ib, config['symbol'], config['exchange'], count=1), timeout=15)
                         if active_futures:
                             target = active_futures[0]
 
