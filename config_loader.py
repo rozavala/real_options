@@ -70,37 +70,27 @@ def load_config() -> dict | None:
         config['strategy']['quantity'] = int(os.getenv("STRATEGY_QTY"))
 
     # 6. OVERRIDE: Notifications (Secrets)
-    if os.getenv("PUSHOVER_USER_KEY"):
-        if 'notifications' not in config:
-            config['notifications'] = {}
-        config['notifications']['pushover_user_key'] = os.getenv("PUSHOVER_USER_KEY")
+    notifications = config.get('notifications', {})
 
-    if os.getenv("PUSHOVER_API_TOKEN"):
-        if 'notifications' not in config:
-            config['notifications'] = {}
-        config['notifications']['pushover_api_token'] = os.getenv("PUSHOVER_API_TOKEN")
+    # Load credentials from env if available
+    for key, env_var in [('pushover_user_key', 'PUSHOVER_USER_KEY'), ('pushover_api_token', 'PUSHOVER_API_TOKEN')]:
+        if os.getenv(env_var):
+            notifications[key] = os.getenv(env_var)
+        elif notifications.get(key) == "LOADED_FROM_ENV":
+            # If not in env, and config has placeholder, clear it to fail validation below
+            notifications[key] = None
+
+    config['notifications'] = notifications
 
     # Validate Notifications
-    notifications = config.get('notifications', {})
     if notifications.get('enabled'):
-        user_key = notifications.get('pushover_user_key')
-        api_token = notifications.get('pushover_api_token')
-
-        # Check if values are still the placeholders (meaning env var was missing)
-        # or if they are missing/empty
-
         missing_creds = []
-        if not user_key or user_key == "LOADED_FROM_ENV":
-            # If overridden by env above, it would have the value.
-            # If not overridden, it stays "LOADED_FROM_ENV" (if config.json has that).
-            # So if it is "LOADED_FROM_ENV", it means env var was missing.
+        if not notifications.get('pushover_user_key'):
             missing_creds.append("PUSHOVER_USER_KEY")
-
-        if not api_token or api_token == "LOADED_FROM_ENV":
+        if not notifications.get('pushover_api_token'):
             missing_creds.append("PUSHOVER_API_TOKEN")
 
         if missing_creds:
-            # MECHANIC FIX: Fail fast if notifications are enabled but credentials are missing
             raise ValueError(f"Config validation: Notifications enabled but credentials missing: {', '.join(missing_creds)}")
 
     # 7. OVERRIDE: Data Providers (Secrets)
@@ -127,29 +117,26 @@ def load_config() -> dict | None:
         logger.warning("WARNING: X_BEARER_TOKEN not found! XSentimentSentinel will be disabled.")
 
     # 8. Models
-    if config['gemini']['api_key'] == "LOADED_FROM_ENV":
-        config['gemini']['api_key'] = os.getenv("GEMINI_API_KEY")
+    # Helper to load LLM keys (Loop to handle LOADED_FROM_ENV replacements)
+    for provider in ['gemini', 'anthropic', 'openai', 'xai']:
+        if provider in config and 'api_key' in config[provider]:
+            if config[provider]['api_key'] == "LOADED_FROM_ENV":
+                config[provider]['api_key'] = os.getenv(f"{provider.upper()}_API_KEY")
 
-    if config['anthropic']['api_key'] == "LOADED_FROM_ENV":
-        config['anthropic']['api_key'] = os.getenv("ANTHROPIC_API_KEY")
-
-    if config['openai']['api_key'] == "LOADED_FROM_ENV":
-        config['openai']['api_key'] = os.getenv("OPENAI_API_KEY")
-
-    if config['xai']['api_key'] == "LOADED_FROM_ENV":
-        config['xai']['api_key'] = os.getenv("XAI_API_KEY")
-        
     # Safety Check (Optional but recommended)
     # Check for at least one LLM key
     llm_keys = [
-        config['gemini']['api_key'],
-        config['anthropic']['api_key'],
-        config['openai']['api_key'],
-        config['xai']['api_key']
+        config.get('gemini', {}).get('api_key'),
+        config.get('anthropic', {}).get('api_key'),
+        config.get('openai', {}).get('api_key'),
+        config.get('xai', {}).get('api_key')
     ]
 
-    if not any(llm_keys):
-        raise RuntimeError("CRITICAL: No LLM API keys found! Please set at least one of GEMINI_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, or XAI_API_KEY.")
+    # Filter out empty strings or None
+    valid_keys = [k for k in llm_keys if k and k != "LOADED_FROM_ENV"]
+
+    if not valid_keys:
+        raise ValueError("CRITICAL: No LLM API keys found! Please set at least one of GEMINI_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, or XAI_API_KEY.")
 
     if not config['gemini']['api_key']:
         logger.warning("WARNING: GEMINI_API_KEY not found in environment!")

@@ -13,7 +13,6 @@ set -e
 #   4. Config files are valid JSON
 #   5. verify_system_readiness.py passes (quick mode, skip IBKR)
 # =============================================================================
-set -e
 
 # Determine Repo Root
 if [ -f "pyproject.toml" ]; then

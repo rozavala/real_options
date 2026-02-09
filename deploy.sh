@@ -9,7 +9,6 @@ set -e
 # Called by: .github/workflows/deploy.yml (via SSH after git pull)
 # Rollback: If verify_deploy.sh fails, reverts to previous commit and restarts.
 # =============================================================================
-set -e
 
 # Detect Repo Root
 if [ -f "pyproject.toml" ]; then
