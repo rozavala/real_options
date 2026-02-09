@@ -245,6 +245,7 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
     logger.info("--- Starting order generation and queuing process ---")
     await ORDER_QUEUE.clear()  # Clear queue at the start of each day
 
+    ib = None
     try:
         # Use Connection Pool
         try:
@@ -615,6 +616,12 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             await IBConnectionPool._force_reset_connection(connection_purpose)
         except Exception as e:
             logger.warning(f"Force-reset connection ({connection_purpose}) also failed: {e}")
+    finally:
+        if ib is not None:
+            try:
+                await IBConnectionPool.release_connection(connection_purpose)
+            except Exception:
+                pass
 
 
 async def _get_market_data_for_leg(ib: IB, leg: ComboLeg) -> str:
@@ -1541,10 +1548,14 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 ib.orderStatusEvent -= on_order_status
                 ib.execDetailsEvent -= on_exec_details
                 ib.errorEvent -= on_error
-                # Do NOT disconnect pooled connection
                 logger.info("Order placement complete. Releasing event handlers.")
         except Exception:
             pass  # ib may be in broken state
+
+        try:
+            await IBConnectionPool.release_connection(connection_purpose)
+        except Exception:
+            pass
 
 import pandas as pd
 from datetime import datetime, date, timedelta
@@ -2335,6 +2346,12 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
             await IBConnectionPool._force_reset_connection(connection_purpose)
         except Exception as e:
             logger.warning(f"Force-reset connection ({connection_purpose}) also failed: {e}")
+    finally:
+        if ib is not None:
+            try:
+                await IBConnectionPool.release_connection(connection_purpose)
+            except Exception:
+                pass
 
 async def record_entry_thesis_for_trade(
     position_id: str,
@@ -2448,6 +2465,7 @@ async def cancel_all_open_orders(config: dict, connection_purpose: str = "orches
     Fetches and cancels all open (non-filled) orders.
     """
     logger.info("--- Canceling any remaining open DAY orders ---")
+    ib = None
     try:
         ib = await IBConnectionPool.get_connection(connection_purpose, config)
         configure_market_data_type(ib)
@@ -2489,3 +2507,9 @@ async def cancel_all_open_orders(config: dict, connection_purpose: str = "orches
             await IBConnectionPool._force_reset_connection(connection_purpose)
         except Exception as e:
             logger.warning(f"Force-reset connection ({connection_purpose}) also failed: {e}")
+    finally:
+        if ib is not None:
+            try:
+                await IBConnectionPool.release_connection(connection_purpose)
+            except Exception:
+                pass
