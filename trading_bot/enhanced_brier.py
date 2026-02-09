@@ -105,7 +105,12 @@ class ProbabilisticPrediction:
     def __post_init__(self):
         # Normalize probabilities
         total = self.prob_bullish + self.prob_neutral + self.prob_bearish
-        if abs(total - 1.0) > 0.01:
+        if total < 0.001:
+            logger.warning(f"Probabilities sum to near-zero ({total}), using uniform distribution")
+            self.prob_bullish = 1/3
+            self.prob_neutral = 1/3
+            self.prob_bearish = 1/3
+        elif abs(total - 1.0) > 0.01:
             logger.warning(f"Probabilities don't sum to 1.0 ({total}), normalizing")
             self.prob_bullish /= total
             self.prob_neutral /= total

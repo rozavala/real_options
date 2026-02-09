@@ -12,6 +12,7 @@ import re
 import json
 import logging
 import os
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Optional, Set
@@ -319,16 +320,21 @@ class HallucinationDetector:
             except Exception as e:
                 logger.warning(f"Could not load quarantine state: {e}")
 
+    @staticmethod
+    def _normalize(text: str) -> str:
+        """Strip Unicode accents for robust comparison (e.g. Cecafé → cecafe)."""
+        return unicodedata.normalize('NFKD', text.lower()).encode('ascii', 'ignore').decode('ascii')
+
     def _check_citations(self, output: str, sources: str) -> List[HallucinationFlag]:
         """Verify citations using 3-tier fuzzy matching."""
         flags = []
         citations = self.SOURCE_PATTERN.findall(output)
         citations = [c[0] or c[1] for c in citations if c[0] or c[1]]
 
-        source_lower = sources.lower()
-        # Tokenize sources for overlap check
+        source_lower = self._normalize(sources)
+        # Tokenize sources for overlap check (use normalized text for accent-safe matching)
         source_words = set(re.findall(r'\b[a-zA-Z]{3,}\b', source_lower))
-        known_orgs = {s.lower() for s in self.known_facts.get('organizations', set())}
+        known_orgs = {self._normalize(s) for s in self.known_facts.get('organizations', set())}
 
         # === v5.2 FIX: Tier 0 — Known legitimate data sources (never flag) ===
         # Build from profile if available, with universal financial sources as baseline.
@@ -348,29 +354,29 @@ class HallucinationDetector:
             # Government/institutional sources:
             'usda', 'noaa', 'accuweather', 'weather.com',
         }
-        # Profile-specific sources (if available)
+        # Profile-specific sources (if available) — normalized for accent-safe matching
         profile_sources = {
-            s.lower() for s in self.known_facts.get('legitimate_data_sources', set())
+            self._normalize(s) for s in self.known_facts.get('legitimate_data_sources', set())
         }
         known_legitimate = UNIVERSAL_FINANCIAL_SOURCES | profile_sources
 
         for citation in citations:
-            cit_lower = citation.lower().strip()
+            cit_norm = self._normalize(citation.strip())
 
             # Tier 0: Known legitimate source (NEVER flag)
-            if any(known_src in cit_lower for known_src in known_legitimate):
+            if any(known_src in cit_norm for known_src in known_legitimate):
                 continue
 
             # Tier 1: Exact Match
-            if cit_lower in source_lower:
+            if cit_norm in source_lower:
                 continue
 
             # Tier 2: Known Organization
-            if any(org in cit_lower for org in known_orgs):
+            if any(org in cit_norm for org in known_orgs):
                 continue
 
             # Tier 3: Token Overlap (>60%)
-            cit_words = set(re.findall(r'\b[a-zA-Z]{3,}\b', cit_lower))
+            cit_words = set(re.findall(r'\b[a-zA-Z]{3,}\b', cit_norm))
             if cit_words:
                 overlap = len(cit_words & source_words) / len(cit_words)
                 if overlap >= 0.6:

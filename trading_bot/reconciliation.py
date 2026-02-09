@@ -214,8 +214,8 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
     router = None
     try:
         router = get_router(config)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Router initialization failed, journal will use TMS only: {e}")
 
     journal = TradeJournal(config, tms=tms, router=router)
 

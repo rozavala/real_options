@@ -1344,8 +1344,8 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                         data['post_volume'] = int(data['post_volume'])
                         if data['post_volume'] > 0: self._update_volume_stats(data['post_volume'])
                         return data
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Invalid JSON from Grok: {e}")
+                    except (json.JSONDecodeError, ValueError, TypeError) as e:
+                        logger.error(f"Failed to parse Grok response: {e}")
                         return None
                 if message.tool_calls:
                     tool_call = message.tool_calls[0]

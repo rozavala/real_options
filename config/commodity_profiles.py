@@ -416,6 +416,10 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
     legitimate_data_sources=[
         'USDA', 'ICE', 'ICE Exchange', 'CONAB', 'CECAFE',
         'ICO', 'Green Coffee Association', 'NOAA',
+        # v7.1: Sources discovered via agent grounded search (false positive fixes)
+        'Banco Central do Brasil', 'DatamarNews', 'Seatrade Maritime',
+        'StoneX', 'Saxo Bank', 'CocoaIntel', 'Drewry',
+        'FX Leaders', 'MarketScreener', 'Somar',
     ],
 
     volatility_high_iv_rank=0.70,

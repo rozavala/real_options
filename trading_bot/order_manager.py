@@ -339,8 +339,8 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                 # CRITICAL: Cancel subscription to prevent feed accumulation
                 try:
                     ib.cancelMktData(f)
-                except Exception:
-                    pass  # Error 300 is expected if subscription already expired
+                except Exception as e:
+                    logger.debug(f"cancelMktData for {f.localSymbol}: {e}")  # Error 300 expected if expired
 
             # === v5.2 FIX: Explicit ticker cleanup after liquidity check ===
             # IBKR Error 300 occurs when reqId mappings from liquidity checks
@@ -603,8 +603,8 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
         # Force-reset pooled connection on critical error so next get_connection() creates fresh
         try:
             await IBConnectionPool._force_reset_connection(connection_purpose)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Force-reset connection ({connection_purpose}) also failed: {e}")
 
 
 async def _get_market_data_for_leg(ib: IB, leg: ComboLeg) -> str:
@@ -1131,9 +1131,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 bag_last_time = bag_ticker.time.strftime('%H:%M:%S') if bag_ticker.time else "N/A"
             finally:
                 try:
-                    ib.cancelMktData(contract) # Cleanup
-                except Exception:
-                    pass
+                    ib.cancelMktData(contract)  # Cleanup
+                except Exception as e:
+                    logger.debug(f"cancelMktData cleanup: {e}")
             
             bag_state_str = f"BAG: {bag_bid}x{bag_ask}, V:{bag_vol}, L:{bag_last}@{bag_last_time}"
 
@@ -1437,8 +1437,8 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 finally:
                     try:
                         ib.cancelMktData(trade.contract)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"cancelMktData cleanup for {trade.contract.localSymbol}: {e}")
                 
                 final_bag_state = (
                     f"BAG: {final_bag_bid}x{final_bag_ask}, V:{final_bag_vol}, L:{final_bag_last}@{final_bag_last_time}"
@@ -1501,8 +1501,8 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         # Force-reset pooled connection on critical error so next get_connection() creates fresh
         try:
             await IBConnectionPool._force_reset_connection(connection_purpose)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Force-reset connection ({connection_purpose}) also failed: {e}")
     finally:
         # NOTE: _recorded_thesis_positions is cleared at START of next run,
         # not here, to avoid racing with inflight _handle_and_log_fill tasks.
@@ -2304,8 +2304,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
         # Force-reset pooled connection on critical error so next get_connection() creates fresh
         try:
             await IBConnectionPool._force_reset_connection(connection_purpose)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Force-reset connection ({connection_purpose}) also failed: {e}")
 
 async def record_entry_thesis_for_trade(
     position_id: str,
@@ -2458,5 +2458,5 @@ async def cancel_all_open_orders(config: dict, connection_purpose: str = "orches
         # Force-reset pooled connection on critical error so next get_connection() creates fresh
         try:
             await IBConnectionPool._force_reset_connection(connection_purpose)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Force-reset connection ({connection_purpose}) also failed: {e}")

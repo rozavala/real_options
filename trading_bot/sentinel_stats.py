@@ -5,9 +5,12 @@ v3.1: Tracks sentinel performance for dashboard display.
 """
 
 import json
+import logging
 from pathlib import Path
 from datetime import datetime, timezone
 from collections import defaultdict
+
+logger = logging.getLogger(__name__)
 
 STATS_FILE = Path("data/sentinel_stats.json")
 
@@ -24,8 +27,8 @@ class SentinelStats:
             try:
                 with open(STATS_FILE, 'r') as f:
                     return json.load(f)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to load sentinel stats: {e}")
         return {'sentinels': {}, 'last_updated': None}
 
     def _save_stats(self):

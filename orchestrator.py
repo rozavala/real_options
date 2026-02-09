@@ -100,9 +100,10 @@ def _record_sentinel_health(name: str, status: str, interval_seconds: int, error
         logger.warning(f"Failed to record sentinel health for {name}: {e}")
 
 class TriggerDeduplicator:
-    def __init__(self, window_seconds: int = 7200, state_file="data/deduplicator_state.json"):
+    def __init__(self, window_seconds: int = 7200, state_file="data/deduplicator_state.json", critical_severity_threshold: int = 9):
         self.state_file = state_file
         self.window = window_seconds
+        self.critical_severity_threshold = critical_severity_threshold
         self.cooldowns = {} # Dictionary of cooldowns {source: until_timestamp}
         self.recent_triggers = deque(maxlen=50)
         self.metrics = {
@@ -177,7 +178,7 @@ class TriggerDeduplicator:
         post_cycle_until = self.cooldowns.get('POST_CYCLE', 0)
         if now < post_cycle_until:
             # Exception: Allow CRITICAL severity to bypass
-            critical_threshold = 9
+            critical_threshold = self.critical_severity_threshold
             if getattr(trigger, 'severity', 0) < critical_threshold:
                 logger.info(f"POST_CYCLE debounce active until {datetime.fromtimestamp(post_cycle_until)}. Skipping {trigger.source}")
                 self.metrics['filtered_post_cycle'] += 1
@@ -428,7 +429,7 @@ async def _detect_market_regime(config: dict, trigger=None, ib: IB = None, contr
                     return "HIGH_VOL"
                 return regime
         except Exception as e:
-            logger.warning(f"Regime detection via IB failed: {e}")
+            logger.error(f"Regime detection via IB failed: {e}")
 
     # 2. Fallback to Trigger Source
     if trigger:
@@ -466,8 +467,8 @@ async def _get_current_regime_and_iv(ib: IB, config: dict) -> tuple:
                 return 'HIGH_VOLATILITY', iv_rank
             elif iv_rank < 30:
                 return 'RANGE_BOUND', iv_rank
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"IV regime classification failed: {e}")
     return 'TRENDING', iv_rank
 
 async def _get_current_price(ib: IB, contract: Contract) -> float:
@@ -671,7 +672,7 @@ async def _validate_long_straddle(thesis: dict, position, config: dict, ib: IB, 
                     try:
                         await ib.qualifyContractsAsync(underlying_contract)
                     except Exception as e:
-                        logger.warning(f"Failed to qualify underlying for straddle: {e}")
+                        logger.error(f"Failed to qualify underlying for straddle: {e}")
                         underlying_contract = None
 
                 if not underlying_contract:
@@ -686,7 +687,7 @@ async def _validate_long_straddle(thesis: dict, position, config: dict, ib: IB, 
                             if active_futures_cache is not None and futures:
                                 active_futures_cache[symbol] = futures
                         except Exception as e:
-                            logger.warning(f"Failed to get active futures for straddle validation: {e}")
+                            logger.error(f"Failed to get active futures for straddle validation: {e}")
 
                 if underlying_contract:
                     current_price = await _get_current_price(ib, underlying_contract)
@@ -762,7 +763,7 @@ Return JSON: {{"verdict": "HOLD" or "CLOSE", "confidence": 0.0-1.0, "reasoning":
                     'reason': f"NARRATIVE INVALIDATION: {verdict_data.get('reasoning', 'Thesis degraded')}"
                 }
         except Exception as e:
-            logger.warning(f"Could not parse thesis validation response: {e}")
+            logger.error(f"Could not parse thesis validation response: {e}")
 
     return None
 
@@ -2072,7 +2073,7 @@ async def _check_feedback_loop_health(config: dict):
             df_clean = df[df['timestamp'].notna()].copy()
 
             if df_clean.empty:
-                logger.warning("Feedback loop health: All rows had corrupted timestamps!")
+                logger.error("Feedback loop health: All rows had corrupted timestamps!")
                 return
 
             # Recalculate pending mask on clean data
@@ -2351,8 +2352,8 @@ async def _is_signal_priced_in(trigger: SentinelTrigger, ib: IB, contract) -> tu
             return False, ""
 
     except Exception as e:
-        logger.warning(f"Priced-in check failed: {e}")
-        return False, ""  # Fail open
+        logger.error(f"Priced-in check failed: {e}")
+        return False, ""  # Fail open — council still evaluates the signal
 
 
 async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
@@ -2988,38 +2989,6 @@ def validate_trigger(trigger):
         logger.error(f"Invalid trigger object (missing 'source'): {type(trigger)}")
         return None
     return trigger
-
-
-def _create_protective_close_order(contract: Contract, action: str, qty: int, config: dict) -> Order:
-    """
-    Create close order with slippage protection.
-
-    L3 FIX: Use limit order with 2% slippage cap instead of market.
-    """
-    # Helper to get last price (synchronous-like via reqMktData snapshot if possible, or assume caller provides context?)
-    # Since we are in async function usually, but this is a helper.
-    # In emergency_hard_close, we have IB connection.
-    # We will assume MarketOrder if we can't get price, but ideally we use the price from ticker.
-    # However, emergency_hard_close doesn't pass ticker.
-    # We will return MarketOrder by default if price is unknown, but here we construct the object.
-    # Wait, we need price to set LMT.
-    # We will assume MarketOrder for simplicity in this helper if we can't fetch price,
-    # BUT the guide implies we should look it up.
-    # "from trading_bot.ib_interface import get_last_price" - let's see if that exists or we make it.
-
-    # Actually, emergency_hard_close loop iterates positions.
-    # We can fetch price there.
-    # Let's make this function return a MarketOrder with a "Protection" attribute/warning if we can't price it,
-    # or just return MarketOrder.
-    # But the guide code:
-    # from trading_bot.ib_interface import get_last_price
-    # last_price = get_last_price(contract)
-
-    # I will stick to MarketOrder for now as `get_last_price` is not standard async in `ib_interface`.
-    # And `emergency_hard_close` needs to be fast.
-    # However, I will add the function signature to satisfy the requirement if I can.
-    # For now, I will modify emergency_hard_close directly to implement the logic.
-    return MarketOrder(action, qty)
 
 
 def _log_task_exception(task: asyncio.Task, name: str):
@@ -4104,6 +4073,10 @@ async def main():
     if not config:
         logger.critical("Orchestrator cannot start without a valid configuration.")
         return
+
+    # Update deduplicator with config values
+    global GLOBAL_DEDUPLICATOR
+    GLOBAL_DEDUPLICATOR.critical_severity_threshold = config.get('sentinels', {}).get('critical_severity_threshold', 9)
 
     # Initialize Budget Guard
     global GLOBAL_BUDGET_GUARD

@@ -374,7 +374,8 @@ async def calculate_weighted_decision(
                 curr = market_data['price']
                 exp = market_data['expected_price']
                 if curr: price_change = (exp - curr) / curr
-            except (TypeError, ValueError, ZeroDivisionError): pass
+            except (TypeError, ValueError, ZeroDivisionError) as e:
+                logger.debug(f"Price change calculation failed: {e}")
 
         regime = detect_market_regime_simple(str(vol_report), price_change)
 
