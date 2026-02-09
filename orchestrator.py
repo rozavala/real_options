@@ -429,7 +429,7 @@ async def _detect_market_regime(config: dict, trigger=None, ib: IB = None, contr
                     return "HIGH_VOL"
                 return regime
         except Exception as e:
-            logger.warning(f"Regime detection via IB failed: {e}")
+            logger.error(f"Regime detection via IB failed: {e}")
 
     # 2. Fallback to Trigger Source
     if trigger:
@@ -467,8 +467,8 @@ async def _get_current_regime_and_iv(ib: IB, config: dict) -> tuple:
                 return 'HIGH_VOLATILITY', iv_rank
             elif iv_rank < 30:
                 return 'RANGE_BOUND', iv_rank
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"IV regime classification failed: {e}")
     return 'TRENDING', iv_rank
 
 async def _get_current_price(ib: IB, contract: Contract) -> float:
@@ -2073,7 +2073,7 @@ async def _check_feedback_loop_health(config: dict):
             df_clean = df[df['timestamp'].notna()].copy()
 
             if df_clean.empty:
-                logger.warning("Feedback loop health: All rows had corrupted timestamps!")
+                logger.error("Feedback loop health: All rows had corrupted timestamps!")
                 return
 
             # Recalculate pending mask on clean data
@@ -2352,8 +2352,8 @@ async def _is_signal_priced_in(trigger: SentinelTrigger, ib: IB, contract) -> tu
             return False, ""
 
     except Exception as e:
-        logger.warning(f"Priced-in check failed: {e}")
-        return False, ""  # Fail open
+        logger.error(f"Priced-in check failed: {e}")
+        return False, ""  # Fail open — council still evaluates the signal
 
 
 async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
