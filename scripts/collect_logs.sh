@@ -24,12 +24,16 @@ echo "=========================="
 # Skip if deploy is in progress
 DEPLOY_LOCK="/tmp/trading-bot-deploy.lock"
 if [ -f "$DEPLOY_LOCK" ]; then
+    LOCK_AGE=$(( $(date +%s) - $(stat -c %Y "$DEPLOY_LOCK") ))
     LOCK_PID=$(cat "$DEPLOY_LOCK" 2>/dev/null)
-    if kill -0 "$LOCK_PID" 2>/dev/null; then
-        echo "⏭️  Deploy in progress (PID $LOCK_PID), skipping log collection"
+    if [ "$LOCK_AGE" -gt 1800 ]; then
+        echo "🧹 Deploy lock is ${LOCK_AGE}s old (>30min), treating as stale"
+        rm -f "$DEPLOY_LOCK"
+    elif kill -0 "$LOCK_PID" 2>/dev/null; then
+        echo "⏭️  Deploy in progress (PID $LOCK_PID, age ${LOCK_AGE}s), skipping"
         exit 0
     else
-        echo "🧹 Stale deploy lock found, removing"
+        echo "🧹 Stale deploy lock found (process gone), removing"
         rm -f "$DEPLOY_LOCK"
     fi
 fi
