@@ -50,7 +50,11 @@ Collect and archive logs to the centralized logs branch for analysis and debuggi
 This captures orchestrator logs, dashboard logs, state files, and trading data.
 """)
 
-if st.button("🚀 Collect Logs", type="primary"):
+if st.button(
+    "🚀 Collect Logs",
+    type="primary",
+    help="Triggers the log collection script to archive system logs, state files, and trading data for analysis."
+):
     with st.spinner(f"Collecting {current_env} logs..."):
         try:
             env = os.environ.copy()
@@ -358,7 +362,10 @@ with manual_cols2[1]:
     st.info("ℹ️ **Sync Equity Data**")
     st.caption("Forces fresh equity sync from IB Flex Query")
 
-    if st.button("💰 Force Equity Sync"):
+    if st.button(
+        "💰 Force Equity Sync",
+        help="Manually triggers a fresh equity data pull from Interactive Brokers Flex Query reports."
+    ):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -864,7 +871,12 @@ st.markdown("Clear cached data to force fresh data loads from sources.")
 cache_cols = st.columns(2)
 
 with cache_cols[0]:
-    if st.button("🔄 Clear All Caches"):
+    confirm_clear_cache = st.checkbox("I confirm I want to clear all cached data", key="confirm_clear_cache")
+    if st.button(
+        "🔄 Clear All Caches",
+        disabled=not confirm_clear_cache,
+        help="Clears all application cache. This will force fresh data re-fetching on next page visit, which may take a few seconds."
+    ):
         st.cache_data.clear()
         st.success("✅ All caches cleared!")
         st.rerun()
