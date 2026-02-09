@@ -155,8 +155,9 @@ fi
 
 # === CONFIGURATION FILES ===
 if [ -f "$REPO_DIR/config.json" ]; then
-    echo "Copying config.json..."
-    cp "$REPO_DIR/config.json" "$DEST_DIR/"
+    echo "Copying config.json (redacted)..."
+    # Redact sensitive keys before saving to logs
+    python3 -c "import json,sys,re; r=lambda o: {k:(r(v) if not re.search(r'(key|token|secret|password|sig)',k,re.I) else '[REDACTED]') for k,v in o.items()} if isinstance(o,dict) else [r(x) for x in o] if isinstance(o,list) else o; json.dump(r(json.load(sys.stdin)), sys.stdout, indent=2)" < "$REPO_DIR/config.json" > "$DEST_DIR/config.json"
 fi
 
 # === STATE FILES ===
