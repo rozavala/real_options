@@ -159,6 +159,9 @@ class TradingCouncil:
         self.agent_model_name = self.config.get('agent_model', 'gemini-1.5-flash')
         self.master_model_name = self.config.get('master_model', 'gemini-1.5-pro')
 
+        # Semaphore for grounded data calls (rate limiting)
+        self._grounded_data_semaphore = asyncio.Semaphore(3)
+
         # 5. Initialize Heterogeneous Router (for multi-model support)
         self.heterogeneous_router = None
         try:
@@ -517,10 +520,6 @@ OUTPUT FORMAT (JSON):
 """
 
         try:
-            # === LAZY SEMAPHORE INIT (Flag 1: event loop safety) ===
-            if not hasattr(self, '_grounded_data_semaphore'):
-                self._grounded_data_semaphore = asyncio.Semaphore(3)
-
             # Rate-limited Gemini call to prevent 429 errors
             # === FIX A2: Retry wrapper for transient 503 timeouts ===
             max_attempts = 2
