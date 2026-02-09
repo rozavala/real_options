@@ -134,7 +134,11 @@ def _load_legacy_council_history(data_dir: str) -> pd.DataFrame:
                 logger.warning(f"Could not load legacy file {legacy_file}: {e}")
 
     if legacy_dfs:
-        return pd.concat(legacy_dfs, ignore_index=True)
+        combined = pd.concat(legacy_dfs, ignore_index=True)
+        # OPTIMIZATION: Parse timestamps once on load, so it's cached with datetime objects
+        if 'timestamp' in combined.columns:
+            combined['timestamp'] = parse_ts_column(combined['timestamp'])
+        return combined
     return pd.DataFrame()
 
 
@@ -152,6 +156,9 @@ def load_council_history():
         if os.path.exists(COUNCIL_HISTORY_PATH):
             df = pd.read_csv(COUNCIL_HISTORY_PATH)
             if not df.empty:
+                # OPTIMIZATION: Parse timestamps immediately for live data
+                if 'timestamp' in df.columns:
+                    df['timestamp'] = parse_ts_column(df['timestamp'])
                 dataframes.append(df)
 
         # Load any legacy/archived files (cached separately)
@@ -164,10 +171,6 @@ def load_council_history():
 
         # Concatenate all dataframes
         combined_df = pd.concat(dataframes, ignore_index=True)
-
-        # Normalize timestamp
-        if 'timestamp' in combined_df.columns:
-            combined_df['timestamp'] = parse_ts_column(combined_df['timestamp'])
 
         # Remove duplicates (same timestamp + contract)
         if 'timestamp' in combined_df.columns and 'contract' in combined_df.columns:
