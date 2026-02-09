@@ -35,6 +35,27 @@ jobs:
             # Navigate to the repo
             cd ~/real_options &&
 
+            # Wait for log collection to finish (if running)
+            COLLECT_LOCK=/tmp/trading-bot-collect.lock
+            for i in 1 2 3 4 5 6; do
+              if [ -f \"\$COLLECT_LOCK\" ]; then
+                echo \"Log collection in progress, waiting 10s (\$i/6)...\"
+                sleep 10
+              else
+                break
+              fi
+            done
+            # Remove stale lock if still present after 60s
+            rm -f \"\$COLLECT_LOCK\"
+
+            # Ensure we are on the correct branch (self-heal from stuck logs branch)
+            CURRENT=\$(git branch --show-current)
+            if [ \"\$CURRENT\" != \"${{ github.ref_name }}\" ]; then
+              echo \"WARNING: On branch \$CURRENT, expected ${{ github.ref_name }}. Cleaning up...\"
+              git checkout -- . 2>/dev/null || true
+              git clean -fd 2>/dev/null || true
+            fi
+
             # Fetch and Switch
             git fetch &&
             git checkout ${{ github.ref_name }} &&
