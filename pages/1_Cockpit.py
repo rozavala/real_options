@@ -851,10 +851,12 @@ with ctrl_cols[1]:
             st.error("Config not loaded")
 
 with ctrl_cols[2]:
+    confirm_refresh = st.checkbox("I confirm I want to reload all data", key="confirm_refresh")
     if st.button(
         "🔄 Refresh All Data",
         width="stretch",
-        help="Clears application cache and forces a full data reload from IB/APIs"
+        disabled=not confirm_refresh,
+        help="Clears application cache and forces a full data reload from IB/APIs. Requires confirmation."
     ):
         with st.spinner("Refreshing data..."):
             st.cache_data.clear()
