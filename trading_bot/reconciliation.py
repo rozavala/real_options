@@ -87,6 +87,10 @@ async def reconcile_council_history(config: dict, ib: IB = None):
              await ib.connectAsync(host, port, clientId=client_id)
         except Exception as e:
              logger.error(f"Failed to connect to IB for reconciliation: {e}")
+             try:
+                 ib.disconnect()
+             except Exception:
+                 pass
              return
 
     try:
