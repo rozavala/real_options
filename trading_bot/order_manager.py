@@ -1081,7 +1081,14 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
                 # 2. Compliance Review
                 # Pass 'price' (limit price) to order_context if possible for Notional calculation
-                order_context['price'] = order.lmtPrice if order.orderType == 'LMT' else ticker.last if ticker.last else 0.0
+                # NaN is truthy in Python, so "ticker.last if ticker.last" would pass NaN through.
+                # Use explicit isNan check to prevent compliance getting NaN notional.
+                if order.orderType == 'LMT':
+                    order_context['price'] = order.lmtPrice
+                elif ticker.last and not util.isNan(ticker.last):
+                    order_context['price'] = ticker.last
+                else:
+                    order_context['price'] = 0.0
 
                 approved, reason = await compliance.review_order(order_context)
                 if not approved:
@@ -1126,6 +1133,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         
         # Commodity-agnostic tick size (replaces hardcoded COFFEE_OPTIONS_TICK_SIZE)
         TICK_SIZE = get_tick_size(config)
+        if TICK_SIZE <= 0:
+            logger.warning(f"Invalid tick size ({TICK_SIZE}), falling back to 0.05")
+            TICK_SIZE = 0.05
 
         # --- PLACEMENT LOOP (ENHANCED LOGGING & NOTIFICATIONS) ---
         for contract, order, decision_data in orders_to_place:
@@ -1911,6 +1921,9 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                 # IB's native BAG pricing is unreliable - calculate from legs
                 lmt_price = 0.0
                 MINIMUM_TICK = get_tick_size(config)  # Profile-driven tick size
+                if MINIMUM_TICK <= 0:
+                    logger.warning(f"Invalid tick size ({MINIMUM_TICK}), falling back to 0.05")
+                    MINIMUM_TICK = 0.05
 
                 if contract.secType == "BAG" and contract.comboLegs:
                     # Calculate combo price from individual leg prices

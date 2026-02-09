@@ -780,7 +780,7 @@ class LogisticsSentinel(Sentinel):
         )
         text = response.text.strip()
         if text.startswith("```json"): text = text[7:]
-        if text.startswith("```"): text = text[:-3]
+        elif text.startswith("```"): text = text[3:]
         if text.endswith("```"): text = text[:-3]
 
         parsed = json.loads(text)
@@ -960,7 +960,7 @@ class NewsSentinel(Sentinel):
         )
         text = response.text.strip()
         if text.startswith("```json"): text = text[7:]
-        if text.startswith("```"): text = text[:-3]
+        elif text.startswith("```"): text = text[3:]
         if text.endswith("```"): text = text[:-3]
 
         parsed = json.loads(text)
@@ -2073,7 +2073,7 @@ class MacroContagionSentinel(Sentinel):
             # Clean JSON
             text = response.text.strip()
             if text.startswith("```json"): text = text[7:]
-            if text.startswith("```"): text = text[:-3]
+            elif text.startswith("```"): text = text[3:]
             if text.endswith("```"): text = text[:-3]
             text = text.strip()
 

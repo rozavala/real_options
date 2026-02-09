@@ -995,6 +995,12 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                     result['proceed'] = False
                     result['risks'] = result.get('risks', []) + ['Missing proceed field']
                     result['recommendation'] = result.get('recommendation', 'BLOCK: Malformed DA response')
+                elif not isinstance(result['proceed'], bool):
+                    # LLM returned "proceed": "no" or "proceed": "yes" as string.
+                    # String "no" is truthy in Python → would bypass veto. Coerce strictly.
+                    raw = result['proceed']
+                    result['proceed'] = raw is True or (isinstance(raw, str) and raw.lower() in ('true', 'yes'))
+                    logger.warning(f"DA 'proceed' was {type(raw).__name__} ({raw!r}), coerced to {result['proceed']}")
 
                 return result
 
@@ -1148,6 +1154,20 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
             response_text = await self._route_call(AgentRole.MASTER_STRATEGIST, full_prompt, response_json=True)
             cleaned_text = self._clean_json_text(response_text)
             decision = json.loads(cleaned_text)
+
+            # === Direction Validation ===
+            # LLM must return a valid direction. If missing or invalid, default to NEUTRAL
+            # (safe: prevents accidental trades on malformed output).
+            VALID_DIRECTIONS = {'BULLISH', 'BEARISH', 'NEUTRAL'}
+            raw_direction = str(decision.get('direction', '')).upper().strip()
+            if raw_direction not in VALID_DIRECTIONS:
+                logger.warning(
+                    f"Master Strategist returned invalid direction '{decision.get('direction')}'. "
+                    f"Defaulting to NEUTRAL (fail-safe)."
+                )
+                decision['direction'] = 'NEUTRAL'
+            else:
+                decision['direction'] = raw_direction
 
             # === v7.0: Thesis Strength Validation ===
             # Map thesis_strength to a numeric conviction for downstream compatibility.
