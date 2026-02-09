@@ -379,8 +379,18 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             persisted_capital = _load_committed_capital()
             working_capital = await _reconcile_working_orders(ib, config)  # v4.1: now takes config
 
-            # Use whichever is higher (conservative)
-            committed_capital = max(persisted_capital, working_capital)
+            # Trust IBKR as source of truth — persisted file may be stale from
+            # cancelled/expired orders that were never cleaned up.
+            # Use max() only when IBKR shows active orders, otherwise reset.
+            if working_capital > 0:
+                committed_capital = max(persisted_capital, working_capital)
+            else:
+                committed_capital = working_capital  # 0.0 — all orders done
+
+            # Sync persisted state to match reality
+            if committed_capital != persisted_capital:
+                _save_committed_capital(committed_capital)
+                logger.info(f"L1 RECONCILED: Reset committed capital from ${persisted_capital:,.2f} to ${committed_capital:,.2f}")
 
             if committed_capital > 0:
                 logger.info(f"L1 RECONCILED: Starting with ${committed_capital:,.2f} already committed")
@@ -1259,10 +1269,21 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
             # --- 5. Build Notification String (ENHANCED FOR ALL DATA) ---
             price_info_notify = f"LMT: {order.lmtPrice:.2f}" if order.orderType == "LMT" else "MKT"
-            leg_state_for_notify = "<br>    ".join(leg_state_strings) # HTML newline
-            readable_symbol = _describe_bag(contract) if hasattr(contract, 'comboLegs') else contract.localSymbol
+            # Use the rich display_name (e.g. KC-P295.0+P290.0) instead of generic _describe_bag
+            direction = decision_data.get('direction', '?') if isinstance(decision_data, dict) else '?'
+            confidence = decision_data.get('confidence', '?') if isinstance(decision_data, dict) else '?'
+            contract_month = decision_data.get('contract_month', '') if isinstance(decision_data, dict) else ''
+            thesis = decision_data.get('thesis_strength', '') if isinstance(decision_data, dict) else ''
+            strategy_name = ''
+            if isinstance(decision_data, dict):
+                sd = decision_data.get('strategy_def', {})
+                if isinstance(sd, dict):
+                    strategy_name = sd.get('strategy_name', '')
+            strategy_label = strategy_name.replace('_', ' ').title() if strategy_name else direction
             summary_line = (
-                f"  - {readable_symbol}: {trade.order.action} {trade.order.totalQuantity} @ {price_info_notify}"
+                f"  - <b>{display_name}</b> ({contract_month})\n"
+                f"    {strategy_label} | {direction} conf={confidence} | Thesis: {thesis}\n"
+                f"    {trade.order.action} {int(trade.order.totalQuantity)} @ {price_info_notify}"
             )
             placed_trades_summary.append(summary_line)
             await asyncio.sleep(0.5) # Throttle order placement
@@ -1410,9 +1431,14 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
                 # Use the official avgFillPrice from the parent trade status, which is correct for both combos and single legs
                 avg_fill_price = trade.orderStatus.avgFillPrice
-                readable_symbol = _describe_bag(trade.contract) if hasattr(trade.contract, 'comboLegs') else trade.contract.localSymbol
+                stored_display_name = details.get('display_name', trade.contract.localSymbol or 'UNKNOWN')
+                dd = details.get('decision_data', {}) or {}
+                fill_direction = dd.get('direction', '')
+                fill_month = dd.get('contract_month', '')
+                fill_thesis = dd.get('thesis_strength', '')
                 fill_line = (
-                    f"  - ✅ {readable_symbol}: Filled @ ${avg_fill_price:.2f}"
+                    f"  - {stored_display_name} ({fill_month}) {fill_direction} Thesis:{fill_thesis}\n"
+                    f"    Filled @ {avg_fill_price:.2f} (qty {int(trade.order.totalQuantity)})"
                 )
                 filled_orders.append(fill_line)
             
@@ -1466,10 +1492,13 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
                 # --- 4. Update Notification String (ENHANCED FOR ALL DATA) ---
                 price_info_notify = f"LMT: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "MKT"
-                final_leg_state_for_notify = "<br>    ".join(final_leg_state_strings) # HTML newline
-                readable_symbol = _describe_bag(trade.contract) if hasattr(trade.contract, 'comboLegs') else trade.contract.localSymbol
+                stored_display_name = details.get('display_name', trade.contract.localSymbol or 'UNKNOWN')
+                dd = details.get('decision_data', {}) or {}
+                cancel_direction = dd.get('direction', '')
+                cancel_month = dd.get('contract_month', '')
                 cancel_line = (
-                    f"  - {readable_symbol}: {price_info_notify} — Unfilled, cancelled"
+                    f"  - {stored_display_name} ({cancel_month}) {cancel_direction}\n"
+                    f"    {price_info_notify} — Unfilled, cancelled"
                 )
                 cancelled_orders.append(cancel_line)
                 await asyncio.sleep(0.2)
