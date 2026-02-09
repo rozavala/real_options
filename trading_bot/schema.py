@@ -1,8 +1,20 @@
 """Schema definitions for CSV data files."""
 
+import logging
 from dataclasses import dataclass
 from typing import Optional
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+
+def _safe_float(value, default: float = 0.0) -> float:
+    """Safely convert a value to float, returning default on failure."""
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        logger.debug(f"Could not convert {value!r} to float, using default {default}")
+        return default
 
 
 @dataclass
@@ -48,8 +60,8 @@ class CouncilHistoryRow:
             master_decision=str(row.get('master_decision', 'NEUTRAL')),
             prediction_type=str(row.get('prediction_type', 'UNKNOWN')),
             volatility_level=str(row.get('volatility_level', 'UNKNOWN')),
-            master_confidence=float(row.get('master_confidence', 0.0)),
-            weighted_score=float(row.get('weighted_score', 0.0)),
+            master_confidence=_safe_float(row.get('master_confidence', 0.0)),
+            weighted_score=_safe_float(row.get('weighted_score', 0.0)),
             thesis_strength=str(row.get('thesis_strength', 'SPECULATIVE')),
             regime=str(row.get('regime', 'UNKNOWN')),
             compliance_approved=bool(row.get('compliance_approved', False)),

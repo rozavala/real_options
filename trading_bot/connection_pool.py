@@ -237,7 +237,7 @@ class IBConnectionPool:
                     ib.disconnect()
                     await asyncio.sleep(0.1)  # Small delay for transport cleanup
             except Exception as e:
-                logger.debug(f"Connection cleanup for {name}: {e}")  # Debug level, not error
+                logger.warning(f"Connection cleanup failed for {name}: {e}")
             finally:
                 cls._instances.pop(name, None)
 

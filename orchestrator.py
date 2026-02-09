@@ -100,9 +100,10 @@ def _record_sentinel_health(name: str, status: str, interval_seconds: int, error
         logger.warning(f"Failed to record sentinel health for {name}: {e}")
 
 class TriggerDeduplicator:
-    def __init__(self, window_seconds: int = 7200, state_file="data/deduplicator_state.json"):
+    def __init__(self, window_seconds: int = 7200, state_file="data/deduplicator_state.json", critical_severity_threshold: int = 9):
         self.state_file = state_file
         self.window = window_seconds
+        self.critical_severity_threshold = critical_severity_threshold
         self.cooldowns = {} # Dictionary of cooldowns {source: until_timestamp}
         self.recent_triggers = deque(maxlen=50)
         self.metrics = {
@@ -177,7 +178,7 @@ class TriggerDeduplicator:
         post_cycle_until = self.cooldowns.get('POST_CYCLE', 0)
         if now < post_cycle_until:
             # Exception: Allow CRITICAL severity to bypass
-            critical_threshold = 9
+            critical_threshold = self.critical_severity_threshold
             if getattr(trigger, 'severity', 0) < critical_threshold:
                 logger.info(f"POST_CYCLE debounce active until {datetime.fromtimestamp(post_cycle_until)}. Skipping {trigger.source}")
                 self.metrics['filtered_post_cycle'] += 1
@@ -671,7 +672,7 @@ async def _validate_long_straddle(thesis: dict, position, config: dict, ib: IB, 
                     try:
                         await ib.qualifyContractsAsync(underlying_contract)
                     except Exception as e:
-                        logger.warning(f"Failed to qualify underlying for straddle: {e}")
+                        logger.error(f"Failed to qualify underlying for straddle: {e}")
                         underlying_contract = None
 
                 if not underlying_contract:
@@ -686,7 +687,7 @@ async def _validate_long_straddle(thesis: dict, position, config: dict, ib: IB, 
                             if active_futures_cache is not None and futures:
                                 active_futures_cache[symbol] = futures
                         except Exception as e:
-                            logger.warning(f"Failed to get active futures for straddle validation: {e}")
+                            logger.error(f"Failed to get active futures for straddle validation: {e}")
 
                 if underlying_contract:
                     current_price = await _get_current_price(ib, underlying_contract)
@@ -762,7 +763,7 @@ Return JSON: {{"verdict": "HOLD" or "CLOSE", "confidence": 0.0-1.0, "reasoning":
                     'reason': f"NARRATIVE INVALIDATION: {verdict_data.get('reasoning', 'Thesis degraded')}"
                 }
         except Exception as e:
-            logger.warning(f"Could not parse thesis validation response: {e}")
+            logger.error(f"Could not parse thesis validation response: {e}")
 
     return None
 
@@ -4104,6 +4105,10 @@ async def main():
     if not config:
         logger.critical("Orchestrator cannot start without a valid configuration.")
         return
+
+    # Update deduplicator with config values
+    global GLOBAL_DEDUPLICATOR
+    GLOBAL_DEDUPLICATOR.critical_severity_threshold = config.get('sentinels', {}).get('critical_severity_threshold', 9)
 
     # Initialize Budget Guard
     global GLOBAL_BUDGET_GUARD
