@@ -22,6 +22,11 @@ fi
 
 cd "$REPO_ROOT"
 
+# Prevent collect_logs.sh from switching branches during deploy
+DEPLOY_LOCK="/tmp/trading-bot-deploy.lock"
+echo "$$" > "$DEPLOY_LOCK"
+trap "rm -f '$DEPLOY_LOCK'" EXIT
+
 # =========================================================================
 # STEP 0: Capture rollback point BEFORE any changes
 # =========================================================================
