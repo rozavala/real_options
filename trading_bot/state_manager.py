@@ -340,6 +340,8 @@ class StateManager:
             os.makedirs(os.path.dirname(cls.DEFERRED_TRIGGERS_FILE), exist_ok=True)
             with open(cls.DEFERRED_TRIGGERS_FILE, 'w') as f:
                 json.dump(triggers, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
             logger.info(f"Queued deferred trigger from {trigger.source}")
         except Exception as e:
             logger.error(f"Failed to queue deferred trigger: {e}")

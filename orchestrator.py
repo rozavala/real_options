@@ -1965,7 +1965,7 @@ async def sentinel_effectiveness_check(config: dict):
             )
 
     except Exception as e:
-        logger.error(f"Sentinel effectiveness check failed: {e}")
+        logger.error(f"Sentinel effectiveness check failed: {e}", exc_info=True)
 
 
 async def reconcile_and_analyze(config: dict):
@@ -4156,6 +4156,8 @@ async def main():
         os.makedirs(os.path.dirname(schedule_file), exist_ok=True)
         with open(schedule_file, 'w') as f:
             json.dump(schedule_data, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
         logger.debug(f"Active schedule written: {len(schedule_data['tasks'])} tasks")
     except Exception as e:
         logger.warning(f"Failed to write active schedule (non-fatal): {e}")

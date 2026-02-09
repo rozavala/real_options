@@ -235,22 +235,22 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
         )
 
         # Skip only if reconciled AND not a broken volatility row
-        if pd.notna(row['exit_price']) and row['exit_price'] != '' and not is_broken_volatility:
+        if pd.notna(row.get('exit_price')) and row.get('exit_price') != '' and not is_broken_volatility:
             continue
 
         prediction_type = row.get('prediction_type', 'DIRECTIONAL')
         strategy_type = row.get('strategy_type', '')
 
-        entry_time = row['timestamp']
+        entry_time = row.get('timestamp')
 
         # Check age. If it's less than ~20 hours old, it might still be open.
         # We only want to grade "finished" tests.
         if (now - entry_time).total_seconds() < 20 * 3600 and not is_broken_volatility:
             continue
 
-        contract_str = row['contract']  # e.g., "KC H4 (202403)" or just "KC H4"
-        entry_price = float(row['entry_price']) if pd.notna(row['entry_price']) else 0.0
-        decision = row['master_decision']
+        contract_str = row.get('contract', '')  # e.g., "KC H4 (202403)" or just "KC H4"
+        entry_price = float(row.get('entry_price', 0)) if pd.notna(row.get('entry_price')) else 0.0
+        decision = row.get('master_decision', '')
 
         if not contract_str or entry_price == 0:
             continue
@@ -276,10 +276,10 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             # 1. GET EXIT PRICE
             if is_broken_volatility:
                 # Use existing data
-                exit_price = float(row['exit_price'])
+                exit_price = float(row.get('exit_price', 0))
                 # Try to use existing exit timestamp if valid
                 if pd.notna(row.get('exit_timestamp')):
-                    parsed_exit = parse_ts_single(str(row['exit_timestamp']))
+                    parsed_exit = parse_ts_single(str(row.get('exit_timestamp', '')))
                     if parsed_exit:
                         target_exit_time = parsed_exit
                 logger.info(f"Force-recalculating broken volatility row: {contract_str}")
