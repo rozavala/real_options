@@ -49,8 +49,18 @@ class ComplianceDecision:
 
             result = json.loads(text)
             if isinstance(result, dict) and 'approved' in result:
+                approved_val = result.get('approved', False)
+                # Strict boolean check: reject string "maybe", "yes", etc.
+                # json.loads converts JSON true/false → Python True/False.
+                # If it's not a bool, the LLM sent a non-standard value — fail closed.
+                if not isinstance(approved_val, bool):
+                    logger.warning(
+                        f"Compliance 'approved' is {type(approved_val).__name__} "
+                        f"({approved_val!r}), not bool — fail-closed"
+                    )
+                    approved_val = False
                 return cls(
-                    approved=bool(result.get('approved', False)),
+                    approved=approved_val,
                     reason=str(result.get('reason', 'No reason provided')),
                     raw_response=response[:500],
                     parse_method="direct_json"
