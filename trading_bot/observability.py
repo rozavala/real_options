@@ -221,7 +221,11 @@ class HallucinationDetector:
             source_material += "\n" + grounded_data
 
         # Run Checks
-        flags.extend(self._check_citations(output_text, source_material))
+        # Skip citation check when agent used grounded search — the agent cites
+        # real sources from Google results whose names may not appear verbatim in
+        # the raw summary text, causing persistent false positives & quarantine.
+        if not grounded_data:
+            flags.extend(self._check_citations(output_text, source_material))
         flags.extend(self._check_numbers(output_text, source_material))
         flags.extend(self._check_facts(output_text))
 
