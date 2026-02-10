@@ -1,81 +1,70 @@
 #!/usr/bin/env python3
-"""Diagnostic script for Signal Overlay candlestick rendering issue."""
-import yfinance as yf
-import pandas as pd
-import numpy as np
+"""Diagnostic: test 4 different candlestick approaches to find what renders."""
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-print("=== Step 1: Fetch raw data ===")
-df = yf.download('KC=F', period='5d', interval='1d', progress=False, auto_adjust=True)
-print(f"Raw columns: {df.columns.tolist()}")
-print(f"MultiIndex? {isinstance(df.columns, pd.MultiIndex)}")
-print(f"Raw dtypes:\n{df.dtypes}")
-print(f"Raw data:\n{df}\n")
+# Hardcoded data - no yfinance dependency
+dates = ['2026-02-05', '2026-02-06', '2026-02-09']
+opens = [310.15, 312.05, 295.20]
+highs = [313.00, 315.00, 296.95]
+lows = [301.60, 293.65, 285.50]
+closes = [308.40, 296.55, 293.10]
+volumes = [24237, 29513, 0]
 
-print("=== Step 2: Flatten MultiIndex ===")
-if isinstance(df.columns, pd.MultiIndex):
-    df.columns = df.columns.get_level_values(0)
-print(f"Flattened columns: {df.columns.tolist()}")
-print(f"Column types: {[type(c).__name__ for c in df.columns]}")
-print(f"Flattened dtypes:\n{df.dtypes}\n")
+# TEST 1: Simple candlestick, date x-axis, NO subplots
+fig1 = go.Figure(data=[go.Candlestick(
+    x=dates, open=opens, high=highs, low=lows, close=closes, name="Test 1: Dates"
+)])
+fig1.update_layout(title="TEST 1: Date x-axis, no subplots", template="plotly_dark",
+                   xaxis_rangeslider_visible=False, height=400)
+fig1.write_html("/tmp/test1_dates_simple.html")
+print("Saved test1_dates_simple.html")
 
-print("=== Step 3: Check OHLCV values ===")
-for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
-    if col in df.columns:
-        vals = df[col]
-        print(f"  {col}: dtype={vals.dtype}, NaN={vals.isna().sum()}, values={vals.tolist()}")
-    else:
-        print(f"  {col}: MISSING!")
+# TEST 2: Numerical x-axis, NO subplots
+fig2 = go.Figure(data=[go.Candlestick(
+    x=[0, 1, 2], open=opens, high=highs, low=lows, close=closes, name="Test 2: Nums"
+)])
+fig2.update_layout(title="TEST 2: Numerical x-axis, no subplots", template="plotly_dark",
+                   xaxis_rangeslider_visible=False, height=400)
+fig2.write_html("/tmp/test2_nums_simple.html")
+print("Saved test2_nums_simple.html")
 
-print(f"\n=== Step 4: Timezone handling ===")
-print(f"Index tz: {df.index.tz}")
-if df.index.tz is None:
-    df.index = df.index.tz_localize('UTC')
-else:
-    df.index = df.index.tz_convert('UTC')
-df.index = df.index.tz_convert('America/New_York')
-print(f"After conversion: {df.index.tz}")
-
-print(f"\n=== Step 5: Create num_index ===")
-df['num_index'] = range(len(df))
-print(f"num_index: {df['num_index'].tolist()}")
-
-print(f"\n=== Step 6: Test Candlestick trace ===")
-fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.75, 0.25],
-                    specs=[[{"secondary_y": False}], [{"secondary_y": True}]])
-
-fig.add_trace(go.Candlestick(
-    x=df['num_index'],
-    open=df['Open'],
-    high=df['High'],
-    low=df['Low'],
-    close=df['Close'],
-    name="KC Test",
+# TEST 3: Date x-axis WITH subplots (matching Signal Overlay structure)
+fig3 = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.75, 0.25],
+                     specs=[[{"secondary_y": False}], [{"secondary_y": True}]])
+fig3.add_trace(go.Candlestick(
+    x=dates, open=opens, high=highs, low=lows, close=closes, name="Price"
 ), row=1, col=1)
+fig3.add_trace(go.Bar(x=dates, y=volumes, name='Volume'), row=2, col=1, secondary_y=True)
+fig3.update_layout(title="TEST 3: Dates + subplots", template="plotly_dark",
+                   xaxis=dict(rangeslider=dict(visible=False, thickness=0)), height=600)
+fig3.write_html("/tmp/test3_dates_subplots.html")
+print("Saved test3_dates_subplots.html")
 
-fig.add_trace(go.Bar(
-    x=df['num_index'],
-    y=df['Volume'],
-    name='Volume',
-), row=2, col=1, secondary_y=True)
+# TEST 4: Numerical x-axis WITH subplots (what Signal Overlay actually does)
+fig4 = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.75, 0.25],
+                     specs=[[{"secondary_y": False}], [{"secondary_y": True}]])
+fig4.add_trace(go.Candlestick(
+    x=[0, 1, 2], open=opens, high=highs, low=lows, close=closes, name="Price"
+), row=1, col=1)
+fig4.add_trace(go.Bar(x=[0, 1, 2], y=volumes, name='Volume'), row=2, col=1, secondary_y=True)
+fig4.update_layout(title="TEST 4: Nums + subplots", template="plotly_dark",
+                   xaxis=dict(rangeslider=dict(visible=False, thickness=0)), height=600)
+fig4.write_html("/tmp/test4_nums_subplots.html")
+print("Saved test4_nums_subplots.html")
 
-# Check trace data
-for i, trace in enumerate(fig.data):
-    print(f"Trace {i}: type={trace.type}, name={trace.name}")
-    if hasattr(trace, 'open') and trace.open is not None:
-        print(f"  open={list(trace.open)[:5]}")
-        print(f"  high={list(trace.high)[:5]}")
-        print(f"  low={list(trace.low)[:5]}")
-        print(f"  close={list(trace.close)[:5]}")
-        print(f"  x={list(trace.x)[:5]}")
-    elif hasattr(trace, 'y') and trace.y is not None:
-        print(f"  y={list(trace.y)[:5]}")
-        print(f"  x={list(trace.x)[:5]}")
+# TEST 5: OHLC trace instead of Candlestick (alternative rendering)
+fig5 = go.Figure(data=[go.Ohlc(
+    x=dates, open=opens, high=highs, low=lows, close=closes, name="Test 5: OHLC"
+)])
+fig5.update_layout(title="TEST 5: OHLC trace (not candlestick)", template="plotly_dark",
+                   xaxis_rangeslider_visible=False, height=400)
+fig5.write_html("/tmp/test5_ohlc.html")
+print("Saved test5_ohlc.html")
 
-# Save to HTML to test rendering
-fig.update_layout(xaxis=dict(rangeslider=dict(visible=False, thickness=0)), template="plotly_dark", height=600)
-fig.write_html("/tmp/candlestick_test.html")
-print(f"\n=== Step 7: Saved test chart to /tmp/candlestick_test.html ===")
-print("Open it in a browser or run: python3 -m http.server 9999 --directory /tmp")
-print("Then visit http://<droplet-ip>:9999/candlestick_test.html")
+print("\nAll tests saved. Check each in browser:")
+print("  http://<ip>:9999/test1_dates_simple.html")
+print("  http://<ip>:9999/test2_nums_simple.html")
+print("  http://<ip>:9999/test3_dates_subplots.html")
+print("  http://<ip>:9999/test4_nums_subplots.html")
+print("  http://<ip>:9999/test5_ohlc.html")
