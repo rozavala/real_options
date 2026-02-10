@@ -144,6 +144,10 @@ echo "--- 2. Rotating logs... ---"
 mkdir -p logs
 [ -f logs/orchestrator.log ] && mv logs/orchestrator.log logs/orchestrator-$(date --iso=s).log || true
 [ -f logs/dashboard.log ] && mv logs/dashboard.log logs/dashboard-$(date --iso=s).log || true
+[ -f logs/equity_logger.log ] && mv logs/equity_logger.log logs/equity_logger-$(date --iso=s).log || true
+
+# Clean up rotated logs older than 7 days
+find logs/ -name "*-20*.log" -mtime +7 -delete 2>/dev/null || true
 
 # Ensure logs directory exists with correct permissions
 chmod 755 logs
