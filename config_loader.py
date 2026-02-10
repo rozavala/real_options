@@ -51,6 +51,10 @@ def load_config() -> dict | None:
         if not isinstance(config['connection']['clientId'], int):
             raise TypeError(f"Config validation: 'connection.clientId' must be an integer, got {type(config['connection']['clientId']).__name__}")
 
+        # Ensure host is present (default to localhost)
+        if 'host' not in config['connection']:
+            config['connection']['host'] = '127.0.0.1'
+
     # 4. OVERRIDE: Flex Query (Secrets)
     if os.getenv("FLEX_TOKEN"):
         config['flex_query']['token'] = os.getenv("FLEX_TOKEN")
@@ -68,6 +72,17 @@ def load_config() -> dict | None:
     # 5. OVERRIDE: Strategy Sizing (Safety)
     if os.getenv("STRATEGY_QTY"):
         config['strategy']['quantity'] = int(os.getenv("STRATEGY_QTY"))
+
+    # Validate Strategy Quantity
+    if 'strategy' in config and 'quantity' in config['strategy']:
+        if not isinstance(config['strategy']['quantity'], int) or config['strategy']['quantity'] <= 0:
+            raise ValueError(f"Config validation: 'strategy.quantity' must be a positive integer, got {config['strategy']['quantity']}")
+
+    # Validate Risk Management Confidence Threshold
+    if 'risk_management' in config and 'min_confidence_threshold' in config['risk_management']:
+        threshold = config['risk_management']['min_confidence_threshold']
+        if not isinstance(threshold, float) or not (0.0 <= threshold <= 1.0):
+             raise ValueError(f"Config validation: 'risk_management.min_confidence_threshold' must be a float between 0.0 and 1.0, got {threshold}")
 
     # 6. OVERRIDE: Notifications (Secrets)
     notifications = config.get('notifications', {})

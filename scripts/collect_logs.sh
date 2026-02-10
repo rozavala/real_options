@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 # === Coffee Bot Real Options - Log Collection (Environment Configurable) ===
 # This script collects logs and pushes them to the logs branch.
 #
@@ -8,7 +9,7 @@
 
 # Load environment variables from .env if present
 if [ -f .env ]; then
-    export $(grep -v '^#' .env | xargs)
+    export $(grep -v '^#' .env | xargs) || true
 fi
 
 # Configuration with defaults
