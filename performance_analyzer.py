@@ -20,7 +20,18 @@ from config_loader import load_config
 logger = logging.getLogger("PerformanceAnalyzer")
 
 # --- Constants ---
-DEFAULT_STARTING_CAPITAL = 250000
+def _get_default_starting_capital() -> float:
+    """Get starting capital from env var, falling back to profile default."""
+    env_cap = os.getenv("INITIAL_CAPITAL")
+    if env_cap:
+        return float(env_cap)
+    try:
+        from config import get_active_profile
+        config = load_config()
+        profile = get_active_profile(config)
+        return profile.default_starting_capital
+    except Exception:
+        return 50000.0
 
 
 @functools.lru_cache(maxsize=128)
@@ -415,7 +426,7 @@ async def analyze_performance(config: dict) -> dict | None:
         # Load equity history if available
         equity_df = pd.DataFrame()
         equity_file = os.path.join("data", "daily_equity.csv")
-        starting_capital = DEFAULT_STARTING_CAPITAL
+        starting_capital = _get_default_starting_capital()
 
         if os.path.exists(equity_file):
             logger.info("Loading daily_equity.csv for equity curve.")

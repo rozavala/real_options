@@ -7,7 +7,7 @@ def generate_performance_charts(
     trade_df: pd.DataFrame,
     signals_df: pd.DataFrame,
     equity_df: pd.DataFrame = None,
-    starting_capital: float = 250000.0
+    starting_capital: float = None
 ) -> list[str]:
     """
     Generates a series of life-to-date performance charts.
@@ -24,6 +24,9 @@ def generate_performance_charts(
     Returns:
         A list of file paths for the generated charts.
     """
+    if starting_capital is None:
+        starting_capital = float(os.getenv('INITIAL_CAPITAL', '50000.0'))
+
     if trade_df.empty and (equity_df is None or equity_df.empty):
         return []
 
