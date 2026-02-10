@@ -145,6 +145,16 @@ class CommodityProfile:
     stop_parse_range: List[float] = field(default_factory=lambda: [0.0, 9999.0])
     typical_price_range: List[float] = field(default_factory=lambda: [0.0, 9999.0])
 
+    # Research prompts for signal_generator (per-agent search guidance)
+    research_prompts: Dict[str, str] = field(default_factory=dict)
+
+    # Compliance: geographic concentration check
+    concentration_proxies: List[str] = field(default_factory=list)  # e.g., ['KC', 'SB', 'EWZ', 'BRL']
+    concentration_label: str = ""  # e.g., "Brazil", "West Africa"
+
+    # Cross-commodity correlation basket for MacroContagionSentinel
+    cross_commodity_basket: Dict[str, str] = field(default_factory=dict)  # e.g., {'gold': 'GC=F', ...}
+
     # TMS Temporal Decay Rates (lambda values for exponential decay)
     # Higher lambda = faster decay = shorter useful life
     # relevance = base_score × exp(-lambda × age_days)
@@ -434,7 +444,26 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
 
     # Price validation — MUST match config.json → commodity_profile.KC
     stop_parse_range=[80.0, 800.0],       # Valid stop-loss price range (cents/lb)
-    typical_price_range=[100.0, 600.0]    # Sanity check range for predictions
+    typical_price_range=[100.0, 600.0],   # Sanity check range for predictions
+
+    research_prompts={
+        "agronomist": "Search for 'current 10-day weather forecast Minas Gerais coffee zone' and 'NOAA Brazil precipitation anomaly'. Analyze if recent rains are beneficial for flowering or excessive.",
+        "macro": "Search for 'USD BRL exchange rate forecast' and 'Brazil Central Bank Selic rate outlook'. Determine if the BRL is trending to encourage farmer selling.",
+        "geopolitical": "Search for 'Red Sea shipping coffee delays', 'Brazil port of Santos wait times', and 'EUDR regulation delay latest news'. Determine if there are logistical bottlenecks.",
+        "supply_chain": "Search for 'Cecafé Brazil coffee export report latest', 'Global container freight index rates', and 'Green coffee shipping manifest trends'. Analyze flow volume vs port capacity.",
+        "inventory": "Search for 'ICE Arabica Certified Stocks level current' and 'GCA Green Coffee stocks report latest'. Look for 'Backwardation' in the forward curve.",
+        "sentiment": "Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought.",
+        "technical": "Search for 'Coffee futures technical analysis {contract}' and '{contract} support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'.",
+        "volatility": "Search for 'Coffee Futures Implied Volatility Rank current' and '{contract} option volatility skew'. Determine if option premiums are cheap or expensive relative to historical volatility.",
+    },
+    concentration_proxies=['KC', 'SB', 'EWZ', 'BRL'],
+    concentration_label="Brazil",
+    cross_commodity_basket={
+        'gold': 'GC=F',
+        'silver': 'SI=F',
+        'wheat': 'ZW=F',
+        'soybeans': 'ZS=F',
+    },
 )
 
 
@@ -557,7 +586,26 @@ COCOA_PROFILE = CommodityProfile(
     volatility_high_iv_rank=0.65,
     volatility_low_iv_rank=0.25,
     price_move_alert_pct=3.0,
-    straddle_risk_threshold=8000.0
+    straddle_risk_threshold=8000.0,
+
+    research_prompts={
+        "agronomist": "Search for 'Côte d Ivoire cocoa harvest forecast' and 'Ghana cocoa rainfall anomaly'. Analyze if conditions favor or threaten the main crop.",
+        "macro": "Search for 'EUR USD exchange rate forecast' and 'West Africa CFA franc outlook'. Determine currency impact on cocoa pricing.",
+        "geopolitical": "Search for 'Côte d Ivoire cocoa regulation' and 'Ghana COCOBOD policy'. Analyze supply-side policy risks.",
+        "supply_chain": "Search for 'Abidjan port cocoa shipments' and 'cocoa grinding data Europe'. Analyze processing demand vs origin supply.",
+        "inventory": "Search for 'ICE Cocoa Certified Stocks' and 'European cocoa warehouse stocks'. Look for inventory trends.",
+        "sentiment": "Search for 'Cocoa COT report non-commercial net length'. Determine if market is overbought.",
+        "technical": "Search for 'Cocoa futures technical analysis {contract}' and '{contract} support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find the current '200-day SMA'.",
+        "volatility": "Search for 'Cocoa Futures Implied Volatility Rank current' and '{contract} option volatility skew'. Determine if premiums are cheap or expensive.",
+    },
+    concentration_proxies=['CC', 'SB', 'EWZ', 'NGN=X'],
+    concentration_label="West Africa",
+    cross_commodity_basket={
+        'gold': 'GC=F',
+        'sugar': 'SB=F',
+        'wheat': 'ZW=F',
+        'coffee': 'KC=F',
+    },
 )
 
 
@@ -712,6 +760,11 @@ def _load_profile_from_json(path: str) -> CommodityProfile:
             'supply_chain': 0.05, 'research': 0.005, 'trade_journal': 0.01,
             'default': 0.05
         }),
+        # Commodity-agnostic fields
+        research_prompts=data.get('research_prompts', {}),
+        concentration_proxies=data.get('concentration_proxies', []),
+        concentration_label=data.get('concentration_label', ''),
+        cross_commodity_basket=data.get('cross_commodity_basket', {}),
     )
 
 

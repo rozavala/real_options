@@ -54,7 +54,11 @@ DOMAIN_KEYWORD_WHITELISTS = {
     'logistics': [
         'port', 'shipping', 'container', 'freight', 'strike',
         'rail', 'supply chain', 'suez', 'panama canal'
-    ]
+    ],
+    'cocoa': [
+        'cocoa', 'cacao', 'cc', 'chocolate', 'grinding',
+        'harvest', 'crop', 'ivory coast', 'ghana'
+    ],
 }
 
 def with_retry(max_attempts: int = 3, backoff: float = 2.0):
@@ -1070,7 +1074,7 @@ class XSentimentSentinel(Sentinel):
             # Fallback to profile queries if not explicitly overridden in config
             self.search_queries = self.profile.sentiment_search_queries
 
-        self.from_handles = self.sentinel_config.get('from_handles', [])
+        self.from_handles = self.sentinel_config.get('from_handles') or self.profile.social_accounts
         self.exclude_keywords = self.sentinel_config.get('exclude_keywords',
             ['meme', 'joke', 'spam', 'giveaway'])
 
@@ -1379,7 +1383,8 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
     async def _execute_x_search(self, args: dict) -> dict:
         if not self.x_bearer_token:
             return {"error": "X API not configured", "posts": [], "post_volume": 0, "data_quality": "unavailable"}
-        query = args.get("query", "coffee futures")
+        commodity_name = self.config.get('commodity', {}).get('name', 'coffee')
+        query = args.get("query", f"{commodity_name} futures")
         limit = args.get("limit", 10)
         mode = args.get("mode", "Latest")
         sort_order = "recency" if mode == "Latest" else "relevancy"
@@ -1650,7 +1655,7 @@ class PredictionMarketSentinel(Sentinel):
                 if word_boundary_match(kw, query_lower):
                     return category
         commodity = self.config.get('commodity', {}).get('name', 'coffee').lower()
-        return commodity if commodity in DOMAIN_KEYWORD_WHITELISTS else 'coffee'
+        return commodity if commodity in DOMAIN_KEYWORD_WHITELISTS else commodity
 
     def _passes_domain_filter(self, market: dict, query: str, topic_category: str = None) -> bool:
         """Check if market title is relevant to the query domain.
@@ -1997,40 +2002,45 @@ class MacroContagionSentinel(Sentinel):
 
     async def check_cross_commodity_contagion(self) -> Optional[Dict]:
         try:
-            tickers = {
-                'coffee': 'KC=F',
-                'gold': 'GC=F',
-                'silver': 'SI=F',
-                'wheat': 'ZW=F',
-                'soybeans': 'ZS=F'
+            profile = self.profile
+            yf_ticker = f"{profile.ticker}=F"
+            basket = profile.cross_commodity_basket or {
+                'gold': 'GC=F', 'silver': 'SI=F', 'wheat': 'ZW=F', 'soybeans': 'ZS=F'
             }
+            own_key = profile.ticker.lower()
+            tickers = {own_key: yf_ticker, **basket}
 
             returns = {}
             for name, ticker in tickers.items():
-                hist = await self._get_history(ticker, period="5d", interval="1d") # 1d for correlation
+                hist = await self._get_history(ticker, period="5d", interval="1d")
                 if len(hist) < 2:
                     return None
                 returns[name] = hist['Close'].pct_change().dropna()
 
-            # Simple correlation (requires aligned dates, yfinance usually aligns or pandas handles it)
             import pandas as pd
             df = pd.DataFrame(returns)
             corr = df.corr()
 
-            coffee_gold_corr = corr.loc['coffee', 'gold']
-            coffee_silver_corr = corr.loc['coffee', 'silver']
-            coffee_wheat_corr = corr.loc['coffee', 'wheat']
-            coffee_soy_corr = corr.loc['coffee', 'soybeans']
+            # Dynamically compute correlations against the active commodity
+            precious_keys = [k for k in basket if k in ('gold', 'silver')]
+            grain_keys = [k for k in basket if k in ('wheat', 'soybeans', 'corn')]
 
-            avg_precious_corr = (coffee_gold_corr + coffee_silver_corr) / 2
-            avg_grain_corr = (coffee_wheat_corr + coffee_soy_corr) / 2
+            if precious_keys:
+                avg_precious_corr = sum(corr.loc[own_key, k] for k in precious_keys) / len(precious_keys)
+            else:
+                avg_precious_corr = 0.0
+
+            if grain_keys:
+                avg_grain_corr = sum(corr.loc[own_key, k] for k in grain_keys) / len(grain_keys)
+            else:
+                avg_grain_corr = 0.0
 
             if avg_precious_corr > 0.7 and avg_grain_corr < 0.3:
                 return {
                     "type": "CROSS_COMMODITY_CONTAGION",
                     "correlation_precious": avg_precious_corr,
                     "correlation_grains": avg_grain_corr,
-                    "interpretation": f"{self.profile.name} trading as RISK ASSET (like Gold/Silver), not AG COMMODITY",
+                    "interpretation": f"{profile.name} trading as RISK ASSET (like Gold/Silver), not AG COMMODITY",
                     "severity": "HIGH"
                 }
 
@@ -2130,6 +2140,8 @@ class FundamentalRegimeSentinel(Sentinel):
     """
     def __init__(self, config, event_bus=None, logger=None):
         super().__init__(config)
+        ticker = config.get('commodity', {}).get('ticker', 'KC')
+        self.profile = get_commodity_profile(ticker)
         self.check_interval = 604800  # 1 week
         self.regime_file = Path("data/fundamental_regime.json")
         self.current_regime = self._load_regime()
@@ -2158,8 +2170,9 @@ class FundamentalRegimeSentinel(Sentinel):
 
     def check_news_sentiment(self) -> str:
         try:
-            surplus_url = "https://news.google.com/rss/search?q=coffee+market+surplus"
-            deficit_url = "https://news.google.com/rss/search?q=coffee+market+deficit"
+            commodity_q = self.profile.name.lower().replace(' ', '+')
+            surplus_url = f"https://news.google.com/rss/search?q={commodity_q}+market+surplus"
+            deficit_url = f"https://news.google.com/rss/search?q={commodity_q}+market+deficit"
 
             surplus_feed = feedparser.parse(surplus_url)
             deficit_feed = feedparser.parse(deficit_url)

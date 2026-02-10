@@ -118,7 +118,8 @@ strategy_filter = st.sidebar.multiselect(
 live_price = None
 if config:
     live_data = fetch_live_dashboard_data(config)
-    live_price = live_data.get('KC_Price')
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    live_price = live_data.get(f'{ticker}_Price')
 
 # Grade decisions
 graded_df = grade_decision_quality(council_df)

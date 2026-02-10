@@ -7,7 +7,8 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole
-from trading_bot.utils import get_dollar_multiplier
+from trading_bot.utils import get_dollar_multiplier, get_active_ticker
+from config.commodity_profiles import get_active_profile
 
 logger = logging.getLogger(__name__)
 
@@ -263,40 +264,28 @@ class ComplianceGuardian:
             # The portfolio is kept current via IB's automatic subscription updates.
             portfolio = ib.portfolio()
 
-            # Define Brazil-correlated assets
-            brazil_proxies = ['KC', 'SB', 'EWZ', 'BRL']  # Coffee, Sugar, Brazil ETF, BRL futures
+            # Define correlated assets from profile (commodity-agnostic)
+            profile = get_active_profile(self.config)
+            proxies = profile.concentration_proxies or ['KC', 'SB', 'EWZ', 'BRL']
+            label = profile.concentration_label or "Brazil"
 
-            brazil_exposure = 0.0
-            total_equity = 0.0
+            region_exposure = 0.0
 
-            # Get Net Liquidation Value from Account Summary
-            # We can't easily get it here without async call if not passed.
-            # We will approximate from sum of market values + cash? No.
-            # Let's sum absolute market value of positions as "Gross Exposure"
-            # Concentration = Brazil Gross Exposure / Total Gross Exposure
-
+            # Concentration = Region Gross Exposure / Total Gross Exposure
             total_gross_exposure = sum(abs(p.marketValue) for p in portfolio)
 
             for position in portfolio:
                 symbol = position.contract.symbol
-                if any(proxy in symbol for proxy in brazil_proxies):
-                    brazil_exposure += abs(position.marketValue)
+                if any(proxy in symbol for proxy in proxies):
+                    region_exposure += abs(position.marketValue)
 
-            # If we are adding a trade (assuming it increases exposure), we check current + new?
-            # We don't have new trade size here easily.
-            # We just check CURRENT concentration as a gate.
-
-            concentration_pct = (brazil_exposure / total_gross_exposure) if total_gross_exposure > 0 else 0
+            concentration_pct = (region_exposure / total_gross_exposure) if total_gross_exposure > 0 else 0
 
             if concentration_pct > self.max_brazil_concentration:
-                # If we are adding to it (BULLISH/BEARISH)?
-                # Actually if we are already over limit, we should block ANY trade that adds risk.
-                # Since we don't know if Direction adds or reduces without complex correlation analysis,
-                # we block all NEW signals if concentration is too high.
                 if proposed_direction in ['BULLISH', 'BEARISH']:
-                     return False, f"Brazil concentration at {concentration_pct:.1%} (max: {self.max_brazil_concentration:.0%})"
+                     return False, f"{label} concentration at {concentration_pct:.1%} (max: {self.max_brazil_concentration:.0%})"
 
-            return True, f"Brazil concentration: {concentration_pct:.1%}"
+            return True, f"{label} concentration: {concentration_pct:.1%}"
 
         except Exception as e:
             logger.warning(f"Concentration check failed: {e}")
@@ -386,7 +375,7 @@ class ComplianceGuardian:
         # === SECONDARY: YFinance (fallback) ===
         try:
             from trading_bot.utils import get_market_data_cached
-            symbol = target_contract.symbol if target_contract else 'KC'
+            symbol = target_contract.symbol if target_contract else get_active_ticker(self.config)
             yf_ticker = f"{symbol}=F"
 
             data = get_market_data_cached([yf_ticker], period="1d")

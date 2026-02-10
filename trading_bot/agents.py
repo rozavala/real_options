@@ -133,7 +133,7 @@ class TradingCouncil:
 
     def __init__(self, config: dict):
         """
-        Initializes the Coffee Council with configuration.
+        Initializes the Trading Council with configuration.
 
         Args:
             config: The full application configuration dictionary.

@@ -671,13 +671,14 @@ def fetch_live_dashboard_data(_config):
     Uses underscore prefix for config to prevent Streamlit from hashing it.
     """
     ib = IB()
+    ticker = _config.get('commodity', {}).get('ticker', _config.get('symbol', 'KC'))
     data = {
         "NetLiquidation": 0.0,
         "MaintMarginReq": 0.0,
         "DailyPnL": 0.0,
         "DailyPnLPct": 0.0,
-        "KC_DailyChange": 0.0,
-        "KC_Price": 0.0,
+        f"{ticker}_DailyChange": 0.0,
+        f"{ticker}_Price": 0.0,
         "MarketData": pd.DataFrame()
     }
 
