@@ -85,3 +85,81 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-10 15:45:00,276 - Orchestrator - INFO - No open positions to audit.
 2026-02-10 15:45:00,279 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
 2026-02-10 15:45:03,289 - Orchestrator - INFO - Next task 'guarded_generate_orders' scheduled for 2026-02-10 16:15:00 UTC. Waiting for 0.50 hours.
+Starting orchestrator from /home/rodrigo/real_options...
+2026-02-10 15:59:30,473 - Orchestrator - INFO - =============================================
+2026-02-10 15:59:30,474 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-10 15:59:30,474 - Orchestrator - INFO - =============================================
+2026-02-10 15:59:30,476 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-10 15:59:30,476 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
+2026-02-10 15:59:30,476 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-10 15:59:30,477 - Orchestrator - INFO - Expiry filter window: 45-365 DTE
+2026-02-10 15:59:30,614 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-02-10 15:59:30,614 - Orchestrator - INFO - No deferred triggers to process.
+2026-02-10 15:59:30,614 - Orchestrator - INFO - Environment: DEV. Applying -30 minute 'Civil War' avoidance offset.
+2026-02-10 15:59:30,621 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 7 scheduled tasks already passed:
+  - 03:00 ET: start_monitoring
+  - 03:01 ET: process_deferred_triggers
+  - 04:30 ET: cleanup_orphaned_theses
+  - 08:00 ET: run_position_audit_cycle
+  - 08:30 ET: guarded_generate_orders
+  - 10:30 ET: close_stale_positions
+  - 10:45 ET: run_position_audit_cycle
+2026-02-10 15:59:30,623 - Orchestrator - INFO - --- Recovery: Evaluating 7 missed tasks ---
+2026-02-10 15:59:30,624 - Orchestrator - INFO - 🔄 RECOVERY: Running missed start_monitoring (was scheduled 03:00 ET)
+2026-02-10 15:59:30,624 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
+2026-02-10 15:59:30,628 - Orchestrator - INFO - --- Starting position monitoring process ---
+2026-02-10 15:59:30,632 - Orchestrator - INFO - Successfully started position monitor with PID: 1277979
+2026-02-10 15:59:30,632 - Orchestrator - INFO - Started position monitoring service.
+2026-02-10 15:59:30,635 - Orchestrator - INFO - ✅ RECOVERY: start_monitoring completed
+2026-02-10 15:59:30,635 - Orchestrator - INFO - ✅ ALREADY RAN: process_deferred_triggers completed earlier today (before restart). Skipping re-execution.
+2026-02-10 15:59:30,635 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses (was scheduled 04:30 ET)
+2026-02-10 15:59:30,635 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-10 15:59:30,636 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 270...
+2026-02-10 15:59:30,973 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 270
+2026-02-10 15:59:31,028 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-10 15:59:31,264 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-10 15:59:31,402 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-10 15:59:31,402 - trading_bot.connection_pool - INFO - Disconnecting IB (cleanup)...
+2026-02-10 15:59:34,413 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-10 15:59:34,414 - Orchestrator - INFO - 🔄 RECOVERY: Running missed run_position_audit_cycle (was scheduled 08:00 ET)
+2026-02-10 15:59:34,414 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-10 15:59:34,414 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 235...
+2026-02-10 15:59:34,761 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 235
+2026-02-10 15:59:34,767 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-10 15:59:34,802 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-10 15:59:34,834 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
+2026-02-10 15:59:34,836 - Orchestrator - INFO - No open positions to audit.
+2026-02-10 15:59:34,839 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
+2026-02-10 15:59:35,635 - Orchestrator - INFO - 2026-02-10 15:59:35,634 - trading_bot.connection_pool - INFO - Connecting IB (monitor) ID: 132...
+2026-02-10 15:59:35,994 - Orchestrator - INFO - 2026-02-10 15:59:35,994 - trading_bot.connection_pool - INFO - IB (monitor) connected successfully with ID 132
+2026-02-10 15:59:36,004 - Orchestrator - INFO - 2026-02-10 15:59:36,004 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-10 15:59:36,004 - Orchestrator - INFO - 2026-02-10 15:59:36,004 - __main__ - INFO - Position monitor connected and watching open positions.
+2026-02-10 15:59:36,004 - Orchestrator - INFO - 2026-02-10 15:59:36,004 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
+2026-02-10 15:59:36,005 - Orchestrator - INFO - 2026-02-10 15:59:36,004 - root - INFO - Order status and execution event handlers registered.
+2026-02-10 15:59:37,847 - Orchestrator - INFO - ✅ RECOVERY: run_position_audit_cycle completed
+2026-02-10 15:59:37,848 - Orchestrator - INFO - ✅ ALREADY RAN: guarded_generate_orders completed earlier today (before restart). Skipping re-execution.
+2026-02-10 15:59:37,848 - Orchestrator - INFO - 🔄 RECOVERY: Running missed close_stale_positions (was scheduled 10:30 ET)
+2026-02-10 15:59:37,848 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-10 15:59:37,848 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 143...
+2026-02-10 15:59:37,972 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 143
+2026-02-10 15:59:37,976 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-10 15:59:37,977 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-10 15:59:38,078 - OrderManager - INFO - No open positions found in the IB account. Nothing to close.
+2026-02-10 15:59:38,079 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-10 15:59:41,086 - Orchestrator - INFO - ✅ RECOVERY: close_stale_positions completed
+2026-02-10 15:59:41,086 - Orchestrator - INFO - System restarted with 6 missed tasks.
+✅ 4 recovered | ⏭️ 0 skipped | ✔️ 2 already ran
+2026-02-10 15:59:41,389 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-10 15:59:41,394 - Orchestrator - INFO - Next task 'guarded_generate_orders' scheduled for 2026-02-10 16:15:00 UTC. Waiting for 0.26 hours.
+2026-02-10 15:59:41,395 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-10 15:59:41,396 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 10 active alerts from disk (normalized from 10)
+2026-02-10 15:59:41,543 - trading_bot.sentinels - INFO - LogisticsSentinel: Generated 5 RSS URLs for Coffee (Arabica)
+2026-02-10 15:59:41,543 - trading_bot.sentinels - INFO - LogisticsSentinel initialized with model: gemini-3-flash-preview | 5 RSS feeds | Commodity: Coffee (Arabica)
+2026-02-10 15:59:41,640 - trading_bot.sentinels - INFO - NewsSentinel: Generated 5 RSS URLs for Coffee (Arabica)
+2026-02-10 15:59:41,640 - trading_bot.sentinels - INFO - NewsSentinel initialized with model: gemini-3-flash-preview | 5 RSS feeds | Threshold: 8 | Commodity: Coffee (Arabica)
+2026-02-10 15:59:41,673 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-02-10 15:59:41,673 - trading_bot.sentinels - INFO - Loaded state for 3 prediction market topics
+2026-02-10 15:59:41,674 - trading_bot.sentinels - INFO - Reloading prediction market topics...
+2026-02-10 15:59:41,674 - trading_bot.sentinels - INFO - Topics reloaded: 3
+2026-02-10 15:59:41,674 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 3 topics
+2026-02-10 15:59:41,775 - trading_bot.self_healing - INFO - Self-Healing Monitor started

@@ -3,3 +3,121 @@
 
   URL: http://0.0.0.0:8501
 
+2026-02-10 15:47:46,505 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-02-10 15:47:46,506 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-02-10 15:47:46,506 - trading_bot.connection_pool - INFO - Connecting IB (dashboard_orders) ID: 161...
+2026-02-10 15:47:46,506 - ib_insync.client - INFO - Connecting to 127.0.0.1:7497 with clientId 161...
+2026-02-10 15:47:46,508 - ib_insync.client - INFO - Connected
+2026-02-10 15:47:46,524 - ib_insync.client - INFO - Logged on to server version 176
+2026-02-10 15:47:46,531 - ib_insync.wrapper - INFO - Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-02-10 15:47:46,531 - ib_insync.wrapper - INFO - Warning 2107, reqId -1: HMDS data farm connection is inactive but should be available upon demand.ushmds
+2026-02-10 15:47:46,531 - ib_insync.wrapper - INFO - Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-02-10 15:47:46,531 - ib_insync.client - INFO - API connection ready
+2026-02-10 15:47:46,648 - ib_insync.ib - INFO - Synchronization complete
+2026-02-10 15:47:46,648 - trading_bot.connection_pool - INFO - IB (dashboard_orders) connected successfully with ID 161
+2026-02-10 15:47:46,657 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-10 15:47:46,657 - OrderManager - INFO - Connected to IB for signal generation (purpose: dashboard_orders).
+2026-02-10 15:47:46,657 - OrderManager - INFO - Step 1: Generating structured signals via Council...
+2026-02-10 15:47:46,657 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
+2026-02-10 15:47:46,846 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-10 15:47:46,846 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-10 15:47:46,846 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'openai', 'anthropic', 'xai'], 'diversity_score': 1.0}
+2026-02-10 15:47:46,869 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-10 15:47:46,990 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-10 15:47:46,996 - trading_bot.enhanced_brier - INFO - Loaded 467 predictions from ./data/enhanced_brier.json
+2026-02-10 15:47:47,071 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-10 15:47:47,072 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-10 15:47:47,072 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-10 15:47:47,072 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-10 15:47:47,072 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-10 15:47:47,072 - trading_bot.agents - INFO - Grounded data cache invalidated (0 entries cleared). Next cycle will perform fresh searches.
+2026-02-10 15:47:47,072 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-10 15:47:47,072 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-10 15:47:47,072 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-10 15:47:47,429 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-10 15:47:47,430 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-10 15:47:47,430 - trading_bot.market_data_provider - INFO - Building market context for 5 contracts...
+2026-02-10 15:47:47,431 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-10 15:47:47,431 - trading_bot.market_data_provider - INFO - Building market context for KCN6 (202607)...
+2026-02-10 15:47:47,432 - trading_bot.market_data_provider - INFO - Building market context for KCU6 (202609)...
+2026-02-10 15:47:47,608 - ib_insync.wrapper - INFO - Warning 2119, reqId -1: Market data farm is connecting:usfuture.nj
+2026-02-10 15:47:48,112 - ib_insync.wrapper - INFO - Warning 2119, reqId -1: Market data farm is connecting:usfuture.nj
+2026-02-10 15:47:48,529 - ib_insync.wrapper - INFO - Warning 2104, reqId -1: Market data farm connection is OK:usfuture.nj
+2026-02-10 15:47:52,461 - trading_bot.market_data_provider - WARNING - No price available for KCK6
+2026-02-10 15:47:52,462 - trading_bot.market_data_provider - WARNING - Could not get price for KCK6 (202605). Using NaN context.
+2026-02-10 15:47:52,462 - trading_bot.market_data_provider - WARNING - No price available for KCN6
+2026-02-10 15:47:52,462 - trading_bot.market_data_provider - WARNING - Could not get price for KCN6 (202607). Using NaN context.
+2026-02-10 15:47:52,462 - trading_bot.market_data_provider - WARNING - No price available for KCU6
+2026-02-10 15:47:52,462 - trading_bot.market_data_provider - WARNING - Could not get price for KCU6 (202609). Using NaN context.
+2026-02-10 15:47:52,463 - trading_bot.market_data_provider - INFO - Building market context for KCZ6 (202612)...
+2026-02-10 15:47:52,463 - trading_bot.market_data_provider - INFO - Building market context for KCH7 (202703)...
+2026-02-10 15:47:57,493 - trading_bot.market_data_provider - WARNING - No price available for KCZ6
+2026-02-10 15:47:57,493 - trading_bot.market_data_provider - WARNING - Could not get price for KCZ6 (202612). Using NaN context.
+2026-02-10 15:47:57,493 - trading_bot.market_data_provider - WARNING - No price available for KCH7
+2026-02-10 15:47:57,493 - trading_bot.market_data_provider - WARNING - Could not get price for KCH7 (202703). Using NaN context.
+2026-02-10 15:47:57,494 - trading_bot.market_data_provider - INFO - Market context complete: 0/5 contracts successful
+2026-02-10 15:47:57,494 - trading_bot.signal_generator - INFO - Market context built for 5 contracts
+2026-02-10 15:47:57,495 - trading_bot.signal_generator - WARNING - Skipping KCK6 (202605): No live market data. Avoiding wasted LLM spend.
+2026-02-10 15:47:57,497 - trading_bot.signal_generator - WARNING - Skipping KCN6 (202607): No live market data. Avoiding wasted LLM spend.
+2026-02-10 15:47:57,498 - trading_bot.signal_generator - WARNING - Skipping KCU6 (202609): No live market data. Avoiding wasted LLM spend.
+2026-02-10 15:47:57,498 - trading_bot.signal_generator - WARNING - Skipping KCZ6 (202612): No live market data. Avoiding wasted LLM spend.
+2026-02-10 15:47:57,498 - trading_bot.signal_generator - WARNING - Skipping KCH7 (202703): No live market data. Avoiding wasted LLM spend.
+2026-02-10 15:47:57,501 - OrderManager - INFO - Generated 5 signals: [{'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}, {'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}, {'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}, {'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}, {'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}]
+2026-02-10 15:47:57,501 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-10 15:47:57,814 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-10 15:47:57,815 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-10 15:47:57,815 - OrderManager - INFO - Skipping KCH7: Too deferred (400 days > 365 max)
+2026-02-10 15:47:57,815 - OrderManager - INFO - Date filter passed: 4/5 contracts within 365 days.
+2026-02-10 15:47:57,816 - OrderManager - INFO - Checking liquidity for 4 contracts (parallel)...
+2026-02-10 15:47:59,819 - OrderManager - INFO - Skipping KCK6: Insufficient volume (0 < 20 minimum)
+2026-02-10 15:47:59,819 - OrderManager - INFO - Skipping KCN6: Insufficient volume (0 < 20 minimum)
+2026-02-10 15:47:59,819 - OrderManager - INFO - Skipping KCU6: Insufficient volume (0 < 20 minimum)
+2026-02-10 15:47:59,819 - OrderManager - INFO - Skipping KCZ6: Insufficient volume (0 < 20 minimum)
+2026-02-10 15:48:00,320 - OrderManager - INFO - Liquidity check cleanup complete.
+2026-02-10 15:48:00,320 - OrderManager - WARNING - No futures remaining after Volume Filter.
+2026-02-10 15:48:00,321 - trading_bot.connection_pool - INFO - Disconnecting IB (dashboard_orders)...
+2026-02-10 15:48:00,321 - ib_insync.ib - INFO - Disconnecting from 127.0.0.1:7497, 985 B sent in 29 messages, 34.3 kB received in 421 messages, session time 13.8 s.
+2026-02-10 15:48:00,321 - ib_insync.client - INFO - Disconnecting
+2026-02-10 15:48:00,322 - ib_insync.client - INFO - Disconnected.
+2026-02-10 15:48:03,325 - OrderManager - INFO - No orders were queued. Skipping placement step.
+2026-02-10 15:48:03,325 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-02-10 15:48:03,604 - Utilities - INFO - Connection pool released successfully
+2026-02-10 15:59:58,990 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-02-10 15:59:58,990 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-02-10 15:59:58,992 - trading_bot.connection_pool - INFO - Connecting IB (dashboard_orders) ID: 162...
+2026-02-10 15:59:58,992 - ib_insync.client - INFO - Connecting to 127.0.0.1:7497 with clientId 162...
+2026-02-10 15:59:58,993 - ib_insync.client - INFO - Connected
+2026-02-10 15:59:58,999 - ib_insync.client - INFO - Logged on to server version 176
+2026-02-10 15:59:59,007 - ib_insync.wrapper - INFO - Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-02-10 15:59:59,007 - ib_insync.wrapper - INFO - Warning 2107, reqId -1: HMDS data farm connection is inactive but should be available upon demand.ushmds
+2026-02-10 15:59:59,007 - ib_insync.wrapper - INFO - Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-02-10 15:59:59,007 - ib_insync.client - INFO - API connection ready
+2026-02-10 15:59:59,218 - ib_insync.ib - INFO - Synchronization complete
+2026-02-10 15:59:59,218 - trading_bot.connection_pool - INFO - IB (dashboard_orders) connected successfully with ID 162
+2026-02-10 15:59:59,226 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-10 15:59:59,227 - OrderManager - INFO - Connected to IB for signal generation (purpose: dashboard_orders).
+2026-02-10 15:59:59,227 - OrderManager - INFO - Step 1: Generating structured signals via Council...
+2026-02-10 15:59:59,227 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
+2026-02-10 15:59:59,367 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-10 15:59:59,368 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-10 15:59:59,368 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'openai', 'anthropic', 'xai'], 'diversity_score': 1.0}
+2026-02-10 15:59:59,379 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-10 15:59:59,384 - trading_bot.enhanced_brier - INFO - Loaded 467 predictions from ./data/enhanced_brier.json
+2026-02-10 15:59:59,450 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-10 15:59:59,451 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-10 15:59:59,451 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-10 15:59:59,451 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-10 15:59:59,451 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-10 15:59:59,451 - trading_bot.agents - INFO - Grounded data cache invalidated (0 entries cleared). Next cycle will perform fresh searches.
+2026-02-10 15:59:59,451 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-10 15:59:59,451 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-10 15:59:59,451 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-10 15:59:59,630 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-10 15:59:59,630 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-10 15:59:59,630 - trading_bot.market_data_provider - INFO - Building market context for 5 contracts...
+2026-02-10 15:59:59,630 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-10 15:59:59,630 - trading_bot.market_data_provider - INFO - Building market context for KCN6 (202607)...
+2026-02-10 15:59:59,631 - trading_bot.market_data_provider - INFO - Building market context for KCU6 (202609)...
+2026-02-10 15:59:59,646 - ib_insync.wrapper - INFO - Warning 2119, reqId -1: Market data farm is connecting:usfuture.nj
+2026-02-10 16:00:00,147 - ib_insync.wrapper - INFO - Warning 2119, reqId -1: Market data farm is connecting:usfuture.nj
+2026-02-10 16:00:00,174 - ib_insync.wrapper - INFO - Warning 2104, reqId -1: Market data farm connection is OK:usfuture.nj
