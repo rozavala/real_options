@@ -270,23 +270,17 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         return None
 
     # 3. Validate all legs were qualified successfully before pricing
-    validated_legs = []
     for leg in qualified_legs:
         if leg.conId == 0:
             logging.error(f"Strike not listed: {leg.right} @ {leg.strike} "
                           f"(expiry={leg.lastTradeDateOrContractMonth}, class={leg.tradingClass})")
             return None
-        validated_legs.append(leg)
-
-    if len(validated_legs) != len(leg_contracts):
-        logging.error("Mismatch between number of requested and qualified legs. Aborting.")
-        return None
 
     # 4. Price each leg theoretically and get live market spread
     net_theoretical_price = 0.0
     combo_bid_price = 0.0
     combo_ask_price = 0.0
-    for i, q_leg in enumerate(validated_legs):
+    for i, q_leg in enumerate(qualified_legs):
         leg_action = legs_def[i][1]  # 'BUY' or 'SELL'
 
         market_data = await get_option_market_data(ib, q_leg, strategy_def['future_contract'])
@@ -421,7 +415,7 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
 
     # 6. Build the Bag contract using qualified leg conIds
     combo = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')
-    for i, q_leg in enumerate(validated_legs):
+    for i, q_leg in enumerate(qualified_legs):
         leg_action = legs_def[i][1]
         combo.comboLegs.append(ComboLeg(conId=q_leg.conId, ratio=1, action=leg_action, exchange=chain['exchange']))
 
