@@ -1,12 +1,6 @@
 import unittest
 import asyncio
 from unittest.mock import MagicMock, patch, AsyncMock
-import sys
-
-# Mock chromadb and pysqlite3 before importing modules that use them
-sys.modules['chromadb'] = MagicMock()
-sys.modules['pysqlite3'] = MagicMock()
-
 from ib_insync import IB, Contract, Future, Bag, ComboLeg, Position, OrderStatus, Trade, FuturesOption, PnL, PnLSingle
 
 from trading_bot.risk_management import manage_existing_positions, _check_risk_once, _on_order_status
