@@ -488,13 +488,13 @@ if dedup_metrics.get('total_triggers', 0) > 0:
     st.caption("🛡️ Trigger Deduplicator")
     d_cols = st.columns(4)
     with d_cols[0]:
-        st.metric("Total Triggers", dedup_metrics['total_triggers'])
+        st.metric("Total Triggers", dedup_metrics['total_triggers'], help="Total raw event triggers received from sentinels")
     with d_cols[1]:
-        st.metric("Processed", dedup_metrics['processed'])
+        st.metric("Processed", dedup_metrics['processed'], help="Unique triggers passed to the Council for analysis")
     with d_cols[2]:
-        st.metric("Filtered", dedup_metrics['filtered'])
+        st.metric("Filtered", dedup_metrics['filtered'], help="Duplicate triggers suppressed to prevent redundant analysis")
     with d_cols[3]:
-        st.metric("Efficiency", f"{dedup_metrics['efficiency']:.1%}")
+        st.metric("Efficiency", f"{dedup_metrics['efficiency']:.1%}", help="Pass-through rate (unique signals / total triggers)")
 
 # Sentinel Details Expander
 with st.expander("🔍 Sentinel Details"):
@@ -882,7 +882,8 @@ try:
         with router_cols[0]:
             st.metric(
                 "Total Requests",
-                metrics.get('total_requests', 0)
+                metrics.get('total_requests', 0),
+                help="Total LLM API requests routed"
             )
 
         with router_cols[1]:
@@ -890,14 +891,16 @@ try:
             st.metric(
                 "Success Rate",
                 f"{success_rate:.1f}%",
-                delta_color="normal" if success_rate > 95 else "inverse"
+                delta_color="normal" if success_rate > 95 else "inverse",
+                help="Percentage of requests handled by primary provider without fallback"
             )
 
         with router_cols[2]:
             st.metric(
                 "Fallback Count",
                 metrics.get('fallback_count', 0),
-                delta_color="inverse"  # Lower is better
+                delta_color="inverse",  # Lower is better
+                help="Number of times the router switched to backup providers"
             )
 
         with router_cols[3]:
