@@ -906,18 +906,14 @@ if price_df is not None and not price_df.empty:
             st.metric("Range", f"${high - low:.2f}")
 
     # === DRAW CHARTS ===
-    # CREATE SUBPLOTS WITH SECONDARY Y-AXIS
-    # CRITICAL: shared_xaxes must be False — Plotly candlestick traces fail to render
-    # when shared_xaxes=True in make_subplots (known rendering bug).
+    # CRITICAL: Plotly go.Candlestick fails to render in make_subplots when
+    # shared_xaxes=True or secondary_y specs are present (rendering bug).
+    # Must use shared_xaxes=False with NO specs to get candlestick working.
     fig = make_subplots(
         rows=2, cols=1,
         shared_xaxes=False,
         vertical_spacing=0.05,
         row_heights=[0.75, 0.25],
-        specs=[
-            [{"secondary_y": False}],  # Row 1: Price chart
-            [{"secondary_y": True}]    # Row 2: Confidence (left) + Volume (right)
-        ]
     )
 
     # 1. Candlestick (Row 1)
@@ -973,27 +969,30 @@ if price_df is not None and not price_df.empty:
             name=name, showlegend=True
         ), row=1, col=1)
 
-    # 4. Volume (Row 2 - SECONDARY Y-AXIS on RIGHT)
+    # 4. Volume (Row 2)
     if 'Volume' in price_df.columns:
         fig.add_trace(go.Bar(
             x=price_df['num_index'],
             y=price_df['Volume'],
-            marker_color='rgba(100, 150, 255, 0.4)',  # Slightly more visible
+            marker_color='rgba(100, 150, 255, 0.4)',
             name='Volume',
             showlegend=False,
-        ), row=2, col=1, secondary_y=True)
+        ), row=2, col=1)
 
-    # 5. Confidence (Row 2 - PRIMARY Y-AXIS on LEFT)
+    # 5. Confidence (Row 2 — overlaid on volume axis, scaled to visible range)
     if not plot_df.empty and show_confidence:
+        # Scale confidence (0-1) to volume range so both are visible on same axis
+        max_vol = price_df['Volume'].max() if 'Volume' in price_df.columns and not price_df['Volume'].empty else 1
+        scaled_confidence = plot_df['plot_confidence'] * max_vol
         fig.add_trace(go.Scatter(
             x=plot_df['plot_x_num'],
-            y=plot_df['plot_confidence'],
+            y=scaled_confidence,
             mode='markers+lines',
             line=dict(color='#00CC96', width=1.5, dash='dot'),
             marker=dict(color='#00CC96', size=8, symbol='circle'),
             name='Confidence',
             showlegend=False,
-        ), row=2, col=1, secondary_y=False)
+        ), row=2, col=1)
 
     # === DAY & WEEK SEPARATORS (FIXED VISIBILITY) ===
     if show_day_separators and len(price_df) > 1:
@@ -1115,27 +1114,13 @@ if price_df is not None and not price_df.empty:
     else:
         fig.update_yaxes(title_text="Price (¢/lb)", row=1, col=1)
 
-    # Row 2 Primary Y-axis (Confidence) - LEFT
-    fig.update_yaxes(
-        title_text="Confidence",
-        range=[0, 1],
-        tickformat='.0%',
-        side='left',
-        showgrid=True,
-        gridcolor='rgba(128, 128, 128, 0.2)',
-        row=2, col=1,
-        secondary_y=False
-    )
-
-    # Row 2 Secondary Y-axis (Volume) - RIGHT
+    # Row 2 Y-axis (Volume)
     fig.update_yaxes(
         title_text="Volume",
-        side='right',
         showgrid=True,
-        gridcolor='rgba(100, 150, 255, 0.1)',
+        gridcolor='rgba(128, 128, 128, 0.2)',
         tickformat=',d',
         row=2, col=1,
-        secondary_y=True
     )
 
     # CRITICAL: Fully disable candlestick rangeslider to prevent it from eating row 1's space.
