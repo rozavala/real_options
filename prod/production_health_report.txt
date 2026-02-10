@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Tue Feb 10 07:02:02 UTC 2026
+Timestamp: Tue Feb 10 14:58:36 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  07:02:02 up 29 days, 13:25,  2 users,  load average: 0.81, 0.75, 0.60
+Uptime:  14:58:36 up 29 days, 21:21,  2 users,  load average: 0.32, 0.31, 0.28
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,18 +16,18 @@ tmpfs           392M   60K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.2Gi       347Mi        34Mi       1.4Gi       1.6Gi
-Swap:          4.0Gi       444Mi       3.6Gi
+Mem:           3.8Gi       2.3Gi       357Mi        34Mi       1.3Gi       1.5Gi
+Swap:          4.0Gi       464Mi       3.5Gi
 
 === LOAD AVERAGE ===
-0.81 0.75 0.60 2/748 943582
+0.32 0.31 0.28 2/764 953783
 
 === PROCESS STATUS ===
 Trading processes:
-console   943400  3.7  7.5 861908 304252 ?       Ssl  06:59   0:05 /home/console/real_options/venv/bin/python -u orchestrator.py
+console   943400  0.2 10.2 1879764 410576 ?      Ssl  06:59   1:10 /home/console/real_options/venv/bin/python -u orchestrator.py
 
 Dashboard processes:
-console   943413  6.0  7.4 2718240 297204 ?      Sl   06:59   0:07 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console   943413  0.3  8.7 2870868 351760 ?      Sl   06:59   1:27 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -35,3 +35,10 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
+2026-02-10 14:09:38,115 - ib_insync.wrapper - ERROR - Error 300, reqId 25: Can't find EId with tickerId:25
+2026-02-10 14:09:38,115 - ib_insync.wrapper - ERROR - Error 300, reqId 26: Can't find EId with tickerId:26
+2026-02-10 14:09:38,214 - ib_insync.wrapper - ERROR - Error 300, reqId 27: Can't find EId with tickerId:27
+2026-02-10 14:09:38,314 - ib_insync.wrapper - ERROR - Error 300, reqId 28: Can't find EId with tickerId:28
+2026-02-10 14:09:48,834 - ib_insync.wrapper - ERROR - Error 200, reqId 44: No security definition has been found for the request, contract: FuturesOption(symbol='KC', lastTradeDateOrContractMonth='20261113', strike=280.0, right='P', multiplier='37500.0', exchange='NYBOT', tradingClass='KO')
+2026-02-10 14:09:48,881 - ib_insync.wrapper - ERROR - Error 200, reqId 45: No security definition has been found for the request, contract: FuturesOption(symbol='KC', lastTradeDateOrContractMonth='20261113', strike=275.0, right='P', multiplier='37500.0', exchange='NYBOT', tradingClass='KO')
+2026-02-10 14:09:48,881 - root - ERROR - Mismatch between number of requested and qualified legs. Aborting.
