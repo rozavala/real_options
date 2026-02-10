@@ -199,10 +199,15 @@ def normalize_ml_confidence(raw_confidence: float, calibration_data: dict = None
     damping_factor = 1.5
     return 0.5 + ((raw_confidence - 0.5) / damping_factor)
 
-def extract_sentiment_from_report(report_text: str) -> tuple[str, float]:
-    """Extract sentiment with validated patterns for actual text format."""
+def extract_sentiment_from_report(report_text: str) -> tuple[str, float, bool]:
+    """Extract sentiment with validated patterns for actual text format.
+
+    Returns:
+        (sentiment, confidence, matched) where matched indicates whether
+        any pattern or keyword actually matched (False = fell through to defaults).
+    """
     if not report_text or not isinstance(report_text, str):
-        return "NEUTRAL", 0.5
+        return "NEUTRAL", 0.5, False
 
     # Normalize whitespace
     text = ' '.join(report_text.split())
@@ -224,17 +229,19 @@ def extract_sentiment_from_report(report_text: str) -> tuple[str, float]:
     ]
 
     sentiment = "NEUTRAL"
+    matched = False
     for pattern in patterns:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
             found = match.group(1).upper()
             if found in ['BULLISH', 'BEARISH', 'NEUTRAL']:
                 sentiment = found
+                matched = True
                 break
             # If matched but invalid value (e.g., 'TAG'), continue to next pattern
 
     # Fallback: scan for keywords if NEUTRAL and no pattern matched
-    if sentiment == "NEUTRAL":
+    if sentiment == "NEUTRAL" and not matched:
         text_lower = text.lower()
         bullish_words = ['bullish', 'buy', 'long', 'positive', 'upside', 'support']
         bearish_words = ['bearish', 'sell', 'short', 'negative', 'downside', 'resistance']
@@ -244,8 +251,10 @@ def extract_sentiment_from_report(report_text: str) -> tuple[str, float]:
 
         if bull_count > bear_count:
             sentiment = "BULLISH"
+            matched = True
         elif bear_count > bull_count:
             sentiment = "BEARISH"
+            matched = True
 
     # CONFIDENCE: Extract [CONFIDENCE]: 0.9
     confidence = 0.5
@@ -264,7 +273,7 @@ def extract_sentiment_from_report(report_text: str) -> tuple[str, float]:
         elif any(w in text_lower for w in ["uncertain", "mixed", "unclear"]):
             confidence = 0.3
 
-    return sentiment, confidence
+    return sentiment, confidence, matched
 
 
 class RegimeDetector:
@@ -435,6 +444,7 @@ async def calculate_weighted_decision(
         # === PRIORITY 1: Use structured dict fields if available ===
         sentiment_tag = None
         confidence = 0.5
+        sentiment_matched = False  # Track whether parsing found a real signal
 
         if isinstance(report, dict) and report.get('sentiment'):
             sentiment_tag = str(report['sentiment']).upper().strip()
@@ -442,6 +452,7 @@ async def calculate_weighted_decision(
                 # === v5.3.1: Use shared confidence parser (replaces inline logic) ===
                 raw_conf = report.get('confidence', 0.5)
                 confidence = parse_confidence(raw_conf)
+                sentiment_matched = True
                 logger.debug(f"Agent {agent_name}: Using structured data -> {sentiment_tag} ({confidence:.2f})")
             else:
                 # Invalid sentiment value, fall through to text parsing
@@ -451,7 +462,7 @@ async def calculate_weighted_decision(
         # === PRIORITY 2: Parse from text (with fixed regex) ===
         if sentiment_tag is None:
             report_text = report.get('data', report) if isinstance(report, dict) else str(report)
-            sentiment_tag, confidence = extract_sentiment_from_report(report_text)
+            sentiment_tag, confidence, sentiment_matched = extract_sentiment_from_report(report_text)
             logger.debug(f"Agent {agent_name}: Parsed from text -> {sentiment_tag} ({confidence:.2f})")
 
         confidence = max(0.0, min(1.0, float(confidence)))  # Defensive clamp
@@ -470,8 +481,8 @@ async def calculate_weighted_decision(
         # Stale agents that produced real sentiment still vote, with reduced weight
         # The staleness_weight will be applied in the weighting section below
 
-        # Log default value occurrences for monitoring
-        if direction == Direction.NEUTRAL and confidence == 0.5:
+        # Log default value occurrences for monitoring — only when parsing truly failed
+        if direction == Direction.NEUTRAL and confidence == 0.5 and not sentiment_matched:
             logger.warning(f"Agent {agent_name}: Using DEFAULT values (NEUTRAL/0.5). "
                           f"Report type: {type(report).__name__}, is_stale: {is_stale}, "
                           f"Report preview: {str(report)[:100]}...")

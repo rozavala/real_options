@@ -30,8 +30,8 @@ __all__ = [
     'count_directional_evidence',
 ]
 
-BULLISH_WORDS = {'increase', 'rise', 'surge', 'shortage', 'deficit', 'drought', 'frost', 'bullish', 'strong', 'growth', 'up', 'rose', 'gained', 'rally'}
-BEARISH_WORDS = {'decrease', 'fall', 'drop', 'surplus', 'bumper', 'oversupply', 'bearish', 'weak', 'decline', 'down', 'fell', 'lost', 'crash', 'plunge'}
+BULLISH_WORDS = {'increase', 'rise', 'surge', 'shortage', 'deficit', 'drought', 'frost', 'bullish', 'strong', 'growth', 'up', 'rose', 'gained', 'rally', 'congestion', 'bottleneck', 'backwardation', 'tightness', 'disruption', 'delay', 'restricted'}
+BEARISH_WORDS = {'decrease', 'fall', 'surplus', 'bumper', 'oversupply', 'bearish', 'weak', 'decline', 'down', 'fell', 'lost', 'crash', 'plunge', 'contango', 'glut', 'abundance', 'oversupplied'}
 NEGATION_WORDS = {'not', 'no', 'never', 'neither', 'nor', 'rejected', 'failed',
                   'despite', 'unlikely', 'against', 'overcame', 'ignored', 'dismissed',
                   'without', 'lack', 'absence', 'declining', 'decreased'}

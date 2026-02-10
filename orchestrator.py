@@ -4149,7 +4149,7 @@ async def main():
 
     current_schedule = schedule
     if not is_prod:
-        schedule_offset_minutes = -10
+        schedule_offset_minutes = config.get('schedule', {}).get('dev_offset_minutes', -30)
         logger.info(f"Environment: {env_name}. Applying {schedule_offset_minutes} minute 'Civil War' avoidance offset.")
         current_schedule = apply_schedule_offset(schedule, offset_minutes=schedule_offset_minutes)
     else:
