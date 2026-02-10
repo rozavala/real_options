@@ -72,7 +72,7 @@ class SelfHealingMonitor:
                 state_file.stat().st_mtime, tz=timezone.utc
             )
             age = datetime.now(timezone.utc) - mtime
-            if age > timedelta(hours=2):
+            if age > timedelta(hours=4):
                 logger.warning(
                     f"SELF-HEAL: state.json is {age.total_seconds()/3600:.1f}h old. "
                     f"Agents may be using stale data."

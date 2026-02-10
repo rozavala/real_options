@@ -273,7 +273,8 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
     validated_legs = []
     for leg in qualified_legs:
         if leg.conId == 0:
-            logging.error(f"Failed to qualify contract, conId is 0. Contract details: {leg}")
+            logging.error(f"Strike not listed: {leg.right} @ {leg.strike} "
+                          f"(expiry={leg.lastTradeDateOrContractMonth}, class={leg.tradingClass})")
             return None
         validated_legs.append(leg)
 

@@ -107,6 +107,16 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
     async def process_contract(contract, market_ctx, trigger_type=trigger_type):
         contract_name = f"{contract.localSymbol} ({contract.lastTradeDateOrContractMonth[:6]})"
 
+        # Skip contracts with no live price — avoids wasting LLM spend on NaN data
+        if market_ctx.get('price') is None:
+            logger.warning(f"Skipping {contract_name}: No live market data. Avoiding wasted LLM spend.")
+            return {
+                "action": "NEUTRAL",
+                "confidence": 0.0,
+                "expected_price": None,
+                "reason": "No live market data available"
+            }
+
         # Default values
         final_data = {
             "action": "NEUTRAL",
