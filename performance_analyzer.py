@@ -172,7 +172,8 @@ def generate_executive_summary(
 
     # --- Calculate metrics ---
     signal_col = 'signal' if 'signal' in signals_df.columns else 'master_decision'
-    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date] if 'timestamp' in signals_df.columns else signals_df
+    has_ts = 'timestamp' in signals_df.columns and not signals_df.empty and pd.api.types.is_datetime64_any_dtype(signals_df['timestamp'])
+    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date] if has_ts else signals_df
     signals_fired_today = len(today_signals[today_signals[signal_col] != 'NEUTRAL']) if signal_col in today_signals.columns else 0
     signals_fired_ltd = len(signals_df[signals_df[signal_col] != 'NEUTRAL']) if signal_col in signals_df.columns else 0
 
@@ -243,7 +244,8 @@ def generate_morning_signals_report(signals_df: pd.DataFrame, today_date: dateti
     if signals_df.empty:
         return "No decision signals recorded yet today.\n"
 
-    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date] if 'timestamp' in signals_df.columns else signals_df
+    has_ts = 'timestamp' in signals_df.columns and not signals_df.empty and pd.api.types.is_datetime64_any_dtype(signals_df['timestamp'])
+    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date] if has_ts else signals_df
     if today_signals.empty:
         return "No signals generated today yet.\n"
 
