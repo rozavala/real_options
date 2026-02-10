@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 # === Coffee Bot Real Options - Log Collection (Environment Configurable) ===
 # This script collects logs and pushes them to the logs branch.
 #
@@ -8,7 +9,7 @@
 
 # Load environment variables from .env if present
 if [ -f .env ]; then
-    export $(grep -v '^#' .env | xargs)
+    export $(grep -v '^#' .env | xargs) || true
 fi
 
 # Configuration with defaults
@@ -276,8 +277,17 @@ if git diff --cached --quiet; then
     echo "No changes since last snapshot, skipping commit."
 else
     git commit -m "Snapshot $ENV_NAME: $(date +'%Y-%m-%d %H:%M')"
-    git push origin "$BRANCH"
-    echo "Snapshot pushed to $BRANCH branch."
+    # Retry push with rebase if another env pushed since our fetch
+    for attempt in 1 2 3; do
+        if git push origin "$BRANCH" 2>&1; then
+            echo "Snapshot pushed to $BRANCH branch."
+            break
+        else
+            echo "Push failed (attempt $attempt/3), rebasing and retrying..."
+            git fetch origin "$BRANCH"
+            git rebase "origin/$BRANCH"
+        fi
+    done
 fi
 
 # Worktree cleanup handled by trap

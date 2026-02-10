@@ -201,46 +201,255 @@ async def get_unrealized_pnl(ib: IB, contract: Contract) -> float:
     return pnl.unrealizedPnL if pnl else float('nan')
 
 
+async def _group_positions_by_underlying(ib: IB, all_positions: list, closed_ids: set) -> dict:
+    """Groups positions by their underlying contract ID."""
+    positions_by_underlying = {}
+    for p in all_positions:
+        if p.position == 0 or p.contract.conId in closed_ids:
+            continue
+        # Only process Options / FuturesOptions
+        if not isinstance(p.contract, (FuturesOption, Option)):
+            continue
+
+        try:
+            details = await asyncio.wait_for(ib.reqContractDetailsAsync(p.contract), timeout=5)
+            if details and details[0].underConId:
+                under_con_id = details[0].underConId
+                if under_con_id not in positions_by_underlying:
+                    positions_by_underlying[under_con_id] = []
+                positions_by_underlying[under_con_id].append(p)
+        except Exception as e:
+            logging.warning(f"Could not get details for conId {p.contract.conId}: {e}")
+
+    return positions_by_underlying
+
+
+async def _calculate_combo_risk_metrics(ib: IB, config: dict, combo_legs: list) -> dict:
+    """Calculates P&L and risk metrics for a combo position."""
+    # A. Calculate Live P&L and Entry Cost
+    total_unrealized_pnl = 0.0
+    total_entry_cost = 0.0
+    strikes = []
+
+    for leg_pos in combo_legs:
+        pnl = await get_unrealized_pnl(ib, leg_pos.contract)
+        if util.isNan(pnl):
+            return None  # Cannot calculate metrics without PnL
+
+        total_unrealized_pnl += pnl
+        total_entry_cost += leg_pos.position * leg_pos.avgCost
+        strikes.append(leg_pos.contract.strike)
+
+    if util.isNan(total_unrealized_pnl):
+        return None
+
+    # B. Determine Max Profit / Max Loss Potentials
+    spread_width = max(strikes) - min(strikes) if strikes else 0
+    max_profit_potential = 0.0
+    max_loss_potential = 0.0
+
+    dollar_mult = get_dollar_multiplier(config)
+    FALLBACK_PROFIT_MULTIPLIER = 2.0
+
+    if total_entry_cost > 0:
+        # DEBIT SPREAD
+        max_loss_potential = total_entry_cost
+        max_profit_potential = (spread_width * abs(combo_legs[0].position) * dollar_mult) - total_entry_cost
+        if max_profit_potential <= 0:
+            max_profit_potential = total_entry_cost * FALLBACK_PROFIT_MULTIPLIER
+    else:
+        # CREDIT SPREAD
+        max_profit_potential = abs(total_entry_cost)
+
+        # Determine Max Loss based on Strategy Type
+        relevant_width = spread_width
+
+        if len(combo_legs) == 4:
+            # Iron Condor Check
+            sorted_legs = sorted(combo_legs, key=lambda leg: leg.contract.strike)
+            s_pos = [leg.position for leg in sorted_legs]
+            s_strike = [leg.contract.strike for leg in sorted_legs]
+
+            if (s_pos[0] > 0 and s_pos[-1] > 0 and s_pos[1] < 0 and s_pos[2] < 0):
+                wing1 = s_strike[1] - s_strike[0]
+                wing2 = s_strike[3] - s_strike[2]
+                relevant_width = max(wing1, wing2)
+                logging.info(f"Identified Iron Condor. Using Wing Width: {relevant_width}")
+
+        quantity_mult = max(abs(leg.position) for leg in combo_legs)
+        max_loss_potential = (relevant_width * quantity_mult * dollar_mult) - max_profit_potential
+
+        if max_loss_potential <= 0:
+            max_loss_potential = float('inf')
+
+    # C. Calculate "Capture" and "Risk" Metrics
+    capture_pct = 0.0
+    risk_pct = 0.0
+
+    if max_profit_potential > 0:
+        capture_pct = total_unrealized_pnl / max_profit_potential
+
+    if max_loss_potential == float('inf'):
+        risk_pct = 0.0
+    elif max_loss_potential > 0:
+        risk_pct = total_unrealized_pnl / max_loss_potential
+
+    combo_desc = f"{len(combo_legs)} Legs on {combo_legs[0].contract.localSymbol}"
+    logging.info(f"Combo {combo_desc}: PnL=${total_unrealized_pnl:.2f} | Capture: {capture_pct:.1%} | Risk Used: {risk_pct:.1%}")
+
+    return {
+        'pnl': total_unrealized_pnl,
+        'max_profit': max_profit_potential,
+        'max_loss': max_loss_potential,
+        'capture_pct': capture_pct,
+        'risk_pct': risk_pct,
+        'combo_desc': combo_desc
+    }
+
+
+def _determine_risk_action(metrics: dict, config: dict, position_open_dates: dict, grace_period_seconds: int, combo_legs: list) -> str:
+    """Determines if a risk action is needed (Stop Loss / Take Profit)."""
+    max_risk_loss_pct = config.get('risk_management', {}).get('stop_loss_max_risk_pct', 0.50)
+    target_capture_pct = config.get('risk_management', {}).get('take_profit_capture_pct', 0.80)
+
+    risk_pct = metrics['risk_pct']
+    capture_pct = metrics['capture_pct']
+    max_profit_potential = metrics['max_profit']
+    max_loss_potential = metrics['max_loss']
+    combo_desc = metrics['combo_desc']
+
+    reason = None
+
+    # STOP LOSS CHECK: Have we lost more than X% of our Max Risk?
+    if max_loss_potential > 0 and risk_pct <= -abs(max_risk_loss_pct):
+        reason = f"Stop-Loss (Hit {abs(risk_pct):.1%} of Max Risk)"
+
+    # TAKE PROFIT CHECK: Have we captured X% of potential profit?
+    elif max_profit_potential > 0 and capture_pct >= abs(target_capture_pct):
+        reason = f"Take-Profit (Captured {capture_pct:.1%} of Max Profit)"
+
+    if not reason:
+        return None
+
+    # E. Grace Period Logic (Check trade ledger for age)
+    utc = pytz.utc
+    now_utc = datetime.now(utc)
+
+    position_age_seconds = float('inf')
+    # This is a fallback identifier. It's not perfect but works for now.
+    temp_position_id = "-".join(sorted([p.contract.localSymbol for p in combo_legs]))
+    open_date = position_open_dates.get(temp_position_id)
+    if open_date:
+        position_age_seconds = (now_utc - open_date).total_seconds()
+
+    if position_age_seconds < grace_period_seconds:
+        logging.info(f"'{reason}' trigger for {combo_desc} IGNORED. Position age ({position_age_seconds:.0f}s) is within the grace period ({grace_period_seconds}s).")
+        return None
+
+    return reason
+
+
+async def _execute_risk_closure(ib: IB, config: dict, combo_legs: list, reason: str, pnl: float, closed_ids: set, account: str):
+    """Executes the risk closure (order placement and notification)."""
+    combo_desc = f"{len(combo_legs)} Legs on {combo_legs[0].contract.localSymbol}"
+    logging.info(f"{reason.upper()} TRIGGERED for {combo_desc}")
+    initial_message = (
+        f"<b>{reason}</b>\n"
+        f"PnL: ${pnl:.2f}\n"
+        f"Closing position..."
+    )
+    send_pushover_notification(config.get('notifications', {}), "Risk Alert", initial_message)
+
+    # Close as a single atomic BAG (Combo) order
+    try:
+        # 1. Define the BAG Contract
+        contract = Contract()
+        contract.symbol = config.get('symbol', 'KC')
+        contract.secType = "BAG"
+        contract.currency = "USD"
+        contract.exchange = config.get('exchange', 'NYBOT')
+
+        combo_legs_list = []
+        for leg_pos in combo_legs:
+            # Closing action: Inverse of current position
+            # If Long (pos > 0), we SELL. If Short (pos < 0), we BUY.
+            action = 'SELL' if leg_pos.position > 0 else 'BUY'
+
+            # === M5 FIX: Use actual position size as ratio ===
+            # For closing, ratio should match what we hold
+            leg_qty = abs(int(leg_pos.position))
+
+            combo_legs_list.append(ComboLeg(
+                conId=leg_pos.contract.conId,
+                ratio=leg_qty,  # v3.1: Use actual position size
+                action=action,
+                exchange=config.get('exchange', 'NYBOT')
+            ))
+
+        contract.comboLegs = combo_legs_list
+
+        # 2. Place the Order
+        # We "BUY" the BAG because we defined the legs with their specific closing actions (BUY/SELL).
+        # v3.1: Order quantity is 1 when ratios carry the size
+        qty = 1
+
+        order = MarketOrder("BUY", qty)
+        order.outsideRth = True
+
+        # === v3.1: Calculate GCD for display ===
+        from math import gcd
+        from functools import reduce
+        ratios = [abs(int(p.position)) for p in combo_legs]
+        common_divisor = reduce(gcd, ratios) if ratios else 1
+        readable_qty = ratios[0] // common_divisor if common_divisor and ratios else 0
+
+        logging.info(
+            f"Placing BAG Market Order to close {combo_desc} "
+            f"(Ratios: {[r//common_divisor for r in ratios]}, Qty: {readable_qty})"
+        )
+        place_order(ib, contract, order)
+
+        # Mark as closed AFTER order placement succeeds — if place_order
+        # throws, legs stay visible to future risk checks instead of becoming zombies
+        for leg_pos in combo_legs:
+            closed_ids.add(leg_pos.contract.conId)
+
+    except Exception as e:
+        logging.error(f"Failed to close combo {combo_desc} as BAG: {e}")
+
+    # Clean up PnL subs
+    for leg_pos in combo_legs:
+        ib.cancelPnLSingle(account, '', leg_pos.contract.conId)
+
+
 async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct: float, take_profit_pct: float):
     """
     Performs P&L risk check using 'Percent of Capture' (Profit) and 'Percent of Max Risk' (Loss).
     """
-    if not ib.isConnected(): return
+    if not ib.isConnected():
+        return
 
     # Load new config parameters
     risk_config = config.get('risk_management', {})
-    target_capture_pct = risk_config.get('take_profit_capture_pct', 0.80)
-    max_risk_loss_pct = risk_config.get('stop_loss_max_risk_pct', 0.50)
     grace_period_seconds = risk_config.get('monitoring_grace_period_seconds', 0)
 
     # --- Grace Period Implementation ---
     trade_ledger = get_trade_ledger_df()
     utc = pytz.utc
-    now_utc = datetime.now(utc)
-    
+
     # Handle empty ledger
     if trade_ledger.empty:
-        open_positions_from_ledger = pd.DataFrame()
         position_open_dates = {}
     else:
         open_positions_from_ledger = trade_ledger.groupby('position_id').filter(lambda x: x['quantity'].sum() != 0)
         position_open_dates = open_positions_from_ledger.groupby('position_id')['timestamp'].min().dt.tz_localize(utc).to_dict()
 
     # --- 1. Group Positions by Underlying ---
-    all_positions = [p for p in await asyncio.wait_for(ib.reqPositionsAsync(), timeout=15) if p.position != 0 and p.contract.conId not in closed_ids]
-    if not all_positions: return
+    all_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=15)
+    if not all_positions:
+        return
 
-    positions_by_underlying = {}
-    for p in all_positions:
-        if not isinstance(p.contract, (FuturesOption, Option)): continue
-        try:
-            details = await asyncio.wait_for(ib.reqContractDetailsAsync(p.contract), timeout=5)
-            if details and details[0].underConId:
-                under_con_id = details[0].underConId
-                if under_con_id not in positions_by_underlying: positions_by_underlying[under_con_id] = []
-                positions_by_underlying[under_con_id].append(p)
-        except Exception as e:
-            logging.warning(f"Could not get details for conId {p.contract.conId}: {e}")
+    positions_by_underlying = await _group_positions_by_underlying(ib, all_positions, closed_ids)
 
     logging.info(f"--- Risk Monitor: Checking {len(positions_by_underlying)} combo position(s) ---")
 
@@ -253,177 +462,19 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
             if leg.contract.conId not in active_pnl_con_ids:
                 ib.reqPnLSingle(account, '', leg.contract.conId)
                 new_subs = True
-    if new_subs: await asyncio.sleep(2)
+    if new_subs:
+        await asyncio.sleep(2)
 
     # --- 3. Analyze Each Combo ---
     for under_con_id, combo_legs in positions_by_underlying.items():
+        metrics = await _calculate_combo_risk_metrics(ib, config, combo_legs)
+        if not metrics:
+            continue
 
-        # A. Calculate Live P&L and Entry Cost
-        total_unrealized_pnl = 0.0
-        total_entry_cost = 0.0
-        strikes = []
+        reason = _determine_risk_action(metrics, config, position_open_dates, grace_period_seconds, combo_legs)
 
-        for leg_pos in combo_legs:
-            pnl = await get_unrealized_pnl(ib, leg_pos.contract)
-            if util.isNan(pnl):
-                total_unrealized_pnl = float('nan'); break
-
-            total_unrealized_pnl += pnl
-            total_entry_cost += leg_pos.position * leg_pos.avgCost
-            strikes.append(leg_pos.contract.strike)
-
-        if util.isNan(total_unrealized_pnl): continue
-
-        # B. Determine Max Profit / Max Loss Potentials
-        # Note: total_entry_cost > 0 means DEBIT spread. < 0 means CREDIT spread.
-        spread_width = max(strikes) - min(strikes) if strikes else 0
-
-        # Multiplier adjustment (Coffee futures options usually 37500, but let's assume price logic holds)
-        # We work in "Points" here to match the P&L and Cost numbers
-
-        max_profit_potential = 0.0
-        max_loss_potential = 0.0
-
-        # Get profile-driven dollar multiplier
-        dollar_mult = get_dollar_multiplier(config)
-
-        # Fallback multiplier for undefined profit potential (e.g., single legs)
-        FALLBACK_PROFIT_MULTIPLIER = 2.0
-
-        if total_entry_cost > 0:
-            # DEBIT SPREAD (Bull Call / Bear Put)
-            # Max Risk = What we paid (Entry Cost)
-            max_loss_potential = total_entry_cost
-            # Max Profit = (Width * Size * Multiplier) - Cost.
-            # MECE FIX: Use profile-driven multiplier
-            max_profit_potential = (spread_width * abs(combo_legs[0].position) * dollar_mult) - total_entry_cost
-            # Fallback if huge multiplier makes this weird OR single leg (width=0):
-            if max_profit_potential <= 0:
-                max_profit_potential = total_entry_cost * FALLBACK_PROFIT_MULTIPLIER # Fallback logic
-
-        else:
-            # CREDIT SPREAD (Iron Condor / Short Vertical)
-            # Entry Cost is negative (e.g. -500).
-            max_profit_potential = abs(total_entry_cost) # We keep the credit
-            # Max Loss = Width - Credit
-            max_loss_potential = (spread_width * abs(combo_legs[0].position) * dollar_mult) - max_profit_potential
-
-            # FIX: Handle single-leg credit positions (width=0) resulting in negative max_loss
-            if max_loss_potential <= 0:
-                # Infinite risk scenario (naked short)
-                max_loss_potential = float('inf')
-
-        # C. Calculate "Capture" and "Risk" Metrics
-        capture_pct = 0.0
-        risk_pct = 0.0
-
-        if max_profit_potential > 0:
-            capture_pct = total_unrealized_pnl / max_profit_potential
-        else:
-            capture_pct = 0.0 # Safety default
-
-        if max_loss_potential == float('inf'):
-             risk_pct = 0.0 # Cannot calculate % of infinity
-        elif max_loss_potential > 0:
-            risk_pct = total_unrealized_pnl / max_loss_potential
-            # Note: total_unrealized_pnl is negative when losing, so risk_pct will be negative.
-
-        combo_desc = f"{len(combo_legs)} Legs on {combo_legs[0].contract.localSymbol}"
-        logging.info(f"Combo {combo_desc}: PnL=${total_unrealized_pnl:.2f} | Capture: {capture_pct:.1%} | Risk Used: {risk_pct:.1%}")
-
-        # D. Check Triggers
-        reason = None
-
-        # STOP LOSS CHECK: Have we lost more than X% of our Max Risk?
-        # e.g. risk_pct is -0.55 (lost 55%), threshold is 0.50.
-        if max_loss_potential > 0 and risk_pct <= -abs(max_risk_loss_pct):
-            reason = f"Stop-Loss (Hit {abs(risk_pct):.1%} of Max Risk)"
-
-        # TAKE PROFIT CHECK: Have we captured X% of potential profit?
-        elif max_profit_potential > 0 and capture_pct >= abs(target_capture_pct):
-            reason = f"Take-Profit (Captured {capture_pct:.1%} of Max Profit)"
-
-        # E. Grace Period Logic (Check trade ledger for age)
-        position_age_seconds = float('inf')
-        # This is a fallback identifier. It's not perfect but works for now.
-        temp_position_id = "-".join(sorted([p.contract.localSymbol for p in combo_legs]))
-        open_date = position_open_dates.get(temp_position_id)
-        if open_date:
-            position_age_seconds = (now_utc - open_date).total_seconds()
-
-        if reason and position_age_seconds < grace_period_seconds:
-            logging.info(f"'{reason}' trigger for {combo_desc} IGNORED. Position age ({position_age_seconds:.0f}s) is within the grace period ({grace_period_seconds}s).")
-            reason = None
-
-        # F. Execution
         if reason:
-            logging.info(f"{reason.upper()} TRIGGERED for {combo_desc}")
-            initial_message = (
-                f"<b>{reason}</b>\n"
-                f"PnL: ${total_unrealized_pnl:.2f}\n"
-                f"Closing position..."
-            )
-            send_pushover_notification(config.get('notifications', {}), "Risk Alert", initial_message)
-
-            # Close as a single atomic BAG (Combo) order
-            try:
-                # 1. Define the BAG Contract
-                contract = Contract()
-                contract.symbol = config.get('symbol', 'KC')
-                contract.secType = "BAG"
-                contract.currency = "USD"
-                contract.exchange = config.get('exchange', 'NYBOT')
-
-                combo_legs_list = []
-                for leg_pos in combo_legs:
-                    # Closing action: Inverse of current position
-                    # If Long (pos > 0), we SELL. If Short (pos < 0), we BUY.
-                    action = 'SELL' if leg_pos.position > 0 else 'BUY'
-
-                    # === M5 FIX: Use actual position size as ratio ===
-                    # For closing, ratio should match what we hold
-                    leg_qty = abs(int(leg_pos.position))
-
-                    combo_legs_list.append(ComboLeg(
-                        conId=leg_pos.contract.conId,
-                        ratio=leg_qty,  # v3.1: Use actual position size
-                        action=action,
-                        exchange=config.get('exchange', 'NYBOT')
-                    ))
-
-                contract.comboLegs = combo_legs_list
-
-                # 2. Place the Order
-                # We "BUY" the BAG because we defined the legs with their specific closing actions (BUY/SELL).
-                # v3.1: Order quantity is 1 when ratios carry the size
-                qty = 1
-
-                order = MarketOrder("BUY", qty)
-                order.outsideRth = True
-
-                # === v3.1: Calculate GCD for display ===
-                from math import gcd
-                from functools import reduce
-                ratios = [abs(int(p.position)) for p in combo_legs]
-                common_divisor = reduce(gcd, ratios) if ratios else 1
-                readable_qty = ratios[0] // common_divisor if common_divisor and ratios else 0
-
-                logging.info(
-                    f"Placing BAG Market Order to close {combo_desc} "
-                    f"(Ratios: {[r//common_divisor for r in ratios]}, Qty: {readable_qty})"
-                )
-                place_order(ib, contract, order)
-
-                # Mark as closed AFTER order placement succeeds — if place_order
-                # throws, legs stay visible to future risk checks instead of becoming zombies
-                for leg_pos in combo_legs:
-                    closed_ids.add(leg_pos.contract.conId)
-
-            except Exception as e:
-                logging.error(f"Failed to close combo {combo_desc} as BAG: {e}")
-
-            # Clean up PnL subs
-            for leg_pos in combo_legs: ib.cancelPnLSingle(account, '', leg_pos.contract.conId)
+            await _execute_risk_closure(ib, config, combo_legs, reason, metrics['pnl'], closed_ids, account)
 
 
 # --- Order Fill Monitoring ---
@@ -509,7 +560,8 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
     def order_status_handler(trade: Trade):
         asyncio.create_task(_on_order_status(ib, trade))
 
-    fill_handler = lambda t, f: _on_fill(t, f, config)
+    def fill_handler(t, f):
+        _on_fill(t, f, config)
 
     # Clear filled order tracking from previous session to prevent unbounded growth
     # and avoid stale ID collisions after IB Gateway restarts
@@ -546,9 +598,11 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
                 logging.debug(f"P&L monitor cycle complete. Waiting {interval} seconds.")
                 await asyncio.sleep(interval)
             except asyncio.CancelledError:
-                logging.info("P&L monitoring task was cancelled."); break
+                logging.info("P&L monitoring task was cancelled.")
+                break
             except Exception as e:
-                logging.error(f"Error in P&L monitor loop: {e}"); await asyncio.sleep(60)
+                logging.error(f"Error in P&L monitor loop: {e}")
+                await asyncio.sleep(60)
     finally:
         logging.info("Shutting down monitor. Unregistering event handlers and cancelling PnL subscriptions.")
         # Unregister event handlers to prevent memory leaks

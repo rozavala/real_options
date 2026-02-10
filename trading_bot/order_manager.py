@@ -305,50 +305,53 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             min_vol = config.get('strategy', {}).get('min_underlying_volume', 20)
 
             # Suppress expected Error 300 during snapshot cleanup
-            def _suppress_300(reqId, errorCode, errorString, contract):
-                if errorCode == 300:
-                    logger.debug(f"Suppressed expected Error 300 for reqId {reqId} (snapshot cleanup)")
+            class _Error300Filter(logging.Filter):
+                def filter(self, record):
+                    return 'Error 300' not in record.getMessage()
 
-            ib.errorEvent += _suppress_300
+            _ib_logger = logging.getLogger('ib_insync.wrapper')
+            _err300_filter = _Error300Filter()
+            _ib_logger.addFilter(_err300_filter)
 
-            # Request market data for ALL candidates simultaneously (non-blocking)
-            tickers = [ib.reqMktData(f, '', True, False) for f in date_filtered]
+            try:
+                # Request market data for ALL candidates simultaneously (non-blocking)
+                tickers = [ib.reqMktData(f, '', True, False) for f in date_filtered]
 
-            logger.info(f"Checking liquidity for {len(tickers)} contracts (parallel)...")
-            await asyncio.sleep(2.0)  # Single wait for all feeds to populate
+                logger.info(f"Checking liquidity for {len(tickers)} contracts (parallel)...")
+                await asyncio.sleep(2.0)  # Single wait for all feeds to populate
 
-            volume_filtered = []
-            for f, t in zip(date_filtered, tickers):
-                # Safely extract volume (handle NaN, None, missing)
-                vol = 0
-                try:
-                    if t.volume is not None and not util.isNan(t.volume):
-                        vol = int(t.volume)
-                except (TypeError, ValueError):
+                volume_filtered = []
+                for f, t in zip(date_filtered, tickers):
+                    # Safely extract volume (handle NaN, None, missing)
                     vol = 0
+                    try:
+                        if t.volume is not None and not util.isNan(t.volume):
+                            vol = int(t.volume)
+                    except (TypeError, ValueError):
+                        vol = 0
 
-                if vol >= min_vol:
-                    volume_filtered.append(f)
-                    logger.debug(f"{f.localSymbol}: Volume {vol} >= {min_vol} (PASS)")
-                else:
-                    logger.info(
-                        f"Skipping {f.localSymbol}: Insufficient volume "
-                        f"({vol} < {min_vol} minimum)"
-                    )
+                    if vol >= min_vol:
+                        volume_filtered.append(f)
+                        logger.debug(f"{f.localSymbol}: Volume {vol} >= {min_vol} (PASS)")
+                    else:
+                        logger.info(
+                            f"Skipping {f.localSymbol}: Insufficient volume "
+                            f"({vol} < {min_vol} minimum)"
+                        )
 
-                # CRITICAL: Cancel subscription to prevent feed accumulation
-                try:
-                    ib.cancelMktData(f)
-                except Exception as e:
-                    logger.debug(f"cancelMktData for {f.localSymbol}: {e}")  # Error 300 expected if expired
+                    # CRITICAL: Cancel subscription to prevent feed accumulation
+                    try:
+                        ib.cancelMktData(f)
+                    except Exception as e:
+                        logger.debug(f"cancelMktData for {f.localSymbol}: {e}")  # Error 300 expected if expired
 
-            # === v5.2 FIX: Explicit ticker cleanup after liquidity check ===
-            # IBKR Error 300 occurs when reqId mappings from liquidity checks
-            # collide with subsequent snapshot requests. Wait for cancellations.
-            await asyncio.sleep(0.5)  # Let IB API process cancellation acknowledgements
-            logger.info("Liquidity check cleanup complete.")
-
-            ib.errorEvent -= _suppress_300
+                # === v5.2 FIX: Explicit ticker cleanup after liquidity check ===
+                # IBKR Error 300 occurs when reqId mappings from liquidity checks
+                # collide with subsequent snapshot requests. Wait for cancellations.
+                await asyncio.sleep(0.5)  # Let IB API process cancellation acknowledgements
+                logger.info("Liquidity check cleanup complete.")
+            finally:
+                _ib_logger.removeFilter(_err300_filter)
 
             futures = volume_filtered
 

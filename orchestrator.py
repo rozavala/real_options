@@ -4145,7 +4145,7 @@ async def main():
         logger.info("Market Closed. Deferred triggers will remain queued.")
 
     env_name = os.getenv("ENV_NAME", "DEV") 
-    is_prod = env_name == "PROD 🚀"
+    is_prod = env_name.startswith("PROD")
 
     current_schedule = schedule
     if not is_prod:
