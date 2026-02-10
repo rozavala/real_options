@@ -42,7 +42,6 @@ REQUIRED_DIRS=(
     "data"
     "data/surrogate_models"
     # "logs" # logs might not exist in fresh clone? but good to check
-    "scripts/migrations"
 )
 for dir in "${REQUIRED_DIRS[@]}"; do
     if [ ! -d "$dir" ]; then
