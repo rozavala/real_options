@@ -305,8 +305,37 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
             # CREDIT SPREAD (Iron Condor / Short Vertical)
             # Entry Cost is negative (e.g. -500).
             max_profit_potential = abs(total_entry_cost) # We keep the credit
+
+            # Determine Max Loss based on Strategy Type
+            # Iron Condor Check: 4 legs, usually 2 Short (inner) and 2 Long (outer)
+            is_iron_condor = False
+            relevant_width = spread_width
+
+            if len(combo_legs) == 4:
+                # Sort by strike to analyze structure
+                sorted_legs = sorted(combo_legs, key=lambda l: l.contract.strike)
+                s_pos = [l.position for l in sorted_legs]
+                s_strike = [l.contract.strike for l in sorted_legs]
+
+                # Standard IC Pattern: Long, Short, Short, Long
+                # We check the signs: Outer are Long (>0), Inner are Short (<0)
+                # Note: Positions might be negative for Short, positive for Long
+                if (s_pos[0] > 0 and s_pos[-1] > 0 and
+                    s_pos[1] < 0 and s_pos[2] < 0):
+                    is_iron_condor = True
+                    # Max Loss is driven by the wider of the two wings
+                    # Wing 1: Short Put - Long Put (s_strike[1] - s_strike[0])
+                    # Wing 2: Long Call - Short Call (s_strike[3] - s_strike[2])
+                    wing1 = s_strike[1] - s_strike[0]
+                    wing2 = s_strike[3] - s_strike[2]
+                    relevant_width = max(wing1, wing2)
+                    logging.info(f"Identified Iron Condor. Using Wing Width: {relevant_width} (Wings: {wing1}, {wing2})")
+
             # Max Loss = Width - Credit
-            max_loss_potential = (spread_width * abs(combo_legs[0].position) * dollar_mult) - max_profit_potential
+            # For IC, we use the wing width. For Vertical, we use spread_width (which is correct).
+            # Use max(abs(pos)) to ensure we capture the main size if ratios differ slightly (unlikely for IC)
+            quantity_mult = max(abs(l.position) for l in combo_legs)
+            max_loss_potential = (relevant_width * quantity_mult * dollar_mult) - max_profit_potential
 
             # FIX: Handle single-leg credit positions (width=0) resulting in negative max_loss
             if max_loss_potential <= 0:
