@@ -186,7 +186,7 @@ async def log_equity_snapshot(config: dict):
             logger.info(f"{file_path} not found. Creating new file with backfill.")
             start_date = timestamp - timedelta(days=1)
             df = pd.DataFrame([
-                {'timestamp': start_date, 'total_value_usd': 50000.0} # Arbitrary fallback
+                {'timestamp': start_date, 'total_value_usd': float(os.getenv('INITIAL_CAPITAL', '50000.0'))}
             ])
 
         # 5. Append and Save

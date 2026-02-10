@@ -956,11 +956,17 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
 
     # Filter out rows that shouldn't be displayed (NEUTRAL directional with no position)
     # Keep VOLATILITY trades even if master_decision is NEUTRAL
-    graded_df = graded_df[
-        (graded_df['prediction_type'] == 'VOLATILITY') |
-        (graded_df['master_decision'] != 'NEUTRAL') |
-        (graded_df['outcome'] != 'PENDING')
-    ]
+    if 'prediction_type' in graded_df.columns:
+        graded_df = graded_df[
+            (graded_df['prediction_type'] == 'VOLATILITY') |
+            (graded_df['master_decision'] != 'NEUTRAL') |
+            (graded_df['outcome'] != 'PENDING')
+        ]
+    else:
+        graded_df = graded_df[
+            (graded_df['master_decision'] != 'NEUTRAL') |
+            (graded_df['outcome'] != 'PENDING')
+        ]
 
     return graded_df
 
