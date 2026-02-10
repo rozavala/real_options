@@ -606,3 +606,251 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-10 13:59:45,983 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PROVEN, vol=BEARISH)
 2026-02-10 13:59:45,983 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCU6
 2026-02-10 14:00:00,784 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-10 14:00:30,384 - trading_bot.signal_generator - INFO - Agent research complete for KCH7 (202703): 8/8 returned non-default results
+2026-02-10 14:00:30,384 - trading_bot.signal_generator - INFO - SOFT FRESHNESS PENALTY: 5/8 agents have moderately stale data (>4h). Proceeding with confidence penalty for KCH7 (202703).
+2026-02-10 14:00:30,384 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-10 14:00:30,385 - trading_bot.brier_bridge - INFO - Agent agronomist: No Brier data for regime=HIGH_VOLATILITY, using NORMAL fallback (multiplier=1.60)
+2026-02-10 14:00:30,385 - trading_bot.brier_bridge - INFO - Agent macro: No Brier data for regime=HIGH_VOLATILITY, using NORMAL fallback (multiplier=0.10)
+2026-02-10 14:00:30,385 - trading_bot.brier_bridge - INFO - Agent geopolitical: No Brier data for regime=HIGH_VOLATILITY, using NORMAL fallback (multiplier=1.17)
+2026-02-10 14:00:30,385 - trading_bot.brier_bridge - INFO - Agent supply_chain: No Brier data for regime=HIGH_VOLATILITY, using NORMAL fallback (multiplier=1.24)
+2026-02-10 14:00:30,385 - trading_bot.brier_bridge - INFO - Agent inventory: No Brier data for regime=HIGH_VOLATILITY, using NORMAL fallback (multiplier=0.10)
+2026-02-10 14:00:30,385 - trading_bot.brier_bridge - INFO - Agent sentiment: No Brier data for regime=HIGH_VOLATILITY, using NORMAL fallback (multiplier=1.00)
+2026-02-10 14:00:30,385 - trading_bot.brier_bridge - INFO - Agent technical: No Brier data for regime=HIGH_VOLATILITY, using NORMAL fallback (multiplier=1.34)
+2026-02-10 14:00:30,385 - trading_bot.brier_bridge - INFO - Agent volatility: No Brier data for regime=HIGH_VOLATILITY, using NORMAL fallback (multiplier=1.81)
+2026-02-10 14:00:30,386 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=1.6 = 3.60", "macro": "domain=1.5 \u00d7 reliability=0.1 = 0.12", "geopolitical": "domain=1.5 \u00d7 reliability=1.2 = 1.36", "supply_chain": "domain=1.5 \u00d7 reliability=1.2 = 1.44", "inventory": "domain=1.5 \u00d7 reliability=0.1 = 0.12", "sentiment": "domain=1.5 \u00d7 reliability=1.0 = 0.38", "technical": "domain=1.0 \u00d7 reliability=1.3 = 1.40", "volatility": "domain=2.2 \u00d7 reliability=1.8 = 3.15"}
+2026-02-10 14:00:30,386 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.462, dominant=volatility)
+2026-02-10 14:00:30,386 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.6,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 3.6,
+    "contribution": -2.882
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.12,
+    "contribution": 0.105
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.7,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.17,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.36,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.3,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.24,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.44,
+    "contribution": 0.431
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.3,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.12,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.38,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.34,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.4,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.95,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.81,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 3.15,
+    "contribution": -2.996
+  }
+]
+2026-02-10 14:00:30,497 - ib_insync.wrapper - ERROR - Error 162, reqId 1123: Historical Market Data Service error message:Trading TWS session is connected from a different IP address, contract: Contract(secType='FUT', conId=694583782, symbol='KC', lastTradeDateOrContractMonth='20270318', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCH7', tradingClass='KC')
+2026-02-10 14:01:38,544 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Projected record coffee crop and changing inventory dynamics
+2026-02-10 14:01:38,545 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-10 14:01:38,545 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-10 14:01:40,971 - trading_bot.signal_generator - INFO - Council Decision KCH7 (202703): BEARISH (0.7)
+2026-02-10 14:01:40,972 - root - INFO - Logged council decision for KCH7 (202703)
+2026-02-10 14:01:40,976 - trading_bot.decision_signals - INFO - Decision signal logged: KCH7 (202703) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-10 14:01:41,010 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread with expensive vol (thesis=PLAUSIBLE)
+2026-02-10 14:01:41,011 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BEARISH)
+2026-02-10 14:01:41,011 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCH7
+2026-02-10 14:05:51,339 - trading_bot.agents - INFO - Data freshness unparseable (''). Defaulting to 4h (soft penalty zone).
+2026-02-10 14:05:51,339 - trading_bot.agents - WARNING - [volatility] Grounded search yielded no recent results.
+2026-02-10 14:06:38,058 - trading_bot.signal_generator - INFO - Agent research complete for KCZ6 (202612): 7/8 returned non-default results
+2026-02-10 14:06:38,058 - trading_bot.signal_generator - INFO - SOFT FRESHNESS PENALTY: 4/8 agents have moderately stale data (>4h). Proceeding with confidence penalty for KCZ6 (202612).
+2026-02-10 14:06:38,058 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-10 14:06:38,058 - trading_bot.weighted_voting - INFO - Agent volatility: Fresh NEUTRAL vote (not abstention)
+2026-02-10 14:06:38,059 - trading_bot.weighted_voting - WARNING - Agent volatility: Using DEFAULT values (NEUTRAL/0.5). Report type: dict, is_stale: False, Report preview: {'data': '[EVIDENCE]: N/A\n[ANALYSIS]: {\n  "evidence": [\n    "The Grounded Data Packet explicitly ...
+2026-02-10 14:06:38,059 - trading_bot.brier_bridge - INFO - Agent agronomist: No Brier data for regime=RANGE_BOUND, using NORMAL fallback (multiplier=1.60)
+2026-02-10 14:06:38,059 - trading_bot.brier_bridge - INFO - Agent macro: No Brier data for regime=RANGE_BOUND, using NORMAL fallback (multiplier=0.10)
+2026-02-10 14:06:38,059 - trading_bot.brier_bridge - INFO - Agent geopolitical: No Brier data for regime=RANGE_BOUND, using NORMAL fallback (multiplier=1.17)
+2026-02-10 14:06:38,059 - trading_bot.brier_bridge - INFO - Agent supply_chain: No Brier data for regime=RANGE_BOUND, using NORMAL fallback (multiplier=1.24)
+2026-02-10 14:06:38,060 - trading_bot.brier_bridge - INFO - Agent inventory: No Brier data for regime=RANGE_BOUND, using NORMAL fallback (multiplier=0.10)
+2026-02-10 14:06:38,060 - trading_bot.brier_bridge - INFO - Agent sentiment: No Brier data for regime=RANGE_BOUND, using NORMAL fallback (multiplier=1.00)
+2026-02-10 14:06:38,060 - trading_bot.brier_bridge - INFO - Agent technical: No Brier data for regime=RANGE_BOUND, using NORMAL fallback (multiplier=1.34)
+2026-02-10 14:06:38,060 - trading_bot.brier_bridge - INFO - Agent volatility: No Brier data for regime=RANGE_BOUND, using NORMAL fallback (multiplier=1.81)
+2026-02-10 14:06:38,061 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.5 \u00d7 reliability=1.6 = 2.40", "macro": "domain=1.5 \u00d7 reliability=0.1 = 0.12", "geopolitical": "domain=1.5 \u00d7 reliability=1.2 = 1.36", "supply_chain": "domain=1.5 \u00d7 reliability=1.2 = 0.46", "inventory": "domain=1.5 \u00d7 reliability=0.1 = 0.12", "sentiment": "domain=1.5 \u00d7 reliability=1.0 = 1.17", "technical": "domain=2.2 \u00d7 reliability=1.3 = 3.01", "volatility": "domain=1.0 \u00d7 reliability=1.8 = 1.90"}
+2026-02-10 14:06:38,061 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.552, dominant=technical)
+2026-02-10 14:06:38,062 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.6,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.4,
+    "contribution": -1.922
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.85,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.12,
+    "contribution": 0.099
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.17,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.36,
+    "contribution": -1.226
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.3,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.24,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.46,
+    "contribution": 0.139
+  },
+  {
+    "agent": "inventory",
+    "direction": "BULLISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.12,
+    "contribution": 0.105
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.17,
+    "contribution": -1.049
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.34,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 3.01,
+    "contribution": -1.957
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.81,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.9,
+    "contribution": 0.0
+  }
+]
+2026-02-10 14:06:38,172 - ib_insync.wrapper - ERROR - Error 162, reqId 1124: Historical Market Data Service error message:Trading TWS session is connected from a different IP address, contract: Contract(secType='FUT', conId=675565688, symbol='KC', lastTradeDateOrContractMonth='20261218', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCZ6', tradingClass='KC')
+2026-02-10 14:07:36,520 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PROVEN (conf=0.9) | Catalyst: Record Brazilian crop forecasts and easing logistical bottle
+2026-02-10 14:07:36,520 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.9
+2026-02-10 14:07:36,521 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-10 14:07:38,324 - trading_bot.signal_generator - INFO - Council Decision KCZ6 (202612): BEARISH (0.9)
+2026-02-10 14:07:38,324 - root - INFO - Logged council decision for KCZ6 (202612)
+2026-02-10 14:07:38,328 - trading_bot.decision_signals - INFO - Decision signal logged: KCZ6 (202612) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-10 14:07:38,368 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PROVEN, vol=NEUTRAL)
+2026-02-10 14:07:38,369 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PROVEN, vol=NEUTRAL)
+2026-02-10 14:07:38,369 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCZ6
+2026-02-10 14:07:38,375 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-02-10 14:07:38,376 - OrderManager - INFO - Generated 5 signals: [{'contract_month': '202605', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': "The evidence supporting the bearish position is grounded in the agronomic and inventory data projecting a record Brazilian crop amid favorable rainfall conditions which supports a bearish outlook due to expected surplus. The permabear's argument is that current tightness in ICE Arabica Certified Stocks is a lagging indicator, soon to be overwhelmed by the upcoming supply. Coupled with speculator deleveraging and the lack of significant short-covering fuel, these conditions favor a bearish stance. The bullish arguments about logistical challenges at ports and current tight inventory conditions are acknowledged but perceived as temporary and not structural. Furthermore, the strengthening Brazilian Real could temporarily constrain farmer selling, but this is overshadowed by the imminent crop arrival. [Consensus ALIGNED (Vote=BEARISH)]", 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': None, 'sma_200': None, 'expected_price': None, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202607', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': "The evidence from multiple reports points to a significant disconnect between the theoretical abundance of supply, driven by favorable weather and a record Brazilian crop forecast, and the physical availability of coffee due to severe logistical issues. The geopolitical report highlights port congestion and shipping delays, resulting in unshipped volumes and lost revenue. Supporting this, the supply chain report notes a drastic drop in Brazil's exports, while the inventory report confirms tight spot availability with declining ICE stocks and a backwardated futures curve. The bear argument that supply disruptions will continue to support prices is stronger than the bull's reliance on theoretical crop projections, as these cannot offset the immediate logistics challenges. While the bull highlights potential for a short-covering rally due to oversold conditions, the logistical reality and current physical scarcity pose a more immediate and pressing concern. [Consensus ALIGNED (Vote=BEARISH)]", 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.7, 'price': None, 'sma_200': None, 'expected_price': None, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202609', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'The bearish argument is more grounded in the current data, focusing on the impending record Brazilian coffee harvest projected at 66.2 million bags. This significant supply increase is supported by favorable weather conditions during the critical grain-filling phase, as reported by both the Agronomist and Conab. Additionally, the logistical bottleneck narrative is weakening, with improving wait times at the Port of Santos and a buildup in ICE Certified Stocks, suggesting that the supply-side pressure might be easing. The strong Brazilian Real, which has been discouraging farmer selling, is likely to weaken with anticipated interest rate cuts in March, potentially releasing more supply into the market. On the other hand, the Bullish argument, focused on the current strong BRL delaying supply and technical bounce potential from oversold conditions, lacks sufficient supporting evidence against the backdrop of such a formidable supply increase. Meanwhile, the sharp reduction in speculative long positions indicates significant bearish sentiment, further supporting the bearish case. [Consensus ALIGNED (Vote=BEARISH)] [VOL WARNING: Options expensive. Spread costs elevated. Thesis: PROVEN]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.9, 'price': None, 'sma_200': None, 'expected_price': None, 'predicted_return': 0.0, 'thesis_strength': 'PROVEN', 'conviction_multiplier': 1.0}, {'contract_month': '202612', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'The evidence strongly supports a bearish outlook for coffee. The Agronomist Report provides compelling evidence of a record Brazilian coffee crop, supported by above-average rainfall during key growth stages, removing weather-related risks and reaffirming an oversupply scenario. This is backed by multiple reports forecasting record production levels, presenting a strong supply-side narrative. Furthermore, the Permabear highlighted the recent liquidation of long positions by speculators and the lack of recovery in prices despite oversold conditions, which points to a bearish sentiment taking hold in the market. The Geopolitical and Supply Chain Reports both indicate that logistical bottlenecks are easing, which could lead to a surge of coffee stocks once shipping normalizes, compounding the supply issues. Additionally, despite claims of tightness in current inventories, inventories pending grading are rising, potentially increasing available supply soon. The technical indicators also support a bearish view with a strong downtrend and key resistance levels not breached. [Consensus ALIGNED (Vote=BEARISH)]', 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.9, 'price': None, 'sma_200': None, 'expected_price': None, 'predicted_return': 0.0, 'thesis_strength': 'PROVEN', 'conviction_multiplier': 1.0}, {'contract_month': '202703', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'The bearish case is convincingly grounded in multiple independent lines of evidence. The major factor is the forthcoming massive coffee harvest in Brazil, which is expected to reach a record 66.2 million bags, backed by optimal weather conditions (117% of normal rainfall). This is expected to significantly increase supply and exert downward pressure on prices. The potential weakening of the Brazilian Real, as indicated by the imminent easing cycle of the Selic rate, is likely to stimulate exports, further contributing to supply pressures. Moreover, recent data shows an increase in ICE Arabica Certified Stocks for the first time in weeks, suggesting that the previous inventory squeeze is beginning to alleviate. These factors contradict the bullish arguments of sustained supply restriction due to a strong BRL and logistics bottlenecks. Additionally, the aggressive liquidation of speculative positions and expensive volatility point to a bearish outlook. While there is a potential for a short-covering bounce due to oversold conditions, this is not sufficient to offset the broader supply-driven downside risks. [Consensus ALIGNED (Vote=BEARISH)] [VOL WARNING: Options expensive. Spread costs elevated. Thesis: PLAUSIBLE]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.7, 'price': None, 'sma_200': None, 'expected_price': None, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}]
+2026-02-10 14:07:38,376 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-10 14:07:38,534 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-10 14:07:38,534 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-10 14:07:38,535 - OrderManager - INFO - Skipping KCH7: Too deferred (400 days > 365 max)
+2026-02-10 14:07:38,535 - OrderManager - INFO - Date filter passed: 4/5 contracts within 365 days.
+2026-02-10 14:07:38,536 - OrderManager - INFO - Checking liquidity for 4 contracts (parallel)...
+2026-02-10 14:07:40,538 - OrderManager - INFO - Skipping KCK6: Insufficient volume (0 < 20 minimum)
+2026-02-10 14:07:40,539 - OrderManager - INFO - Skipping KCN6: Insufficient volume (0 < 20 minimum)
+2026-02-10 14:07:40,539 - OrderManager - INFO - Skipping KCU6: Insufficient volume (0 < 20 minimum)
+2026-02-10 14:07:40,539 - OrderManager - INFO - Skipping KCZ6: Insufficient volume (0 < 20 minimum)
+2026-02-10 14:07:41,040 - OrderManager - INFO - Liquidity check cleanup complete.
+2026-02-10 14:07:41,040 - OrderManager - WARNING - No futures remaining after Volume Filter.
+2026-02-10 14:07:41,041 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-10 14:07:44,045 - OrderManager - INFO - No orders were queued. Skipping placement step.
+2026-02-10 14:07:44,045 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-02-10 14:07:44,052 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-02-10 15:50:00 UTC. Waiting for 1.70 hours.
