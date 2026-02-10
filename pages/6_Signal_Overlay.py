@@ -907,9 +907,11 @@ if price_df is not None and not price_df.empty:
 
     # === DRAW CHARTS ===
     # CREATE SUBPLOTS WITH SECONDARY Y-AXIS
+    # CRITICAL: shared_xaxes must be False — Plotly candlestick traces fail to render
+    # when shared_xaxes=True in make_subplots (known rendering bug).
     fig = make_subplots(
         rows=2, cols=1,
-        shared_xaxes=True,
+        shared_xaxes=False,
         vertical_spacing=0.05,
         row_heights=[0.75, 0.25],
         specs=[
@@ -1081,11 +1083,12 @@ if price_df is not None and not price_df.empty:
     # Set explicit x-axis range to prevent autorange issues with small datasets
     x_range = [-0.5, max(len(price_df) - 0.5, 0.5)]
 
+    # Row 1: hide x-axis labels (row 2 shows them) since shared_xaxes is off
     fig.update_xaxes(
         tickvals=tick_vals,
         ticktext=tick_text,
-        tickangle=45,
         range=x_range,
+        showticklabels=False,
         row=1, col=1
     )
 
@@ -1141,6 +1144,9 @@ if price_df is not None and not price_df.empty:
     fig.update_layout(
         height=800,
         xaxis=dict(
+            rangeslider=dict(visible=False, thickness=0),
+        ),
+        xaxis2=dict(
             rangeslider=dict(visible=False, thickness=0),
         ),
         template="plotly_dark",
