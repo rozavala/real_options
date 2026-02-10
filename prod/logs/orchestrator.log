@@ -1,69 +1,25 @@
-2026-02-10 04:15:47,060 - Orchestrator - INFO - =============================================
-2026-02-10 04:15:47,060 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-10 04:15:47,060 - Orchestrator - INFO - =============================================
-2026-02-10 04:15:47,063 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
-2026-02-10 04:15:47,063 - Orchestrator - WARNING - ============================================================
-2026-02-10 04:15:47,063 - Orchestrator - WARNING -   TRADING MODE: OFF — Training/Observation Only
-2026-02-10 04:15:47,063 - Orchestrator - WARNING -   No real orders will be placed via IB
-2026-02-10 04:15:47,063 - Orchestrator - WARNING - ============================================================
-2026-02-10 04:15:47,390 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-10 04:15:47,392 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-10 04:15:47,392 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-10 04:15:47,393 - Orchestrator - INFO - Expiry filter window: 45-365 DTE
-2026-02-10 04:15:47,542 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-10 04:15:47,542 - Orchestrator - INFO - Environment: PROD. Applying -10 minute 'Civil War' avoidance offset.
-2026-02-10 04:15:47,553 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 15 scheduled tasks already passed:
-  - 03:20 ET: start_monitoring
-  - 03:21 ET: process_deferred_triggers
-  - 04:50 ET: cleanup_orphaned_theses
-  - 08:20 ET: run_position_audit_cycle
-  - 08:50 ET: guarded_generate_orders
-  - 10:50 ET: close_stale_positions
-  - 11:05 ET: run_position_audit_cycle
-  - 12:35 ET: close_stale_positions_fallback
-  - 12:50 ET: run_position_audit_cycle
-  - 13:05 ET: emergency_hard_close
-  - 13:35 ET: cancel_and_stop_monitoring
-  - 13:55 ET: log_equity_snapshot
-  - 14:00 ET: reconcile_and_analyze
-  - 14:10 ET: run_brier_reconciliation
-  - 14:15 ET: sentinel_effectiveness_check
-2026-02-10 04:15:47,555 - Orchestrator - INFO - --- Recovery: Evaluating 15 missed tasks ---
-2026-02-10 04:15:47,555 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
-2026-02-10 04:15:47,556 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
-2026-02-10 04:15:47,556 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses (was scheduled 04:50 ET)
-2026-02-10 04:15:47,556 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
-2026-02-10 04:15:47,556 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 277...
-2026-02-10 04:15:47,784 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 277
-2026-02-10 04:15:47,808 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-10 04:15:47,908 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-10 04:15:47,934 - Orchestrator - INFO - Thesis cleanup: no orphans found
-2026-02-10 04:15:47,934 - trading_bot.connection_pool - INFO - Disconnecting IB (cleanup)...
-2026-02-10 04:15:51,149 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
-2026-02-10 04:15:51,149 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: run_position_audit_cycle — market closed
-2026-02-10 04:15:51,150 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: guarded_generate_orders — market closed
-2026-02-10 04:15:51,150 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions — market closed
-2026-02-10 04:15:51,150 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_positions_fallback — market closed
-2026-02-10 04:15:51,150 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
-2026-02-10 04:15:51,150 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: cancel_and_stop_monitoring — policy=NEVER (shutdown task)
-2026-02-10 04:15:51,150 - Orchestrator - INFO - ✅ ALREADY RAN: log_equity_snapshot completed earlier today (before restart). Skipping re-execution.
-2026-02-10 04:15:51,152 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
-2026-02-10 04:15:51,152 - Orchestrator - INFO - 🔄 RECOVERY: Running missed run_brier_reconciliation (was scheduled 14:10 ET)
-2026-02-10 04:15:51,153 - trading_bot.brier_reconciliation - INFO - Missing required files for resolution
-2026-02-10 04:15:51,154 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
-2026-02-10 04:15:51,165 - Orchestrator - INFO - ✅ RECOVERY: run_brier_reconciliation completed
-2026-02-10 04:15:51,166 - Orchestrator - INFO - ✅ ALREADY RAN: sentinel_effectiveness_check completed earlier today (before restart). Skipping re-execution.
-2026-02-10 04:15:51,166 - Orchestrator - INFO - System restarted with 13 missed tasks.
-✅ 2 recovered | ⏭️ 8 skipped | ✔️ 3 already ran
-2026-02-10 04:15:52,159 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-10 04:15:52,164 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-10 08:20:00 UTC. Waiting for 4.07 hours.
-2026-02-10 04:15:52,165 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-10 04:15:52,325 - trading_bot.sentinels - INFO - LogisticsSentinel: Generated 5 RSS URLs for Coffee (Arabica)
-2026-02-10 04:15:52,325 - trading_bot.sentinels - INFO - LogisticsSentinel initialized with model: gemini-3-flash-preview | 5 RSS feeds | Commodity: Coffee (Arabica)
-2026-02-10 04:15:52,498 - trading_bot.sentinels - INFO - NewsSentinel: Generated 5 RSS URLs for Coffee (Arabica)
-2026-02-10 04:15:52,498 - trading_bot.sentinels - INFO - NewsSentinel initialized with model: gemini-3-flash-preview | 5 RSS feeds | Threshold: 8 | Commodity: Coffee (Arabica)
-2026-02-10 04:15:52,535 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-10 04:15:52,535 - trading_bot.sentinels - INFO - Reloading prediction market topics...
-2026-02-10 04:15:52,535 - trading_bot.sentinels - INFO - Topics reloaded: 0
-2026-02-10 04:15:52,535 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 0 topics
-2026-02-10 04:15:52,633 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-10 06:59:50,687 - Orchestrator - INFO - =============================================
+2026-02-10 06:59:50,687 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-10 06:59:50,687 - Orchestrator - INFO - =============================================
+2026-02-10 06:59:50,688 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-10 06:59:50,688 - Orchestrator - WARNING - ============================================================
+2026-02-10 06:59:50,688 - Orchestrator - WARNING -   TRADING MODE: OFF — Training/Observation Only
+2026-02-10 06:59:50,688 - Orchestrator - WARNING -   No real orders will be placed via IB
+2026-02-10 06:59:50,689 - Orchestrator - WARNING - ============================================================
+2026-02-10 06:59:50,900 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-10 06:59:50,902 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-10 06:59:50,902 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-10 06:59:50,902 - Orchestrator - INFO - Expiry filter window: 45-365 DTE
+2026-02-10 06:59:51,055 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-10 06:59:51,055 - Orchestrator - INFO - Environment: PROD. Applying -10 minute 'Civil War' avoidance offset.
+2026-02-10 06:59:51,063 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-10 08:20:00 UTC. Waiting for 1.34 hours.
+2026-02-10 06:59:51,063 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-10 06:59:51,184 - trading_bot.sentinels - INFO - LogisticsSentinel: Generated 5 RSS URLs for Coffee (Arabica)
+2026-02-10 06:59:51,184 - trading_bot.sentinels - INFO - LogisticsSentinel initialized with model: gemini-3-flash-preview | 5 RSS feeds | Commodity: Coffee (Arabica)
+2026-02-10 06:59:51,279 - trading_bot.sentinels - INFO - NewsSentinel: Generated 5 RSS URLs for Coffee (Arabica)
+2026-02-10 06:59:51,279 - trading_bot.sentinels - INFO - NewsSentinel initialized with model: gemini-3-flash-preview | 5 RSS feeds | Threshold: 8 | Commodity: Coffee (Arabica)
+2026-02-10 06:59:51,311 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-02-10 06:59:51,312 - trading_bot.sentinels - INFO - Reloading prediction market topics...
+2026-02-10 06:59:51,312 - trading_bot.sentinels - INFO - Topics reloaded: 0
+2026-02-10 06:59:51,312 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 0 topics
+2026-02-10 06:59:51,429 - trading_bot.self_healing - INFO - Self-Healing Monitor started
