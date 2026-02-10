@@ -170,7 +170,12 @@ def format_market_context_for_prompt(market_context: dict) -> str:
 # === Private Helpers ===
 
 async def _get_current_price(ib: IB, contract: Future) -> Optional[float]:
-    """Fetch current price from IBKR with timeout."""
+    """Fetch current price from IBKR with timeout.
+
+    Tries streaming market data first (reqMktData). If that yields nothing
+    (e.g. DEV blocked by PROD's active session), falls back to a single
+    historical bar via HMDS which uses a separate IB service.
+    """
     try:
         ticker = ib.reqMktData(contract, '', False, False)
         # Wait for price with timeout
@@ -191,16 +196,30 @@ async def _get_current_price(ib: IB, contract: Future) -> Optional[float]:
         if not _is_nan(ticker.close) and ticker.close > 0:
             return ticker.close
 
-        logger.warning(f"No price available for {contract.localSymbol}")
-        return None
-
     except Exception as e:
-        logger.error(f"Error fetching price for {contract.localSymbol}: {e}")
+        logger.warning(f"reqMktData failed for {contract.localSymbol}: {e}")
         try:
             ib.cancelMktData(contract)
         except Exception:
             pass
-        return None
+
+    # === HMDS fallback: fetch last historical bar ===
+    # Uses a different IB service than streaming data, so it can succeed
+    # even when another session (e.g. PROD) holds the streaming subscription.
+    try:
+        bars = await asyncio.wait_for(
+            ib.reqHistoricalDataAsync(
+                contract, endDateTime='', durationStr='1 D',
+                barSizeSetting='1 day', whatToShow='TRADES', useRTH=True),
+            timeout=10)
+        if bars and bars[-1].close > 0:
+            logger.info(f"Using HMDS fallback price for {contract.localSymbol}: {bars[-1].close}")
+            return bars[-1].close
+    except Exception as e:
+        logger.warning(f"HMDS fallback also failed for {contract.localSymbol}: {e}")
+
+    logger.warning(f"No price available for {contract.localSymbol}")
+    return None
 
 
 async def _get_technical_indicators(

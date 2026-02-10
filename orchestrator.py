@@ -3888,9 +3888,10 @@ schedule = {
     time(3, 31): process_deferred_triggers,
     time(5, 0): cleanup_orphaned_theses,          # v3.1: Daily thesis cleanup
     time(8, 30): run_position_audit_cycle,
-    time(9, 0): guarded_generate_orders,
+    time(9, 0): guarded_generate_orders,           # Morning cycle
     time(11, 0): close_stale_positions,          # PRIMARY: Peak liquidity
     time(11, 15): run_position_audit_cycle,       # Post-close verification
+    time(11, 45): guarded_generate_orders,        # Settlement window cycle (ICE KC settles ~12:23 ET)
     time(12, 45): close_stale_positions_fallback, # FALLBACK: Retry failures
     time(13, 0): run_position_audit_cycle,        # Pre-close audit
     time(13, 15): emergency_hard_close,           # SAFETY: Market orders
@@ -3934,7 +3935,7 @@ RECOVERY_POLICY = {
     'process_deferred_triggers':      {'policy': 'MARKET_OPEN',   'idempotent': False},
     'cleanup_orphaned_theses':        {'policy': 'ALWAYS',        'idempotent': True},
     'run_position_audit_cycle':       {'policy': 'MARKET_OPEN',   'idempotent': True},
-    'guarded_generate_orders':        {'policy': 'BEFORE_CUTOFF', 'idempotent': False},
+    'guarded_generate_orders':        {'policy': 'BEFORE_CUTOFF', 'idempotent': False},  # Covers both 9:00 and 11:45 cycles
     'close_stale_positions':          {'policy': 'MARKET_OPEN',   'idempotent': True},
     'close_stale_positions_fallback': {'policy': 'MARKET_OPEN',   'idempotent': True},
     'emergency_hard_close':           {'policy': 'MARKET_OPEN',   'idempotent': True},
@@ -4148,7 +4149,7 @@ async def main():
 
     current_schedule = schedule
     if not is_prod:
-        schedule_offset_minutes = -10
+        schedule_offset_minutes = config.get('schedule', {}).get('dev_offset_minutes', -30)
         logger.info(f"Environment: {env_name}. Applying {schedule_offset_minutes} minute 'Civil War' avoidance offset.")
         current_schedule = apply_schedule_offset(schedule, offset_minutes=schedule_offset_minutes)
     else:
