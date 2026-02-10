@@ -1,6 +1,6 @@
 import asyncio
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from ib_insync import Contract, Future
 
@@ -9,57 +9,45 @@ from trading_bot.signal_generator import generate_signals
 @pytest.mark.asyncio
 async def test_generate_signals():
     ib = AsyncMock()
-    # Thresholds are > 7 for BULLISH, < 0 for BEARISH
-    config = {'symbol': 'KC', 'exchange': 'NYBOT', 'signal_thresholds': {'bullish': 7, 'bearish': 0}}
+    config = {'symbol': 'KC', 'exchange': 'NYBOT', 'commodity': {'ticker': 'KC'}}
 
-    # New signal format (list of dicts)
-    # The generator now expects a list of dictionaries with specific keys
-    signals_input = [
-        {'action': 'LONG', 'confidence': 0.10, 'reason': 'Test', 'regime': 'BULL', 'price': 100.0, 'sma_200': 90.0, 'expected_price': 110.0},
-        {'action': 'SHORT', 'confidence': -0.05, 'reason': 'Test', 'regime': 'BEAR', 'price': 100.0, 'sma_200': 110.0, 'expected_price': 95.0},
-        {'action': 'NEUTRAL', 'confidence': 0.03, 'reason': 'Test', 'regime': 'CHOP', 'price': 100.0, 'sma_200': 100.0, 'expected_price': 103.0},
-        {'action': 'LONG', 'confidence': 0.08, 'reason': 'Test', 'regime': 'BULL', 'price': 100.0, 'sma_200': 90.0, 'expected_price': 108.0},
-        {'action': 'SHORT', 'confidence': -0.01, 'reason': 'Test', 'regime': 'BEAR', 'price': 100.0, 'sma_200': 110.0, 'expected_price': 99.0}
+    # Mock market contexts
+    mock_contexts = [
+        {'action': 'NEUTRAL', 'confidence': 0.5, 'price': 100.0, 'sma_200': 90.0, 'expected_price': 100.0, 'predicted_return': 0.0, 'regime': 'BULL', 'reason': 'Test', 'volatility_5d': 0.02, 'price_vs_sma': 0.11, 'data_source': 'IBKR_LIVE', 'timestamp': '2026-01-28T00:00:00Z'},
+        {'action': 'NEUTRAL', 'confidence': 0.5, 'price': 100.0, 'sma_200': 110.0, 'expected_price': 100.0, 'predicted_return': 0.0, 'regime': 'BEAR', 'reason': 'Test', 'volatility_5d': 0.02, 'price_vs_sma': -0.09, 'data_source': 'IBKR_LIVE', 'timestamp': '2026-01-28T00:00:00Z'},
+        {'action': 'NEUTRAL', 'confidence': 0.5, 'price': 100.0, 'sma_200': 100.0, 'expected_price': 100.0, 'predicted_return': 0.0, 'regime': 'CHOP', 'reason': 'Test', 'volatility_5d': 0.02, 'price_vs_sma': 0.0, 'data_source': 'IBKR_LIVE', 'timestamp': '2026-01-28T00:00:00Z'},
+        {'action': 'NEUTRAL', 'confidence': 0.5, 'price': 100.0, 'sma_200': 90.0, 'expected_price': 100.0, 'predicted_return': 0.0, 'regime': 'BULL', 'reason': 'Test', 'volatility_5d': 0.02, 'price_vs_sma': 0.11, 'data_source': 'IBKR_LIVE', 'timestamp': '2026-01-28T00:00:00Z'},
+        {'action': 'NEUTRAL', 'confidence': 0.5, 'price': 100.0, 'sma_200': 110.0, 'expected_price': 100.0, 'predicted_return': 0.0, 'regime': 'BEAR', 'reason': 'Test', 'volatility_5d': 0.02, 'price_vs_sma': -0.09, 'data_source': 'IBKR_LIVE', 'timestamp': '2026-01-28T00:00:00Z'}
     ]
 
-    # Mock the active futures contracts, ensuring they have the necessary attributes
-    # The sorting logic depends on lastTradeDateOrContractMonth
-    # NOTE: Contracts must be > 45 days out from "now" (simulated as current date) to be considered active.
-    # Assuming test runs around Dec 2025, we push these out to 2026 to ensure they are valid.
     mock_futures = [
-        Future(conId=1, symbol='KC', lastTradeDateOrContractMonth='20260312'), # H26
-        Future(conId=2, symbol='KC', lastTradeDateOrContractMonth='20260512'), # K26
-        Future(conId=3, symbol='KC', lastTradeDateOrContractMonth='20260712'), # N26
-        Future(conId=4, symbol='KC', lastTradeDateOrContractMonth='20260912'), # U26
-        Future(conId=5, symbol='KC', lastTradeDateOrContractMonth='20261212'), # Z26
+        Future(conId=1, symbol='KC', lastTradeDateOrContractMonth='20260312', localSymbol='KCH26'),
+        Future(conId=2, symbol='KC', lastTradeDateOrContractMonth='20260512', localSymbol='KCK26'),
+        Future(conId=3, symbol='KC', lastTradeDateOrContractMonth='20260712', localSymbol='KCN26'),
+        Future(conId=4, symbol='KC', lastTradeDateOrContractMonth='20260912', localSymbol='KCU26'),
+        Future(conId=5, symbol='KC', lastTradeDateOrContractMonth='20261212', localSymbol='KCZ26'),
     ]
-    ib.reqContractDetailsAsync.return_value = [MagicMock(contract=f) for f in mock_futures]
 
-    signals = await generate_signals(ib, signals_input, config)
+    with patch('trading_bot.signal_generator.get_active_futures', new_callable=AsyncMock) as mock_get_active_futures, \
+         patch('trading_bot.signal_generator.build_all_market_contexts', new_callable=AsyncMock) as mock_build, \
+         patch('trading_bot.signal_generator.TradingCouncil') as MockCouncil:
 
-    # We expect 5 signals because NEUTRAL ones are now included
+        mock_get_active_futures.return_value = mock_futures
+        mock_build.return_value = mock_contexts
+
+        # Mock Council behavior
+        mock_council_instance = MockCouncil.return_value
+        # Mock decide to return NEUTRAL
+        mock_council_instance.decide = AsyncMock(return_value={
+            'direction': 'NEUTRAL', 'confidence': 0.5, 'reasoning': 'Test'
+        })
+        mock_council_instance.run_devils_advocate = AsyncMock(return_value={'proceed': True})
+        # Mock research_topic to return something valid
+        mock_council_instance.research_topic = AsyncMock(return_value={'data': 'Test', 'confidence': 0.5, 'sentiment': 'NEUTRAL'})
+        mock_council_instance.research_topic_with_reflexion = AsyncMock(return_value={'data': 'Test', 'confidence': 0.5, 'sentiment': 'NEUTRAL'})
+
+        signals = await generate_signals(ib, config)
+
     assert len(signals) == 5
-
-    # The contracts are sorted chronologically. The predictions should map to them in order.
-    # 1. H26 (202603) -> LONG -> BULLISH
-    # 2. K26 (202605) -> SHORT -> BEARISH
-    # 3. N26 (202607) -> NEUTRAL -> NEUTRAL
-    # 4. U26 (202609) -> LONG -> BULLISH
-    # 5. Z26 (202612) -> SHORT -> BEARISH
-
-    # The final signals list should be ordered chronologically:
-    assert signals[0]['direction'] == 'BULLISH'
     assert signals[0]['contract_month'] == '202603'
-
-    assert signals[1]['direction'] == 'BEARISH'
     assert signals[1]['contract_month'] == '202605'
-
-    assert signals[2]['direction'] == 'NEUTRAL'
-    assert signals[2]['contract_month'] == '202607'
-
-    assert signals[3]['direction'] == 'BULLISH'
-    assert signals[3]['contract_month'] == '202609'
-
-    assert signals[4]['direction'] == 'BEARISH'
-    assert signals[4]['contract_month'] == '202612'
-

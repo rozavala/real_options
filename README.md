@@ -1,120 +1,100 @@
-# Automated Coffee Options Trading Bot
+# Real Options — Algorithmic Commodity Futures Trading
 
-This repository contains the source code for an automated trading bot designed to trade coffee futures options (Symbol: KC) on the NYBOT exchange. The bot uses a prediction API to generate trading signals and executes complex option strategies based on those signals.
+An event-driven, multi-agent AI trading system for commodity futures options. Uses a Council of specialized AI analysts with adversarial debate to generate trading decisions, managed by a constitutional compliance framework.
 
-## Table of Contents
+## Architecture: The Federated Cognitive Lattice
 
-- [Architecture Overview](#architecture-overview)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [Configuration](#configuration)
-  - [Anatomy of `config.json`](#anatomy-of-configjson)
-- [How to Run](#how-to-run)
-  - [1. Run the Prediction API](#1-run-the-prediction-api)
-  - [2. Run the Main Orchestrator](#2-run-the-main-orchestrator)
-- [Core Modules](#core-modules)
+```mermaid
+graph TD
+    subgraph "Tier 1: Always-On Sentinels"
+        XS[🐦 X Sentiment]
+        WS[🌤️ Weather]
+        NS[📰 News/RSS]
+        PS[📊 Microstructure]
+    end
 
----
+    subgraph "Tier 2: Specialist Analysts"
+        AG[🌱 Agronomist]
+        MA[💹 Macro Economist]
+        FU[📈 Fundamentalist]
+        TE[📐 Technical]
+        VO[📊 Volatility]
+        GE[🌍 Geopolitical]
+        SE[🐦 Sentiment]
+    end
 
-## Architecture Overview
+    subgraph "Tier 3: Decision Council"
+        PB[🐻 Permabear]
+        PL[🐂 Permabull]
+        DA[😈 Devil's Advocate]
+        MS[👑 Master Strategist]
+    end
 
-The system is designed with a modular architecture, orchestrated by a central scheduling script. The key components are:
-
-1.  **Orchestrator (`orchestrator.py`)**: The heart of the application. It runs on a schedule and coordinates all other components, including data pulling, trade execution, and performance analysis.
-
-2.  **Data Puller (`coffee_factors_data_pull_new.py`)**: A script that gathers a wide range of data (market prices, economic indicators, weather data) from various APIs (Yahoo Finance, FRED, etc.) and consolidates it into a single CSV file.
-
-3.  **Prediction API (`prediction_api.py`)**: A FastAPI-based web service that accepts the consolidated data, simulates a prediction job, and returns mock price change predictions.
-
-4.  **Trading Bot (`trading_bot/`)**: The core package containing the logic for trade execution. It includes modules for:
-    - **IB Interface (`ib_interface.py`)**: Interacting with the Interactive Brokers TWS/Gateway.
-    - **Signal Generation (`signal_generator.py`)**: Converting API predictions into actionable trading signals.
-    - **Strategy (`strategy.py`)**: Implementing option strategies like Bull Call Spreads and Bear Put Spreads.
-    - **Risk Management (`risk_management.py`)**: Aligning positions with signals and monitoring open positions for stop-loss or take-profit conditions.
-
-5.  **Position Monitor (`position_monitor.py`)**: A separate, long-running process managed by the orchestrator. It is responsible for the intraday monitoring of open positions for risk.
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.10+
-- An active Interactive Brokers TWS or Gateway session.
-- API keys for FRED and Nasdaq Data Link (to be placed in `config.json`).
-- A Pushover account for notifications (optional).
-
-### Installation
-
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository-url>
-    cd <repository-directory>
-    ```
-
-2.  **Install dependencies:**
-    The project uses standard Python packaging. It is recommended to use a virtual environment.
-    ```bash
-    python -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
-    ```
-    *(Note: The original project also mentioned `uv`, a fast Python package installer. If you have `uv` installed, you can use `uv pip sync requirements.txt` for a potentially faster installation.)*
-
-3.  **Configure the bot:**
-    Rename the `config.example.json` to `config.json` (or create your own) and fill in the required values, especially your API keys and connection settings. See the [Configuration](#configuration) section for details.
-
-## Configuration
-
-The application's behavior is controlled by the `config.json` file.
-
-### Anatomy of `config.json`
-
--   `connection`: Settings for connecting to IB TWS/Gateway (`host`, `port`, `clientId`).
--   `symbol`, `exchange`: Defines the primary asset to trade (e.g., "KC" on "NYBOT").
--   `strategy`:
-    -   `quantity`: The number of contracts to trade for each order.
--   `signal_thresholds`:
-    -   `bullish`/`bearish`: The numerical thresholds from the API prediction to trigger a signal.
--   `strategy_tuning`:
-    -   Parameters to fine-tune strategy construction, such as `spread_width_usd` and `slippage_usd_per_contract`.
--   `risk_management`:
-    -   `check_interval_seconds`: How often the position monitor checks P&L.
-    -   `stop_loss_pct`/`take_profit_pct`: The P&L percentage thresholds to close a position.
--   `notifications`:
-    -   `enabled`: Set to `true` to enable Pushover notifications.
-    -   `pushover_user_key`/`pushover_api_token`: Your Pushover credentials.
--   `fred_api_key`, `nasdaq_api_key`: Your API keys for data services.
--   `weather_stations`: A dictionary of locations for which to pull weather data.
--   `fred_series`, `yf_series_map`: Mappings of economic and market data series to fetch.
--   `final_column_order`: Specifies the column order for the final consolidated data CSV.
-
-## How to Run
-
-### Run the Main Orchestrator
-
-This is the main entry point for the bot. It will run continuously, executing tasks based on its schedule.
-
-```bash
-python orchestrator.py
+    XS & WS & NS & PS -->|Emergency Trigger| AG & MA & FU & TE & VO & GE & SE
+    AG & MA & FU & TE & VO & GE & SE -->|Reports| PB & PL
+    PB & PL -->|Debate| MS
+    MS -->|Decision| DA
+    DA -->|Approved| EX[⚡ Order Execution]
+    DA -->|Vetoed| BLOCK[🛑 Trade Blocked]
+    EX --> IB[Interactive Brokers Gateway]
 ```
 
-The orchestrator will then handle starting and stopping the position monitor and executing the daily trading cycle automatically.
+### How It Works
 
-## Core Modules
+1. **Sentinels** monitor the world 24/7 (weather, news, social sentiment, market microstructure)
+2. When a sentinel detects a significant event, it triggers an **Emergency Council Session**
+3. **Specialist Agents** research using grounded data (Google Search, RSS, API data)
+4. **Permabear attacks** the thesis; **Permabull defends** — Hegelian dialectic debate
+5. **Master Strategist** weighs evidence using weighted voting and renders a verdict
+6. **Devil's Advocate** runs pre-mortem analysis to catch blind spots
+7. **Compliance Guardian** validates position sizing, VaR limits, and margin requirements
+8. Approved trades execute via **Interactive Brokers** as options spreads
 
--   **`orchestrator.py`**: Main entry point. Schedules all tasks.
--   **`config_loader.py`**: Loads the `config.json` file.
--   **`trading_bot/logging_config.py`**: Sets up centralized logging.
--   **`notifications.py`**: Handles sending Pushover notifications.
--   **`coffee_factors_data_pull_new.py`**: Fetches and validates all external data.
--   **`trading_bot/`**: The core trading logic package.
-    -   `main.py`: Orchestrates a single trading cycle.
-    -   `ib_interface.py`: Low-level interaction with the IB API.
-    -   `signal_generator.py`: Converts API results to trade signals.
-    -   `strategy.py`: Defines option strategies (e.g., Bull Call Spread).
-    -   `risk_management.py`: Manages position alignment and P&L monitoring.
-    -   `utils.py`: Helper functions (e.g., Black-Scholes pricing).
--   **`position_monitor.py`**: Standalone script for intraday risk monitoring.
--   **`performance_analyzer.py`**: Reads the trade ledger and generates a daily performance report.
--   **`trade_ledger.csv`**: A CSV file where all filled trades are logged.
+### Key Design Principles
+
+- **Heterogeneous LLM Routing** — Different AI providers (Gemini, OpenAI, Anthropic, xAI) for different roles, preventing algorithmic monoculture
+- **Constitutional AI Compliance** — Compliance has veto power over all trades
+- **Commodity-Agnostic** — Profile-driven configuration supports any ICE/CME futures contract
+- **Event-Driven** — Sentinels trigger analysis on-demand vs. fixed schedules
+- **Fail-Safe** — All components fail closed (block trades on error)
+
+## Trading Strategies
+
+| Market Condition | Strategy | Signal Type |
+|-----------------|----------|-------------|
+| Bullish directional | Bull Call Spread | DIRECTIONAL |
+| Bearish directional | Bear Put Spread | DIRECTIONAL |
+| High volatility expected | Long Straddle | VOLATILITY |
+| Low volatility / range-bound | Iron Condor | VOLATILITY |
+
+## Data Files
+
+| File | Purpose |
+|------|---------|
+| `decision_signals.csv` | Lightweight decision log (10 columns, one row per contract per cycle) |
+| `data/council_history.csv` | Full forensic record (30+ columns, agent reports, debate text) |
+| `trade_ledger.csv` | Executed trades with fill prices and P&L |
+| `data/agent_accuracy_structured.csv` | Brier scoring for agent prediction accuracy |
+
+## Dashboard
+
+Streamlit-based Real Options with pages:
+
+1. **🦅 Cockpit** — Live operations, system health, emergency controls
+2. **⚖️ Scorecard** — Decision quality analysis, win rates
+3. **🧠 Council** — Agent explainability, consensus visualization
+4. **📈 Financials** — ROI, equity curve, strategy performance
+5. **🔧 Utilities** — Log collection, manual overrides
+6. **🎯 Signal Overlay** — Decision forensics against price action
+
+## Tech Stack
+
+- **Execution:** Interactive Brokers Gateway (ib_insync)
+- **AI:** Google Gemini (research), OpenAI/Anthropic/xAI (analysis), heterogeneous routing
+- **Memory:** ChromaDB (Transactive Memory System for cross-agent knowledge)
+- **Dashboard:** Streamlit
+- **Hosting:** Digital Ocean Droplets
+
+## License
+
+Proprietary. All rights reserved.

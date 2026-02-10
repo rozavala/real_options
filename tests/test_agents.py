@@ -10,7 +10,7 @@ from trading_bot.agents import CoffeeCouncil
 @pytest.fixture
 def mock_genai_client():
     with patch("google.genai.Client") as mock_client_cls:
-        # Create a mock client instance
+        # Create a mock client instance.
         mock_client_instance = MagicMock()
         mock_client_cls.return_value = mock_client_instance
 
@@ -45,8 +45,8 @@ async def test_council_initialization(mock_genai_client, mock_config):
 
     mock_client_cls.assert_called_with(api_key="TEST_KEY")
     assert council.personas['meteorologist'] == "You are a weather expert."
-    assert council.agent_model_name == 'gemini-3.0-flash'
-    assert council.master_model_name == 'gemini-2.5-pro'
+    assert council.agent_model_name == 'gemini-1.5-flash'
+    assert council.master_model_name == 'gemini-1.5-pro'
 
 @pytest.mark.asyncio
 async def test_council_init_fallback(mock_genai_client):
@@ -67,33 +67,37 @@ async def test_council_init_fallback(mock_genai_client):
 async def test_research_topic(mock_genai_client, mock_config):
     _, _, mock_generate_content = mock_genai_client
 
-    # Setup mock response
+    # Setup mock response (JSON)
     mock_response = MagicMock()
-    mock_response.text = "Rain is expected in Brazil."
+    # The agent now expects JSON
+    mock_response.text = '{"evidence": "Radar shows clouds.", "analysis": "Rain is expected in Brazil.", "confidence": 0.9, "sentiment": "BEARISH"}'
     mock_generate_content.return_value = mock_response
 
     council = CoffeeCouncil(mock_config)
 
     result = await council.research_topic("meteorologist", "Check rain")
 
-    assert result == "Rain is expected in Brazil."
+    # Result is now a dict
+    assert isinstance(result, dict)
+    assert result['confidence'] == 0.9
+    assert result['sentiment'] == "BEARISH"
+    assert "Rain is expected in Brazil." in result['data']
 
     # Verify call arguments
     call_args = mock_generate_content.call_args
     assert call_args is not None
     kwargs = call_args.kwargs
 
-    assert kwargs['model'] == 'gemini-3.0-flash'
+    assert kwargs['model'] == 'gemini-1.5-flash'
     assert "You are a weather expert." in kwargs['contents']
     assert "Check rain" in kwargs['contents']
 
     # Verify config (Tools and Safety Settings)
     config_arg = kwargs.get('config')
     assert config_arg is not None
-    assert config_arg.tools is not None
-    # Check if google_search is present in tools
-    # The structure depends on how the SDK constructs it, but we can check the repr or attribute
-    assert str(config_arg.tools[0].google_search) is not None
+
+    # Phase 2 (Analysis) should NOT use tools
+    assert config_arg.tools is None
 
     assert config_arg.safety_settings is not None
     assert len(config_arg.safety_settings) == 4
@@ -104,26 +108,26 @@ async def test_decide_success(mock_genai_client, mock_config):
 
     # Setup mock master response (JSON)
     mock_response = MagicMock()
-    mock_response.text = '{"direction": "BULLISH", "confidence": 0.85, "reasoning": "Rain good.", "projected_price_5_day": 100.0}'
+    mock_response.text = '{"direction": "BULLISH", "confidence": 0.85, "reasoning": "Rain good.", "thesis_strength": "PROVEN"}'
     mock_generate_content.return_value = mock_response
 
     council = CoffeeCouncil(mock_config)
 
-    ml_signal = {"action": "LONG", "confidence": 0.6}
+    market_data = {"action": "LONG", "confidence": 0.6}
     reports = {"meteorologist": "Rainy"}
     market_context = "Market is up 5%"
 
-    decision = await council.decide("KC H25", ml_signal, reports, market_context)
+    decision = await council.decide("KC H25", market_data, reports, market_context)
 
     assert decision['direction'] == "BULLISH"
-    assert decision['confidence'] == 0.85
+    assert decision['confidence'] == 0.90
     assert decision['reasoning'] == "Rain good."
 
     # Verify call arguments
     call_args = mock_generate_content.call_args
     kwargs = call_args.kwargs
 
-    assert kwargs['model'] == 'gemini-2.5-pro'
+    assert kwargs['model'] == 'gemini-1.5-pro'
 
     # Verify JSON enforcement
     config_arg = kwargs.get('config')
@@ -142,14 +146,12 @@ async def test_decide_json_failure(mock_genai_client, mock_config):
 
     council = CoffeeCouncil(mock_config)
 
-    ml_signal = {"action": "LONG", "confidence": 0.6, "expected_price": 100.0}
+    market_data = {"action": "LONG", "confidence": 0.6, "expected_price": 100.0}
     reports = {"meteorologist": "Rainy"}
     market_context = "Market is up 5%"
 
     # Should not raise, but return fallback
-    decision = await council.decide("KC H25", ml_signal, reports, market_context)
+    decision = await council.decide("KC H25", market_data, reports, market_context)
 
     assert decision['direction'] == "NEUTRAL"
     assert "Master Error" in decision['reasoning']
-    # Should preserve ML signal price
-    assert decision['projected_price_5_day'] == 100.0

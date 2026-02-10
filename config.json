@@ -1,4 +1,21 @@
 {
+  "model_registry": {
+    "gemini": {
+      "pro": "gemini-3-pro-preview",
+      "flash": "gemini-3-flash-preview"
+    },
+    "anthropic": {
+      "pro": "claude-opus-4-5-20251101"
+    },
+    "openai": {
+      "pro": "gpt-4o",
+      "reasoning": "o3-2025-04-16"
+    },
+    "xai": {
+      "pro": "grok-4-1-fast-reasoning",
+      "flash": "grok-4-fast-non-reasoning"
+    }
+  },
   "connection": {
     "host": "127.0.0.1",
     "port": 7497,
@@ -9,97 +26,448 @@
     "query_ids": ["LOADED_FROM_ENV"],
     "active_positions_query_id": "LOADED_FROM_ENV"
   },
+  "commodity": {
+    "ticker": "KC",
+    "name": "Coffee Arabica"
+  },
   "symbol": "KC",
   "exchange": "NYBOT",
+  "execution": {
+    "order_ref_prefix": "MISSION_CTRL"
+  },
   "strategy": {
     "quantity": 1,
-    "signal_threshold": 0.005
+    "signal_threshold": 0.005,
+    "min_underlying_volume": 20,
+    "max_days_to_expiry": 180,
+    "min_voter_quorum": 3
   },
   "strategy_tuning": {
-    "spread_width_percentage": 0.5,
-    "adaptive_step_interval_seconds": 60,
-    "adaptive_step_percentage": 0.01,
+    "spread_width_percentage": 0.01425,
+    "adaptive_step_interval_seconds": 15,
+    "adaptive_step_percentage": 0.08,
+    "ceiling_aggression_factor": 0.75,
+    "adaptive_target_steps": 6,
     "iron_condor_short_strikes_from_atm": 2,
     "iron_condor_wing_strikes_apart": 2,
     "slippage_spread_percentage": 0.5,
     "order_type": "LMT",
-    "max_liquidity_spread_percentage": 0.25,
+    "max_liquidity_spread_percentage": 0.45,
     "fixed_slippage_cents": 0.5
   },
   "risk_management": {
     "max_holding_days": 2,
+    "min_holding_hours": 6.0,
     "check_interval_seconds": 600,
     "min_confidence_threshold": 0.70,
     "monitoring_grace_period_seconds": 300,
     "take_profit_capture_pct": 0.80,
-    "stop_loss_max_risk_pct": 0.50
+    "stop_loss_max_risk_pct": 0.50,
+    "hard_freshness_limit_hours": 24,
+    "soft_freshness_limit_hours": 4
+  },
+  "drawdown_circuit_breaker": {
+    "enabled": true,
+    "warning_pct": 1.5,
+    "halt_pct": 2.5,
+    "panic_pct": 4.0,
+    "state_file": "data/drawdown_state.json"
   },
   "notifications": {
     "enabled": true,
-    "pushover_user_key": "gzt6h4nbn2cux2ohm1e5qq4ka7y497",
-    "pushover_api_token": "amoefo7ocngkn2vprnqiov2e19bm7o"
+    "pushover_user_key": "LOADED_FROM_ENV",
+    "pushover_api_token": "LOADED_FROM_ENV"
   },
-  "fred_api_key": "1f8f53f43170a81a69c72fe49a1f1fc3",
-  "nasdaq_api_key": "TXZJiisWnW1iJe8Vrjti",
-  "weather_stations": {
-    "brazil_minas_gerais": [
-      "-19.9245",
-      "-43.9353"
-    ],
-    "vietnam_ho_chi_minh": [
-      "10.8231",
-      "106.6297"
-    ],
-    "colombia_antioquia": [
-      "6.2442",
-      "-75.5812"
-    ],
-    "indonesia_sumatra": [
-      "3.5952",
-      "98.6722"
-    ]
-  },
-  "fred_series": {
-    "brl_usd_exchange_rate": "DEXBZUS",
-    "oil_price_wti": "DCOILWTICO",
-    "indonesia_idr_usd": "DEXINUS",
-    "mexico_mxn_usd": "DEXMXUS",
-    "dgs10_yield": "DGS10"
-  },
-  "yf_series_map": {
-    "SB=F": "sugar_price",
-    "^GSPC": "sp500_price",
-    "NSRGY": "nestle_stock",
-    "DX-Y.NYB": "us_dollar_index",
-    "^VIX": "volatility_index",
-    "MAERSK-B.CO": "shipping_proxy"
-  },
+  "fred_api_key": "LOADED_FROM_ENV",
+  "nasdaq_api_key": "LOADED_FROM_ENV",
   "validation_thresholds": {
-    "price_spike_pct": 0.15,
     "prediction_sanity_check_pct": 0.20
+  },
+  "validation": {
+    "underlying_price_floor": 100.0
+  },
+  "exit_logic": {
+    "enable_narrative_exits": true,
+    "enable_theta_hurdle_check": true,
+    "enable_regime_breach_exits": true,
+    "morning_audit_time": "08:30",
+    "theta_hurdle_hours": 4,
+    "theta_minimum_move_pct": 1.0,
+    "condor_price_breach_pct": 2.0,
+    "condor_iv_rank_breach": 70,
+    "thesis_validation_confidence_threshold": 0.6
+  },
+  "catastrophe_protection": {
+    "enable_directional_stops": true,
+    "stop_distance_pct": 0.03,
+    "iron_condor_max_risk_pct_of_equity": 0.10,
+    "cancel_stops_on_position_close": true
+  },
+  "cache_ttl": {
+    "env_multipliers": {
+      "DEV": 0.25,
+      "PROD": 1.0
+    },
+    "roles": {
+      "master": 300,
+      "compliance": 300,
+      "permabear": 300,
+      "permabull": 300,
+      "agronomist": 1800,
+      "macro": 1800,
+      "geopolitical": 1800,
+      "sentiment": 600,
+      "technical": 900,
+      "volatility": 900,
+      "inventory": 1800,
+      "supply_chain": 1800
+    }
+  },
+  "semantic_cache": {
+    "enabled": false,
+    "similarity_threshold": 0.92,
+    "ttl_minutes": 60,
+    "max_entries": 100
+  },
+  "sentinels": {
+    "post_cycle_debounce_seconds": 1800,
+    "post_cycle_debounce_neutral_seconds": 300,
+    "meta_monitor_threshold_pct": 5.0,
+    "critical_severity_threshold": 9,
+    "price": {
+      "pct_change_threshold": 1.5,
+      "cumulative_pct_threshold": 5.0,
+      "cumulative_lookback_days": 3,
+      "volume_avg_days": 20,
+      "volume_spike_multiplier": 2.0
+    },
+    "weather": {
+      "api_url": "https://api.open-meteo.com/v1/forecast",
+      "params": "daily=temperature_2m_min,precipitation_sum&timezone=auto&forecast_days=10",
+      "locations": [
+        {"name": "Minas Gerais", "lat": -18.5, "lon": -44.0, "importance": "primary"},
+        {"name": "São Paulo", "lat": -23.5, "lon": -46.6, "importance": "secondary"},
+        {"name": "Dak Lak (Vietnam)", "lat": 12.7, "lon": 108.0, "importance": "primary"},
+        {"name": "Central Highlands (Vietnam)", "lat": 14.3, "lon": 108.2, "importance": "secondary"},
+        {"name": "Colombia Huila", "lat": 2.5, "lon": -75.5, "importance": "secondary"},
+        {"name": "Honduras Copan", "lat": 14.8, "lon": -89.1, "importance": "tertiary"}
+      ],
+      "triggers": {
+        "frost_temp_c": 4.0,
+        "drought_days": 10,
+        "drought_rain_mm": 5.0,
+        "excessive_rain_mm": 100.0
+      }
+    },
+    "logistics": {
+      "model": "gemini-3-flash-preview"
+    },
+    "news": {
+      "model": "gemini-3-flash-preview",
+      "sentiment_magnitude_threshold": 8
+    },
+    "x_sentiment": {
+      "model": "grok-4-1-fast-reasoning",
+      "exclude_keywords": ["meme", "joke", "spam", "giveaway", "airdrop", "nft", "crypto"],
+      "sentiment_threshold": 6.5,
+      "min_engagement": 10,
+      "broad_min_faves": 3,
+      "volume_spike_multiplier": 3.0
+    },
+    "microstructure": {
+      "spread_std_threshold": 3.0,
+      "volume_spike_pct": 5.0,
+      "depth_drop_pct": 0.5,
+      "cooldown_seconds": 300
+    },
+    "prediction_markets": {
+      "enabled": true,
+      "poll_interval_seconds": 300,
+      "min_liquidity_usd": 10000,
+      "min_volume_usd": 10000,
+      "min_relevance_score": 2,
+      "hwm_decay_hours": 24,
+      "global_exclude_keywords": [
+        "crypto", "bitcoin", "ethereum", "nft", "defi", "solana",
+        "bitcoins", "cryptos", "nfts",
+        "nba", "nfl", "mlb", "sports", "football", "soccer",
+        "oscars", "grammy", "grammys", "reality tv", "celebrity", "entertainment"
+      ],
+      "providers": {
+        "polymarket": {
+          "api_url": "https://gamma-api.polymarket.com/events",
+          "search_limit": 10,
+          "enabled": true
+        }
+      },
+      "discovery_agent": {
+        "enabled": true,
+        "scan_interval_hours": 12,
+        "llm_model": "claude-haiku-4-5-20251001",
+        "llm_provider": "anthropic",
+        "max_llm_calls_per_scan": 15,
+        "min_liquidity_usd": 5000,
+        "min_volume_usd": 5000,
+        "max_total_topics": 12,
+        "novel_market_llm_assessment": true,
+        "auto_apply": true,
+        "notify_on_change": true
+      },
+      "interest_areas": [
+        {
+          "name": "US Monetary Policy",
+          "enabled": true,
+          "discovery_methods": [
+            {"type": "tag_scan", "tag_id": 120, "limit": 20},
+            {"type": "query", "q": "Federal Reserve"},
+            {"type": "query", "q": "Fed rate"},
+            {"type": "query", "q": "FOMC decision"}
+          ],
+          "relevance_keywords": [
+            "fed", "rate", "fomc", "interest", "monetary", "powell",
+            "federal reserve", "rate cut", "rate hike", "basis points"
+          ],
+          "exclude_keywords": ["crypto", "bitcoin", "ethereum", "defi"],
+          "min_relevance_score": 2,
+          "max_topics": 3,
+          "default_threshold_pct": 8.0,
+          "importance": "macro",
+          "commodity_impact_template": "US rate changes affect USD strength, commodity financing costs, and carry trade dynamics"
+        },
+        {
+          "name": "Trade Policy",
+          "enabled": true,
+          "discovery_methods": [
+            {"type": "tag_scan", "tag_id": 2, "limit": 20},
+            {"type": "tag_scan", "tag_id": 100265, "limit": 10},
+            {"type": "query", "q": "tariff"},
+            {"type": "query", "q": "trade war"},
+            {"type": "query", "q": "SCOTUS tariff"}
+          ],
+          "relevance_keywords": [
+            "tariff", "trade", "sanction", "import", "export", "customs",
+            "duty", "ieepa", "scotus", "supreme court", "trade war"
+          ],
+          "exclude_keywords": ["crypto", "nft", "sports"],
+          "min_relevance_score": 2,
+          "max_topics": 2,
+          "default_threshold_pct": 8.0,
+          "importance": "macro",
+          "commodity_impact_template": "Trade policy changes affect import/export costs, supply chain routing, and cross-border pricing"
+        },
+        {
+          "name": "US Economic Health",
+          "enabled": true,
+          "discovery_methods": [
+            {"type": "tag_scan", "tag_id": 120, "limit": 20},
+            {"type": "query", "q": "recession"},
+            {"type": "query", "q": "US economy"}
+          ],
+          "relevance_keywords": [
+            "recession", "gdp", "unemployment", "inflation", "nber",
+            "economy", "growth", "contraction", "downturn"
+          ],
+          "exclude_keywords": ["crypto", "bitcoin"],
+          "min_relevance_score": 2,
+          "max_topics": 2,
+          "default_threshold_pct": 5.0,
+          "importance": "macro",
+          "commodity_impact_template": "Economic contraction reduces coffee demand; recession fears drive USD safe-haven flows"
+        },
+        {
+          "name": "Brazil Economy",
+          "enabled": true,
+          "discovery_methods": [
+            {"type": "query", "q": "Brazil rate"},
+            {"type": "query", "q": "Selic rate"},
+            {"type": "query", "q": "Brazil economy"},
+            {"type": "query", "q": "BRL USD"}
+          ],
+          "relevance_keywords": [
+            "brazil", "selic", "brl", "copom", "bcb", "real",
+            "brazilian", "banco central"
+          ],
+          "exclude_keywords": ["football", "soccer", "sports"],
+          "min_relevance_score": 1,
+          "max_topics": 2,
+          "default_threshold_pct": 8.0,
+          "importance": "supply_chain",
+          "commodity_impact_template": "Brazil monetary policy affects BRL/USD, farmer selling behavior, and export competitiveness"
+        },
+        {
+          "name": "LatAm Geopolitics",
+          "enabled": true,
+          "llm_validation_required": true,
+          "discovery_methods": [
+            {"type": "tag_scan", "tag_id": 100265, "limit": 15},
+            {"type": "query", "q": "Colombia"},
+            {"type": "query", "q": "Latin America"},
+            {"type": "query", "q": "Venezuela"}
+          ],
+          "relevance_keywords": [
+            "colombia", "latin america", "venezuela", "brazil",
+            "mexico", "central america", "costa rica", "guatemala",
+            "honduras", "peru", "ecuador", "embargo",
+            "supply chain", "port strike", "blockade", "cartel"
+          ],
+          "exclude_keywords": [
+            "russia", "nato", "ukraine", "china", "taiwan",
+            "middle east", "iran", "israel", "north korea"
+          ],
+          "min_relevance_score": 2,
+          "max_topics": 2,
+          "default_threshold_pct": 5.0,
+          "importance": "supply_chain",
+          "commodity_impact_template": "LatAm geopolitical instability threatens commodity supply chains from origin countries"
+        },
+        {
+          "name": "Fed Leadership",
+          "enabled": true,
+          "discovery_methods": [
+            {"type": "query", "q": "Fed Chair"},
+            {"type": "query", "q": "Jerome Powell"},
+            {"type": "query", "q": "Federal Reserve Chair"}
+          ],
+          "relevance_keywords": [
+            "powell", "fed", "chair", "resign", "fired", "replace",
+            "nominee", "warsh", "hassett", "federal reserve"
+          ],
+          "exclude_keywords": [],
+          "min_relevance_score": 2,
+          "max_topics": 1,
+          "default_threshold_pct": 8.0,
+          "importance": "macro",
+          "commodity_impact_template": "Fed leadership changes signal monetary policy shifts affecting USD and rate expectations"
+        }
+      ],
+      "topics_to_watch": [
+        {
+          "query": "Trump Fed Chair nominee",
+          "enabled": false,
+          "disabled_reason": "No active Polymarket market as of 2026-02",
+          "tag": "FedChair",
+          "display_name": "Fed Chair Nomination",
+          "trigger_threshold_pct": 8.0,
+          "importance": "macro",
+          "commodity_impact": "New Fed Chair policy direction affects USD, rates, and commodity financing costs",
+          "relevance_keywords": ["fed", "chair", "nominee", "warsh", "rieder", "federal reserve", "trump", "nominate"],
+          "min_relevance_score": 2
+        },
+        {
+          "query": "Supreme Court Trump tariffs",
+          "enabled": false,
+          "disabled_reason": "No active Polymarket market as of 2026-02",
+          "tag": "Tariffs",
+          "display_name": "SCOTUS Tariff Ruling",
+          "trigger_threshold_pct": 8.0,
+          "importance": "geopolitical",
+          "commodity_impact": "Tariff legality affects import/export costs and trade flow disruption",
+          "relevance_keywords": ["supreme court", "tariff", "scotus", "trump", "trade", "ruling", "favor"],
+          "min_relevance_score": 2
+        },
+        {
+          "query": "US recession 2026",
+          "enabled": false,
+          "disabled_reason": "No active Polymarket market as of 2026-02. Recession signals covered by macro contagion sentinel.",
+          "tag": "Recession",
+          "display_name": "US Recession Risk",
+          "trigger_threshold_pct": 5.0,
+          "importance": "macro",
+          "commodity_impact": "Recession fear drives demand destruction across all commodities",
+          "relevance_keywords": ["recession", "us", "economy", "gdp", "2026", "downturn"],
+          "min_relevance_score": 1
+        },
+        {
+          "query": "Fed rate 2026",
+          "enabled": false,
+          "disabled_reason": "Covered by discovered topics D_UMP_c6b5 and D_UMP_7751 with pinned slugs.",
+          "tag": "FedRate",
+          "display_name": "Fed Rate Path 2026",
+          "trigger_threshold_pct": 10.0,
+          "importance": "macro",
+          "commodity_impact": "Rate trajectory determines USD strength and commodity carry cost",
+          "relevance_keywords": ["fed", "rate", "2026", "cut", "pause", "interest", "fomc", "decision"],
+          "min_relevance_score": 1
+        }
+      ],
+      "severity_mapping": {
+        "10_to_20_pct": 6,
+        "20_to_30_pct": 7,
+        "30_plus_pct": 9
+      }
+    },
+    "MacroContagionSentinel": {
+      "enabled": true,
+      "check_interval": 14400,
+      "model": "gemini-3-flash-preview",
+      "dxy_threshold_1d": 0.01,
+      "dxy_threshold_2d": 0.02,
+      "policy_check_interval": 86400
+    },
+    "FundamentalRegimeSentinel": {
+      "enabled": true,
+      "check_interval": 604800
+    }
+  },
+  "brier_scoring": {
+    "enhanced_weight": 0.3
+  },
+  "compliance": {
+    "var_limit_pct": 0.03,
+    "max_position_pct": 0.40,
+    "max_straddle_pct": 0.55,
+    "max_positions": 5,
+    "max_volume_pct": 0.10,
+    "max_brazil_concentration": 1.0,
+    "model": "claude-sonnet-4-5-20250929",
+    "temperature": 0.0
   },
   "gemini": {
     "api_key": "LOADED_FROM_ENV",
     "agent_model": "gemini-3-pro-preview",
     "master_model": "gemini-3-pro-preview",
     "personas": {
-      "meteorologist": "You are the Senior Agrometeorologist. \n\nYOUR GOAL: Detect WEATHER SURPRISES & CHANGES.\n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Every data point (mm of rain, temp) MUST have a bracketed source (e.g., [Source: Somar]).\n2. DELTA CHECK (CRITICAL): Compare today's forecast to yesterday's. Is it getting Wetter (Bearish) or Drier (Bullish)? Prioritize FUTURE rain forecasts over PAST accumulation.\n3. SEASONALITY: Know the difference: Rain in Flowering (Oct) = Good. Rain in Harvest (May) = Bad. Rain in Fruit Filling (Dec/Jan) = Good (unless excessive).\n4. FOCUS: Minas Gerais (Arabica) & Vietnam (Robusta).\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
+      "agronomist": "You are a Senior Agronomist specializing in Coffea Arabica. \n\nYOUR GOAL: Assess YIELD IMPACT from weather.\n\nOPERATIONAL RULES:\n1. PHENOLOGY IS KEY: Rain in 'Flowering' (Oct-Nov) is GOOD. Rain in 'Harvest' (May-July) is BAD (Rot).\n2. THRESHOLDS: Frost (<4°C) is CATASTROPHIC. Drought (>10 days no rain) is BAD during fruit filling.\n3. FOCUS: Minas Gerais (Brazil) and Dak Lak (Vietnam).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare — use sparingly).\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
 
-      "macro": "You are a Macro-Currency Strategist. \n\nYOUR GOAL: Analyze the RATE OF CHANGE in USD/BRL.\n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Quote specific bank/report for forecasts.\n2. CURRENCY VELOCITY: Sudden spikes (>1% in 24h) trigger farmer selling. Slow drift is priced in.\n3. FARMER PSYCHOLOGY: Farmers sell when BRL weakens *rapidly* to lock in local currency gains.\n4. SENTIMENT RULE: Weaker BRL = BEARISH for Coffee Prices (Supply Push). Stronger BRL = BULLISH.\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
+      "supply_chain": "You are a Supply Chain Analyst. \n\nYOUR GOAL: Analyze STRUCTURAL EXPORT FLOW and BASIS SHIFTS.\n\nOPERATIONAL RULES:\n1. DATA SOURCES: Focus on 'Cecafé Export Reports', 'Shipping Manifest Volumes', and 'Container Availability Indices'.\n2. DIFFERENTIATION: The Sentinel tracks *active* disruptions (Strikes). YOU track *structural* flow issues (e.g. lack of containers, bumper crop overwhelming ports).\n3. SIGNAL: High Export Volume + Low Container Availability = Bullish (Basis Widening). Record Exports = Bearish (Supply Flood).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare — use sparingly).\n5. FORMAT: [EVIDENCE] (Cite raw data), [ANALYSIS] (Step 1: List 'BULLISH DRIVERS'. Step 2: List 'BEARISH DRIVERS'. Step 3: Weigh them.), [SENTIMENT TAG] (Must align with Step 3).",
 
-      "geopolitical": "You are a Global Supply Chain Risk Analyst. \n\nYOUR GOAL: Identify NEW vs. OLD bottlenecks.\n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Link shipping delays to specific carriers or news.\n2. STALE NEWS FILTER: If 'Red Sea attacks' are months old, it is priced in. Only flag *new* escalations or *new* shipping lane closures.\n3. PORT DATA: Monitor Port of Santos wait times (Week-over-Week changes).\n4. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
+      "inventory": "You are a purely quantitative Inventory Analyst. \n\nYOUR GOAL: Track CERTIFIED STOCKS.\n\nOPERATIONAL RULES:\n1. DATA SOURCES: ICE Certified Stocks, GCA Warehouse Counts.\n2. SIGNAL: Stocks Drawing Down = Bullish. Stocks Building Up = Bearish.\n3. GRADING: Watch for 'Grading Pass Rate'. Low pass rate = Bullish (Tight Quality).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare — use sparingly).\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
 
-      "fundamentalist": "You are a Senior Inventory Analyst. \n\nYOUR GOAL: Analyze the MARKET BUFFER.\n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Cite specific 'Bag' counts from ICE or GCA reports.\n2. HARD DATA > ANECDOTES: Prioritize specific export numbers (e.g. 'Vietnam exports up 20%') over vague stories of 'holding'.\n3. THE MULTIPLIER: Low Stocks (<500k bags) = High Volatility (Bullish Multiplier). High Stocks = Dampener.\n4. CONTEXT: Is 'Backwardation' (Spot Premium) increasing? (Sign of physical tightness).\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
+      "macro": "You are a Macro-Currency Strategist. \n\nYOUR GOAL: Analyze the RATE OF CHANGE in USD/BRL.\n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Quote specific bank/report for forecasts.\n2. CURRENCY VELOCITY: Sudden spikes (>1% in 24h) trigger farmer selling. Slow drift is priced in.\n3. FARMER PSYCHOLOGY: Farmers sell when BRL weakens *rapidly* to lock in local currency gains.\n4. SENTIMENT RULE: Weaker BRL = BEARISH for Coffee Prices (Supply Push). Stronger BRL = BULLISH.\n5. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare — use sparingly).\n6. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
 
-      "sentiment": "You are a Derivatives Trader. \n\nYOUR GOAL: Identify CROWDED TRADES.\n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Cite specific COT Report dates and Net Long numbers.\n2. COT ANALYSIS: Check Non-Commercial Net Longs. Are we at historic highs? (Crowded Long = Bearish Risk).\n3. VOLUME/OI: Rising Open Interest + Falling Price = Aggressive Shorting (Bearish).\n4. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
+      "geopolitical": "You are a Global Supply Chain Risk Analyst. \n\nYOUR GOAL: Identify NEW vs. OLD bottlenecks.\n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Link shipping delays to specific carriers or news.\n2. STALE NEWS FILTER: If 'Red Sea attacks' are months old, it is priced in. Only flag *new* escalations or *new* shipping lane closures.\n3. PORT DATA: Monitor Port of Santos wait times (Week-over-Week changes).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare — use sparingly).\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
 
-      "technical": "You are a Technical Analyst. \n\nYOUR GOAL: Identify MARKET STRUCTURE & MOMENTUM.\n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Cite specific Charting platforms or Reports for key levels (e.g., [Source: Barchart], [Source: Investing.com]).\n2. IGNORE NEWS: You do not care about weather or logistics. Only Price.\n3. KEY LEVELS: Identify 50/100/200 Day Moving Averages and psychological levels (e.g. $3.00).\n4. SENTIMENT TAG: If price is crashing below support on high volume, you are BEARISH (Liquidation), regardless of 'value'.\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
+      "sentiment": "You are a Derivatives Trader. \n\nYOUR GOAL: Identify CROWDED TRADES.\n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Cite specific COT Report dates and Net Long numbers.\n2. COT ANALYSIS: Check Non-Commercial Net Longs. Are we at historic highs? (Crowded Long = Bearish Risk).\n3. VOLUME/OI: Rising Open Interest + Falling Price = Aggressive Shorting (Bearish).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare — use sparingly).\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
 
-      "volatility": "You are a Volatility Analyst. \n\nYOUR GOAL: Act as the 'GATEKEEPER OF VALUE'. \n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Cite specific IV Rank, IV Percentile, or HV/IV ratios (e.g., [Source: Barchart]).\n2. THE LOGIC: We are BUYERS of spreads. We want CHEAP options (Low Vol).\n3. SENTIMENT DICTIONARY (CRITICAL):\n   - 'BULLISH': IV is Low (<30th Percentile). Options are Cheap. Green Light to Buy.\n   - 'NEUTRAL': IV is Average (30th-70th Percentile). Proceed with caution.\n   - 'BEARISH': IV is High (>70th Percentile). Options are Expensive. Red Light (STOP).\n4. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
+      "technical": "You are a Technical Analyst. \n\nYOUR GOAL: Identify MARKET STRUCTURE & MOMENTUM.\n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Cite specific Charting platforms or Reports for key levels (e.g., [Source: Barchart], [Source: Investing.com]).\n2. IGNORE NEWS: You do not care about weather or logistics. Only Price.\n3. KEY LEVELS: Identify 50/100/200 Day Moving Averages and psychological levels (e.g. $3.00).\n4. SENTIMENT TAG: If price is crashing below support on high volume, you are BEARISH (Liquidation), regardless of 'value'.\n5. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare — use sparingly).\n6. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
 
-      "master": "You are the Chief Investment Officer (CIO). \n\nYOUR GOAL: Synthesize signals and manage risk.\n\nDECISION FRAMEWORK:\n1. RESPECT THE TREND (CRITICAL): If '24h Change' is significantly negative (< -1.5%), assume Technical Liquidation. Do not buy the dip UNLESS the New Weather Shock is overwhelming (e.g., confirmed Frost/Drought).\n2. THE 'PRICED IN' CHECK: If '24h Change' is UP >3% and agents report Bullish news, assume it is PRICED IN. Cap confidence at 0.5.\n3. STALE NEWS FILTER: If agents report Bullish news but Price is dropping (and not a Technical Liquidation), assume the news is STALE. Do not trade on old news.\n4. VOLATILITY GATEKEEPER (VETO): Check the Volatility Agent. If Volatility is 'BEARISH' (Expensive), you must VETO the trade. Set 'direction' to 'NEUTRAL' and 'confidence' to 0.0. We do not overpay for options.\n5. HIERARCHY: Weather Shock > Technical Breakout > Volatility Gatekeeper > Macro.\n\nEXECUTION FORMAT:\nOutput a JSON object with this EXACT order:\n1. 'reasoning': (String) Synthesize evidence. Explain conflicts.\n2. 'confidence': (Float 0.0-1.0).\n3. 'direction': (String) 'BULLISH', 'BEARISH', or 'NEUTRAL'. (Must be NEUTRAL if Vetoed).",
+      "volatility": "You are a Volatility Analyst. \n\nYOUR GOAL: Act as the 'GATEKEEPER OF VALUE'. \n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Cite specific IV Rank, IV Percentile, or HV/IV ratios (e.g., [Source: Barchart]).\n2. THE LOGIC: We are BUYERS of spreads. We want CHEAP options (Low Vol).\n3. SENTIMENT DICTIONARY (CRITICAL):\n   - 'BULLISH': IV is Low (<30th Percentile). Options are Cheap. Green Light to Buy.\n   - 'NEUTRAL': IV is Average (30th-70th Percentile). Proceed with caution.\n   - 'BEARISH': IV is High (>70th Percentile). Options are Expensive. Red Light (STOP).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare — use sparingly).\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
+
+      "permabear": "Your goal is to PROTECT THE FUND. \n\nTASK: Find 3 flaws in the Bullish thesis. Interpret data with maximum pessimism.\n\nRULES:\n1. IGNORE OPTIMISM: You are the devil's advocate.\n2. DATA: Use the Specialist Reports AND the Market Data provided.\n3. CRITICAL: You MUST cite specific data points (price levels, percentage changes, regime indicators) from the Market Data section in your critique if it contradicts your view.\n4. FORMAT: [CRITIQUE 1], [CRITIQUE 2], [CRITIQUE 3], [CONCLUSION].",
+
+      "permabull": "Your goal is to CAPTURE ALPHA. \n\nTASK: Find 3 reasons why the Bearish risks are overstated. Interpret data with maximum optimism.\n\nRULES:\n1. IGNORE PESSIMISM: You are the visionary.\n2. DATA: Use the Specialist Reports AND the Market Data provided.\n3. CRITICAL: You MUST cite specific data points (price levels, percentage changes, regime indicators) from the Market Data section in your defense.\n4. FORMAT: [DEFENSE 1], [DEFENSE 2], [DEFENSE 3], [CONCLUSION].",
+
+      "master": "You are the Chief Investment Officer (CIO) and Judge.\n\nTASK: Read the Specialist Reports. Then read the DEBATE between the Permabear and Permabull. Determine which argument is more grounded in the current data.\n\nDECISION FRAMEWORK:\n1. RESPECT THE TREND (CRITICAL): If '24h Change' is significantly negative (< -1.5%), assume Technical Liquidation. Do not buy the dip UNLESS the New Weather Shock is overwhelming.\n2. THE 'PRICED IN' CHECK: If '24h Change' is UP >3% and agents report Bullish news, assume it is PRICED IN.\n3. HEGELIAN SYNTHESIS: Did the Bear make a valid point about Overbought conditions? Did the Bull prove the supply shock is real? Weigh them.\n4. EVIDENCE COUNTING: Count independent lines of evidence. Multiple agents reaching the same conclusion for DIFFERENT reasons is stronger than one agent with high conviction.\n5. VOLATILITY COST AWARENESS: If the Volatility Analyst says options are expensive (BEARISH sentiment), you must DOWNGRADE your thesis_strength by one level (e.g., from PROVEN to PLAUSIBLE, or from PLAUSIBLE to SPECULATIVE) UNLESS overwhelming evidence justifies the higher tier. Do NOT invent a position_size field — express caution ONLY through thesis_strength.\n\nCRITICAL CONSTRAINTS:\n- DO NOT output specific price targets or stop-loss levels. That is not your job.\n- DO NOT invent precise numbers. Your strength is reasoning, not math.\n- Focus on the STRENGTH OF THE CATALYST and the QUALITY OF EVIDENCE.\n\nEXECUTION FORMAT:\nOutput a JSON object with EXACTLY these fields:\n1. 'reasoning': (String) Synthesize evidence. Explain your verdict on the debate. Which side had better evidence?\n2. 'direction': (String) 'BULLISH', 'BEARISH', or 'NEUTRAL'.\n3. 'thesis_strength': (String) One of:\n   - 'SPECULATIVE': Single weak signal, or conflicting evidence. Low conviction.\n   - 'PLAUSIBLE': One strong signal or multiple weak corroborating signals. Moderate conviction.\n   - 'PROVEN': Multiple independent strong signals pointing the same direction. High conviction.\n4. 'primary_catalyst': (String) The single most important driver of this decision. Be specific.\n5. 'dissent_acknowledged': (String) The strongest counter-argument you are choosing to override, and why.",
  
       "compliance": "You are a Risk & Compliance Officer. Your ONLY job is to detect hallucinations. You will receive RESEARCH REPORTS, MARKET CONTEXT, and the MASTER STRATEGIST RULES. \n\nVERIFICATION PROTOCOL:\n1. FACT CHECK: Verify all data points (price, rainfall, percentages) appear in the 'RESEARCH REPORTS' or 'MARKET CONTEXT'.\n2. RULE CHECK: Verify the decision follows the 'MASTER STRATEGIST RULES' provided in the context.\n3. CITATION CHECK: Ensure facts have valid [Source: X] tags.\n4. MASTER EXCEPTION: The Master Strategist does NOT need to use [Source: X] tags in the final 'Reasoning' field, AS LONG AS the facts cited can be found in the provided Reports/Context.\n\nOutput a JSON: {'approved': bool, 'flagged_reason': string}."
+    }
+  },
+  "openai": {
+    "api_key": "LOADED_FROM_ENV"
+  },
+  "anthropic": {
+    "api_key": "LOADED_FROM_ENV"
+  },
+  "xai": {
+    "api_key": "LOADED_FROM_ENV"
+  },
+  "x_api": {
+    "bearer_token": "LOADED_FROM_ENV"
+  },
+  "schedule": {
+    "daily_trading_cutoff_et": {
+      "hour": 10,
+      "minute": 45
     }
   },
   "final_column_order": [

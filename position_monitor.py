@@ -22,7 +22,7 @@ from trading_bot.risk_management import monitor_positions_for_risk
 from trading_bot.utils import configure_market_data_type
 
 # --- Logging Setup ---
-setup_logging()
+setup_logging(log_file=None)
 logger = logging.getLogger(__name__)
 
 
@@ -57,6 +57,8 @@ async def main():
         logger.info(f"Received shutdown signal: {sig.name}. Disconnecting from IB...")
         if ib.isConnected():
             ib.disconnect()
+            # === NEW: Give Gateway time to cleanup ===
+            await asyncio.sleep(3.0)
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
         for task in tasks:
             task.cancel()
@@ -68,26 +70,15 @@ async def main():
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(shutdown(s)))
 
+    from trading_bot.connection_pool import IBConnectionPool
+
     monitor_task = None
     try:
-        conn_settings = config.get('connection', {})
-        host = conn_settings.get('host', '127.0.0.1')
-        port = conn_settings.get('port', 7497)
-        # Use a client ID offset from the main one to avoid conflicts
-        client_id = conn_settings.get('clientId', 55) + random.randint(1, 100)
-
-        logger.info(f"Connecting to {host}:{port} with client ID {client_id} for monitoring...")
-        await ib.connectAsync(host, port, clientId=client_id)
-
-        # --- FIX: Configure Market Data Type based on Environment ---
+        # C1 FIX: Use pool instead of manual connection
+        ib = await IBConnectionPool.get_connection("monitor", config)
         configure_market_data_type(ib)
-        # ------------------------------------------------------------
 
-        send_pushover_notification(
-            config.get('notifications', {}),
-            "Position Monitor Started",
-            "The position monitoring service has started and is now watching open positions."
-        )
+        logger.info("Position monitor connected and watching open positions.")
 
         # Start the main risk monitoring loop
         monitor_task = asyncio.create_task(monitor_positions_for_risk(ib, config))
@@ -102,8 +93,10 @@ async def main():
     finally:
         if monitor_task and not monitor_task.done():
             monitor_task.cancel()
-        if ib.isConnected():
-            ib.disconnect()
+
+        # Pool handles cleanup
+        await IBConnectionPool.release_connection("monitor")
+
         logger.info("Position monitor has shut down.")
 
 

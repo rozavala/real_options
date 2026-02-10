@@ -8,14 +8,23 @@ from orchestrator import start_monitoring, stop_monitoring
 
 class TestOrchestrator(unittest.TestCase):
 
-    @patch('orchestrator.send_pushover_notification')
     @patch('asyncio.create_subprocess_exec')
-    def test_start_monitoring(self, mock_create_subprocess, mock_send_notification):
+    @patch('orchestrator.is_market_open', return_value=True)
+    def test_start_monitoring(self, mock_is_market_open, mock_create_subprocess):
         async def run_test():
             config = {'notifications': {}}
             mock_process = AsyncMock()
             mock_process.pid = 1234
             mock_process.returncode = None
+
+            # Mock stdout/stderr with proper async readline that returns empty bytes
+            mock_stdout = AsyncMock()
+            mock_stdout.readline = AsyncMock(return_value=b'')
+            mock_stderr = AsyncMock()
+            mock_stderr.readline = AsyncMock(return_value=b'')
+            mock_process.stdout = mock_stdout
+            mock_process.stderr = mock_stderr
+
             mock_create_subprocess.return_value = mock_process
 
             # Test starting the process
@@ -26,7 +35,6 @@ class TestOrchestrator(unittest.TestCase):
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE
                 )
-                mock_send_notification.assert_called_once_with(config['notifications'], "Orchestrator", "Started position monitoring service.")
 
             # Test that it doesn't start if already running
             mock_create_subprocess.reset_mock()
@@ -36,8 +44,7 @@ class TestOrchestrator(unittest.TestCase):
 
         asyncio.run(run_test())
 
-    @patch('orchestrator.send_pushover_notification')
-    def test_stop_monitoring(self, mock_send_notification):
+    def test_stop_monitoring(self):
         async def run_test():
             config = {'notifications': {}}
             mock_process = AsyncMock()
@@ -49,7 +56,6 @@ class TestOrchestrator(unittest.TestCase):
                 await stop_monitoring(config)
                 mock_process.terminate.assert_called_once()
                 mock_process.wait.assert_awaited_once()
-                mock_send_notification.assert_called_once_with(config['notifications'], "Orchestrator", "Stopped position monitoring service.")
 
             # Test that it doesn't try to stop a non-running process
             mock_process.reset_mock()

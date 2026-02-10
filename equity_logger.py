@@ -3,7 +3,7 @@ import logging
 import os
 import random
 import sys
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, timezone
 import pandas as pd
 from ib_insync import IB
 import httpx
@@ -173,7 +173,7 @@ async def log_equity_snapshot(config: dict):
 
         # 3. Prepare Data
         # Use today's date at 17:00 to match the sync format (closing time)
-        today = datetime.now().date()
+        today = datetime.now(timezone.utc).date()
         timestamp = datetime.combine(today, time(17, 0, 0))
 
         new_row = {'timestamp': timestamp, 'total_value_usd': net_liq}
@@ -206,6 +206,8 @@ async def log_equity_snapshot(config: dict):
     finally:
         if ib.isConnected():
             ib.disconnect()
+            # === NEW: Give Gateway time to cleanup ===
+            await asyncio.sleep(3.0)
             logger.info("Disconnected from IB.")
 
 if __name__ == "__main__":
@@ -215,7 +217,7 @@ if __name__ == "__main__":
     parser.add_argument('--sync', action='store_true', help='Sync equity from Flex Query')
     args = parser.parse_args()
 
-    setup_logging()
+    setup_logging(log_file="logs/equity_logger.log")
     cfg = load_config()
 
     if cfg:
@@ -224,4 +226,5 @@ if __name__ == "__main__":
         else:
             asyncio.run(log_equity_snapshot(cfg))
     else:
-        print("Could not load config.")
+        logger.error("Could not load config.")
+        sys.exit(1)

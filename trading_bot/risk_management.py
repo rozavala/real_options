@@ -20,13 +20,85 @@ from ib_insync import *
 from ib_insync import util
 
 from trading_bot.logging_config import setup_logging
-from trading_bot.utils import get_position_details, log_trade_to_ledger
+from trading_bot.utils import get_position_details, log_trade_to_ledger, get_dollar_multiplier
 from trading_bot.order_manager import get_trade_ledger_df
-from trading_bot.ib_interface import place_order
+from trading_bot.ib_interface import place_order, get_active_futures
 from notifications import send_pushover_notification
+from trading_bot.tms import TransactiveMemory
 
-# --- Logging Setup ---
-setup_logging()
+
+async def check_iron_condor_theses(ib: IB, config: dict):
+    """
+    Checks all active Iron Condor theses for price breach invalidation.
+
+    This runs every 15 minutes during market hours to catch intraday breaches.
+    Sends immediate Pushover alert if 2% threshold exceeded.
+    """
+    try:
+        tms = TransactiveMemory()
+
+        # Get all active theses from VolatilityAnalyst (Iron Condors)
+        active_theses = tms.get_active_theses_by_guardian('VolatilityAnalyst')
+
+        if not active_theses:
+            return
+
+        # Get current underlying price once (efficiency)
+        futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=1)
+        if not futures:
+            logging.warning("IC thesis check: No active futures found")
+            return
+
+        underlying = futures[0]
+        ticker = ib.reqMktData(underlying, '', True, False)
+        await asyncio.sleep(1)
+        current_price = ticker.last if not util.isNan(ticker.last) else ticker.close
+        ib.cancelMktData(underlying)
+
+        if not current_price or current_price <= 0:
+            logging.warning(f"IC thesis check: Invalid underlying price {current_price}")
+            return
+
+        # Check each Iron Condor thesis
+        for thesis in active_theses:
+            if thesis.get('strategy_type') != 'IRON_CONDOR':
+                continue
+
+            entry_price = thesis.get('supporting_data', {}).get('entry_price', 0)
+
+            # SANITY CHECK: Detect legacy theses where entry_price is a spread premium
+            price_floor = config.get('validation', {}).get('underlying_price_floor', 100.0)
+            if 0 < entry_price < price_floor:
+                logging.warning(
+                    f"IC thesis check: entry_price ${entry_price:.2f} < floor "
+                    f"${price_floor:.2f}. Skipping — likely spread premium."
+                )
+                continue  # Skip this thesis entirely
+
+            if entry_price <= 0:
+                logging.warning(f"IC thesis has invalid entry_price: {entry_price}")
+                continue
+
+            move_pct = abs((current_price - entry_price) / entry_price) * 100
+
+            # Tiered alerting
+            if move_pct > 2.0:
+                logging.critical(f"🚨 IRON CONDOR BREACH: {move_pct:.2f}% move exceeds 2% threshold!")
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    "🚨 IRON CONDOR BREACH - CLOSE IMMEDIATELY",
+                    f"Underlying has moved {move_pct:.1f}% from entry.\n"
+                    f"Entry: ${entry_price:.2f}\n"
+                    f"Current: ${current_price:.2f}\n"
+                    f"Threshold: 2%\n\n"
+                    f"MANUAL INTERVENTION REQUIRED"
+                )
+            elif move_pct > 1.5:
+                logging.warning(f"⚠️ Iron Condor approaching breach: {move_pct:.2f}% (threshold: 2%)")
+                # Optional: Send warning notification at 1.5%
+
+    except Exception as e:
+        logging.error(f"IC thesis check failed: {e}", exc_info=True)
 
 
 async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlying_price: float, future_contract: Contract) -> bool:
@@ -34,13 +106,15 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
     target_future_conId = future_contract.conId
     logging.info(f"--- Managing Positions for Future Contract: {future_contract.localSymbol} (conId: {target_future_conId}) ---")
 
-    all_positions = await ib.reqPositionsAsync()
+    all_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=15)
     positions_for_this_future = []
 
     for p in all_positions:
         if p.contract.symbol != config['symbol'] or p.position == 0: continue
         try:
-            details_list = await ib.reqContractDetailsAsync(Contract(conId=p.contract.conId))
+            details_list = await asyncio.wait_for(
+                ib.reqContractDetailsAsync(Contract(conId=p.contract.conId)), timeout=5
+            )
             if details_list and hasattr(details_list[0], 'underConId') and details_list[0].underConId == target_future_conId:
                 positions_for_this_future.append(p)
         except Exception as e:
@@ -73,11 +147,16 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
         for pos_to_close in trades_to_close:
             try:
                 contract_to_close = Contract(conId=pos_to_close.contract.conId)
-                await ib.qualifyContractsAsync(contract_to_close)
+                await asyncio.wait_for(ib.qualifyContractsAsync(contract_to_close), timeout=5)
                 if contract_to_close.strike > 100: contract_to_close.strike /= 100.0
                 order = MarketOrder('BUY' if pos_to_close.position < 0 else 'SELL', abs(pos_to_close.position))
                 trade = ib.placeOrder(contract_to_close, order)
+                # Wait for fill with 60s timeout to prevent infinite blocking
+                close_deadline = asyncio.get_event_loop().time() + 60
                 while not trade.isDone():
+                    if asyncio.get_event_loop().time() > close_deadline:
+                        logging.error(f"Position close timed out (60s) for conId {pos_to_close.contract.conId}. Order may still be working.")
+                        break
                     await ib.sleepAsync(0.1)
                 if trade.orderStatus.status == OrderStatus.Filled:
                     log_trade_to_ledger(ib, trade, "Position Misaligned", combo_id=trade.order.permId)
@@ -148,14 +227,14 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
         position_open_dates = open_positions_from_ledger.groupby('position_id')['timestamp'].min().dt.tz_localize(utc).to_dict()
 
     # --- 1. Group Positions by Underlying ---
-    all_positions = [p for p in await ib.reqPositionsAsync() if p.position != 0 and p.contract.conId not in closed_ids]
+    all_positions = [p for p in await asyncio.wait_for(ib.reqPositionsAsync(), timeout=15) if p.position != 0 and p.contract.conId not in closed_ids]
     if not all_positions: return
 
     positions_by_underlying = {}
     for p in all_positions:
         if not isinstance(p.contract, (FuturesOption, Option)): continue
         try:
-            details = await ib.reqContractDetailsAsync(p.contract)
+            details = await asyncio.wait_for(ib.reqContractDetailsAsync(p.contract), timeout=5)
             if details and details[0].underConId:
                 under_con_id = details[0].underConId
                 if under_con_id not in positions_by_underlying: positions_by_underlying[under_con_id] = []
@@ -205,25 +284,34 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
         max_profit_potential = 0.0
         max_loss_potential = 0.0
 
+        # Get profile-driven dollar multiplier
+        dollar_mult = get_dollar_multiplier(config)
+
+        # Fallback multiplier for undefined profit potential (e.g., single legs)
+        FALLBACK_PROFIT_MULTIPLIER = 2.0
+
         if total_entry_cost > 0:
             # DEBIT SPREAD (Bull Call / Bear Put)
             # Max Risk = What we paid (Entry Cost)
             max_loss_potential = total_entry_cost
             # Max Profit = (Width * Size * Multiplier) - Cost.
-            # Simplified approximation: For 1 lot, Max Profit = Width - Cost.
-            # But since we don't have the multiplier handy easily, we rely on Cost logic:
-            # If we paid $500 for a spread that can be worth $1500:
-            # It's safer to assume for Debit Spreads: Stop Loss based on Cost.
-            max_profit_potential = (spread_width * abs(combo_legs[0].position) * 37500) - total_entry_cost # Approx for KC
-            # Fallback if huge multiplier makes this weird:
-            if max_profit_potential < 0: max_profit_potential = total_entry_cost * 2 # Fallback logic
+            # MECE FIX: Use profile-driven multiplier
+            max_profit_potential = (spread_width * abs(combo_legs[0].position) * dollar_mult) - total_entry_cost
+            # Fallback if huge multiplier makes this weird OR single leg (width=0):
+            if max_profit_potential <= 0:
+                max_profit_potential = total_entry_cost * FALLBACK_PROFIT_MULTIPLIER # Fallback logic
 
         else:
             # CREDIT SPREAD (Iron Condor / Short Vertical)
             # Entry Cost is negative (e.g. -500).
             max_profit_potential = abs(total_entry_cost) # We keep the credit
             # Max Loss = Width - Credit
-            max_loss_potential = (spread_width * abs(combo_legs[0].position) * 37500) - max_profit_potential
+            max_loss_potential = (spread_width * abs(combo_legs[0].position) * dollar_mult) - max_profit_potential
+
+            # FIX: Handle single-leg credit positions (width=0) resulting in negative max_loss
+            if max_loss_potential <= 0:
+                # Infinite risk scenario (naked short)
+                max_loss_potential = float('inf')
 
         # C. Calculate "Capture" and "Risk" Metrics
         capture_pct = 0.0
@@ -231,8 +319,12 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
 
         if max_profit_potential > 0:
             capture_pct = total_unrealized_pnl / max_profit_potential
+        else:
+            capture_pct = 0.0 # Safety default
 
-        if max_loss_potential > 0:
+        if max_loss_potential == float('inf'):
+             risk_pct = 0.0 # Cannot calculate % of infinity
+        elif max_loss_potential > 0:
             risk_pct = total_unrealized_pnl / max_loss_potential
             # Note: total_unrealized_pnl is negative when losing, so risk_pct will be negative.
 
@@ -288,27 +380,44 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
                     # If Long (pos > 0), we SELL. If Short (pos < 0), we BUY.
                     action = 'SELL' if leg_pos.position > 0 else 'BUY'
 
+                    # === M5 FIX: Use actual position size as ratio ===
+                    # For closing, ratio should match what we hold
+                    leg_qty = abs(int(leg_pos.position))
+
                     combo_legs_list.append(ComboLeg(
                         conId=leg_pos.contract.conId,
-                        ratio=1, # Assuming 1:1 ratio for simplicity of closing what we have
+                        ratio=leg_qty,  # v3.1: Use actual position size
                         action=action,
                         exchange=config.get('exchange', 'NYBOT')
                     ))
-                    # Mark as closed in our local set immediately to prevent double-action
-                    closed_ids.add(leg_pos.contract.conId)
 
                 contract.comboLegs = combo_legs_list
 
                 # 2. Place the Order
                 # We "BUY" the BAG because we defined the legs with their specific closing actions (BUY/SELL).
-                # The quantity is the absolute size of the position (assuming equal size for all legs for now).
-                qty = abs(combo_legs[0].position)
+                # v3.1: Order quantity is 1 when ratios carry the size
+                qty = 1
 
                 order = MarketOrder("BUY", qty)
                 order.outsideRth = True
 
-                logging.info(f"Placing BAG Market Order to close {combo_desc} (Qty: {qty})")
+                # === v3.1: Calculate GCD for display ===
+                from math import gcd
+                from functools import reduce
+                ratios = [abs(int(p.position)) for p in combo_legs]
+                common_divisor = reduce(gcd, ratios) if ratios else 1
+                readable_qty = ratios[0] // common_divisor if common_divisor and ratios else 0
+
+                logging.info(
+                    f"Placing BAG Market Order to close {combo_desc} "
+                    f"(Ratios: {[r//common_divisor for r in ratios]}, Qty: {readable_qty})"
+                )
                 place_order(ib, contract, order)
+
+                # Mark as closed AFTER order placement succeeds — if place_order
+                # throws, legs stay visible to future risk checks instead of becoming zombies
+                for leg_pos in combo_legs:
+                    closed_ids.add(leg_pos.contract.conId)
 
             except Exception as e:
                 logging.error(f"Failed to close combo {combo_desc} as BAG: {e}")
@@ -402,25 +511,39 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
 
     fill_handler = lambda t, f: _on_fill(t, f, config)
 
+    # Clear filled order tracking from previous session to prevent unbounded growth
+    # and avoid stale ID collisions after IB Gateway restarts
+    _filled_order_ids.clear()
+
     # Register the event handlers before starting the tasks.
     ib.orderStatusEvent += order_status_handler
     ib.execDetailsEvent += fill_handler
     logging.info("Order status and execution event handlers registered.")
 
     # Request all open orders to ensure we are tracking everything upon startup.
-    await ib.reqAllOpenOrdersAsync()
+    await asyncio.wait_for(ib.reqAllOpenOrdersAsync(), timeout=15)
 
     closed_ids = set()
+    ic_check_counter = 0
+    IC_CHECK_INTERVAL = 15  # Check IC theses every 15 minutes (assuming 60s interval)
+
     try:
         while True:
             try:
-                logging.info("P&L monitor cycle starting...")
+                logging.debug("P&L monitor cycle starting...")
                 # Always run check if we have valid thresholds, but also the loop logic depends on them being present?
                 if target_capture_pct or max_risk_loss_pct:
                     # Arguments are ignored inside _check_risk_once but required by signature
                     await _check_risk_once(ib, config, closed_ids, 0.0, 0.0)
 
-                logging.info(f"P&L monitor cycle complete. Waiting {interval} seconds.")
+                # === NEW: Iron Condor Thesis Validation ===
+                ic_check_counter += 1
+                if ic_check_counter >= IC_CHECK_INTERVAL:
+                    logging.info("Running Iron Condor thesis validation check...")
+                    await check_iron_condor_theses(ib, config)
+                    ic_check_counter = 0
+
+                logging.debug(f"P&L monitor cycle complete. Waiting {interval} seconds.")
                 await asyncio.sleep(interval)
             except asyncio.CancelledError:
                 logging.info("P&L monitoring task was cancelled."); break

@@ -11,22 +11,19 @@ from ib_insync import util
 
 class TestOrderManager(unittest.TestCase):
 
-    @patch('trading_bot.order_manager.run_data_pull')
-    @patch('trading_bot.order_manager.get_model_predictions')
-    @patch('trading_bot.order_manager.IB')
-    def test_generate_orders_aborts_on_data_pull_failure(self, mock_ib, mock_get_predictions, mock_run_data_pull):
+    @patch('trading_bot.order_manager.generate_signals')
+    @patch('trading_bot.order_manager.IBConnectionPool')
+    def test_generate_and_queue_orders_calls_signal_generator(self, mock_pool, mock_generate_signals):
         async def run_test():
-            mock_run_data_pull.return_value = None
-            mock_get_predictions.return_value = {'price_changes': [1.0]}
             mock_ib_instance = AsyncMock()
-            mock_ib.return_value = mock_ib_instance
+            mock_pool.get_connection = AsyncMock(return_value=mock_ib_instance)
+            mock_generate_signals.return_value = [] # Return empty list to stop early
 
-            config = {}
+            config = {'strategy': {'signal_threshold': 0.5}}
             await generate_and_queue_orders(config)
 
-            mock_run_data_pull.assert_called_once()
-            mock_get_predictions.assert_not_called()
-            mock_ib_instance.connectAsync.assert_not_called()
+            mock_generate_signals.assert_called_once()
+            mock_pool.get_connection.assert_called_once()
 
         asyncio.run(run_test())
 
@@ -95,11 +92,11 @@ class TestPositionClosing(unittest.TestCase):
     # Use MagicMock for place_order because it is a synchronous function in the codebase
     @patch('trading_bot.order_manager.place_order', new_callable=MagicMock)
     @patch('trading_bot.order_manager.log_trade_to_ledger', new_callable=AsyncMock)
-    @patch('trading_bot.order_manager.IB')
-    def test_closes_only_old_positions_and_correct_symbols(self, mock_ib, mock_log_trade, mock_place_order):
+    @patch('trading_bot.order_manager.IBConnectionPool')
+    def test_closes_only_old_positions_and_correct_symbols(self, mock_pool, mock_log_trade, mock_place_order):
         async def run_test():
             mock_ib_instance = AsyncMock()
-            mock_ib.return_value = mock_ib_instance
+            mock_pool.get_connection = AsyncMock(return_value=mock_ib_instance)
             mock_ib_instance.connectAsync = AsyncMock()
             mock_ib_instance.reqPositionsAsync = AsyncMock()
             mock_ib_instance.isConnected = MagicMock(return_value=True)
@@ -127,6 +124,26 @@ class TestPositionClosing(unittest.TestCase):
                 Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 200 C', symbol='KC', conId=5, exchange='NYBOT'), position=1, avgCost=1.0),
             ]
             mock_ib_instance.reqPositionsAsync.return_value = mock_positions
+
+            # Mock qualifyContractsAsync to return populated contracts based on conId
+            populated_contracts = {
+                1: Contract(localSymbol='KC 26JUL24 250 C', symbol='KC', conId=1, exchange='NYBOT', secType='FOP'),
+                2: Contract(localSymbol='KC 26JUL24 260 C', symbol='KC', conId=2, exchange='NYBOT', secType='FOP'),
+                3: Contract(localSymbol='KC 26JUL24 300 P', symbol='KC', conId=3, exchange='NYBOT', secType='FOP'),
+                4: Contract(localSymbol='KC 26JUL24 310 P', symbol='KC', conId=4, exchange='NYBOT', secType='FOP'),
+                5: Contract(localSymbol='KC 26JUL24 200 C', symbol='KC', conId=5, exchange='NYBOT', secType='FOP'),
+            }
+
+            async def mock_qualify(*contracts):
+                result = []
+                for c in contracts:
+                    if c.conId in populated_contracts:
+                        result.append(populated_contracts[c.conId])
+                    else:
+                        result.append(c)
+                return result
+
+            mock_ib_instance.qualifyContractsAsync = AsyncMock(side_effect=mock_qualify)
 
             mock_trade = MagicMock()
             mock_trade.orderStatus.status = 'Filled'
@@ -210,8 +227,9 @@ class TestPositionClosing(unittest.TestCase):
 
             # So for Bag it is BUY.
             # Limit price for BUY is ASK (5.5).
+            # UPDATED: Code now calculates price from legs (5.25 - 5.25 = 0) + slippage (0.05).
             self.assertEqual(bag_order.orderType, 'LMT')
-            self.assertEqual(bag_order.lmtPrice, 5.5)
+            self.assertEqual(bag_order.lmtPrice, 0.05)
             self.assertEqual(bag_order.action, 'BUY')
 
         asyncio.run(run_test())

@@ -26,7 +26,7 @@ def load_config() -> dict | None:
             config = json.load(f)
     except Exception as e:
         logger.error(f"Failed to load config.json: {e}")
-        return None
+        raise
 
     # 2. Load .env file (Environment Specifics)
     load_dotenv(env_path)
@@ -38,6 +38,18 @@ def load_config() -> dict | None:
     
     if os.getenv("IB_CLIENT_ID"):
         config['connection']['clientId'] = int(os.getenv("IB_CLIENT_ID"))
+
+    # Validate Connection Settings
+    if 'connection' in config:
+        if 'port' not in config['connection']:
+            raise ValueError("Config validation: 'connection.port' is missing!")
+        if 'clientId' not in config['connection']:
+            raise ValueError("Config validation: 'connection.clientId' is missing!")
+
+        if not isinstance(config['connection']['port'], int):
+            raise TypeError(f"Config validation: 'connection.port' must be an integer, got {type(config['connection']['port']).__name__}")
+        if not isinstance(config['connection']['clientId'], int):
+            raise TypeError(f"Config validation: 'connection.clientId' must be an integer, got {type(config['connection']['clientId']).__name__}")
 
     # 4. OVERRIDE: Flex Query (Secrets)
     if os.getenv("FLEX_TOKEN"):
@@ -57,12 +69,85 @@ def load_config() -> dict | None:
     if os.getenv("STRATEGY_QTY"):
         config['strategy']['quantity'] = int(os.getenv("STRATEGY_QTY"))
 
-    # 6. GEMINI
-    if config['gemini']['api_key'] == "LOADED_FROM_ENV":
-        config['gemini']['api_key'] = os.getenv("GEMINI_API_KEY")
-        
+    # 6. OVERRIDE: Notifications (Secrets)
+    notifications = config.get('notifications', {})
+
+    # Load credentials from env if available
+    for key, env_var in [('pushover_user_key', 'PUSHOVER_USER_KEY'), ('pushover_api_token', 'PUSHOVER_API_TOKEN')]:
+        if os.getenv(env_var):
+            notifications[key] = os.getenv(env_var)
+        elif notifications.get(key) == "LOADED_FROM_ENV":
+            # If not in env, and config has placeholder, clear it to fail validation below
+            notifications[key] = None
+
+    config['notifications'] = notifications
+
+    # Validate Notifications
+    if notifications.get('enabled'):
+        missing_creds = []
+        if not notifications.get('pushover_user_key'):
+            missing_creds.append("PUSHOVER_USER_KEY")
+        if not notifications.get('pushover_api_token'):
+            missing_creds.append("PUSHOVER_API_TOKEN")
+
+        if missing_creds:
+            raise ValueError(f"Config validation: Notifications enabled but credentials missing: {', '.join(missing_creds)}")
+
+    # 7. OVERRIDE: Data Providers (Secrets)
+    if os.getenv("FRED_API_KEY"):
+        config['fred_api_key'] = os.getenv("FRED_API_KEY")
+
+    if config.get('fred_api_key') == "LOADED_FROM_ENV" or not config.get('fred_api_key'):
+        logger.warning("WARNING: FRED_API_KEY not found in environment! Macro features may be limited.")
+
+    if os.getenv("NASDAQ_API_KEY"):
+        config['nasdaq_api_key'] = os.getenv("NASDAQ_API_KEY")
+
+    if config.get('nasdaq_api_key') == "LOADED_FROM_ENV" or not config.get('nasdaq_api_key'):
+        logger.warning("WARNING: NASDAQ_API_KEY not found in environment! Data feeds may be limited.")
+
+    # Check X API Bearer Token
+    if os.getenv("X_BEARER_TOKEN"):
+        if 'x_api' not in config:
+            config['x_api'] = {}
+        config['x_api']['bearer_token'] = os.getenv("X_BEARER_TOKEN")
+
+    x_api = config.get('x_api', {})
+    if x_api.get('bearer_token') == "LOADED_FROM_ENV" or not x_api.get('bearer_token'):
+        logger.warning("WARNING: X_BEARER_TOKEN not found! XSentimentSentinel will be disabled.")
+
+    # 8. Models
+    # Helper to load LLM keys (Loop to handle LOADED_FROM_ENV replacements)
+    for provider in ['gemini', 'anthropic', 'openai', 'xai']:
+        if provider in config and 'api_key' in config[provider]:
+            if config[provider]['api_key'] == "LOADED_FROM_ENV":
+                config[provider]['api_key'] = os.getenv(f"{provider.upper()}_API_KEY")
+
     # Safety Check (Optional but recommended)
+    # Check for at least one LLM key
+    llm_keys = [
+        config.get('gemini', {}).get('api_key'),
+        config.get('anthropic', {}).get('api_key'),
+        config.get('openai', {}).get('api_key'),
+        config.get('xai', {}).get('api_key')
+    ]
+
+    # Filter out empty strings or None
+    valid_keys = [k for k in llm_keys if k and k != "LOADED_FROM_ENV"]
+
+    if not valid_keys:
+        raise ValueError("CRITICAL: No LLM API keys found! Please set at least one of GEMINI_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, or XAI_API_KEY.")
+
     if not config['gemini']['api_key']:
-        print("⚠️ WARNING: GEMINI_API_KEY not found in environment!")
+        logger.warning("WARNING: GEMINI_API_KEY not found in environment!")
+
+    # 9. TRADING MODE: LIVE (default, backward compatible) or OFF (training/observation)
+    trading_mode = os.getenv("TRADING_MODE", "LIVE").upper().strip()
+    if trading_mode not in ("LIVE", "OFF"):
+        logger.warning(f"Invalid TRADING_MODE '{trading_mode}', defaulting to LIVE")
+        trading_mode = "LIVE"
+    config['trading_mode'] = trading_mode
+    if trading_mode == "OFF":
+        logger.warning("*** TRADING MODE OFF — No real orders will be placed ***")
 
     return config

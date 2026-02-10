@@ -7,20 +7,29 @@ import logging
 import asyncio
 import random
 import math
+import functools
 from ib_insync import IB, PortfolioItem
 
 from trading_bot.logging_config import setup_logging
 from notifications import send_pushover_notification
-from trading_bot.model_signals import get_model_signals_df
+# Decision signals: lightweight summary of Council decisions
+from trading_bot.decision_signals import get_decision_signals_df
 from trading_bot.performance_graphs import generate_performance_charts
 from config_loader import load_config
 
-# --- Logging Setup ---
-setup_logging()
 logger = logging.getLogger("PerformanceAnalyzer")
 
 # --- Constants ---
 DEFAULT_STARTING_CAPITAL = 250000
+
+
+@functools.lru_cache(maxsize=128)
+def _load_archive_file(filepath: str, mtime: float) -> pd.DataFrame:
+    """
+    Cached loader for archive files.
+    The mtime argument ensures that if the file changes, we reload it.
+    """
+    return pd.read_csv(filepath)
 
 
 def get_trade_ledger_df():
@@ -36,17 +45,28 @@ def get_trade_ledger_df():
         logger.info(f"Loading main trade ledger: {os.path.basename(ledger_path)}")
         dataframes.append(pd.read_csv(ledger_path))
     else:
-        logger.warning("Main trade_ledger.csv not found.")
+        logger.debug("Main trade_ledger.csv not found. This is normal for new installations.")
 
     if os.path.exists(archive_dir):
-        archive_files = [os.path.join(archive_dir, f) for f in os.listdir(archive_dir) if f.startswith('trade_ledger_') and f.endswith('.csv')]
-        if archive_files:
-            logger.info(f"Found {len(archive_files)} archived trade ledger(s).")
-            for file in archive_files:
-                logger.info(f"Loading archived ledger: {os.path.basename(file)}")
-                dataframes.append(pd.read_csv(file))
-        else:
-            logger.info("No archived trade ledgers found.")
+        try:
+            # Use os.scandir for better performance (avoids extra stat calls)
+            with os.scandir(archive_dir) as entries:
+                found_archives = False
+                for entry in entries:
+                    if entry.is_file() and entry.name.startswith('trade_ledger_') and entry.name.endswith('.csv'):
+                        found_archives = True
+                        logger.info(f"Loading archived ledger: {entry.name}")
+                        try:
+                            # Pass mtime to cache key
+                            df = _load_archive_file(entry.path, entry.stat().st_mtime)
+                            dataframes.append(df)
+                        except Exception as e:
+                            logger.warning(f"Failed to load archive {entry.name}: {e}")
+
+                if not found_archives:
+                    logger.info("No archived trade ledgers found.")
+        except Exception as e:
+            logger.warning(f"Error scanning archive directory: {e}")
     else:
         logger.info("Archive directory not found, skipping.")
 
@@ -118,6 +138,8 @@ async def get_live_account_data(config: dict) -> dict | None:
     finally:
         if ib.isConnected():
             ib.disconnect()
+            # === NEW: Give Gateway time to cleanup ===
+            await asyncio.sleep(3.0)
 
     return live_data
 
@@ -149,9 +171,10 @@ def generate_executive_summary(
         return {"pnl": net_pnl, "trades_executed": trades_executed, "win_rate": win_rate}
 
     # --- Calculate metrics ---
-    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date]
-    signals_fired_today = len(today_signals[today_signals['signal'] != 'NEUTRAL'])
-    signals_fired_ltd = len(signals_df[signals_df['signal'] != 'NEUTRAL'])
+    signal_col = 'signal' if 'signal' in signals_df.columns else 'master_decision'
+    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date] if 'timestamp' in signals_df.columns else signals_df
+    signals_fired_today = len(today_signals[today_signals[signal_col] != 'NEUTRAL']) if signal_col in today_signals.columns else 0
+    signals_fired_ltd = len(signals_df[signals_df[signal_col] != 'NEUTRAL']) if signal_col in signals_df.columns else 0
 
     # LTD metrics are always from the ledger (realized P&L)
     ltd_metrics = calculate_ledger_metrics(trade_df, signals_df)
@@ -211,15 +234,25 @@ def generate_executive_summary(
     return report, final_pnl_for_title
 
 def generate_morning_signals_report(signals_df: pd.DataFrame, today_date: datetime.date) -> str:
-    """Creates a report of the signals generated this morning."""
-    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date]
+    """Creates a report of morning trading signals.
+
+    NOTE: ML model signals were removed in v4.0. This function now operates
+    on council_history data if provided, or returns a placeholder message.
+    Future enhancement: pull today's council decisions from council_history.csv.
+    """
+    if signals_df.empty:
+        return "No decision signals recorded yet today.\n"
+
+    today_signals = signals_df[signals_df['timestamp'].dt.date == today_date] if 'timestamp' in signals_df.columns else signals_df
     if today_signals.empty:
-        return "No model signals for today.\n"
+        return "No signals generated today yet.\n"
 
     report = f"{'Contract':<12} {'Signal':<10}\n"
     report += "-" * 22 + "\n"
     for _, row in today_signals.iterrows():
-        report += f"{row['contract']:<12} {row['signal']:<10}\n"
+        contract_col = 'contract' if 'contract' in row.index else 'symbol'
+        signal_col = 'signal' if 'signal' in row.index else 'master_decision'
+        report += f"{row.get(contract_col, 'N/A'):<12} {row.get(signal_col, 'N/A'):<10}\n"
     return report
 
 def generate_open_positions_report(portfolio: list) -> tuple[str, float]:
@@ -363,7 +396,7 @@ async def analyze_performance(config: dict) -> dict | None:
     """
     # Ledger is still needed for LTD stats and charts
     trade_df = get_trade_ledger_df()
-    signals_df = get_model_signals_df()
+    signals_df = get_decision_signals_df()
 
     logger.info("--- Starting Daily Performance Analysis ---")
 
@@ -452,42 +485,67 @@ async def analyze_performance(config: dict) -> dict | None:
         logger.error(f"An error occurred during performance analysis: {e}", exc_info=True)
         return None
 
-async def main():
+async def main(config: dict = None):
     """
     Main function to run analysis and send notifications in multiple parts.
     """
-    config = load_config()
-    if not config:
-        logger.critical("Failed to load configuration. Exiting."); return
+    if config is None:
+        config = load_config()
+        if not config:
+            logger.critical("Failed to load configuration. Exiting."); return
 
     analysis_result = await analyze_performance(config)
 
     if analysis_result:
         notification_config = config.get('notifications', {})
 
-        # --- Send Main Title ---
-        send_pushover_notification(notification_config, analysis_result['title'], f"Trading Performance Report for {analysis_result['date']}")
+        # --- Build consolidated text report ---
+        report_parts = []
 
-        # --- Send Report Sections ---
-        for title, content in analysis_result['reports'].items():
+        # Always include exec summary
+        exec_summary = analysis_result['reports'].get('Exec. Summary', '')
+        if exec_summary:
+            report_parts.append(exec_summary)
+
+        # Include Morning Signals (compact format)
+        signals = analysis_result['reports'].get('Morning Signals', '')
+        if signals and signals.strip():
+            report_parts.append(f"\n--- Signals ---\n{signals}")
+
+        # Only include Open/Closed positions if they have content
+        open_pos = analysis_result['reports'].get('Open Positions', '')
+        if open_pos and 'No open positions' not in open_pos:
+            report_parts.append(f"\n--- Open Positions ---\n{open_pos}")
+
+        closed_pos = analysis_result['reports'].get('Closed Positions', '')
+        if closed_pos and 'No trades resulting in a closed position' not in closed_pos:
+            report_parts.append(f"\n--- Closed Positions ---\n{closed_pos}")
+
+        report_text = "\n".join(report_parts)
+
+        # Send consolidated text report
+        send_pushover_notification(
+            notification_config,
+            analysis_result['title'],
+            report_text,
+            monospace=True
+        )
+
+        # Send only the most informative chart (P&L by Signal)
+        chart_paths = analysis_result.get('charts', [])
+        # ⚠️ CRITICAL GUARD — Do NOT remove this truthiness check.
+        # If matplotlib fails or there's no data, chart_paths will be [].
+        # Indexing an empty list raises IndexError. (Flight Director review)
+        if chart_paths:
+            # Pick the last chart (Pnl By Signal) or the first available
+            best_chart = chart_paths[-1] if len(chart_paths) >= 3 else chart_paths[0]
+            chart_title = os.path.splitext(os.path.basename(best_chart))[0].replace('_', ' ').title()
             send_pushover_notification(
                 notification_config,
-                f"Report Section: {title}",
-                content,  # Content is already formatted
-                monospace=True
+                f"📊 {chart_title}",
+                f"Daily chart for {analysis_result['date']}",
+                attachment_path=best_chart
             )
-            await asyncio.sleep(1) # Small delay to ensure notifications arrive in order
-
-        # --- Send Charts ---
-        for i, chart_path in enumerate(analysis_result['charts']):
-            chart_title = os.path.splitext(os.path.basename(chart_path))[0].replace('_', ' ').title()
-            send_pushover_notification(
-                notification_config,
-                f"Chart {i+1}/{len(analysis_result['charts'])}: {chart_title}",
-                f"See attached chart: {chart_title}",
-                attachment_path=chart_path
-            )
-            await asyncio.sleep(1)
 
     else:
         send_pushover_notification(
@@ -497,4 +555,5 @@ async def main():
         )
 
 if __name__ == "__main__":
+    setup_logging(log_file="logs/performance_analyzer.log")
     asyncio.run(main())
