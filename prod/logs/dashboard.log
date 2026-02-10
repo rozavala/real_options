@@ -1,7 +1,91 @@
 
   You can now view your Streamlit app in your browser.
 
-  URL: http://0.0.0.0:8502
+  URL: http://0.0.0.0:8501
 
-2026-02-10 03:22:11,896 - ConfigLoader - WARNING - WARNING: X_BEARER_TOKEN not found! XSentimentSentinel will be disabled.
-2026-02-10 03:22:11,896 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+[31m──[0m[31m────────────────────────[0m[31m [0m[1;31mTraceback [0m[1;2;31m(most recent call last)[0m[31m [0m[31m─────────────────────────[0m[31m──[0m
+[31m [0m [2m/home/console/real_options/venv/lib/python3.12/site-packages/pandas/core/indexes/[0m[1mbas[0m [31m [0m
+[31m [0m [1me.py[0m:3812 in get_loc                                                                 [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m   [2m3809 [0m[2;33m│   │   [0m[33m"""[0m                                                                   [31m [0m
+[31m [0m   [2m3810 [0m[2m│   │   [0mcasted_key = [96mself[0m._maybe_cast_indexer(key)                            [31m [0m
+[31m [0m   [2m3811 [0m[2m│   │   [0m[94mtry[0m:                                                                  [31m [0m
+[31m [0m [31m❱ [0m3812 [2m│   │   │   [0m[94mreturn[0m [96mself[0m._engine.get_loc(casted_key)                           [31m [0m
+[31m [0m   [2m3813 [0m[2m│   │   [0m[94mexcept[0m [96mKeyError[0m [94mas[0m err:                                               [31m [0m
+[31m [0m   [2m3814 [0m[2m│   │   │   [0m[94mif[0m [96misinstance[0m(casted_key, [96mslice[0m) [95mor[0m (                             [31m [0m
+[31m [0m   [2m3815 [0m[2m│   │   │   │   [0m[96misinstance[0m(casted_key, abc.Iterable)                          [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m in pandas._libs.index.IndexEngine.get_loc:167                                        [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m in pandas._libs.index.IndexEngine.get_loc:196                                        [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m in pandas._libs.hashtable.PyObjectHashTable.get_item:7088                            [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m in pandas._libs.hashtable.PyObjectHashTable.get_item:7096                            [31m [0m
+[31m────────────────────────────────────────────────────────────────────────────────────────[0m
+[1;91mKeyError: [0m[32m'prediction_type'[0m
+
+[3mThe above exception was the direct cause of the following exception:[0m
+
+[31m──[0m[31m────────────────────────[0m[31m [0m[1;31mTraceback [0m[1;2;31m(most recent call last)[0m[31m [0m[31m─────────────────────────[0m[31m──[0m
+[31m [0m [2m/home/console/real_options/venv/lib/python3.12/site-packages/streamlit/runtime/scrip[0m [31m [0m
+[31m [0m [2mtrunner/[0m[1mexec_code.py[0m:129 in exec_func_with_error_handling                            [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m [2m/home/console/real_options/venv/lib/python3.12/site-packages/streamlit/runtime/scrip[0m [31m [0m
+[31m [0m [2mtrunner/[0m[1mscript_runner.py[0m:669 in code_to_exec                                         [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m [2m/home/console/real_options/venv/lib/python3.12/site-packages/streamlit/runtime/scrip[0m [31m [0m
+[31m [0m [2mtrunner/[0m[1mscript_runner.py[0m:165 in _mpa_v1                                              [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m [2m/home/console/real_options/venv/lib/python3.12/site-packages/streamlit/navigation/[0m[1mpa[0m [31m [0m
+[31m [0m [1mge.py[0m:310 in run                                                                     [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m [2m/home/console/real_options/pages/[0m[1m2_The_Scorecard.py[0m:125 in <module>                  [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m   [2m122 [0m[2m│   [0mlive_price = live_data.get([33mf[0m[33m'[0m[33m{[0mticker[33m}[0m[33m_Price[0m[33m'[0m)                              [31m [0m
+[31m [0m   [2m123 [0m                                                                               [31m [0m
+[31m [0m   [2m124 [0m[2m# Grade decisions[0m                                                              [31m [0m
+[31m [0m [31m❱ [0m125 graded_df = [1;4mgrade_decision_quality(council_df)[0m                                 [31m [0m
+[31m [0m   [2m126 [0m                                                                               [31m [0m
+[31m [0m   [2m127 [0m[2m# Filter dataframe based on strategy[0m                                           [31m [0m
+[31m [0m   [2m128 [0m[94mif[0m [33m'[0m[33mstrategy_type[0m[33m'[0m [95min[0m graded_df.columns:                                       [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m [2m/home/console/real_options/[0m[1mdashboard_utils.py[0m:960 in grade_decision_quality          [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m   [2m 957 [0m[2m│   [0m[2m# Filter out rows that shouldn't be displayed (NEUTRAL directional with n[0m [31m [0m
+[31m [0m   [2m 958 [0m[2m│   [0m[2m# Keep VOLATILITY trades even if master_decision is NEUTRAL[0m               [31m [0m
+[31m [0m   [2m 959 [0m[2m│   [0mgraded_df = graded_df[                                                    [31m [0m
+[31m [0m [31m❱ [0m 960 [2m│   │   [0m([1;4mgraded_df[[0m[1;4;33m'[0m[1;4;33mprediction_type[0m[1;4;33m'[0m[1;4m][0m == [33m'[0m[33mVOLATILITY[0m[33m'[0m) |                      [31m [0m
+[31m [0m   [2m 961 [0m[2m│   │   [0m(graded_df[[33m'[0m[33mmaster_decision[0m[33m'[0m] != [33m'[0m[33mNEUTRAL[0m[33m'[0m) |                         [31m [0m
+[31m [0m   [2m 962 [0m[2m│   │   [0m(graded_df[[33m'[0m[33moutcome[0m[33m'[0m] != [33m'[0m[33mPENDING[0m[33m'[0m)                                   [31m [0m
+[31m [0m   [2m 963 [0m[2m│   [0m]                                                                         [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m [2m/home/console/real_options/venv/lib/python3.12/site-packages/pandas/core/[0m[1mframe.py[0m:41 [31m [0m
+[31m [0m 13 in __getitem__                                                                    [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m   [2m 4110 [0m[2m│   │   [0m[94mif[0m is_single_key:                                                    [31m [0m
+[31m [0m   [2m 4111 [0m[2m│   │   │   [0m[94mif[0m [96mself[0m.columns.nlevels > [94m1[0m:                                     [31m [0m
+[31m [0m   [2m 4112 [0m[2m│   │   │   │   [0m[94mreturn[0m [96mself[0m._getitem_multilevel(key)                         [31m [0m
+[31m [0m [31m❱ [0m 4113 [2m│   │   │   [0mindexer = [1;4;96mself[0m[1;4m.columns.get_loc(key)[0m                              [31m [0m
+[31m [0m   [2m 4114 [0m[2m│   │   │   [0m[94mif[0m is_integer(indexer):                                          [31m [0m
+[31m [0m   [2m 4115 [0m[2m│   │   │   │   [0mindexer = [indexer]                                          [31m [0m
+[31m [0m   [2m 4116 [0m[2m│   │   [0m[94melse[0m:                                                                [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m [2m/home/console/real_options/venv/lib/python3.12/site-packages/pandas/core/indexes/[0m[1mbas[0m [31m [0m
+[31m [0m [1me.py[0m:3819 in get_loc                                                                 [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m   [2m3816 [0m[2m│   │   │   │   [0m[95mand[0m [96many[0m([96misinstance[0m(x, [96mslice[0m) [94mfor[0m x [95min[0m casted_key)             [31m [0m
+[31m [0m   [2m3817 [0m[2m│   │   │   [0m):                                                                [31m [0m
+[31m [0m   [2m3818 [0m[2m│   │   │   │   [0m[94mraise[0m InvalidIndexError(key)                                  [31m [0m
+[31m [0m [31m❱ [0m3819 [2m│   │   │   [0m[1;4;94mraise[0m[1;4m [0m[1;4;96mKeyError[0m[1;4m(key) [0m[1;4;94mfrom[0m[1;4;90m [0m[1;4;96merr[0m                                      [31m [0m
+[31m [0m   [2m3820 [0m[2m│   │   [0m[94mexcept[0m [96mTypeError[0m:                                                     [31m [0m
+[31m [0m   [2m3821 [0m[2m│   │   │   [0m[2m# If we have a listlike key, _check_indexing_error will raise[0m     [31m [0m
+[31m [0m   [2m3822 [0m[2m│   │   │   [0m[2m#  InvalidIndexError. Otherwise we fall through and re-raise[0m      [31m [0m
+[31m────────────────────────────────────────────────────────────────────────────────────────[0m
+[1;91mKeyError: [0m[32m'prediction_type'[0m
+/home/console/real_options/pages/4_Financials.py:287: UserWarning:
+
+Converting to PeriodArray/Index representation will drop timezone information.
+
+ archived trade ledgers found.
+2026-02-10 03:45:54,840 - PerformanceAnalyzer - WARNING - No trade ledger data found to consolidate.

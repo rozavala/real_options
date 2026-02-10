@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Tue Feb 10 03:30:22 UTC 2026
+Timestamp: Tue Feb 10 03:46:37 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  03:30:22 up 29 days,  9:53,  2 users,  load average: 0.28, 0.48, 0.53
+Uptime:  03:46:37 up 29 days, 10:09,  2 users,  load average: 2.20, 1.22, 0.71
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,18 @@ tmpfs           392M   60K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.2Gi       377Mi        34Mi       1.5Gi       1.6Gi
-Swap:          4.0Gi       438Mi       3.6Gi
+Mem:           3.8Gi       2.2Gi       172Mi        39Mi       1.7Gi       1.7Gi
+Swap:          4.0Gi       436Mi       3.6Gi
 
 === LOAD AVERAGE ===
-0.28 0.48 0.53 3/733 936394
+2.20 1.22 0.71 7/746 937100
 
 === PROCESS STATUS ===
 Trading processes:
-console   935859  6.6  9.5 1832828 383668 ?      Ssl  03:19   0:42 /home/console/real_options/venv/bin/python -u orchestrator.py
+console   936878  2.8  8.2 1460436 330104 ?      Ssl  03:43   0:05 /home/console/real_options/venv/bin/python -u orchestrator.py
 
 Dashboard processes:
-console   934111  0.7  7.1 2303796 286824 pts/0  Sl   02:33   0:24 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run /home/console/real_options/dashboard.py --server.address 0.0.0.0
-console   935872  0.1  1.7 154924 70060 ?        Sl   03:19   0:01 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console   936895  6.3  8.5 2717168 341464 ?      Sl   03:43   0:12 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,8 +35,3 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-/home/console/real_options/trading_bot/reconciliation.py:478: FutureWarning: Setting an item of incompatible dtype is deprecated and will raise an error in a future version of pandas. Value '2026-01-13 16:00:00' has dtype incompatible with float64, please explicitly cast to a compatible dtype first.
-/home/console/real_options/trading_bot/reconciliation.py:480: FutureWarning: Setting an item of incompatible dtype is deprecated and will raise an error in a future version of pandas. Value 'BULLISH' has dtype incompatible with float64, please explicitly cast to a compatible dtype first.
-2026-02-10 03:23:47,329 - PerformanceAnalyzer - ERROR - An error occurred during performance analysis: Can only use .dt accessor with datetimelike values
-    raise AttributeError("Can only use .dt accessor with datetimelike values")
-AttributeError: Can only use .dt accessor with datetimelike values
