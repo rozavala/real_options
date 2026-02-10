@@ -270,6 +270,10 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         return None
 
     # 3. Validate all legs were qualified successfully before pricing
+    if len(qualified_legs) != len(leg_contracts):
+        logging.error(f"Qualification returned {len(qualified_legs)}/{len(leg_contracts)} legs. Aborting.")
+        return None
+
     for leg in qualified_legs:
         if leg.conId == 0:
             logging.error(f"Strike not listed: {leg.right} @ {leg.strike} "
