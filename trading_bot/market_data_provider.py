@@ -170,12 +170,17 @@ def format_market_context_for_prompt(market_context: dict) -> str:
 # === Private Helpers ===
 
 async def _get_current_price(ib: IB, contract: Future) -> Optional[float]:
-    """Fetch current price from IBKR with timeout."""
+    """Fetch current price from IBKR with timeout.
+
+    Checks both live fields (last, close) and delayed fields (delayedLast,
+    delayedClose) so DEV environments using FORCE_DELAYED_DATA=1 get prices.
+    """
     try:
         ticker = ib.reqMktData(contract, '', False, False)
         # Wait for price with timeout
         for _ in range(50):  # 5 seconds max
             await asyncio.sleep(0.1)
+            # Live fields
             if not _is_nan(ticker.last) and ticker.last > 0:
                 price = ticker.last
                 ib.cancelMktData(contract)
@@ -184,12 +189,23 @@ async def _get_current_price(ib: IB, contract: Future) -> Optional[float]:
                 price = ticker.close
                 ib.cancelMktData(contract)
                 return price
+            # Delayed fields (populated when reqMarketDataType(3) is active)
+            if not _is_nan(ticker.delayedLast) and ticker.delayedLast > 0:
+                price = ticker.delayedLast
+                ib.cancelMktData(contract)
+                return price
+            if not _is_nan(ticker.delayedClose) and ticker.delayedClose > 0:
+                price = ticker.delayedClose
+                ib.cancelMktData(contract)
+                return price
 
         ib.cancelMktData(contract)
 
         # Fallback to delayed/historical
         if not _is_nan(ticker.close) and ticker.close > 0:
             return ticker.close
+        if not _is_nan(ticker.delayedClose) and ticker.delayedClose > 0:
+            return ticker.delayedClose
 
         logger.warning(f"No price available for {contract.localSymbol}")
         return None
