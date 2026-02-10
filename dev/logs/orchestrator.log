@@ -77,3 +77,23 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-10 16:40:42,450 - trading_bot.sentinels - INFO - Topics reloaded: 3
 2026-02-10 16:40:42,450 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 3 topics
 2026-02-10 16:40:42,538 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-10 17:15:00,103 - Orchestrator - INFO - --- Running scheduled task: close_stale_positions_fallback ---
+2026-02-10 17:15:00,120 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-02-10 17:15:00,120 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-02-10 17:15:00,121 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-10 17:15:00,145 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 141...
+2026-02-10 17:15:00,483 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 141
+2026-02-10 17:15:00,488 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-10 17:15:00,489 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-10 17:15:00,491 - OrderManager - INFO - No open positions found in the IB account. Nothing to close.
+2026-02-10 17:15:00,491 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-10 17:15:03,504 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-10 17:30:00 UTC. Waiting for 0.25 hours.
+2026-02-10 17:30:00,074 - Orchestrator - INFO - --- Running scheduled task: run_position_audit_cycle ---
+2026-02-10 17:30:00,079 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-10 17:30:00,173 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 237...
+2026-02-10 17:30:00,628 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 237
+2026-02-10 17:30:00,633 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-10 17:30:01,073 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-10 17:30:01,126 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
+2026-02-10 17:30:01,128 - Orchestrator - INFO - No open positions to audit.
+2026-02-10 17:30:01,136 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
