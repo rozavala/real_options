@@ -57,20 +57,6 @@
     "max_liquidity_spread_percentage": 0.45,
     "fixed_slippage_cents": 0.5
   },
-  "commodity_profile": {
-    "KC": {
-      "name": "Coffee C Arabica",
-      "price_unit": "cents/lb",
-      "stop_parse_range": [
-        80,
-        800
-      ],
-      "typical_price_range": [
-        100,
-        600
-      ]
-    }
-  },
   "risk_management": {
     "max_holding_days": 2,
     "min_holding_hours": 6.0,
@@ -96,41 +82,7 @@
   },
   "fred_api_key": "[REDACTED]",
   "nasdaq_api_key": "[REDACTED]",
-  "weather_stations": {
-    "brazil_minas_gerais": [
-      "-19.9245",
-      "-43.9353"
-    ],
-    "vietnam_ho_chi_minh": [
-      "10.8231",
-      "106.6297"
-    ],
-    "colombia_antioquia": [
-      "6.2442",
-      "-75.5812"
-    ],
-    "indonesia_sumatra": [
-      "3.5952",
-      "98.6722"
-    ]
-  },
-  "fred_series": {
-    "brl_usd_exchange_rate": "DEXBZUS",
-    "oil_price_wti": "DCOILWTICO",
-    "indonesia_idr_usd": "DEXINUS",
-    "mexico_mxn_usd": "DEXMXUS",
-    "dgs10_yield": "DGS10"
-  },
-  "yf_series_map": {
-    "SB=F": "sugar_price",
-    "^GSPC": "sp500_price",
-    "NSRGY": "nestle_stock",
-    "DX-Y.NYB": "us_dollar_index",
-    "^VIX": "volatility_index",
-    "MAERSK-B.CO": "shipping_proxy"
-  },
   "validation_thresholds": {
-    "price_spike_pct": 0.15,
     "prediction_sanity_check_pct": 0.2
   },
   "validation": {
@@ -240,43 +192,14 @@
       }
     },
     "logistics": {
-      "model": "gemini-3-flash-preview",
-      "rss_urls_override": [
-        "https://news.google.com/rss/search?q=Port+of+Santos+logistics+coffee",
-        "https://news.google.com/rss/search?q=Red+Sea+Suez+coffee+shipping+delays",
-        "https://news.google.com/rss/search?q=coffee+supply+chain+bottlenecks"
-      ]
+      "model": "gemini-3-flash-preview"
     },
     "news": {
       "model": "gemini-3-flash-preview",
-      "rss_urls_override": [
-        "https://news.google.com/rss/search?q=coffee+markets+site:reuters.com",
-        "https://news.google.com/rss/search?q=coffee+futures+site:bloomberg.com",
-        "https://news.google.com/rss/search?q=Minas+Gerais+weather+coffee+crop",
-        "https://news.google.com/rss/search?q=Vietnam+coffee+harvest+robusta",
-        "https://news.google.com/rss/search?q=Cooxup\u00e9+coffee+report",
-        "https://news.google.com/rss/search?q=coffee+futures+market+sentiment"
-      ],
       "sentiment_magnitude_threshold": 8
     },
     "x_sentiment": {
       "model": "grok-4-1-fast-reasoning",
-      "search_queries": [
-        "coffee futures",
-        "arabica prices",
-        "Brazil coffee harvest",
-        "Colombia coffee",
-        "US coffee tariffs"
-      ],
-      "from_handles": [
-        "SpillingTheBean",
-        "optima_t",
-        "Reuters",
-        "ICOcoffeeorg",
-        "zerohedge",
-        "Barchart",
-        "WSJ"
-      ],
       "exclude_keywords": "[REDACTED]",
       "sentiment_threshold": 6.5,
       "min_engagement": 10,
