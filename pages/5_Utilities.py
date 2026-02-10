@@ -50,9 +50,11 @@ Collect and archive logs to the centralized logs branch for analysis and debuggi
 This captures orchestrator logs, dashboard logs, state files, and trading data.
 """)
 
+confirm_collect = st.checkbox("I confirm I want to run log collection (approx. 2 minutes)", key="confirm_collect_logs")
 if st.button(
     "🚀 Collect Logs",
     type="primary",
+    disabled=not confirm_collect,
     help="Triggers the log collection script to archive system logs, state files, and trading data for analysis."
 ):
     with st.spinner(f"Collecting {current_env} logs..."):
@@ -668,6 +670,8 @@ These processes normally run automatically in the orchestrator but can be trigge
 on-demand for debugging or immediate verification.
 """)
 
+confirm_recon = st.checkbox("I confirm I want to run manual reconciliation (may take several minutes)", key="confirm_recon")
+
 # Create a 2x2 grid for reconciliation buttons
 recon_row1 = st.columns(2)
 recon_row2 = st.columns(2)
@@ -677,7 +681,7 @@ with recon_row1[0]:
     st.markdown("**📊 Council History**")
     st.caption("Backfill exit prices and P&L for closed positions")
 
-    if st.button("🔄 Reconcile Council History", width='stretch', key="recon_council"):
+    if st.button("🔄 Reconcile Council History", use_container_width=True, disabled=not confirm_recon, key="recon_council"):
         with st.spinner("Reconciling council history with market outcomes..."):
             try:
                 result = subprocess.run(
@@ -711,7 +715,7 @@ with recon_row1[1]:
     st.markdown("**📝 Trade Ledger**")
     st.caption("Compare local ledger with IB Flex Query reports")
 
-    if st.button("🔄 Reconcile Trade Ledger", width='stretch', key="recon_trades"):
+    if st.button("🔄 Reconcile Trade Ledger", use_container_width=True, disabled=not confirm_recon, key="recon_trades"):
         with st.spinner("Reconciling trade ledger with IB reports..."):
             try:
                 result = subprocess.run(
@@ -749,7 +753,7 @@ with recon_row2[0]:
     st.markdown("**📍 Active Positions**")
     st.caption("Verify current positions against IB")
 
-    if st.button("🔄 Reconcile Positions", width='stretch', key="recon_positions"):
+    if st.button("🔄 Reconcile Positions", use_container_width=True, disabled=not confirm_recon, key="recon_positions"):
         with st.spinner("Reconciling active positions..."):
             try:
                 # Create a temporary script to run just the position reconciliation
@@ -798,7 +802,7 @@ with recon_row2[1]:
     st.markdown("**💰 Equity History (Subprocess)**")
     st.caption("Sync equity data from IBKR Flex Query (Legacy)")
 
-    if st.button("🔄 Sync Equity Data", width='stretch', key="recon_equity"):
+    if st.button("🔄 Sync Equity Data", use_container_width=True, disabled=not confirm_recon, key="recon_equity"):
         with st.spinner("Syncing equity data from Flex Query..."):
             try:
                 result = subprocess.run(
