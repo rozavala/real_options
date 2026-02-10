@@ -401,10 +401,11 @@ class TopicDiscoveryAgent:
 
         self._llm_calls_this_scan += 1
 
-        # Commodity-agnostic: Pull active commodity from profile config
-        commodity_profile = self.config.get('commodity_profile', {})
-        commodity_name = commodity_profile.get('name', 'commodities')
-        commodity_description = commodity_profile.get('description', 'commodity futures')
+        # Commodity-agnostic: Pull active commodity from CommodityProfile
+        from config.commodity_profiles import get_active_profile
+        _profile = get_active_profile(self.config)
+        commodity_name = _profile.name
+        commodity_description = f"{_profile.name} futures"
         impact_template = area.get('commodity_impact_template', '')
 
         prompt = f"""You are a relevance filter for an algorithmic {commodity_description} trading system.

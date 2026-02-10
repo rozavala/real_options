@@ -391,7 +391,7 @@ async def check_compliance_volume(config: dict) -> CheckResult:
     try:
         from ib_insync import IB, Contract, Bag, ComboLeg
         from trading_bot.compliance import ComplianceGuardian
-        from trading_bot.utils import configure_market_data_type
+        from trading_bot.utils import configure_market_data_type, get_ibkr_exchange
 
         ib = IB()
         host = config.get('connection', {}).get('host', '127.0.0.1')
@@ -400,7 +400,9 @@ async def check_compliance_volume(config: dict) -> CheckResult:
         await ib.connectAsync(host, port, clientId=996)
         configure_market_data_type(ib)
 
-        search_contract = Contract(secType='FOP', symbol='KC', exchange='NYBOT', currency='USD')
+        ticker_sym = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+        ibkr_exchange = get_ibkr_exchange(config)
+        search_contract = Contract(secType='FOP', symbol=ticker_sym, exchange=ibkr_exchange, currency='USD')
         details_list = await ib.reqContractDetailsAsync(search_contract)
 
         if not details_list:
@@ -409,8 +411,8 @@ async def check_compliance_volume(config: dict) -> CheckResult:
 
         valid_option = details_list[0].contract
         bag = Bag()
-        bag.symbol = 'KC'
-        bag.exchange = 'NYBOT'
+        bag.symbol = ticker_sym
+        bag.exchange = ibkr_exchange
         bag.currency = 'USD'
         bag.comboLegs = [ComboLeg(conId=valid_option.conId, ratio=1, action='BUY', exchange='NYBOT')]
 
@@ -624,7 +626,7 @@ async def check_option_chain_builder(config: dict) -> CheckResult:
     try:
         from ib_insync import IB
         from trading_bot.ib_interface import get_active_futures, build_option_chain
-        from trading_bot.utils import configure_market_data_type
+        from trading_bot.utils import configure_market_data_type, get_ibkr_exchange
 
         ib = IB()
         host = config.get('connection', {}).get('host', '127.0.0.1')
@@ -633,7 +635,9 @@ async def check_option_chain_builder(config: dict) -> CheckResult:
         await ib.connectAsync(host, port, clientId=994)
         configure_market_data_type(ib)
 
-        futures = await get_active_futures(ib, 'KC', 'NYBOT', count=1)
+        ticker_sym = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+        ibkr_exchange = get_ibkr_exchange(config)
+        futures = await get_active_futures(ib, ticker_sym, ibkr_exchange, count=1)
         if not futures:
             ib.disconnect()
             return CheckResult("Option Chain Builder", CheckStatus.WARN, "No active futures found")
@@ -663,7 +667,7 @@ async def check_heterogeneous_router(config: dict) -> CheckResult:
         return CheckResult("Heterogeneous Router", CheckStatus.FAIL, str(e))
 
 @timed_check
-async def check_coffee_council(config: dict) -> CheckResult:
+async def check_trading_council(config: dict) -> CheckResult:
     try:
         from trading_bot.agents import TradingCouncil
         council = TradingCouncil(config)
@@ -873,7 +877,7 @@ async def run_diagnostics(
 
         # 6. AI
         report.checks.append(await check_heterogeneous_router(config))
-        report.checks.append(await check_coffee_council(config))
+        report.checks.append(await check_trading_council(config))
         report.checks.append(await check_tms())
         report.checks.append(await check_semantic_router(config))
         report.checks.append(await check_rate_limiter())

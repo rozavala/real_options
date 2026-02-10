@@ -381,7 +381,7 @@ async def _generate_position_id_from_trade(ib: IB, trade: Trade) -> str:
         return trade.contract.localSymbol # For single-leg trades
 
 
-async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution", specific_fill: Fill = None, combo_id: int = None, position_id: str = None):
+async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Execution", specific_fill: Fill = None, combo_id: int = None, position_id: str = None, config: dict = None):
     """Logs the details of a filled trade to the `trade_ledger.csv` file.
 
     For combo trades, this function logs each leg as a separate entry in the
@@ -459,17 +459,25 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
         if action == 'BUY':
             total_value *= -1
 
-        # CRITICAL: Normalize Strike for Ledger Consistency (KC options)
-        # IBKR returns strikes in dollars (3.075) for qualified contracts,
+        # CRITICAL: Normalize Strike for Ledger Consistency
+        # IBKR returns strikes in dollars (3.075) for cents-based contracts,
         # but legacy ledger and reconciliation expect cents (307.5).
         strike_value = contract.strike if hasattr(contract, 'strike') else 'N/A'
         try:
-            # Ensure strike is numeric
             if strike_value != 'N/A':
                 strike_value = float(strike_value)
 
-            if multiplier == 37500.0 and isinstance(strike_value, (int, float)):
-                if 0 < strike_value < 100.0:  # Threshold for "Dollar Format"
+            # Detect cents-based pricing from profile unit, fallback to multiplier heuristic
+            unit = ""
+            try:
+                from config.commodity_profiles import get_commodity_profile
+                profile = get_commodity_profile(get_active_ticker(config) if config else 'KC')
+                unit = profile.contract.unit.lower()
+            except Exception:
+                pass
+            is_cents_based = any(ind in unit for ind in CENTS_INDICATORS) if unit else (multiplier == 37500.0)
+            if is_cents_based and isinstance(strike_value, (int, float)):
+                if 0 < strike_value < 100.0:
                     strike_value = round(strike_value * 100.0, 2)
                     logging.debug(
                         f"Strike normalized: {contract.strike} -> {strike_value} "
@@ -794,9 +802,10 @@ def hours_until_weekly_close(config: dict = None) -> float:
 
 
 # === TICK SIZE CONFIGURATION ===
-# ICE Coffee (KC) Options: 0.05 cents/lb minimum tick
-# Reference: ICE Exchange Rule 10.05
-COFFEE_OPTIONS_TICK_SIZE = 0.05
+# Default option tick size (0.05 cents/lb for KC options)
+# Profile-driven tick sizes should use get_tick_size(config) where possible
+DEFAULT_OPTIONS_TICK_SIZE = 0.05
+COFFEE_OPTIONS_TICK_SIZE = DEFAULT_OPTIONS_TICK_SIZE  # Backward-compat alias
 
 
 def round_to_tick(price: float, tick_size: float = COFFEE_OPTIONS_TICK_SIZE, action: str = 'BUY') -> float:

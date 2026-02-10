@@ -13,6 +13,7 @@ from trading_bot.utils import (
     log_council_decision,
     get_active_ticker
 )
+from config.commodity_profiles import get_active_profile
 from trading_bot.decision_signals import log_decision_signal
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager # Import StateManager
@@ -129,32 +130,23 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
             try:
                 logger.info(f"Convening Council for {contract_name} (Cycle: {cycle_id})...")
 
-                # A. Define Research Tasks
-                # Note: We use specific keywords to guide the Flash model search
+                # A. Define Research Tasks (profile-driven, commodity-agnostic)
                 # We use 'research_topic_with_reflexion' for critical analysts to reduce hallucinations
-                tasks = {
-                    "agronomist": council.research_topic_with_reflexion("agronomist",
-                        f"Search for 'current 10-day weather forecast Minas Gerais coffee zone' and 'NOAA Brazil precipitation anomaly'. Analyze if recent rains are beneficial for flowering or excessive."),
-                    "macro": council.research_topic("macro",
-                        f"Search for 'USD BRL exchange rate forecast' and 'Brazil Central Bank Selic rate outlook'. Determine if the BRL is trending to encourage farmer selling."),
-                    "geopolitical": council.research_topic("geopolitical",
-                        f"Search for 'Red Sea shipping coffee delays', 'Brazil port of Santos wait times', and 'EUDR regulation delay latest news'. Determine if there are logistical bottlenecks."),
-                    "supply_chain": council.research_topic("supply_chain",
-                        f"Search for 'Cecafé Brazil coffee export report latest', 'Global container freight index rates', and 'Green coffee shipping manifest trends'. Analyze flow volume vs port capacity."),
-                    "inventory": council.research_topic("inventory",
-                        f"Search for 'ICE Arabica Certified Stocks level current' and 'GCA Green Coffee stocks report latest'. Look for 'Backwardation' in the forward curve."),
-                    "sentiment": council.research_topic("sentiment",
-                        f"Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought."),
-                    "technical": council.research_topic_with_reflexion("technical",
-                        f"Search for 'Coffee futures technical analysis {contract.localSymbol}' and '{contract.localSymbol} support resistance levels'. "
-                        f"Look for 'RSI divergence' or 'Moving Average crossover'. "
-                        f"IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'."),
+                profile = get_active_profile(config)
+                prompts = profile.research_prompts
+                contract_sym = contract.localSymbol
 
-                    # [NEW] Volatility Agent Task
-                    "volatility": council.research_topic("volatility",
-                        f"Search for 'Coffee Futures Implied Volatility Rank current' and '{contract.localSymbol} option volatility skew'. "
-                        f"Determine if option premiums are cheap (Bullish for buying) or expensive (Bearish for buying) relative to historical volatility.")
-                }
+                # Agents using reflexion (double-check loop) for higher accuracy
+                _reflexion_agents = {'agronomist', 'technical'}
+
+                tasks = {}
+                for agent_key in ['agronomist', 'macro', 'geopolitical', 'supply_chain',
+                                  'inventory', 'sentiment', 'technical', 'volatility']:
+                    prompt_text = prompts.get(agent_key, f"Analyze {agent_key} conditions.").replace("{contract}", contract_sym)
+                    if agent_key in _reflexion_agents:
+                        tasks[agent_key] = council.research_topic_with_reflexion(agent_key, prompt_text)
+                    else:
+                        tasks[agent_key] = council.research_topic(agent_key, prompt_text)
 
                 # B. Execute Research (Parallel) with Rate Limit Protection
                 # Add slight stagger to avoid instantaneous burst

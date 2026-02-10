@@ -31,9 +31,9 @@ st.caption("System maintenance and operational tools")
 def get_current_environment():
     """Detect current environment from hostname or config."""
     hostname = socket.gethostname()
-    if 'prod' in hostname.lower() or hostname == 'coffee-bot-prod':
+    if 'prod' in hostname.lower():
         return 'prod'
-    if os.getenv("COFFEE_BOT_ENV") == "prod":
+    if os.getenv("TRADING_BOT_ENV") == "prod" or os.getenv("COFFEE_BOT_ENV") == "prod":
         return "prod"
     return 'dev'
 

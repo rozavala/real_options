@@ -393,4 +393,4 @@ st.caption(
 
 
 st.markdown("---")
-st.caption("Brier Analysis | Coffee Bot Real Options v6.4")
+st.caption("Brier Analysis | Real Options v6.4")

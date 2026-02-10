@@ -94,12 +94,13 @@ def clean_contract_symbol(contract: str) -> str | None:
     - None/empty -> None
 
     Returns:
-        5-character ticker like 'KCH26' or None if unparseable
+        Ticker like 'KCH26' or None if unparseable
     """
     if not contract:
         return None
 
     contract = str(contract).strip()
+    _tk = profile.contract.symbol  # e.g., 'KC', 'CC'
 
     # Skip if it's just a date in parentheses like "(202603)"
     if contract.startswith('(') and ')' in contract:
@@ -109,38 +110,35 @@ def clean_contract_symbol(contract: str) -> str | None:
 
     contract_upper = contract.upper()
 
-    # Strategy 1: Try to match KC + Month + 2-digit year directly (e.g., KCH26)
-    match_full = re.search(r'KC([FGHJKMNQUVXZ])(\d{2})(?!\d)', contract_upper)
+    # Strategy 1: Try to match TICKER + Month + 2-digit year directly (e.g., KCH26)
+    match_full = re.search(rf'{_tk}([FGHJKMNQUVXZ])(\d{{2}})(?!\d)', contract_upper)
     if match_full:
         month_code = match_full.group(1)
         year_2digit = match_full.group(2)
-        return f"KC{month_code}{year_2digit}"
+        return f"{_tk}{month_code}{year_2digit}"
 
-    # Strategy 2: Match KC + Month + 1-digit year AND extract year from date portion
-    # Pattern: "KCH6 (202603)" -> extract H from KCH6, extract 26 from 202603
-    match_ib_format = re.search(r'KC([FGHJKMNQUVXZ])(\d)(?:\s*\((\d{4})(\d{2})\))?', contract_upper)
+    # Strategy 2: Match TICKER + Month + 1-digit year AND extract year from date portion
+    match_ib_format = re.search(rf'{_tk}([FGHJKMNQUVXZ])(\d)(?:\s*\((\d{{4}})(\d{{2}})\))?', contract_upper)
     if match_ib_format:
         month_code = match_ib_format.group(1)
         single_year = match_ib_format.group(2)
 
         # If we have the date portion, extract the proper 2-digit year
         if match_ib_format.group(3) and match_ib_format.group(4):
-            full_year = match_ib_format.group(3)  # e.g., "2026"
-            year_2digit = full_year[2:4]  # e.g., "26"
-            return f"KC{month_code}{year_2digit}"
+            full_year = match_ib_format.group(3)
+            year_2digit = full_year[2:4]
+            return f"{_tk}{month_code}{year_2digit}"
         else:
-            # No date portion - assume 202X decade (prepend "2" to make "26" from "6")
             year_2digit = "2" + single_year
-            return f"KC{month_code}{year_2digit}"
+            return f"{_tk}{month_code}{year_2digit}"
 
     # Strategy 3: Try to extract from date portion if month code exists somewhere
-    # This handles edge cases where format is unusual
     match_date = re.search(r'\((\d{4})(\d{2})\)', contract)
-    match_month = re.search(r'KC([FGHJKMNQUVXZ])', contract_upper)
+    match_month = re.search(rf'{_tk}([FGHJKMNQUVXZ])', contract_upper)
     if match_date and match_month:
-        year_2digit = match_date.group(1)[2:4]  # "2026" -> "26"
+        year_2digit = match_date.group(1)[2:4]
         month_code = match_month.group(1)
-        return f"KC{month_code}{year_2digit}"
+        return f"{_tk}{month_code}{year_2digit}"
 
     return None
 
@@ -162,7 +160,8 @@ def get_available_contracts(council_df: pd.DataFrame) -> list[str]:
     cleaned = []
     for raw in raw_contracts:
         clean = clean_contract_symbol(raw)
-        if clean and len(clean) == 5:  # Valid: KC + month + 2 digits
+        _tk_len = len(profile.contract.symbol) + 3  # ticker + month + 2-digit year
+        if clean and len(clean) == _tk_len:
             cleaned.append(clean)
 
     # Deduplicate
@@ -172,12 +171,15 @@ def get_available_contracts(council_df: pd.DataFrame) -> list[str]:
     # This matches operator mental model: "what's trading NOW is at the top"
     month_order = 'FGHJKMNQUVXZ'
 
+    _tk = profile.contract.symbol
+    _tk_len = len(_tk)
+
     def sort_key(symbol: str) -> tuple:
         """Sort by year ascending, then month ascending (soonest expiry first)."""
         try:
-            if len(symbol) == 5 and symbol.startswith('KC'):
-                month = symbol[2]
-                year = int(symbol[3:5])
+            if symbol.startswith(_tk) and len(symbol) == _tk_len + 3:
+                month = symbol[_tk_len]
+                year = int(symbol[_tk_len + 1:_tk_len + 3])
                 month_idx = month_order.find(month)
                 return (year, month_idx if month_idx >= 0 else 99)
         except (ValueError, IndexError):
@@ -258,10 +260,10 @@ def resolve_front_month_ticker(config_path: str = "config.json") -> tuple[str, s
 
     except Exception as e:
         import logging
-        logging.warning(f"Front month resolution failed, falling back to KC=F: {e}")
+        logging.warning(f"Front month resolution failed, falling back to {profile.contract.symbol}=F: {e}")
 
     # Fallback: use yfinance continuous contract
-    return ('KC=F', 'FRONT_MONTH')
+    return (f'{profile.contract.symbol}=F', 'FRONT_MONTH')
 
 
 def contract_to_yfinance_ticker(contract: str) -> str:
@@ -723,7 +725,7 @@ with st.spinner(f"Loading {get_contract_display_name(selected_contract)} data...
     if price_df is None or price_df.empty:
         if selected_contract != 'FRONT_MONTH':
             st.warning(f"⚠️ No price data available for {selected_contract}. Falling back to front month.")
-            price_df = fetch_price_history_extended(ticker='KC=F', period=yf_period, interval=timeframe)
+            price_df = fetch_price_history_extended(ticker=f'{profile.contract.symbol}=F', period=yf_period, interval=timeframe)
             # Update display to show fallback
             actual_ticker_display = "Front Month (Fallback)"
         else:
@@ -1201,7 +1203,7 @@ if price_df is not None and not price_df.empty:
         st.download_button(
             label="Download Data as CSV",
             data=csv,
-            file_name=f"coffee_data_{lookback_days}d_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+            file_name=f"{profile.contract.symbol.lower()}_data_{lookback_days}d_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
             mime='text/csv',
         )
 
