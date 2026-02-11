@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Wed Feb 11 19:00:02 UTC 2026
+Timestamp: Wed Feb 11 19:16:18 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  19:00:02 up 31 days,  1:23,  2 users,  load average: 0.14, 0.21, 0.27
+Uptime:  19:16:18 up 31 days,  1:39,  2 users,  load average: 1.20, 1.08, 0.67
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,18 +16,18 @@ tmpfs           392M   56K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.1Gi       221Mi        35Mi       1.7Gi       1.7Gi
+Mem:           3.8Gi       2.2Gi       457Mi        35Mi       1.4Gi       1.7Gi
 Swap:          4.0Gi       336Mi       3.7Gi
 
 === LOAD AVERAGE ===
-0.14 0.21 0.27 1/665 1003870
+1.20 1.08 0.67 3/687 1004821
 
 === PROCESS STATUS ===
 Trading processes:
-console  1002644  0.6  9.3 1802804 374984 ?      Ssl  18:35   0:09 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1004481 13.3 10.2 1856344 412108 ?      Ssl  19:11   0:35 /home/console/real_options/venv/bin/python -u orchestrator.py
 
 Dashboard processes:
-console  1002673  0.6  6.5 2475404 261272 ?      Sl   18:35   0:09 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1004527  3.6  8.4 2834392 337812 ?      Sl   19:11   0:09 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -35,4 +35,5 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-02-11 18:45:40,874 - trading_bot.microstructure_sentinel - ERROR - Unsubscribe error: Not connected
+/home/console/real_options/trading_bot/reconciliation.py:478: FutureWarning: Setting an item of incompatible dtype is deprecated and will raise an error in a future version of pandas. Value '2026-02-11 16:00:00' has dtype incompatible with float64, please explicitly cast to a compatible dtype first.
+/home/console/real_options/trading_bot/reconciliation.py:480: FutureWarning: Setting an item of incompatible dtype is deprecated and will raise an error in a future version of pandas. Value 'BEARISH' has dtype incompatible with float64, please explicitly cast to a compatible dtype first.
