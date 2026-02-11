@@ -70,6 +70,7 @@ logger = logging.getLogger("Orchestrator")
 monitor_process = None
 GLOBAL_BUDGET_GUARD = None
 GLOBAL_DRAWDOWN_GUARD = None
+_STARTUP_DISCOVERY_TIME = 0  # Set to time.time() after successful startup topic discovery
 
 # Module-level shutdown state
 _SYSTEM_SHUTDOWN = False
@@ -3082,9 +3083,11 @@ async def _run_periodic_sentinel(
     sentinel_name = sentinel_instance.__class__.__name__
 
     try:
+        logger.info(f"Checking {sentinel_name}...")
         trigger = await asyncio.wait_for(sentinel_instance.check(), timeout=timeout)
         trigger = validate_trigger(trigger)
         if trigger:
+            logger.info(f"{sentinel_name}: trigger detected (source={trigger.source}, severity={getattr(trigger, 'severity', '?')})")
             if market_open and sentinel_ib and sentinel_ib.isConnected():
                 if GLOBAL_DEDUPLICATOR.should_process(trigger):
                     task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
@@ -3096,6 +3099,8 @@ async def _run_periodic_sentinel(
             else:
                 StateManager.queue_deferred_trigger(trigger)
                 logger.info(f"Deferred {trigger.source} trigger for market open")
+        else:
+            logger.info(f"{sentinel_name}: no trigger")
     except asyncio.TimeoutError:
         logger.error(f"{sentinel_name} TIMED OUT after {timeout}s")
         _health_error = f"TIMEOUT after {timeout}s"
@@ -3158,7 +3163,7 @@ async def run_sentinels(config: dict):
     last_news = 0
     last_x_sentiment = 0
     last_prediction_market = 0
-    last_topic_discovery = 0
+    last_topic_discovery = _STARTUP_DISCOVERY_TIME  # 0 if startup scan failed/skipped → runs on first iteration
     last_macro_contagion = 0
 
     # Contract Cache
@@ -3179,8 +3184,13 @@ async def run_sentinels(config: dict):
     _record_sentinel_health("PriceSentinel", "IDLE", 60)
     _record_sentinel_health("MicrostructureSentinel", "IDLE", 60)
 
+    _sentinel_iteration = 0
+    _HEARTBEAT_INTERVAL = 5  # Log heartbeat every 5 iterations (~5 min)
+
     while True:
         try:
+            _sentinel_iteration += 1
+
             # v5.4: Shutdown gate — stop all sentinel activity post-shutdown
             if _SYSTEM_SHUTDOWN:
                 # One-time microstructure cleanup (Issue 7 integrated)
@@ -3203,6 +3213,13 @@ async def run_sentinels(config: dict):
             now = time_module.time()
             market_open = is_market_open()
             trading_day = is_trading_day()
+
+            # Heartbeat: confirm sentinel loop is alive
+            if _sentinel_iteration % _HEARTBEAT_INTERVAL == 0:
+                logger.info(
+                    f"Sentinel loop heartbeat: iteration={_sentinel_iteration}, "
+                    f"market_open={market_open}, trading_day={trading_day}"
+                )
 
             # === 2. MARKET HOURS GATE: Only connect when market is OPEN ===
             should_connect = market_open  # NOT trading_day - must be is_market_open()
@@ -3425,11 +3442,13 @@ async def run_sentinels(config: dict):
                                 'last_reset': datetime.now().date()
                             }
 
+                        logger.info("Checking XSentimentSentinel...")
                         trigger = await asyncio.wait_for(x_sentinel.check(), timeout=120)
                         trigger = validate_trigger(trigger)
                         x_sentinel_stats['checks_today'] += 1
 
                         if trigger:
+                            logger.info(f"XSentimentSentinel: trigger detected (severity={getattr(trigger, 'severity', '?')})")
                             x_sentinel_stats['triggers_today'] += 1
                             if market_open and sentinel_ib and sentinel_ib.isConnected():
                                 if GLOBAL_DEDUPLICATOR.should_process(trigger):
@@ -3442,6 +3461,8 @@ async def run_sentinels(config: dict):
                             else:
                                 StateManager.queue_deferred_trigger(trigger)
                                 logger.info(f"Deferred {trigger.source} trigger for market open")
+                        else:
+                            logger.info(f"XSentimentSentinel: no trigger (checks_today={x_sentinel_stats['checks_today']})")
                     except asyncio.TimeoutError:
                         logger.error("XSentimentSentinel TIMED OUT after 120s")
                         _health_error = "TIMEOUT after 120s"
@@ -3500,7 +3521,9 @@ async def run_sentinels(config: dict):
                         prediction_market_sentinel.reload_topics()
                 except Exception as e:
                     logger.error(f"TopicDiscoveryAgent scan failed: {type(e).__name__}: {e}")
-                finally:
+                    # Retry in 1 hour on failure, not the full 12-hour interval
+                    last_topic_discovery = now - discovery_interval + 3600
+                else:
                     last_topic_discovery = now
 
             # 9. Microstructure Sentinel (Every 1 min with Price Sentinel)
@@ -4233,8 +4256,30 @@ async def main():
         # === GENERIC RECOVERY: Run all valid missed tasks ===
         await recover_missed_tasks(missed_tasks, config)
 
+    # === STARTUP: Run Topic Discovery Agent immediately ===
+    # Ensures PredictionMarketSentinel has topics before sentinel loop begins.
+    # The sentinel loop will handle subsequent 12-hour refreshes.
+    global _STARTUP_DISCOVERY_TIME
+    discovery_config = config.get('sentinels', {}).get('prediction_markets', {}).get('discovery_agent', {})
+    if discovery_config.get('enabled', False):
+        try:
+            from trading_bot.topic_discovery import TopicDiscoveryAgent
+            logger.info("Running TopicDiscoveryAgent on startup...")
+            startup_discovery = TopicDiscoveryAgent(config, budget_guard=GLOBAL_BUDGET_GUARD)
+            result = await startup_discovery.run_scan()
+            logger.info(
+                f"Startup TopicDiscovery: {result['metadata']['topics_discovered']} topics, "
+                f"{result['changes']['summary']}"
+            )
+            _STARTUP_DISCOVERY_TIME = time_module.time()
+        except Exception as e:
+            logger.warning(f"Startup TopicDiscovery failed (sentinel loop will retry): {e}")
+
     # Start Sentinels in background
     sentinel_task = asyncio.create_task(run_sentinels(config))
+    sentinel_task.add_done_callback(
+        lambda t: logger.critical(f"SENTINEL TASK DIED: {t.exception()}") if not t.cancelled() and t.exception() else None
+    )
 
     # Start Self-Healing Monitor
     from trading_bot.self_healing import SelfHealingMonitor
