@@ -73,16 +73,26 @@ def load_config() -> dict | None:
     if os.getenv("STRATEGY_QTY"):
         config['strategy']['quantity'] = int(os.getenv("STRATEGY_QTY"))
 
-    # Validate Strategy Quantity
-    if 'strategy' in config and 'quantity' in config['strategy']:
-        if not isinstance(config['strategy']['quantity'], int) or config['strategy']['quantity'] <= 0:
-            raise ValueError(f"Config validation: 'strategy.quantity' must be a positive integer, got {config['strategy']['quantity']}")
+    # Validate Strategy
+    if 'strategy' not in config:
+        raise ValueError("Config validation: 'strategy' section is missing!")
 
-    # Validate Risk Management Confidence Threshold
-    if 'risk_management' in config and 'min_confidence_threshold' in config['risk_management']:
-        threshold = config['risk_management']['min_confidence_threshold']
-        if not isinstance(threshold, float) or not (0.0 <= threshold <= 1.0):
-             raise ValueError(f"Config validation: 'risk_management.min_confidence_threshold' must be a float between 0.0 and 1.0, got {threshold}")
+    if 'quantity' not in config['strategy']:
+        raise ValueError("Config validation: 'strategy.quantity' is missing!")
+
+    if not isinstance(config['strategy']['quantity'], int) or config['strategy']['quantity'] <= 0:
+        raise ValueError(f"Config validation: 'strategy.quantity' must be a positive integer, got {config['strategy']['quantity']}")
+
+    # Validate Risk Management
+    if 'risk_management' not in config:
+         raise ValueError("Config validation: 'risk_management' section is missing!")
+
+    if 'min_confidence_threshold' not in config['risk_management']:
+         raise ValueError("Config validation: 'risk_management.min_confidence_threshold' is missing!")
+
+    threshold = config['risk_management']['min_confidence_threshold']
+    if not isinstance(threshold, float) or not (0.0 <= threshold <= 1.0):
+            raise ValueError(f"Config validation: 'risk_management.min_confidence_threshold' must be a float between 0.0 and 1.0, got {threshold}")
 
     # 6. OVERRIDE: Notifications (Secrets)
     notifications = config.get('notifications', {})
@@ -164,5 +174,9 @@ def load_config() -> dict | None:
     config['trading_mode'] = trading_mode
     if trading_mode == "OFF":
         logger.warning("*** TRADING MODE OFF — No real orders will be placed ***")
+
+    # Log successful load
+    loaded_providers = [p for p in ['gemini', 'anthropic', 'openai', 'xai'] if config.get(p, {}).get('api_key')]
+    logger.info(f"Config loaded successfully. Mode: {trading_mode}. Providers: {', '.join(loaded_providers)}")
 
     return config
