@@ -17,3 +17,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-08 - Safety Interlock for State-Resetting Actions
 **Learning:** Even non-destructive actions like "Clear All Caches" can be disruptive in a data-heavy dashboard by forcing expensive re-fetching. Applying the Safety Interlock pattern here prevents accidental UI "jank" and improves the perceived reliability of the system.
 **Action:** Use the Safety Interlock pattern for any action that resets UI state or triggers significant data reloads. Add descriptive tooltips to clarify the impact of such actions.
+
+## 2026-02-11 - Broadening the Safety Interlock Scope
+**Learning:** Users often assume that "Utilities" or "Maintenance" pages are safe zones where buttons can be clicked freely. However, network-bound tasks like IBKR Flex Query reconciliation or log archiving can cause the UI to "hang" for minutes. Applying the Safety Interlock pattern to ALL long-running tasks (not just destructive ones) improves the perceived reliability and prevents accidental trigger of expensive/slow operations.
+**Action:** Audit all maintenance and utility pages for buttons triggering subprocesses or network calls longer than 10 seconds. Apply mandatory confirmation checkboxes to these elements.
