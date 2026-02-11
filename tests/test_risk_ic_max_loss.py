@@ -4,9 +4,6 @@ from unittest.mock import MagicMock, AsyncMock, patch
 import sys
 import os
 
-# Mock chromadb and pysqlite3 before importing anything that uses them
-sys.modules['chromadb'] = MagicMock()
-sys.modules['pysqlite3'] = MagicMock()
 
 # Ensure python path is set correctly when running this
 sys.path.append(os.getcwd())

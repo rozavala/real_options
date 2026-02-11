@@ -533,7 +533,8 @@ class TransactiveMemory:
                 include=['documents', 'metadatas']
             )
             if results and results['documents']:
-                return json.loads(results['documents'][0])
+                data = json.loads(results['documents'][0])
+                return data if isinstance(data, dict) else None
             return None
         except Exception as e:
             logger.error(f"TMS retrieve_thesis failed: {e}")
@@ -554,7 +555,8 @@ class TransactiveMemory:
                 ]},
                 include=['documents', 'metadatas']
             )
-            return [json.loads(doc) for doc in results.get('documents', [])]
+            docs = [json.loads(doc) for doc in results.get('documents', [])]
+            return [d for d in docs if isinstance(d, dict)]
         except Exception as e:
             logger.error(f"TMS get_active_theses failed: {e}")
             return []
@@ -600,6 +602,8 @@ class TransactiveMemory:
                             continue
 
                         thesis_data = json.loads(doc_content)
+                        if not isinstance(thesis_data, dict):
+                            continue
                         # Ensure trade_id is present
                         metadata = results['metadatas'][i]
                         if 'trade_id' not in thesis_data and metadata:
@@ -641,6 +645,9 @@ class TransactiveMemory:
             # 2. Parse
             current_doc_str = results['documents'][0]
             current_doc = json.loads(current_doc_str)
+            if not isinstance(current_doc, dict):
+                logger.error(f"TMS update failed: Thesis {thesis_id} doc is not a dict")
+                return
 
             # 3. Update field
             current_doc['supporting_data'] = new_supporting_data

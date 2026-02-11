@@ -451,7 +451,11 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
         "macro": "Search for 'USD BRL exchange rate forecast' and 'Brazil Central Bank Selic rate outlook'. Determine if the BRL is trending to encourage farmer selling.",
         "geopolitical": "Search for 'Red Sea shipping coffee delays', 'Brazil port of Santos wait times', and 'EUDR regulation delay latest news'. Determine if there are logistical bottlenecks.",
         "supply_chain": "Search for 'Cecafé Brazil coffee export report latest', 'Global container freight index rates', and 'Green coffee shipping manifest trends'. Analyze flow volume vs port capacity.",
-        "inventory": "Search for 'ICE Arabica Certified Stocks level current' and 'GCA Green Coffee stocks report latest'. Look for 'Backwardation' in the forward curve.",
+        "inventory": (
+            "Search for 'ICE coffee certified stocks level news 2026' and 'ICO monthly coffee market report global supply'. "
+            "Look for recent specific numbers in bags (e.g., 'ICE stocks rose to X bags'). "
+            "Search for 'coffee forward curve structure' to detect 'Backwardation' or 'Contango'."
+        ),
         "sentiment": "Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought.",
         "technical": "Search for 'Coffee futures technical analysis {contract}' and '{contract} support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'.",
         "volatility": "Search for 'Coffee Futures Implied Volatility Rank current' and '{contract} option volatility skew'. Determine if option premiums are cheap or expensive relative to historical volatility.",

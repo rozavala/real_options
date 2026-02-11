@@ -565,6 +565,17 @@ OUTPUT FORMAT (JSON):
             # Parse response
             data = json.loads(self._clean_json_text(response))
 
+            # Type guard: LLM may return a JSON array instead of object
+            if isinstance(data, list):
+                data = {
+                    'raw_summary': str(data),
+                    'dated_facts': [item for item in data if isinstance(item, dict)],
+                    'data_freshness': '',
+                    'search_queries_used': []
+                }
+            elif not isinstance(data, dict):
+                data = {'raw_summary': str(data), 'dated_facts': [], 'data_freshness': '', 'search_queries_used': []}
+
             # === COMPUTE ACTUAL DATA FRESHNESS ===
             freshness_hours = self._compute_data_freshness(
                 data.get('dated_facts', []),
@@ -766,6 +777,8 @@ OUTPUT FORMAT (JSON):
             # Parse JSON
             try:
                 data = json.loads(self._clean_json_text(result_raw))
+                if not isinstance(data, dict):
+                    raise ValueError("LLM returned non-dict JSON")
                 # === A1-R1: Canonicalize confidence IMMEDIATELY after JSON parse ===
                 # Phase 2 LLMs may return band strings ('HIGH', 'MODERATE').
                 # Canonicalize here so ALL downstream code — including formatted_text,
@@ -880,6 +893,8 @@ OUTPUT FORMAT (JSON ONLY):
 
         try:
             data = json.loads(self._clean_json_text(revised_raw))
+            if not isinstance(data, dict):
+                raise ValueError("LLM returned non-dict JSON")
             # === A1-R1: Canonicalize confidence immediately (reflexion path) ===
             data['confidence'] = parse_confidence(data.get('confidence', 0.5))
         except (json.JSONDecodeError, ValueError, TypeError, KeyError):
@@ -988,6 +1003,8 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                     raise ValueError("Empty response")
 
                 result = json.loads(cleaned)
+                if not isinstance(result, dict):
+                    raise ValueError("DA returned non-dict JSON")
 
                 # Validate required fields
                 if 'proceed' not in result:
@@ -1154,6 +1171,8 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
             response_text = await self._route_call(AgentRole.MASTER_STRATEGIST, full_prompt, response_json=True)
             cleaned_text = self._clean_json_text(response_text)
             decision = json.loads(cleaned_text)
+            if not isinstance(decision, dict):
+                raise ValueError("Master Strategist returned non-dict JSON")
 
             # === Direction Validation ===
             # LLM must return a valid direction. If missing or invalid, default to NEUTRAL
@@ -1269,7 +1288,8 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         logger.info(f"Waking up {active_agent_key}...")
 
         # Use Reflexion for high-ambiguity roles
-        if active_agent_key in ['agronomist', 'macro']:
+        reflexion_agents = self.full_config.get('strategy', {}).get('reflexion_agents', ['agronomist', 'macro'])
+        if active_agent_key in reflexion_agents:
             fresh_report = await self.research_topic_with_reflexion(active_agent_key, search_instruction, regime_context=regime_context)
         else:
             fresh_report = await self.research_topic(active_agent_key, search_instruction, regime_context=regime_context)

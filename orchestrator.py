@@ -58,6 +58,8 @@ from trading_bot.drawdown_circuit_breaker import DrawdownGuard
 from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.strategy_router import route_strategy
 from trading_bot.task_tracker import record_task_completion, has_task_completed_today
+from trading_bot.semantic_cache import get_semantic_cache
+from trading_bot.utils import get_active_ticker
 from trading_bot.sentinel_stats import SENTINEL_STATS
 
 # --- Logging Setup ---
@@ -760,6 +762,8 @@ Return JSON: {{"verdict": "HOLD" or "CLOSE", "confidence": 0.0-1.0, "reasoning":
             # Clean up response if needed (remove markdown)
             clean_response = verdict_response.replace('```json', '').replace('```', '')
             verdict_data = json.loads(clean_response)
+            if not isinstance(verdict_data, dict):
+                raise ValueError("Thesis validation returned non-dict JSON")
             if verdict_data.get('verdict') == 'CLOSE' and verdict_data.get('confidence', 0) > confidence_threshold:
                 return {
                     'action': 'CLOSE',
@@ -2655,17 +2659,30 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 # Load Regime Context
                 regime_context = load_regime_context()
 
-                # 5. Run Specialized Cycle
-                decision = await council.run_specialized_cycle(
-                    trigger,
-                    contract_name,
-                    market_data,
-                    market_context_str,
-                    ib=ib,
-                    target_contract=target_contract,
-                    cycle_id=cycle_id, # Pass cycle_id for logging if supported
-                    regime_context=regime_context
-                )
+                # 5. Semantic Cache check (skip council if market state unchanged)
+                semantic_cache = get_semantic_cache(config)
+                severity_threshold = config.get('semantic_cache', {}).get('severity_bypass_threshold', 8)
+                cache_bypass = trigger.severity >= severity_threshold
+
+                cached_decision = None
+                if not cache_bypass:
+                    cached_decision = semantic_cache.get(contract_name, trigger.source, market_data)
+
+                if cached_decision:
+                    decision = cached_decision
+                    logger.info(f"SEMANTIC CACHE HIT: Reusing decision for {contract_name}/{trigger.source}")
+                else:
+                    decision = await council.run_specialized_cycle(
+                        trigger,
+                        contract_name,
+                        market_data,
+                        market_context_str,
+                        ib=ib,
+                        target_contract=target_contract,
+                        cycle_id=cycle_id, # Pass cycle_id for logging if supported
+                        regime_context=regime_context
+                    )
+                    semantic_cache.put(contract_name, trigger.source, market_data, decision)
 
                 logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
                 cycle_actually_ran = True
@@ -3882,6 +3899,14 @@ async def guarded_generate_orders(config: dict):
                      pass
 
     await generate_and_execute_orders(config, shutdown_check=is_system_shutdown)
+
+    # Invalidate semantic cache after scheduled cycle (fresh analysis supersedes cached)
+    try:
+        sc = get_semantic_cache(config)
+        ticker = get_active_ticker(config)
+        sc.invalidate_by_ticker(ticker)
+    except Exception as e:
+        logger.warning(f"Failed to invalidate semantic cache post-scheduled: {e}")
 
 schedule = {
     time(3, 30): start_monitoring,

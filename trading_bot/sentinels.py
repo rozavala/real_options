@@ -808,10 +808,10 @@ class LogisticsSentinel(Sentinel):
              self._consecutive_failures = 0
              logger.info("LogisticsSentinel: Circuit breaker reset")
 
-        headlines = []
-        for url in self.urls:
-            new_titles = await self._fetch_rss_safe(url, self._seen_links, max_age_hours=48)
-            headlines.extend(new_titles)
+        # OPTIMIZATION: Fetch RSS feeds in parallel to reduce latency
+        tasks = [self._fetch_rss_safe(url, self._seen_links, max_age_hours=48) for url in self.urls]
+        results = await asyncio.gather(*tasks)
+        headlines = [title for sublist in results for title in sublist]
 
         # Save cache
         self._save_seen_cache()
@@ -989,10 +989,10 @@ class NewsSentinel(Sentinel):
             self._consecutive_failures = 0
             logger.info("NewsSentinel: Circuit breaker reset")
 
-        headlines = []
-        for url in self.urls:
-            new_titles = await self._fetch_rss_safe(url, self._seen_links, max_age_hours=48)
-            headlines.extend(new_titles)
+        # OPTIMIZATION: Fetch RSS feeds in parallel to reduce latency
+        tasks = [self._fetch_rss_safe(url, self._seen_links, max_age_hours=48) for url in self.urls]
+        results = await asyncio.gather(*tasks)
+        headlines = [title for sublist in results for title in sublist]
 
         # Save cache
         self._save_seen_cache()
@@ -1485,7 +1485,11 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                     "score": r.get('sentiment_score'),
                     "volume": r.get('post_volume'),
                     "confidence": r.get('confidence'),
-                    "top_post": r.get('notable_posts', [{}])[0].get('text', 'N/A') if r.get('notable_posts') else None
+                    "top_post": (
+                        r['notable_posts'][0].get('text', 'N/A')
+                        if r.get('notable_posts') and isinstance(r['notable_posts'][0], dict)
+                        else (r['notable_posts'][0] if r.get('notable_posts') else None)
+                    )
                 }
                 for i, r in enumerate(valid_results)
             ][:3]
