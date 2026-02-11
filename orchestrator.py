@@ -53,7 +53,7 @@ from trading_bot.compliance import ComplianceGuardian
 from trading_bot.position_sizer import DynamicPositionSizer
 from trading_bot.weighted_voting import RegimeDetector
 from trading_bot.tms import TransactiveMemory
-from trading_bot.budget_guard import BudgetGuard
+from trading_bot.budget_guard import BudgetGuard, get_budget_guard
 from trading_bot.drawdown_circuit_breaker import DrawdownGuard
 from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.strategy_router import route_strategy
@@ -2659,8 +2659,10 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 # Load Regime Context
                 regime_context = load_regime_context()
 
-                # 5. Semantic Cache check (skip council if market state unchanged)
+                # 5. Semantic Cache — sentinel fire invalidates other sources' cached decisions
                 semantic_cache = get_semantic_cache(config)
+                semantic_cache.invalidate_cross_source(contract_name, trigger.source)
+
                 severity_threshold = config.get('semantic_cache', {}).get('severity_bypass_threshold', 8)
                 cache_bypass = trigger.severity >= severity_threshold
 
@@ -4143,9 +4145,9 @@ async def main():
     global GLOBAL_DEDUPLICATOR
     GLOBAL_DEDUPLICATOR.critical_severity_threshold = config.get('sentinels', {}).get('critical_severity_threshold', 9)
 
-    # Initialize Budget Guard
+    # Initialize Budget Guard (singleton — shared with heterogeneous_router)
     global GLOBAL_BUDGET_GUARD
-    GLOBAL_BUDGET_GUARD = BudgetGuard(config)
+    GLOBAL_BUDGET_GUARD = get_budget_guard(config)
     logger.info(f"Budget Guard initialized. Daily limit: ${GLOBAL_BUDGET_GUARD.daily_budget}")
 
     # Initialize Drawdown Guard

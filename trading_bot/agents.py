@@ -21,6 +21,7 @@ from trading_bot.sentinels import SentinelTrigger
 from trading_bot.semantic_router import SemanticRouter
 from trading_bot.market_data_provider import format_market_context_for_prompt
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole, get_router, CriticalRPCError
+from trading_bot.budget_guard import BudgetThrottledError
 from trading_bot.tms import TransactiveMemory
 from trading_bot.reliability_scorer import ReliabilityScorer
 from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type
@@ -437,6 +438,8 @@ class TradingCouncil:
                 try:
                     result = await self.heterogeneous_router.route(role, prompt, system_prompt, response_json)
                     return result
+                except BudgetThrottledError:
+                    raise  # Don't fall back to Gemini — budget applies to all providers
                 except Exception as e:
                     logger.warning(f"Router failed for {role.value}, falling back to Gemini: {e}")
 
@@ -1336,12 +1339,14 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                         f"TASK: Re-evaluate your domain in light of this new information."
                     )
 
-                    # Run cued agents in parallel
+                    # Run cued agents in parallel (with reflexion if configured)
                     logger.info(f"Waking up cued agents: {cues_to_run}")
-                    cued_tasks = {
-                        agent: self.research_topic(agent, cue_instruction, regime_context=regime_context)
-                        for agent in cues_to_run
-                    }
+                    cued_tasks = {}
+                    for agent in cues_to_run:
+                        if agent in reflexion_agents:
+                            cued_tasks[agent] = self.research_topic_with_reflexion(agent, cue_instruction, regime_context=regime_context)
+                        else:
+                            cued_tasks[agent] = self.research_topic(agent, cue_instruction, regime_context=regime_context)
 
                     cued_results = await asyncio.gather(*cued_tasks.values(), return_exceptions=True)
 
