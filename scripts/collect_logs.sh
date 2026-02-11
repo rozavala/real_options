@@ -111,7 +111,7 @@ if [ -d "$REPO_DIR/logs" ]; then
     echo "Copying specific log files..."
     mkdir -p "$DEST_DIR/logs"
 
-    for logfile in "orchestrator.log" "dashboard.log" "manual_test.log" "performance_analyzer.log" "equity_logger.log"; do
+    for logfile in "orchestrator.log" "dashboard.log" "manual_test.log" "performance_analyzer.log" "equity_logger.log" "sentinels.log"; do
         if [ -f "$REPO_DIR/logs/$logfile" ]; then
             cp "$REPO_DIR/logs/$logfile" "$DEST_DIR/logs/"
         fi
