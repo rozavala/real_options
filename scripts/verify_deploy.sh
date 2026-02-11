@@ -84,7 +84,7 @@ echo "  [3/5] Checking Python imports..."
 # Each import block tests one phase of the HRO guide.
 # We test them individually so failures are pinpointed.
 
-python -c "
+uv run python -c "
 import sys
 errors = []
 
@@ -144,7 +144,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "  [4/5] Validating config files..."
-python -c "
+uv run python -c "
 import json, sys
 configs = ['config.json']
 
@@ -180,7 +180,7 @@ if [ -f "verify_system_readiness.py" ]; then
     # CRITICAL: Use `if !` pattern so set -e doesn't abort on non-zero exit.
     # The readiness check is NON-BLOCKING because IBKR/LLM/YFinance
     # may not be reachable during deploy but will be at runtime.
-    if ! python verify_system_readiness.py --quick --skip-ibkr --skip-llm 2>/dev/null; then
+    if ! uv run python verify_system_readiness.py --quick --skip-ibkr --skip-llm 2>/dev/null; then
         echo "    ⚠️  System readiness check had failures (non-blocking)"
     else
         echo "    ✅ System readiness OK"
