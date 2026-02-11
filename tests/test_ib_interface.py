@@ -56,11 +56,14 @@ class TestIbInterface(unittest.TestCase):
         Tests that a MarketOrder is created when the config is set to 'MKT'.
         """
         async def run_test():
-            # 1. Setup Mocks
+            # 1. Setup Mocks — side_effect modifies contracts in-place (like real IB)
             ib = AsyncMock()
-            q_leg1 = FuturesOption(conId=101, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.5, right='C', exchange='NYBOT')
-            q_leg2 = FuturesOption(conId=102, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.6, right='C', exchange='NYBOT')
-            ib.qualifyContractsAsync.return_value = [q_leg1, q_leg2]
+            conid_map = {3.5: 101, 3.6: 102}
+            async def qualify_side_effect(*contracts):
+                for c in contracts:
+                    c.conId = conid_map.get(c.strike, 0)
+                return list(contracts)
+            ib.qualifyContractsAsync = AsyncMock(side_effect=qualify_side_effect)
             mock_get_market_data.side_effect = [
                 {'bid': 0.9, 'ask': 1.1, 'implied_volatility': 0.2, 'risk_free_rate': 0.05},
                 {'bid': 0.4, 'ask': 0.6, 'implied_volatility': 0.18, 'risk_free_rate': 0.05}
@@ -105,13 +108,14 @@ class TestIbInterface(unittest.TestCase):
         the theoretical price with a dynamic, spread-based slippage.
         """
         async def run_test():
-            # 1. Setup Mocks
+            # 1. Setup Mocks — side_effect modifies contracts in-place (like real IB)
             ib = AsyncMock()
-
-            # Mock for qualification
-            q_leg1 = FuturesOption(conId=101, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.5, right='C', exchange='NYBOT')
-            q_leg2 = FuturesOption(conId=102, symbol='KC', lastTradeDateOrContractMonth='20251220', strike=3.6, right='C', exchange='NYBOT')
-            ib.qualifyContractsAsync.return_value = [q_leg1, q_leg2]
+            conid_map = {3.5: 101, 3.6: 102}
+            async def qualify_side_effect(*contracts):
+                for c in contracts:
+                    c.conId = conid_map.get(c.strike, 0)
+                return list(contracts)
+            ib.qualifyContractsAsync = AsyncMock(side_effect=qualify_side_effect)
 
             # Mock for market data (bid, ask, IV)
             mock_get_market_data.side_effect = [
@@ -161,21 +165,58 @@ class TestIbInterface(unittest.TestCase):
 
     @patch('trading_bot.ib_interface.price_option_black_scholes')
     @patch('trading_bot.ib_interface.get_option_market_data')
-    def test_create_combo_order_object_handles_qualification_failure(self, mock_get_market_data, mock_price_bs):
+    def test_create_combo_probe_failure_returns_none(self, mock_get_market_data, mock_price_bs):
         """
-        Tests that if a leg fails to qualify (conId=0), the function aborts
-        and returns None.
+        Tests that if the probe leg (ATM) fails to qualify (conId=0), the
+        function returns None without attempting remaining legs.
         """
         async def run_test():
-            # 1. Setup Mocks
             ib = AsyncMock()
 
-            # Mock for the qualification result - one leg is invalid
-            q_leg1 = FuturesOption(conId=101, symbol='KC', strike=3.5)
-            q_leg2 = FuturesOption(conId=0, symbol='KC', strike=3.6) # Invalid leg
-            ib.qualifyContractsAsync.return_value = [q_leg1, q_leg2]
+            # Probe leg (first) fails — far-dated expiry with no strikes listed
+            async def qualify_side_effect(*contracts):
+                for c in contracts:
+                    c.conId = 0  # All fail
+                return list(contracts)
+            ib.qualifyContractsAsync = AsyncMock(side_effect=qualify_side_effect)
 
-            # 2. Setup Inputs
+            config = {'symbol': 'KC', 'strategy': {'quantity': 1}}
+            strategy_def = {
+                "action": "BUY", "legs_def": [('C', 'BUY', 3.5), ('C', 'SELL', 3.6)],
+                "exp_details": {'exp_date': '20261113', 'days_to_exp': 275},
+                "chain": {'exchange': 'NYBOT', 'tradingClass': 'KO'}, "underlying_price": 280.0,
+            }
+
+            result = await create_combo_order_object(ib, config, strategy_def)
+
+            self.assertIsNone(result)
+            # Probe was called once; remaining legs never attempted
+            self.assertEqual(ib.qualifyContractsAsync.call_count, 1)
+            mock_get_market_data.assert_not_called()
+            mock_price_bs.assert_not_called()
+
+        asyncio.run(run_test())
+
+    @patch('trading_bot.ib_interface.price_option_black_scholes')
+    @patch('trading_bot.ib_interface.get_option_market_data')
+    def test_create_combo_remaining_leg_failure_returns_none(self, mock_get_market_data, mock_price_bs):
+        """
+        Tests that if the probe succeeds but a remaining leg fails (conId=0),
+        the function returns None.
+        """
+        async def run_test():
+            ib = AsyncMock()
+
+            # First leg qualifies, second doesn't
+            async def qualify_side_effect(*contracts):
+                for c in contracts:
+                    if c.strike == 3.5:
+                        c.conId = 101
+                    else:
+                        c.conId = 0  # Short leg not available
+                return list(contracts)
+            ib.qualifyContractsAsync = AsyncMock(side_effect=qualify_side_effect)
+
             config = {'symbol': 'KC', 'strategy': {'quantity': 1}}
             strategy_def = {
                 "action": "BUY", "legs_def": [('C', 'BUY', 3.5), ('C', 'SELL', 3.6)],
@@ -183,13 +224,11 @@ class TestIbInterface(unittest.TestCase):
                 "chain": {'exchange': 'NYBOT', 'tradingClass': 'KCO'}, "underlying_price": 100.0,
             }
 
-            # 3. Execute the function
             result = await create_combo_order_object(ib, config, strategy_def)
 
-            # 4. Assertions
             self.assertIsNone(result)
-
-            # Assert that pricing functions were NOT called because validation failed first
+            # Both probe and remaining legs were attempted
+            self.assertEqual(ib.qualifyContractsAsync.call_count, 2)
             mock_get_market_data.assert_not_called()
             mock_price_bs.assert_not_called()
 
