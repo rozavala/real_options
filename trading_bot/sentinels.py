@@ -1485,7 +1485,11 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                     "score": r.get('sentiment_score'),
                     "volume": r.get('post_volume'),
                     "confidence": r.get('confidence'),
-                    "top_post": r.get('notable_posts', [{}])[0].get('text', 'N/A') if r.get('notable_posts') else None
+                    "top_post": (
+                        r['notable_posts'][0].get('text', 'N/A')
+                        if r.get('notable_posts') and isinstance(r['notable_posts'][0], dict)
+                        else (r['notable_posts'][0] if r.get('notable_posts') else None)
+                    )
                 }
                 for i, r in enumerate(valid_results)
             ][:3]

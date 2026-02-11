@@ -264,3 +264,58 @@ async def test_deduplication(mock_config):
         # Second check with same data should be deduplicated
         trigger2 = await sentinel.check()
         assert trigger2 is None  # Duplicate detected
+
+
+@pytest.mark.asyncio
+async def test_notable_posts_as_strings(mock_config):
+    """Regression: Grok sometimes returns notable_posts as strings instead of dicts.
+
+    This caused 'str' object has no attribute 'get' crash in production since Feb 4.
+    """
+    with patch('trading_bot.sentinels.AsyncOpenAI'):
+        sentinel = XSentimentSentinel(mock_config)
+
+        mock_response = {
+            'sentiment_score': 8.5,
+            'confidence': 0.85,
+            'key_themes': ['frost', 'shortage'],
+            'post_volume': 50,
+            'summary': 'Very bullish',
+            # notable_posts as strings — the bug trigger
+            'notable_posts': [
+                "Coffee prices surging on frost fears",
+                "Brazil crop losses mounting"
+            ]
+        }
+
+        sentinel._search_x_and_analyze = AsyncMock(return_value=mock_response)
+
+        trigger = await sentinel.check()
+
+        assert trigger is not None
+        assert 'BULLISH' in trigger.reason
+        # top_post should be the string itself, not crash
+        assert trigger.payload['query_results'][0]['top_post'] == "Coffee prices surging on frost fears"
+
+
+@pytest.mark.asyncio
+async def test_notable_posts_empty(mock_config):
+    """notable_posts as empty list should not crash."""
+    with patch('trading_bot.sentinels.AsyncOpenAI'):
+        sentinel = XSentimentSentinel(mock_config)
+
+        mock_response = {
+            'sentiment_score': 8.0,
+            'confidence': 0.8,
+            'key_themes': ['frost'],
+            'post_volume': 30,
+            'summary': 'Bullish',
+            'notable_posts': []
+        }
+
+        sentinel._search_x_and_analyze = AsyncMock(return_value=mock_response)
+
+        trigger = await sentinel.check()
+
+        assert trigger is not None
+        assert trigger.payload['query_results'][0]['top_post'] is None
