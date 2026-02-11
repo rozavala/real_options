@@ -18,4 +18,4 @@ mkdir -p logs
 
 # Start
 echo "Starting orchestrator from $REPO_ROOT..."
-exec uv run python -u orchestrator.py
+exec python -u orchestrator.py
