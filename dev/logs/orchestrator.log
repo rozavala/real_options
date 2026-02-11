@@ -1,197 +1,112 @@
 Starting orchestrator from /home/rodrigo/real_options...
-2026-02-11 14:58:43,022 - Orchestrator - INFO - =============================================
-2026-02-11 14:58:43,022 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-11 14:58:43,022 - Orchestrator - INFO - =============================================
-2026-02-11 14:58:43,024 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-11 14:58:43,024 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
-2026-02-11 14:58:43,024 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-11 14:58:43,024 - Orchestrator - INFO - Expiry filter window: 45-365 DTE
-2026-02-11 14:58:43,167 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-02-11 14:58:43,167 - Orchestrator - INFO - No deferred triggers to process.
-2026-02-11 14:58:43,167 - Orchestrator - INFO - Environment: DEV. Applying -30 minute 'Civil War' avoidance offset.
-2026-02-11 14:58:43,171 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 5 scheduled tasks already passed:
+2026-02-11 17:41:47,966 - Orchestrator - INFO - =============================================
+2026-02-11 17:41:47,968 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-11 17:41:47,968 - Orchestrator - INFO - =============================================
+2026-02-11 17:41:47,970 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-11 17:41:47,970 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
+2026-02-11 17:41:47,971 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-11 17:41:47,971 - Orchestrator - INFO - Expiry filter window: 45-365 DTE
+2026-02-11 17:41:48,123 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-02-11 17:41:48,126 - Orchestrator - INFO - No deferred triggers to process.
+2026-02-11 17:41:48,126 - Orchestrator - INFO - Environment: DEV. Applying -30 minute 'Civil War' avoidance offset.
+2026-02-11 17:41:48,131 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 10 scheduled tasks already passed:
   - 03:00 ET: start_monitoring
   - 03:01 ET: process_deferred_triggers
   - 04:30 ET: cleanup_orphaned_theses
   - 08:00 ET: run_position_audit_cycle
   - 08:30 ET: guarded_generate_orders
-2026-02-11 14:58:43,173 - Orchestrator - INFO - --- Recovery: Evaluating 5 missed tasks ---
-2026-02-11 14:58:43,173 - Orchestrator - INFO - 🔄 RECOVERY: Running missed start_monitoring (was scheduled 03:00 ET)
-2026-02-11 14:58:43,173 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
-2026-02-11 14:58:43,174 - Orchestrator - INFO - --- Starting position monitoring process ---
-2026-02-11 14:58:43,175 - Orchestrator - INFO - Successfully started position monitor with PID: 1405878
-2026-02-11 14:58:43,175 - Orchestrator - INFO - Started position monitoring service.
-2026-02-11 14:58:43,178 - Orchestrator - INFO - ✅ RECOVERY: start_monitoring completed
-2026-02-11 14:58:43,178 - Orchestrator - INFO - ✅ ALREADY RAN: process_deferred_triggers completed earlier today (before restart). Skipping re-execution.
-2026-02-11 14:58:43,178 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses (was scheduled 04:30 ET)
-2026-02-11 14:58:43,178 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
-2026-02-11 14:58:43,179 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 277...
-2026-02-11 14:58:43,499 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 277
-2026-02-11 14:58:43,569 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-11 14:58:43,806 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-11 14:58:43,932 - Orchestrator - INFO - Thesis cleanup: no orphans found
-2026-02-11 14:58:43,933 - trading_bot.connection_pool - INFO - Disconnecting IB (cleanup)...
-2026-02-11 14:58:46,944 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
-2026-02-11 14:58:46,945 - Orchestrator - INFO - 🔄 RECOVERY: Running missed run_position_audit_cycle (was scheduled 08:00 ET)
-2026-02-11 14:58:46,945 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
-2026-02-11 14:58:46,946 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 232...
-2026-02-11 14:58:47,133 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 232
-2026-02-11 14:58:47,144 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-11 14:58:47,195 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-11 14:58:47,231 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
-2026-02-11 14:58:47,236 - Orchestrator - INFO - No open positions to audit.
-2026-02-11 14:58:47,238 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
-2026-02-11 14:58:48,144 - Orchestrator - INFO - 2026-02-11 14:58:48,143 - trading_bot.connection_pool - INFO - Connecting IB (monitor) ID: 135...
-2026-02-11 14:58:48,652 - Orchestrator - INFO - 2026-02-11 14:58:48,651 - trading_bot.connection_pool - INFO - IB (monitor) connected successfully with ID 135
-2026-02-11 14:58:48,656 - Orchestrator - INFO - 2026-02-11 14:58:48,656 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-11 14:58:48,657 - Orchestrator - INFO - 2026-02-11 14:58:48,657 - __main__ - INFO - Position monitor connected and watching open positions.
-2026-02-11 14:58:48,657 - Orchestrator - INFO - 2026-02-11 14:58:48,657 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
-2026-02-11 14:58:48,657 - Orchestrator - INFO - 2026-02-11 14:58:48,657 - root - INFO - Order status and execution event handlers registered.
-2026-02-11 14:58:50,244 - Orchestrator - INFO - ✅ RECOVERY: run_position_audit_cycle completed
-2026-02-11 14:58:50,247 - Orchestrator - INFO - ✅ ALREADY RAN: guarded_generate_orders completed earlier today (before restart). Skipping re-execution.
-2026-02-11 14:58:50,247 - Orchestrator - INFO - System restarted with 5 missed tasks.
-✅ 3 recovered | ⏭️ 0 skipped | ✔️ 2 already ran
-2026-02-11 14:58:50,580 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-11 14:58:50,586 - Orchestrator - INFO - Next task 'close_stale_positions' scheduled for 2026-02-11 15:30:00 UTC. Waiting for 0.52 hours.
-2026-02-11 14:58:50,587 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-11 14:58:50,587 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 8 active alerts from disk (normalized from 8)
-2026-02-11 14:58:50,811 - trading_bot.sentinels - INFO - LogisticsSentinel: Generated 5 RSS URLs for Coffee (Arabica)
-2026-02-11 14:58:50,812 - trading_bot.sentinels - INFO - LogisticsSentinel initialized with model: gemini-3-flash-preview | 5 RSS feeds | Commodity: Coffee (Arabica)
-2026-02-11 14:58:50,974 - trading_bot.sentinels - INFO - NewsSentinel: Generated 5 RSS URLs for Coffee (Arabica)
-2026-02-11 14:58:50,974 - trading_bot.sentinels - INFO - NewsSentinel initialized with model: gemini-3-flash-preview | 5 RSS feeds | Threshold: 8 | Commodity: Coffee (Arabica)
-2026-02-11 14:58:51,018 - trading_bot.sentinels - INFO - XSentimentSentinel: Loaded volume baseline (mean=10.5, n=11)
-2026-02-11 14:58:51,018 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
-2026-02-11 14:58:51,018 - trading_bot.sentinels - INFO - Loaded state for 5 prediction market topics
-2026-02-11 14:58:51,019 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Will tariffs generate >$250b in 2025?': title='Test Coffee Market'. Clearing cache.
-2026-02-11 14:58:51,019 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Federal Reserve Interest Rate': title='Fed Test'. Clearing cache.
-2026-02-11 14:58:51,019 - trading_bot.sentinels - INFO - Reloading prediction market topics...
-2026-02-11 14:58:51,020 - trading_bot.sentinels - INFO - Pruning orphaned cache entry: 'Test topic'
-2026-02-11 14:58:51,025 - trading_bot.sentinels - INFO - Pruned 1 orphaned cache entries
-2026-02-11 14:58:51,025 - trading_bot.sentinels - INFO - Topics reloaded: 3
-2026-02-11 14:58:51,025 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 3 topics
-2026-02-11 14:58:51,144 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-02-11 15:30:00,058 - Orchestrator - INFO - --- Running scheduled task: close_stale_positions ---
-2026-02-11 15:30:00,062 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
-2026-02-11 15:30:00,065 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 140...
-2026-02-11 15:30:00,384 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 140
-2026-02-11 15:30:00,389 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-11 15:30:00,389 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
-2026-02-11 15:30:00,490 - OrderManager - INFO - No open positions found in the IB account. Nothing to close.
-2026-02-11 15:30:00,491 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
-2026-02-11 15:30:03,502 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-11 15:45:00 UTC. Waiting for 0.25 hours.
-2026-02-11 15:45:00,067 - Orchestrator - INFO - --- Running scheduled task: run_position_audit_cycle ---
-2026-02-11 15:45:00,080 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
-2026-02-11 15:45:00,083 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 231...
-2026-02-11 15:45:00,520 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 231
-2026-02-11 15:45:00,526 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-11 15:45:00,585 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-11 15:45:00,602 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
-2026-02-11 15:45:00,605 - Orchestrator - INFO - No open positions to audit.
-2026-02-11 15:45:00,607 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
-2026-02-11 15:45:03,619 - Orchestrator - INFO - Next task 'guarded_generate_orders' scheduled for 2026-02-11 16:15:00 UTC. Waiting for 0.50 hours.
-2026-02-11 16:15:00,070 - Orchestrator - INFO - --- Running scheduled task: guarded_generate_orders ---
-2026-02-11 16:15:00,233 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-02-11 16:15:00,234 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'openai', 'anthropic', 'gemini']
-2026-02-11 16:15:00,234 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'openai', 'anthropic', 'gemini'], 'diversity_score': 1.0}
-2026-02-11 16:15:00,241 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-11 16:15:00,251 - trading_bot.enhanced_brier - INFO - Loaded 520 predictions from ./data/enhanced_brier.json
-2026-02-11 16:15:00,336 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
-2026-02-11 16:15:00,336 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
-2026-02-11 16:15:00,336 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
-2026-02-11 16:15:00,336 - trading_bot.agents - INFO - Observability Hub initialized.
-2026-02-11 16:15:00,337 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
-2026-02-11 16:15:00,338 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 204...
-2026-02-11 16:15:00,694 - trading_bot.connection_pool - INFO - IB (drawdown_check) connected successfully with ID 204
-2026-02-11 16:15:00,813 - trading_bot.connection_pool - INFO - Disconnecting IB (drawdown_check)...
-2026-02-11 16:15:03,840 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
-2026-02-11 16:15:03,840 - OrderManager - INFO - --- Starting order generation and queuing process ---
-2026-02-11 16:15:03,841 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 145...
-2026-02-11 16:15:04,158 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 145
-2026-02-11 16:15:04,162 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-11 16:15:04,162 - OrderManager - INFO - Connected to IB for signal generation (purpose: orchestrator_orders).
-2026-02-11 16:15:04,162 - OrderManager - INFO - Step 1: Generating structured signals via Council...
-2026-02-11 16:15:04,163 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
-2026-02-11 16:15:04,257 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-02-11 16:15:04,257 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'openai', 'anthropic', 'gemini']
-2026-02-11 16:15:04,257 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'openai', 'anthropic', 'gemini'], 'diversity_score': 1.0}
-2026-02-11 16:15:04,263 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-11 16:15:04,267 - trading_bot.enhanced_brier - INFO - Loaded 520 predictions from ./data/enhanced_brier.json
-2026-02-11 16:15:04,326 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
-2026-02-11 16:15:04,326 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
-2026-02-11 16:15:04,327 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
-2026-02-11 16:15:04,327 - trading_bot.agents - INFO - Observability Hub initialized.
-2026-02-11 16:15:04,327 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
-2026-02-11 16:15:04,327 - trading_bot.agents - INFO - Grounded data cache invalidated (0 entries cleared). Next cycle will perform fresh searches.
-2026-02-11 16:15:04,327 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-02-11 16:15:04,327 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'openai', 'anthropic', 'gemini']
-2026-02-11 16:15:04,328 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
-2026-02-11 16:15:04,637 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
-2026-02-11 16:15:04,638 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
-2026-02-11 16:15:04,638 - trading_bot.market_data_provider - INFO - Building market context for 5 contracts...
-2026-02-11 16:15:04,639 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
-2026-02-11 16:15:04,639 - trading_bot.market_data_provider - INFO - Building market context for KCN6 (202607)...
-2026-02-11 16:15:04,640 - trading_bot.market_data_provider - INFO - Building market context for KCU6 (202609)...
-2026-02-11 16:15:10,309 - ib_insync.wrapper - ERROR - Error 162, reqId 7: Historical Market Data Service error message:Trading TWS session is connected from a different IP address, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
-2026-02-11 16:15:10,309 - trading_bot.market_data_provider - WARNING - No price available for KCK6
-2026-02-11 16:15:10,310 - trading_bot.market_data_provider - WARNING - Could not get price for KCK6 (202605). Using NaN context.
-2026-02-11 16:15:10,310 - trading_bot.market_data_provider - INFO - Building market context for KCZ6 (202612)...
-2026-02-11 16:15:10,341 - ib_insync.wrapper - ERROR - Error 162, reqId 8: Historical Market Data Service error message:Trading TWS session is connected from a different IP address, contract: Contract(secType='FUT', conId=646040490, symbol='KC', lastTradeDateOrContractMonth='20260721', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCN6', tradingClass='KC')
-2026-02-11 16:15:10,341 - trading_bot.market_data_provider - WARNING - No price available for KCN6
-2026-02-11 16:15:10,341 - trading_bot.market_data_provider - WARNING - Could not get price for KCN6 (202607). Using NaN context.
-2026-02-11 16:15:10,342 - trading_bot.market_data_provider - INFO - Building market context for KCH7 (202703)...
-2026-02-11 16:15:10,344 - ib_insync.wrapper - ERROR - Error 162, reqId 9: Historical Market Data Service error message:Trading TWS session is connected from a different IP address, contract: Contract(secType='FUT', conId=657732419, symbol='KC', lastTradeDateOrContractMonth='20260918', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCU6', tradingClass='KC')
-2026-02-11 16:15:10,344 - trading_bot.market_data_provider - WARNING - No price available for KCU6
-2026-02-11 16:15:10,345 - trading_bot.market_data_provider - WARNING - Could not get price for KCU6 (202609). Using NaN context.
-2026-02-11 16:15:15,548 - ib_insync.wrapper - ERROR - Error 162, reqId 12: Historical Market Data Service error message:Trading TWS session is connected from a different IP address, contract: Contract(secType='FUT', conId=675565688, symbol='KC', lastTradeDateOrContractMonth='20261218', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCZ6', tradingClass='KC')
-2026-02-11 16:15:15,549 - trading_bot.market_data_provider - WARNING - No price available for KCZ6
-2026-02-11 16:15:15,549 - trading_bot.market_data_provider - WARNING - Could not get price for KCZ6 (202612). Using NaN context.
-2026-02-11 16:15:15,756 - ib_insync.wrapper - ERROR - Error 162, reqId 13: Historical Market Data Service error message:Trading TWS session is connected from a different IP address, contract: Contract(secType='FUT', conId=694583782, symbol='KC', lastTradeDateOrContractMonth='20270318', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCH7', tradingClass='KC')
-2026-02-11 16:15:15,756 - trading_bot.market_data_provider - WARNING - No price available for KCH7
-2026-02-11 16:15:15,757 - trading_bot.market_data_provider - WARNING - Could not get price for KCH7 (202703). Using NaN context.
-2026-02-11 16:15:15,757 - trading_bot.market_data_provider - INFO - Market context complete: 0/5 contracts successful
-2026-02-11 16:15:15,757 - trading_bot.signal_generator - INFO - Market context built for 5 contracts
-2026-02-11 16:15:15,757 - trading_bot.signal_generator - WARNING - Skipping KCK6 (202605): No live market data. Avoiding wasted LLM spend.
-2026-02-11 16:15:15,757 - trading_bot.signal_generator - WARNING - Skipping KCN6 (202607): No live market data. Avoiding wasted LLM spend.
-2026-02-11 16:15:15,757 - trading_bot.signal_generator - WARNING - Skipping KCU6 (202609): No live market data. Avoiding wasted LLM spend.
-2026-02-11 16:15:15,757 - trading_bot.signal_generator - WARNING - Skipping KCZ6 (202612): No live market data. Avoiding wasted LLM spend.
-2026-02-11 16:15:15,757 - trading_bot.signal_generator - WARNING - Skipping KCH7 (202703): No live market data. Avoiding wasted LLM spend.
-2026-02-11 16:15:15,758 - OrderManager - INFO - Generated 5 signals: [{'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}, {'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}, {'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}, {'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}, {'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}]
-2026-02-11 16:15:15,758 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
-2026-02-11 16:15:15,857 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
-2026-02-11 16:15:15,858 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
-2026-02-11 16:15:15,858 - OrderManager - INFO - Skipping KCH7: Too deferred (399 days > 365 max)
-2026-02-11 16:15:15,858 - OrderManager - INFO - Date filter passed: 4/5 contracts within 365 days.
-2026-02-11 16:15:15,859 - OrderManager - INFO - Checking liquidity for 4 contracts (parallel)...
-2026-02-11 16:15:17,861 - OrderManager - INFO - Skipping KCK6: Insufficient volume (0 < 20 minimum)
-2026-02-11 16:15:17,862 - OrderManager - INFO - Skipping KCN6: Insufficient volume (0 < 20 minimum)
-2026-02-11 16:15:17,862 - OrderManager - INFO - Skipping KCU6: Insufficient volume (0 < 20 minimum)
-2026-02-11 16:15:17,862 - OrderManager - INFO - Skipping KCZ6: Insufficient volume (0 < 20 minimum)
-2026-02-11 16:15:18,363 - OrderManager - INFO - Liquidity check cleanup complete.
-2026-02-11 16:15:18,364 - OrderManager - WARNING - No futures remaining after Volume Filter.
-2026-02-11 16:15:18,364 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
-2026-02-11 16:15:21,367 - OrderManager - INFO - No orders were queued. Skipping placement step.
-2026-02-11 16:15:21,368 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
-2026-02-11 16:15:21,377 - Orchestrator - INFO - Next task 'close_stale_positions_fallback' scheduled for 2026-02-11 17:15:00 UTC. Waiting for 0.99 hours.
-2026-02-11 17:15:00,071 - Orchestrator - INFO - --- Running scheduled task: close_stale_positions_fallback ---
-2026-02-11 17:15:00,101 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
-2026-02-11 17:15:00,101 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
-2026-02-11 17:15:00,105 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
-2026-02-11 17:15:00,138 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 148...
-2026-02-11 17:15:00,442 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 148
-2026-02-11 17:15:00,453 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-11 17:15:00,454 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
-2026-02-11 17:15:00,456 - OrderManager - INFO - No open positions found in the IB account. Nothing to close.
-2026-02-11 17:15:00,456 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
-2026-02-11 17:15:03,513 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-11 17:30:00 UTC. Waiting for 0.25 hours.
-2026-02-11 17:18:50,037 - Orchestrator - INFO - 2026-02-11 17:18:50,022 - root - INFO - Running Iron Condor thesis validation check...
-2026-02-11 17:18:50,446 - Orchestrator - INFO - 2026-02-11 17:18:50,445 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-11 17:18:50,807 - Orchestrator - INFO - 2026-02-11 17:18:50,807 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-11 17:30:00,069 - Orchestrator - INFO - --- Running scheduled task: run_position_audit_cycle ---
-2026-02-11 17:30:00,077 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
-2026-02-11 17:30:00,084 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 232...
-2026-02-11 17:30:00,646 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 232
-2026-02-11 17:30:00,657 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-11 17:30:01,182 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-11 17:30:01,379 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
-2026-02-11 17:30:01,386 - Orchestrator - INFO - No open positions to audit.
-2026-02-11 17:30:01,395 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
+  - 10:30 ET: close_stale_positions
+  - 10:45 ET: run_position_audit_cycle
+  - 11:15 ET: guarded_generate_orders
+  - 12:15 ET: close_stale_positions_fallback
+  - 12:30 ET: run_position_audit_cycle
+2026-02-11 17:41:48,132 - Orchestrator - INFO - --- Recovery: Evaluating 10 missed tasks ---
+2026-02-11 17:41:48,132 - Orchestrator - INFO - 🔄 RECOVERY: Running missed start_monitoring (was scheduled 03:00 ET)
+2026-02-11 17:41:48,132 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
+2026-02-11 17:41:48,134 - Orchestrator - INFO - --- Starting position monitoring process ---
+2026-02-11 17:41:48,139 - Orchestrator - INFO - Successfully started position monitor with PID: 1416126
+2026-02-11 17:41:48,139 - Orchestrator - INFO - Started position monitoring service.
+2026-02-11 17:41:48,143 - Orchestrator - INFO - ✅ RECOVERY: start_monitoring completed
+2026-02-11 17:41:48,145 - Orchestrator - INFO - ✅ ALREADY RAN: process_deferred_triggers completed earlier today (before restart). Skipping re-execution.
+2026-02-11 17:41:48,145 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses (was scheduled 04:30 ET)
+2026-02-11 17:41:48,145 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-11 17:41:48,148 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 273...
+2026-02-11 17:41:48,654 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 273
+2026-02-11 17:41:48,704 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-11 17:41:48,909 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-11 17:41:49,069 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-11 17:41:49,070 - trading_bot.connection_pool - INFO - Disconnecting IB (cleanup)...
+2026-02-11 17:41:52,085 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-11 17:41:52,086 - Orchestrator - INFO - 🔄 RECOVERY: Running missed run_position_audit_cycle (was scheduled 08:00 ET)
+2026-02-11 17:41:52,086 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-11 17:41:52,087 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 231...
+2026-02-11 17:41:52,681 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 231
+2026-02-11 17:41:52,687 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-11 17:41:52,722 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-11 17:41:52,768 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
+2026-02-11 17:41:52,778 - Orchestrator - INFO - No open positions to audit.
+2026-02-11 17:41:52,779 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
+2026-02-11 17:41:53,338 - Orchestrator - INFO - 2026-02-11 17:41:53,338 - trading_bot.connection_pool - INFO - Connecting IB (monitor) ID: 137...
+2026-02-11 17:41:53,498 - Orchestrator - INFO - 2026-02-11 17:41:53,498 - trading_bot.connection_pool - INFO - IB (monitor) connected successfully with ID 137
+2026-02-11 17:41:53,503 - Orchestrator - INFO - 2026-02-11 17:41:53,503 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-11 17:41:53,504 - Orchestrator - INFO - 2026-02-11 17:41:53,503 - __main__ - INFO - Position monitor connected and watching open positions.
+2026-02-11 17:41:53,504 - Orchestrator - INFO - 2026-02-11 17:41:53,504 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
+2026-02-11 17:41:53,504 - Orchestrator - INFO - 2026-02-11 17:41:53,504 - root - INFO - Order status and execution event handlers registered.
+2026-02-11 17:41:55,788 - Orchestrator - INFO - ✅ RECOVERY: run_position_audit_cycle completed
+2026-02-11 17:41:55,788 - Orchestrator - INFO - ✅ ALREADY RAN: guarded_generate_orders completed earlier today (before restart). Skipping re-execution.
+2026-02-11 17:41:55,789 - Orchestrator - INFO - 🔄 RECOVERY: Running missed close_stale_positions (was scheduled 10:30 ET)
+2026-02-11 17:41:55,789 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-11 17:41:55,789 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 144...
+2026-02-11 17:41:56,156 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 144
+2026-02-11 17:41:56,160 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-11 17:41:56,161 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-11 17:41:56,164 - OrderManager - INFO - No open positions found in the IB account. Nothing to close.
+2026-02-11 17:41:56,164 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-11 17:41:59,168 - Orchestrator - INFO - ✅ RECOVERY: close_stale_positions completed
+2026-02-11 17:41:59,169 - Orchestrator - INFO - 🔄 RECOVERY: Running missed close_stale_positions_fallback (was scheduled 12:15 ET)
+2026-02-11 17:41:59,169 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-02-11 17:41:59,169 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-02-11 17:41:59,169 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-11 17:41:59,169 - OrderManager - WARNING - close_stale_positions connection attempt 1/3 failed: Connection orchestrator_orders in backoff period. Retrying in 5.0s...
+2026-02-11 17:41:59,169 - trading_bot.connection_pool - WARNING - FORCE RESETTING connection: orchestrator_orders
+2026-02-11 17:42:04,175 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 144...
+2026-02-11 17:42:04,630 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 144
+2026-02-11 17:42:04,635 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-11 17:42:04,635 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-11 17:42:04,638 - OrderManager - INFO - No open positions found in the IB account. Nothing to close.
+2026-02-11 17:42:04,638 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-11 17:42:07,644 - Orchestrator - INFO - ✅ RECOVERY: close_stale_positions_fallback completed
+2026-02-11 17:42:07,645 - Orchestrator - INFO - System restarted with 7 missed tasks.
+✅ 5 recovered | ⏭️ 0 skipped | ✔️ 2 already ran
+2026-02-11 17:42:07,853 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-11 17:42:08,221 - Orchestrator - INFO - Running TopicDiscoveryAgent on startup...
+2026-02-11 17:42:08,273 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-11 17:42:21,085 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-11 17:42:21,096 - Orchestrator - INFO - Startup TopicDiscovery: 3 topics, No changes
+2026-02-11 17:42:21,098 - Orchestrator - INFO - Next task 'emergency_hard_close' scheduled for 2026-02-11 17:45:00 UTC. Waiting for 0.04 hours.
+2026-02-11 17:42:21,098 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-11 17:42:21,099 - trading_bot.sentinels - INFO - WeatherSentinel: Loaded 8 active alerts from disk (normalized from 8)
+2026-02-11 17:42:21,188 - trading_bot.sentinels - INFO - LogisticsSentinel: Generated 5 RSS URLs for Coffee (Arabica)
+2026-02-11 17:42:21,189 - trading_bot.sentinels - INFO - LogisticsSentinel initialized with model: gemini-3-flash-preview | 5 RSS feeds | Commodity: Coffee (Arabica)
+2026-02-11 17:42:21,276 - trading_bot.sentinels - INFO - NewsSentinel: Generated 5 RSS URLs for Coffee (Arabica)
+2026-02-11 17:42:21,276 - trading_bot.sentinels - INFO - NewsSentinel initialized with model: gemini-3-flash-preview | 5 RSS feeds | Threshold: 8 | Commodity: Coffee (Arabica)
+2026-02-11 17:42:21,307 - trading_bot.sentinels - INFO - XSentimentSentinel: Loaded volume baseline (mean=10.5, n=11)
+2026-02-11 17:42:21,308 - trading_bot.sentinels - INFO - XSentimentSentinel initialized with model: grok-4-1-fast-reasoning
+2026-02-11 17:42:21,308 - trading_bot.sentinels - INFO - Loaded state for 5 prediction market topics
+2026-02-11 17:42:21,308 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Will tariffs generate >$250b in 2025?': title='Test Coffee Market'. Clearing cache.
+2026-02-11 17:42:21,309 - trading_bot.sentinels - WARNING - Stale/misaligned slug for 'Federal Reserve Interest Rate': title='Fed Test'. Clearing cache.
+2026-02-11 17:42:21,309 - trading_bot.sentinels - INFO - Reloading prediction market topics...
+2026-02-11 17:42:21,309 - trading_bot.sentinels - INFO - Pruning orphaned cache entry: 'Test topic'
+2026-02-11 17:42:21,314 - trading_bot.sentinels - INFO - Pruned 1 orphaned cache entries
+2026-02-11 17:42:21,315 - trading_bot.sentinels - INFO - Topics reloaded: 3
+2026-02-11 17:42:21,315 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 3 topics
+2026-02-11 17:42:21,403 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-11 17:42:21,405 - Orchestrator - CRITICAL - SENTINEL TASK DIED: 'NoneType' object has no attribute 'info'
+2026-02-11 17:45:00,093 - Orchestrator - INFO - --- Running scheduled task: emergency_hard_close ---
+2026-02-11 17:45:00,097 - Orchestrator - INFO - --- Emergency Hard Close Check (T-45 min) ---
+2026-02-11 17:45:00,097 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 144...
+2026-02-11 17:45:00,418 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 144
+2026-02-11 17:45:00,475 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-11 17:45:00,576 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
+2026-02-11 17:45:00,577 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-11 17:45:03,586 - Orchestrator - INFO - Next task 'cancel_and_stop_monitoring' scheduled for 2026-02-11 18:15:00 UTC. Waiting for 0.50 hours.
