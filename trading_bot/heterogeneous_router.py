@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Optional, Any
+from typing import Optional, Any, Tuple
 from dataclasses import dataclass
 import numpy as np
 from trading_bot.router_metrics import get_router_metrics
@@ -224,11 +224,15 @@ def with_retry(max_retries=3, backoff_factor=2):
 
 
 class LLMClient(ABC):
-    """Abstract base class for LLM clients."""
+    """Abstract base class for LLM clients.
+
+    generate() returns Tuple[str, int, int]: (text, input_tokens, output_tokens).
+    Token counts are best-effort; (0, 0) on extraction failure.
+    """
 
     @abstractmethod
     async def generate(self, prompt: str, system_prompt: Optional[str] = None,
-                      response_json: bool = False) -> str:
+                      response_json: bool = False) -> Tuple[str, int, int]:
         pass
 
 
@@ -246,7 +250,7 @@ class GeminiClient(LLMClient):
 
     @with_retry()
     async def generate(self, prompt: str, system_prompt: Optional[str] = None,
-                      response_json: bool = False) -> str:
+                      response_json: bool = False) -> Tuple[str, int, int]:
         full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
 
         gen_config = self.types.GenerateContentConfig(
@@ -256,10 +260,6 @@ class GeminiClient(LLMClient):
         if response_json:
             gen_config.response_mime_type = "application/json"
 
-        # Explicit timeout (Google GenAI might not support timeout kwarg directly here,
-        # but usually does via request_options or similar.
-        # Standard asyncio.wait_for wrapper is safest if SDK is obscure.)
-        # But let's try assuming standard kwargs or wrapping.
         try:
             response = await asyncio.wait_for(
                 self.client.aio.models.generate_content(
@@ -269,7 +269,12 @@ class GeminiClient(LLMClient):
                 ),
                 timeout=self.config.timeout
             )
-            return response.text
+            try:
+                in_tok = getattr(response.usage_metadata, 'prompt_token_count', 0) or 0
+                out_tok = getattr(response.usage_metadata, 'candidates_token_count', 0) or 0
+            except Exception:
+                in_tok, out_tok = 0, 0
+            return response.text, in_tok, out_tok
         except asyncio.TimeoutError:
             raise RuntimeError(f"Gemini timed out after {self.config.timeout}s")
 
@@ -285,7 +290,7 @@ class OpenAIClient(LLMClient):
 
     @with_retry()
     async def generate(self, prompt: str, system_prompt: Optional[str] = None,
-                      response_json: bool = False) -> str:
+                      response_json: bool = False) -> Tuple[str, int, int]:
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -302,7 +307,13 @@ class OpenAIClient(LLMClient):
             kwargs["response_format"] = {"type": "json_object"}
 
         response = await self.client.chat.completions.create(**kwargs)
-        return response.choices[0].message.content
+        text = response.choices[0].message.content
+        try:
+            in_tok = getattr(response.usage, 'prompt_tokens', 0) or 0
+            out_tok = getattr(response.usage, 'completion_tokens', 0) or 0
+        except Exception:
+            in_tok, out_tok = 0, 0
+        return text, in_tok, out_tok
 
 
 class AnthropicClient(LLMClient):
@@ -316,7 +327,7 @@ class AnthropicClient(LLMClient):
 
     @with_retry()
     async def generate(self, prompt: str, system_prompt: Optional[str] = None,
-                      response_json: bool = False) -> str:
+                      response_json: bool = False) -> Tuple[str, int, int]:
         kwargs = {
             "model": self.config.model_name,
             "max_tokens": self.config.max_tokens,
@@ -340,7 +351,12 @@ class AnthropicClient(LLMClient):
             raise ValueError("Empty text in Anthropic response")
         # --- END FIX ---
 
-        return text
+        try:
+            in_tok = getattr(response.usage, 'input_tokens', 0) or 0
+            out_tok = getattr(response.usage, 'output_tokens', 0) or 0
+        except Exception:
+            in_tok, out_tok = 0, 0
+        return text, in_tok, out_tok
 
 
 class XAIClient(LLMClient):
@@ -357,7 +373,7 @@ class XAIClient(LLMClient):
 
     @with_retry()
     async def generate(self, prompt: str, system_prompt: Optional[str] = None,
-                      response_json: bool = False) -> str:
+                      response_json: bool = False) -> Tuple[str, int, int]:
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -370,7 +386,13 @@ class XAIClient(LLMClient):
             max_tokens=self.config.max_tokens,
             timeout=self.config.timeout
         )
-        return response.choices[0].message.content
+        text = response.choices[0].message.content
+        try:
+            in_tok = getattr(response.usage, 'prompt_tokens', 0) or 0
+            out_tok = getattr(response.usage, 'completion_tokens', 0) or 0
+        except Exception:
+            in_tok, out_tok = 0, 0
+        return text, in_tok, out_tok
 
 
 class HeterogeneousRouter:
@@ -572,6 +594,16 @@ class HeterogeneousRouter:
             (ModelProvider.GEMINI, self.registry.get('gemini', {}).get('flash', 'gemini-1.5-flash'))
         )
 
+        # Budget check (before any API call — raised outside try/except so fallbacks don't catch it)
+        from trading_bot.budget_guard import get_budget_guard, ROLE_PRIORITY, BudgetThrottledError, CallPriority, calculate_api_cost
+        budget = get_budget_guard()
+        if budget:
+            priority = ROLE_PRIORITY.get(role.value, CallPriority.NORMAL)
+            if not budget.check_budget(priority):
+                raise BudgetThrottledError(
+                    f"Budget throttle: {role.value} (priority={priority.name}) blocked"
+                )
+
         last_exception = None
 
         # === ATTEMPT PRIMARY (with Rate Limiting) ===
@@ -585,13 +617,18 @@ class HeterogeneousRouter:
                 start_time = time.time()
                 try:
                     client = self._get_client(primary_provider, primary_model)
-                    response = await client.generate(prompt, system_prompt, response_json)
+                    text, in_tok, out_tok = await client.generate(prompt, system_prompt, response_json)
 
                     latency_ms = (time.time() - start_time) * 1000
 
+                    # Record actual cost
+                    if budget and (in_tok or out_tok):
+                        cost = calculate_api_cost(primary_model, in_tok, out_tok)
+                        budget.record_cost(cost, source=f"router/{role.value}")
+
                     # Success - cache and return
                     if use_cache:
-                        self.cache.set(full_key_prompt, role.value, response)
+                        self.cache.set(full_key_prompt, role.value, text)
 
                     # HOTFIX: Use correct API - record_request with success=True
                     metrics.record_request(
@@ -601,7 +638,7 @@ class HeterogeneousRouter:
                         latency_ms=latency_ms,
                         was_fallback=False
                     )
-                    return response
+                    return text
 
                 except RuntimeError as e:
                     if "cannot schedule new futures after shutdown" in str(e):
@@ -659,9 +696,14 @@ class HeterogeneousRouter:
             start_time = time.time()
             try:
                 client = self._get_client(fallback_provider, fallback_model)
-                response = await client.generate(prompt, system_prompt, response_json)
+                text, in_tok, out_tok = await client.generate(prompt, system_prompt, response_json)
 
                 latency_ms = (time.time() - start_time) * 1000
+
+                # Record actual cost
+                if budget and (in_tok or out_tok):
+                    cost = calculate_api_cost(fallback_model, in_tok, out_tok)
+                    budget.record_cost(cost, source=f"router/{role.value}(fallback)")
 
                 # Fallback succeeded
                 logger.warning(
@@ -689,9 +731,9 @@ class HeterogeneousRouter:
 
                 # Cache successful response
                 if use_cache:
-                    self.cache.set(full_key_prompt, role.value, response)
+                    self.cache.set(full_key_prompt, role.value, text)
 
-                return response
+                return text
 
             except RuntimeError as e:
                 if "cannot schedule new futures after shutdown" in str(e):

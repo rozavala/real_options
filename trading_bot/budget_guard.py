@@ -22,6 +22,11 @@ from enum import IntEnum
 logger = logging.getLogger(__name__)
 
 
+class BudgetThrottledError(Exception):
+    """Raised when an API call is blocked by budget throttling."""
+    pass
+
+
 class CallPriority(IntEnum):
     """API call priority levels for gradual throttling."""
     CRITICAL = 1    # Compliance checks, risk management
@@ -29,6 +34,27 @@ class CallPriority(IntEnum):
     NORMAL = 3      # Scheduled analysis cycles
     LOW = 4         # Dashboard refresh, thesis cleanup
     BACKGROUND = 5  # Brier scoring, historical analysis
+
+
+ROLE_PRIORITY = {
+    'compliance': CallPriority.CRITICAL,
+    'master': CallPriority.HIGH,
+    'permabear': CallPriority.HIGH,
+    'permabull': CallPriority.HIGH,
+    'agronomist': CallPriority.NORMAL,
+    'macro': CallPriority.NORMAL,
+    'geopolitical': CallPriority.NORMAL,
+    'sentiment': CallPriority.NORMAL,
+    'technical': CallPriority.NORMAL,
+    'volatility': CallPriority.NORMAL,
+    'inventory': CallPriority.NORMAL,
+    'supply_chain': CallPriority.NORMAL,
+    'weather_sentinel': CallPriority.LOW,
+    'logistics_sentinel': CallPriority.LOW,
+    'news_sentinel': CallPriority.LOW,
+    'price_sentinel': CallPriority.LOW,
+    'microstructure_sentinel': CallPriority.LOW,
+}
 
 
 class BudgetGuard:
@@ -177,3 +203,55 @@ class BudgetGuard:
             'sentinel_only_mode': self._budget_hit,
             'reset_date': self._last_reset_date,
         }
+
+
+# --- Singleton Factory ---
+
+_budget_guard_instance: Optional[BudgetGuard] = None
+
+
+def get_budget_guard(config: dict = None) -> Optional[BudgetGuard]:
+    """Get or create the singleton BudgetGuard instance."""
+    global _budget_guard_instance
+    if _budget_guard_instance is None and config is not None:
+        _budget_guard_instance = BudgetGuard(config)
+    return _budget_guard_instance
+
+
+# --- Cost Calculation ---
+
+_cost_config_cache: Optional[dict] = None
+
+
+def _load_cost_config() -> dict:
+    """Load API cost configuration with caching."""
+    global _cost_config_cache
+    if _cost_config_cache is not None:
+        return _cost_config_cache
+    cost_file = Path(__file__).parent.parent / "config" / "api_costs.json"
+    try:
+        with open(cost_file, 'r') as f:
+            data = json.load(f)
+            _cost_config_cache = data.get('costs_per_1k_tokens', {})
+    except Exception as e:
+        logger.warning(f"Failed to load api_costs.json: {e}")
+        _cost_config_cache = {'default': {'input': 0.001, 'output': 0.002}}
+    return _cost_config_cache
+
+
+def calculate_api_cost(model_name: str, input_tokens: int, output_tokens: int) -> float:
+    """Calculate API cost from actual token usage."""
+    costs = _load_cost_config()
+    model_lower = model_name.lower()
+
+    # Find best matching model key
+    model_cost = costs.get('default', {'input': 0.001, 'output': 0.002})
+    for key in costs:
+        if key != 'default' and key in model_lower:
+            model_cost = costs[key]
+            break
+
+    if isinstance(model_cost, dict):
+        return (input_tokens / 1000) * model_cost.get('input', 0.001) + \
+               (output_tokens / 1000) * model_cost.get('output', 0.002)
+    return ((input_tokens + output_tokens) / 1000) * model_cost
