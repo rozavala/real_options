@@ -27,7 +27,7 @@ def router():
 async def test_tier3_primary_success(router):
     """Test Master Strategist uses Primary (OpenAI Pro) successfully."""
     mock_client = AsyncMock()
-    mock_client.generate.return_value = "Primary Success"
+    mock_client.generate.return_value = ("Primary Success", 100, 50)
 
     with patch.object(router, '_get_client', return_value=mock_client) as mock_get_client:
         response = await router.route(AgentRole.MASTER_STRATEGIST, "test")
@@ -45,7 +45,7 @@ async def test_tier3_fallback_success(router):
     mock_fail.generate.side_effect = Exception("OpenAI Failed")
 
     mock_success = AsyncMock()
-    mock_success.generate.return_value = "Fallback Success"
+    mock_success.generate.return_value = ("Fallback Success", 100, 50)
 
     def side_effect(provider, model):
         if provider == ModelProvider.OPENAI:
@@ -93,7 +93,7 @@ async def test_tier1_sentinel_fallback(router):
     mock_fail.generate.side_effect = Exception("Gemini Failed")
 
     mock_success = AsyncMock()
-    mock_success.generate.return_value = "Sentinel Success"
+    mock_success.generate.return_value = ("Sentinel Success", 100, 50)
 
     def side_effect(provider, model):
         if provider == ModelProvider.GEMINI: # Primary for Sentinel

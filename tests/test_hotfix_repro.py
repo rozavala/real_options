@@ -31,7 +31,7 @@ async def test_metrics_crash():
 
             # Mock the client generation to succeed
             mock_client = MagicMock()
-            mock_client.generate = AsyncMock(return_value="Success response")
+            mock_client.generate = AsyncMock(return_value=("Success response", 100, 50))
 
             router._get_client = MagicMock(return_value=mock_client)
 
