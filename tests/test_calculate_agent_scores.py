@@ -11,6 +11,19 @@ sys.modules['streamlit'] = MagicMock()
 sys.modules['streamlit'].cache_data = lambda func=None, ttl=None: (lambda f: f) if func is None else func
 sys.modules['streamlit'].error = MagicMock()
 
+# Mock chromadb and pysqlite3 to avoid import errors
+sys.modules['chromadb'] = MagicMock()
+# sys.modules['pysqlite3'] = MagicMock() # Removed to fix peewee issue
+
+# Mock yfinance to avoid network calls and peewee/sqlite issues
+sys.modules['yfinance'] = MagicMock()
+
+# Mock matplotlib to avoid dependency
+sys.modules['matplotlib'] = MagicMock()
+sys.modules['matplotlib.pyplot'] = MagicMock()
+sys.modules['matplotlib.dates'] = MagicMock()
+sys.modules['matplotlib.ticker'] = MagicMock()
+
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 

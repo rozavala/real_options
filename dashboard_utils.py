@@ -18,8 +18,21 @@ import yfinance as yf
 import sys
 import asyncio
 import warnings
+import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# Constants for scoring
+SCORING_AGENTS = [
+    'meteorologist_sentiment',
+    'macro_sentiment',
+    'geopolitical_sentiment',
+    'fundamentalist_sentiment',
+    'sentiment_sentiment',
+    'technical_sentiment',
+    'volatility_sentiment',
+    'master_decision'
+]
 
 # Suppress "coroutine was never awaited" warnings from Streamlit's execution model
 warnings.filterwarnings("ignore", message="coroutine.*was never awaited")
@@ -1072,6 +1085,8 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
     Calculates accuracy scores for each sub-agent based on actual outcomes.
 
     VECTORIZED OPTIMIZATION: Uses pandas masking instead of iterrows for 50x+ speedup.
+    FURTHER OPTIMIZATION (Bolt): Avoids full DataFrame copy by using boolean masks
+    and selecting only necessary columns, plus optimized string normalization.
 
     ARCHITECTURE NOTES:
     - Agent Accuracy = Did the agent correctly predict market behavior?
@@ -1085,43 +1100,58 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
 
     Supports both DIRECTIONAL (Up/Down) and VOLATILITY (Big Move/Flat) grading.
     """
-    import numpy as np
-
-    agents = [
-        'meteorologist_sentiment',
-        'macro_sentiment',
-        'geopolitical_sentiment',
-        'fundamentalist_sentiment',
-        'sentiment_sentiment',
-        'technical_sentiment',
-        'volatility_sentiment',
-        'master_decision'
-    ]
-
-    scores = {agent: {'correct': 0, 'total': 0, 'accuracy': 0.0} for agent in agents}
+    scores = {agent: {'correct': 0, 'total': 0, 'accuracy': 0.0} for agent in SCORING_AGENTS}
 
     if council_df.empty:
         return scores
 
-    # Work on a copy to avoid SettingWithCopy warnings and preserve original df
-    df = council_df.copy()
-
-    # === PRE-PROCESSING: Fill missing prediction_type ===
-    if 'prediction_type' not in df.columns:
-        df['prediction_type'] = np.nan
+    # OPTIMIZATION: Do not copy the entire DataFrame immediately.
+    # Instead, identify relevant rows using masks on the original df.
 
     vol_strategies = ['LONG_STRADDLE', 'IRON_CONDOR']
     dir_strategies = ['BULL_CALL_SPREAD', 'BEAR_PUT_SPREAD']
 
-    # Vectorized fill
-    if 'strategy_type' in df.columns:
-        df.loc[df['strategy_type'].isin(vol_strategies) & df['prediction_type'].isna(), 'prediction_type'] = 'VOLATILITY'
-        df.loc[df['strategy_type'].isin(dir_strategies) & df['prediction_type'].isna(), 'prediction_type'] = 'DIRECTIONAL'
+    has_pred_type = 'prediction_type' in council_df.columns
+    has_strategy = 'strategy_type' in council_df.columns
+
+    # 1. Create Masks for Volatility and Directional Trades
+    # -----------------------------------------------------
+    if has_pred_type:
+        is_vol = council_df['prediction_type'] == 'VOLATILITY'
+        is_dir = council_df['prediction_type'] == 'DIRECTIONAL'
+        is_nan_pred = council_df['prediction_type'].isna()
+    else:
+        # If column missing, assume all NaN equivalent
+        n = len(council_df)
+        is_vol = pd.Series(False, index=council_df.index)
+        is_dir = pd.Series(False, index=council_df.index)
+        is_nan_pred = pd.Series(True, index=council_df.index)
+
+    if has_strategy:
+        is_vol_strategy = council_df['strategy_type'].isin(vol_strategies)
+        is_dir_strategy = council_df['strategy_type'].isin(dir_strategies)
+    else:
+        is_vol_strategy = pd.Series(False, index=council_df.index)
+        is_dir_strategy = pd.Series(False, index=council_df.index)
+
+    # Combined Logic: Explicit Type OR (Implicit Strategy + Missing Type)
+    vol_mask = is_vol | (is_vol_strategy & is_nan_pred)
+    dir_mask = is_dir | (is_dir_strategy & is_nan_pred)
 
     # ================================================================
     # SECTION 1: VOLATILITY TRADES (Vectorized)
     # ================================================================
-    vol_df = df[df['prediction_type'] == 'VOLATILITY'].copy()
+    # Select only necessary columns to avoid copying large text fields
+    vol_cols = ['strategy_type', 'volatility_outcome', 'volatility_sentiment']
+    # Add master_decision if present (though logic usually handles it separately)
+    # Ensure columns exist
+    vol_cols = [c for c in vol_cols if c in council_df.columns]
+
+    if not vol_mask.any():
+        vol_df = pd.DataFrame()
+    else:
+        vol_df = council_df.loc[vol_mask, vol_cols].copy()
+        # Ensure prediction_type logic is consistent (implicitly treated as VOLATILITY)
 
     if not vol_df.empty and 'volatility_outcome' in vol_df.columns:
         # Filter only rows with valid outcomes
@@ -1140,12 +1170,12 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
 
             # --- B. Score Volatility Agent (PREDICTION ACCURACY) ---
             if 'volatility_sentiment' in vol_df.columns:
-                # Normalize sentiment strings
-                vol_sent = vol_df['volatility_sentiment'].astype(str).str.upper().str.strip()
+                # Normalize sentiment strings (Optimized: fillna first to avoid object conversion overhead)
+                vol_sent = vol_df['volatility_sentiment'].fillna('NEUTRAL').astype(str).str.upper().str.strip()
 
                 # Filter out NEUTRAL/invalid
                 valid_mask = ~vol_sent.isin(['NEUTRAL', 'NONE', '', 'NAN', 'N/A'])
-                valid_vol = vol_df[valid_mask].copy()
+                valid_vol = vol_df[valid_mask].copy() # Slice valid rows
                 valid_sent = vol_sent[valid_mask]
 
                 if not valid_vol.empty:
@@ -1164,7 +1194,17 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
     # ================================================================
     # SECTION 2: DIRECTIONAL TRADES (Vectorized)
     # ================================================================
-    dir_df = df[df['prediction_type'] == 'DIRECTIONAL'].copy()
+    # Select necessary columns
+    dir_cols = ['strategy_type', 'entry_price', 'actual_trend_direction']
+    # Add all scoring agents that exist in the dataframe
+    dir_cols.extend([a for a in SCORING_AGENTS if a in council_df.columns and a not in dir_cols])
+    # Ensure columns exist
+    dir_cols = [c for c in dir_cols if c in council_df.columns]
+
+    if not dir_mask.any():
+        dir_df = pd.DataFrame()
+    else:
+        dir_df = council_df.loc[dir_mask, dir_cols].copy()
 
     if not dir_df.empty:
         # Fallback: Infer actual_trend_direction from live_price if missing
@@ -1200,16 +1240,12 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
                 actual_up = scored_dir['actual_trend_direction'] == 'UP'
                 actual_down = scored_dir['actual_trend_direction'] == 'DOWN'
 
-                for agent in agents:
-                    # Skip master_decision for vol strategies (redundant given df filtering but safe to keep)
-                    # Actually, we already filtered to prediction_type == 'DIRECTIONAL', so Master applies here too
-                    # UNLESS it's a vol strategy mislabeled. But we trust prediction_type logic above.
-
+                for agent in SCORING_AGENTS:
                     if agent not in scored_dir.columns:
                         continue
 
-                    # Normalize sentiment
-                    agent_sent = scored_dir[agent].astype(str).str.upper().str.strip()
+                    # Optimize normalization: fillna first
+                    agent_sent = scored_dir[agent].fillna('NEUTRAL').astype(str).str.upper().str.strip()
 
                     # Filter NEUTRAL
                     valid_agent_mask = ~agent_sent.isin(['NEUTRAL', 'NONE', '', 'NAN', 'N/A'])
@@ -1236,7 +1272,7 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
     # ================================================================
     # SECTION 3: Calculate Final Accuracy Percentages
     # ================================================================
-    for agent in agents:
+    for agent in SCORING_AGENTS:
         if scores[agent]['total'] > 0:
             scores[agent]['accuracy'] = scores[agent]['correct'] / scores[agent]['total']
 
