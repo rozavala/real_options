@@ -89,3 +89,86 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-11 15:45:00,605 - Orchestrator - INFO - No open positions to audit.
 2026-02-11 15:45:00,607 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
 2026-02-11 15:45:03,619 - Orchestrator - INFO - Next task 'guarded_generate_orders' scheduled for 2026-02-11 16:15:00 UTC. Waiting for 0.50 hours.
+2026-02-11 16:15:00,070 - Orchestrator - INFO - --- Running scheduled task: guarded_generate_orders ---
+2026-02-11 16:15:00,233 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-11 16:15:00,234 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'openai', 'anthropic', 'gemini']
+2026-02-11 16:15:00,234 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'openai', 'anthropic', 'gemini'], 'diversity_score': 1.0}
+2026-02-11 16:15:00,241 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-11 16:15:00,251 - trading_bot.enhanced_brier - INFO - Loaded 520 predictions from ./data/enhanced_brier.json
+2026-02-11 16:15:00,336 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-11 16:15:00,336 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-11 16:15:00,336 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-11 16:15:00,336 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-11 16:15:00,337 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-11 16:15:00,338 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 204...
+2026-02-11 16:15:00,694 - trading_bot.connection_pool - INFO - IB (drawdown_check) connected successfully with ID 204
+2026-02-11 16:15:00,813 - trading_bot.connection_pool - INFO - Disconnecting IB (drawdown_check)...
+2026-02-11 16:15:03,840 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-02-11 16:15:03,840 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-02-11 16:15:03,841 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 145...
+2026-02-11 16:15:04,158 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 145
+2026-02-11 16:15:04,162 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-11 16:15:04,162 - OrderManager - INFO - Connected to IB for signal generation (purpose: orchestrator_orders).
+2026-02-11 16:15:04,162 - OrderManager - INFO - Step 1: Generating structured signals via Council...
+2026-02-11 16:15:04,163 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
+2026-02-11 16:15:04,257 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-11 16:15:04,257 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'openai', 'anthropic', 'gemini']
+2026-02-11 16:15:04,257 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'openai', 'anthropic', 'gemini'], 'diversity_score': 1.0}
+2026-02-11 16:15:04,263 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-11 16:15:04,267 - trading_bot.enhanced_brier - INFO - Loaded 520 predictions from ./data/enhanced_brier.json
+2026-02-11 16:15:04,326 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-11 16:15:04,326 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-11 16:15:04,327 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-11 16:15:04,327 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-11 16:15:04,327 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-11 16:15:04,327 - trading_bot.agents - INFO - Grounded data cache invalidated (0 entries cleared). Next cycle will perform fresh searches.
+2026-02-11 16:15:04,327 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-11 16:15:04,327 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'openai', 'anthropic', 'gemini']
+2026-02-11 16:15:04,328 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-11 16:15:04,637 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-11 16:15:04,638 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-11 16:15:04,638 - trading_bot.market_data_provider - INFO - Building market context for 5 contracts...
+2026-02-11 16:15:04,639 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-11 16:15:04,639 - trading_bot.market_data_provider - INFO - Building market context for KCN6 (202607)...
+2026-02-11 16:15:04,640 - trading_bot.market_data_provider - INFO - Building market context for KCU6 (202609)...
+2026-02-11 16:15:10,309 - ib_insync.wrapper - ERROR - Error 162, reqId 7: Historical Market Data Service error message:Trading TWS session is connected from a different IP address, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
+2026-02-11 16:15:10,309 - trading_bot.market_data_provider - WARNING - No price available for KCK6
+2026-02-11 16:15:10,310 - trading_bot.market_data_provider - WARNING - Could not get price for KCK6 (202605). Using NaN context.
+2026-02-11 16:15:10,310 - trading_bot.market_data_provider - INFO - Building market context for KCZ6 (202612)...
+2026-02-11 16:15:10,341 - ib_insync.wrapper - ERROR - Error 162, reqId 8: Historical Market Data Service error message:Trading TWS session is connected from a different IP address, contract: Contract(secType='FUT', conId=646040490, symbol='KC', lastTradeDateOrContractMonth='20260721', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCN6', tradingClass='KC')
+2026-02-11 16:15:10,341 - trading_bot.market_data_provider - WARNING - No price available for KCN6
+2026-02-11 16:15:10,341 - trading_bot.market_data_provider - WARNING - Could not get price for KCN6 (202607). Using NaN context.
+2026-02-11 16:15:10,342 - trading_bot.market_data_provider - INFO - Building market context for KCH7 (202703)...
+2026-02-11 16:15:10,344 - ib_insync.wrapper - ERROR - Error 162, reqId 9: Historical Market Data Service error message:Trading TWS session is connected from a different IP address, contract: Contract(secType='FUT', conId=657732419, symbol='KC', lastTradeDateOrContractMonth='20260918', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCU6', tradingClass='KC')
+2026-02-11 16:15:10,344 - trading_bot.market_data_provider - WARNING - No price available for KCU6
+2026-02-11 16:15:10,345 - trading_bot.market_data_provider - WARNING - Could not get price for KCU6 (202609). Using NaN context.
+2026-02-11 16:15:15,548 - ib_insync.wrapper - ERROR - Error 162, reqId 12: Historical Market Data Service error message:Trading TWS session is connected from a different IP address, contract: Contract(secType='FUT', conId=675565688, symbol='KC', lastTradeDateOrContractMonth='20261218', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCZ6', tradingClass='KC')
+2026-02-11 16:15:15,549 - trading_bot.market_data_provider - WARNING - No price available for KCZ6
+2026-02-11 16:15:15,549 - trading_bot.market_data_provider - WARNING - Could not get price for KCZ6 (202612). Using NaN context.
+2026-02-11 16:15:15,756 - ib_insync.wrapper - ERROR - Error 162, reqId 13: Historical Market Data Service error message:Trading TWS session is connected from a different IP address, contract: Contract(secType='FUT', conId=694583782, symbol='KC', lastTradeDateOrContractMonth='20270318', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCH7', tradingClass='KC')
+2026-02-11 16:15:15,756 - trading_bot.market_data_provider - WARNING - No price available for KCH7
+2026-02-11 16:15:15,757 - trading_bot.market_data_provider - WARNING - Could not get price for KCH7 (202703). Using NaN context.
+2026-02-11 16:15:15,757 - trading_bot.market_data_provider - INFO - Market context complete: 0/5 contracts successful
+2026-02-11 16:15:15,757 - trading_bot.signal_generator - INFO - Market context built for 5 contracts
+2026-02-11 16:15:15,757 - trading_bot.signal_generator - WARNING - Skipping KCK6 (202605): No live market data. Avoiding wasted LLM spend.
+2026-02-11 16:15:15,757 - trading_bot.signal_generator - WARNING - Skipping KCN6 (202607): No live market data. Avoiding wasted LLM spend.
+2026-02-11 16:15:15,757 - trading_bot.signal_generator - WARNING - Skipping KCU6 (202609): No live market data. Avoiding wasted LLM spend.
+2026-02-11 16:15:15,757 - trading_bot.signal_generator - WARNING - Skipping KCZ6 (202612): No live market data. Avoiding wasted LLM spend.
+2026-02-11 16:15:15,757 - trading_bot.signal_generator - WARNING - Skipping KCH7 (202703): No live market data. Avoiding wasted LLM spend.
+2026-02-11 16:15:15,758 - OrderManager - INFO - Generated 5 signals: [{'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}, {'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}, {'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}, {'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}, {'action': 'NEUTRAL', 'confidence': 0.0, 'expected_price': None, 'reason': 'No live market data available'}]
+2026-02-11 16:15:15,758 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-11 16:15:15,857 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-11 16:15:15,858 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-11 16:15:15,858 - OrderManager - INFO - Skipping KCH7: Too deferred (399 days > 365 max)
+2026-02-11 16:15:15,858 - OrderManager - INFO - Date filter passed: 4/5 contracts within 365 days.
+2026-02-11 16:15:15,859 - OrderManager - INFO - Checking liquidity for 4 contracts (parallel)...
+2026-02-11 16:15:17,861 - OrderManager - INFO - Skipping KCK6: Insufficient volume (0 < 20 minimum)
+2026-02-11 16:15:17,862 - OrderManager - INFO - Skipping KCN6: Insufficient volume (0 < 20 minimum)
+2026-02-11 16:15:17,862 - OrderManager - INFO - Skipping KCU6: Insufficient volume (0 < 20 minimum)
+2026-02-11 16:15:17,862 - OrderManager - INFO - Skipping KCZ6: Insufficient volume (0 < 20 minimum)
+2026-02-11 16:15:18,363 - OrderManager - INFO - Liquidity check cleanup complete.
+2026-02-11 16:15:18,364 - OrderManager - WARNING - No futures remaining after Volume Filter.
+2026-02-11 16:15:18,364 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-11 16:15:21,367 - OrderManager - INFO - No orders were queued. Skipping placement step.
+2026-02-11 16:15:21,368 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-02-11 16:15:21,377 - Orchestrator - INFO - Next task 'close_stale_positions_fallback' scheduled for 2026-02-11 17:15:00 UTC. Waiting for 0.99 hours.
