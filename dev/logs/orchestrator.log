@@ -172,3 +172,26 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-11 16:15:21,367 - OrderManager - INFO - No orders were queued. Skipping placement step.
 2026-02-11 16:15:21,368 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
 2026-02-11 16:15:21,377 - Orchestrator - INFO - Next task 'close_stale_positions_fallback' scheduled for 2026-02-11 17:15:00 UTC. Waiting for 0.99 hours.
+2026-02-11 17:15:00,071 - Orchestrator - INFO - --- Running scheduled task: close_stale_positions_fallback ---
+2026-02-11 17:15:00,101 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-02-11 17:15:00,101 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-02-11 17:15:00,105 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-11 17:15:00,138 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 148...
+2026-02-11 17:15:00,442 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 148
+2026-02-11 17:15:00,453 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-11 17:15:00,454 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-11 17:15:00,456 - OrderManager - INFO - No open positions found in the IB account. Nothing to close.
+2026-02-11 17:15:00,456 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-11 17:15:03,513 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-11 17:30:00 UTC. Waiting for 0.25 hours.
+2026-02-11 17:18:50,037 - Orchestrator - INFO - 2026-02-11 17:18:50,022 - root - INFO - Running Iron Condor thesis validation check...
+2026-02-11 17:18:50,446 - Orchestrator - INFO - 2026-02-11 17:18:50,445 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-11 17:18:50,807 - Orchestrator - INFO - 2026-02-11 17:18:50,807 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-11 17:30:00,069 - Orchestrator - INFO - --- Running scheduled task: run_position_audit_cycle ---
+2026-02-11 17:30:00,077 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-11 17:30:00,084 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 232...
+2026-02-11 17:30:00,646 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 232
+2026-02-11 17:30:00,657 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-11 17:30:01,182 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-11 17:30:01,379 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
+2026-02-11 17:30:01,386 - Orchestrator - INFO - No open positions to audit.
+2026-02-11 17:30:01,395 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
