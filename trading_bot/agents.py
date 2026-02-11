@@ -1288,7 +1288,8 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         logger.info(f"Waking up {active_agent_key}...")
 
         # Use Reflexion for high-ambiguity roles
-        if active_agent_key in ['agronomist', 'macro']:
+        reflexion_agents = self.full_config.get('strategy', {}).get('reflexion_agents', ['agronomist', 'macro'])
+        if active_agent_key in reflexion_agents:
             fresh_report = await self.research_topic_with_reflexion(active_agent_key, search_instruction, regime_context=regime_context)
         else:
             fresh_report = await self.research_topic(active_agent_key, search_instruction, regime_context=regime_context)
