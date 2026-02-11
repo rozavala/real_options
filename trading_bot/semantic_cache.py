@@ -129,6 +129,22 @@ class SemanticCache:
             self._stats['invalidations'] += 1
             logger.info(f"CACHE INVALIDATED BY TICKER ({ticker}): {removed} entries removed")
 
+    def invalidate_cross_source(self, contract: str, keep_source: str):
+        """Invalidate cached decisions from other trigger sources for this contract.
+
+        When a sentinel fires, decisions cached from other sentinels may be stale
+        (new information invalidates old analysis). The firing sentinel's own
+        cached entries are kept for deduplication of rapid re-fires.
+        """
+        keys_to_remove = [
+            k for k in self._cache
+            if k.startswith(contract + "|") and f"|{keep_source}|" not in k
+        ]
+        removed = sum(len(self._cache.pop(k, [])) for k in keys_to_remove)
+        if removed > 0:
+            self._stats['invalidations'] += 1
+            logger.info(f"CACHE CROSS-SOURCE INVALIDATION: {removed} entries removed for {contract} (kept {keep_source})")
+
     def _vectorize_market_state(self, state: dict) -> List[float]:
         """Convert market state to numerical vector for similarity matching.
 

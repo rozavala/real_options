@@ -147,7 +147,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 contract_sym = contract.localSymbol
 
                 # Agents using reflexion (double-check loop) for higher accuracy
-                _reflexion_agents = {'agronomist', 'technical'}
+                _reflexion_agents = set(config.get('strategy', {}).get('reflexion_agents', ['agronomist', 'technical']))
 
                 tasks = {}
                 for agent_key in ['agronomist', 'macro', 'geopolitical', 'supply_chain',

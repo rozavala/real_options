@@ -2659,8 +2659,10 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 # Load Regime Context
                 regime_context = load_regime_context()
 
-                # 5. Semantic Cache check (skip council if market state unchanged)
+                # 5. Semantic Cache — sentinel fire invalidates other sources' cached decisions
                 semantic_cache = get_semantic_cache(config)
+                semantic_cache.invalidate_cross_source(contract_name, trigger.source)
+
                 severity_threshold = config.get('semantic_cache', {}).get('severity_bypass_threshold', 8)
                 cache_bypass = trigger.severity >= severity_threshold
 

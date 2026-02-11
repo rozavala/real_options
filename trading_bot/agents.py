@@ -1339,12 +1339,14 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                         f"TASK: Re-evaluate your domain in light of this new information."
                     )
 
-                    # Run cued agents in parallel
+                    # Run cued agents in parallel (with reflexion if configured)
                     logger.info(f"Waking up cued agents: {cues_to_run}")
-                    cued_tasks = {
-                        agent: self.research_topic(agent, cue_instruction, regime_context=regime_context)
-                        for agent in cues_to_run
-                    }
+                    cued_tasks = {}
+                    for agent in cues_to_run:
+                        if agent in reflexion_agents:
+                            cued_tasks[agent] = self.research_topic_with_reflexion(agent, cue_instruction, regime_context=regime_context)
+                        else:
+                            cued_tasks[agent] = self.research_topic(agent, cue_instruction, regime_context=regime_context)
 
                     cued_results = await asyncio.gather(*cued_tasks.values(), return_exceptions=True)
 
