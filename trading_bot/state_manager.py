@@ -104,53 +104,70 @@ class StateManager:
     # Current mitigation: All code paths go through StateManager.
     # DO NOT add direct file access anywhere else.
 
+    # Single global lock file for ALL state writes to prevent cross-namespace races.
+    # Previously used per-namespace locks (data/.state_{ns}.lock) which allowed
+    # concurrent writes from different namespaces to clobber each other's data.
+    _STATE_LOCK_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', '.state_global.lock')
+
+    @classmethod
+    def _with_state_lock(cls, fn):
+        """Execute fn under the global state file lock (read-modify-write safe)."""
+        os.makedirs(os.path.dirname(cls._STATE_LOCK_FILE), exist_ok=True)
+        with open(cls._STATE_LOCK_FILE, 'w') as lock_fd:
+            if HAS_FCNTL:
+                fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            elif '_fallback_lock' in globals():
+                _fallback_lock.acquire()
+            try:
+                return fn()
+            finally:
+                if HAS_FCNTL:
+                    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                elif '_fallback_lock' in globals():
+                    _fallback_lock.release()
+
     @classmethod
     def atomic_state_update(cls, namespace: str, key: str, value: dict):
-        """Thread-safe and process-safe state update."""
-        import fcntl
-        from pathlib import Path
+        """Thread-safe and process-safe state update using global lock."""
+        def _do_update():
+            state = cls._load_raw_sync()
+            if namespace not in state:
+                state[namespace] = {}
+            state[namespace][key] = {
+                'data': value,
+                'timestamp': time.time()
+            }
+            cls._save_raw_sync(state)
 
-        lock_file = Path(f"data/.state_{namespace}.lock")
-        lock_file.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(lock_file, 'w') as lock_fd:
-            fcntl.flock(lock_fd, fcntl.LOCK_EX)
-            try:
-                state = cls._load_raw_sync()
-                if namespace not in state:
-                    state[namespace] = {}
-                state[namespace][key] = {
-                    'data': value,
-                    'timestamp': time.time()
-                }
-                cls._save_raw_sync(state)
-            finally:
-                fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        cls._with_state_lock(_do_update)
 
     @classmethod
     def save_state(cls, updates: Dict[str, Any], namespace: str = "reports"):
         """
-        Synchronous save (merges updates).
+        Synchronous save (merges updates). Uses global lock to prevent races.
         """
-        current = cls._load_raw_sync()
-        if namespace not in current:
-            current[namespace] = {}
+        def _do_save():
+            current = cls._load_raw_sync()
+            if namespace not in current:
+                current[namespace] = {}
 
-        for key, value in updates.items():
-            # Validate confidence if present in the value
-            if isinstance(value, dict) and 'confidence' in value:
-                value['confidence'] = _validate_confidence(value['confidence'])
-            elif isinstance(value, list):
-                for item in value:
-                    if isinstance(item, dict) and 'confidence' in item:
-                        item['confidence'] = _validate_confidence(item['confidence'])
+            for key, value in updates.items():
+                # Validate confidence if present in the value
+                if isinstance(value, dict) and 'confidence' in value:
+                    value['confidence'] = _validate_confidence(value['confidence'])
+                elif isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict) and 'confidence' in item:
+                            item['confidence'] = _validate_confidence(item['confidence'])
 
-            current[namespace][key] = {
-                "data": value,
-                "timestamp": time.time()
-            }
+                current[namespace][key] = {
+                    "data": value,
+                    "timestamp": time.time()
+                }
 
-        cls._save_raw_sync(current)
+            cls._save_raw_sync(current)
+
+        cls._with_state_lock(_do_save)
 
     @classmethod
     async def save_state_async(cls, updates: Dict[str, Any], namespace: str = "reports"):

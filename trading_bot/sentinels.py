@@ -27,6 +27,20 @@ from config.commodity_profiles import get_commodity_profile, GrowingRegion
 
 logger = logging.getLogger(__name__)
 
+# Dedicated sentinel diagnostic logger — writes to logs/sentinels.log
+# Provides verbose internal diagnostics separate from the main orchestrator log.
+_sentinel_diag = logging.getLogger('sentinel_diag')
+if not _sentinel_diag.handlers:
+    _diag_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+    os.makedirs(_diag_dir, exist_ok=True)
+    _diag_handler = logging.FileHandler(os.path.join(_diag_dir, 'sentinels.log'))
+    _diag_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    ))
+    _sentinel_diag.addHandler(_diag_handler)
+    _sentinel_diag.setLevel(logging.DEBUG)
+    _sentinel_diag.propagate = False  # Don't duplicate to orchestrator.log
+
 # Domain whitelists for prediction market filtering.
 # IMPORTANT: Keep terms specific. Avoid generic words that appear in unrelated titles.
 # Commodity-agnostic: each commodity profile can extend these via config.
@@ -529,6 +543,7 @@ class WeatherSentinel(Sentinel):
             # Fetch weather data
             weather_data = await self._fetch_weather(region)
             if not weather_data:
+                _sentinel_diag.warning(f"  WeatherSentinel: no data for {region.name}")
                 return None
 
             # Calculate rolling 7-day precipitation (using last 7 days of forecast/history)
@@ -538,9 +553,16 @@ class WeatherSentinel(Sentinel):
             # Get current month to determine agronomic stage
             current_month = datetime.now().month
 
+            min_temp_week = min(day.get('min_temp_c', 99) for day in weather_data[:7])
+            _sentinel_diag.info(
+                f"  WeatherSentinel [{region.name}]: precip_7d={weekly_precip:.1f}mm, "
+                f"min_temp={min_temp_week:.1f}C, month={current_month}, "
+                f"thresholds: drought<{region.drought_threshold_mm}mm, flood>{region.flood_threshold_mm}mm, "
+                f"frost<{region.frost_threshold_celsius}C"
+            )
+
             # Check Frost (if threshold defined)
             if region.frost_threshold_celsius is not None:
-                min_temp_week = min(day.get('min_temp_c', 99) for day in weather_data[:7])
                 if min_temp_week < region.frost_threshold_celsius:
                      return {
                         "type": "FROST",
@@ -632,8 +654,10 @@ class WeatherSentinel(Sentinel):
     async def check(self) -> Optional[SentinelTrigger]:
         """Check all regions, return the highest-severity alert."""
         if not self.profile:
+            _sentinel_diag.debug("WeatherSentinel: no profile, skipping")
             return None
 
+        _sentinel_diag.info(f"WeatherSentinel: checking {len(self.profile.primary_regions)} regions")
         all_alerts = []
 
         for region in self.profile.primary_regions:
@@ -668,14 +692,17 @@ class WeatherSentinel(Sentinel):
 
             except Exception as e:
                 logger.error(f"Weather Sentinel failed for {region.name}: {e}")
+                _sentinel_diag.error(f"WeatherSentinel: exception for {region.name}: {e}")
 
         self._save_alert_state()
 
         if all_alerts:
             # Return the most severe alert
             all_alerts.sort(key=lambda t: t.severity, reverse=True)
+            _sentinel_diag.info(f"WeatherSentinel: {len(all_alerts)} alerts, returning severity={all_alerts[0].severity}")
             return all_alerts[0]
 
+        _sentinel_diag.info("WeatherSentinel: all regions normal, no trigger")
         return None
 
     def _should_alert(self, alert_key: str, current_value: float) -> bool:
@@ -809,6 +836,7 @@ class LogisticsSentinel(Sentinel):
              logger.info("LogisticsSentinel: Circuit breaker reset")
 
         # OPTIMIZATION: Fetch RSS feeds in parallel to reduce latency
+        _sentinel_diag.info(f"LogisticsSentinel: fetching {len(self.urls)} RSS feeds")
         tasks = [self._fetch_rss_safe(url, self._seen_links, max_age_hours=48) for url in self.urls]
         results = await asyncio.gather(*tasks)
         headlines = [title for sublist in results for title in sublist]
@@ -817,11 +845,15 @@ class LogisticsSentinel(Sentinel):
         self._save_seen_cache()
 
         if not headlines:
+            _sentinel_diag.info("LogisticsSentinel: no fresh headlines, no trigger")
             return None
+
+        _sentinel_diag.info(f"LogisticsSentinel: {len(headlines)} headlines fetched, top 3: {headlines[:3]}")
 
         # === PAYLOAD DEDUPLICATION ===
         payload = {"headlines": headlines[:3]}
         if self._is_duplicate_payload(payload):
+            _sentinel_diag.info("LogisticsSentinel: duplicate payload, skipping")
             return None
 
         commodity_name = self.profile.name
@@ -866,6 +898,7 @@ class LogisticsSentinel(Sentinel):
 
         score = data.get('score', 0)
         summary = data.get('summary', 'Unknown disruption')
+        _sentinel_diag.info(f"LogisticsSentinel: AI score={score}/10, summary={summary[:80]}")
 
         # Threshold: only trigger at score >= 5 (moderate disruption or worse)
         if score >= 5:
@@ -877,6 +910,7 @@ class LogisticsSentinel(Sentinel):
                 severity=min(10, score)
             )
 
+        _sentinel_diag.info(f"LogisticsSentinel: score {score} < 5, no trigger")
         return None
 
 class NewsSentinel(Sentinel):
@@ -990,6 +1024,7 @@ class NewsSentinel(Sentinel):
             logger.info("NewsSentinel: Circuit breaker reset")
 
         # OPTIMIZATION: Fetch RSS feeds in parallel to reduce latency
+        _sentinel_diag.info(f"NewsSentinel: fetching {len(self.urls)} RSS feeds")
         tasks = [self._fetch_rss_safe(url, self._seen_links, max_age_hours=48) for url in self.urls]
         results = await asyncio.gather(*tasks)
         headlines = [title for sublist in results for title in sublist]
@@ -998,11 +1033,15 @@ class NewsSentinel(Sentinel):
         self._save_seen_cache()
 
         if not headlines:
+            _sentinel_diag.info("NewsSentinel: no fresh headlines, no trigger")
             return None
+
+        _sentinel_diag.info(f"NewsSentinel: {len(headlines)} headlines fetched, top 3: {headlines[:3]}")
 
         # === PAYLOAD DEDUPLICATION ===
         payload_preview = {"headlines": headlines[:3]}
         if self._is_duplicate_payload(payload_preview):
+            _sentinel_diag.info("NewsSentinel: duplicate payload, skipping")
             return None
 
         commodity_name = self.profile.name
@@ -1048,6 +1087,7 @@ class NewsSentinel(Sentinel):
             return None
 
         score = data.get('score', 0)
+        _sentinel_diag.info(f"NewsSentinel: AI score={score}/10 (threshold={self.threshold}), summary={data.get('summary', '')[:80]}")
         if score >= self.threshold:
             # Normalize: LLM score 8-10 maps to system severity 6-8
             severity = min(8, max(6, int(score - 2)))
@@ -1055,6 +1095,7 @@ class NewsSentinel(Sentinel):
             logger.warning(f"NEWS SENTINEL DETECTED: {msg}")
             return SentinelTrigger("NewsSentinel", msg, {"score": score, "summary": data.get('summary')}, severity=severity)
 
+        _sentinel_diag.info(f"NewsSentinel: score {score} < {self.threshold}, no trigger")
         return None
 
 class XSentimentSentinel(Sentinel):
@@ -1171,6 +1212,7 @@ class XSentimentSentinel(Sentinel):
 
     async def _fetch_x_posts(self, query: str, limit: int, sort_order: str, min_likes: int = None) -> list:
         from datetime import timedelta
+        _sentinel_diag.info(f"XSentimentSentinel._fetch_x_posts: calling X API (query='{query[:60]}', limit={limit})")
         headers = {
             "Authorization": f"Bearer {self.x_bearer_token}",
             "Content-Type": "application/json"
@@ -1194,14 +1236,18 @@ class XSentimentSentinel(Sentinel):
                     params=params,
                     timeout=aiohttp.ClientTimeout(total=30)
                 ) as response:
+                    _sentinel_diag.info(f"  X API response status: {response.status}")
                     if response.status == 429:
                         logger.warning("X API rate limit hit")
+                        _sentinel_diag.warning("  X API rate limit (429)")
                         return []
                     if response.status != 200:
                         error_text = await response.text()
                         logger.error(f"X API error {response.status}: {error_text}")
+                        _sentinel_diag.error(f"  X API error {response.status}: {error_text[:200]}")
                         return []
                     data = await response.json()
+                    raw_count = len(data.get("data", []))
                     posts = []
                     users = {}
                     if "includes" in data and "users" in data["includes"]:
@@ -1218,6 +1264,9 @@ class XSentimentSentinel(Sentinel):
                         })
                     likes_threshold = min_likes if min_likes is not None else self.min_engagement
                     posts = [p for p in posts if p.get('likes', 0) >= likes_threshold]
+                    _sentinel_diag.info(
+                        f"  X API: {raw_count} raw tweets, {len(posts)} after engagement filter (>={likes_threshold} likes)"
+                    )
                     if posts:
                         logger.debug(f"Top post: {posts[0]['text'][:50]}...")
                     return posts
@@ -1316,8 +1365,13 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
         max_iterations = 5
         iteration = 0
         try:
+            _sentinel_diag.info(
+                f"XSentimentSentinel._search_x_and_analyze: query='{query}', "
+                f"model={self.model}, tools={'enabled' if self.x_bearer_token else 'disabled (no bearer token)'}"
+            )
             while iteration < max_iterations:
                 iteration += 1
+                _sentinel_diag.debug(f"  Grok API call iteration {iteration}/{max_iterations}")
                 response = await self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
@@ -1329,6 +1383,7 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                 )
                 message = response.choices[0].message
                 if message.content and message.content.strip():
+                    _sentinel_diag.info(f"  Grok returned content (iteration {iteration}), parsing JSON...")
                     content = message.content.strip()
                     if content.startswith("```json"): content = content[7:]
                     if content.startswith("```"): content = content[3:]
@@ -1339,6 +1394,7 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                         required_fields = ['sentiment_score', 'confidence', 'summary', 'post_volume']
                         missing = [f for f in required_fields if f not in data]
                         if missing:
+                            _sentinel_diag.warning(f"  Grok response missing fields: {missing}")
                             data.setdefault('sentiment_score', 5.0)
                             data.setdefault('confidence', 0.0)
                             data.setdefault('summary', 'Incomplete response')
@@ -1346,20 +1402,31 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                         data['sentiment_score'] = float(data['sentiment_score'])
                         data['confidence'] = float(data['confidence'])
                         data['post_volume'] = int(data['post_volume'])
+                        _sentinel_diag.info(
+                            f"  Grok result: sentiment={data['sentiment_score']}, confidence={data['confidence']}, "
+                            f"volume={data['post_volume']}, summary={data.get('summary', '')[:80]}"
+                        )
                         if data['post_volume'] > 0: self._update_volume_stats(data['post_volume'])
                         return data
                     except (json.JSONDecodeError, ValueError, TypeError) as e:
                         logger.error(f"Failed to parse Grok response: {e}")
+                        _sentinel_diag.error(f"  Failed to parse Grok response: {e}, raw={content[:200]}")
                         return None
                 if message.tool_calls:
                     tool_call = message.tool_calls[0]
                     function_name = tool_call.function.name
+                    _sentinel_diag.info(f"  Grok invoked tool: {function_name} (iteration {iteration})")
                     try:
                         args = json.loads(tool_call.function.arguments)
                     except json.JSONDecodeError:
                         args = {"query": query}
+                    _sentinel_diag.info(f"  Tool args: {args}")
                     if function_name == "x_search":
                         tool_result = await self._execute_x_search(args)
+                        _sentinel_diag.info(
+                            f"  x_search result: {tool_result.get('post_volume', 0)} posts, "
+                            f"stage={tool_result.get('search_stage')}, quality={tool_result.get('data_quality')}"
+                        )
                         # Inject security context for the model
                         if "posts" in tool_result and tool_result["posts"]:
                             tool_result["_security_notice"] = (
@@ -1374,10 +1441,13 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                     messages.append({"role": "assistant", "content": None, "tool_calls": [tool_call]})
                     messages.append({"role": "tool", "tool_call_id": tool_call.id, "name": function_name, "content": json.dumps(tool_result)})
                     continue
+                _sentinel_diag.warning(f"  Grok returned neither content nor tool_calls (iteration {iteration})")
                 return {"sentiment_score": 5.0, "confidence": 0.0, "summary": "No data available", "post_volume": 0, "key_themes": [], "notable_posts": []}
+            _sentinel_diag.warning(f"  Grok analysis loop exhausted ({max_iterations} iterations)")
             return {"sentiment_score": 5.0, "confidence": 0.0, "summary": "Analysis loop timeout", "post_volume": 0, "key_themes": [], "notable_posts": []}
         except Exception as e:
             logger.error(f"X search failed for query '{query}': {e}", exc_info=True)
+            _sentinel_diag.error(f"  X search EXCEPTION for query '{query}': {type(e).__name__}: {e}")
             return None
 
     async def _execute_x_search(self, args: dict) -> dict:
@@ -1407,18 +1477,27 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
 
     async def check(self) -> Optional[SentinelTrigger]:
         from trading_bot.utils import is_market_open, is_trading_day
-        if not is_trading_day(): return None
+        if not is_trading_day():
+            _sentinel_diag.debug("XSentimentSentinel: skipped (not trading day)")
+            return None
         if not is_market_open():
             if not hasattr(self, '_last_closed_market_check'): self._last_closed_market_check = None
             now = datetime.now(timezone.utc)
             if self._last_closed_market_check:
                 hours_since_last = (now - self._last_closed_market_check).total_seconds() / 3600
-                if hours_since_last < 4: return None
+                if hours_since_last < 4:
+                    _sentinel_diag.debug(f"XSentimentSentinel: skipped (market closed, {hours_since_last:.1f}h since last closed-market check < 4h)")
+                    return None
             self._last_closed_market_check = now
+            _sentinel_diag.info("XSentimentSentinel: running closed-market check (4h+ since last)")
+        else:
+            _sentinel_diag.info("XSentimentSentinel: running (market open)")
         if self.degraded_until and datetime.now(timezone.utc) < self.degraded_until:
             self.sensor_status = "OFFLINE"
             StateManager.save_state({"x_sentiment": self.get_sensor_status()}, namespace="sensors")
+            _sentinel_diag.warning(f"XSentimentSentinel: DEGRADED until {self.degraded_until.isoformat()}")
             return None
+        _sentinel_diag.info(f"XSentimentSentinel: querying {len(self.search_queries)} queries: {self.search_queries}")
         tasks = [self._sem_bound_search(query) for query in self.search_queries]
         all_results = await asyncio.gather(*tasks, return_exceptions=True)
         valid_results = []
@@ -1432,8 +1511,21 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                     f"Query '{self.search_queries[i]}' returned non-dict type "
                     f"({type(result).__name__}): {str(result)[:100]}"
                 )
+        _sentinel_diag.info(
+            f"XSentimentSentinel: {len(valid_results)}/{len(all_results)} queries returned valid results"
+        )
+        for i, result in enumerate(all_results):
+            if isinstance(result, dict):
+                _sentinel_diag.info(
+                    f"  Query {i} result: sentiment={result.get('sentiment_score')}, "
+                    f"confidence={result.get('confidence')}, volume={result.get('post_volume')}, "
+                    f"themes={result.get('key_themes', [])[:3]}"
+                )
         if not valid_results:
             self.consecutive_failures += 1
+            _sentinel_diag.warning(
+                f"XSentimentSentinel: no valid results (consecutive_failures={self.consecutive_failures})"
+            )
             if self.consecutive_failures >= 3:
                 self.degraded_until = datetime.now(timezone.utc) + timedelta(hours=1)
                 self.sensor_status = "OFFLINE"
@@ -1460,6 +1552,12 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
         if len(self.post_volume_history) >= 5:
             if total_volume > (self.volume_mean * self.volume_spike_multiplier):
                 volume_spike_detected = True
+        _sentinel_diag.info(
+            f"XSentimentSentinel: avg_sentiment={avg_sentiment:.2f}, avg_confidence={avg_confidence:.2f}, "
+            f"total_volume={total_volume}, volume_spike={volume_spike_detected}, "
+            f"thresholds: bullish>={self.sentiment_threshold}, bearish<={10 - self.sentiment_threshold}, "
+            f"top_themes={[t[0] for t in top_themes[:3]]}"
+        )
         trigger_reason = None
         severity = 0
         if avg_sentiment >= self.sentiment_threshold:
@@ -1471,7 +1569,9 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
         if volume_spike_detected and not trigger_reason:
             trigger_reason = f"UNUSUAL X ACTIVITY SPIKE ({total_volume} posts)"
             severity = 6
-        if not trigger_reason: return None
+        if not trigger_reason:
+            _sentinel_diag.info("XSentimentSentinel: no trigger (sentiment within normal range, no volume spike)")
+            return None
         payload = {
             "sentiment_score": round(avg_sentiment, 2),
             "confidence": round(avg_confidence, 2),
@@ -1818,11 +1918,17 @@ class PredictionMarketSentinel(Sentinel):
         return None
 
     async def check(self) -> Optional[SentinelTrigger]:
-        if not self.sentinel_config.get('enabled', True): return None
-        if not self.topics: return None
+        if not self.sentinel_config.get('enabled', True):
+            _sentinel_diag.debug("PredictionMarketSentinel: disabled in config")
+            return None
+        if not self.topics:
+            _sentinel_diag.warning("PredictionMarketSentinel: no topics configured (0 topics). Run TopicDiscoveryAgent first.")
+            return None
         import time as time_module
         now = time_module.time()
-        if (now - self._last_poll_time) < self.poll_interval: return None
+        if (now - self._last_poll_time) < self.poll_interval:
+            return None
+        _sentinel_diag.info(f"PredictionMarketSentinel: polling {len(self.topics)} topics")
         slug_check_now = datetime.now(timezone.utc)
         if (slug_check_now - self._last_slug_check).total_seconds() > 14400:
             self._validate_all_slugs()
@@ -1871,6 +1977,7 @@ class PredictionMarketSentinel(Sentinel):
                 if not market_data:
                     self._topic_failure_counts[query] = self._topic_failure_counts.get(query, 0) + 1
                     fail_count = self._topic_failure_counts[query]
+                    _sentinel_diag.warning(f"  PredictionMarket: no data for '{display_name}' (failures={fail_count})")
                     MAX_CONSECUTIVE_FAILURES = 50
                     if fail_count >= MAX_CONSECUTIVE_FAILURES:
                         topic['enabled'] = False
@@ -1903,6 +2010,11 @@ class PredictionMarketSentinel(Sentinel):
                         cached['hwm_timestamp'] = None
                     delta = current_price - last_price
                     delta_pct = abs(delta) * 100
+                    _sentinel_diag.info(
+                        f"  PredictionMarket [{display_name}]: price={current_price:.3f}, "
+                        f"last={last_price:.3f}, delta={delta_pct:.1f}%, threshold={threshold*100:.0f}%, "
+                        f"hwm={severity_hwm}"
+                    )
                     if abs(delta) >= threshold:
                         current_severity = self._calculate_severity(delta_pct)
                         if current_severity > severity_hwm:
@@ -1920,7 +2032,9 @@ class PredictionMarketSentinel(Sentinel):
         self._save_state_cache()
         if triggers:
             triggers.sort(key=lambda t: t.severity, reverse=True)
+            _sentinel_diag.info(f"PredictionMarketSentinel: {len(triggers)} triggers, returning severity={triggers[0].severity}")
             return triggers[0]
+        _sentinel_diag.info("PredictionMarketSentinel: all topics within thresholds, no trigger")
         return None
 
 class MacroContagionSentinel(Sentinel):
@@ -2109,33 +2223,42 @@ class MacroContagionSentinel(Sentinel):
             return None
 
     async def check(self) -> Optional[SentinelTrigger]:
+        _sentinel_diag.info("MacroContagionSentinel: starting checks (DXY → Contagion → Fed Policy)")
+
         dxy_shock = await self.check_dxy_shock()
         if dxy_shock:
+            _sentinel_diag.info(f"MacroContagionSentinel: DXY shock detected! {dxy_shock['direction']} {dxy_shock['pct_change']:.2%}")
             return SentinelTrigger(
                 source="MacroContagionSentinel",
                 reason=f"DXY {dxy_shock['direction']}: {dxy_shock['pct_change']:.2%} ({dxy_shock['severity']})",
                 payload=dxy_shock,
                 severity=8 if dxy_shock['severity'] == 'CRITICAL' else 6
             )
+        _sentinel_diag.info("MacroContagionSentinel: DXY normal")
 
         contagion = await self.check_cross_commodity_contagion()
         if contagion:
+            _sentinel_diag.info(f"MacroContagionSentinel: contagion detected! precious_corr={contagion['correlation_precious']:.2f}")
             return SentinelTrigger(
                 source="MacroContagionSentinel",
                 reason=f"Cross-Commodity Contagion: Coffee correlating with Gold/Silver ({contagion['correlation_precious']:.2f})",
                 payload=contagion,
                 severity=7
             )
+        _sentinel_diag.info("MacroContagionSentinel: no contagion pattern")
 
         policy_shock = await self.check_fed_policy_shock()
         if policy_shock:
+            _sentinel_diag.info(f"MacroContagionSentinel: Fed policy shock! {policy_shock['policy_type']}")
             return SentinelTrigger(
                 source="MacroContagionSentinel",
                 reason=f"Fed Policy Shock: {policy_shock['policy_type']} - {policy_shock['summary']}",
                 payload=policy_shock,
                 severity=9
             )
+        _sentinel_diag.info("MacroContagionSentinel: no policy shock")
 
+        _sentinel_diag.info("MacroContagionSentinel: all clear, no trigger")
         return None
 
 class FundamentalRegimeSentinel(Sentinel):
