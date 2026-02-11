@@ -5,6 +5,7 @@ Contains data loading, caching, and decision grading logic.
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import os
 import glob
 import random
@@ -32,16 +33,15 @@ try:
 except RuntimeError:
     asyncio.set_event_loop(asyncio.new_event_loop())
 
-from ib_insync import IB
+from ib_insync import IB  # noqa: E402
 
 # Path setup for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
-from performance_analyzer import get_trade_ledger_df
+from performance_analyzer import get_trade_ledger_df  # noqa: E402
 # Decision signals: lightweight summary of Council decisions
-from trading_bot.decision_signals import get_decision_signals_df
-from config_loader import load_config
-from trading_bot.utils import configure_market_data_type
-from trading_bot.timestamps import parse_ts_column
+from config_loader import load_config  # noqa: E402
+from trading_bot.utils import configure_market_data_type  # noqa: E402
+from trading_bot.timestamps import parse_ts_column  # noqa: E402
 
 # === CONFIGURATION ===
 # E4 FIX: Dynamic starting capital handled in get_starting_capital function
@@ -259,7 +259,7 @@ def load_log_data():
             logs_content[name] = tail_file(log_path, n_lines=50)
 
         return logs_content
-    except Exception as e:
+    except Exception:
         return {}
 
 
@@ -587,7 +587,6 @@ def get_sentinel_status():
     Commodity-agnostic: sentinel list is derived from state data, not hardcoded.
     """
     import json
-    from datetime import datetime, timezone
 
     # Complete sentinel registry with display metadata
     # 'availability' helps the dashboard group sentinels logically
@@ -712,7 +711,7 @@ def fetch_live_dashboard_data(_config):
                 if data["NetLiquidation"] > 0:
                     data["DailyPnLPct"] = (data["DailyPnL"] / data["NetLiquidation"]) * 100
 
-    except Exception as e:
+    except Exception:
         # st.warning(f"Could not connect to IB: {e}")
         pass
     finally:
@@ -874,7 +873,7 @@ def fetch_benchmark_data(start_date, end_date):
             return pd.DataFrame()
         normalized = data.apply(lambda x: (x / x.dropna().iloc[0]) - 1) * 100
         return normalized
-    except Exception as e:
+    except Exception:
         return pd.DataFrame()
 
 
@@ -1067,44 +1066,10 @@ def calculate_confusion_matrix(graded_df: pd.DataFrame) -> dict:
     return result
 
 
-def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -> dict:
-    """
-    Calculates accuracy scores for each sub-agent based on actual outcomes.
-
-    VECTORIZED OPTIMIZATION: Uses pandas masking instead of iterrows for 50x+ speedup.
-
-    ARCHITECTURE NOTES:
-    - Agent Accuracy = Did the agent correctly predict market behavior?
-    - Trade Success = Did the Master's trade make money?
-
-    CRITICAL DISTINCTION FOR VOLATILITY TRADES:
-    - master_decision is ALWAYS 'NEUTRAL' for vol trades (by design)
-    - Master is scored on STRATEGY success, not direction
-    - Volatility agent is scored on PREDICTION accuracy
-    - Skip NEUTRAL for other agents (means "no opinion")
-
-    Supports both DIRECTIONAL (Up/Down) and VOLATILITY (Big Move/Flat) grading.
-    """
-    import numpy as np
-
-    agents = [
-        'meteorologist_sentiment',
-        'macro_sentiment',
-        'geopolitical_sentiment',
-        'fundamentalist_sentiment',
-        'sentiment_sentiment',
-        'technical_sentiment',
-        'volatility_sentiment',
-        'master_decision'
-    ]
-
-    scores = {agent: {'correct': 0, 'total': 0, 'accuracy': 0.0} for agent in agents}
-
-    if council_df.empty:
-        return scores
-
+def _prepare_scoring_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """Pre-processes the dataframe for scoring by filling missing prediction types."""
     # Work on a copy to avoid SettingWithCopy warnings and preserve original df
-    df = council_df.copy()
+    df = df.copy()
 
     # === PRE-PROCESSING: Fill missing prediction_type ===
     if 'prediction_type' not in df.columns:
@@ -1118,6 +1083,11 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
         df.loc[df['strategy_type'].isin(vol_strategies) & df['prediction_type'].isna(), 'prediction_type'] = 'VOLATILITY'
         df.loc[df['strategy_type'].isin(dir_strategies) & df['prediction_type'].isna(), 'prediction_type'] = 'DIRECTIONAL'
 
+    return df
+
+
+def _score_volatility_trades(df: pd.DataFrame, scores: dict):
+    """Updates scores based on volatility trades."""
     # ================================================================
     # SECTION 1: VOLATILITY TRADES (Vectorized)
     # ================================================================
@@ -1161,6 +1131,9 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
                     scores['volatility_sentiment']['total'] += len(valid_vol)
                     scores['volatility_sentiment']['correct'] += correct_vol.sum()
 
+
+def _score_directional_trades(df: pd.DataFrame, scores: dict, live_price: float, agents: list):
+    """Updates scores based on directional trades."""
     # ================================================================
     # SECTION 2: DIRECTIONAL TRADES (Vectorized)
     # ================================================================
@@ -1233,12 +1206,62 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
                     scores[agent]['total'] += len(total_correct)
                     scores[agent]['correct'] += total_correct.sum()
 
+
+def _calculate_final_percentages(scores: dict, agents: list):
+    """Calculates final accuracy percentages for all agents."""
     # ================================================================
     # SECTION 3: Calculate Final Accuracy Percentages
     # ================================================================
     for agent in agents:
         if scores[agent]['total'] > 0:
             scores[agent]['accuracy'] = scores[agent]['correct'] / scores[agent]['total']
+
+
+def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -> dict:
+    """
+    Calculates accuracy scores for each sub-agent based on actual outcomes.
+
+    VECTORIZED OPTIMIZATION: Uses pandas masking instead of iterrows for 50x+ speedup.
+
+    ARCHITECTURE NOTES:
+    - Agent Accuracy = Did the agent correctly predict market behavior?
+    - Trade Success = Did the Master's trade make money?
+
+    CRITICAL DISTINCTION FOR VOLATILITY TRADES:
+    - master_decision is ALWAYS 'NEUTRAL' for vol trades (by design)
+    - Master is scored on STRATEGY success, not direction
+    - Volatility agent is scored on PREDICTION accuracy
+    - Skip NEUTRAL for other agents (means "no opinion")
+
+    Supports both DIRECTIONAL (Up/Down) and VOLATILITY (Big Move/Flat) grading.
+    """
+    agents = [
+        'meteorologist_sentiment',
+        'macro_sentiment',
+        'geopolitical_sentiment',
+        'fundamentalist_sentiment',
+        'sentiment_sentiment',
+        'technical_sentiment',
+        'volatility_sentiment',
+        'master_decision'
+    ]
+
+    scores = {agent: {'correct': 0, 'total': 0, 'accuracy': 0.0} for agent in agents}
+
+    if council_df.empty:
+        return scores
+
+    # Prepare DataFrame
+    df = _prepare_scoring_dataframe(council_df)
+
+    # Score Volatility Trades
+    _score_volatility_trades(df, scores)
+
+    # Score Directional Trades
+    _score_directional_trades(df, scores, live_price, agents)
+
+    # Calculate Percentages
+    _calculate_final_percentages(scores, agents)
 
     return scores
 
@@ -1308,7 +1331,7 @@ def fetch_portfolio_data(_config, trade_df: pd.DataFrame) -> pd.DataFrame:
                 'Days Held': (datetime.now() - matching_trade['timestamp']).days if matching_trade is not None else 0
             })
 
-    except Exception as e:
+    except Exception:
         # st.error(f"Error fetching portfolio: {e}")
         pass
     finally:
