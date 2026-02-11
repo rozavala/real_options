@@ -25,3 +25,32 @@
 2026-02-11 06:49:33,377 - trading_bot.sentinels - INFO - Topics reloaded: 0
 2026-02-11 06:49:33,377 - trading_bot.sentinels - INFO - PredictionMarketSentinel v2.0 initialized: 0 topics
 2026-02-11 06:49:33,487 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-11 08:30:00,006 - Orchestrator - INFO - --- Running scheduled task: start_monitoring ---
+2026-02-11 08:30:00,017 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
+2026-02-11 08:30:00,018 - Orchestrator - INFO - --- Starting position monitoring process ---
+2026-02-11 08:30:00,023 - Orchestrator - INFO - Successfully started position monitor with PID: 987144
+2026-02-11 08:30:00,023 - Orchestrator - INFO - Started position monitoring service.
+2026-02-11 08:30:00,036 - Orchestrator - INFO - Next task 'process_deferred_triggers' scheduled for 2026-02-11 08:31:00 UTC. Waiting for 0.02 hours.
+2026-02-11 08:30:05,188 - Orchestrator - INFO - 2026-02-11 08:30:05,187 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-11 08:30:05,190 - Orchestrator - INFO - 2026-02-11 08:30:05,189 - trading_bot.connection_pool - INFO - Connecting IB (monitor) ID: 139...
+2026-02-11 08:30:05,646 - Orchestrator - INFO - 2026-02-11 08:30:05,645 - trading_bot.connection_pool - INFO - IB (monitor) connected successfully with ID 139
+2026-02-11 08:30:05,661 - Orchestrator - INFO - 2026-02-11 08:30:05,661 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-11 08:30:05,662 - Orchestrator - INFO - 2026-02-11 08:30:05,661 - __main__ - INFO - Position monitor connected and watching open positions.
+2026-02-11 08:30:05,662 - Orchestrator - INFO - 2026-02-11 08:30:05,661 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
+2026-02-11 08:30:05,662 - Orchestrator - INFO - 2026-02-11 08:30:05,661 - root - INFO - Order status and execution event handlers registered.
+2026-02-11 08:31:00,004 - Orchestrator - INFO - --- Running scheduled task: process_deferred_triggers ---
+2026-02-11 08:31:00,013 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-02-11 08:31:00,014 - Orchestrator - INFO - No deferred triggers to process.
+2026-02-11 08:31:00,019 - Orchestrator - INFO - Next task 'cleanup_orphaned_theses' scheduled for 2026-02-11 10:00:00 UTC. Waiting for 1.48 hours.
+2026-02-11 10:00:00,024 - Orchestrator - INFO - --- Running scheduled task: cleanup_orphaned_theses ---
+2026-02-11 10:00:00,030 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-11 10:00:00,033 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 277...
+2026-02-11 10:00:00,448 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 277
+2026-02-11 10:00:00,479 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-11 10:00:00,590 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-11 10:00:00,652 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-11 10:00:00,652 - trading_bot.connection_pool - INFO - Disconnecting IB (cleanup)...
+2026-02-11 10:00:03,681 - Orchestrator - INFO - Next task 'run_position_audit_cycle' scheduled for 2026-02-11 13:30:00 UTC. Waiting for 3.50 hours.
+2026-02-11 10:50:06,577 - Orchestrator - INFO - 2026-02-11 10:50:06,577 - root - INFO - Running Iron Condor thesis validation check...
+2026-02-11 10:50:06,601 - Orchestrator - INFO - 2026-02-11 10:50:06,600 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-11 10:50:06,717 - Orchestrator - INFO - 2026-02-11 10:50:06,717 - trading_bot.tms - INFO - TMS initialized at ./data/tms
