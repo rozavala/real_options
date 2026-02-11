@@ -760,6 +760,8 @@ Return JSON: {{"verdict": "HOLD" or "CLOSE", "confidence": 0.0-1.0, "reasoning":
             # Clean up response if needed (remove markdown)
             clean_response = verdict_response.replace('```json', '').replace('```', '')
             verdict_data = json.loads(clean_response)
+            if not isinstance(verdict_data, dict):
+                raise ValueError("Thesis validation returned non-dict JSON")
             if verdict_data.get('verdict') == 'CLOSE' and verdict_data.get('confidence', 0) > confidence_threshold:
                 return {
                     'action': 'CLOSE',
