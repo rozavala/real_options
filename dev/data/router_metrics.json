@@ -5,7 +5,7 @@
       "failure": 11
     },
     "permabear:anthropic": {
-      "success": 243,
+      "success": 244,
       "failure": 9
     },
     "permabull:xai": {
@@ -13,8 +13,8 @@
       "failure": 6
     },
     "master:openai": {
-      "success": 149,
-      "failure": 6
+      "success": 150,
+      "failure": 8
     },
     "sentiment:xai": {
       "success": 112,
@@ -129,12 +129,12 @@
       "failure": 6
     },
     "master:anthropic": {
-      "success": 1,
-      "failure": 6
+      "success": 2,
+      "failure": 7
     },
     "master:gemini": {
       "success": 1,
-      "failure": 6
+      "failure": 7
     },
     "compliance:openai": {
       "success": 1,
@@ -143,6 +143,18 @@
     "compliance:gemini": {
       "success": 1,
       "failure": 2
+    },
+    "weather_sentinel:gemini": {
+      "success": 1,
+      "failure": 0
+    },
+    "price_sentinel:gemini": {
+      "success": 0,
+      "failure": 1
+    },
+    "price_sentinel:openai": {
+      "success": 1,
+      "failure": 0
     }
   },
   "fallbacks": {
@@ -187,12 +199,15 @@
       "xai->anthropic": 8
     },
     "master": {
-      "openai->anthropic": 8,
-      "openai->gemini": 8
+      "openai->anthropic": 11,
+      "openai->gemini": 9
     },
     "compliance": {
       "anthropic->openai": 5,
       "anthropic->gemini": 4
+    },
+    "price_sentinel": {
+      "gemini->openai": 2
     }
   },
   "latencies": {
@@ -600,10 +615,6 @@
     ],
     "permabear:anthropic": [
       {
-        "ms": 20840.385675430298,
-        "timestamp": "2026-01-30T15:31:48.501975+00:00"
-      },
-      {
         "ms": 18697.1697807312,
         "timestamp": "2026-02-02T09:24:37.352343+00:00"
       },
@@ -998,6 +1009,10 @@
       {
         "ms": 38378.37624549866,
         "timestamp": "2026-02-10T14:01:08.876575+00:00"
+      },
+      {
+        "ms": 7140.597820281982,
+        "timestamp": "2026-02-11T04:35:26.227083+00:00"
       }
     ],
     "permabull:xai": [
@@ -1404,18 +1419,6 @@
     ],
     "master:openai": [
       {
-        "ms": 10196.202754974365,
-        "timestamp": "2026-01-27T16:16:33.809880+00:00"
-      },
-      {
-        "ms": 9322.017669677734,
-        "timestamp": "2026-01-27T16:17:54.429750+00:00"
-      },
-      {
-        "ms": 13846.364498138428,
-        "timestamp": "2026-01-27T17:08:19.143477+00:00"
-      },
-      {
         "ms": 11762.900114059448,
         "timestamp": "2026-01-27T17:08:40.171827+00:00"
       },
@@ -1802,6 +1805,18 @@
       {
         "ms": 5879.45556640625,
         "timestamp": "2026-02-10T13:59:43.896027+00:00"
+      },
+      {
+        "ms": 0.11396408081054688,
+        "timestamp": "2026-02-11T04:34:31.737191+00:00"
+      },
+      {
+        "ms": 0.087738037109375,
+        "timestamp": "2026-02-11T04:34:31.746388+00:00"
+      },
+      {
+        "ms": 0.11754035949707031,
+        "timestamp": "2026-02-11T04:34:31.752457+00:00"
       }
     ],
     "sentiment:xai": [
@@ -5444,6 +5459,14 @@
       {
         "ms": 14844.328880310059,
         "timestamp": "2026-02-04T09:43:19.576499+00:00"
+      },
+      {
+        "ms": 0.06413459777832031,
+        "timestamp": "2026-02-11T04:34:31.746625+00:00"
+      },
+      {
+        "ms": 0.05626678466796875,
+        "timestamp": "2026-02-11T04:34:31.752765+00:00"
       }
     ],
     "master:gemini": [
@@ -5474,6 +5497,10 @@
       {
         "ms": 40943.72844696045,
         "timestamp": "2026-02-04T09:44:00.520377+00:00"
+      },
+      {
+        "ms": 0.054836273193359375,
+        "timestamp": "2026-02-11T04:34:31.752966+00:00"
       }
     ],
     "compliance:openai": [
@@ -5506,6 +5533,24 @@
       {
         "ms": 17261.122226715088,
         "timestamp": "2026-02-04T09:45:14.105761+00:00"
+      }
+    ],
+    "weather_sentinel:gemini": [
+      {
+        "ms": 0.05626678466796875,
+        "timestamp": "2026-02-11T04:33:50.202566+00:00"
+      }
+    ],
+    "price_sentinel:gemini": [
+      {
+        "ms": 0.11992454528808594,
+        "timestamp": "2026-02-11T04:34:31.761825+00:00"
+      }
+    ],
+    "price_sentinel:openai": [
+      {
+        "ms": 0.1430511474609375,
+        "timestamp": "2026-02-11T04:34:31.913168+00:00"
       }
     ]
   },
