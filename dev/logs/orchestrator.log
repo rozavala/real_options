@@ -51,3 +51,19 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-11 13:00:00,556 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
 2026-02-11 13:00:00,559 - Orchestrator - INFO - No open positions to audit.
 2026-02-11 13:00:00,562 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
+2026-02-11 13:00:03,575 - Orchestrator - INFO - Next task 'guarded_generate_orders' scheduled for 2026-02-11 13:30:00 UTC. Waiting for 0.50 hours.
+2026-02-11 13:30:00,083 - Orchestrator - INFO - --- Running scheduled task: guarded_generate_orders ---
+2026-02-11 13:30:00,221 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-11 13:30:00,223 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'openai', 'gemini']
+2026-02-11 13:30:00,224 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'anthropic', 'openai', 'gemini'], 'diversity_score': 1.0}
+2026-02-11 13:30:00,233 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-11 13:30:00,244 - trading_bot.enhanced_brier - INFO - Loaded 520 predictions from ./data/enhanced_brier.json
+2026-02-11 13:30:00,311 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-11 13:30:00,312 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-11 13:30:00,313 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-11 13:30:00,313 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-11 13:30:00,313 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-11 13:30:00,317 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 202...
+2026-02-11 13:30:00,435 - trading_bot.connection_pool - INFO - IB (drawdown_check) connected successfully with ID 202
+2026-02-11 13:30:00,540 - trading_bot.drawdown_circuit_breaker - INFO - DrawdownGuard initialized. Starting Equity: $43,588.97
+2026-02-11 13:30:00,542 - trading_bot.connection_pool - INFO - Disconnecting IB (drawdown_check)...
