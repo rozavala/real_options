@@ -622,7 +622,7 @@ class WeatherSentinel(Sentinel):
             return None
 
         except Exception as e:
-            self.logger.error(f"Error checking weather for {region.name}: {e}")
+            logger.error(f"Error checking weather for {region.name}: {e}")
             return None
 
     def _determine_drought_direction(self, stage: str) -> str:
@@ -2041,10 +2041,7 @@ class MacroContagionSentinel(Sentinel):
     """
     Detects macro shocks that cause cross-asset contagion.
     """
-    def __init__(self, config, event_bus=None, logger=None):
-        # event_bus and logger are passed by orchestrator, but we also inherit config from base Sentinel
-        # Base Sentinel only takes config.
-        # Orchestrator instantiates sentinels with (config).
+    def __init__(self, config, event_bus=None, **kwargs):
         super().__init__(config)
 
         # Commodity-agnostic: load profile
@@ -2063,7 +2060,7 @@ class MacroContagionSentinel(Sentinel):
         self.client = genai.Client(api_key=api_key)
         self.model = self.sentinel_config.get('model', "gemini-3-flash-preview")
 
-        logger.info(f"MacroContagionSentinel initialized with model: {self.model} | "
+        _sentinel_diag.info(f"MacroContagionSentinel initialized with model: {self.model} | "
                      f"DXY thresholds: 1d={self.dxy_threshold_1d:.0%}, 2d={self.dxy_threshold_2d:.0%} | "
                      f"Commodity: {self.profile.name}")
 
@@ -2265,7 +2262,7 @@ class FundamentalRegimeSentinel(Sentinel):
     """
     Determine if the market is in DEFICIT or SURPLUS regime.
     """
-    def __init__(self, config, event_bus=None, logger=None):
+    def __init__(self, config, event_bus=None, **kwargs):
         super().__init__(config)
         ticker = config.get('commodity', {}).get('ticker', 'KC')
         self.profile = get_commodity_profile(ticker)
