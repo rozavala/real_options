@@ -260,25 +260,52 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         )
         leg_contracts.append(contract)
 
-    # 2. Qualify all leg contracts in a single batch
+    # 2. Probe: verify first leg (ATM) exists before qualifying all.
+    #    reqSecDefOptParams returns the union of strikes across ALL expirations,
+    #    so far-dated expirations may not have the selected strikes listed yet.
+    #    A single-leg probe catches this early (1 IB round-trip instead of N).
+    probe = leg_contracts[0]
     try:
-        qualified_legs = await asyncio.wait_for(ib.qualifyContractsAsync(*leg_contracts), timeout=12)
+        await asyncio.wait_for(ib.qualifyContractsAsync(probe), timeout=8)
     except Exception as e:
-        logging.error(f"Exception during contract qualification: {e}")
-        for lc in leg_contracts:
-            logging.error(f"Contract that failed qualification: {lc}")
+        logging.warning(f"Probe qualification failed for expiry {exp_details['exp_date']}: {e}")
         return None
 
-    # 3. Validate all legs were qualified successfully before pricing
-    if len(qualified_legs) != len(leg_contracts):
-        logging.error(f"Qualification returned {len(qualified_legs)}/{len(leg_contracts)} legs. Aborting.")
+    if probe.conId == 0:
+        logging.warning(
+            f"Strike {probe.strike}{probe.right} not available for expiry "
+            f"{exp_details['exp_date']} (class={chain['tradingClass']}). "
+            f"Far-dated expirations may have limited strike coverage. Skipping."
+        )
         return None
 
-    for leg in qualified_legs:
-        if leg.conId == 0:
-            logging.error(f"Strike not listed: {leg.right} @ {leg.strike} "
-                          f"(expiry={leg.lastTradeDateOrContractMonth}, class={leg.tradingClass})")
+    # 3. Qualify remaining legs
+    remaining = leg_contracts[1:]
+    if remaining:
+        try:
+            qualified_remaining = await asyncio.wait_for(
+                ib.qualifyContractsAsync(*remaining), timeout=12
+            )
+        except Exception as e:
+            logging.warning(f"Remaining leg qualification failed for expiry {exp_details['exp_date']}: {e}")
             return None
+
+        if len(qualified_remaining) != len(remaining):
+            logging.warning(
+                f"Qualification returned {len(qualified_remaining)}/{len(remaining)} "
+                f"remaining legs for expiry {exp_details['exp_date']}. Skipping."
+            )
+            return None
+
+        for leg in qualified_remaining:
+            if leg.conId == 0:
+                logging.warning(
+                    f"Strike not available: {leg.right} @ {leg.strike} "
+                    f"(expiry={leg.lastTradeDateOrContractMonth}, class={leg.tradingClass})"
+                )
+                return None
+
+    qualified_legs = leg_contracts  # All modified in-place by qualifyContractsAsync
 
     # 4. Price each leg theoretically and get live market spread
     net_theoretical_price = 0.0
