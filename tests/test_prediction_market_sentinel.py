@@ -4,6 +4,16 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timezone, timedelta
 from trading_bot.sentinels import PredictionMarketSentinel, SentinelTrigger
 
+
+@pytest.fixture(autouse=True)
+def _no_discovered_topics(monkeypatch):
+    """Prevent tests from picking up real data/discovered_topics.json."""
+    monkeypatch.setattr(
+        PredictionMarketSentinel, '_merge_discovered_topics',
+        lambda self, static: [t for t in static if t.get('enabled', True)]
+    )
+
+
 @pytest.fixture
 def mock_config():
     return {
