@@ -24,7 +24,6 @@ from dataclasses import dataclass
 import numpy as np
 from trading_bot.router_metrics import get_router_metrics
 from trading_bot.rate_limiter import acquire_api_slot
-from trading_bot.semantic_cache import SemanticCache
 
 logger = logging.getLogger(__name__)
 
@@ -398,8 +397,6 @@ class HeterogeneousRouter:
 
         # Initialize Cache
         self.cache = ResponseCache(config)  # Now uses role-based TTL internally
-        self.semantic_cache = SemanticCache(config)
-
         # 1. LOAD MODEL KEYS (With Defaults)
         gem_flash = self.registry.get('gemini', {}).get('flash', 'gemini-3-flash-preview')
         gem_pro = self.registry.get('gemini', {}).get('pro', 'gemini-3-pro-preview')
@@ -569,13 +566,6 @@ class HeterogeneousRouter:
                 logger.debug(f"Cache hit for {role.value}")
                 return cached_response
 
-        # === SEMANTIC CACHE CHECK ===
-        # REMOVED (P0-A fix, 2026-02-04): SemanticCache.get() requires
-        # (contract, market_state_dict) — not (prompt, role). This check
-        # never actually hit because SemanticCache.enabled defaults to False,
-        # but the wrong-signature call could mask future bugs.
-        # Market-state caching should be implemented at the orchestrator level.
-
         # 1. Get Primary Assignment
         primary_provider, primary_model = self.assignments.get(
             role,
@@ -602,11 +592,6 @@ class HeterogeneousRouter:
                     # Success - cache and return
                     if use_cache:
                         self.cache.set(full_key_prompt, role.value, response)
-
-                    # NOTE: SemanticCache removed from router (P0-A fix, 2026-02-04).
-                    # SemanticCache is a market-state similarity cache and requires
-                    # (contract, market_state_dict, result_dict) — not available here.
-                    # Prompt-level caching is handled by ResponseCache above.
 
                     # HOTFIX: Use correct API - record_request with success=True
                     metrics.record_request(
@@ -705,9 +690,6 @@ class HeterogeneousRouter:
                 # Cache successful response
                 if use_cache:
                     self.cache.set(full_key_prompt, role.value, response)
-
-                # NOTE: SemanticCache removed from router (P0-A fix, 2026-02-04).
-                # See primary path comment for rationale.
 
                 return response
 

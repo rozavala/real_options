@@ -1,31 +1,34 @@
 """
-Semantic Cache — Avoids redundant LLM calls when market state is unchanged.
+Semantic Cache — Avoids redundant council runs when market state is unchanged.
 
 Roadmap Item C.1. Expected savings: $0.60–$0.90/day.
 
 Uses ONLY keys that ACTUALLY EXIST in market_data_provider.py.
 If new keys are added to build_market_context(), update _vectorize_market_state().
 
-Vector dimensions: 8
-  [0]   price_vs_sma        — normalized momentum
-  [1]   volatility_5d       — realized volatility
-  [2:6] regime one-hot      — RANGE_BOUND, TRENDING_UP, TRENDING_DOWN, HIGH_VOLATILITY
-  [6]   sentiment_score     — from agent aggregation (if available)
-  [7]   alert_density       — normalized sentinel alert count (if available)
+Partition key: contract|trigger_source|regime (exact match)
+Vector dimensions: 4 (all scaled to ~[0, 1])
+  [0]   price_vs_sma   — normalized momentum, scaled by 0.15
+  [1]   volatility_5d   — realized volatility, scaled by 0.06
+  [2]   sentiment_score — from agent aggregation (if available)
+  [3]   alert_density   — normalized sentinel alert count
 """
 
 import logging
-import hashlib
-import json
 import math
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any, List
+from datetime import datetime, timezone
+from typing import Optional, Dict, List
 
 logger = logging.getLogger(__name__)
 
 
 class SemanticCache:
-    """Cache council decisions based on market state similarity."""
+    """Cache council decisions based on market state similarity.
+
+    Uses a two-layer lookup:
+    1. Partition key (contract|trigger_source|regime) — exact match
+    2. Cosine similarity on scaled numeric vector — fuzzy match
+    """
 
     def __init__(self, config: dict):
         cache_config = config.get('semantic_cache', {})
@@ -34,21 +37,29 @@ class SemanticCache:
         self.ttl_minutes = cache_config.get('ttl_minutes', 60)
         self.max_entries = cache_config.get('max_entries', 100)
 
-        # In-memory cache: {contract: [(vector, result, timestamp), ...]}
+        # In-memory cache: {partition_key: [(vector, result, timestamp), ...]}
         self._cache: Dict[str, list] = {}
         self._stats = {'hits': 0, 'misses': 0, 'invalidations': 0}
 
-    def get(self, contract: str, market_state: dict) -> Optional[dict]:
+    def _partition_key(self, contract: str, trigger_source: str, state: dict) -> str:
+        """Build partition key from contract, trigger source, and regime.
+
+        Different regimes, trigger sources, or contracts never cross-hit.
         """
-        Check cache for a similar market state.
+        regime = state.get('regime', 'UNKNOWN')
+        return f"{contract}|{trigger_source}|{regime}"
+
+    def get(self, contract: str, trigger_source: str, market_state: dict) -> Optional[dict]:
+        """Check cache for a similar market state.
 
         Returns cached council result if found, None otherwise.
         """
         if not self.enabled:
             return None
 
+        key = self._partition_key(contract, trigger_source, market_state)
         vector = self._vectorize_market_state(market_state)
-        entries = self._cache.get(contract, [])
+        entries = self._cache.get(key, [])
         now = datetime.now(timezone.utc)
 
         for cached_vector, cached_result, cached_time in entries:
@@ -62,7 +73,7 @@ class SemanticCache:
             if similarity >= self.similarity_threshold:
                 self._stats['hits'] += 1
                 logger.info(
-                    f"CACHE HIT ({contract}): similarity={similarity:.4f}, "
+                    f"CACHE HIT ({key}): similarity={similarity:.4f}, "
                     f"age={age:.0f}min"
                 )
                 return cached_result
@@ -70,33 +81,35 @@ class SemanticCache:
         self._stats['misses'] += 1
         return None
 
-    def put(self, contract: str, market_state: dict, result: dict):
+    def put(self, contract: str, trigger_source: str, market_state: dict, result: dict):
         """Store a council result for this market state."""
         if not self.enabled:
             return
 
+        key = self._partition_key(contract, trigger_source, market_state)
         vector = self._vectorize_market_state(market_state)
         now = datetime.now(timezone.utc)
 
-        if contract not in self._cache:
-            self._cache[contract] = []
+        if key not in self._cache:
+            self._cache[key] = []
 
-        self._cache[contract].append((vector, result, now))
+        self._cache[key].append((vector, result, now))
 
         # Evict old entries
-        self._cache[contract] = [
-            (v, r, t) for v, r, t in self._cache[contract]
+        self._cache[key] = [
+            (v, r, t) for v, r, t in self._cache[key]
             if (now - t).total_seconds() / 60 <= self.ttl_minutes
         ][-self.max_entries:]
 
     def invalidate(self, contract: str = None):
-        """
-        Invalidate cache entries.
+        """Invalidate cache entries.
 
-        Called by sentinel alerts when market conditions change rapidly.
+        If contract is given, removes all partitions whose key starts with that
+        contract name. If None, clears everything.
         """
         if contract:
-            removed = len(self._cache.pop(contract, []))
+            keys_to_remove = [k for k in self._cache if k.startswith(contract)]
+            removed = sum(len(self._cache.pop(k, [])) for k in keys_to_remove)
         else:
             removed = sum(len(v) for v in self._cache.values())
             self._cache.clear()
@@ -104,57 +117,44 @@ class SemanticCache:
         self._stats['invalidations'] += 1
         logger.info(f"CACHE INVALIDATED: {removed} entries removed (contract={contract or 'ALL'})")
 
-    def _vectorize_market_state(self, state: dict) -> List[float]:
+    def invalidate_by_ticker(self, ticker: str):
+        """Invalidate all cache entries for a given ticker.
+
+        Clears all partitions where the contract starts with the ticker.
+        E.g. invalidate_by_ticker("KC") clears "KC...|...|..." but not "CC...|...|...".
         """
-        Convert market state to numerical vector for similarity matching.
+        keys_to_remove = [k for k in self._cache if k.split('|')[0].startswith(ticker)]
+        removed = sum(len(self._cache.pop(k, [])) for k in keys_to_remove)
+        if removed > 0:
+            self._stats['invalidations'] += 1
+            logger.info(f"CACHE INVALIDATED BY TICKER ({ticker}): {removed} entries removed")
+
+    def _vectorize_market_state(self, state: dict) -> List[float]:
+        """Convert market state to numerical vector for similarity matching.
+
+        4 dimensions, all scaled to ~[0, 1] range. Regime is NOT in the vector —
+        it's a hard partition key (exact match) to prevent the cosine dominance
+        bug where regime one-hot (4 binary dims) overwhelmed small numeric changes.
 
         IMPORTANT: Uses ONLY keys from market_data_provider.py::build_market_context().
         If you add keys to build_market_context(), update this method.
-
-        Current schema (verified 2026-02-04):
-            price, sma_200, regime, volatility_5d, price_vs_sma
         """
-        features = []
+        # Price momentum: price_vs_sma typically in [-0.15, +0.15]
+        price_vs_sma = state.get('price_vs_sma') or 0.0
+        price_vs_sma_scaled = price_vs_sma / 0.15  # 15% move = 1.0
 
-        # [0] Price momentum (normalized: positive = above SMA)
-        # price_vs_sma = (price - sma_200) / sma_200, already normalized
-        price_vs_sma = state.get('price_vs_sma', 0.0)
-        if price_vs_sma is None:
-            price_vs_sma = 0.0
-        features.append(price_vs_sma)
+        # Volatility: typically 0.01–0.06
+        vol_5d = state.get('volatility_5d') or 0.02
+        vol_5d_scaled = vol_5d / 0.06  # 6% daily vol = 1.0
 
-        # [1] Volatility (5-day realized)
-        vol_5d = state.get('volatility_5d', 0.02)  # Default 2% if missing
-        if vol_5d is None:
-            vol_5d = 0.02
-        features.append(vol_5d)
+        # Sentiment: already in [-1, 1]
+        sentiment = state.get('sentiment_score') or 0.0
 
-        # [2:6] Regime (one-hot encoding, 4 dimensions)
-        regime = state.get('regime', 'UNKNOWN')
-        regime_map = {
-            'RANGE_BOUND':      [1, 0, 0, 0],
-            'TRENDING_UP':      [0, 1, 0, 0],
-            'TRENDING':         [0, 1, 0, 0],  # Alias
-            'TRENDING_DOWN':    [0, 0, 1, 0],
-            'HIGH_VOLATILITY':  [0, 0, 0, 1],
-            'HIGH_VOL':         [0, 0, 0, 1],  # Alias from _detect_market_regime
-            'UNKNOWN':          [0, 0, 0, 0],
-        }
-        features.extend(regime_map.get(regime, [0, 0, 0, 0]))
+        # Alert density: count normalized to [0, 1]
+        alert_count = state.get('recent_alert_count') or 0
+        alerts_scaled = min(alert_count / 10.0, 1.0)
 
-        # [6] Sentiment score (from agent aggregation, if available)
-        sentiment_score = state.get('sentiment_score', 0.0)
-        if sentiment_score is None:
-            sentiment_score = 0.0
-        features.append(sentiment_score)
-
-        # [7] Alert density (from sentinel, if available)
-        alert_count = state.get('recent_alert_count', 0)
-        if alert_count is None:
-            alert_count = 0
-        features.append(min(alert_count / 10.0, 1.0))  # Normalize to [0, 1]
-
-        return features  # 8 dimensions total
+        return [price_vs_sma_scaled, vol_5d_scaled, sentiment, alerts_scaled]
 
     @staticmethod
     def _cosine_similarity(a: List[float], b: List[float]) -> float:
@@ -181,4 +181,23 @@ class SemanticCache:
             'hit_rate': self._stats['hits'] / total if total > 0 else 0.0,
             'invalidations': self._stats['invalidations'],
             'entries': sum(len(v) for v in self._cache.values()),
+            'partitions': len(self._cache),
         }
+
+
+# --- Singleton factory ---
+
+_cache_instance: Optional['SemanticCache'] = None
+
+
+def get_semantic_cache(config: dict = None) -> 'SemanticCache':
+    """Get or create the singleton SemanticCache instance.
+
+    First call must provide config. Subsequent calls can omit it.
+    """
+    global _cache_instance
+    if _cache_instance is None:
+        if config is None:
+            raise ValueError("First call to get_semantic_cache() must provide config")
+        _cache_instance = SemanticCache(config)
+    return _cache_instance
