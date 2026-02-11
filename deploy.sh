@@ -53,8 +53,8 @@ rollback_and_restart() {
         # Ensure log directory exists and is writable before restarting
         mkdir -p logs
         chmod 755 logs 2>/dev/null || true
-        touch logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log 2>/dev/null || true
-        chmod 664 logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log 2>/dev/null || true
+        touch logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
+        chmod 664 logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
 
         # Kill any orphaned processes before restarting
         pkill -9 -f "orchestrator.py" 2>/dev/null || true
@@ -145,15 +145,16 @@ mkdir -p logs
 [ -f logs/orchestrator.log ] && mv logs/orchestrator.log logs/orchestrator-$(date --iso=s).log || true
 [ -f logs/dashboard.log ] && mv logs/dashboard.log logs/dashboard-$(date --iso=s).log || true
 [ -f logs/equity_logger.log ] && mv logs/equity_logger.log logs/equity_logger-$(date --iso=s).log || true
+[ -f logs/sentinels.log ] && mv logs/sentinels.log logs/sentinels-$(date --iso=s).log || true
 
 # Clean up rotated logs older than 7 days
 find logs/ -name "*-20*.log" -mtime +7 -delete 2>/dev/null || true
 
 # Ensure logs directory exists with correct permissions
 chmod 755 logs
-touch logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log
-chmod 664 logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log
-chown rodrigo:rodrigo logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log 2>/dev/null || true
+touch logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log
+chmod 664 logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log
+chown rodrigo:rodrigo logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
 
 # =========================================================================
 # STEP 3: Activate venv + install deps
