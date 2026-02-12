@@ -854,3 +854,38 @@ def word_boundary_match(keyword: str, text: str) -> bool:
         # Single word: word-boundary match with optional plural 's'
         pattern = r'\b' + re.escape(kw_lower) + r's?\b'
         return bool(re.search(pattern, text_lower))
+
+def sanitize_log_message(message: str, max_length: int = 1000) -> str:
+    """
+    Sanitize a message for safe logging.
+
+    This function mitigates Log Injection / Forging attacks by escaping
+    newline characters and stripping control characters. It also truncates
+    excessively long messages to prevent Denial of Service (DoS) via log flooding.
+
+    Args:
+        message: The raw message string to sanitize.
+        max_length: Maximum allowed length for the message (default: 1000).
+
+    Returns:
+        A sanitized, single-line string safe for logging.
+    """
+    if not message:
+        return ""
+
+    # Ensure message is a string
+    if not isinstance(message, str):
+        message = str(message)
+
+    # Truncate to max_length
+    if len(message) > max_length:
+        message = message[:max_length] + "...[TRUNCATED]"
+
+    # Replace newlines with escaped sequences to prevent log forging
+    sanitized = message.replace('\n', '\\n').replace('\r', '\\r')
+
+    # Strip other control characters
+    import re
+    sanitized = re.sub(r'[\x00-\x1f]', '', sanitized)
+
+    return sanitized

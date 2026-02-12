@@ -22,7 +22,7 @@ from functools import wraps
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager
 from trading_bot.rate_limiter import acquire_api_slot
-from trading_bot.utils import word_boundary_match
+from trading_bot.utils import word_boundary_match, sanitize_log_message
 from config.commodity_profiles import get_commodity_profile, GrowingRegion
 
 logger = logging.getLogger(__name__)
@@ -704,7 +704,7 @@ class WeatherSentinel(Sentinel):
                         }
 
                         msg = f"{alert['type']} in {alert['region']}: {alert.get('weekly_precip_mm',0):.1f}mm ({alert.get('direction')}, {alert.get('stage')} stage)"
-                        logger.warning(f"WEATHER SENTINEL DETECTED: {msg}")
+                        logger.warning(f"WEATHER SENTINEL DETECTED: {sanitize_log_message(msg)}")
 
                         # Map severity string to int (9 for CRITICAL to bypass debounce)
                         sev_int = 9 if "CRITICAL" in alert.get('severity','') else (7 if "HIGH" in alert.get('severity','') else 4)
@@ -924,9 +924,9 @@ class LogisticsSentinel(Sentinel):
         # Threshold: only trigger at score >= 5 (moderate disruption or worse)
         if score >= 5:
             msg = f"Supply Chain Disruption (Score: {score}/10): {summary}"
-            logger.warning(f"LOGISTICS SENTINEL DETECTED: {msg}")
+            logger.warning(f"LOGISTICS SENTINEL DETECTED: {sanitize_log_message(msg)}")
             return SentinelTrigger(
-                "LogisticsSentinel", msg,
+                "LogisticsSentinel", sanitize_log_message(msg),
                 {"headlines": headlines[:3], "score": score, "summary": summary},
                 severity=min(10, score)
             )
@@ -1113,8 +1113,8 @@ class NewsSentinel(Sentinel):
             # Normalize: LLM score 8-10 maps to system severity 6-8
             severity = min(8, max(6, int(score - 2)))
             msg = f"Extreme Sentiment Detected (Score: {score}/10): {data.get('summary')}"
-            logger.warning(f"NEWS SENTINEL DETECTED: {msg}")
-            return SentinelTrigger("NewsSentinel", msg, {"score": score, "summary": data.get('summary')}, severity=severity)
+            logger.warning(f"NEWS SENTINEL DETECTED: {sanitize_log_message(msg)}")
+            return SentinelTrigger("NewsSentinel", sanitize_log_message(msg), {"score": score, "summary": data.get('summary')}, severity=severity)
 
         _sentinel_diag.info(f"NewsSentinel: score {score} < {self.threshold}, no trigger")
         return None
@@ -2041,8 +2041,8 @@ class PredictionMarketSentinel(Sentinel):
                         if current_severity > severity_hwm:
                             direction = "JUMPED" if delta > 0 else "CRASHED"
                             msg = f"Prediction Market Alert: '{display_name}' {direction} {delta_pct:.1f}%"
-                            logger.warning(f"🎯 PREDICTION SENTINEL: {msg}")
-                            triggers.append(SentinelTrigger(source="PredictionMarketSentinel", reason=msg, payload={"topic": query, "slug": current_slug, "delta_pct": round(delta * 100, 2), "importance": importance, "commodity_impact": commodity_impact}, severity=current_severity))
+                            logger.warning(f"🎯 PREDICTION SENTINEL: {sanitize_log_message(msg)}")
+                            triggers.append(SentinelTrigger(source="PredictionMarketSentinel", reason=sanitize_log_message(msg), payload={"topic": query, "slug": current_slug, "delta_pct": round(delta * 100, 2), "importance": importance, "commodity_impact": commodity_impact}, severity=current_severity))
                             cached['severity_hwm'] = current_severity
                             cached['hwm_timestamp'] = datetime.now(timezone.utc).isoformat()
                 if query not in self.state_cache: self.state_cache[query] = {'severity_hwm': 0, 'hwm_timestamp': None}
