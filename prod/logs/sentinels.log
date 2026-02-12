@@ -1697,3 +1697,168 @@ It's ours, cowor...
 2026-02-12 17:57:15,490 - sentinel_diag - INFO -   PredictionMarket [Will tariffs generate >$250b in 2025?]: price=0.013, last=0.013, delta=0.0%, threshold=8%, hwm=0
 2026-02-12 17:57:15,968 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.255, last=0.255, delta=0.0%, threshold=8%, hwm=7
 2026-02-12 17:57:15,978 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-02-12 18:02:16,154 - sentinel_diag - INFO - PredictionMarketSentinel: polling 3 topics
+2026-02-12 18:02:16,668 - sentinel_diag - INFO -   PredictionMarket [Fed decisions (Dec-Mar)]: price=0.920, last=0.920, delta=0.0%, threshold=8%, hwm=9
+2026-02-12 18:02:16,876 - sentinel_diag - INFO -   PredictionMarket [Will tariffs generate >$250b in 2025?]: price=0.013, last=0.013, delta=0.0%, threshold=8%, hwm=0
+2026-02-12 18:02:17,075 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.255, last=0.255, delta=0.0%, threshold=8%, hwm=7
+2026-02-12 18:02:17,078 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-02-12 18:07:17,302 - sentinel_diag - INFO - PredictionMarketSentinel: polling 3 topics
+2026-02-12 18:07:17,554 - sentinel_diag - INFO -   PredictionMarket [Fed decisions (Dec-Mar)]: price=0.920, last=0.920, delta=0.0%, threshold=8%, hwm=9
+2026-02-12 18:07:17,756 - sentinel_diag - INFO -   PredictionMarket [Will tariffs generate >$250b in 2025?]: price=0.013, last=0.013, delta=0.0%, threshold=8%, hwm=0
+2026-02-12 18:07:18,238 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.255, last=0.255, delta=0.0%, threshold=8%, hwm=7
+2026-02-12 18:07:18,241 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-02-12 18:09:18,305 - sentinel_diag - INFO - XSentimentSentinel: running (market open)
+2026-02-12 18:09:18,305 - sentinel_diag - INFO - XSentimentSentinel: querying 8 queries: ['coffee futures', 'arabica prices', 'KC futures', 'robusta market', 'coffee supply', 'Brazil coffee harvest', 'coffee supply chain', 'US coffee tariffs']
+2026-02-12 18:09:18,956 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='arabica prices', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-12 18:09:18,956 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-12 18:09:20,458 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='KC futures', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-12 18:09:20,459 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-12 18:09:20,461 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='coffee futures', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-12 18:09:20,462 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-12 18:09:21,259 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-12 18:09:21,259 - sentinel_diag - INFO -   Tool args: {'query': 'arabica prices (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-02-12 18:09:21,260 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='arabica prices (from:SpillingTheBean OR from:optima_t OR fro', limit=50)
+2026-02-12 18:09:21,356 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:21,356 - sentinel_diag - INFO -   X API: 0 raw tweets, 0 after engagement filter (>=10 likes)
+2026-02-12 18:09:21,357 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='arabica prices -meme -joke -spam -giveaway -airdrop -nft -cr', limit=50)
+2026-02-12 18:09:21,523 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:21,523 - sentinel_diag - INFO -   X API: 15 raw tweets, 2 after engagement filter (>=3 likes)
+2026-02-12 18:09:21,524 - trading_bot.sentinels - DEBUG - Top post: What needs to be specified, which coffee? Arabica ...
+2026-02-12 18:09:21,524 - sentinel_diag - INFO -   x_search result: 2 posts, stage=broad, quality=low
+2026-02-12 18:09:21,524 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-12 18:09:21,962 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='robusta market', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-12 18:09:21,962 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-12 18:09:22,880 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-12 18:09:22,882 - sentinel_diag - INFO -   Tool args: {'query': 'coffee futures (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 100, 'mode': 'Latest'}
+2026-02-12 18:09:22,882 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='coffee futures (from:SpillingTheBean OR from:optima_t OR fro', limit=100)
+2026-02-12 18:09:22,970 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:22,970 - sentinel_diag - INFO -   X API: 0 raw tweets, 0 after engagement filter (>=10 likes)
+2026-02-12 18:09:22,971 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='coffee futures -meme -joke -spam -giveaway -airdrop -nft -cr', limit=100)
+2026-02-12 18:09:23,050 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-12 18:09:23,050 - sentinel_diag - INFO -   Tool args: {'query': 'KC futures (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-02-12 18:09:23,050 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='KC futures (from:SpillingTheBean OR from:optima_t OR from:Re', limit=50)
+2026-02-12 18:09:23,128 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:23,128 - sentinel_diag - INFO -   X API: 0 raw tweets, 0 after engagement filter (>=10 likes)
+2026-02-12 18:09:23,128 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='KC futures -meme -joke -spam -giveaway -airdrop -nft -crypto', limit=50)
+2026-02-12 18:09:23,310 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:23,310 - sentinel_diag - INFO -   X API: 12 raw tweets, 1 after engagement filter (>=3 likes)
+2026-02-12 18:09:23,310 - trading_bot.sentinels - DEBUG - Top post: The Kansas City Mavericks received James Marooney ...
+2026-02-12 18:09:23,310 - sentinel_diag - INFO -   x_search result: 1 posts, stage=broad, quality=low
+2026-02-12 18:09:23,311 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-12 18:09:23,366 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:23,369 - sentinel_diag - INFO -   X API: 100 raw tweets, 1 after engagement filter (>=3 likes)
+2026-02-12 18:09:23,369 - trading_bot.sentinels - DEBUG - Top post: Joe sees an opportunity in trading coffee futures....
+2026-02-12 18:09:23,370 - sentinel_diag - INFO -   x_search result: 1 posts, stage=broad, quality=low
+2026-02-12 18:09:23,370 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-12 18:09:24,479 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-12 18:09:24,480 - sentinel_diag - INFO -   Tool args: {'query': 'robusta market (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 100, 'mode': 'Latest'}
+2026-02-12 18:09:24,480 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='robusta market (from:SpillingTheBean OR from:optima_t OR fro', limit=100)
+2026-02-12 18:09:24,484 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='coffee supply', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-12 18:09:24,484 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-12 18:09:24,568 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:24,568 - sentinel_diag - INFO -   X API: 0 raw tweets, 0 after engagement filter (>=10 likes)
+2026-02-12 18:09:24,569 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='robusta market -meme -joke -spam -giveaway -airdrop -nft -cr', limit=100)
+2026-02-12 18:09:24,701 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:24,702 - sentinel_diag - INFO -   X API: 5 raw tweets, 1 after engagement filter (>=3 likes)
+2026-02-12 18:09:24,702 - trading_bot.sentinels - DEBUG - Top post: Uganda’s coffee market showed mixed signals on Feb...
+2026-02-12 18:09:24,702 - sentinel_diag - INFO -   x_search result: 1 posts, stage=broad, quality=low
+2026-02-12 18:09:24,703 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-12 18:09:25,022 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-12 18:09:25,022 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=2, summary=Very low volume of relevant posts with mixed sentiment: one indicating rising Ar
+2026-02-12 18:09:26,653 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='Brazil coffee harvest', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-12 18:09:26,653 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-12 18:09:27,417 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-12 18:09:27,418 - sentinel_diag - INFO -   Tool args: {'query': 'coffee supply (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-02-12 18:09:27,418 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='coffee supply (from:SpillingTheBean OR from:optima_t OR from', limit=50)
+2026-02-12 18:09:27,521 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:27,521 - sentinel_diag - INFO -   X API: 1 raw tweets, 0 after engagement filter (>=10 likes)
+2026-02-12 18:09:27,522 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='coffee supply -meme -joke -spam -giveaway -airdrop -nft -cry', limit=50)
+2026-02-12 18:09:27,620 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-12 18:09:27,621 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=1, summary=Very limited data with only one recent post from a non-specified account mention
+2026-02-12 18:09:27,665 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-12 18:09:27,665 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=1, summary=Very limited recent data from X shows mixed signals in Uganda's coffee market, w
+2026-02-12 18:09:27,839 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:27,840 - sentinel_diag - INFO -   X API: 50 raw tweets, 1 after engagement filter (>=3 likes)
+2026-02-12 18:09:27,840 - trading_bot.sentinels - DEBUG - Top post: @FoxNews Breaking:  police now investigating why t...
+2026-02-12 18:09:27,840 - sentinel_diag - INFO -   x_search result: 1 posts, stage=broad, quality=low
+2026-02-12 18:09:27,841 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-12 18:09:28,807 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='coffee supply chain', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-12 18:09:28,807 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-12 18:09:28,992 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-12 18:09:28,993 - sentinel_diag - INFO -   Tool args: {'query': 'Brazil coffee harvest (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 100, 'mode': 'Latest'}
+2026-02-12 18:09:28,993 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='Brazil coffee harvest (from:SpillingTheBean OR from:optima_t', limit=100)
+2026-02-12 18:09:29,085 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:29,085 - sentinel_diag - INFO -   X API: 0 raw tweets, 0 after engagement filter (>=10 likes)
+2026-02-12 18:09:29,086 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='Brazil coffee harvest -meme -joke -spam -giveaway -airdrop -', limit=100)
+2026-02-12 18:09:29,216 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:29,216 - sentinel_diag - INFO -   X API: 4 raw tweets, 0 after engagement filter (>=3 likes)
+2026-02-12 18:09:29,217 - sentinel_diag - INFO -   x_search result: 0 posts, stage=broad, quality=low
+2026-02-12 18:09:29,217 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-12 18:09:30,996 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-12 18:09:30,997 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=0, summary=No recent relevant posts found from specified accounts on Brazil coffee harvest,
+2026-02-12 18:09:31,108 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-12 18:09:31,109 - sentinel_diag - INFO -   Tool args: {'query': 'coffee supply chain (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-02-12 18:09:31,109 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='coffee supply chain (from:SpillingTheBean OR from:optima_t O', limit=50)
+2026-02-12 18:09:31,190 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:31,191 - sentinel_diag - INFO -   X API: 0 raw tweets, 0 after engagement filter (>=10 likes)
+2026-02-12 18:09:31,191 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='coffee supply chain -meme -joke -spam -giveaway -airdrop -nf', limit=50)
+2026-02-12 18:09:31,579 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:31,580 - sentinel_diag - INFO -   X API: 49 raw tweets, 4 after engagement filter (>=3 likes)
+2026-02-12 18:09:31,580 - trading_bot.sentinels - DEBUG - Top post: Cili Kampung Malaysia has acquired a 50% stake in ...
+2026-02-12 18:09:31,580 - sentinel_diag - INFO -   x_search result: 4 posts, stage=broad, quality=medium
+2026-02-12 18:09:31,581 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-12 18:09:31,602 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-12 18:09:31,603 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=0, summary=No recent relevant posts found on coffee supply from specified sources (Spilling
+2026-02-12 18:09:31,613 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='US coffee tariffs', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-12 18:09:31,613 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-12 18:09:33,396 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-12 18:09:33,397 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.1, volume=0, summary=No relevant recent posts found from specified sources on KC futures (Coffee Arab
+2026-02-12 18:09:33,754 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-12 18:09:33,754 - sentinel_diag - INFO -   Tool args: {'query': 'US coffee tariffs (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-02-12 18:09:33,754 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='US coffee tariffs (from:SpillingTheBean OR from:optima_t OR ', limit=50)
+2026-02-12 18:09:33,838 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:33,838 - sentinel_diag - INFO -   X API: 0 raw tweets, 0 after engagement filter (>=10 likes)
+2026-02-12 18:09:33,839 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='US coffee tariffs -meme -joke -spam -giveaway -airdrop -nft ', limit=50)
+2026-02-12 18:09:34,154 - sentinel_diag - INFO -   X API response status: 200
+2026-02-12 18:09:34,154 - sentinel_diag - INFO -   X API: 50 raw tweets, 7 after engagement filter (>=3 likes)
+2026-02-12 18:09:34,155 - trading_bot.sentinels - DEBUG - Top post: @mr_mayank BREAKING: Pappu yaps nonsense 🔥
+
+“Privi...
+2026-02-12 18:09:34,155 - sentinel_diag - INFO -   x_search result: 7 posts, stage=broad, quality=high
+2026-02-12 18:09:34,155 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-12 18:09:36,992 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-12 18:09:36,993 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.3, volume=4, summary=Very limited recent posts on coffee supply chain from specified sources; availab
+2026-02-12 18:09:45,043 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-12 18:09:45,043 - sentinel_diag - INFO -   Grok result: sentiment=4.0, confidence=0.4, volume=6, summary=Low volume of posts on US coffee tariffs, primarily discussing a US-India trade 
+2026-02-12 18:09:45,044 - sentinel_diag - INFO - XSentimentSentinel: 8/8 queries returned valid results
+2026-02-12 18:09:45,044 - sentinel_diag - INFO -   Query 0 result: sentiment=5.0, confidence=0.2, volume=1, themes=['Trading opportunity', 'Trade setup', 'Promotional content']
+2026-02-12 18:09:45,044 - sentinel_diag - INFO -   Query 1 result: sentiment=5.0, confidence=0.2, volume=2, themes=['Rising Arabica prices', 'Declining coffee futures', 'Corporate margin impacts']
+2026-02-12 18:09:45,044 - sentinel_diag - INFO -   Query 2 result: sentiment=5.0, confidence=0.1, volume=0, themes=[]
+2026-02-12 18:09:45,045 - sentinel_diag - INFO -   Query 3 result: sentiment=5.0, confidence=0.2, volume=1, themes=['mixed signals', 'diverging trends', 'supply expectations']
+2026-02-12 18:09:45,045 - sentinel_diag - INFO -   Query 4 result: sentiment=5.0, confidence=0.2, volume=0, themes=[]
+2026-02-12 18:09:45,045 - sentinel_diag - INFO -   Query 5 result: sentiment=5.0, confidence=0.2, volume=0, themes=[]
+2026-02-12 18:09:45,045 - sentinel_diag - INFO -   Query 6 result: sentiment=5.0, confidence=0.3, volume=4, themes=['Investments and expansions in coffee businesses', 'Specialty coffee and fair supply chain wages', 'Traceability for value addition']
+2026-02-12 18:09:45,045 - sentinel_diag - INFO -   Query 7 result: sentiment=4.0, confidence=0.4, volume=6, themes=['Tariff reductions boosting Indian coffee exports (bearish for prices)', 'Tariffs causing US coffee price inflation (bullish for futures)', 'Criticism of tariffs on import-dependent goods like coffee']
+2026-02-12 18:09:45,050 - sentinel_diag - INFO - XSentimentSentinel: avg_sentiment=4.78, avg_confidence=0.23, total_volume=14, volume_spike=True, thresholds: bullish>=6.5, bearish<=3.5, top_themes=['Trading opportunity', 'Trade setup', 'Promotional content']
+2026-02-12 18:09:45,050 - trading_bot.sentinels - WARNING - 🚨 X SENTINEL TRIGGERED: UNUSUAL X ACTIVITY SPIKE (14 posts)
+2026-02-12 18:09:45,061 - sentinel_diag - INFO - OUTCOME XSentimentSentinel: DEFERRED (daily cutoff 12:15 ET)
+2026-02-12 18:12:45,207 - sentinel_diag - INFO - PredictionMarketSentinel: polling 3 topics
+2026-02-12 18:12:45,464 - sentinel_diag - INFO -   PredictionMarket [Fed decisions (Dec-Mar)]: price=0.920, last=0.920, delta=0.0%, threshold=8%, hwm=9
+2026-02-12 18:12:45,662 - sentinel_diag - INFO -   PredictionMarket [Will tariffs generate >$250b in 2025?]: price=0.013, last=0.013, delta=0.0%, threshold=8%, hwm=0
+2026-02-12 18:12:46,157 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.255, last=0.255, delta=0.0%, threshold=8%, hwm=7
+2026-02-12 18:12:46,164 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-02-12 18:17:46,400 - sentinel_diag - INFO - PredictionMarketSentinel: polling 3 topics
+2026-02-12 18:17:46,662 - sentinel_diag - INFO -   PredictionMarket [Fed decisions (Dec-Mar)]: price=0.920, last=0.920, delta=0.0%, threshold=8%, hwm=9
+2026-02-12 18:17:46,863 - sentinel_diag - INFO -   PredictionMarket [Will tariffs generate >$250b in 2025?]: price=0.013, last=0.013, delta=0.0%, threshold=8%, hwm=0
+2026-02-12 18:17:47,341 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.255, last=0.255, delta=0.0%, threshold=8%, hwm=7
+2026-02-12 18:17:47,346 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-02-12 18:22:47,595 - sentinel_diag - INFO - PredictionMarketSentinel: polling 3 topics
+2026-02-12 18:22:47,845 - sentinel_diag - INFO -   PredictionMarket [Fed decisions (Dec-Mar)]: price=0.920, last=0.920, delta=0.0%, threshold=8%, hwm=9
+2026-02-12 18:22:48,032 - sentinel_diag - INFO -   PredictionMarket [Will tariffs generate >$250b in 2025?]: price=0.013, last=0.013, delta=0.0%, threshold=8%, hwm=0
+2026-02-12 18:22:48,515 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.255, last=0.255, delta=0.0%, threshold=8%, hwm=7
+2026-02-12 18:22:48,521 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-02-12 18:27:48,793 - sentinel_diag - INFO - PredictionMarketSentinel: polling 3 topics
+2026-02-12 18:27:49,031 - sentinel_diag - INFO -   PredictionMarket [Fed decisions (Dec-Mar)]: price=0.920, last=0.920, delta=0.0%, threshold=8%, hwm=9
+2026-02-12 18:27:49,226 - sentinel_diag - INFO -   PredictionMarket [Will tariffs generate >$250b in 2025?]: price=0.013, last=0.013, delta=0.0%, threshold=8%, hwm=0
+2026-02-12 18:27:49,426 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.255, last=0.255, delta=0.0%, threshold=8%, hwm=0
+2026-02-12 18:27:49,431 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
