@@ -4053,19 +4053,26 @@ schedule = {
     time(3, 30): start_monitoring,
     time(3, 31): process_deferred_triggers,
     time(5, 0): cleanup_orphaned_theses,          # v3.1: Daily thesis cleanup
-    time(8, 30): run_position_audit_cycle,
-    time(9, 0): guarded_generate_orders,           # Morning cycle
-    time(11, 0): close_stale_positions,          # PRIMARY: Peak liquidity
-    time(11, 15): run_position_audit_cycle,       # Post-close verification
-    time(11, 45): guarded_generate_orders,        # Settlement window cycle (ICE KC settles ~12:23 ET)
-    time(12, 45): close_stale_positions_fallback, # FALLBACK: Retry failures
-    time(13, 0): run_position_audit_cycle,        # Pre-close audit
-    time(13, 15): emergency_hard_close,           # SAFETY: Market orders
-    time(13, 45): cancel_and_stop_monitoring,
-    time(14, 5): log_equity_snapshot,
-    time(14, 10): reconcile_and_analyze,           # v5.4: Backfill council_history FIRST
-    time(14, 20): run_brier_reconciliation,        # v5.4: Score against freshly backfilled data
-    time(14, 25): sentinel_effectiveness_check,    # Meta-monitor
+    # --- Signal generation cycles (5x, ~2h apart across KC market hours) ---
+    # KC trades 04:00-13:30 ET (09:00-18:30 UTC). Spread cycles to sample
+    # different market conditions and accelerate Brier score calibration.
+    time(9, 0): guarded_generate_orders,           # 04:00 ET — Early session
+    time(11, 0): guarded_generate_orders,          # 06:00 ET — European overlap
+    time(13, 0): guarded_generate_orders,          # 08:00 ET — US morning open
+    time(15, 0): guarded_generate_orders,          # 10:00 ET — Peak liquidity
+    time(17, 0): guarded_generate_orders,          # 12:00 ET — Settlement window (ICE KC ~12:23 ET)
+    # --- Position management (US hours for liquidity) ---
+    time(13, 30): run_position_audit_cycle,        # 08:30 ET — Morning audit
+    time(15, 30): close_stale_positions,           # 10:30 ET — PRIMARY: Peak liquidity close
+    time(15, 45): run_position_audit_cycle,        # 10:45 ET — Post-close verification
+    time(16, 30): close_stale_positions_fallback,  # 11:30 ET — FALLBACK: Retry failures
+    time(17, 15): run_position_audit_cycle,        # 12:15 ET — Pre-close audit
+    time(17, 30): emergency_hard_close,            # 12:30 ET — SAFETY: Market orders
+    time(18, 0): cancel_and_stop_monitoring,       # 13:00 ET — End of session
+    time(18, 20): log_equity_snapshot,
+    time(18, 25): reconcile_and_analyze,           # v5.4: Backfill council_history FIRST
+    time(18, 35): run_brier_reconciliation,        # v5.4: Score against freshly backfilled data
+    time(18, 40): sentinel_effectiveness_check,    # Meta-monitor
 }
 
 def apply_schedule_offset(original_schedule: dict, offset_minutes: int) -> dict:
@@ -4101,7 +4108,7 @@ RECOVERY_POLICY = {
     'process_deferred_triggers':      {'policy': 'MARKET_OPEN',   'idempotent': False},
     'cleanup_orphaned_theses':        {'policy': 'ALWAYS',        'idempotent': True},
     'run_position_audit_cycle':       {'policy': 'MARKET_OPEN',   'idempotent': True},
-    'guarded_generate_orders':        {'policy': 'BEFORE_CUTOFF', 'idempotent': False},  # Covers both 9:00 and 11:45 cycles
+    'guarded_generate_orders':        {'policy': 'BEFORE_CUTOFF', 'idempotent': False},  # 5 daily cycles (09:00-17:00 UTC)
     'close_stale_positions':          {'policy': 'MARKET_OPEN',   'idempotent': True},
     'close_stale_positions_fallback': {'policy': 'MARKET_OPEN',   'idempotent': True},
     'emergency_hard_close':           {'policy': 'MARKET_OPEN',   'idempotent': True},
