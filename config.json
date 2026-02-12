@@ -60,7 +60,7 @@
     "max_holding_days": 2,
     "min_holding_hours": 6.0,
     "check_interval_seconds": 600,
-    "min_confidence_threshold": 0.70,
+    "min_confidence_threshold": 0.60,
     "monitoring_grace_period_seconds": 300,
     "take_profit_capture_pct": 0.80,
     "stop_loss_max_risk_pct": 0.50,
@@ -96,7 +96,14 @@
     "theta_minimum_move_pct": 1.0,
     "condor_price_breach_pct": 2.0,
     "condor_iv_rank_breach": 70,
-    "thesis_validation_confidence_threshold": 0.6
+    "thesis_validation_confidence_threshold": 0.6,
+    "dte_acceleration": {
+      "enabled": true,
+      "acceleration_dte": 14,
+      "force_close_dte": 3,
+      "accelerated_take_profit_pct": 0.50,
+      "accelerated_stop_loss_pct": 0.30
+    }
   },
   "catastrophe_protection": {
     "enable_directional_stops": true,
@@ -418,7 +425,7 @@
     "var_limit_pct": 0.03,
     "max_position_pct": 0.40,
     "max_straddle_pct": 0.55,
-    "max_positions": 5,
+    "max_positions": 20,
     "max_volume_pct": 0.10,
     "max_brazil_concentration": 1.0,
     "model": "claude-sonnet-4-5-20250929",

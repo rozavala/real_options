@@ -485,6 +485,18 @@ class ComplianceGuardian:
         }
 
         # --- DETERMINISTIC PRE-CHECK (Skip LLM for obvious violations) ---
+
+        # F.4.2: Max positions gate — block if at capacity (IB counts individual legs)
+        max_positions = self.config.get('compliance', {}).get('max_positions', 20)
+        current_positions = order_context.get('total_position_count', 0)
+        if current_positions >= max_positions:
+            reason = (
+                f"REJECTED - Position Limit: {current_positions} positions "
+                f"(legs) already open, max is {max_positions}. "
+                f"Close existing positions before opening new ones."
+            )
+            return False, reason
+
         limit_pct = self.limits.get('max_position_pct', 0.40)
 
         # FLIGHT DIRECTOR FIX: Use higher limit for defined-risk strategies (straddles)
