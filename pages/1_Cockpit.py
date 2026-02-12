@@ -7,7 +7,8 @@ Purpose: "Morning coffee" screen - Is the system running? Is capital safe? Any e
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from datetime import datetime
+from datetime import datetime, timezone
+import pytz
 import sys
 import os
 import asyncio
@@ -25,11 +26,8 @@ from dashboard_utils import (
     load_council_history,
     grade_decision_quality,
     calculate_rolling_win_rate,
-    get_status_color,
     get_active_theses,
     get_current_market_regime,
-    get_guardian_icon,
-    get_strategy_color,
     get_commodity_profile,
     load_task_schedule_status
 )
@@ -147,12 +145,23 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
 
     # Render
     with st.container():
-        st.markdown(f"### {thesis.get('display_name', position_id[:12])}")
-        st.caption(
-            f"{strategy.replace('_', ' ').title()} | "
-            f"Guardian: {thesis.get('guardian_agent', 'Master')} | "
-            f"ID: {position_id[:12]}..."
-        )
+        head_cols = st.columns([3, 1])
+        with head_cols[0]:
+            st.markdown(f"### {thesis.get('display_name', position_id[:12])}")
+            st.caption(
+                f"{strategy.replace('_', ' ').title()} | "
+                f"Guardian: {thesis.get('guardian_agent', 'Master')}"
+            )
+        with head_cols[1]:
+            # UX Improvement: Copy ID Button
+            label = f"🆔 {position_id[:8]}"
+            if hasattr(st, "popover"):
+                with st.popover(label, use_container_width=True):
+                    st.code(position_id, language=None)
+                    st.caption("Full Position ID")
+            else:
+                with st.expander(label):
+                    st.code(position_id, language=None)
 
         cols = st.columns(4)
 
@@ -388,14 +397,16 @@ def render_prediction_markets():
             all_topic_queries = set()
             for t in enabled_static:
                 q = t.get('query', '')
-                if q: all_topic_queries.add(q)
+                if q:
+                    all_topic_queries.add(q)
 
             if os.path.exists(discovered_file):
                 import json as _json
                 with open(discovered_file, 'r') as f:
                     for t in _json.load(f):
                         q = t.get('query', '')
-                        if q: all_topic_queries.add(q)
+                        if q:
+                            all_topic_queries.add(q)
 
             # state.keys() = topics with data; all_topic_queries = all enabled topics
             resolved_queries = set(state.keys()) if state else set()
@@ -432,9 +443,6 @@ config = get_config()
 heartbeat = get_system_heartbeat()
 
 # --- Market Clock Widget ---
-import pytz
-from datetime import timezone
-
 utc_now = datetime.now(timezone.utc)
 ny_tz = pytz.timezone('America/New_York')
 ny_now = utc_now.astimezone(ny_tz)
@@ -473,20 +481,31 @@ hb_cols = st.columns(4)
 with hb_cols[0]:
     orch_status = heartbeat['orchestrator_status']
     orch_color = "🟢" if orch_status == "ONLINE" else "🔴" if orch_status == "OFFLINE" else "🟡"
+    orch_delta = None
+    if heartbeat['orchestrator_last_pulse']:
+        orch_delta = f"Last pulse: {heartbeat['orchestrator_last_pulse'].strftime('%H:%M:%S')}"
+
     st.metric(
         "Orchestrator",
         f"{orch_color} {orch_status}",
+        delta=orch_delta,
+        delta_color="off",
         help="Green if log updated within 10 minutes"
     )
-    if heartbeat['orchestrator_last_pulse']:
-        st.caption(f"Last pulse: {heartbeat['orchestrator_last_pulse'].strftime('%H:%M:%S')}")
 
 with hb_cols[1]:
     state_status = heartbeat['state_status']
     state_color = "🟢" if state_status == "ONLINE" else "🔴" if state_status == "OFFLINE" else "🟡"
+
+    state_delta = None
+    if heartbeat['state_last_pulse']:
+        state_delta = f"Last pulse: {heartbeat['state_last_pulse'].strftime('%H:%M:%S')}"
+
     st.metric(
         "State Manager",
         f"{state_color} {state_status}",
+        delta=state_delta,
+        delta_color="off",
         help="Green if state.json updated within 10 minutes"
     )
 
