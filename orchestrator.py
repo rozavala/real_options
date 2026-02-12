@@ -38,7 +38,7 @@ from trading_bot.order_manager import (
 )
 from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, round_to_tick, get_tick_size, word_boundary_match
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
-from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, PredictionMarketSentinel, MacroContagionSentinel, SentinelTrigger
+from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, PredictionMarketSentinel, MacroContagionSentinel, SentinelTrigger, _sentinel_diag
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
 from trading_bot.agents import TradingCouncil
 from trading_bot.ib_interface import (
@@ -2379,11 +2379,13 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
         logger.info(
             f"Emergency cycle BLOCKED (system shutdown): {trigger.source} — {trigger.reason[:100]}"
         )
+        _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (system shutdown)")
         return
 
     # === NEW: MARKET HOURS GATE ===
     if not is_market_open():
         logger.info(f"Market closed. Queuing {trigger.source} alert for next session.")
+        _sentinel_diag.info(f"OUTCOME {trigger.source}: DEFERRED (market closed)")
         StateManager.queue_deferred_trigger(trigger)
         return
 
@@ -2403,6 +2405,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
             f"Emergency cycle BLOCKED (daily trading cutoff {cutoff_hour}:{cutoff_minute:02d} ET): "
             f"{trigger.source} — deferring to {next_session}"
         )
+        _sentinel_diag.info(f"OUTCOME {trigger.source}: DEFERRED (daily cutoff {cutoff_hour}:{cutoff_minute:02d} ET)")
         StateManager.queue_deferred_trigger(trigger)
 
         # Notify operator for potential manual intervention
@@ -2429,6 +2432,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
         await asyncio.wait_for(EMERGENCY_LOCK.acquire(), timeout=300)
     except asyncio.TimeoutError:
         logger.error(f"EMERGENCY_LOCK acquisition timed out (300s) for {trigger.source}. Skipping cycle.")
+        _sentinel_diag.error(f"OUTCOME {trigger.source}: BLOCKED (lock timeout)")
         return
     try:
         cycle_actually_ran = False  # Did we reach the council decision?
@@ -2462,12 +2466,14 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     f"⏸️ Deferred: {trigger.source}",
                     f"Trigger deferred to Monday (Friday close window):\n{trigger.reason}"
                 )
+                _sentinel_diag.info(f"OUTCOME {trigger.source}: DEFERRED (Friday close window)")
                 StateManager.queue_deferred_trigger(trigger)
                 return
 
             # Check Budget
             if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
                 logger.warning("Budget hit — skipping Emergency Cycle (Sentinel-only mode)")
+                _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (budget hit)")
                 send_pushover_notification(config.get('notifications', {}), "Budget Guard",
                     "Daily API budget hit. Sentinel-only mode active.")
                 return
@@ -2482,10 +2488,12 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     status = await GLOBAL_DRAWDOWN_GUARD.update_pnl(ib)
                 if not GLOBAL_DRAWDOWN_GUARD.is_entry_allowed():
                     logger.warning(f"Drawdown Circuit Breaker ACTIVE ({status}) - Skipping Emergency Cycle")
+                    _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (drawdown breaker: {status})")
                     return
 
                 if GLOBAL_DRAWDOWN_GUARD.should_panic_close():
                      logger.critical("Drawdown PANIC triggered during emergency cycle check. Triggering Hard Close.")
+                     _sentinel_diag.critical(f"OUTCOME {trigger.source}: PANIC CLOSE (drawdown)")
                      await emergency_hard_close(config)
                      return
 
@@ -2620,6 +2628,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 priced_in, reason = await _is_signal_priced_in(trigger, ib, target_contract)
                 if priced_in:
                     logger.warning(f"PRICED IN CHECK FAILED: {reason}. Skipping emergency cycle.")
+                    _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (priced in: {reason})")
                     send_pushover_notification(config.get('notifications', {}), "Signal Priced In", reason)
                     return
 
@@ -2876,6 +2885,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                             title,
                             message
                         )
+                        _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (compliance: {flagged_reason[:100]})")
                         return
 
                     logger.info("Decision is actionable. Generating order...")
@@ -3003,6 +3013,9 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 GLOBAL_DEDUPLICATOR.clear_cooldown("POST_CYCLE")
 
             logger.info(f"Post-cycle debounce: {debounce_seconds}s ({debounce_reason})")
+            if cycle_actually_ran:
+                outcome = "TRADE" if is_actionable else "NEUTRAL"
+                _sentinel_diag.info(f"OUTCOME {trigger.source}: {outcome} (debounce={debounce_seconds}s)")
     finally:
         EMERGENCY_LOCK.release()
 
@@ -3039,6 +3052,7 @@ def _emergency_cycle_done_callback(task: asyncio.Task, trigger_source: str, conf
         exc = task.exception()
     except asyncio.CancelledError:
         logger.info(f"Emergency cycle for {trigger_source} was cancelled")
+        _sentinel_diag.info(f"OUTCOME {trigger_source}: CANCELLED")
         return
 
     if exc is not None:
@@ -3046,6 +3060,7 @@ def _emergency_cycle_done_callback(task: asyncio.Task, trigger_source: str, conf
             f"🔥 Emergency cycle for {trigger_source} CRASHED: "
             f"{type(exc).__name__}: {exc}"
         )
+        _sentinel_diag.error(f"OUTCOME {trigger_source}: CRASHED ({type(exc).__name__}: {exc})")
         SENTINEL_STATS.record_error(trigger_source, f"CRASH: {type(exc).__name__}")
         # Prevent crash-loop: cooldown so the sentinel doesn't immediately re-trigger
         GLOBAL_DEDUPLICATOR.set_cooldown(trigger_source, 1800)  # 30-min crash cooldown
@@ -3083,7 +3098,6 @@ async def _run_periodic_sentinel(
     sentinel_name = sentinel_instance.__class__.__name__
 
     try:
-        logger.info(f"Checking {sentinel_name}...")
         trigger = await asyncio.wait_for(sentinel_instance.check(), timeout=timeout)
         trigger = validate_trigger(trigger)
         if trigger:
@@ -3099,8 +3113,6 @@ async def _run_periodic_sentinel(
             else:
                 StateManager.queue_deferred_trigger(trigger)
                 logger.info(f"Deferred {trigger.source} trigger for market open")
-        else:
-            logger.info(f"{sentinel_name}: no trigger")
     except asyncio.TimeoutError:
         logger.error(f"{sentinel_name} TIMED OUT after {timeout}s")
         _health_error = f"TIMEOUT after {timeout}s"
@@ -3442,7 +3454,6 @@ async def run_sentinels(config: dict):
                                 'last_reset': datetime.now().date()
                             }
 
-                        logger.info("Checking XSentimentSentinel...")
                         trigger = await asyncio.wait_for(x_sentinel.check(), timeout=120)
                         trigger = validate_trigger(trigger)
                         x_sentinel_stats['checks_today'] += 1
@@ -3461,8 +3472,6 @@ async def run_sentinels(config: dict):
                             else:
                                 StateManager.queue_deferred_trigger(trigger)
                                 logger.info(f"Deferred {trigger.source} trigger for market open")
-                        else:
-                            logger.info(f"XSentimentSentinel: no trigger (checks_today={x_sentinel_stats['checks_today']})")
                     except asyncio.TimeoutError:
                         logger.error("XSentimentSentinel TIMED OUT after 120s")
                         _health_error = "TIMEOUT after 120s"

@@ -8,6 +8,7 @@ Monitors:
 
 import logging
 import asyncio
+import os
 from datetime import datetime, timezone, time
 import pytz
 from dataclasses import dataclass, field
@@ -16,6 +17,16 @@ from collections import deque
 from trading_bot.sentinels import SentinelTrigger
 
 logger = logging.getLogger(__name__)
+
+# Route microstructure logs to sentinels.log, not orchestrator.log
+if not logger.handlers:
+    _ms_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+    os.makedirs(_ms_dir, exist_ok=True)
+    _ms_handler = logging.FileHandler(os.path.join(_ms_dir, 'sentinels.log'))
+    _ms_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    logger.addHandler(_ms_handler)
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
 
 
 class MicrostructureSentinel:
