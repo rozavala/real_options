@@ -57,6 +57,7 @@ from trading_bot.budget_guard import BudgetGuard, get_budget_guard
 from trading_bot.drawdown_circuit_breaker import DrawdownGuard
 from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.strategy_router import route_strategy
+from trading_bot.risk_management import _calculate_combo_risk_metrics
 from trading_bot.task_tracker import record_task_completion, has_task_completed_today
 from trading_bot.semantic_cache import get_semantic_cache
 from trading_bot.utils import get_active_ticker
@@ -715,9 +716,30 @@ async def _validate_long_straddle(thesis: dict, position, config: dict, ib: IB, 
     return None
 
 
-async def _validate_directional_spread(thesis: dict, guardian: str, council, config: dict, llm_budget_available: bool) -> dict:
-    """Validate Directional Spread using LLM narrative check."""
+async def _validate_directional_spread(thesis: dict, guardian: str, council, config: dict, llm_budget_available: bool, ib: IB = None, active_futures_cache: dict = None) -> dict:
+    """Validate Directional Spread using regime check + LLM narrative check."""
     exit_cfg = config.get('exit_logic', {})
+
+    # E.2.C: Deterministic regime-aware exit (before LLM call)
+    regime_exits_enabled = exit_cfg.get('enable_regime_breach_exits', True)
+    if regime_exits_enabled and ib is not None:
+        try:
+            current_regime, iv_rank = await _get_current_regime_and_iv(ib, config)
+            entry_regime = thesis.get('entry_regime', '').upper()
+            # If entry was during a trending regime and market has shifted to range-bound,
+            # the directional thesis is weakened — close the position
+            if entry_regime == 'TRENDING' and current_regime == 'RANGE_BOUND':
+                return {
+                    'action': 'CLOSE',
+                    'reason': (
+                        f"REGIME BREACH: Entry regime was TRENDING, "
+                        f"current regime is RANGE_BOUND (IV rank: {iv_rank:.0f}). "
+                        f"Directional thesis weakened."
+                    )
+                }
+        except Exception as e:
+            logger.warning(f"Regime check failed in directional spread validation: {e} — continuing to LLM check")
+
     narrative_exits_enabled = exit_cfg.get('enable_narrative_exits', True)
     if not narrative_exits_enabled:
         logger.debug("Narrative exits disabled via config — skipping directional spread validation")
@@ -810,7 +832,7 @@ async def _validate_thesis(
 
     # C. NARRATIVE-BASED VALIDATION (Directional Spreads)
     elif strategy_type in ['BULL_CALL_SPREAD', 'BEAR_PUT_SPREAD']:
-        result = await _validate_directional_spread(thesis, guardian, council, config, llm_budget_available)
+        result = await _validate_directional_spread(thesis, guardian, council, config, llm_budget_available, ib=ib, active_futures_cache=active_futures_cache)
         if result:
             return result
 
@@ -1623,6 +1645,91 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
                     f"({len(legs)} legs) — using default aging rules"
                 )
                 continue
+
+            # === E.2.A + E.2.B: Deterministic P&L exits and DTE acceleration ===
+            # Run BEFORE LLM thesis validation — cheaper and more authoritative for numerical exits
+            try:
+                metrics = await _calculate_combo_risk_metrics(ib, config, legs)
+                if metrics:
+                    risk_cfg = config.get('risk_management', {})
+                    take_profit_pct = risk_cfg.get('take_profit_capture_pct', 0.80)
+                    stop_loss_pct = risk_cfg.get('stop_loss_max_risk_pct', 0.50)
+
+                    # E.2.B: DTE-aware exit acceleration
+                    dte_cfg = config.get('exit_logic', {}).get('dte_acceleration', {})
+                    dte_enabled = dte_cfg.get('enabled', False)
+                    dte = None
+                    if dte_enabled:
+                        try:
+                            first_leg = legs[0]
+                            expiry_str = first_leg.contract.lastTradeDateOrContractMonth
+                            expiry_date = datetime.strptime(expiry_str, '%Y%m%d').date()
+                            dte = (expiry_date - datetime.now().date()).days
+
+                            force_close_dte = dte_cfg.get('force_close_dte', 3)
+                            if dte <= force_close_dte:
+                                positions_to_close.append({
+                                    'position_id': position_id,
+                                    'legs': legs,
+                                    'reason': f"DTE FORCE CLOSE: {dte} days to expiry (<= {force_close_dte})",
+                                    'thesis': thesis
+                                })
+                                logger.warning(
+                                    f"DTE FORCE CLOSE: {position_id} — "
+                                    f"{dte} DTE (<= {force_close_dte})"
+                                )
+                                continue
+
+                            accel_dte = dte_cfg.get('acceleration_dte', 14)
+                            if dte <= accel_dte:
+                                take_profit_pct = dte_cfg.get('accelerated_take_profit_pct', 0.50)
+                                stop_loss_pct = dte_cfg.get('accelerated_stop_loss_pct', 0.30)
+                                logger.info(
+                                    f"DTE ACCELERATION: {position_id} — "
+                                    f"{dte} DTE, using tightened thresholds "
+                                    f"(TP={take_profit_pct:.0%}, SL={stop_loss_pct:.0%})"
+                                )
+                        except (ValueError, AttributeError) as e:
+                            logger.debug(f"DTE parsing failed for {position_id}: {e} — using standard thresholds")
+
+                    capture_pct = metrics['capture_pct']
+                    risk_pct = metrics['risk_pct']
+
+                    if capture_pct >= take_profit_pct:
+                        positions_to_close.append({
+                            'position_id': position_id,
+                            'legs': legs,
+                            'reason': (
+                                f"TAKE PROFIT: Captured {capture_pct:.1%} of max profit "
+                                f"(threshold: {take_profit_pct:.0%})"
+                                + (f", DTE={dte}" if dte is not None else "")
+                            ),
+                            'thesis': thesis
+                        })
+                        logger.warning(
+                            f"TAKE PROFIT: {position_id} — "
+                            f"capture {capture_pct:.1%} >= {take_profit_pct:.0%}"
+                        )
+                        continue
+
+                    if risk_pct <= -abs(stop_loss_pct):
+                        positions_to_close.append({
+                            'position_id': position_id,
+                            'legs': legs,
+                            'reason': (
+                                f"STOP LOSS: Risk at {risk_pct:.1%} of max loss "
+                                f"(threshold: -{stop_loss_pct:.0%})"
+                                + (f", DTE={dte}" if dte is not None else "")
+                            ),
+                            'thesis': thesis
+                        })
+                        logger.warning(
+                            f"STOP LOSS: {position_id} — "
+                            f"risk {risk_pct:.1%} <= -{stop_loss_pct:.0%}"
+                        )
+                        continue
+            except Exception as e:
+                logger.warning(f"P&L/DTE check failed for {position_id}: {e} — falling through to thesis validation")
 
             # Use first leg as representative for price checks
             # (underlying price is the same regardless of which leg we check)

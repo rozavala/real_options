@@ -1,6 +1,6 @@
 # Real Options — Engineering Roadmap
 
-**Last updated:** 2026-02-11
+**Last updated:** 2026-02-12
 **Reviewed by:** Rodrigo + Claude
 
 ---
@@ -41,20 +41,24 @@
 ## Prioritized Backlog
 
 ### #1 — F.4 Neuro-Symbolic Compliance
-**Type:** Survival | **Effort:** 2-3 weeks | **Status:** Not started
+**Type:** Survival | **Effort:** 2-3 weeks | **Status:** Done
 
 Extract deterministic rules from LLM compliance prompts into hard-coded symbolic checks: position limits, max loss per trade, concentration limits, wash trade detection. LLM compliance layer stays as a second opinion. Deterministic rules can't be "convinced" by a persuasive agent.
 
 **Why #1:** LLM-based compliance is the single biggest structural risk on a live money system.
 
+**Completed:** PR #841. Wired up confidence threshold gate (F.4.1) and max positions gate (F.4.2) as deterministic pre-checks. 63 existing gates audited, 2 dead checks now enforced at runtime.
+
 ---
 
 ### #2 — E.2 Dynamic Exit Enhancements
-**Type:** P&L | **Effort:** 2-3 weeks | **Status:** Partial
+**Type:** P&L | **Effort:** 2-3 weeks | **Status:** Done
 
 Add trailing stops for winners, theta-burn acceleration for options approaching expiry, regime-aware exit thresholds. Current exit logic is binary (thesis valid/invalid). Need: ratcheting stops as positions move in favor, time-decay awareness, multi-factor thesis invalidation.
 
 **Why #2:** Biggest P&L lever. System enters fine but leaves money on the table or holds losers too long.
+
+**Completed:** PR #841. Added per-position P&L exits (E.2.A), DTE-aware acceleration (E.2.B), and regime-aware directional exits (E.2.C) to position audit cycle. All config-driven and fail-closed.
 
 ---
 
@@ -229,9 +233,9 @@ C.4 Surrogate ──→ C.2 Regime Switching
                     │
                     └──→ F.6 Synthetic Events
 
-F.4 Neuro-Symbolic ──→ E.1 Portfolio VaR ──→ E.4 Greeks Monitor
+✅ F.4 Neuro-Symbolic (done) ──→ E.1 Portfolio VaR ──→ E.4 Greeks Monitor
 
-E.2 Exit Enhancements (independent)
+✅ E.2 Exit Enhancements (done)
 
 G.5 Multi-Commodity (independent, unlocks G.6 later)
 ```
@@ -241,8 +245,8 @@ G.5 Multi-Commodity (independent, unlocks G.6 later)
 | Phase | Items | Duration | Cumulative |
 |-------|-------|----------|------------|
 | ~~Phase 1~~ | ~~#1 A.3, #2 C.1, #5 C.5~~ | ~~3-5 weeks~~ | **Done** |
-| Phase 2 | #1 F.4, #2 E.2 (structural improvements) | 4-6 weeks | 4-6 weeks |
-| Phase 3 | #3 A.1, #4 E.1, #5 E.4 (self-learning + risk) | 8-11 weeks | 12-17 weeks |
+| ~~Phase 2~~ | ~~#1 F.4, #2 E.2 (structural improvements)~~ | ~~4-6 weeks~~ | **Done** |
+| Phase 3 | #3 A.1, #4 E.1, #5 E.4 (self-learning + risk) | 8-11 weeks | 8-11 weeks |
 | Phase 4 | #6-#9 (cost + validation) | 10-15 weeks | 22-32 weeks |
 | Phase 5 | #10-#19 (growth + depth) | 25-35 weeks | 47-67 weeks |
 

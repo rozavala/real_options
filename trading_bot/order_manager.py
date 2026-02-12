@@ -403,7 +403,20 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             # The committed_capital tracking requires sequential execution.
             # If parallelization is ever needed, use _CAPITAL_LOCK.
 
+            # F.4.1: Confidence threshold gate — block low-confidence signals before processing
+            min_confidence = config.get('risk_management', {}).get('min_confidence_threshold', 0.60)
+
             for signal in signals:
+                # === F.4.1: Confidence gate (before NEUTRAL skip so low-confidence gets logged) ===
+                sig_confidence = signal.get('confidence', 0.0)
+                if sig_confidence < min_confidence:
+                    logger.info(
+                        f"BLOCKED BY CONFIDENCE: {signal.get('contract_month', 'N/A')} — "
+                        f"confidence {sig_confidence:.2f} < threshold {min_confidence:.2f}. "
+                        f"Direction={signal.get('direction', 'N/A')}"
+                    )
+                    continue
+
                 # === v7.0: Explicit NO TRADE short-circuit ===
                 # Skip NEUTRAL directional signals (no trade warranted)
                 # Skip NEUTRAL non-volatility signals (the "Cash is a Position" path)
