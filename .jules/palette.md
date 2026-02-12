@@ -21,3 +21,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-12 - Progressive Enhancement for Copy Functionality
 **Learning:** `st.popover` (Streamlit v1.33+) provides a cleaner UX for secondary actions like "Copy ID" compared to `st.expander`.
 **Action:** Use `if hasattr(st, "popover"):` to conditionally render the modern UI, falling back to `st.expander` to ensure accessibility and functionality across different deployments.
+
+## 2026-02-12 - Expectation Management for Long-Running Tasks
+**Learning:** For background tasks that exceed 60 seconds (like reconciliation or log collection), adding estimated duration to the `help` tooltip reduces user anxiety and prevents premature page refreshes.
+**Action:** Always include a "May take X minutes" note in the tooltip for any action that isn't instantaneous.
