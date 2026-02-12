@@ -25,7 +25,9 @@ class TestConfigValidation(unittest.TestCase):
             "gemini": {"api_key": "LOADED_FROM_ENV"},
             "anthropic": {"api_key": "LOADED_FROM_ENV"},
             "openai": {"api_key": "LOADED_FROM_ENV"},
-            "xai": {"api_key": "LOADED_FROM_ENV"}
+            "xai": {"api_key": "LOADED_FROM_ENV"},
+            "strategy": {"quantity": 1},
+            "risk_management": {"min_confidence_threshold": 0.6}
         }
 
     @patch('config_loader.load_dotenv')
