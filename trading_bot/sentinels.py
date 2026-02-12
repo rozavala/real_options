@@ -27,19 +27,29 @@ from config.commodity_profiles import get_commodity_profile, GrowingRegion
 
 logger = logging.getLogger(__name__)
 
-# Dedicated sentinel diagnostic logger — writes to logs/sentinels.log
-# Provides verbose internal diagnostics separate from the main orchestrator log.
+# --- Sentinel log setup ---
+# Both loggers write to logs/sentinels.log and do NOT propagate to orchestrator.log.
+# This keeps orchestrator.log clean while sentinels.log captures everything.
+_diag_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+os.makedirs(_diag_dir, exist_ok=True)
+_sentinel_fmt = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Main sentinel logger (used by all sentinel classes)
+if not logger.handlers:
+    _main_handler = logging.FileHandler(os.path.join(_diag_dir, 'sentinels.log'))
+    _main_handler.setFormatter(_sentinel_fmt)
+    logger.addHandler(_main_handler)
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False  # Don't duplicate to orchestrator.log
+
+# Dedicated diagnostic logger (verbose internal diagnostics)
 _sentinel_diag = logging.getLogger('sentinel_diag')
 if not _sentinel_diag.handlers:
-    _diag_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
-    os.makedirs(_diag_dir, exist_ok=True)
     _diag_handler = logging.FileHandler(os.path.join(_diag_dir, 'sentinels.log'))
-    _diag_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    ))
+    _diag_handler.setFormatter(_sentinel_fmt)
     _sentinel_diag.addHandler(_diag_handler)
     _sentinel_diag.setLevel(logging.DEBUG)
-    _sentinel_diag.propagate = False  # Don't duplicate to orchestrator.log
+    _sentinel_diag.propagate = False
 
 # Domain whitelists for prediction market filtering.
 # IMPORTANT: Keep terms specific. Avoid generic words that appear in unrelated titles.
