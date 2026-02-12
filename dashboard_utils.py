@@ -319,8 +319,10 @@ TASK_COMPLETIONS_PATH = os.path.join(
     'data', 'task_completions.json'
 )
 
-# Human-readable labels for task names (commodity-agnostic)
-TASK_LABELS = {
+# Legacy labels: fallback for old active_schedule.json files without 'label' field.
+# New schedules include per-instance labels (e.g., "Signal: Early Session (04:00 ET)")
+# directly in the JSON via orchestrator's ScheduledTask.
+_LEGACY_TASK_LABELS = {
     'start_monitoring':               '🟢 Start Position Monitoring',
     'process_deferred_triggers':      '📬 Process Deferred Triggers',
     'run_position_audit_cycle':       '🔍 Position Audit',
@@ -393,11 +395,13 @@ def load_task_schedule_status() -> dict:
         inactive_tasks = []
         for task_entry in schedule_data.get('tasks', []):
             time_str = task_entry['time_et']
-            name = task_entry['name']
-            label = TASK_LABELS.get(name, name)
+            name = task_entry.get('name', '')
+            task_id = task_entry.get('id', name)
+            label = task_entry.get('label') or _LEGACY_TASK_LABELS.get(name, name)
             inactive_tasks.append({
                 'time_et': time_str,
                 'name': name,
+                'task_id': task_id,
                 'label': label,
                 'status': 'inactive',
                 'completed_at': None,
@@ -460,14 +464,16 @@ def load_task_schedule_status() -> dict:
 
     for task_entry in schedule_data.get('tasks', []):
         time_str = task_entry['time_et']
-        name = task_entry['name']
+        name = task_entry.get('name', '')
+        task_id = task_entry.get('id', name)
+        label = task_entry.get('label') or _LEGACY_TASK_LABELS.get(name, name)
 
         # Parse scheduled time to minutes since midnight
         parts = time_str.split(':')
         task_minutes = int(parts[0]) * 60 + int(parts[1])
 
-        # Determine status
-        completed_at = completions.get(name)
+        # Determine status — check both task_id and legacy name for transition period
+        completed_at = completions.get(task_id) or completions.get(name)
         if completed_at:
             status = 'completed'
             completed_count += 1
@@ -488,7 +494,8 @@ def load_task_schedule_status() -> dict:
         tasks.append({
             'time_et': time_str,
             'name': name,
-            'label': TASK_LABELS.get(name, name),
+            'task_id': task_id,
+            'label': label,
             'status': status,
             'completed_at': completed_at,
         })
