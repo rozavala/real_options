@@ -35,7 +35,10 @@ def load_config() -> dict | None:
     # If .env has IB_PORT, use it. Otherwise keep config.json value.
     if os.getenv("IB_PORT"):
         config['connection']['port'] = int(os.getenv("IB_PORT"))
-    
+
+    if os.getenv("IB_HOST"):
+        config['connection']['host'] = os.getenv("IB_HOST").strip()
+
     if os.getenv("IB_CLIENT_ID"):
         config['connection']['clientId'] = int(os.getenv("IB_CLIENT_ID"))
 

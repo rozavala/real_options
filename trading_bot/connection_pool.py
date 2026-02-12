@@ -8,6 +8,33 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# Compressed client ID range for remote/dev Gateway connections (10-79).
+# Avoids collision with production IDs (100-279) when sharing a Gateway.
+DEV_CLIENT_ID_BASE = {
+    "main": 10,
+    "sentinel": 15,
+    "emergency": 20,
+    "monitor": 25,
+    "orchestrator_orders": 30,
+    "dashboard_orders": 35,
+    "dashboard_close": 40,
+    "microstructure": 45,
+    "test_utilities": 50,
+    "audit": 55,
+    "equity_logger": 60,
+    "reconciliation": 65,
+    "cleanup": 70,
+}
+DEV_CLIENT_ID_JITTER = 4   # random(0, 4) for dev; prod uses random(0, 9)
+DEV_CLIENT_ID_DEFAULT = 75  # Unknown purposes in dev: 75-79
+
+
+def _is_remote_gateway(config: dict) -> bool:
+    """Check if the configured IB Gateway host is remote (not localhost)."""
+    host = config.get('connection', {}).get('host', '127.0.0.1')
+    return host not in ('127.0.0.1', 'localhost', '::1')
+
+
 class IBConnectionPool:
     _instances: Dict[str, IB] = {}
     _locks: Dict[str, asyncio.Lock] = {}
@@ -129,10 +156,15 @@ class IBConnectionPool:
 
             # === CONNECT WITH RANDOMIZED CLIENT ID ===
             ib = IB()
-            base_id = cls.CLIENT_ID_BASE.get(purpose, 200)
-            client_id = base_id + random.randint(0, 9)
+            if _is_remote_gateway(config):
+                base_id = DEV_CLIENT_ID_BASE.get(purpose, DEV_CLIENT_ID_DEFAULT)
+                client_id = base_id + random.randint(0, DEV_CLIENT_ID_JITTER)
+            else:
+                base_id = cls.CLIENT_ID_BASE.get(purpose, 200)
+                client_id = base_id + random.randint(0, 9)
 
-            logger.info(f"Connecting IB ({purpose}) ID: {client_id}...")
+            remote_tag = " [REMOTE]" if _is_remote_gateway(config) else ""
+            logger.info(f"Connecting IB ({purpose}) ID: {client_id}{remote_tag}...")
 
             try:
                 await ib.connectAsync(
