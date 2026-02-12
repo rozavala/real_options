@@ -86,6 +86,31 @@ def test_ib_host_env_override(mock_config_file):
             assert config["connection"]["host"] == "100.64.0.1"
 
 
+def test_ib_paper_env_override(mock_config_file):
+    """IB_PAPER=true should set connection.paper to True."""
+    with patch.dict(os.environ, {
+        "GEMINI_API_KEY": "test_key",
+        "PUSHOVER_USER_KEY": "u",
+        "PUSHOVER_API_TOKEN": "a",
+        "IB_PAPER": "true",
+    }, clear=True):
+        with patch("config_loader.load_dotenv"):
+            config = config_loader.load_config()
+            assert config["connection"]["paper"] is True
+
+
+def test_ib_paper_not_set_by_default(mock_config_file):
+    """Without IB_PAPER, connection.paper should not be set."""
+    with patch.dict(os.environ, {
+        "GEMINI_API_KEY": "test_key",
+        "PUSHOVER_USER_KEY": "u",
+        "PUSHOVER_API_TOKEN": "a",
+    }, clear=True):
+        with patch("config_loader.load_dotenv"):
+            config = config_loader.load_config()
+            assert config["connection"].get("paper") is None
+
+
 def test_ib_host_default_when_not_set(mock_config_file):
     """Without IB_HOST, connection.host should default to 127.0.0.1."""
     with patch.dict(os.environ, {

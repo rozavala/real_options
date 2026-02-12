@@ -163,7 +163,8 @@ class IBConnectionPool:
                 base_id = cls.CLIENT_ID_BASE.get(purpose, 200)
                 client_id = base_id + random.randint(0, 9)
 
-            remote_tag = " [REMOTE]" if _is_remote_gateway(config) else ""
+            is_paper = config.get('connection', {}).get('paper', False)
+            remote_tag = (" [REMOTE/PAPER]" if is_paper else " [REMOTE]") if _is_remote_gateway(config) else ""
             logger.info(f"Connecting IB ({purpose}) ID: {client_id}{remote_tag}...")
 
             try:
