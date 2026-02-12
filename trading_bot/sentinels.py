@@ -200,7 +200,9 @@ class Sentinel:
 
     def _escape_xml(self, text: str) -> str:
         """Escape XML special characters to prevent prompt injection."""
-        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        # Strip invalid XML control characters (0x00-0x1F except tab, newline, carriage return)
+        clean_text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', text)
+        return clean_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     def _is_duplicate_payload(self, payload: dict) -> bool:
         """Check if payload is semantically similar to last trigger."""
@@ -230,7 +232,16 @@ class Sentinel:
                     if response.status != 200:
                         logger.warning(f"RSS {url} returned {response.status}")
                         return []
-                    content = await response.text()
+                    # Size limit to prevent DoS via memory exhaustion from large/malicious feeds
+                    MAX_RSS_SIZE = 5 * 1024 * 1024  # 5MB
+                    content_bytes = bytearray()
+                    async for chunk in response.content.iter_chunked(8192):
+                        if len(content_bytes) + len(chunk) > MAX_RSS_SIZE:
+                            logger.warning(f"RSS {url} exceeded size limit ({MAX_RSS_SIZE} bytes)")
+                            return []
+                        content_bytes.extend(chunk)
+
+                    content = bytes(content_bytes)
 
             loop = asyncio.get_running_loop()
             feed = await loop.run_in_executor(None, feedparser.parse, content)

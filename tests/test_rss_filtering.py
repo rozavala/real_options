@@ -55,8 +55,12 @@ async def test_rss_date_filtering_logic():
     with patch('aiohttp.ClientSession.get') as mock_get:
         mock_response = MagicMock()
         mock_response.status = 200
-        # Mock text() as an async method
-        mock_response.text = AsyncMock(return_value="dummy content")
+
+        # Mock content.iter_chunked to return dummy bytes (used by size-limited reader)
+        async def _chunk_gen(chunk_size):
+            yield b"dummy content"
+        mock_response.content = MagicMock()
+        mock_response.content.iter_chunked = _chunk_gen
 
         # Async context manager mock
         mock_ctx = MagicMock()
