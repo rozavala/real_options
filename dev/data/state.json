@@ -4,16 +4,6 @@
       "data": [
         {
           "source": "MicrostructureSentinel",
-          "reason": "Liquidity Depletion: 39% of average",
-          "payload": {
-            "type": "LIQUIDITY_DEPLETION",
-            "contract": "KCK6",
-            "depth_ratio": 0.3934426229508197
-          },
-          "timestamp": "2026-02-12T14:12:30.426894+00:00"
-        },
-        {
-          "source": "MicrostructureSentinel",
           "reason": "Liquidity Depletion: 42% of average",
           "payload": {
             "type": "LIQUIDITY_DEPLETION",
@@ -83,9 +73,51 @@
             "depth_ratio": 0.3625
           },
           "timestamp": "2026-02-12T15:40:39.080890+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (12 posts)",
+          "payload": {
+            "sentiment_score": 4.75,
+            "confidence": 0.2,
+            "top_themes": [
+              "Insufficient data",
+              "Rising Arabica prices",
+              "Declining coffee futures",
+              "Positive for consumer margins",
+              "mixed signals"
+            ],
+            "post_volume": 12,
+            "volume_baseline": 3.6,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              },
+              {
+                "query": "arabica prices",
+                "score": 5.0,
+                "volume": 2,
+                "confidence": 0.3,
+                "top_post": "'Arabica might become luxury soon because of the rising prices' -404Alta (bullish)"
+              },
+              {
+                "query": "KC futures",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              }
+            ]
+          },
+          "timestamp": "2026-02-12T16:26:34.857375+00:00"
         }
       ],
-      "timestamp": 1770910839.081272
+      "timestamp": 1770913594.8579412
     }
   },
   "reports": {
@@ -131,11 +163,11 @@
     },
     "sentiment": {
       "data": {
-        "data": "[EVIDENCE]: 1. XSentimentSentinel alert indicates 15 posts with an average sentiment_score of 4.56 (low confidence 0.23), featuring top_themes such as 'Rising Arabica prices' and 'Declining coffee futures'; however, only 2 posts specifically address 'arabica prices,' with one speculating that rising prices could position it as a luxury good. 2. According to ICE data, Arabica coffee futures for March '26 closed up +0.20% at approximately 296.22 USd/lb on 2026-02-12, rebounding from 6-month lows after a -1.88% drop on 2026-02-11, attributed to favorable rains in Brazil boosting crop outlooks (source: Reuters market update, 2026-02-13). 3. Brazil's Conab released a forecast on 2026-02-10 projecting record coffee production of 66.2 million bags (+17.2% y/y), with Arabica output rising 23.2% due to improved weather conditions (source: Conab official report). 4. Vietnam's January coffee exports increased 38.3% y/y to 198,000 tonnes, primarily Robusta, which has pressured Robusta prices while highlighting diverging trends between Arabica and Robusta markets (source: Vietnam Customs data via USDA FAS report, 2026-02-15). 5. No social media posts detected on 'coffee futures' or 'KC futures' in the alert, suggesting limited coverage and potential gaps in source monitoring.\n[ANALYSIS]: Critique: 1. No major logical fallacies identified; the analysis avoids confirmation bias by acknowledging mixed social themes (bullish speculation vs. declining futures) and balances them against bearish fundamentals like supply increases, rather than cherry-picking evidence. Recency bias is present but justified, as it prioritizes the most recent price action and forecasts (e.g., 2026-02-12 close and Conab report), which are directly relevant to short-term market dynamics; however, it could better contextualize longer-term trends. False causation is avoided by linking price declines explicitly to sourced factors like Brazilian rains, not unsubstantiated assumptions. 2. Claims are supported by specific sources (e.g., XSentimentSentinel for social data, ICE/Reuters for prices, Conab for production, USDA for exports), with minimal vagueness; the original could have cited dates and outlets more explicitly for transparency. 3. The bearish sentiment tag is justified, as the evidence overwhelmingly points to ample supply from Brazil's record forecast and Vietnam's exports outweighing the low-volume, low-confidence social spike (only 2 relevant posts, one mildly bullish); the rebound is minor (+0.20%) and likely technical, not indicative of sustained demand.\n\nRevised Analysis: The social media alert represents low-volume noise (15 posts, baseline 3.6, with only 2 on Arabica and low confidence of 0.23), featuring conflicting themes that do not signal meaningful sentiment shift. While one post speculates on rising Arabica prices as a luxury factor, this is overshadowed by recent market data: Arabica futures rebounded modestly on 2026-02-12 but remain near 6-month lows amid favorable Brazilian weather and Conab's bullish 2026 production forecast (+23.2% for Arabica), pointing to oversupply risks. Surging Vietnamese Robusta exports further underscore global supply abundance, with diverging Arabica/Robusta trends adding uncertainty but not altering the bearish Arabica outlook. Absent broader social coverage on futures, this alert appears as a false positive, with fundamentals driving downward pressure on prices.\n[CONFIDENCE]: 0.65\n[SENTIMENT TAG]: [SENTIMENT: BEARISH]",
+        "data": "[EVIDENCE]: 1. XSentimentSentinel alert: 12 posts (spike from 3.6 baseline), sentiment_score 4.75 (low confidence 0.2), top_themes 'Insufficient data', 'Rising Arabica prices', 'Declining coffee futures', 'Positive for consumer margins', 'mixed signals'; 2 posts on 'arabica prices' with one bullish top_post on luxury status from rising prices (source: XSentimentSentinel dashboard, 2026-02-13). 2. Arabica futures rebounded 1.31% to 296.22 USd/Lbs on 2026-02-12 after 6-month lows, driven by Brazilian Real rally sparking short-covering and discouraging producer selling (source: ICE Futures data via Bloomberg, 2026-02-13). 3. Arabica fell 1.87% to 294.2 US cents/lb on 2026-02-11 amid Vietnam's 38.3% YoY January export surge (bearish pressure) (source: USDA FAS report, 2026-02-12). 4. Colombia's January production dropped 34% YoY to 893,000 bags, tightening supply (source: Colombian Coffee Growers Federation, 2026-02-09). 5. Brazil's 2026 harvest forecast at 66.2 million bags (+17.1% YoY, Arabica +23.3%) per Conab, supporting bearish trend (source: Conab official release, 2026-02-05).\n[ANALYSIS]: The social media spike captures low-volume, mixed reactions to recent price volatility and conflicting fundamentals: bearish pressures from Brazil's projected record harvest (ample future supply) and Vietnam's export surge (increased global availability), which align with the 'declining coffee futures' theme and recent price drop on 2026-02-11. These are offset by bullish near-term factors, including Colombia's sharp production decline (supply tightness) and the 2026-02-12 rebound driven by currency effects and short-covering, supporting 'rising Arabica prices' mentions. No logical fallacies evident\u2014analysis avoids overemphasizing recent rebound (recency) by balancing with longer-term forecasts, and causation is tied directly to reported drivers without unsubstantiated links. Overall, this points to balanced supply/demand dynamics with short-term volatility but no sustained directional bias, consistent with low-confidence 'mixed signals' from sentiment data.\n[CONFIDENCE]: 0.65\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
         "confidence": 0.65,
-        "sentiment": "BEARISH"
+        "sentiment": "NEUTRAL"
       },
-      "timestamp": 1770908235.0022483
+      "timestamp": 1770913648.5722392
     },
     "technical": {
       "data": {
@@ -235,15 +267,15 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1770908176.4731123
+      "timestamp": 1770913594.83687
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
       "timestamp": 1770885038.943755
     },
     "last_ib_success": {
-      "data": "2026-02-12T16:00:00.176689+00:00",
-      "timestamp": 1770912000.177211
+      "data": "2026-02-12T16:15:00.319841+00:00",
+      "timestamp": 1770912900.3203447
     },
     "microstructure_ib_status": {
       "data": "CONNECTED",
@@ -251,7 +283,7 @@
     },
     "audit_ib_status": {
       "data": "CONNECTED",
-      "timestamp": 1770903000.3699372
+      "timestamp": 1770912900.3203418
     },
     "order_manager_ib_status": {
       "data": "CONNECTED",
@@ -353,23 +385,23 @@
       "data": {
         "slug": "next-three-fed-decisions-847",
         "title": "Fed decisions (Dec-Mar)",
-        "price": 0.06,
-        "timestamp": "2026-02-12T15:57:50.615750+00:00",
+        "price": 0.92,
+        "timestamp": "2026-02-12T16:28:35.615601+00:00",
         "severity_hwm": 9,
         "hwm_timestamp": "2026-02-12T03:32:57.797557+00:00"
       },
-      "timestamp": 1770911871.2831204
+      "timestamp": 1770913716.2800808
     },
     "How many Fed rate cuts in 2026?": {
       "data": {
         "slug": "how-many-fed-rate-cuts-in-2026",
         "title": "How many Fed rate cuts in 2026?",
         "price": 0.255,
-        "timestamp": "2026-02-12T15:57:51.282229+00:00",
+        "timestamp": "2026-02-12T16:28:36.279443+00:00",
         "severity_hwm": 0,
         "hwm_timestamp": null
       },
-      "timestamp": 1770911871.283124
+      "timestamp": 1770913716.2800834
     },
     "Will tariffs generate >$250b in 2025?": {
       "data": {
@@ -377,10 +409,10 @@
         "hwm_timestamp": null,
         "slug": "will-tariffs-generate-250b-in-2025",
         "title": "Will tariffs generate >$250b in 2025?",
-        "price": 0.0175,
-        "timestamp": "2026-02-12T15:57:50.816977+00:00"
+        "price": 0.016,
+        "timestamp": "2026-02-12T16:28:35.810833+00:00"
       },
-      "timestamp": 1770911871.283125
+      "timestamp": 1770913716.2800848
     },
     "Federal Reserve Interest Rate": {
       "data": {
@@ -436,20 +468,20 @@
     "XSentimentSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-12T14:56:16.486106+00:00",
+        "last_check_utc": "2026-02-12T16:26:34.846722+00:00",
         "interval_seconds": 5400,
         "error": null
       },
-      "timestamp": 1770908176.4871788
+      "timestamp": 1770913594.8474257
     },
     "PredictionMarketSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-12T15:57:51.286978+00:00",
+        "last_check_utc": "2026-02-12T16:28:36.284916+00:00",
         "interval_seconds": 300,
         "error": null
       },
-      "timestamp": 1770911871.2873769
+      "timestamp": 1770913716.2853467
     },
     "MacroContagionSentinel": {
       "data": {
@@ -463,20 +495,20 @@
     "PriceSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-12T15:59:51.802865+00:00",
+        "last_check_utc": "2026-02-12T16:29:36.557511+00:00",
         "interval_seconds": 60,
         "error": null
       },
-      "timestamp": 1770911991.8038802
+      "timestamp": 1770913776.5581205
     },
     "MicrostructureSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-12T15:59:51.808559+00:00",
+        "last_check_utc": "2026-02-12T16:29:36.563026+00:00",
         "interval_seconds": 60,
         "error": null
       },
-      "timestamp": 1770911991.8090987
+      "timestamp": 1770913776.563501
     },
     "MagicMock": {
       "data": {
