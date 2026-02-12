@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Thu Feb 12 13:30:03 UTC 2026
+Timestamp: Thu Feb 12 14:00:02 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  13:30:03 up 31 days, 19:53,  2 users,  load average: 0.00, 0.01, 0.00
+Uptime:  14:00:02 up 31 days, 20:23,  2 users,  load average: 0.09, 0.04, 0.01
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.2Gi       306Mi        30Mi       1.5Gi       1.6Gi
-Swap:          4.0Gi       356Mi       3.7Gi
+Mem:           3.8Gi       2.2Gi       188Mi        30Mi       1.6Gi       1.6Gi
+Swap:          4.0Gi       374Mi       3.6Gi
 
 === LOAD AVERAGE ===
-0.00 0.01 0.00 1/669 1025529
+0.09 0.04 0.01 1/671 1026570
 
 === PROCESS STATUS ===
 Trading processes:
-console  1016873  0.1 11.0 1875144 443104 ?      Ssl  04:35   0:41 /home/console/real_options/venv/bin/python -u orchestrator.py
-console  1021641  0.0  7.1 1283088 286816 ?      Sl   08:29   0:08 /home/console/real_options/venv/bin/python position_monitor.py
+console  1016873  0.1 11.0 1885216 443824 ?      Ssl  04:35   0:45 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1021641  0.0  7.1 1283088 286816 ?      Sl   08:29   0:09 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1016893  0.2  1.9 604520 78920 ?        Sl   04:35   1:29 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1016893  0.2  1.9 604520 78920 ?        Sl   04:35   1:34 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,13 +36,13 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-02-12 12:08:01,000 - ib_insync.wrapper - ERROR - Error 354, reqId 30: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
-2026-02-12 12:08:02,866 - ib_insync.wrapper - ERROR - Error 300, reqId 30: Can't find EId with tickerId:30
-2026-02-12 12:08:03,004 - ib_insync.wrapper - ERROR - Error 354, reqId 31: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
-2026-02-12 12:08:07,882 - ib_insync.wrapper - ERROR - Error 300, reqId 31: Can't find EId with tickerId:31
-2026-02-12 12:37:25,493 - ib_insync.wrapper - ERROR - Error 354, reqId 40: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
-2026-02-12 12:37:26,977 - ib_insync.wrapper - ERROR - Error 354, reqId 42: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
 2026-02-12 12:37:28,839 - ib_insync.wrapper - ERROR - Error 300, reqId 42: Can't find EId with tickerId:42
 2026-02-12 12:37:29,080 - ib_insync.wrapper - ERROR - Error 354, reqId 43: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
 2026-02-12 12:37:33,859 - ib_insync.wrapper - ERROR - Error 300, reqId 43: Can't find EId with tickerId:43
 2026-02-12 12:42:05,634 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. The trade exhibits dangerous over-reliance on a single fundamental factor (Brazil's record crop forecast) that won't physically impact markets for months, while dismissing immediate supply disruptions confirmed by multiple sources. The 0.7 confidence level is unjustified given: (1) Three out of eight agents were BULLISH with high confidence (0.8) citing verified supply deficits; (2) The weighted consensus score of -0.514 reflects significant disagreement; (3) Critical N/A data on current price, IV rank, and IV percentile means we cannot properly assess entry timing or risk parameters; (4) The agronomist and supply_chain agents both identify CURRENT supply tightness that could persist for weeks before Brazilian supply relief arrives. The trade confuses medium-term fundamentals with short-term positioning risk. Wait for either: (a) confirmed improvement in Santos port throughput, (b) actual arrival of new-crop Brazilian supply in ICE-certified warehouses, or (c) a technical breakdown below the 260-280 support zone before initiating bearish exposure.
+2026-02-12 13:38:07,370 - ib_insync.wrapper - ERROR - Error 354, reqId 51: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
+2026-02-12 13:38:08,872 - ib_insync.wrapper - ERROR - Error 354, reqId 53: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
+2026-02-12 13:38:10,748 - ib_insync.wrapper - ERROR - Error 300, reqId 53: Can't find EId with tickerId:53
+2026-02-12 13:38:10,986 - ib_insync.wrapper - ERROR - Error 354, reqId 54: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
+2026-02-12 13:38:15,767 - ib_insync.wrapper - ERROR - Error 300, reqId 54: Can't find EId with tickerId:54
+2026-02-12 13:40:46,052 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. The trade suffers from multiple critical weaknesses: (1) CONFIRMATION BIAS - We're over-weighting the Brazilian record harvest forecast while dismissing the Supply Chain analyst's 0.80 confidence bullish call on logistical bottlenecks and the Agronomist's 0.80 confidence bullish call on Colombian shortfalls. (2) TIMING MISMATCH - The bearish catalyst (Brazilian harvest) doesn't materialize until Q3-26, but the bullish catalysts (Santos delays, Colombian drought, Central American deficits) are active NOW. We're trading a September story in February. (3) CROWDED SHORT - Price already trading 11% below 200-day SMA suggests bearish positioning is consensus; any positive supply surprise creates violent short-squeeze conditions. (4) IGNORED DATA - We dismissed the backwardation signal (March 299.20 > May 293.10) which explicitly confirms immediate tightness. The weighted score of -0.273 with only 0.46 confidence is far too weak for a 0.70 confidence trade. Wait for either: (a) Brazilian harvest confirmation in June-July, or (b) confirmed easing of Santos port delays before establishing bearish positions.
