@@ -27,19 +27,29 @@ from config.commodity_profiles import get_commodity_profile, GrowingRegion
 
 logger = logging.getLogger(__name__)
 
-# Dedicated sentinel diagnostic logger — writes to logs/sentinels.log
-# Provides verbose internal diagnostics separate from the main orchestrator log.
+# --- Sentinel log setup ---
+# Both loggers write to logs/sentinels.log and do NOT propagate to orchestrator.log.
+# This keeps orchestrator.log clean while sentinels.log captures everything.
+_diag_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+os.makedirs(_diag_dir, exist_ok=True)
+_sentinel_fmt = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Main sentinel logger (used by all sentinel classes)
+if not logger.handlers:
+    _main_handler = logging.FileHandler(os.path.join(_diag_dir, 'sentinels.log'))
+    _main_handler.setFormatter(_sentinel_fmt)
+    logger.addHandler(_main_handler)
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False  # Don't duplicate to orchestrator.log
+
+# Dedicated diagnostic logger (verbose internal diagnostics)
 _sentinel_diag = logging.getLogger('sentinel_diag')
 if not _sentinel_diag.handlers:
-    _diag_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
-    os.makedirs(_diag_dir, exist_ok=True)
     _diag_handler = logging.FileHandler(os.path.join(_diag_dir, 'sentinels.log'))
-    _diag_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    ))
+    _diag_handler.setFormatter(_sentinel_fmt)
     _sentinel_diag.addHandler(_diag_handler)
     _sentinel_diag.setLevel(logging.DEBUG)
-    _sentinel_diag.propagate = False  # Don't duplicate to orchestrator.log
+    _sentinel_diag.propagate = False
 
 # Domain whitelists for prediction market filtering.
 # IMPORTANT: Keep terms specific. Avoid generic words that appear in unrelated titles.
@@ -190,7 +200,9 @@ class Sentinel:
 
     def _escape_xml(self, text: str) -> str:
         """Escape XML special characters to prevent prompt injection."""
-        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        # Strip invalid XML control characters (0x00-0x1F except tab, newline, carriage return)
+        clean_text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', text)
+        return clean_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     def _is_duplicate_payload(self, payload: dict) -> bool:
         """Check if payload is semantically similar to last trigger."""
@@ -220,7 +232,16 @@ class Sentinel:
                     if response.status != 200:
                         logger.warning(f"RSS {url} returned {response.status}")
                         return []
-                    content = await response.text()
+                    # Size limit to prevent DoS via memory exhaustion from large/malicious feeds
+                    MAX_RSS_SIZE = 5 * 1024 * 1024  # 5MB
+                    content_bytes = bytearray()
+                    async for chunk in response.content.iter_chunked(8192):
+                        if len(content_bytes) + len(chunk) > MAX_RSS_SIZE:
+                            logger.warning(f"RSS {url} exceeded size limit ({MAX_RSS_SIZE} bytes)")
+                            return []
+                        content_bytes.extend(chunk)
+
+                    content = bytes(content_bytes)
 
             loop = asyncio.get_running_loop()
             feed = await loop.run_in_executor(None, feedparser.parse, content)

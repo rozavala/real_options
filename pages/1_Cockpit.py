@@ -157,7 +157,18 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
         cols = st.columns(4)
 
         with cols[0]:
-            st.metric("Entry", f"${entry_price:.2f}" if entry_price else "N/A")
+            # Format entry timestamp for tooltip
+            entry_ts = thesis.get('entry_timestamp', 'Unknown')
+            if isinstance(entry_ts, datetime):
+                entry_ts_str = entry_ts.strftime('%Y-%m-%d %H:%M:%S UTC')
+            else:
+                entry_ts_str = str(entry_ts)
+
+            st.metric(
+                "Entry",
+                f"${entry_price:.2f}" if entry_price else "N/A",
+                help=f"Executed at: {entry_ts_str}"
+            )
 
         with cols[1]:
             if unrealized_pnl is not None:
@@ -166,16 +177,27 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
                 st.metric("Unrealized P&L", "N/A")
 
         with cols[2]:
-            st.metric("Stop Price", f"${stop_price:.2f}" if stop_price else "N/A")
+            stop_help = "Calculated from invalidation triggers"
+            if isinstance(triggers, list) and triggers:
+                stop_help += ":\n\n" + "\n".join([f"• {t}" for t in triggers])
+            elif isinstance(triggers, str):
+                stop_help += f":\n\n• {triggers}"
+
+            st.metric(
+                "Stop Price",
+                f"${stop_price:.2f}" if stop_price else "N/A",
+                help=stop_help
+            )
 
         with cols[3]:
+            dist_help = "Distance between current entry price and stop price"
             if distance_pct is not None:
                 if distance_pct < 0.05:
-                    st.error(f"⚠️ {distance_pct:.1%} to stop")
+                    st.error(f"⚠️ {distance_pct:.1%} to stop", help=dist_help)
                 elif distance_pct < 0.10:
-                    st.warning(f"🔶 {distance_pct:.1%} to stop")
+                    st.warning(f"🔶 {distance_pct:.1%} to stop", help=dist_help)
                 else:
-                    st.success(f"✅ {distance_pct:.1%} to stop")
+                    st.success(f"✅ {distance_pct:.1%} to stop", help=dist_help)
             else:
                 # Issue 6 Fix: Strategy-aware stop display
                 MULTI_LEG_STRATEGIES = {'IRON_CONDOR', 'LONG_STRADDLE', 'IRON_BUTTERFLY', 'STRANGLE'}
@@ -424,6 +446,14 @@ is_open = market_open_ny <= ny_now <= market_close_ny and ny_now.weekday() < 5
 
 status_color = "🟢" if is_open else "🔴"
 status_text = "OPEN" if is_open else "CLOSED"
+
+if is_open:
+    delta = market_close_ny - ny_now
+    # Ensure non-negative duration
+    if delta.total_seconds() > 0:
+        minutes = int(delta.total_seconds() // 60)
+        hours, minutes = divmod(minutes, 60)
+        status_text += f" (closes in {hours}h {minutes}m)"
 
 clock_cols = st.columns(3)
 with clock_cols[0]:

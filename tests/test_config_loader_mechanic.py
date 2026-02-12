@@ -23,6 +23,12 @@ SAMPLE_CONFIG = {
     "connection": {
         "port": 7497,
         "clientId": 1
+    },
+    "strategy": {
+        "quantity": 1
+    },
+    "risk_management": {
+        "min_confidence_threshold": 0.6
     }
 }
 

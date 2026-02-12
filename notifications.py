@@ -26,7 +26,7 @@ def _split_message(message: str, limit: int) -> list[str]:
     chunks.append(current_chunk) # Add the last part
     return chunks
 
-def send_pushover_notification(config: dict, title: str, message: str, attachment_path: str = None, monospace: bool = False):
+def send_pushover_notification(config: dict, title: str, message: str, attachment_path: str = None, monospace: bool = False, priority: int = 0):
     """
     Sends a notification via Pushover, splitting long messages into multiple parts.
     Only the first part will contain an attachment.
@@ -71,14 +71,17 @@ def send_pushover_notification(config: dict, title: str, message: str, attachmen
             part_title,
             chunk,
             attachment_path if is_first_chunk else None, # Only attach to the first part
-            monospace
+            monospace,
+            priority
         )
 
-def _send_single_pushover_chunk(api_token: str, user_key: str, title: str, message: str, attachment_path: str, monospace: bool):
+def _send_single_pushover_chunk(api_token: str, user_key: str, title: str, message: str, attachment_path: str, monospace: bool, priority: int = 0):
     """Helper function to send one part of a potentially split notification."""
     payload = {
         "token": api_token, "user": user_key, "title": title, "message": message
     }
+    if priority != 0:
+        payload['priority'] = priority
     if monospace:
         payload['monospace'] = 1
     else:
