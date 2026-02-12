@@ -4280,6 +4280,27 @@ async def main():
             "Trading mode is OFF. Analysis pipeline runs normally. No orders will be placed."
         )
 
+    # Remote Gateway indicator
+    ib_host = config.get('connection', {}).get('host', '127.0.0.1')
+    if ib_host not in ('127.0.0.1', 'localhost', '::1'):
+        logger.warning("=" * 60)
+        logger.warning(f"  IB GATEWAY: REMOTE ({ib_host})")
+        logger.warning(f"  Client IDs: DEV range (10-79)")
+        logger.warning(f"  Trading Mode: {config.get('trading_mode', 'LIVE')}")
+        logger.warning("=" * 60)
+        if not is_trading_off():
+            logger.critical(
+                "SAFETY: Remote gateway with TRADING_MODE=LIVE! "
+                "Set TRADING_MODE=OFF in .env for dev environments."
+            )
+            send_pushover_notification(
+                config.get('notifications', {}),
+                "REMOTE GW + LIVE MODE",
+                f"Orchestrator on remote GW ({ib_host}) with TRADING_MODE=LIVE. "
+                "Likely a misconfiguration — set TRADING_MODE=OFF.",
+                priority=1
+            )
+
     # Update deduplicator with config values
     global GLOBAL_DEDUPLICATOR
     GLOBAL_DEDUPLICATOR.critical_severity_threshold = config.get('sentinels', {}).get('critical_severity_threshold', 9)

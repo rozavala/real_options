@@ -71,3 +71,28 @@ def test_notifications_valid_creds_loads(mock_config_file):
             config = config_loader.load_config()
             assert config["notifications"]["pushover_user_key"] == "user_key"
             assert config["notifications"]["pushover_api_token"] == "api_token"
+
+
+def test_ib_host_env_override(mock_config_file):
+    """IB_HOST env var should override the default connection host."""
+    with patch.dict(os.environ, {
+        "GEMINI_API_KEY": "test_key",
+        "PUSHOVER_USER_KEY": "u",
+        "PUSHOVER_API_TOKEN": "a",
+        "IB_HOST": "100.64.0.1",
+    }, clear=True):
+        with patch("config_loader.load_dotenv"):
+            config = config_loader.load_config()
+            assert config["connection"]["host"] == "100.64.0.1"
+
+
+def test_ib_host_default_when_not_set(mock_config_file):
+    """Without IB_HOST, connection.host should default to 127.0.0.1."""
+    with patch.dict(os.environ, {
+        "GEMINI_API_KEY": "test_key",
+        "PUSHOVER_USER_KEY": "u",
+        "PUSHOVER_API_TOKEN": "a",
+    }, clear=True):
+        with patch("config_loader.load_dotenv"):
+            config = config_loader.load_config()
+            assert config["connection"]["host"] == "127.0.0.1"
