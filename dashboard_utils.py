@@ -935,6 +935,8 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
 
         # 2. Trend Logic (Secondary)
         pending_mask = graded_df['outcome'] == 'PENDING'
+        if 'actual_trend_direction' not in graded_df.columns:
+            graded_df['actual_trend_direction'] = None
         trend_mask = graded_df['actual_trend_direction'].notna()
 
         candidates = dir_mask & non_neutral_mask & pending_mask & trend_mask

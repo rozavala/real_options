@@ -824,6 +824,53 @@ with recon_row2[1]:
             except Exception as e:
                 st.error(f"❌ Error: {str(e)}")
 
+recon_row3 = st.columns(2)
+
+# --- Brier Score Reconciliation ---
+with recon_row3[0]:
+    st.markdown("**🎯 Brier Score Reconciliation**")
+    st.caption("Grade pending agent predictions against market outcomes")
+
+    # Show pending count
+    try:
+        import pandas as pd
+        structured_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "agent_accuracy_structured.csv")
+        if os.path.exists(structured_path):
+            structured_df = pd.read_csv(structured_path)
+            pending_count = (structured_df['actual'] == 'PENDING').sum() if 'actual' in structured_df.columns else 0
+            if pending_count > 0:
+                st.warning(f"**{pending_count}** predictions pending resolution")
+            else:
+                st.success("All predictions resolved")
+    except Exception:
+        pass
+
+    if st.button("🔄 Reconcile Brier Scores", width='stretch', key="recon_brier"):
+        with st.spinner("Running Brier reconciliation (council history + prediction grading)..."):
+            try:
+                result = subprocess.run(
+                    [sys.executable, "scripts/manual_brier_reconciliation.py"],
+                    capture_output=True,
+                    text=True,
+                    timeout=300,  # Council history reconciliation needs IB historical data
+                    cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
+
+                if result.returncode == 0:
+                    st.success("✅ Brier reconciliation complete!")
+                    st.cache_data.clear()
+                    with st.expander("View Details"):
+                        st.code(result.stdout)
+                else:
+                    st.error("❌ Brier reconciliation failed")
+                    with st.expander("View Error"):
+                        st.code(result.stderr or result.stdout)
+
+            except subprocess.TimeoutExpired:
+                st.error("⏱️ Reconciliation timed out (300s)")
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+
 st.markdown("---")
 
 # Info box with reconciliation details
@@ -843,6 +890,11 @@ with st.expander("ℹ️ About Reconciliation Processes"):
 
     **Equity History**: Syncs the official Net Asset Value history (last 365 days) from IBKR
     to ensure `daily_equity.csv` matches broker records. Uses 17:00 NY time as the daily close.
+
+    **Brier Scores**: Three-step process: (1) backfills `actual_trend_direction` in council history
+    via IB historical prices, (2) resolves pending predictions in `agent_accuracy_structured.csv`
+    by matching to reconciled council decisions, (3) syncs resolutions to `enhanced_brier.json`.
+    Only grades predictions older than 20 hours.
 
     ### When to Use
 
