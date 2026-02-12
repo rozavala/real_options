@@ -25,6 +25,8 @@ _CLEAN_ENV = {
     "FLEX_TOKEN": "",
     "STRATEGY_QTY": "",
     "IB_PORT": "",
+    "IB_HOST": "",
+    "IB_PAPER": "",
     "IB_CLIENT_ID": "",
 }
 

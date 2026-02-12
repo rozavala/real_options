@@ -4282,22 +4282,24 @@ async def main():
 
     # Remote Gateway indicator
     ib_host = config.get('connection', {}).get('host', '127.0.0.1')
+    is_paper = config.get('connection', {}).get('paper', False)
     if ib_host not in ('127.0.0.1', 'localhost', '::1'):
+        gw_label = "REMOTE/PAPER" if is_paper else "REMOTE"
         logger.warning("=" * 60)
-        logger.warning(f"  IB GATEWAY: REMOTE ({ib_host})")
+        logger.warning(f"  IB GATEWAY: {gw_label} ({ib_host})")
         logger.warning(f"  Client IDs: DEV range (10-79)")
         logger.warning(f"  Trading Mode: {config.get('trading_mode', 'LIVE')}")
         logger.warning("=" * 60)
-        if not is_trading_off():
+        if not is_trading_off() and not is_paper:
             logger.critical(
                 "SAFETY: Remote gateway with TRADING_MODE=LIVE! "
-                "Set TRADING_MODE=OFF in .env for dev environments."
+                "Set TRADING_MODE=OFF or IB_PAPER=true in .env for dev environments."
             )
             send_pushover_notification(
                 config.get('notifications', {}),
                 "REMOTE GW + LIVE MODE",
                 f"Orchestrator on remote GW ({ib_host}) with TRADING_MODE=LIVE. "
-                "Likely a misconfiguration — set TRADING_MODE=OFF.",
+                "Likely a misconfiguration — set TRADING_MODE=OFF or IB_PAPER=true.",
                 priority=1
             )
 

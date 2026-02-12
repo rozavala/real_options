@@ -39,6 +39,9 @@ def load_config() -> dict | None:
     if os.getenv("IB_HOST"):
         config['connection']['host'] = os.getenv("IB_HOST").strip()
 
+    if os.getenv("IB_PAPER", "").strip().upper() in ("1", "TRUE", "YES"):
+        config['connection']['paper'] = True
+
     if os.getenv("IB_CLIENT_ID"):
         config['connection']['clientId'] = int(os.getenv("IB_CLIENT_ID"))
 
