@@ -484,3 +484,37 @@ Running reconciliation could unlock up to 105 more predictions
 2026-02-13 13:20:08,112 - Orchestrator - INFO - 2026-02-13 13:20:08,112 - trading_bot.tms - INFO - TMS initialized at ./data/tms
 2026-02-13 13:23:08,988 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=800, market_open=True, trading_day=True
 2026-02-13 13:28:09,238 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=805, market_open=True, trading_day=True
+2026-02-13 13:30:08,157 - Orchestrator - INFO - 2026-02-13 13:30:08,157 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-13 13:33:09,405 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=810, market_open=True, trading_day=True
+2026-02-13 13:34:37,210 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=6)
+2026-02-13 13:34:37,225 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
+2026-02-13 13:34:37,225 - trading_bot.drawdown_circuit_breaker - WARNING - Drawdown Status Changed: NORMAL -> HALT (PNL: -2.72%)
+2026-02-13 13:34:37,535 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-13 13:34:37,537 - Orchestrator - WARNING - Drawdown Circuit Breaker ACTIVE (HALT) - Skipping Emergency Cycle
+2026-02-13 13:34:37,539 - Orchestrator - INFO - Post-cycle debounce: 0s (gate-blocked (no debounce))
+2026-02-13 13:38:37,690 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=815, market_open=True, trading_day=True
+2026-02-13 13:40:08,242 - Orchestrator - INFO - 2026-02-13 13:40:08,242 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-13 13:43:37,860 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=820, market_open=True, trading_day=True
+2026-02-13 13:44:37,984 - Orchestrator - INFO - PredictionMarketSentinel: trigger detected (source=PredictionMarketSentinel, severity=9)
+2026-02-13 13:44:37,999 - trading_bot.state_manager - INFO - Logged sentinel event from PredictionMarketSentinel to history.
+2026-02-13 13:44:37,999 - Orchestrator - WARNING - Drawdown Circuit Breaker ACTIVE (HALT) - Skipping Emergency Cycle
+2026-02-13 13:44:38,000 - Orchestrator - INFO - Post-cycle debounce: 0s (gate-blocked (no debounce))
+2026-02-13 13:48:38,049 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=825, market_open=True, trading_day=True
+2026-02-13 13:50:08,357 - Orchestrator - INFO - 2026-02-13 13:50:08,357 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-13 13:53:38,220 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=830, market_open=True, trading_day=True
+2026-02-13 13:58:38,388 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=835, market_open=True, trading_day=True
+2026-02-13 14:00:00,004 - Orchestrator - INFO - --- Running scheduled task: signal_early [guarded_generate_orders] ---
+2026-02-13 14:00:00,100 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-13 14:00:00,100 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['anthropic', 'gemini', 'openai', 'xai']
+2026-02-13 14:00:00,100 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['anthropic', 'gemini', 'openai', 'xai'], 'diversity_score': 1.0}
+2026-02-13 14:00:00,107 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-13 14:00:00,112 - trading_bot.enhanced_brier - INFO - Loaded 601 predictions from ./data/enhanced_brier.json
+2026-02-13 14:00:00,175 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-13 14:00:00,176 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-13 14:00:00,176 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-13 14:00:00,176 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-13 14:00:00,176 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-13 14:00:00,177 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 77 [REMOTE/PAPER]...
+2026-02-13 14:00:00,351 - trading_bot.connection_pool - INFO - IB (drawdown_check) connected successfully with ID 77
+2026-02-13 14:00:00,416 - Orchestrator - WARNING - Order generation BLOCKED: Drawdown Guard Active
+2026-02-13 14:00:00,417 - trading_bot.connection_pool - INFO - Disconnecting IB (drawdown_check)...
