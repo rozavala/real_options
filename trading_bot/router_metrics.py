@@ -80,6 +80,7 @@ class RouterMetrics:
             'requests': dict(self._metrics.get('requests', {})),
             'fallbacks': {k: dict(v) for k, v in self._metrics.get('fallbacks', {}).items()},
             'latencies': dict(self._metrics.get('latencies', {})),
+            'error_types': {k: dict(v) for k, v in self._metrics.get('error_types', {}).items()},
             'last_reset': self._metrics.get('last_reset', datetime.now(timezone.utc).isoformat())
         }
 
@@ -93,7 +94,8 @@ class RouterMetrics:
         success: bool,
         latency_ms: Optional[float] = None,
         was_fallback: bool = False,
-        primary_provider: Optional[str] = None
+        primary_provider: Optional[str] = None,
+        error_type: Optional[str] = None
     ):
         """
         Record a routing request outcome.
@@ -105,6 +107,7 @@ class RouterMetrics:
             latency_ms: Response time in milliseconds
             was_fallback: True if this was a fallback attempt
             primary_provider: Original provider that failed (if was_fallback)
+            error_type: Classification of failure (timeout/rate_limit/parse_error/api_error)
         """
         key = f"{role}:{provider}"
 
@@ -117,6 +120,16 @@ class RouterMetrics:
             self._metrics['requests'][key]['success'] += 1
         else:
             self._metrics['requests'][key]['failure'] += 1
+
+        # Track error types for failed requests
+        if not success and error_type:
+            if 'error_types' not in self._metrics:
+                self._metrics['error_types'] = {}
+            if key not in self._metrics['error_types']:
+                self._metrics['error_types'][key] = {}
+            if error_type not in self._metrics['error_types'][key]:
+                self._metrics['error_types'][key][error_type] = 0
+            self._metrics['error_types'][key][error_type] += 1
 
         # Track fallback chain
         if was_fallback and primary_provider:
