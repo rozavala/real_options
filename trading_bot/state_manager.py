@@ -109,6 +109,10 @@ class StateManager:
     # concurrent writes from different namespaces to clobber each other's data.
     _STATE_LOCK_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', '.state_global.lock')
 
+    # Separate lock file for deferred triggers (prevents race between sentinel
+    # queue_deferred_trigger and orchestrator get_deferred_triggers).
+    _DEFERRED_LOCK_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', '.deferred_triggers.lock')
+
     @classmethod
     def _with_state_lock(cls, fn):
         """Execute fn under the global state file lock (read-modify-write safe)."""
@@ -302,32 +306,59 @@ class StateManager:
              return await loop.run_in_executor(None, cls.load_state, namespace, max_age)
 
     @classmethod
+    def _with_deferred_lock(cls, fn):
+        """Execute fn under the deferred triggers file lock (read-modify-write safe)."""
+        os.makedirs(os.path.dirname(cls._DEFERRED_LOCK_FILE), exist_ok=True)
+        with open(cls._DEFERRED_LOCK_FILE, 'w') as lock_fd:
+            if HAS_FCNTL:
+                fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            elif '_fallback_lock' in globals():
+                _fallback_lock.acquire()
+            try:
+                return fn()
+            finally:
+                if HAS_FCNTL:
+                    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                elif '_fallback_lock' in globals():
+                    _fallback_lock.release()
+
+    @classmethod
+    def _write_deferred_triggers(cls, triggers: list):
+        """Atomically write deferred triggers via temp file + os.replace."""
+        os.makedirs(os.path.dirname(cls.DEFERRED_TRIGGERS_FILE), exist_ok=True)
+        temp_file = cls.DEFERRED_TRIGGERS_FILE + ".tmp"
+        with open(temp_file, 'w') as f:
+            json.dump(triggers, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp_file, cls.DEFERRED_TRIGGERS_FILE)
+
+    @classmethod
     def queue_deferred_trigger(cls, trigger: Any):
-        """Queue a trigger for processing when market opens."""
-        triggers = cls._load_deferred_triggers()
-        triggers.append({
-            'source': trigger.source,
-            'reason': trigger.reason,
-            'payload': trigger.payload,
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        })
+        """Queue a trigger for processing when market opens (file-locked)."""
+        def _do_queue():
+            triggers = cls._load_deferred_triggers()
+            triggers.append({
+                'source': trigger.source,
+                'reason': trigger.reason,
+                'payload': trigger.payload,
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            })
+            cls._write_deferred_triggers(triggers)
+            logger.info(f"Queued deferred trigger from {trigger.source}")
 
         try:
-            os.makedirs(os.path.dirname(cls.DEFERRED_TRIGGERS_FILE), exist_ok=True)
-            with open(cls.DEFERRED_TRIGGERS_FILE, 'w') as f:
-                json.dump(triggers, f, indent=2)
-                f.flush()
-                os.fsync(f.fileno())
-            logger.info(f"Queued deferred trigger from {trigger.source}")
+            cls._with_deferred_lock(_do_queue)
         except Exception as e:
             logger.error(f"Failed to queue deferred trigger: {e}")
 
     @classmethod
     def get_deferred_triggers(cls, max_age_hours: float = 72.0) -> list:
         """
-        Get and clear deferred triggers, filtering expired ones.
+        Get and clear deferred triggers atomically, filtering expired ones.
 
-        v3.1: Triggers older than max_age_hours are discarded.
+        The read+clear is performed under a single lock to prevent triggers
+        queued between read and clear from being lost.
 
         Args:
             max_age_hours: Maximum age in hours (default 72 = 3 days)
@@ -335,54 +366,47 @@ class StateManager:
         Returns:
             List of valid (non-expired) triggers
         """
-        triggers = cls._load_deferred_triggers()
+        def _do_get_and_clear():
+            triggers = cls._load_deferred_triggers()
 
-        if not triggers:
-            return []
+            if not triggers:
+                return []
 
-        now = datetime.now(timezone.utc)
-        valid_triggers = []
-        expired_count = 0
+            # Clear immediately under the same lock
+            cls._write_deferred_triggers([])
 
-        for t in triggers:
-            try:
-                # Parse timestamp (handle Z for UTC)
-                ts_str = t['timestamp'].replace('Z', '+00:00')
-                trigger_time = datetime.fromisoformat(ts_str)
+            now = datetime.now(timezone.utc)
+            valid_triggers = []
+            expired_count = 0
 
-                # Calculate age
-                age_hours = (now - trigger_time).total_seconds() / 3600
+            for t in triggers:
+                try:
+                    ts_str = t['timestamp'].replace('Z', '+00:00')
+                    trigger_time = datetime.fromisoformat(ts_str)
+                    age_hours = (now - trigger_time).total_seconds() / 3600
 
-                if age_hours <= max_age_hours:
+                    if age_hours <= max_age_hours:
+                        valid_triggers.append(t)
+                    else:
+                        expired_count += 1
+                        logger.info(
+                            f"Discarding expired trigger from {t['source']} "
+                            f"(age: {age_hours:.1f}h > {max_age_hours}h)"
+                        )
+                except Exception as e:
+                    logger.warning(f"Could not parse trigger timestamp: {e}")
                     valid_triggers.append(t)
-                else:
-                    expired_count += 1
-                    logger.info(
-                        f"Discarding expired trigger from {t['source']} "
-                        f"(age: {age_hours:.1f}h > {max_age_hours}h)"
-                    )
-            except Exception as e:
-                logger.warning(f"Could not parse trigger timestamp: {e}")
-                # Include triggers with unparseable timestamps (fail-open)
-                valid_triggers.append(t)
 
-        if expired_count > 0:
-            logger.info(f"Filtered {expired_count} expired deferred triggers")
+            if expired_count > 0:
+                logger.info(f"Filtered {expired_count} expired deferred triggers")
 
-        # Clear the file
-        cls._clear_deferred_triggers()
+            return valid_triggers
 
-        return valid_triggers
-
-    @classmethod
-    def _clear_deferred_triggers(cls):
-        """Clear the deferred triggers file."""
         try:
-            if os.path.exists(cls.DEFERRED_TRIGGERS_FILE):
-                with open(cls.DEFERRED_TRIGGERS_FILE, 'w') as f:
-                    json.dump([], f)
+            return cls._with_deferred_lock(_do_get_and_clear)
         except Exception as e:
-            logger.error(f"Failed to clear deferred triggers: {e}")
+            logger.error(f"Failed to get deferred triggers: {e}")
+            return []
 
     @classmethod
     def _load_deferred_triggers(cls) -> list:

@@ -36,13 +36,13 @@ st.markdown("### Navigation")
 if hasattr(st, "page_link"):
     col1, col2 = st.columns(2)
     with col1:
-        st.page_link("pages/1_Cockpit.py", label="Cockpit", icon="🦅", help="Live operations, system health, emergency controls", use_container_width=True)
-        st.page_link("pages/3_The_Council.py", label="The Council", icon="🧠", help="Agent explainability, consensus visualization", use_container_width=True)
-        st.page_link("pages/5_Utilities.py", label="Utilities", icon="🔧", help="Log collection, equity sync, system maintenance", use_container_width=True)
+        st.page_link("pages/1_Cockpit.py", label="Cockpit", icon="🦅", help="Live operations, system health, emergency controls", width="stretch")
+        st.page_link("pages/3_The_Council.py", label="The Council", icon="🧠", help="Agent explainability, consensus visualization", width="stretch")
+        st.page_link("pages/5_Utilities.py", label="Utilities", icon="🔧", help="Log collection, equity sync, system maintenance", width="stretch")
     with col2:
-        st.page_link("pages/2_The_Scorecard.py", label="The Scorecard", icon="⚖️", help="Decision quality analysis, win rates, confusion matrix", use_container_width=True)
-        st.page_link("pages/4_Financials.py", label="Financials", icon="📈", help="ROI, equity curve, strategy performance", use_container_width=True)
-        st.page_link("pages/6_Signal_Overlay.py", label="Signal Overlay", icon="🎯", help="Decision forensics against price action", use_container_width=True)
+        st.page_link("pages/2_The_Scorecard.py", label="The Scorecard", icon="⚖️", help="Decision quality analysis, win rates, confusion matrix", width="stretch")
+        st.page_link("pages/4_Financials.py", label="Financials", icon="📈", help="ROI, equity curve, strategy performance", width="stretch")
+        st.page_link("pages/6_Signal_Overlay.py", label="Signal Overlay", icon="🎯", help="Decision forensics against price action", width="stretch")
 else:
     st.markdown("""
     Use the sidebar to navigate between pages:

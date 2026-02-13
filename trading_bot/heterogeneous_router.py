@@ -395,6 +395,18 @@ class XAIClient(LLMClient):
         return text, in_tok, out_tok
 
 
+def _classify_error(e: Exception) -> str:
+    """Classify an LLM exception into a diagnostic category."""
+    error_str = str(e).lower()
+    if isinstance(e, asyncio.TimeoutError) or "timed out" in error_str or "timeout" in error_str:
+        return "timeout"
+    if "429" in error_str or "rate" in error_str or "resource_exhausted" in error_str:
+        return "rate_limit"
+    if "json" in error_str or "parse" in error_str or "decode" in error_str:
+        return "parse_error"
+    return "api_error"
+
+
 class HeterogeneousRouter:
     """Routes agent requests to appropriate LLM based on role."""
 
@@ -666,7 +678,8 @@ class HeterogeneousRouter:
                         provider=primary_provider.value,
                         success=False,
                         latency_ms=latency_ms,
-                        was_fallback=False
+                        was_fallback=False,
+                        error_type=_classify_error(e)
                     )
             else:
                 # Rate limit timeout - treat as failure, move to fallback
@@ -762,7 +775,8 @@ class HeterogeneousRouter:
                     success=False,
                     latency_ms=latency_ms,
                     was_fallback=True,
-                    primary_provider=primary_provider.value if primary_provider else None
+                    primary_provider=primary_provider.value if primary_provider else None,
+                    error_type=_classify_error(e)
                 )
                 continue
 
