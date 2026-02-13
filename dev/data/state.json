@@ -3,28 +3,6 @@
     "events": {
       "data": [
         {
-          "source": "PredictionMarketSentinel",
-          "reason": "Prediction Market Alert: 'Fed decisions (Dec-Mar)' CRASHED 82.0%",
-          "payload": {
-            "topic": "Fed decisions (Dec-Mar)",
-            "slug": "next-three-fed-decisions-847",
-            "delta_pct": -82.0,
-            "importance": "macro",
-            "commodity_impact": "US rate changes affect USD strength, commodity financing costs, and carry trade dynamics"
-          },
-          "timestamp": "2026-02-13T13:44:37.995959+00:00"
-        },
-        {
-          "source": "MicrostructureSentinel",
-          "reason": "Liquidity Depletion: 40% of average",
-          "payload": {
-            "type": "LIQUIDITY_DEPLETION",
-            "contract": "KCK6",
-            "depth_ratio": 0.39639639639639634
-          },
-          "timestamp": "2026-02-13T14:22:48.075134+00:00"
-        },
-        {
           "source": "MicrostructureSentinel",
           "reason": "Liquidity Depletion: 41% of average",
           "payload": {
@@ -53,9 +31,61 @@
             "depth_ratio": 0.453125
           },
           "timestamp": "2026-02-13T14:59:57.882078+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (16 posts)",
+          "payload": {
+            "sentiment_score": 4.75,
+            "confidence": 0.2,
+            "top_themes": [
+              "Rising Arabica prices",
+              "Declining coffee futures",
+              "Impact on consumer products",
+              "Insufficient data",
+              "Mixed signals"
+            ],
+            "post_volume": 16,
+            "volume_baseline": 4.3,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              },
+              {
+                "query": "arabica prices",
+                "score": 5.0,
+                "volume": 2,
+                "confidence": 0.3,
+                "top_post": "What needs to be specified, which coffee? Arabica might become luxury soon because of the rising prices, does Robusta have all the same capabilities? https://t.co/YUIr4xL9lX (404Alta)"
+              },
+              {
+                "query": "KC futures",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              }
+            ]
+          },
+          "timestamp": "2026-02-13T15:05:24.783110+00:00"
+        },
+        {
+          "source": "MicrostructureSentinel",
+          "reason": "Liquidity Depletion: 42% of average",
+          "payload": {
+            "type": "LIQUIDITY_DEPLETION",
+            "contract": "KCK6",
+            "depth_ratio": 0.42028985507246375
+          },
+          "timestamp": "2026-02-13T15:14:27.129887+00:00"
         }
       ],
-      "timestamp": 1770994797.8824384
+      "timestamp": 1770995667.130465
     }
   },
   "reports": {
@@ -205,7 +235,7 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1770989677.2065127
+      "timestamp": 1770995124.7679815
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
@@ -323,23 +353,23 @@
       "data": {
         "slug": "next-three-fed-decisions-847",
         "title": "Fed decisions (Dec-Mar)",
-        "price": 0.92,
-        "timestamp": "2026-02-13T14:59:57.811514+00:00",
+        "price": 0.925,
+        "timestamp": "2026-02-13T15:25:30.060081+00:00",
         "severity_hwm": 9,
         "hwm_timestamp": "2026-02-13T13:44:37.922337+00:00"
       },
-      "timestamp": 1770994797.8725696
+      "timestamp": 1770996330.131961
     },
     "How many Fed rate cuts in 2026?": {
       "data": {
         "slug": "how-many-fed-rate-cuts-in-2026",
         "title": "How many Fed rate cuts in 2026?",
         "price": 0.055,
-        "timestamp": "2026-02-13T14:59:57.871865+00:00",
+        "timestamp": "2026-02-13T15:25:30.131470+00:00",
         "severity_hwm": 7,
         "hwm_timestamp": "2026-02-12T21:27:37.872286+00:00"
       },
-      "timestamp": 1770994797.8725734
+      "timestamp": 1770996330.1319635
     },
     "Will tariffs generate >$250b in 2025?": {
       "data": {
@@ -348,9 +378,9 @@
         "slug": "will-tariffs-generate-250b-in-2025",
         "title": "Will tariffs generate >$250b in 2025?",
         "price": 0.0205,
-        "timestamp": "2026-02-13T14:59:57.839678+00:00"
+        "timestamp": "2026-02-13T15:25:30.089030+00:00"
       },
-      "timestamp": 1770994797.872575
+      "timestamp": 1770996330.1319644
     },
     "Federal Reserve Interest Rate": {
       "data": {
@@ -406,20 +436,20 @@
     "XSentimentSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-13T13:34:37.214701+00:00",
+        "last_check_utc": "2026-02-13T15:05:24.775384+00:00",
         "interval_seconds": 5400,
         "error": null
       },
-      "timestamp": 1770989677.2152963
+      "timestamp": 1770995124.7758503
     },
     "PredictionMarketSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-13T14:59:57.877003+00:00",
+        "last_check_utc": "2026-02-13T15:25:30.135148+00:00",
         "interval_seconds": 300,
         "error": null
       },
-      "timestamp": 1770994797.8775952
+      "timestamp": 1770996330.1355748
     },
     "MacroContagionSentinel": {
       "data": {
@@ -433,20 +463,20 @@
     "PriceSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-13T14:59:57.763332+00:00",
+        "last_check_utc": "2026-02-13T15:29:31.076230+00:00",
         "interval_seconds": 60,
         "error": null
       },
-      "timestamp": 1770994797.7641165
+      "timestamp": 1770996571.0778446
     },
     "MicrostructureSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-13T14:59:57.885252+00:00",
+        "last_check_utc": "2026-02-13T15:29:31.082423+00:00",
         "interval_seconds": 60,
         "error": null
       },
-      "timestamp": 1770994797.8855865
+      "timestamp": 1770996571.0828934
     },
     "MagicMock": {
       "data": {
