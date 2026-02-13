@@ -38,7 +38,7 @@ from trading_bot.order_manager import (
     place_queued_orders,
     get_trade_ledger_df
 )
-from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, round_to_tick, get_tick_size, word_boundary_match
+from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, round_to_tick, get_tick_size, word_boundary_match, hours_until_weekly_close
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, PredictionMarketSentinel, MacroContagionSentinel, SentinelTrigger, _sentinel_diag
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
@@ -3009,6 +3009,27 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         return
 
                     logger.info("Decision is actionable. Generating order...")
+
+                    # === HOLDING-TIME GATE (same logic as scheduled path) ===
+                    remaining_hours = hours_until_weekly_close(config)
+                    if remaining_hours < float('inf'):
+                        min_holding = config.get('risk_management', {}).get('friday_min_holding_hours', 2.0)
+                    else:
+                        min_holding = config.get('risk_management', {}).get('min_holding_hours', 6.0)
+
+                    if remaining_hours < min_holding:
+                        logger.info(
+                            f"Emergency holding-time gate: Only {remaining_hours:.1f}h until weekly close "
+                            f"(minimum: {min_holding}h). Skipping emergency order."
+                        )
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "📅 Emergency Order Skipped",
+                            f"Weekly close in {remaining_hours:.1f}h — below {min_holding}h minimum. "
+                            f"Emergency signal from {trigger.source} not executed."
+                        )
+                        _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (holding-time gate: {remaining_hours:.1f}h < {min_holding}h)")
+                        return
 
                     # === NEW: Dynamic Position Sizing ===
                     sizer = DynamicPositionSizer(config)
