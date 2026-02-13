@@ -1818,7 +1818,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                     positions_to_close[f"ORPHAN_{symbol}"].append({
                         'conId': pos.contract.conId,
                         'symbol': symbol,
-                        'exchange': pos.contract.exchange or 'SMART',
+                        'exchange': pos.contract.exchange or config.get('exchange', 'SMART'),
+                        'secType': pos.contract.secType or 'FOP',
                         'action': close_action,
                         'quantity': live_qty,
                         'multiplier': pos.contract.multiplier,
@@ -1942,9 +1943,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                         contract = Contract()
                         contract.conId = leg['conId']
                         contract.symbol = config.get('symbol', 'KC')
-                        contract.secType = "FOP"
-
-                    contract.exchange = leg['exchange'] or config.get('exchange', 'SMART')
+                        contract.secType = leg.get('secType', 'FOP')
+                        contract.exchange = leg['exchange'] or config.get('exchange', 'SMART')
 
                     order_size = leg['quantity']
                     logger.info(f"Constructed SINGLE order for Pos ID {pos_id}: {leg['action']} {order_size} {leg['symbol']}")
