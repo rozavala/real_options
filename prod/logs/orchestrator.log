@@ -1,548 +1,140 @@
-2026-02-12 18:43:03,781 - Orchestrator - INFO - =============================================
-2026-02-12 18:43:03,781 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-12 18:43:03,781 - Orchestrator - INFO - =============================================
-2026-02-12 18:43:03,783 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
-2026-02-12 18:43:03,783 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
-2026-02-12 18:43:03,783 - Orchestrator - WARNING - ============================================================
-2026-02-12 18:43:03,783 - Orchestrator - WARNING -   TRADING MODE: OFF — Training/Observation Only
-2026-02-12 18:43:03,783 - Orchestrator - WARNING -   No real orders will be placed via IB
-2026-02-12 18:43:03,783 - Orchestrator - WARNING - ============================================================
-2026-02-12 18:43:04,058 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-12 18:43:04,061 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-12 18:43:04,061 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
-2026-02-12 18:43:04,061 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-12 18:43:04,061 - Orchestrator - INFO - Expiry filter window: 45-365 DTE
-2026-02-12 18:43:04,203 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-02-12 18:43:04,203 - Orchestrator - INFO - No deferred triggers to process.
-2026-02-12 18:43:04,203 - Orchestrator - INFO - Environment: PROD 🚀. Using standard master schedule.
-2026-02-12 18:43:04,222 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 11 scheduled tasks already passed:
+2026-02-13 00:19:23,053 - Orchestrator - INFO - Deduplicator metrics stale (last reset: 2026-02-12), resetting counters
+2026-02-13 00:19:23,054 - Orchestrator - INFO - =============================================
+2026-02-13 00:19:23,054 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-13 00:19:23,054 - Orchestrator - INFO - =============================================
+2026-02-13 00:19:23,056 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-13 00:19:23,056 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-13 00:19:23,056 - Orchestrator - WARNING - ============================================================
+2026-02-13 00:19:23,056 - Orchestrator - WARNING -   TRADING MODE: OFF — Training/Observation Only
+2026-02-13 00:19:23,056 - Orchestrator - WARNING -   No real orders will be placed via IB
+2026-02-13 00:19:23,056 - Orchestrator - WARNING - ============================================================
+2026-02-13 00:19:23,261 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-13 00:19:23,265 - trading_bot.budget_guard - INFO - Budget guard reset for 2026-02-13. Limit: $15.00
+2026-02-13 00:19:23,265 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-13 00:19:23,266 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
+2026-02-13 00:19:23,266 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-13 00:19:23,266 - Orchestrator - INFO - Expiry filter window: 45-365 DTE
+2026-02-13 00:19:23,385 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-13 00:19:23,385 - Orchestrator - INFO - Built config-driven schedule: 19 tasks
+2026-02-13 00:19:23,385 - Orchestrator - INFO - Environment: PROD 🚀. Using standard master schedule.
+2026-02-13 00:19:23,388 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 19 scheduled tasks already passed:
   - 03:30 ET: start_monitoring
   - 03:31 ET: process_deferred_triggers
   - 05:00 ET: cleanup_orphaned_theses
-  - 08:30 ET: run_position_audit_cycle
-  - 09:00 ET: guarded_generate_orders
-  - 11:00 ET: close_stale_positions
-  - 11:15 ET: run_position_audit_cycle
-  - 11:45 ET: guarded_generate_orders
-  - 12:45 ET: close_stale_positions_fallback
-  - 13:00 ET: run_position_audit_cycle
-  - 13:15 ET: emergency_hard_close
-2026-02-12 18:43:04,224 - Orchestrator - INFO - --- Recovery: Evaluating 11 missed tasks ---
-2026-02-12 18:43:04,224 - Orchestrator - INFO - 🔄 RECOVERY: Running missed start_monitoring (was scheduled 03:30 ET)
-2026-02-12 18:43:04,224 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
-2026-02-12 18:43:04,226 - Orchestrator - INFO - --- Starting position monitoring process ---
-2026-02-12 18:43:04,227 - Orchestrator - INFO - Successfully started position monitor with PID: 1035065
-2026-02-12 18:43:04,227 - Orchestrator - INFO - Started position monitoring service.
-2026-02-12 18:43:04,229 - Orchestrator - INFO - ✅ RECOVERY: start_monitoring completed
-2026-02-12 18:43:04,230 - Orchestrator - INFO - ✅ ALREADY RAN: process_deferred_triggers completed earlier today (before restart). Skipping re-execution.
-2026-02-12 18:43:04,230 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses (was scheduled 05:00 ET)
-2026-02-12 18:43:04,230 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
-2026-02-12 18:43:04,231 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 276...
-2026-02-12 18:43:04,423 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 276
-2026-02-12 18:43:04,479 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-12 18:43:04,696 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 18:43:04,810 - Orchestrator - INFO - Thesis cleanup: no orphans found
-2026-02-12 18:43:04,811 - trading_bot.connection_pool - INFO - Disconnecting IB (cleanup)...
-2026-02-12 18:43:07,818 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
-2026-02-12 18:43:07,819 - Orchestrator - INFO - 🔄 RECOVERY: Running missed run_position_audit_cycle (was scheduled 08:30 ET)
-2026-02-12 18:43:07,819 - Orchestrator - INFO - [OFF] run_position_audit_cycle skipped — no positions exist in OFF mode
-2026-02-12 18:43:07,823 - Orchestrator - INFO - ✅ RECOVERY: run_position_audit_cycle completed
-2026-02-12 18:43:07,824 - Orchestrator - INFO - ✅ ALREADY RAN: guarded_generate_orders completed earlier today (before restart). Skipping re-execution.
-2026-02-12 18:43:07,824 - Orchestrator - INFO - 🔄 RECOVERY: Running missed close_stale_positions (was scheduled 11:00 ET)
-2026-02-12 18:43:07,824 - OrderManager - INFO - [OFF] close_stale_positions skipped — no positions exist in OFF mode
-2026-02-12 18:43:07,828 - Orchestrator - INFO - ✅ RECOVERY: close_stale_positions completed
-2026-02-12 18:43:07,829 - Orchestrator - INFO - 🔄 RECOVERY: Running missed close_stale_positions_fallback (was scheduled 12:45 ET)
-2026-02-12 18:43:07,829 - Orchestrator - INFO - [OFF] close_stale_positions_fallback skipped — no positions exist in OFF mode
-2026-02-12 18:43:07,833 - Orchestrator - INFO - ✅ RECOVERY: close_stale_positions_fallback completed
-2026-02-12 18:43:07,833 - Orchestrator - INFO - 🔄 RECOVERY: Running missed emergency_hard_close (was scheduled 13:15 ET)
-2026-02-12 18:43:07,833 - Orchestrator - INFO - [OFF] emergency_hard_close skipped — no positions exist in OFF mode
-2026-02-12 18:43:07,835 - Orchestrator - INFO - ✅ RECOVERY: emergency_hard_close completed
-2026-02-12 18:43:07,836 - Orchestrator - INFO - System restarted with 8 missed tasks.
-✅ 6 recovered | ⏭️ 0 skipped | ✔️ 2 already ran
-2026-02-12 18:43:08,047 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-12 18:43:08,551 - Orchestrator - INFO - Running TopicDiscoveryAgent on startup...
-2026-02-12 18:43:08,654 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-02-12 18:43:08,658 - Orchestrator - INFO - 2026-02-12 18:43:08,657 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
-2026-02-12 18:43:08,658 - Orchestrator - INFO - 2026-02-12 18:43:08,657 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
-2026-02-12 18:43:08,659 - Orchestrator - INFO - 2026-02-12 18:43:08,658 - trading_bot.connection_pool - INFO - Connecting IB (monitor) ID: 130...
-2026-02-12 18:43:09,114 - Orchestrator - INFO - 2026-02-12 18:43:09,112 - trading_bot.connection_pool - INFO - IB (monitor) connected successfully with ID 130
-2026-02-12 18:43:09,119 - Orchestrator - INFO - 2026-02-12 18:43:09,118 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-12 18:43:09,119 - Orchestrator - INFO - 2026-02-12 18:43:09,118 - __main__ - INFO - Position monitor connected and watching open positions.
-2026-02-12 18:43:09,119 - Orchestrator - INFO - 2026-02-12 18:43:09,118 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
-2026-02-12 18:43:09,119 - Orchestrator - INFO - 2026-02-12 18:43:09,118 - root - INFO - Order status and execution event handlers registered.
-2026-02-12 18:43:12,040 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 18:43:12,045 - Orchestrator - INFO - Startup TopicDiscovery: 3 topics, No changes
-2026-02-12 18:43:12,046 - Orchestrator - INFO - Next task 'cancel_and_stop_monitoring' scheduled for 2026-02-12 18:45:00 UTC. Waiting for 0.03 hours.
-2026-02-12 18:43:12,046 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-12 18:43:12,468 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
-2026-02-12 18:43:12,469 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 117...
-2026-02-12 18:43:12,469 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-02-12 18:43:12,821 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 117
-2026-02-12 18:43:12,825 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-12 18:43:12,826 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
-2026-02-12 18:43:12,826 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
-2026-02-12 18:43:12,828 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
-2026-02-12 18:43:12,828 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
-2026-02-12 18:43:12,929 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
-2026-02-12 18:43:12,930 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-02-12 18:43:12,930 - Orchestrator - INFO - Refreshed contract cache: KCK6
-2026-02-12 18:43:12,930 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-02-12 18:43:12,930 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 207...
-2026-02-12 18:43:13,046 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 207
-2026-02-12 18:43:13,051 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-12 18:43:20,755 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-02-12 18:43:46,525 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=6)
-2026-02-12 18:43:46,525 - Orchestrator - INFO - XSentimentSentinel cooldown active until 2026-02-12 18:52:07.268166. Skipping.
-2026-02-12 18:43:54,147 - Orchestrator - INFO - MacroContagionSentinel: trigger detected (source=MacroContagionSentinel, severity=9)
-2026-02-12 18:43:54,162 - Orchestrator - INFO - Emergency cycle BLOCKED (daily trading cutoff 12:15 ET): MacroContagionSentinel — deferring to tomorrow
-2026-02-12 18:43:54,166 - trading_bot.state_manager - INFO - Queued deferred trigger from MacroContagionSentinel
-2026-02-12 18:43:54,395 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-12 18:45:00,008 - Orchestrator - INFO - --- Running scheduled task: cancel_and_stop_monitoring ---
-2026-02-12 18:45:00,015 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
-2026-02-12 18:45:00,015 - Orchestrator - INFO - System shutdown flag SET — no new trades or emergency cycles will be processed
-2026-02-12 18:45:00,016 - OrderManager - INFO - [OFF] cancel_all_open_orders skipped — no real orders exist in OFF mode
-2026-02-12 18:45:00,016 - Orchestrator - INFO - --- Stopping position monitoring process (PID: 1035065) ---
-2026-02-12 18:45:00,016 - Orchestrator - INFO - 2026-02-12 18:45:00,016 - __main__ - INFO - Received shutdown signal: SIGTERM. Disconnecting from IB...
-2026-02-12 18:45:03,020 - Orchestrator - INFO - 2026-02-12 18:45:03,020 - root - INFO - P&L monitoring task was cancelled.
-2026-02-12 18:45:03,020 - Orchestrator - INFO - 2026-02-12 18:45:03,020 - root - INFO - Shutting down monitor. Unregistering event handlers and cancelling PnL subscriptions.
-2026-02-12 18:45:03,021 - Orchestrator - INFO - 2026-02-12 18:45:03,020 - __main__ - INFO - Position monitor has shut down.
-2026-02-12 18:45:03,969 - Orchestrator - INFO - Position monitoring process has been successfully terminated.
-2026-02-12 18:45:04,396 - Orchestrator - INFO - Connection pool released — no stale connections for Gateway restart
-2026-02-12 18:45:04,396 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
-2026-02-12 18:45:04,415 - Orchestrator - INFO - Next task 'log_equity_snapshot' scheduled for 2026-02-12 19:05:00 UTC. Waiting for 0.33 hours.
-2026-02-12 18:45:54,465 - Orchestrator - INFO - Shutdown: Gracefully disengaging Microstructure Sentinel
-2026-02-12 19:05:00,001 - Orchestrator - INFO - --- Running scheduled task: log_equity_snapshot ---
-2026-02-12 19:05:00,007 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
-2026-02-12 19:05:00,008 - EquityLogger - INFO - Connecting to IB at 127.0.0.1:4001 with clientId 8221...
-2026-02-12 19:05:00,516 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
-2026-02-12 19:05:01,216 - EquityLogger - INFO - Fetched NetLiquidation: $32,485.99
-2026-02-12 19:05:01,229 - EquityLogger - INFO - Updated data/daily_equity.csv with value $32,485.99
-2026-02-12 19:05:04,233 - EquityLogger - INFO - Disconnected from IB.
-2026-02-12 19:05:04,240 - Orchestrator - INFO - Next task 'reconcile_and_analyze' scheduled for 2026-02-12 19:10:00 UTC. Waiting for 0.08 hours.
-2026-02-12 19:10:00,005 - Orchestrator - INFO - --- Running scheduled task: reconcile_and_analyze ---
-2026-02-12 19:10:00,018 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
-2026-02-12 19:10:00,018 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
-2026-02-12 19:10:00,337 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-02-12 19:10:10,347 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-02-12 19:10:10,494 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-02-12 19:10:10,508 - EquityLogger - INFO - Preserving 4 local equity records not present in Flex Query.
-2026-02-12 19:10:10,511 - EquityLogger - INFO - Successfully synced 7 equity records to data/daily_equity.csv.
-2026-02-12 19:10:10,514 - Orchestrator - INFO - --- Starting trade reconciliation ---
-2026-02-12 19:10:10,514 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
-2026-02-12 19:10:10,516 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
-2026-02-12 19:10:10,516 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
-2026-02-12 19:10:10,516 - TradeReconciler - INFO - Fetching report for Query ID: 1370939
-2026-02-12 19:10:10,780 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-02-12 19:10:20,791 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-02-12 19:10:20,954 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-02-12 19:10:20,959 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
-2026-02-12 19:10:20,959 - TradeReconciler - WARNING - Flex Query report contained no data.
-2026-02-12 19:10:20,960 - TradeReconciler - INFO - Fetching report for Query ID: 1370908
-2026-02-12 19:10:21,162 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-02-12 19:10:31,169 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-02-12 19:10:31,404 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-02-12 19:10:31,407 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
-2026-02-12 19:10:31,407 - TradeReconciler - WARNING - Flex Query report contained no data.
-2026-02-12 19:10:31,408 - TradeReconciler - WARNING - No trade data was fetched from any IB Flex Query. Exiting.
-2026-02-12 19:10:31,408 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
-2026-02-12 19:10:31,408 - TradeReconciler - INFO - Starting Active Position Reconciliation...
-2026-02-12 19:10:31,609 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-02-12 19:10:41,611 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-02-12 19:10:41,732 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-02-12 19:10:41,735 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
-2026-02-12 19:10:41,735 - TradeReconciler - INFO - Found 0 archived ledger files.
-2026-02-12 19:10:41,735 - TradeReconciler - WARNING - No trade ledger data found.
-2026-02-12 19:10:41,741 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
-2026-02-12 19:10:41,741 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
-2026-02-12 19:10:42,292 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:10:42,293 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
-2026-02-12 19:10:42,294 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
-2026-02-12 19:10:42,300 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-11 14:05:00.945787+00:00: KCK6 (202605) (BEARISH)
-2026-02-12 19:10:42,329 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Thu 17:05 UTC → actual Thu 16:00 UTC (weekly close policy)
-2026-02-12 19:10:43,638 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:10:44,272 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCK6 (202605)
-2026-02-12 19:10:44,278 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:10:44,630 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on KCK6 (202605)
-2026-02-12 19:10:44,636 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:10:45,031 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on KCK6 (202605)
-2026-02-12 19:10:45,036 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:10:45,484 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCK6 (202605)
-2026-02-12 19:10:45,484 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 293.50 -> Exit 299.05 (1.89% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -5.5500
-2026-02-12 19:10:55,848 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) LOSS ($-5.55)
-2026-02-12 19:10:55,873 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.00, geopolitical: 0.70, inventory: 0.28, macro: 0.10, master_decision: 0.00, sentiment: 0.20, supply_chain: 0.90, technical: 0.00, volatility: 0.12}
-2026-02-12 19:10:55,874 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
-2026-02-12 19:10:55,975 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-11 14:06:55.594984+00:00: KCN6 (202607) (BEARISH)
-2026-02-12 19:10:55,988 - trading_bot.reconciliation - INFO - Exit time adjusted for KCN6 (202607): default Thu 17:06 UTC → actual Thu 16:00 UTC (weekly close policy)
-2026-02-12 19:10:56,181 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:10:56,558 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
-2026-02-12 19:10:56,559 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCN6 (202607)
-2026-02-12 19:10:56,566 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:10:56,943 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on KCN6 (202607)
-2026-02-12 19:10:56,951 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:10:57,327 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCN6 (202607)
-2026-02-12 19:10:57,333 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:10:57,706 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCN6 (202607)
-2026-02-12 19:10:57,707 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 288.80 -> Exit 295.15 (2.20% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -6.3500
-2026-02-12 19:11:06,395 - trading_bot.trade_journal - INFO - Trade journal entry created: KCN6 (202607) LOSS ($-6.35)
-2026-02-12 19:11:06,395 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
-2026-02-12 19:11:06,496 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-11 14:09:19.179541+00:00: KCU6 (202609) (BEARISH)
-2026-02-12 19:11:06,517 - trading_bot.reconciliation - INFO - Exit time adjusted for KCU6 (202609): default Thu 17:09 UTC → actual Thu 16:00 UTC (weekly close policy)
-2026-02-12 19:11:06,710 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:07,130 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
-2026-02-12 19:11:07,130 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCU6 (202609)
-2026-02-12 19:11:07,135 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:07,514 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
-2026-02-12 19:11:07,515 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on KCU6 (202609)
-2026-02-12 19:11:07,521 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:07,912 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCU6 (202609)
-2026-02-12 19:11:07,917 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:08,302 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
-2026-02-12 19:11:08,302 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCU6 (202609)
-2026-02-12 19:11:08,308 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:08,692 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCU6 (202609)
-2026-02-12 19:11:08,692 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 284.05 -> Exit 291.00 (2.45% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -6.9500
-2026-02-12 19:11:17,689 - trading_bot.trade_journal - INFO - Trade journal entry created: KCU6 (202609) LOSS ($-6.95)
-2026-02-12 19:11:17,689 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
-2026-02-12 19:11:17,790 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-11 14:10:18.931411+00:00: KCZ6 (202612) (BEARISH)
-2026-02-12 19:11:17,802 - trading_bot.reconciliation - INFO - Exit time adjusted for KCZ6 (202612): default Thu 17:10 UTC → actual Thu 16:00 UTC (weekly close policy)
-2026-02-12 19:11:17,994 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:18,363 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
-2026-02-12 19:11:18,364 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCZ6 (202612)
-2026-02-12 19:11:18,370 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:18,747 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on KCZ6 (202612)
-2026-02-12 19:11:18,752 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:19,169 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
-2026-02-12 19:11:19,170 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCZ6 (202612)
-2026-02-12 19:11:19,176 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:19,583 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCZ6 (202612)
-2026-02-12 19:11:19,583 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 279.45 -> Exit 286.75 (2.61% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -7.3000
-2026-02-12 19:11:29,502 - trading_bot.trade_journal - INFO - Trade journal entry created: KCZ6 (202612) LOSS ($-7.30)
-2026-02-12 19:11:29,502 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
-2026-02-12 19:11:29,603 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-11 14:11:07.798293+00:00: KCH7 (202703) (BEARISH)
-2026-02-12 19:11:29,617 - trading_bot.reconciliation - INFO - Exit time adjusted for KCH7 (202703): default Thu 17:11 UTC → actual Thu 16:00 UTC (weekly close policy)
-2026-02-12 19:11:29,808 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:30,187 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
-2026-02-12 19:11:30,188 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCH7 (202703)
-2026-02-12 19:11:30,194 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:30,607 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
-2026-02-12 19:11:30,608 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on KCH7 (202703)
-2026-02-12 19:11:30,613 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:30,985 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCH7 (202703)
-2026-02-12 19:11:30,992 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:31,387 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCH7 (202703)
-2026-02-12 19:11:31,387 - trading_bot.reconciliation - INFO - Reconciled KCH7 (202703): Entry 275.80 -> Exit 283.60 (2.83% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -7.8000
-2026-02-12 19:11:41,075 - trading_bot.trade_journal - INFO - Trade journal entry created: KCH7 (202703) LOSS ($-7.80)
-2026-02-12 19:11:41,076 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
-2026-02-12 19:11:41,177 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-11 16:49:05.268103+00:00: KCK6 (202605) (BEARISH)
-2026-02-12 19:11:41,189 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Thu 19:49 UTC → actual Thu 16:00 UTC (weekly close policy)
-2026-02-12 19:11:41,374 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:41,767 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
-2026-02-12 19:11:41,767 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCK6 (202605)
-2026-02-12 19:11:41,773 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:42,210 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
-2026-02-12 19:11:42,210 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on KCK6 (202605)
-2026-02-12 19:11:42,215 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:42,611 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCK6 (202605)
-2026-02-12 19:11:42,616 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:42,994 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCK6 (202605)
-2026-02-12 19:11:43,001 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:43,398 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCK6 (202605)
-2026-02-12 19:11:43,399 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 290.15 -> Exit 299.05 (3.07% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -8.9000
-2026-02-12 19:11:52,343 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) LOSS ($-8.90)
-2026-02-12 19:11:52,345 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
-2026-02-12 19:11:52,446 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-11 16:54:47.902800+00:00: KCU6 (202609) (BEARISH)
-2026-02-12 19:11:52,463 - trading_bot.reconciliation - INFO - Exit time adjusted for KCU6 (202609): default Thu 19:54 UTC → actual Thu 16:00 UTC (weekly close policy)
-2026-02-12 19:11:52,650 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:53,019 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
-2026-02-12 19:11:53,020 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCU6 (202609)
-2026-02-12 19:11:53,027 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:53,415 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
-2026-02-12 19:11:53,415 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on KCU6 (202609)
-2026-02-12 19:11:53,420 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:53,820 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on KCU6 (202609)
-2026-02-12 19:11:53,826 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:54,224 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
-2026-02-12 19:11:54,224 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCU6 (202609)
-2026-02-12 19:11:54,229 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:11:54,638 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCU6 (202609)
-2026-02-12 19:11:54,639 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 281.90 -> Exit 291.00 (3.23% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -9.1000
-2026-02-12 19:12:03,999 - trading_bot.trade_journal - INFO - Trade journal entry created: KCU6 (202609) LOSS ($-9.10)
-2026-02-12 19:12:03,999 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
-2026-02-12 19:12:04,100 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-11 16:55:46.865495+00:00: KCZ6 (202612) (BEARISH)
-2026-02-12 19:12:04,115 - trading_bot.reconciliation - INFO - Exit time adjusted for KCZ6 (202612): default Thu 19:55 UTC → actual Thu 16:00 UTC (weekly close policy)
-2026-02-12 19:12:04,306 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:12:04,812 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCZ6 (202612)
-2026-02-12 19:12:04,818 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:12:05,230 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
-2026-02-12 19:12:05,230 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on KCZ6 (202612)
-2026-02-12 19:12:05,236 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:12:05,627 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCZ6 (202612)
-2026-02-12 19:12:05,634 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:12:05,993 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCZ6 (202612)
-2026-02-12 19:12:05,993 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 277.75 -> Exit 286.75 (3.24% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -9.0000
-2026-02-12 19:12:13,453 - trading_bot.trade_journal - INFO - Trade journal entry created: KCZ6 (202612) LOSS ($-9.00)
-2026-02-12 19:12:13,453 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
-2026-02-12 19:12:13,554 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-11 16:58:06.784829+00:00: KCH7 (202703) (BEARISH)
-2026-02-12 19:12:13,566 - trading_bot.reconciliation - INFO - Exit time adjusted for KCH7 (202703): default Thu 19:58 UTC → actual Thu 16:00 UTC (weekly close policy)
-2026-02-12 19:12:13,761 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:12:14,160 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
-2026-02-12 19:12:14,160 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCH7 (202703)
-2026-02-12 19:12:14,165 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:12:14,560 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
-2026-02-12 19:12:14,560 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on KCH7 (202703)
-2026-02-12 19:12:14,565 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:12:14,982 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on KCH7 (202703)
-2026-02-12 19:12:14,990 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:12:15,456 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCH7 (202703)
-2026-02-12 19:12:15,456 - trading_bot.reconciliation - INFO - Reconciled KCH7 (202703): Entry 274.85 -> Exit 283.60 (3.18% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -8.7500
-2026-02-12 19:12:24,959 - trading_bot.trade_journal - INFO - Trade journal entry created: KCH7 (202703) LOSS ($-8.75)
-2026-02-12 19:12:24,960 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
-2026-02-12 19:12:25,061 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-11 16:59:24.377991+00:00: KCN6 (202607) (BEARISH)
-2026-02-12 19:12:25,075 - trading_bot.reconciliation - INFO - Exit time adjusted for KCN6 (202607): default Thu 19:59 UTC → actual Thu 16:00 UTC (weekly close policy)
-2026-02-12 19:12:25,267 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:12:25,652 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
-2026-02-12 19:12:25,652 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCN6 (202607)
-2026-02-12 19:12:25,659 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:12:26,050 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
-2026-02-12 19:12:26,050 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on KCN6 (202607)
-2026-02-12 19:12:26,056 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:12:26,477 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCN6 (202607)
-2026-02-12 19:12:26,478 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 286.30 -> Exit 295.15 (3.09% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -8.8500
-2026-02-12 19:12:35,132 - trading_bot.trade_journal - INFO - Trade journal entry created: KCN6 (202607) LOSS ($-8.85)
-2026-02-12 19:12:35,132 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
-2026-02-12 19:12:35,251 - trading_bot.reconciliation - INFO - Successfully updated council_history.csv with reconciliation results.
-2026-02-12 19:12:35,264 - trading_bot.brier_scoring - INFO - Found 198 pending predictions to check
-2026-02-12 19:12:35,265 - trading_bot.brier_scoring - INFO - Council decisions: 39 total, 20 reconciled
-2026-02-12 19:12:35,267 - trading_bot.brier_scoring - INFO - Built cycle_id lookup with 20 entries
-2026-02-12 19:12:37,392 - trading_bot.brier_scoring - INFO - Brier Resolution stats: cycle_id=90, nearest=0, orphaned=0, no_council_window=0
-2026-02-12 19:12:37,396 - trading_bot.brier_scoring - INFO - Resolved 90 predictions (cycle_id: 90, nearest: 0, orphans: 0)
-2026-02-12 19:12:37,404 - trading_bot.brier_scoring - INFO - Appended 90 resolved predictions to data/agent_accuracy.csv
-2026-02-12 19:12:37,404 - trading_bot.brier_scoring - INFO - Reset BrierScoreTracker singleton — will reload on next access
-2026-02-12 19:12:37,404 - trading_bot.reconciliation - INFO - Feedback Loop (Legacy): Resolved 90 agent predictions
-2026-02-12 19:12:37,410 - trading_bot.enhanced_brier - INFO - Loaded 333 predictions from ./data/enhanced_brier.json
-2026-02-12 19:12:37,423 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=KC-9247d4ca): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,423 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=KC-9247d4ca): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,423 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=KC-9247d4ca): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,423 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=KC-9247d4ca): BULLISH vs BULLISH, Brier=0.0200
-2026-02-12 19:12:37,423 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=KC-9247d4ca): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=KC-9247d4ca): NEUTRAL vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=KC-9247d4ca): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=KC-9247d4ca): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=KC-9247d4ca): BEARISH vs BULLISH, Brier=0.4117
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=KC-2b35f553): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=KC-2b35f553): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=KC-2b35f553): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=KC-2b35f553): BULLISH vs BULLISH, Brier=0.0200
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=KC-2b35f553): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=KC-2b35f553): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=KC-2b35f553): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=KC-2b35f553): BEARISH vs BULLISH, Brier=0.5717
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=KC-2b35f553): BEARISH vs BULLISH, Brier=0.4117
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=KC-d1712117): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=KC-d1712117): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=KC-d1712117): BULLISH vs BULLISH, Brier=0.0200
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=KC-d1712117): BULLISH vs BULLISH, Brier=0.0200
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=KC-d1712117): BULLISH vs BULLISH, Brier=0.0612
-2026-02-12 19:12:37,424 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=KC-d1712117): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=KC-d1712117): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=KC-d1712117): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=KC-d1712117): BEARISH vs BULLISH, Brier=0.4117
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=KC-624aa87f): BEARISH vs BULLISH, Brier=0.5717
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=KC-624aa87f): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=KC-624aa87f): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=KC-624aa87f): BULLISH vs BULLISH, Brier=0.0200
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=KC-624aa87f): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=KC-624aa87f): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=KC-624aa87f): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=KC-624aa87f): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=KC-624aa87f): BEARISH vs BULLISH, Brier=0.4117
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=KC-49631e25): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=KC-49631e25): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=KC-49631e25): BULLISH vs BULLISH, Brier=0.0612
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=KC-49631e25): BULLISH vs BULLISH, Brier=0.0200
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=KC-49631e25): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=KC-49631e25): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,425 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=KC-49631e25): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=KC-49631e25): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=KC-49631e25): BEARISH vs BULLISH, Brier=0.5717
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=KC-20c0a2dd): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=KC-20c0a2dd): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=KC-20c0a2dd): BULLISH vs BULLISH, Brier=0.0612
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=KC-20c0a2dd): BULLISH vs BULLISH, Brier=0.0200
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=KC-20c0a2dd): BULLISH vs BULLISH, Brier=0.0612
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=KC-20c0a2dd): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=KC-20c0a2dd): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=KC-20c0a2dd): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=KC-20c0a2dd): BEARISH vs BULLISH, Brier=0.4117
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=KC-db39769f): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=KC-db39769f): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=KC-db39769f): BULLISH vs BULLISH, Brier=0.0612
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=KC-db39769f): BULLISH vs BULLISH, Brier=0.0200
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=KC-db39769f): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=KC-db39769f): NEUTRAL vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=KC-db39769f): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,426 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=KC-db39769f): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=KC-db39769f): BEARISH vs BULLISH, Brier=0.4117
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=KC-25a36977): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=KC-25a36977): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=KC-25a36977): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=KC-25a36977): BULLISH vs BULLISH, Brier=0.0200
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=KC-25a36977): BULLISH vs BULLISH, Brier=0.0200
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=KC-25a36977): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=KC-25a36977): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=KC-25a36977): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=KC-25a36977): BEARISH vs BULLISH, Brier=0.2679
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=KC-4c4106f1): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=KC-4c4106f1): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=KC-4c4106f1): BULLISH vs BULLISH, Brier=0.0612
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=KC-4c4106f1): BULLISH vs BULLISH, Brier=0.0200
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=KC-4c4106f1): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=KC-4c4106f1): NEUTRAL vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=KC-4c4106f1): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,427 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=KC-4c4106f1): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,428 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=KC-4c4106f1): BEARISH vs BULLISH, Brier=0.4117
-2026-02-12 19:12:37,428 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=KC-10695926): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,428 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=KC-10695926): BEARISH vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,428 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=KC-10695926): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,428 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=KC-10695926): BULLISH vs BULLISH, Brier=0.0200
-2026-02-12 19:12:37,428 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=KC-10695926): BULLISH vs BULLISH, Brier=0.0200
-2026-02-12 19:12:37,428 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=KC-10695926): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,428 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=KC-10695926): NEUTRAL vs BULLISH, Brier=0.3779
-2026-02-12 19:12:37,428 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=KC-10695926): BEARISH vs BULLISH, Brier=0.4867
-2026-02-12 19:12:37,428 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=KC-10695926): BEARISH vs BULLISH, Brier=0.4117
-2026-02-12 19:12:37,457 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 90 resolved from CSV, 0 created from CSV, 0 resolved from council_history
-2026-02-12 19:12:37,457 - trading_bot.enhanced_brier - WARNING - No matching prediction found for agronomist (cycle=KC-9247d4ca)
-2026-02-12 19:12:37,458 - trading_bot.enhanced_brier - WARNING - No matching prediction found for macro (cycle=KC-9247d4ca)
-2026-02-12 19:12:37,459 - trading_bot.enhanced_brier - WARNING - No matching prediction found for geopolitical (cycle=KC-9247d4ca)
-2026-02-12 19:12:37,459 - trading_bot.enhanced_brier - WARNING - No matching prediction found for supply_chain (cycle=KC-9247d4ca)
-2026-02-12 19:12:37,460 - trading_bot.enhanced_brier - WARNING - No matching prediction found for inventory (cycle=KC-9247d4ca)
-2026-02-12 19:12:37,460 - trading_bot.enhanced_brier - WARNING - No matching prediction found for sentiment (cycle=KC-9247d4ca)
-2026-02-12 19:12:37,461 - trading_bot.enhanced_brier - WARNING - No matching prediction found for technical (cycle=KC-9247d4ca)
-2026-02-12 19:12:37,462 - trading_bot.enhanced_brier - WARNING - No matching prediction found for volatility (cycle=KC-9247d4ca)
-2026-02-12 19:12:37,462 - trading_bot.enhanced_brier - WARNING - No matching prediction found for master_decision (cycle=KC-9247d4ca)
-2026-02-12 19:12:37,463 - trading_bot.enhanced_brier - WARNING - No matching prediction found for agronomist (cycle=KC-2b35f553)
-2026-02-12 19:12:37,463 - trading_bot.enhanced_brier - WARNING - No matching prediction found for macro (cycle=KC-2b35f553)
-2026-02-12 19:12:37,464 - trading_bot.enhanced_brier - WARNING - No matching prediction found for geopolitical (cycle=KC-2b35f553)
-2026-02-12 19:12:37,464 - trading_bot.enhanced_brier - WARNING - No matching prediction found for supply_chain (cycle=KC-2b35f553)
-2026-02-12 19:12:37,465 - trading_bot.enhanced_brier - WARNING - No matching prediction found for inventory (cycle=KC-2b35f553)
-2026-02-12 19:12:37,465 - trading_bot.enhanced_brier - WARNING - No matching prediction found for sentiment (cycle=KC-2b35f553)
-2026-02-12 19:12:37,466 - trading_bot.enhanced_brier - WARNING - No matching prediction found for technical (cycle=KC-2b35f553)
-2026-02-12 19:12:37,467 - trading_bot.enhanced_brier - WARNING - No matching prediction found for volatility (cycle=KC-2b35f553)
-2026-02-12 19:12:37,467 - trading_bot.enhanced_brier - WARNING - No matching prediction found for master_decision (cycle=KC-2b35f553)
-2026-02-12 19:12:37,468 - trading_bot.enhanced_brier - WARNING - No matching prediction found for agronomist (cycle=KC-d1712117)
-2026-02-12 19:12:37,468 - trading_bot.enhanced_brier - WARNING - No matching prediction found for macro (cycle=KC-d1712117)
-2026-02-12 19:12:37,469 - trading_bot.enhanced_brier - WARNING - No matching prediction found for geopolitical (cycle=KC-d1712117)
-2026-02-12 19:12:37,469 - trading_bot.enhanced_brier - WARNING - No matching prediction found for supply_chain (cycle=KC-d1712117)
-2026-02-12 19:12:37,470 - trading_bot.enhanced_brier - WARNING - No matching prediction found for inventory (cycle=KC-d1712117)
-2026-02-12 19:12:37,470 - trading_bot.enhanced_brier - WARNING - No matching prediction found for sentiment (cycle=KC-d1712117)
-2026-02-12 19:12:37,471 - trading_bot.enhanced_brier - WARNING - No matching prediction found for technical (cycle=KC-d1712117)
-2026-02-12 19:12:37,472 - trading_bot.enhanced_brier - WARNING - No matching prediction found for volatility (cycle=KC-d1712117)
-2026-02-12 19:12:37,472 - trading_bot.enhanced_brier - WARNING - No matching prediction found for master_decision (cycle=KC-d1712117)
-2026-02-12 19:12:37,473 - trading_bot.enhanced_brier - WARNING - No matching prediction found for agronomist (cycle=KC-624aa87f)
-2026-02-12 19:12:37,473 - trading_bot.enhanced_brier - WARNING - No matching prediction found for macro (cycle=KC-624aa87f)
-2026-02-12 19:12:37,474 - trading_bot.enhanced_brier - WARNING - No matching prediction found for geopolitical (cycle=KC-624aa87f)
-2026-02-12 19:12:37,474 - trading_bot.enhanced_brier - WARNING - No matching prediction found for supply_chain (cycle=KC-624aa87f)
-2026-02-12 19:12:37,475 - trading_bot.enhanced_brier - WARNING - No matching prediction found for inventory (cycle=KC-624aa87f)
-2026-02-12 19:12:37,475 - trading_bot.enhanced_brier - WARNING - No matching prediction found for sentiment (cycle=KC-624aa87f)
-2026-02-12 19:12:37,476 - trading_bot.enhanced_brier - WARNING - No matching prediction found for technical (cycle=KC-624aa87f)
-2026-02-12 19:12:37,477 - trading_bot.enhanced_brier - WARNING - No matching prediction found for volatility (cycle=KC-624aa87f)
-2026-02-12 19:12:37,477 - trading_bot.enhanced_brier - WARNING - No matching prediction found for master_decision (cycle=KC-624aa87f)
-2026-02-12 19:12:37,478 - trading_bot.enhanced_brier - WARNING - No matching prediction found for agronomist (cycle=KC-49631e25)
-2026-02-12 19:12:37,478 - trading_bot.enhanced_brier - WARNING - No matching prediction found for macro (cycle=KC-49631e25)
-2026-02-12 19:12:37,479 - trading_bot.enhanced_brier - WARNING - No matching prediction found for geopolitical (cycle=KC-49631e25)
-2026-02-12 19:12:37,479 - trading_bot.enhanced_brier - WARNING - No matching prediction found for supply_chain (cycle=KC-49631e25)
-2026-02-12 19:12:37,480 - trading_bot.enhanced_brier - WARNING - No matching prediction found for inventory (cycle=KC-49631e25)
-2026-02-12 19:12:37,481 - trading_bot.enhanced_brier - WARNING - No matching prediction found for sentiment (cycle=KC-49631e25)
-2026-02-12 19:12:37,482 - trading_bot.enhanced_brier - WARNING - No matching prediction found for technical (cycle=KC-49631e25)
-2026-02-12 19:12:37,482 - trading_bot.enhanced_brier - WARNING - No matching prediction found for volatility (cycle=KC-49631e25)
-2026-02-12 19:12:37,484 - trading_bot.enhanced_brier - WARNING - No matching prediction found for master_decision (cycle=KC-49631e25)
-2026-02-12 19:12:37,485 - trading_bot.enhanced_brier - WARNING - No matching prediction found for agronomist (cycle=KC-20c0a2dd)
-2026-02-12 19:12:37,486 - trading_bot.enhanced_brier - WARNING - No matching prediction found for macro (cycle=KC-20c0a2dd)
-2026-02-12 19:12:37,487 - trading_bot.enhanced_brier - WARNING - No matching prediction found for geopolitical (cycle=KC-20c0a2dd)
-2026-02-12 19:12:37,489 - trading_bot.enhanced_brier - WARNING - No matching prediction found for supply_chain (cycle=KC-20c0a2dd)
-2026-02-12 19:12:37,490 - trading_bot.enhanced_brier - WARNING - No matching prediction found for inventory (cycle=KC-20c0a2dd)
-2026-02-12 19:12:37,490 - trading_bot.enhanced_brier - WARNING - No matching prediction found for sentiment (cycle=KC-20c0a2dd)
-2026-02-12 19:12:37,491 - trading_bot.enhanced_brier - WARNING - No matching prediction found for technical (cycle=KC-20c0a2dd)
-2026-02-12 19:12:37,491 - trading_bot.enhanced_brier - WARNING - No matching prediction found for volatility (cycle=KC-20c0a2dd)
-2026-02-12 19:12:37,492 - trading_bot.enhanced_brier - WARNING - No matching prediction found for master_decision (cycle=KC-20c0a2dd)
-2026-02-12 19:12:37,492 - trading_bot.enhanced_brier - WARNING - No matching prediction found for agronomist (cycle=KC-db39769f)
-2026-02-12 19:12:37,493 - trading_bot.enhanced_brier - WARNING - No matching prediction found for macro (cycle=KC-db39769f)
-2026-02-12 19:12:37,493 - trading_bot.enhanced_brier - WARNING - No matching prediction found for geopolitical (cycle=KC-db39769f)
-2026-02-12 19:12:37,494 - trading_bot.enhanced_brier - WARNING - No matching prediction found for supply_chain (cycle=KC-db39769f)
-2026-02-12 19:12:37,494 - trading_bot.enhanced_brier - WARNING - No matching prediction found for inventory (cycle=KC-db39769f)
-2026-02-12 19:12:37,495 - trading_bot.enhanced_brier - WARNING - No matching prediction found for sentiment (cycle=KC-db39769f)
-2026-02-12 19:12:37,496 - trading_bot.enhanced_brier - WARNING - No matching prediction found for technical (cycle=KC-db39769f)
-2026-02-12 19:12:37,496 - trading_bot.enhanced_brier - WARNING - No matching prediction found for volatility (cycle=KC-db39769f)
-2026-02-12 19:12:37,497 - trading_bot.enhanced_brier - WARNING - No matching prediction found for master_decision (cycle=KC-db39769f)
-2026-02-12 19:12:37,497 - trading_bot.enhanced_brier - WARNING - No matching prediction found for agronomist (cycle=KC-25a36977)
-2026-02-12 19:12:37,498 - trading_bot.enhanced_brier - WARNING - No matching prediction found for macro (cycle=KC-25a36977)
-2026-02-12 19:12:37,498 - trading_bot.enhanced_brier - WARNING - No matching prediction found for geopolitical (cycle=KC-25a36977)
-2026-02-12 19:12:37,499 - trading_bot.enhanced_brier - WARNING - No matching prediction found for supply_chain (cycle=KC-25a36977)
-2026-02-12 19:12:37,500 - trading_bot.enhanced_brier - WARNING - No matching prediction found for inventory (cycle=KC-25a36977)
-2026-02-12 19:12:37,500 - trading_bot.enhanced_brier - WARNING - No matching prediction found for sentiment (cycle=KC-25a36977)
-2026-02-12 19:12:37,501 - trading_bot.enhanced_brier - WARNING - No matching prediction found for technical (cycle=KC-25a36977)
-2026-02-12 19:12:37,501 - trading_bot.enhanced_brier - WARNING - No matching prediction found for volatility (cycle=KC-25a36977)
-2026-02-12 19:12:37,502 - trading_bot.enhanced_brier - WARNING - No matching prediction found for master_decision (cycle=KC-25a36977)
-2026-02-12 19:12:37,502 - trading_bot.enhanced_brier - WARNING - No matching prediction found for agronomist (cycle=KC-4c4106f1)
-2026-02-12 19:12:37,503 - trading_bot.enhanced_brier - WARNING - No matching prediction found for macro (cycle=KC-4c4106f1)
-2026-02-12 19:12:37,504 - trading_bot.enhanced_brier - WARNING - No matching prediction found for geopolitical (cycle=KC-4c4106f1)
-2026-02-12 19:12:37,504 - trading_bot.enhanced_brier - WARNING - No matching prediction found for supply_chain (cycle=KC-4c4106f1)
-2026-02-12 19:12:37,505 - trading_bot.enhanced_brier - WARNING - No matching prediction found for inventory (cycle=KC-4c4106f1)
-2026-02-12 19:12:37,505 - trading_bot.enhanced_brier - WARNING - No matching prediction found for sentiment (cycle=KC-4c4106f1)
-2026-02-12 19:12:37,506 - trading_bot.enhanced_brier - WARNING - No matching prediction found for technical (cycle=KC-4c4106f1)
-2026-02-12 19:12:37,507 - trading_bot.enhanced_brier - WARNING - No matching prediction found for volatility (cycle=KC-4c4106f1)
-2026-02-12 19:12:37,507 - trading_bot.enhanced_brier - WARNING - No matching prediction found for master_decision (cycle=KC-4c4106f1)
-2026-02-12 19:12:37,508 - trading_bot.enhanced_brier - WARNING - No matching prediction found for agronomist (cycle=KC-10695926)
-2026-02-12 19:12:37,508 - trading_bot.enhanced_brier - WARNING - No matching prediction found for macro (cycle=KC-10695926)
-2026-02-12 19:12:37,509 - trading_bot.enhanced_brier - WARNING - No matching prediction found for geopolitical (cycle=KC-10695926)
-2026-02-12 19:12:37,509 - trading_bot.enhanced_brier - WARNING - No matching prediction found for supply_chain (cycle=KC-10695926)
-2026-02-12 19:12:37,510 - trading_bot.enhanced_brier - WARNING - No matching prediction found for inventory (cycle=KC-10695926)
-2026-02-12 19:12:37,511 - trading_bot.enhanced_brier - WARNING - No matching prediction found for sentiment (cycle=KC-10695926)
-2026-02-12 19:12:37,511 - trading_bot.enhanced_brier - WARNING - No matching prediction found for technical (cycle=KC-10695926)
-2026-02-12 19:12:37,512 - trading_bot.enhanced_brier - WARNING - No matching prediction found for volatility (cycle=KC-10695926)
-2026-02-12 19:12:37,512 - trading_bot.enhanced_brier - WARNING - No matching prediction found for master_decision (cycle=KC-10695926)
-2026-02-12 19:12:40,518 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
-2026-02-12 19:12:40,519 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
-2026-02-12 19:12:40,519 - PerformanceAnalyzer - INFO - No archived trade ledgers found.
-2026-02-12 19:12:40,519 - PerformanceAnalyzer - WARNING - No trade ledger data found to consolidate.
-2026-02-12 19:12:40,527 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
-2026-02-12 19:12:41,080 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $32,485.99
-2026-02-12 19:12:43,084 - PerformanceAnalyzer - INFO - Successfully fetched 0 execution(s) for today from IB.
-2026-02-12 19:12:46,088 - PerformanceAnalyzer - INFO - Loading daily_equity.csv for equity curve.
-2026-02-12 19:12:46,092 - PerformanceAnalyzer - INFO - Dynamic Starting Capital from History: $32,481.26
-2026-02-12 19:12:46,094 - PerformanceAnalyzer - INFO - Calculated LTD Total P&L (Equity): $4.73
-2026-02-12 19:12:46,096 - PerformanceAnalyzer - WARNING - Trade ledger is empty, skipping chart generation.
-2026-02-12 19:12:46,096 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
-2026-02-12 19:12:46,295 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-12 19:12:46,297 - root - INFO - 'trade_ledger.csv' not found, no action taken.
-2026-02-12 19:12:46,305 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-12 19:12:46,307 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=424
-2026-02-12 19:12:46,308 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
-2026-02-12 19:12:46,308 - Orchestrator - INFO - Running feedback loop health check...
-2026-02-12 19:12:46,318 - Orchestrator - INFO - Feedback Loop Health: 108/282 PENDING (0 orphans excluded, resolution rate: 62%)
-2026-02-12 19:12:46,319 - Orchestrator - INFO - Enhanced Brier Health: 9 agents tracked, 179 total resolved predictions
-2026-02-12 19:12:46,319 - Orchestrator - INFO - Feedback loop health check complete.
-2026-02-12 19:12:46,319 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
-2026-02-12 19:12:46,327 - Orchestrator - INFO - Next task 'run_brier_reconciliation' scheduled for 2026-02-12 19:20:00 UTC. Waiting for 0.12 hours.
-2026-02-12 19:20:00,000 - Orchestrator - INFO - --- Running scheduled task: run_brier_reconciliation ---
-2026-02-12 19:20:00,024 - trading_bot.brier_reconciliation - INFO - Found 108 pending predictions
-2026-02-12 19:20:00,026 - trading_bot.brier_reconciliation - INFO - Total council decisions: 39
-2026-02-12 19:20:00,029 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 20/39
-2026-02-12 19:20:00,064 - trading_bot.brier_reconciliation - INFO - 
+  - 09:00 ET: signal_early
+  - 11:00 ET: signal_euro
+  - 13:00 ET: signal_us_open
+  - 13:30 ET: audit_morning
+  - 15:00 ET: signal_peak
+  - 15:30 ET: close_stale_primary
+  - 15:45 ET: audit_post_close
+  - 16:30 ET: close_stale_fallback
+  - 17:00 ET: signal_settlement
+  - 17:15 ET: audit_pre_close
+  - 17:30 ET: emergency_hard_close
+  - 18:00 ET: eod_shutdown
+  - 18:20 ET: log_equity_snapshot
+  - 18:25 ET: reconcile_and_analyze
+  - 18:35 ET: brier_reconciliation
+  - 18:40 ET: sentinel_effectiveness
+2026-02-13 00:19:23,389 - Orchestrator - INFO - --- Recovery: Evaluating 19 missed tasks ---
+2026-02-13 00:19:23,390 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
+2026-02-13 00:19:23,390 - Orchestrator - INFO - ✅ ALREADY RAN: process_deferred_triggers completed earlier today (before restart). Skipping re-execution.
+2026-02-13 00:19:23,390 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 05:00 ET)
+2026-02-13 00:19:23,390 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-13 00:19:23,391 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 274...
+2026-02-13 00:19:23,515 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 274
+2026-02-13 00:19:23,552 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-13 00:19:23,659 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-13 00:19:23,837 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-13 00:19:23,837 - trading_bot.connection_pool - INFO - Disconnecting IB (cleanup)...
+2026-02-13 00:19:26,847 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-13 00:19:26,848 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: signal_early — market closed
+2026-02-13 00:19:26,848 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: signal_euro — market closed
+2026-02-13 00:19:26,849 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: signal_us_open — market closed
+2026-02-13 00:19:26,849 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_morning — market closed
+2026-02-13 00:19:26,849 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: signal_peak — market closed
+2026-02-13 00:19:26,849 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_primary — market closed
+2026-02-13 00:19:26,849 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_post_close — market closed
+2026-02-13 00:19:26,849 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_fallback — market closed
+2026-02-13 00:19:26,850 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: signal_settlement — market closed
+2026-02-13 00:19:26,850 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_pre_close — market closed
+2026-02-13 00:19:26,850 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
+2026-02-13 00:19:26,850 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: eod_shutdown — policy=NEVER (shutdown task)
+2026-02-13 00:19:26,850 - Orchestrator - INFO - ✅ ALREADY RAN: log_equity_snapshot completed earlier today (before restart). Skipping re-execution.
+2026-02-13 00:19:26,850 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
+2026-02-13 00:19:26,850 - Orchestrator - INFO - 🔄 RECOVERY: Running missed brier_reconciliation [run_brier_reconciliation] (was scheduled 18:35 ET)
+2026-02-13 00:19:26,884 - trading_bot.brier_reconciliation - INFO - Found 108 pending predictions
+2026-02-13 00:19:26,884 - trading_bot.brier_reconciliation - INFO - Total council decisions: 39
+2026-02-13 00:19:26,887 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 20/39
+2026-02-13 00:19:26,930 - trading_bot.brier_reconciliation - INFO - 
 ==================================================
-2026-02-12 19:20:00,064 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
-2026-02-12 19:20:00,064 - trading_bot.brier_reconciliation - INFO -   Total predictions:            282
-2026-02-12 19:20:00,064 - trading_bot.brier_reconciliation - INFO -   Resolved:                     174 (+0 new)
-2026-02-12 19:20:00,064 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      108 (potential: 108)
-2026-02-12 19:20:00,065 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        0 (+0 new)
-2026-02-12 19:20:00,065 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     62% (excl. orphans)
-2026-02-12 19:20:00,065 - trading_bot.brier_reconciliation - INFO - ==================================================
-2026-02-12 19:20:00,065 - trading_bot.brier_reconciliation - INFO - 
+2026-02-13 00:19:26,930 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
+2026-02-13 00:19:26,930 - trading_bot.brier_reconciliation - INFO -   Total predictions:            282
+2026-02-13 00:19:26,931 - trading_bot.brier_reconciliation - INFO -   Resolved:                     174 (+0 new)
+2026-02-13 00:19:26,931 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      108 (potential: 108)
+2026-02-13 00:19:26,931 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        0 (+0 new)
+2026-02-13 00:19:26,931 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     62% (excl. orphans)
+2026-02-13 00:19:26,931 - trading_bot.brier_reconciliation - INFO - ==================================================
+2026-02-13 00:19:26,931 - trading_bot.brier_reconciliation - INFO - 
 Running reconciliation could unlock up to 108 more predictions
-2026-02-12 19:20:00,065 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
-2026-02-12 19:20:00,109 - Orchestrator - INFO - Brier reconciliation: 90 predictions resolved today
-2026-02-12 19:20:00,113 - Orchestrator - INFO - Next task 'sentinel_effectiveness_check' scheduled for 2026-02-12 19:25:00 UTC. Waiting for 0.08 hours.
-2026-02-12 19:25:00,000 - Orchestrator - INFO - --- Running scheduled task: sentinel_effectiveness_check ---
-2026-02-12 19:25:00,005 - Orchestrator - INFO - --- Sentinel Effectiveness Check ---
-2026-02-12 19:25:00,089 - Orchestrator - INFO - Sentinel effectiveness OK: weekly change -0.3%, alerts: 10, sentinel trades: 1
-2026-02-12 19:25:00,094 - Orchestrator - INFO - Next task 'start_monitoring' scheduled for 2026-02-13 08:30:00 UTC. Waiting for 13.08 hours.
+2026-02-13 00:19:26,931 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-02-13 00:19:26,934 - trading_bot.enhanced_brier - INFO - Loaded 333 predictions from ./data/enhanced_brier.json
+2026-02-13 00:19:27,046 - Orchestrator - WARNING - Brier stall: 154 pending, 0 resolved today (streak: 1 days)
+2026-02-13 00:19:27,049 - Orchestrator - INFO - ✅ RECOVERY: brier_reconciliation completed
+2026-02-13 00:19:27,050 - Orchestrator - INFO - 🔄 RECOVERY: Running missed sentinel_effectiveness [sentinel_effectiveness_check] (was scheduled 18:40 ET)
+2026-02-13 00:19:27,050 - Orchestrator - INFO - --- Sentinel Effectiveness Check ---
+2026-02-13 00:19:27,331 - Orchestrator - INFO - Sentinel effectiveness OK: weekly change -0.3%, alerts: 10, sentinel trades: 1
+2026-02-13 00:19:27,334 - Orchestrator - INFO - ✅ RECOVERY: sentinel_effectiveness completed
+2026-02-13 00:19:27,334 - Orchestrator - INFO - System restarted with 19 missed tasks.
+✅ 3 recovered | ⏭️ 13 skipped | ✔️ 3 already ran
+2026-02-13 00:19:27,660 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-13 00:19:28,136 - Orchestrator - INFO - Running TopicDiscoveryAgent on startup...
+2026-02-13 00:19:28,191 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-13 00:19:40,105 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-13 00:19:40,109 - Orchestrator - INFO - Startup TopicDiscovery: 3 topics, No changes
+2026-02-13 00:19:40,110 - Orchestrator - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-13 08:30:00 UTC. Waiting for 8.17 hours.
+2026-02-13 00:19:40,111 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-13 00:19:40,461 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-13 00:19:45,306 - Orchestrator - INFO - WeatherSentinel: trigger detected (source=WeatherSentinel, severity=7)
+2026-02-13 00:19:45,308 - trading_bot.state_manager - INFO - Queued deferred trigger from WeatherSentinel
+2026-02-13 00:19:45,308 - Orchestrator - INFO - Deferred WeatherSentinel trigger for market open
+2026-02-13 00:19:46,615 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-13 00:19:50,424 - Orchestrator - INFO - PredictionMarketSentinel: trigger detected (source=PredictionMarketSentinel, severity=7)
+2026-02-13 00:19:50,426 - trading_bot.state_manager - INFO - Queued deferred trigger from PredictionMarketSentinel
+2026-02-13 00:19:50,426 - Orchestrator - INFO - Deferred PredictionMarketSentinel trigger for market open
+2026-02-13 00:19:55,953 - Orchestrator - INFO - MacroContagionSentinel: trigger detected (source=MacroContagionSentinel, severity=9)
+2026-02-13 00:19:55,957 - trading_bot.state_manager - INFO - Queued deferred trigger from MacroContagionSentinel
+2026-02-13 00:19:55,957 - Orchestrator - INFO - Deferred MacroContagionSentinel trigger for market open
+2026-02-13 00:23:56,151 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=False, trading_day=True
+2026-02-13 00:28:56,414 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_open=False, trading_day=True
+2026-02-13 00:33:56,649 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_open=False, trading_day=True
+2026-02-13 00:38:56,879 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_open=False, trading_day=True
+2026-02-13 00:43:57,149 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=25, market_open=False, trading_day=True
+2026-02-13 00:48:57,400 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=30, market_open=False, trading_day=True
+2026-02-13 00:53:58,572 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=35, market_open=False, trading_day=True
+2026-02-13 00:58:58,815 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=40, market_open=False, trading_day=True
+2026-02-13 01:03:59,047 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=45, market_open=False, trading_day=True
+2026-02-13 01:08:59,278 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=50, market_open=False, trading_day=True
+2026-02-13 01:13:59,533 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=55, market_open=False, trading_day=True
+2026-02-13 01:18:59,755 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=60, market_open=False, trading_day=True
+2026-02-13 01:24:00,941 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=65, market_open=False, trading_day=True
+2026-02-13 01:29:01,166 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=70, market_open=False, trading_day=True
+2026-02-13 01:34:01,399 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=75, market_open=False, trading_day=True
+2026-02-13 01:39:01,621 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=80, market_open=False, trading_day=True
+2026-02-13 01:44:01,891 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=85, market_open=False, trading_day=True
+2026-02-13 01:49:02,117 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=90, market_open=False, trading_day=True
+2026-02-13 01:54:03,770 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=95, market_open=False, trading_day=True
+2026-02-13 01:59:04,012 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=100, market_open=False, trading_day=True
+2026-02-13 02:04:04,252 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=105, market_open=False, trading_day=True
+2026-02-13 02:09:04,451 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=110, market_open=False, trading_day=True
+2026-02-13 02:14:04,638 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=115, market_open=False, trading_day=True
+2026-02-13 02:19:04,889 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=120, market_open=False, trading_day=True
+2026-02-13 02:24:06,875 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=125, market_open=False, trading_day=True
+2026-02-13 02:29:07,108 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=130, market_open=False, trading_day=True
+2026-02-13 02:34:07,317 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=135, market_open=False, trading_day=True
+2026-02-13 02:39:07,574 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=140, market_open=False, trading_day=True
+2026-02-13 02:44:07,860 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=145, market_open=False, trading_day=True
+2026-02-13 02:49:08,093 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=150, market_open=False, trading_day=True
+2026-02-13 02:54:09,535 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=155, market_open=False, trading_day=True
+2026-02-13 02:59:09,799 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=160, market_open=False, trading_day=True

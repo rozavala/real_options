@@ -554,7 +554,123 @@
     "daily_trading_cutoff_et": {
       "hour": 12,
       "minute": 15
-    }
+    },
+    "tasks": [
+      {
+        "id": "start_monitoring",
+        "time_et": "03:30",
+        "function": "start_monitoring",
+        "label": "Start Position Monitoring"
+      },
+      {
+        "id": "process_deferred_triggers",
+        "time_et": "03:31",
+        "function": "process_deferred_triggers",
+        "label": "Process Deferred Triggers"
+      },
+      {
+        "id": "cleanup_orphaned_theses",
+        "time_et": "05:00",
+        "function": "cleanup_orphaned_theses",
+        "label": "Daily Thesis Cleanup"
+      },
+      {
+        "id": "signal_early",
+        "time_et": "09:00",
+        "function": "guarded_generate_orders",
+        "label": "Signal: Early Session (04:00 ET)"
+      },
+      {
+        "id": "signal_euro",
+        "time_et": "11:00",
+        "function": "guarded_generate_orders",
+        "label": "Signal: EU Overlap (06:00 ET)"
+      },
+      {
+        "id": "signal_us_open",
+        "time_et": "13:00",
+        "function": "guarded_generate_orders",
+        "label": "Signal: US Open (08:00 ET)"
+      },
+      {
+        "id": "signal_peak",
+        "time_et": "15:00",
+        "function": "guarded_generate_orders",
+        "label": "Signal: Peak Liquidity (10:00 ET)"
+      },
+      {
+        "id": "signal_settlement",
+        "time_et": "17:00",
+        "function": "guarded_generate_orders",
+        "label": "Signal: Settlement (12:00 ET)"
+      },
+      {
+        "id": "audit_morning",
+        "time_et": "13:30",
+        "function": "run_position_audit_cycle",
+        "label": "Audit: Morning (08:30 ET)"
+      },
+      {
+        "id": "close_stale_primary",
+        "time_et": "15:30",
+        "function": "close_stale_positions",
+        "label": "Close Stale (Primary)"
+      },
+      {
+        "id": "audit_post_close",
+        "time_et": "15:45",
+        "function": "run_position_audit_cycle",
+        "label": "Audit: Post-Close (10:45 ET)"
+      },
+      {
+        "id": "close_stale_fallback",
+        "time_et": "16:30",
+        "function": "close_stale_positions_fallback",
+        "label": "Close Stale (Fallback)"
+      },
+      {
+        "id": "audit_pre_close",
+        "time_et": "17:15",
+        "function": "run_position_audit_cycle",
+        "label": "Audit: Pre-Close (12:15 ET)"
+      },
+      {
+        "id": "emergency_hard_close",
+        "time_et": "17:30",
+        "function": "emergency_hard_close",
+        "label": "Emergency Hard Close"
+      },
+      {
+        "id": "eod_shutdown",
+        "time_et": "18:00",
+        "function": "cancel_and_stop_monitoring",
+        "label": "End-of-Day Shutdown"
+      },
+      {
+        "id": "log_equity_snapshot",
+        "time_et": "18:20",
+        "function": "log_equity_snapshot",
+        "label": "Log Equity Snapshot"
+      },
+      {
+        "id": "reconcile_and_analyze",
+        "time_et": "18:25",
+        "function": "reconcile_and_analyze",
+        "label": "Reconcile & Analyze"
+      },
+      {
+        "id": "brier_reconciliation",
+        "time_et": "18:35",
+        "function": "run_brier_reconciliation",
+        "label": "Brier Reconciliation"
+      },
+      {
+        "id": "sentinel_effectiveness",
+        "time_et": "18:40",
+        "function": "sentinel_effectiveness_check",
+        "label": "Sentinel Effectiveness Check"
+      }
+    ]
   },
   "final_column_order": [
     "date",
