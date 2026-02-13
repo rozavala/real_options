@@ -2938,9 +2938,9 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         prediction_type=council_log_entry.get('prediction_type', 'DIRECTIONAL'),
                         strategy=council_log_entry.get('strategy_type', 'NONE'),
                         price=council_log_entry.get('entry_price'),
-                        sma_200=None,
+                        sma_200=market_data.get('sma_200'),
                         confidence=council_log_entry.get('master_confidence'),
-                        regime='UNKNOWN',
+                        regime=market_data.get('regime', 'UNKNOWN'),
                         trigger_type='EMERGENCY',
                     )
                 except Exception as e:
