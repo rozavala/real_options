@@ -190,3 +190,64 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-13 20:30:01,436 - OrderManager - INFO - Processing closure for Position ID ORPHAN_KCN6 with 1 legs.
 2026-02-13 20:30:01,539 - OrderManager - INFO - Constructed SINGLE order for Pos ID ORPHAN_KCN6: SELL 1.0 KCN6
 2026-02-13 20:30:01,672 - ib_insync.wrapper - ERROR - Error 200, reqId 4: No security definition has been found for the request, contract: Contract(secType='FUT', conId=646040490, symbol='KC', lastTradeDateOrContractMonth='20260721', multiplier='37500', exchange='SMART', currency='USD', localSymbol='KCN6', tradingClass='KC')
+2026-02-13 20:30:03,552 - OrderManager - WARNING - Limit price is NaN for KC
+2026-02-13 20:30:03,553 - OrderManager - WARNING - Invalid limit price for KC. Using Market Order.
+2026-02-13 20:30:03,557 - root - INFO - Assigned new unique OrderRef for tracking: 7cb2667d-ed17-4684-bad1-26eb6046a270
+2026-02-13 20:30:03,558 - root - INFO - Placing SELL order for KCN6...
+2026-02-13 20:30:03,560 - root - INFO - Successfully placed order ID 5 for KCN6.
+2026-02-13 20:30:03,560 - OrderManager - INFO - Placed close order 5 for Pos ID ORPHAN_KCN6. Waiting for fill...
+2026-02-13 20:30:03,561 - ib_insync.wrapper - ERROR - Error 300, reqId 4: Can't find EId with tickerId:4
+2026-02-13 20:30:03,682 - ib_insync.wrapper - ERROR - Error 200, reqId 5: No security definition has been found for the request
+2026-02-13 20:30:03,683 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Contract(secType='FUT', conId=646040490, symbol='KC', lastTradeDateOrContractMonth='20260721', multiplier='37500', exchange='SMART', currency='USD', localSymbol='KCN6', tradingClass='KC'), order=MarketOrder(orderId=5, clientId=30, action='SELL', totalQuantity=1.0, orderRef='7cb2667d-ed17-4684-bad1-26eb6046a270', outsideRth=True), orderStatus=OrderStatus(orderId=5, status='Cancelled', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 2, 13, 20, 30, 3, 558854, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 2, 13, 20, 30, 3, 682508, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 200, reqId 5: No security definition has been found for the request', errorCode=200)], advancedError='')
+2026-02-13 20:30:04,563 - OrderManager - WARNING - Order 5 cancelled/inactive before fill
+2026-02-13 20:30:04,564 - OrderManager - WARNING - Order 5 for Pos ID ORPHAN_KCN6 timed out or failed. Status: Cancelled
+2026-02-13 20:30:05,566 - OrderManager - INFO - --- Post-Close Verification: Re-checking IB positions ---
+2026-02-13 20:30:10,577 - OrderManager - CRITICAL - ⚠️ POST-CLOSE VERIFICATION FAILED: 1 positions still open: ['KCN6']
+2026-02-13 20:30:10,584 - OrderManager - WARNING - RETRY: Sent SELL 1.0 KCN6
+2026-02-13 20:30:17,592 - OrderManager - CRITICAL - 🚨 CRITICAL: 1 positions STILL OPEN after weekly close + retry!
+Symbols: KCN6
+MANUAL INTERVENTION REQUIRED
+2026-02-13 20:30:17,992 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-13 20:30:18,319 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-13 20:30:18,321 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-13 20:30:21,339 - Orchestrator - INFO - Next task 'audit_post_close' (Audit: Post-Close (10:45 ET)) scheduled for 2026-02-13 20:45:00 UTC. Waiting for 0.24 hours.
+2026-02-13 20:32:41,783 - Orchestrator - INFO - 2026-02-13 20:32:41,761 - root - INFO - Running Iron Condor thesis validation check...
+2026-02-13 20:32:42,172 - Orchestrator - INFO - 2026-02-13 20:32:42,172 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-13 20:32:42,559 - Orchestrator - INFO - 2026-02-13 20:32:42,558 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-13 20:33:36,901 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=140, market_open=False, trading_day=True
+2026-02-13 20:38:37,173 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=145, market_open=False, trading_day=True
+2026-02-13 20:43:37,367 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=150, market_open=False, trading_day=True
+2026-02-13 20:45:00,024 - Orchestrator - INFO - --- Running scheduled task: audit_post_close [run_position_audit_cycle] ---
+2026-02-13 20:45:00,029 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-13 20:45:00,032 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 59 [REMOTE/PAPER]...
+2026-02-13 20:45:00,223 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 59
+2026-02-13 20:45:00,229 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-13 20:45:00,426 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-13 20:45:00,522 - Orchestrator - WARNING - State sync discrepancy: IBKR has 1 positions but ledger shows 0 open
+2026-02-13 20:45:00,522 - Orchestrator - WARNING - State sync discrepancy: IBKR has 1 positions but TMS has 0 active theses
+2026-02-13 20:45:00,725 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-13 20:45:00,729 - Orchestrator - WARNING - Proceeding with audit despite 2 discrepancies. IBKR positions are source of truth.
+2026-02-13 20:45:00,747 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-13 20:45:00,968 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-13 20:45:00,971 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'xai', 'openai', 'anthropic']
+2026-02-13 20:45:00,973 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'xai', 'openai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-13 20:45:00,989 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-13 20:45:01,009 - trading_bot.enhanced_brier - INFO - Loaded 601 predictions from ./data/enhanced_brier.json
+2026-02-13 20:45:01,122 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-13 20:45:01,127 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-13 20:45:01,128 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-13 20:45:01,128 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-13 20:45:01,128 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-13 20:45:01,145 - Orchestrator - WARNING - Position audit: 1 legs could not be mapped to a thesis: ['KCN6']
+2026-02-13 20:45:01,145 - Orchestrator - INFO - Grouped 1 IB positions into 0 thesis groups
+2026-02-13 20:45:01,146 - Orchestrator - INFO - Refreshing active futures cache
+2026-02-13 20:45:01,147 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-13 20:45:01,152 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-13 20:45:01,272 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-13 20:45:01,272 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-13 20:45:01,277 - Orchestrator - INFO - Position audit complete. All theses remain valid.
+2026-02-13 20:45:01,278 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
+2026-02-13 20:45:04,289 - Orchestrator - INFO - Next task 'close_stale_fallback' (Close Stale (Fallback)) scheduled for 2026-02-13 21:30:00 UTC. Waiting for 0.75 hours.
+2026-02-13 20:48:37,490 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=155, market_open=False, trading_day=True
+2026-02-13 20:53:37,682 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=160, market_open=False, trading_day=True
+2026-02-13 20:58:37,920 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=165, market_open=False, trading_day=True
