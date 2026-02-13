@@ -1151,3 +1151,18 @@ Running reconciliation could unlock up to 108 more predictions
 2026-02-13 17:40:15,001 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1035, market_open=True, trading_day=True
 2026-02-13 17:45:17,033 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1040, market_open=True, trading_day=True
 2026-02-13 17:50:19,019 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1045, market_open=True, trading_day=True
+2026-02-13 17:55:21,158 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1050, market_open=True, trading_day=True
+2026-02-13 18:00:00,006 - Orchestrator - INFO - --- Running scheduled task: signal_us_open [guarded_generate_orders] ---
+2026-02-13 18:00:00,151 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-13 18:00:00,151 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['anthropic', 'xai', 'openai', 'gemini']
+2026-02-13 18:00:00,151 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['anthropic', 'xai', 'openai', 'gemini'], 'diversity_score': 1.0}
+2026-02-13 18:00:00,161 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-13 18:00:00,166 - trading_bot.enhanced_brier - INFO - Loaded 360 predictions from ./data/enhanced_brier.json
+2026-02-13 18:00:00,231 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 1 created from CSV, 0 resolved from council_history
+2026-02-13 18:00:00,231 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-13 18:00:00,232 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-13 18:00:00,232 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-13 18:00:00,232 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-13 18:00:00,232 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-13 18:00:00,233 - Orchestrator - INFO - Order generation BLOCKED: Past daily cutoff (12:15 ET)
+2026-02-13 18:00:00,242 - Orchestrator - INFO - Next task 'audit_morning' (Audit: Morning (08:30 ET)) scheduled for 2026-02-13 18:30:00 UTC. Waiting for 0.50 hours.
