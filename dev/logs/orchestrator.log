@@ -90,3 +90,35 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-13 18:22:40,786 - Orchestrator - INFO - 2026-02-13 18:22:40,785 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
 2026-02-13 18:22:49,894 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_open=True, trading_day=True
 2026-02-13 18:27:51,819 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_open=True, trading_day=True
+2026-02-13 18:29:52,650 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 48% of average (Sev: 5)
+2026-02-13 18:29:52,655 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-13 18:30:00,003 - Orchestrator - INFO - --- Running scheduled task: audit_morning [run_position_audit_cycle] ---
+2026-02-13 18:30:00,008 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-13 18:30:00,009 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 55 [REMOTE/PAPER]...
+2026-02-13 18:30:00,514 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 55
+2026-02-13 18:30:00,518 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-13 18:30:00,534 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-13 18:30:00,556 - Orchestrator - WARNING - State sync discrepancy: IBKR has 1 positions but ledger shows 0 open
+2026-02-13 18:30:00,556 - Orchestrator - WARNING - State sync discrepancy: IBKR has 1 positions but TMS has 0 active theses
+2026-02-13 18:30:00,911 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-13 18:30:00,913 - Orchestrator - WARNING - Proceeding with audit despite 2 discrepancies. IBKR positions are source of truth.
+2026-02-13 18:30:00,927 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-13 18:30:01,033 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-13 18:30:01,033 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'xai', 'openai', 'anthropic']
+2026-02-13 18:30:01,033 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'xai', 'openai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-13 18:30:01,040 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-13 18:30:01,046 - trading_bot.enhanced_brier - INFO - Loaded 601 predictions from ./data/enhanced_brier.json
+2026-02-13 18:30:01,120 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-13 18:30:01,120 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-13 18:30:01,120 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-13 18:30:01,120 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-13 18:30:01,120 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-13 18:30:01,131 - Orchestrator - WARNING - Position audit: 1 legs could not be mapped to a thesis: ['KCN6']
+2026-02-13 18:30:01,131 - Orchestrator - INFO - Grouped 1 IB positions into 0 thesis groups
+2026-02-13 18:30:01,131 - Orchestrator - INFO - Refreshing active futures cache
+2026-02-13 18:30:01,131 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-13 18:30:01,133 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-13 18:30:01,212 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-13 18:30:01,213 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-13 18:30:01,215 - Orchestrator - INFO - Position audit complete. All theses remain valid.
+2026-02-13 18:30:01,216 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
