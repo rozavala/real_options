@@ -156,7 +156,7 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
             # UX Improvement: Copy ID Button
             label = f"🆔 {position_id[:8]}"
             if hasattr(st, "popover"):
-                with st.popover(label, use_container_width=True):
+                with st.popover(label, width="stretch"):
                     st.code(position_id, language=None)
                     st.caption("Full Position ID")
             else:
@@ -639,7 +639,7 @@ if task_data['available']:
 
         import pandas as pd
         df = pd.DataFrame(table_rows)
-        st.dataframe(df, hide_index=True, use_container_width=True)
+        st.dataframe(df, hide_index=True, width="stretch")
 
         # Environment badge
         env = task_data['schedule_env']
@@ -712,7 +712,7 @@ if task_data['available']:
 
         import pandas as pd
         df = pd.DataFrame(table_rows)
-        st.dataframe(df, hide_index=True, use_container_width=True)
+        st.dataframe(df, hide_index=True, width="stretch")
 
         # Environment badge
         env = task_data['schedule_env']
