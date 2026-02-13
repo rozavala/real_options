@@ -513,9 +513,9 @@ class HeterogeneousRouter:
             fallbacks = []
 
             # Note: We hardcode the Pro models here to ensure quality
-            anth_pro = get_model('anthropic', 'pro', 'claude-3-opus-20240229')
-            oai_pro = get_model('openai', 'pro', 'gpt-4o')
-            gem_pro = get_model('gemini', 'pro', 'gemini-1.5-pro-preview-0409')
+            anth_pro = get_model('anthropic', 'pro', 'claude-opus-4-6')
+            oai_pro = get_model('openai', 'pro', 'gpt-5.2')
+            gem_pro = get_model('gemini', 'pro', 'gemini-3-pro-preview')
 
             # CRITICAL: NEVER fallback to Flash models for Tier 3
             if primary_provider == ModelProvider.OPENAI:
@@ -535,9 +535,9 @@ class HeterogeneousRouter:
 
         # TIER 2: DEEP ANALYSTS
         elif role in [AgentRole.AGRONOMIST, AgentRole.MACRO_ANALYST, AgentRole.SUPPLY_CHAIN_ANALYST, AgentRole.GEOPOLITICAL_ANALYST, AgentRole.INVENTORY_ANALYST, AgentRole.VOLATILITY_ANALYST]:
-            gem_pro = get_model('gemini', 'pro', 'gemini-1.5-pro-preview-0409')
-            oai_pro = get_model('openai', 'pro', 'gpt-4o')
-            anth_pro = get_model('anthropic', 'pro', 'claude-3-opus-20240229')
+            gem_pro = get_model('gemini', 'pro', 'gemini-3-pro-preview')
+            oai_pro = get_model('openai', 'pro', 'gpt-5.2')
+            anth_pro = get_model('anthropic', 'pro', 'claude-opus-4-6')
 
             if primary_provider == ModelProvider.GEMINI:
                 return [
@@ -553,9 +553,9 @@ class HeterogeneousRouter:
         # TIER 1: SENTINELS (Speed Required)
         else:
             # If Gemini Flash fails, try OpenAI Mini/Flash, then xAI.
-            oai_flash = get_model('openai', 'flash', 'gpt-4o-mini')
-            xai_flash = get_model('xai', 'flash', 'grok-beta')
-            gem_flash = get_model('gemini', 'flash', 'gemini-1.5-flash-preview-0514')
+            oai_flash = get_model('openai', 'flash', 'gpt-5.2')
+            xai_flash = get_model('xai', 'flash', 'grok-4-fast-non-reasoning')
+            gem_flash = get_model('gemini', 'flash', 'gemini-3-flash-preview')
 
             fallbacks = []
             if primary_provider != ModelProvider.OPENAI:
