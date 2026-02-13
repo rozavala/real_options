@@ -165,6 +165,43 @@ async def test_prod_client_id_range_for_localhost():
 
         call_kwargs = mock_ib.connectAsync.call_args
         client_id = call_kwargs.kwargs.get('clientId') or call_kwargs[1].get('clientId')
-        # Default prod base is 200 + random(0,9)
-        assert 200 <= client_id <= 209, \
+        # Default prod base is 280 + random(0,9)
+        assert 280 <= client_id <= 289, \
             f"Unknown purpose on localhost should use prod default range, got {client_id}"
+
+
+def test_no_prod_client_id_range_overlaps():
+    """Verify no overlapping ranges in CLIENT_ID_BASE (prod)."""
+    jitter = 9  # prod uses random(0, 9)
+    entries = list(IBConnectionPool.CLIENT_ID_BASE.items())
+    for i, (name_a, base_a) in enumerate(entries):
+        range_a = range(base_a, base_a + jitter + 1)
+        for name_b, base_b in entries[i + 1:]:
+            range_b = range(base_b, base_b + jitter + 1)
+            overlap = set(range_a) & set(range_b)
+            assert not overlap, (
+                f"PROD overlap: {name_a}({base_a}-{base_a+jitter}) "
+                f"and {name_b}({base_b}-{base_b+jitter}) share IDs {overlap}"
+            )
+
+
+def test_no_dev_client_id_range_overlaps():
+    """Verify no overlapping ranges in DEV_CLIENT_ID_BASE."""
+    entries = list(DEV_CLIENT_ID_BASE.items())
+    for i, (name_a, base_a) in enumerate(entries):
+        range_a = range(base_a, base_a + DEV_CLIENT_ID_JITTER + 1)
+        for name_b, base_b in entries[i + 1:]:
+            range_b = range(base_b, base_b + DEV_CLIENT_ID_JITTER + 1)
+            overlap = set(range_a) & set(range_b)
+            assert not overlap, (
+                f"DEV overlap: {name_a}({base_a}-{base_a+DEV_CLIENT_ID_JITTER}) "
+                f"and {name_b}({base_b}-{base_b+DEV_CLIENT_ID_JITTER}) share IDs {overlap}"
+            )
+
+
+def test_drawdown_check_has_explicit_entry():
+    """drawdown_check must have explicit entries in both ID maps."""
+    assert "drawdown_check" in IBConnectionPool.CLIENT_ID_BASE, \
+        "drawdown_check missing from CLIENT_ID_BASE"
+    assert "drawdown_check" in DEV_CLIENT_ID_BASE, \
+        "drawdown_check missing from DEV_CLIENT_ID_BASE"
