@@ -66,6 +66,29 @@ class ComplianceDecision:
         except json.JSONDecodeError:
             pass
 
+        # Layer 1.5: Extract first JSON object (handles concatenated JSON)
+        try:
+            brace_idx = text.find('{')
+            if brace_idx >= 0:
+                decoder = json.JSONDecoder()
+                result, _ = decoder.raw_decode(text, brace_idx)
+                if isinstance(result, dict) and 'approved' in result:
+                    approved_val = result.get('approved', False)
+                    if not isinstance(approved_val, bool):
+                        logger.warning(
+                            f"Compliance 'approved' is {type(approved_val).__name__} "
+                            f"({approved_val!r}), not bool — fail-closed"
+                        )
+                        approved_val = False
+                    return cls(
+                        approved=approved_val,
+                        reason=str(result.get('reason', 'No reason provided')),
+                        raw_response=response[:500],
+                        parse_method="json_first_object"
+                    )
+        except (json.JSONDecodeError, ValueError):
+            pass
+
         # Layer 2: Extract JSON from prose (strict pattern)
         pattern = r'\{\s*"approved"\s*:\s*(true|false)\s*,\s*"reason"\s*:\s*"([^"]+)"\s*\}'
         match = re.search(pattern, text, re.IGNORECASE)
