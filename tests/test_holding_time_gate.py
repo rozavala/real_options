@@ -56,14 +56,16 @@ def test_wednesday():
 
 
 def test_gate_blocks_friday():
-    """Integration: generate_and_execute_orders should skip on Friday."""
+    """Integration: generate_and_execute_orders should skip on Friday when too close to close."""
     from unittest.mock import AsyncMock
     from trading_bot.order_manager import generate_and_execute_orders
 
+    # On weekly-close days, friday_min_holding_hours (default 2.0) applies.
+    # With only 1.0h remaining, 1.0 < 2.0 → blocked.
     config = {'risk_management': {'min_holding_hours': 6.0}}
 
     with patch('trading_bot.order_manager.is_market_open', return_value=True), \
-         patch('trading_bot.order_manager.hours_until_weekly_close', return_value=2.0), \
+         patch('trading_bot.order_manager.hours_until_weekly_close', return_value=1.0), \
          patch('trading_bot.order_manager.generate_and_queue_orders') as mock_gen, \
          patch('trading_bot.order_manager.send_pushover_notification'):
 
