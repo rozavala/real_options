@@ -936,3 +936,206 @@ Running reconciliation could unlock up to 108 more predictions
 2026-02-13 16:22:11,050 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
 2026-02-13 16:24:15,169 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=960, market_open=True, trading_day=True
 2026-02-13 16:29:18,168 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=965, market_open=True, trading_day=True
+2026-02-13 16:32:19,502 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-13 16:32:19,505 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-13 16:32:19,505 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-13 16:32:19,576 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-13 16:32:19,576 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-13 16:32:19,576 - Orchestrator - INFO - Refreshed contract cache: KCK6
+2026-02-13 16:34:20,166 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=970, market_open=True, trading_day=True
+2026-02-13 16:39:22,281 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=975, market_open=True, trading_day=True
+2026-02-13 16:39:22,501 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 49% of average (Sev: 5)
+2026-02-13 16:39:22,507 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-13 16:44:24,375 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=980, market_open=True, trading_day=True
+2026-02-13 16:49:27,163 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=985, market_open=True, trading_day=True
+2026-02-13 16:53:54,701 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=6)
+2026-02-13 16:53:54,721 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
+2026-02-13 16:53:54,722 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by XSentimentSentinel: UNUSUAL X ACTIVITY SPIKE (16 posts) (Cycle: KC-4a43184c)
+2026-02-13 16:53:55,018 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-13 16:53:55,029 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-13 16:53:55,180 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-13 16:53:55,180 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['anthropic', 'xai', 'openai', 'gemini']
+2026-02-13 16:53:55,180 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['anthropic', 'xai', 'openai', 'gemini'], 'diversity_score': 1.0}
+2026-02-13 16:53:55,185 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-13 16:53:55,191 - trading_bot.enhanced_brier - INFO - Loaded 353 predictions from ./data/enhanced_brier.json
+2026-02-13 16:53:55,232 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-13 16:53:55,233 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-13 16:53:55,233 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-13 16:53:55,233 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-13 16:53:55,233 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-13 16:53:55,233 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-13 16:53:55,235 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-13 16:53:55,235 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-13 16:53:55,301 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-13 16:53:55,302 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-13 16:53:55,302 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-13 16:53:59,416 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-13 16:53:59,891 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=297.60, sma_200=333.14975, regime=RANGE_BOUND, vol_5d=0.0115
+2026-02-13 16:53:59,891 - Orchestrator - INFO - Emergency market context: price=297.6, regime=RANGE_BOUND
+2026-02-13 16:53:59,891 - trading_bot.agents - INFO - Running Specialized Cycle triggered by XSentimentSentinel...
+2026-02-13 16:53:59,892 - trading_bot.agents - INFO - Routing to sentiment (Reason: Matched: XSentimentSentinel/spike)
+2026-02-13 16:53:59,892 - trading_bot.agents - INFO - Waking up sentiment...
+2026-02-13 16:54:00,304 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-13 16:54:00,304 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-13 16:54:42,115 - trading_bot.agents - WARNING - [sentiment] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 9 bullish vs 2 bearish evidence words']
+2026-02-13 16:54:42,115 - trading_bot.agents - WARNING - [sentiment] Validation issues: ['Direction-evidence mismatch: BEARISH call but 9 bullish vs 2 bearish evidence words']
+2026-02-13 16:54:42,115 - trading_bot.agents - INFO - [sentiment] Confidence clamped: 0.40 → 0.30 (adjustment: 0.30)
+2026-02-13 16:54:48,319 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-13 16:54:48,321 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.5 \u00d7 reliability=1.0 = 0.16", "macro": "domain=1.5 \u00d7 reliability=1.0 = 1.17", "geopolitical": "domain=1.5 \u00d7 reliability=1.0 = 0.16", "supply_chain": "domain=1.5 \u00d7 reliability=1.0 = 0.16", "inventory": "domain=1.5 \u00d7 reliability=1.0 = 0.16", "sentiment": "domain=1.5 \u00d7 reliability=1.0 = 1.50", "technical": "domain=2.2 \u00d7 reliability=1.0 = 0.24", "volatility": "domain=1.0 \u00d7 reliability=1.0 = 0.83"}
+2026-02-13 16:54:48,321 - trading_bot.weighted_voting - INFO - Weighted Vote: BULLISH (score=0.263, dominant=macro)
+2026-02-13 16:54:48,322 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 0.1,
+    "age_hours": 24.0,
+    "final_weight": 0.16,
+    "contribution": -0.125
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 0.78,
+    "age_hours": 3.2,
+    "final_weight": 1.17,
+    "contribution": 0.764
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 0.1,
+    "age_hours": 24.0,
+    "final_weight": 0.16,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 0.1,
+    "age_hours": 24.0,
+    "final_weight": 0.16,
+    "contribution": 0.125
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 0.1,
+    "age_hours": 24.0,
+    "final_weight": 0.16,
+    "contribution": -0.125
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "staleness_weight": 0.1,
+    "age_hours": 24.0,
+    "final_weight": 0.24,
+    "contribution": -0.153
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.0,
+    "staleness_weight": 0.79,
+    "age_hours": 3.1,
+    "final_weight": 0.83,
+    "contribution": 0.66
+  }
+]
+2026-02-13 16:54:54,720 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=990, market_open=True, trading_day=True
+2026-02-13 16:55:54,564 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Conab's forecast for a record Brazilian crop of 66.2 million
+2026-02-13 16:55:54,565 - trading_bot.agents - INFO - Emergency consensus divergent: Master=BEARISH, Vote=BULLISH → half size
+2026-02-13 16:55:54,565 - Orchestrator - INFO - Emergency Decision: BEARISH (0.35)
+2026-02-13 16:55:54,566 - Orchestrator - INFO - EMERGENCY STRATEGY: DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BEARISH)
+2026-02-13 16:55:54,566 - trading_bot.strategy_router - INFO - STRATEGY (emergency): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BEARISH)
+2026-02-13 16:55:54,566 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-13 16:55:54,568 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-13 16:55:54,572 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → BEARISH (DIRECTIONAL/DIRECTIONAL)
+2026-02-13 16:55:54,573 - Orchestrator - INFO - Emergency Cycle ACTION: BEARISH (DIRECTIONAL)
+2026-02-13 16:55:54,574 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-13 16:55:54,574 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['anthropic', 'xai', 'openai', 'gemini']
+2026-02-13 16:55:56,182 - Orchestrator - INFO - Decision is actionable. Generating order...
+2026-02-13 16:55:56,184 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.68) * Vol(1.0) * Heat(1.0) * Conviction(0.5) = 1 (raw: 0.338)
+2026-02-13 16:55:56,185 - root - INFO - Fetching option chain for future KCK6...
+2026-02-13 16:55:56,228 - root - INFO - --- Defining BEARISH Spread for KCK6 ---
+2026-02-13 16:55:56,229 - root - WARNING - No strikes near 297.6 meet min OI threshold (10). Using closest strike 297.5 anyway.
+2026-02-13 16:55:56,229 - root - INFO - Identified ATM strike: 297.5 for underlying price 297.6
+2026-02-13 16:55:56,229 - root - WARNING - No strikes near 293.2592 meet min OI threshold (10). Using closest strike 292.5 anyway.
+2026-02-13 16:55:56,229 - root - INFO - Defined Bear Put Spread legs: BUY 297.5P, SELL 292.5P
+2026-02-13 16:55:56,229 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-13 16:55:56,460 - root - INFO - Fetching market data for option: KOK6 P2.975
+2026-02-13 16:55:58,463 - root - INFO - Using IBKR Model Greeks IV: 35.42%
+2026-02-13 16:55:58,469 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-13 16:55:58,471 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-13 16:55:58,473 - root - INFO - Theoretical price calculated for P @ 297.5: {'price': np.float64(15.4636), 'delta': np.float64(-0.4538), 'gamma': np.float64(0.0096), 'vega': np.float64(46.1921), 'theta': np.float64(-0.1626)}
+2026-02-13 16:55:58,474 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 P2.975 @ 15.46
+2026-02-13 16:55:58,474 - root - INFO - Fetching market data for option: KOK6 P2.925
+2026-02-13 16:56:00,476 - root - INFO - Using IBKR Model Greeks IV: 35.45%
+2026-02-13 16:56:00,479 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-13 16:56:00,480 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-13 16:56:00,482 - root - INFO - Theoretical price calculated for P @ 292.5: {'price': np.float64(13.069), 'delta': np.float64(-0.4059), 'gamma': np.float64(0.0094), 'vega': np.float64(45.2043), 'theta': np.float64(-0.1578)}
+2026-02-13 16:56:00,482 - root - INFO -   -> Leg Theoretical Price (SELL): KOK6 P2.925 @ 13.07
+2026-02-13 16:56:00,482 - root - INFO - BUY Cap Calc: Theoretical=2.85, MarketAggressive=2.70 (aggression=0.75), Mid=2.47, Ask=2.84, Final Cap=2.80
+2026-02-13 16:56:00,482 - root - INFO - Net Theoretical: 2.39, Market Spread: 0.74
+2026-02-13 16:56:00,482 - root - INFO - Adaptive Strategy: Start @ 2.15, Cap/Floor @ 2.80
+2026-02-13 16:56:00,482 - root - INFO - Creating Limit Order for BUY 1 @ 2.15 (Adaptive Cap: 2.80).
+2026-02-13 16:56:00,482 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-02-13 16:56:00,482 - root - INFO - Assigned OrderRef: 90149afa-d4b2-4afb-88f0-f0c284c68586
+2026-02-13 16:56:00,483 - OrderManager - INFO - --- Placing and monitoring 1 orders ---
+2026-02-13 16:56:00,483 - OrderManager - INFO - Processing 1 orders SEQUENTIALLY
+2026-02-13 16:56:00,483 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-13 16:56:00,483 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['anthropic', 'xai', 'openai', 'gemini']
+2026-02-13 16:56:00,483 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
+2026-02-13 16:56:00,484 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 144...
+2026-02-13 16:56:00,596 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 144
+2026-02-13 16:56:00,605 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-13 16:56:00,605 - OrderManager - INFO - Using pooled IB connection for order placement.
+2026-02-13 16:56:00,606 - OrderManager - INFO - Sorted orders by expiration proximity.
+2026-02-13 16:56:00,798 - OrderManager - INFO - Current Available Funds: $32,480.06 | Equity: $32,485.99
+2026-02-13 16:56:00,799 - OrderManager - INFO - Processing order 1/1: 
+2026-02-13 16:56:02,859 - ib_insync.wrapper - ERROR - Error 162, reqId 18: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=743955652, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=297.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P2.975', tradingClass='KO')
+2026-02-13 16:56:02,867 - trading_bot.compliance - INFO - Resolved underlying future: KCK6 (conId: 634760204)
+2026-02-13 16:56:02,976 - trading_bot.compliance - INFO - Volume from IB (KCK6): 451.0
+2026-02-13 16:56:03,079 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $806.25 (premium paid)
+2026-02-13 16:56:09,259 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
+2026-02-13 16:56:09,389 - OrderManager - INFO - Approved KC-2LEG-BAG: Margin $818.00 | Remaining: $31,662.06
+2026-02-13 16:56:09,390 - OrderManager - INFO - [OFF] WOULD PLACE BUY 1 KC-2LEG-BAG @ 2.15
+2026-02-13 16:56:09,713 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-13 16:56:09,715 - OrderManager - INFO - Order placement complete. Releasing event handlers.
+2026-02-13 16:56:09,715 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-13 16:56:12,717 - Orchestrator - INFO - Emergency Order Placed (Qty: 1).
+2026-02-13 16:56:12,846 - Orchestrator - INFO - Post-cycle debounce: 1800s (actionable trade)
+2026-02-13 16:56:56,376 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 40% of average (Sev: 6)
+2026-02-13 16:56:56,380 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-13 16:59:56,905 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=995, market_open=True, trading_day=True
