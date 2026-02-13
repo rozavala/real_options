@@ -21,3 +21,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-12 - Progressive Enhancement for Copy Functionality
 **Learning:** `st.popover` (Streamlit v1.33+) provides a cleaner UX for secondary actions like "Copy ID" compared to `st.expander`.
 **Action:** Use `if hasattr(st, "popover"):` to conditionally render the modern UI, falling back to `st.expander` to ensure accessibility and functionality across different deployments.
+
+## 2026-02-14 - Broad Adoption of Safety Interlock for Utilities
+**Learning:** Consistency is key for safety-oriented UX. While some high-stakes actions in `Utilities.py` already had safety interlocks, applying the pattern to all long-running reconciliation and data-fetching tasks prevents accidental resource-heavy operations and provides a unified "deliberate action" feel for the operator.
+**Action:** Always audit operational pages for "naked" high-impact buttons and wrap them in the Safety Interlock pattern (checkbox + disabled state) to ensure intentional execution.

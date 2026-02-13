@@ -50,9 +50,11 @@ Collect and archive logs to the centralized logs branch for analysis and debuggi
 This captures orchestrator logs, dashboard logs, state files, and trading data.
 """)
 
+confirm_logs = st.checkbox("I confirm I want to collect and archive system logs", key="confirm_collect_logs")
 if st.button(
     "🚀 Collect Logs",
     type="primary",
+    disabled=not confirm_logs,
     help="Triggers the log collection script to archive system logs, state files, and trading data for analysis."
 ):
     with st.spinner(f"Collecting {current_env} logs..."):
@@ -362,8 +364,10 @@ with manual_cols2[1]:
     st.info("ℹ️ **Sync Equity Data**")
     st.caption("Forces fresh equity sync from IB Flex Query")
 
+    confirm_equity_sync = st.checkbox("I confirm I want to sync equity data from IB", key="confirm_equity_sync_manual")
     if st.button(
         "💰 Force Equity Sync",
+        disabled=not confirm_equity_sync,
         help="Manually triggers a fresh equity data pull from Interactive Brokers Flex Query reports."
     ):
         if not config:
@@ -557,7 +561,13 @@ This validates the entire architecture from sentinels to council to order execut
 validation_cols = st.columns([2, 1])
 
 with validation_cols[0]:
-    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch')
+    confirm_val = st.checkbox("I confirm I want to run comprehensive system validation", key="confirm_validation")
+    run_validation = st.button(
+        "🚀 Run System Validation",
+        type="primary",
+        width='stretch',
+        disabled=not confirm_val
+    )
 
 with validation_cols[1]:
     json_output = st.checkbox("JSON Output", value=False)
@@ -677,7 +687,8 @@ with recon_row1[0]:
     st.markdown("**📊 Council History**")
     st.caption("Backfill exit prices and P&L for closed positions")
 
-    if st.button("🔄 Reconcile Council History", width='stretch', key="recon_council"):
+    confirm_recon_council = st.checkbox("I confirm I want to reconcile council history", key="confirm_recon_council")
+    if st.button("🔄 Reconcile Council History", width='stretch', key="recon_council", disabled=not confirm_recon_council):
         with st.spinner("Reconciling council history with market outcomes..."):
             try:
                 result = subprocess.run(
@@ -711,7 +722,8 @@ with recon_row1[1]:
     st.markdown("**📝 Trade Ledger**")
     st.caption("Compare local ledger with IB Flex Query reports")
 
-    if st.button("🔄 Reconcile Trade Ledger", width='stretch', key="recon_trades"):
+    confirm_recon_trades = st.checkbox("I confirm I want to reconcile trade ledger", key="confirm_recon_trades")
+    if st.button("🔄 Reconcile Trade Ledger", width='stretch', key="recon_trades", disabled=not confirm_recon_trades):
         with st.spinner("Reconciling trade ledger with IB reports..."):
             try:
                 result = subprocess.run(
@@ -749,7 +761,8 @@ with recon_row2[0]:
     st.markdown("**📍 Active Positions**")
     st.caption("Verify current positions against IB")
 
-    if st.button("🔄 Reconcile Positions", width='stretch', key="recon_positions"):
+    confirm_recon_pos = st.checkbox("I confirm I want to reconcile active positions", key="confirm_recon_pos")
+    if st.button("🔄 Reconcile Positions", width='stretch', key="recon_positions", disabled=not confirm_recon_pos):
         with st.spinner("Reconciling active positions..."):
             try:
                 # Create a temporary script to run just the position reconciliation
@@ -798,7 +811,8 @@ with recon_row2[1]:
     st.markdown("**💰 Equity History (Subprocess)**")
     st.caption("Sync equity data from IBKR Flex Query (Legacy)")
 
-    if st.button("🔄 Sync Equity Data", width='stretch', key="recon_equity"):
+    confirm_sync_equity = st.checkbox("I confirm I want to sync equity data", key="confirm_sync_equity")
+    if st.button("🔄 Sync Equity Data", width='stretch', key="recon_equity", disabled=not confirm_sync_equity):
         with st.spinner("Syncing equity data from Flex Query..."):
             try:
                 result = subprocess.run(
@@ -845,7 +859,8 @@ with recon_row3[0]:
     except Exception:
         pass
 
-    if st.button("🔄 Reconcile Brier Scores", width='stretch', key="recon_brier"):
+    confirm_recon_brier = st.checkbox("I confirm I want to reconcile Brier scores", key="confirm_recon_brier")
+    if st.button("🔄 Reconcile Brier Scores", width='stretch', key="recon_brier", disabled=not confirm_recon_brier):
         with st.spinner("Running Brier reconciliation (council history + prediction grading)..."):
             try:
                 result = subprocess.run(
