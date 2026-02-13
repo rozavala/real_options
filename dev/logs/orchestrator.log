@@ -251,3 +251,32 @@ MANUAL INTERVENTION REQUIRED
 2026-02-13 20:48:37,490 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=155, market_open=False, trading_day=True
 2026-02-13 20:53:37,682 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=160, market_open=False, trading_day=True
 2026-02-13 20:58:37,920 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=165, market_open=False, trading_day=True
+2026-02-13 21:03:38,099 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=170, market_open=False, trading_day=True
+2026-02-13 21:08:38,400 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=175, market_open=False, trading_day=True
+2026-02-13 21:13:38,611 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=180, market_open=False, trading_day=True
+2026-02-13 21:18:38,879 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=185, market_open=False, trading_day=True
+2026-02-13 21:23:39,082 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=190, market_open=False, trading_day=True
+2026-02-13 21:28:39,240 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=195, market_open=False, trading_day=True
+2026-02-13 21:30:00,007 - Orchestrator - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-02-13 21:30:00,012 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-02-13 21:30:00,012 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-02-13 21:30:00,012 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-13 21:30:00,012 - OrderManager - INFO - --- Weekly Close Triggered: Friday Weekly Close. Closing ALL positions. ---
+2026-02-13 21:30:00,013 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 34 [REMOTE/PAPER]...
+2026-02-13 21:30:00,389 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 34
+2026-02-13 21:30:00,395 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-13 21:30:00,396 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-13 21:30:00,499 - OrderManager - INFO - Found 1 live position legs in the IB account.
+2026-02-13 21:30:00,522 - OrderManager - WARNING - WEEKLY CLOSE OVERRIDE: Closing orphaned position KCN6 (Qty: 1.0) — no ledger match found
+2026-02-13 21:30:00,522 - OrderManager - INFO - Processing closure for Position ID ORPHAN_KCN6 with 1 legs.
+2026-02-13 21:30:00,530 - OrderManager - INFO - Constructed SINGLE order for Pos ID ORPHAN_KCN6: SELL 1.0 KCN6
+2026-02-13 21:30:00,583 - ib_insync.wrapper - ERROR - Error 200, reqId 4: No security definition has been found for the request, contract: Contract(secType='FUT', conId=646040490, symbol='KC', lastTradeDateOrContractMonth='20260721', multiplier='37500', exchange='SMART', currency='USD', localSymbol='KCN6', tradingClass='KC')
+2026-02-13 21:30:02,533 - OrderManager - WARNING - Limit price is NaN for KC
+2026-02-13 21:30:02,534 - OrderManager - WARNING - Invalid limit price for KC. Using Market Order.
+2026-02-13 21:30:02,534 - root - INFO - Assigned new unique OrderRef for tracking: fa81a126-ad42-4bd5-b605-e4b27148ddc1
+2026-02-13 21:30:02,535 - root - INFO - Placing SELL order for KCN6...
+2026-02-13 21:30:02,535 - root - INFO - Successfully placed order ID 5 for KCN6.
+2026-02-13 21:30:02,536 - OrderManager - INFO - Placed close order 5 for Pos ID ORPHAN_KCN6. Waiting for fill...
+2026-02-13 21:30:02,537 - ib_insync.wrapper - ERROR - Error 300, reqId 4: Can't find EId with tickerId:4
+2026-02-13 21:30:02,591 - ib_insync.wrapper - ERROR - Error 200, reqId 5: No security definition has been found for the request
+2026-02-13 21:30:02,591 - ib_insync.wrapper - WARNING - Canceled order: Trade(contract=Contract(secType='FUT', conId=646040490, symbol='KC', lastTradeDateOrContractMonth='20260721', multiplier='37500', exchange='SMART', currency='USD', localSymbol='KCN6', tradingClass='KC'), order=MarketOrder(orderId=5, clientId=34, action='SELL', totalQuantity=1.0, orderRef='fa81a126-ad42-4bd5-b605-e4b27148ddc1', outsideRth=True), orderStatus=OrderStatus(orderId=5, status='Cancelled', filled=0.0, remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 2, 13, 21, 30, 2, 535588, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 2, 13, 21, 30, 2, 591342, tzinfo=datetime.timezone.utc), status='Cancelled', message='Error 200, reqId 5: No security definition has been found for the request', errorCode=200)], advancedError='')
