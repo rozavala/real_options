@@ -129,9 +129,11 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
 
     # Find matching position in portfolio
     unrealized_pnl = None
+    market_value = None
     for item in live_data.get('portfolio_items', []):
         if hasattr(item, 'contract') and position_id in str(item.contract.localSymbol):
             unrealized_pnl = getattr(item, 'unrealizedPNL', None)
+            market_value = getattr(item, 'marketValue', None)
             break
 
     # Extract stop price from triggers
@@ -180,10 +182,19 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
             )
 
         with cols[1]:
+            help_text = "From live IB data"
+            if market_value is not None:
+                help_text += f"\n\nMarket Value: ${market_value:,.2f}"
+
             if unrealized_pnl is not None:
-                st.metric("Unrealized P&L", f"${unrealized_pnl:+,.2f}")
+                st.metric(
+                    "Unrealized P&L",
+                    f"${unrealized_pnl:+,.2f}",
+                    f"{unrealized_pnl:+,.2f}",
+                    help=help_text
+                )
             else:
-                st.metric("Unrealized P&L", "N/A")
+                st.metric("Unrealized P&L", "N/A", help=help_text)
 
         with cols[2]:
             stop_help = "Calculated from invalidation triggers"
@@ -256,7 +267,7 @@ def render_portfolio_risk_summary(live_data: dict):
         if daily_pnl is None or (isinstance(daily_pnl, float) and math.isnan(daily_pnl)):
             st.metric("Daily P&L", "$0", delta="No data", delta_color="off")
         else:
-            st.metric("Daily P&L", f"${daily_pnl:+,.0f}")
+            st.metric("Daily P&L", f"${daily_pnl:+,.0f}", f"{daily_pnl:+,.0f}")
 
     with cols[3]:
         pos_count = len([p for p in live_data.get('open_positions', []) if p.position != 0])
