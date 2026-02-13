@@ -234,5 +234,66 @@ class TestPositionClosing(unittest.TestCase):
 
         asyncio.run(run_test())
 
+import pytest
+
+class TestHoldingTimeGate:
+    """Tests for the Friday-specific holding-time threshold in generate_and_execute_orders."""
+
+    @pytest.mark.asyncio
+    @patch('trading_bot.order_manager.is_market_open', return_value=True)
+    @patch('trading_bot.order_manager.hours_until_weekly_close', return_value=3.0)
+    @patch('trading_bot.order_manager.send_pushover_notification')
+    @patch('trading_bot.order_manager.generate_and_queue_orders', new_callable=AsyncMock)
+    async def test_friday_uses_relaxed_threshold(
+        self, mock_gen, mock_notify, mock_hours, mock_market
+    ):
+        """On weekly-close day with 3h remaining, friday threshold (2h) should allow."""
+        from trading_bot.order_manager import generate_and_execute_orders
+        config = {'risk_management': {
+            'min_holding_hours': 6.0,
+            'friday_min_holding_hours': 2.0,
+        }, 'notifications': {}}
+        await generate_and_execute_orders(config)
+        # Should NOT be skipped — generate_and_queue_orders should be called
+        mock_gen.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch('trading_bot.order_manager.is_market_open', return_value=True)
+    @patch('trading_bot.order_manager.hours_until_weekly_close', return_value=3.0)
+    @patch('trading_bot.order_manager.send_pushover_notification')
+    @patch('trading_bot.order_manager.generate_and_queue_orders', new_callable=AsyncMock)
+    async def test_normal_day_uses_standard_threshold(
+        self, mock_gen, mock_notify, mock_hours, mock_market
+    ):
+        """On normal day, hours_until_weekly_close returns inf, so standard threshold applies."""
+        mock_hours.return_value = float('inf')
+        from trading_bot.order_manager import generate_and_execute_orders
+        config = {'risk_management': {
+            'min_holding_hours': 6.0,
+            'friday_min_holding_hours': 2.0,
+        }, 'notifications': {}}
+        await generate_and_execute_orders(config)
+        # inf > 6.0 so should proceed
+        mock_gen.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch('trading_bot.order_manager.is_market_open', return_value=True)
+    @patch('trading_bot.order_manager.hours_until_weekly_close', return_value=1.0)
+    @patch('trading_bot.order_manager.send_pushover_notification')
+    @patch('trading_bot.order_manager.generate_and_queue_orders', new_callable=AsyncMock)
+    async def test_friday_too_late_blocks(
+        self, mock_gen, mock_notify, mock_hours, mock_market
+    ):
+        """On weekly-close day with only 1h remaining, even friday threshold blocks."""
+        from trading_bot.order_manager import generate_and_execute_orders
+        config = {'risk_management': {
+            'min_holding_hours': 6.0,
+            'friday_min_holding_hours': 2.0,
+        }, 'notifications': {}}
+        await generate_and_execute_orders(config)
+        # 1.0 < 2.0 so should be blocked
+        mock_gen.assert_not_called()
+
+
 if __name__ == '__main__':
     unittest.main()

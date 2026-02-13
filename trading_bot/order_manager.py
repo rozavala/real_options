@@ -207,10 +207,17 @@ async def generate_and_execute_orders(config: dict, connection_purpose: str = "o
         return
 
     # === HOLDING-TIME GATE: Skip if insufficient time before forced close ===
-    min_holding_hours = config.get('risk_management', {}).get(
-        'min_holding_hours', 6.0
-    )
     remaining_hours = hours_until_weekly_close(config)
+
+    # Use relaxed threshold on weekly-close days (Friday / pre-holiday Thursday)
+    if remaining_hours < float('inf'):
+        min_holding_hours = config.get('risk_management', {}).get(
+            'friday_min_holding_hours', 2.0
+        )
+    else:
+        min_holding_hours = config.get('risk_management', {}).get(
+            'min_holding_hours', 6.0
+        )
 
     if remaining_hours < min_holding_hours:
         logger.info(
