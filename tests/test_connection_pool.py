@@ -116,6 +116,33 @@ async def test_dev_client_id_known_purpose():
 
 
 @pytest.mark.asyncio
+async def test_remote_paper_tag_in_log(caplog):
+    """When config is remote + paper, log should show [REMOTE/PAPER]."""
+    purpose = "test_paper_tag"
+    config = {"connection": {"host": "100.64.0.1", "port": 4002, "paper": True}}
+
+    IBConnectionPool._instances.clear()
+    IBConnectionPool._locks.clear()
+    IBConnectionPool._reconnect_backoff.clear()
+    IBConnectionPool._consecutive_failures.clear()
+
+    with patch('trading_bot.connection_pool.IB') as MockIB, \
+         patch('trading_bot.connection_pool.asyncio.sleep', new_callable=AsyncMock):
+
+        mock_ib = MockIB.return_value
+        mock_ib.connectAsync = AsyncMock()
+        mock_ib.isConnected.return_value = False
+        mock_ib.disconnect = MagicMock()
+
+        import logging
+        with caplog.at_level(logging.INFO, logger="trading_bot.connection_pool"):
+            await IBConnectionPool.get_connection(purpose, config)
+
+        assert any("[REMOTE/PAPER]" in record.message for record in caplog.records), \
+            "Expected [REMOTE/PAPER] tag in log output"
+
+
+@pytest.mark.asyncio
 async def test_prod_client_id_range_for_localhost():
     """When config host is 127.0.0.1, client ID should be in production range (100-279)."""
     purpose = "test_prod_range"

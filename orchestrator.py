@@ -15,6 +15,8 @@ import os
 import json
 import hashlib
 from collections import deque
+from dataclasses import dataclass
+from typing import Callable
 import time as time_module
 from datetime import datetime, time, timedelta, timezone
 import pytz
@@ -1910,13 +1912,31 @@ async def cancel_and_stop_monitoring(config: dict):
     logger.info("--- End-of-day shutdown sequence complete ---")
 
 
-def get_next_task(now_utc: datetime, schedule: dict) -> tuple[datetime, callable]:
+def get_next_task(now_utc: datetime, task_schedule):
     """Calculates the next scheduled task.
 
-    The schedule keys are in NY Local Time.
+    The schedule times are in NY Local Time.
     We calculate the corresponding UTC run time dynamically to handle DST.
     Automatically skips weekends (Saturday/Sunday).
+
+    Accepts either:
+      - list[ScheduledTask] → returns (datetime, ScheduledTask)
+      - dict{time: callable} → returns (datetime, callable)  [legacy compat]
     """
+    # Normalize input: convert legacy dict to list of ScheduledTask
+    if isinstance(task_schedule, dict):
+        items = [
+            ScheduledTask(
+                id=func.__name__, time_et=rt, function=func,
+                func_name=func.__name__, label=func.__name__,
+            )
+            for rt, func in task_schedule.items()
+        ]
+        _return_callable = True
+    else:
+        items = task_schedule
+        _return_callable = False
+
     ny_tz = pytz.timezone('America/New_York')
     utc = pytz.UTC
     now_ny = now_utc.astimezone(ny_tz)
@@ -1934,18 +1954,12 @@ def get_next_task(now_utc: datetime, schedule: dict) -> tuple[datetime, callable
 
     next_run_utc, next_task = None, None
 
-    # Sort by time
-    sorted_times = sorted(schedule.keys(), key=lambda t: (t.hour, t.minute))
-
-    for rt in sorted_times:
+    for task in items:
+        rt = task.time_et
         # Construct run time in NY for today
         try:
             candidate_ny = now_ny.replace(hour=rt.hour, minute=rt.minute, second=0, microsecond=0)
         except ValueError:
-            # Handle rare edge cases like 2:30 AM on DST change day (doesn't exist)
-            # by normalizing via adding 0 timedelta (or just skip)
-            # But simple replace usually works or raises.
-            # Ideally we use localize, but replace is robust enough for standard trading hours.
             continue
 
         # If this time has passed in NY, move to tomorrow
@@ -1953,21 +1967,20 @@ def get_next_task(now_utc: datetime, schedule: dict) -> tuple[datetime, callable
              candidate_ny += timedelta(days=1)
 
         # === CHECK IF CANDIDATE IS ON WEEKEND ===
-        # After potentially moving to tomorrow, check if we landed on a weekend
         if candidate_ny.weekday() == 5:  # Saturday -> Move to Monday
             candidate_ny += timedelta(days=2)
-            # logger.info(f"Task scheduled for Saturday moved to Monday {candidate_ny.strftime('%Y-%m-%d')}")
         elif candidate_ny.weekday() == 6: # Sunday -> Move to Monday
             candidate_ny += timedelta(days=1)
-            # logger.info(f"Task scheduled for Sunday moved to Monday {candidate_ny.strftime('%Y-%m-%d')}")
 
         # Convert to UTC
         candidate_utc = candidate_ny.astimezone(utc)
 
         if next_run_utc is None or candidate_utc < next_run_utc:
             next_run_utc = candidate_utc
-            next_task = schedule[rt]
+            next_task = task
 
+    if _return_callable and next_task is not None:
+        return next_run_utc, next_task.function
     return next_run_utc, next_task
 
 
@@ -4049,28 +4062,132 @@ async def guarded_generate_orders(config: dict):
     except Exception as e:
         logger.warning(f"Failed to invalidate semantic cache post-scheduled: {e}")
 
-schedule = {
-    time(3, 30): start_monitoring,
-    time(3, 31): process_deferred_triggers,
-    time(5, 0): cleanup_orphaned_theses,          # v3.1: Daily thesis cleanup
-    time(8, 30): run_position_audit_cycle,
-    time(9, 0): guarded_generate_orders,           # Morning cycle
-    time(11, 0): close_stale_positions,          # PRIMARY: Peak liquidity
-    time(11, 15): run_position_audit_cycle,       # Post-close verification
-    time(11, 45): guarded_generate_orders,        # Settlement window cycle (ICE KC settles ~12:23 ET)
-    time(12, 45): close_stale_positions_fallback, # FALLBACK: Retry failures
-    time(13, 0): run_position_audit_cycle,        # Pre-close audit
-    time(13, 15): emergency_hard_close,           # SAFETY: Market orders
-    time(13, 45): cancel_and_stop_monitoring,
-    time(14, 5): log_equity_snapshot,
-    time(14, 10): reconcile_and_analyze,           # v5.4: Backfill council_history FIRST
-    time(14, 20): run_brier_reconciliation,        # v5.4: Score against freshly backfilled data
-    time(14, 25): sentinel_effectiveness_check,    # Meta-monitor
+@dataclass
+class ScheduledTask:
+    """A single scheduled task with a unique ID for per-instance tracking."""
+    id: str           # Unique task ID (e.g., "signal_early")
+    time_et: time     # NY local time
+    function: Callable
+    func_name: str    # function.__name__, for RECOVERY_POLICY lookup
+    label: str        # Human-readable label for dashboard/logs
+
+# Maps config.json function name strings to actual Python callables.
+FUNCTION_REGISTRY = {
+    'start_monitoring': start_monitoring,
+    'process_deferred_triggers': process_deferred_triggers,
+    'cleanup_orphaned_theses': cleanup_orphaned_theses,
+    'guarded_generate_orders': guarded_generate_orders,
+    'run_position_audit_cycle': run_position_audit_cycle,
+    'close_stale_positions': close_stale_positions,
+    'close_stale_positions_fallback': close_stale_positions_fallback,
+    'emergency_hard_close': emergency_hard_close,
+    'cancel_and_stop_monitoring': cancel_and_stop_monitoring,
+    'log_equity_snapshot': log_equity_snapshot,
+    'reconcile_and_analyze': reconcile_and_analyze,
+    'run_brier_reconciliation': run_brier_reconciliation,
+    'sentinel_effectiveness_check': sentinel_effectiveness_check,
 }
 
-def apply_schedule_offset(original_schedule: dict, offset_minutes: int) -> dict:
-    new_schedule = {}
+
+def _build_default_schedule() -> list:
+    """Backward-compatible default schedule (19 tasks) as list[ScheduledTask]."""
+    defaults = [
+        ("start_monitoring",          time(3, 30),  start_monitoring,              "Start Position Monitoring"),
+        ("process_deferred_triggers", time(3, 31),  process_deferred_triggers,     "Process Deferred Triggers"),
+        ("cleanup_orphaned_theses",   time(5, 0),   cleanup_orphaned_theses,       "Daily Thesis Cleanup"),
+        ("signal_early",              time(9, 0),   guarded_generate_orders,       "Signal: Early Session (04:00 ET)"),
+        ("signal_euro",               time(11, 0),  guarded_generate_orders,       "Signal: EU Overlap (06:00 ET)"),
+        ("signal_us_open",            time(13, 0),  guarded_generate_orders,       "Signal: US Open (08:00 ET)"),
+        ("signal_peak",               time(15, 0),  guarded_generate_orders,       "Signal: Peak Liquidity (10:00 ET)"),
+        ("signal_settlement",         time(17, 0),  guarded_generate_orders,       "Signal: Settlement (12:00 ET)"),
+        ("audit_morning",             time(13, 30), run_position_audit_cycle,      "Audit: Morning (08:30 ET)"),
+        ("close_stale_primary",       time(15, 30), close_stale_positions,         "Close Stale (Primary)"),
+        ("audit_post_close",          time(15, 45), run_position_audit_cycle,      "Audit: Post-Close (10:45 ET)"),
+        ("close_stale_fallback",      time(16, 30), close_stale_positions_fallback,"Close Stale (Fallback)"),
+        ("audit_pre_close",           time(17, 15), run_position_audit_cycle,      "Audit: Pre-Close (12:15 ET)"),
+        ("emergency_hard_close",      time(17, 30), emergency_hard_close,          "Emergency Hard Close"),
+        ("eod_shutdown",              time(18, 0),  cancel_and_stop_monitoring,    "End-of-Day Shutdown"),
+        ("log_equity_snapshot",       time(18, 20), log_equity_snapshot,           "Log Equity Snapshot"),
+        ("reconcile_and_analyze",     time(18, 25), reconcile_and_analyze,         "Reconcile & Analyze"),
+        ("brier_reconciliation",      time(18, 35), run_brier_reconciliation,      "Brier Reconciliation"),
+        ("sentinel_effectiveness",    time(18, 40), sentinel_effectiveness_check,  "Sentinel Effectiveness Check"),
+    ]
+    return [
+        ScheduledTask(id=tid, time_et=t, function=fn, func_name=fn.__name__, label=lbl)
+        for tid, t, fn, lbl in defaults
+    ]
+
+
+def build_schedule(config: dict) -> list:
+    """Build schedule from config.json tasks array, falling back to defaults.
+
+    Returns list[ScheduledTask] sorted by time_et.
+    Raises ValueError on duplicate task IDs.
+    Logs warning and skips unknown function names.
+    """
+    tasks_cfg = config.get('schedule', {}).get('tasks')
+    if not tasks_cfg:
+        logger.info("No schedule.tasks in config — using built-in default schedule")
+        return _build_default_schedule()
+
+    result = []
+    seen_ids = set()
+    for entry in tasks_cfg:
+        task_id = entry['id']
+        if task_id in seen_ids:
+            raise ValueError(f"Duplicate schedule task ID: '{task_id}'")
+        seen_ids.add(task_id)
+
+        func_name = entry['function']
+        func = FUNCTION_REGISTRY.get(func_name)
+        if func is None:
+            logger.warning(f"Unknown function '{func_name}' in schedule task '{task_id}' — skipping")
+            continue
+
+        h, m = map(int, entry['time_et'].split(':'))
+        result.append(ScheduledTask(
+            id=task_id,
+            time_et=time(h, m),
+            function=func,
+            func_name=func_name,
+            label=entry.get('label', task_id),
+        ))
+
+    result.sort(key=lambda t: (t.time_et.hour, t.time_et.minute))
+    logger.info(f"Built config-driven schedule: {len(result)} tasks")
+    return result
+
+
+# Backward-compat: module-level schedule dict (used by test_weekend_behavior.py
+# and sequential_main). Keys are time objects, values are callables — note that
+# dict keys collapse duplicate times (e.g., multiple guarded_generate_orders).
+schedule = {task.time_et: task.function for task in _build_default_schedule()}
+
+
+def apply_schedule_offset(original_schedule, offset_minutes: int):
+    """Shift schedule times by offset_minutes.
+
+    Accepts list[ScheduledTask] (preferred) or dict (legacy).
+    Returns same type as input.
+    """
     today = datetime.now(timezone.utc).date()
+
+    if isinstance(original_schedule, list):
+        result = []
+        for task in original_schedule:
+            dt_original = datetime.combine(today, task.time_et)
+            dt_shifted = dt_original + timedelta(minutes=offset_minutes)
+            result.append(ScheduledTask(
+                id=task.id,
+                time_et=dt_shifted.time(),
+                function=task.function,
+                func_name=task.func_name,
+                label=task.label,
+            ))
+        return result
+
+    # Legacy dict path
+    new_schedule = {}
     for run_time, task_func in original_schedule.items():
         dt_original = datetime.combine(today, run_time)
         dt_shifted = dt_original + timedelta(minutes=offset_minutes)
@@ -4101,7 +4218,7 @@ RECOVERY_POLICY = {
     'process_deferred_triggers':      {'policy': 'MARKET_OPEN',   'idempotent': False},
     'cleanup_orphaned_theses':        {'policy': 'ALWAYS',        'idempotent': True},
     'run_position_audit_cycle':       {'policy': 'MARKET_OPEN',   'idempotent': True},
-    'guarded_generate_orders':        {'policy': 'BEFORE_CUTOFF', 'idempotent': False},  # Covers both 9:00 and 11:45 cycles
+    'guarded_generate_orders':        {'policy': 'BEFORE_CUTOFF', 'idempotent': False},  # 5 daily cycles (09:00-17:00 UTC)
     'close_stale_positions':          {'policy': 'MARKET_OPEN',   'idempotent': True},
     'close_stale_positions_fallback': {'policy': 'MARKET_OPEN',   'idempotent': True},
     'emergency_hard_close':           {'policy': 'MARKET_OPEN',   'idempotent': True},
@@ -4112,10 +4229,10 @@ RECOVERY_POLICY = {
     'sentinel_effectiveness_check':   {'policy': 'ALWAYS',        'idempotent': False},
 }
 
-# Startup validation: warn if schedule has tasks not covered by RECOVERY_POLICY
-_schedule_names = {func.__name__ for func in schedule.values()}
+# Startup validation: warn if default schedule has tasks not covered by RECOVERY_POLICY
+_schedule_func_names = {task.func_name for task in _build_default_schedule()}
 _policy_names = set(RECOVERY_POLICY.keys())
-_uncovered = _schedule_names - _policy_names
+_uncovered = _schedule_func_names - _policy_names
 if _uncovered:
     import logging as _log
     _log.getLogger(__name__).warning(
@@ -4132,8 +4249,9 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
     For non-idempotent tasks, checks the completion tracker to avoid
     re-executing tasks that already ran before a crash.
 
-    Deduplicates repeated functions (e.g., multiple run_position_audit_cycle
-    instances) — each unique function runs at most once during recovery.
+    Each unique task_id recovers independently — if 3 signal cycles were
+    missed, all 3 are evaluated (not deduplicated). RECOVERY_POLICY is
+    looked up by func_name (policy is about function behavior, not instance).
 
     IMPORTANT — Crash-during-execution edge case:
     If the orchestrator crashes AFTER a task sends an IB order but BEFORE
@@ -4144,7 +4262,7 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
     line of defense for this edge case.
 
     Args:
-        missed_tasks: List of (time, task_name, task_func) tuples
+        missed_tasks: List of ScheduledTask objects (or legacy (time, name, func) tuples)
         config: Application config dict
     """
     if not missed_tasks:
@@ -4165,36 +4283,50 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
     )
     market_open = is_market_open()
 
-    # Sort chronologically by time object (time objects are directly comparable)
-    sorted_missed = sorted(missed_tasks, key=lambda x: x[0])
+    # Normalize: support both ScheduledTask and legacy (time, name, func) tuples
+    normalized = []
+    for item in missed_tasks:
+        if isinstance(item, ScheduledTask):
+            normalized.append(item)
+        else:
+            # Legacy tuple: (time, task_name, task_func)
+            rt, name, func = item
+            normalized.append(ScheduledTask(
+                id=name, time_et=rt, function=func,
+                func_name=name, label=name,
+            ))
 
-    # Deduplicate: same function scheduled multiple times only runs once
-    seen_functions = set()
+    # Sort chronologically
+    sorted_missed = sorted(normalized, key=lambda t: (t.time_et.hour, t.time_et.minute))
+
+    # Deduplicate by task_id — each instance recovers independently
+    seen_ids = set()
     recovered = 0
     skipped = 0
     already_ran = 0
 
     logger.info(f"--- Recovery: Evaluating {len(sorted_missed)} missed tasks ---")
 
-    for run_time, task_name, task_func in sorted_missed:
-        if task_name in seen_functions:
+    for task in sorted_missed:
+        if task.id in seen_ids:
             logger.debug(
-                f"  ⏭️ {task_name} @ {run_time.strftime('%H:%M')} ET "
-                f"(duplicate, already recovered)"
+                f"  ⏭️ {task.id} @ {task.time_et.strftime('%H:%M')} ET "
+                f"(duplicate ID, already recovered)"
             )
             continue
-        seen_functions.add(task_name)
+        seen_ids.add(task.id)
 
+        # Look up policy by func_name (policy is about function behavior)
         policy_entry = RECOVERY_POLICY.get(
-            task_name, {'policy': 'MARKET_OPEN', 'idempotent': False}
+            task.func_name, {'policy': 'MARKET_OPEN', 'idempotent': False}
         )
         policy = policy_entry['policy']
         is_idempotent = policy_entry['idempotent']
 
         # --- Completion check for non-idempotent tasks ---
-        if not is_idempotent and has_task_completed_today(task_name):
+        if not is_idempotent and has_task_completed_today(task.id):
             logger.info(
-                f"✅ ALREADY RAN: {task_name} completed earlier today "
+                f"✅ ALREADY RAN: {task.id} completed earlier today "
                 f"(before restart). Skipping re-execution."
             )
             already_ran += 1
@@ -4223,21 +4355,21 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
 
         if should_run:
             logger.info(
-                f"🔄 RECOVERY: Running missed {task_name} "
-                f"(was scheduled {run_time.strftime('%H:%M')} ET)"
+                f"🔄 RECOVERY: Running missed {task.id} [{task.func_name}] "
+                f"(was scheduled {task.time_et.strftime('%H:%M')} ET)"
             )
             try:
-                await task_func(config)
-                record_task_completion(task_name)
-                logger.info(f"✅ RECOVERY: {task_name} completed")
+                await task.function(config)
+                record_task_completion(task.id)
+                logger.info(f"✅ RECOVERY: {task.id} completed")
                 recovered += 1
             except Exception as e:
                 logger.error(
-                    f"❌ RECOVERY: {task_name} failed: {e}\n"
+                    f"❌ RECOVERY: {task.id} failed: {e}\n"
                     f"{traceback.format_exc()}"
                 )
         else:
-            logger.info(f"⏭️ RECOVERY SKIP: {task_name} — {skip_reason}")
+            logger.info(f"⏭️ RECOVERY SKIP: {task.id} — {skip_reason}")
             skipped += 1
 
     total_evaluated = recovered + skipped + already_ran
@@ -4282,22 +4414,24 @@ async def main():
 
     # Remote Gateway indicator
     ib_host = config.get('connection', {}).get('host', '127.0.0.1')
+    is_paper = config.get('connection', {}).get('paper', False)
     if ib_host not in ('127.0.0.1', 'localhost', '::1'):
+        gw_label = "REMOTE/PAPER" if is_paper else "REMOTE"
         logger.warning("=" * 60)
-        logger.warning(f"  IB GATEWAY: REMOTE ({ib_host})")
+        logger.warning(f"  IB GATEWAY: {gw_label} ({ib_host})")
         logger.warning(f"  Client IDs: DEV range (10-79)")
         logger.warning(f"  Trading Mode: {config.get('trading_mode', 'LIVE')}")
         logger.warning("=" * 60)
-        if not is_trading_off():
+        if not is_trading_off() and not is_paper:
             logger.critical(
                 "SAFETY: Remote gateway with TRADING_MODE=LIVE! "
-                "Set TRADING_MODE=OFF in .env for dev environments."
+                "Set TRADING_MODE=OFF or IB_PAPER=true in .env for dev environments."
             )
             send_pushover_notification(
                 config.get('notifications', {}),
                 "REMOTE GW + LIVE MODE",
                 f"Orchestrator on remote GW ({ib_host}) with TRADING_MODE=LIVE. "
-                "Likely a misconfiguration — set TRADING_MODE=OFF.",
+                "Likely a misconfiguration — set TRADING_MODE=OFF or IB_PAPER=true.",
                 priority=1
             )
 
@@ -4334,12 +4468,24 @@ async def main():
     env_name = os.getenv("ENV_NAME", "DEV") 
     is_prod = env_name.startswith("PROD")
 
-    current_schedule = schedule
+    # Build config-driven schedule (falls back to defaults if no tasks in config)
+    task_list = build_schedule(config)
+
+    # Runtime RECOVERY_POLICY validation for config-driven schedule
+    _cfg_func_names = {t.func_name for t in task_list}
+    _cfg_uncovered = _cfg_func_names - set(RECOVERY_POLICY.keys())
+    if _cfg_uncovered:
+        logger.warning(
+            f"Config schedule has functions without RECOVERY_POLICY entries "
+            f"(will use safe defaults): {_cfg_uncovered}"
+        )
+
     if not is_prod:
         schedule_offset_minutes = config.get('schedule', {}).get('dev_offset_minutes', -30)
         logger.info(f"Environment: {env_name}. Applying {schedule_offset_minutes} minute 'Civil War' avoidance offset.")
-        current_schedule = apply_schedule_offset(schedule, offset_minutes=schedule_offset_minutes)
+        task_list = apply_schedule_offset(task_list, offset_minutes=schedule_offset_minutes)
     else:
+        schedule_offset_minutes = 0
         logger.info("Environment: PROD 🚀. Using standard master schedule.")
 
     # === WRITE ACTIVE SCHEDULE FOR DASHBOARD ===
@@ -4350,16 +4496,15 @@ async def main():
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "env": env_name,
             "offset_minutes": 0 if is_prod else schedule_offset_minutes,
-            "tasks": sorted(
-                [
-                    {
-                        "time_et": rt.strftime('%H:%M'),
-                        "name": func.__name__,
-                    }
-                    for rt, func in current_schedule.items()
-                ],
-                key=lambda t: t["time_et"]
-            )
+            "tasks": [
+                {
+                    "id": task.id,
+                    "time_et": task.time_et.strftime('%H:%M'),
+                    "name": task.func_name,
+                    "label": task.label,
+                }
+                for task in task_list
+            ]
         }
         schedule_file = os.path.join(
             os.path.dirname(__file__), 'data', 'active_schedule.json'
@@ -4378,13 +4523,13 @@ async def main():
     now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
 
     missed_tasks = []
-    for run_time, task_func in current_schedule.items():
-        task_ny = now_ny.replace(hour=run_time.hour, minute=run_time.minute, second=0, microsecond=0)
+    for task in task_list:
+        task_ny = now_ny.replace(hour=task.time_et.hour, minute=task.time_et.minute, second=0, microsecond=0)
         if task_ny < now_ny:
-            missed_tasks.append((run_time, task_func.__name__, task_func))
+            missed_tasks.append(task)
 
     if missed_tasks:
-        missed_names = [f"  - {t.strftime('%H:%M')} ET: {name}" for t, name, _ in missed_tasks]
+        missed_names = [f"  - {t.time_et.strftime('%H:%M')} ET: {t.id}" for t in missed_tasks]
         logger.warning(
             f"⚠️ LATE START DETECTED: {len(missed_tasks)} scheduled tasks already passed:\n"
             + "\n".join(missed_names)
@@ -4427,24 +4572,24 @@ async def main():
         while True:
             try:
                 now_utc = datetime.now(pytz.UTC)
-                next_run_time, next_task_func = get_next_task(now_utc, current_schedule)
+                next_run_time, next_task = get_next_task(now_utc, task_list)
                 wait_seconds = (next_run_time - now_utc).total_seconds()
 
-                task_name = next_task_func.__name__
-                logger.info(f"Next task '{task_name}' scheduled for {next_run_time.strftime('%Y-%m-%d %H:%M:%S UTC')}. "
+                logger.info(f"Next task '{next_task.id}' ({next_task.label}) scheduled for "
+                            f"{next_run_time.strftime('%Y-%m-%d %H:%M:%S UTC')}. "
                             f"Waiting for {wait_seconds / 3600:.2f} hours.")
 
                 await asyncio.sleep(wait_seconds)
 
-                logger.info(f"--- Running scheduled task: {task_name} ---")
+                logger.info(f"--- Running scheduled task: {next_task.id} [{next_task.func_name}] ---")
 
                 # Set global cooldown during scheduled cycle (e.g. 10 mins)
                 # This prevents Sentinels from firing Emergency Cycles while we are busy
                 GLOBAL_DEDUPLICATOR.set_cooldown("GLOBAL", 600)
 
                 try:
-                    await next_task_func(config)
-                    record_task_completion(task_name)
+                    await next_task.function(config)
+                    record_task_completion(next_task.id)
                 finally:
                     # Clear cooldown immediately after task finishes
                     GLOBAL_DEDUPLICATOR.clear_cooldown("GLOBAL")
