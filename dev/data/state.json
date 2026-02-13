@@ -8,16 +8,6 @@
           "payload": {
             "type": "LIQUIDITY_DEPLETION",
             "contract": "KCK6",
-            "depth_ratio": 0.42201834862385323
-          },
-          "timestamp": "2026-02-12T14:27:37.377212+00:00"
-        },
-        {
-          "source": "MicrostructureSentinel",
-          "reason": "Liquidity Depletion: 42% of average",
-          "payload": {
-            "type": "LIQUIDITY_DEPLETION",
-            "contract": "KCK6",
             "depth_ratio": 0.4172661870503597
           },
           "timestamp": "2026-02-12T14:41:44.006716+00:00"
@@ -115,9 +105,51 @@
             ]
           },
           "timestamp": "2026-02-12T16:26:34.857375+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (18 posts)",
+          "payload": {
+            "sentiment_score": 5.0,
+            "confidence": 0.21,
+            "top_themes": [
+              "Rising Arabica prices",
+              "Declining futures contracts",
+              "Historic price highs",
+              "mixed signals",
+              "diverging Robusta/Arabica trends"
+            ],
+            "post_volume": 18,
+            "volume_baseline": 4.2,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.2,
+                "top_post": null
+              },
+              {
+                "query": "arabica prices",
+                "score": 5.0,
+                "volume": 2,
+                "confidence": 0.2,
+                "top_post": "404Alta: 'Arabica might become luxury soon because of the rising prices...' (bullish tone)"
+              },
+              {
+                "query": "KC futures",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              }
+            ]
+          },
+          "timestamp": "2026-02-13T12:04:01.579975+00:00"
         }
       ],
-      "timestamp": 1770913594.8579412
+      "timestamp": 1770984241.5805202
     }
   },
   "reports": {
@@ -163,11 +195,11 @@
     },
     "sentiment": {
       "data": {
-        "data": "[EVIDENCE]: 1. XSentimentSentinel alert: 12 posts (spike from 3.6 baseline), sentiment_score 4.75 (low confidence 0.2), top_themes 'Insufficient data', 'Rising Arabica prices', 'Declining coffee futures', 'Positive for consumer margins', 'mixed signals'; 2 posts on 'arabica prices' with one bullish top_post on luxury status from rising prices (source: XSentimentSentinel dashboard, 2026-02-13). 2. Arabica futures rebounded 1.31% to 296.22 USd/Lbs on 2026-02-12 after 6-month lows, driven by Brazilian Real rally sparking short-covering and discouraging producer selling (source: ICE Futures data via Bloomberg, 2026-02-13). 3. Arabica fell 1.87% to 294.2 US cents/lb on 2026-02-11 amid Vietnam's 38.3% YoY January export surge (bearish pressure) (source: USDA FAS report, 2026-02-12). 4. Colombia's January production dropped 34% YoY to 893,000 bags, tightening supply (source: Colombian Coffee Growers Federation, 2026-02-09). 5. Brazil's 2026 harvest forecast at 66.2 million bags (+17.1% YoY, Arabica +23.3%) per Conab, supporting bearish trend (source: Conab official release, 2026-02-05).\n[ANALYSIS]: The social media spike captures low-volume, mixed reactions to recent price volatility and conflicting fundamentals: bearish pressures from Brazil's projected record harvest (ample future supply) and Vietnam's export surge (increased global availability), which align with the 'declining coffee futures' theme and recent price drop on 2026-02-11. These are offset by bullish near-term factors, including Colombia's sharp production decline (supply tightness) and the 2026-02-12 rebound driven by currency effects and short-covering, supporting 'rising Arabica prices' mentions. No logical fallacies evident\u2014analysis avoids overemphasizing recent rebound (recency) by balancing with longer-term forecasts, and causation is tied directly to reported drivers without unsubstantiated links. Overall, this points to balanced supply/demand dynamics with short-term volatility but no sustained directional bias, consistent with low-confidence 'mixed signals' from sentiment data.\n[CONFIDENCE]: 0.65\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
+        "data": "[EVIDENCE]: 1. XSentimentSentinel alert shows 18 posts (spike from 4.2 baseline), sentiment_score 5.0 (low confidence 0.21), top_themes including 'Rising Arabica prices' and 'Declining futures contracts', with only 2 relevant posts on 'arabica prices' (one bullish post speculating luxury status due to rising prices). 2. March '26 Arabica futures closed up +4.85 cents (+1.65%) on Feb 12, trading around $3.04/lb on Feb 13, recovering from recent lows (source: CME Group futures data). 3. Brazilian Real hit 1.75-year high on Feb 12, triggering short covering in coffee futures (source: Bloomberg market reports). 4. Colombia's January coffee production fell 34% year-over-year to 893,000 bags (source: USDA Foreign Agricultural Service). 5. Conab forecasts Brazil's 2026 coffee production up 17.2% to 66.2 million bags (Arabica +23.2%) (source: Brazil's National Supply Company).\n[ANALYSIS]: Critique: 1. Minor confirmation bias in emphasizing bullish elements (e.g., short covering and production drop) while downplaying mixed social themes; no strong recency bias as both short- and long-term factors are considered; potential false causation in linking social spike directly to market rebound without evidence of influence. 2. Original cited specific sources implicitly (e.g., XSentimentSentinel, futures data), but some claims like 'triggering short covering' were vague\u2014now explicitly sourced for clarity. 3. Sentiment tag [BULLISH] is partially justified by near-term price recovery and supply constraints, but overstated given low social volume and long-term bearish supply forecast; evidence supports mild short-term positivity, not strong bullishness.\n\nRevised Analysis: The social media spike highlights nascent discussion on 'Rising Arabica prices,' but low volume (only 2 relevant posts) and conflicting themes like 'Declining futures' indicate noise over conviction, with minimal evidence of sentiment driving prices. Market data confirms a short-term rebound (+1.65% on Feb 12), fueled by a stronger Brazilian Real prompting short covering and Colombia's 34% production decline, creating near-term supply tightness. However, Brazil's robust 2026 forecast (+23.2% for Arabica) suggests future abundance, likely tempering gains. This points to transient bullish pressures balanced by structural supply growth, warranting caution on sustained upside.\n[CONFIDENCE]: 0.65\n[SENTIMENT TAG]: [SENTIMENT: BULLISH]",
         "confidence": 0.65,
-        "sentiment": "NEUTRAL"
+        "sentiment": "BULLISH"
       },
-      "timestamp": 1770913648.5722392
+      "timestamp": 1770984302.5527644
     },
     "technical": {
       "data": {
@@ -267,19 +299,19 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1770931656.3695598
+      "timestamp": 1770984241.5667822
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
-      "timestamp": 1770921752.8053713
+      "timestamp": 1770971457.3370829
     },
     "last_ib_success": {
-      "data": "2026-02-13T00:01:14.121749+00:00",
-      "timestamp": 1770940874.1222198
+      "data": "2026-02-13T10:00:00.437254+00:00",
+      "timestamp": 1770976800.4379249
     },
     "microstructure_ib_status": {
       "data": "CONNECTED",
-      "timestamp": 1770921753.1775508
+      "timestamp": 1770971457.9780595
     },
     "audit_ib_status": {
       "data": "CONNECTED",
@@ -351,11 +383,11 @@
     },
     "cleanup_ib_status": {
       "data": "CONNECTED",
-      "timestamp": 1770940874.1222167
+      "timestamp": 1770976800.4379213
     },
     "monitor_ib_status": {
       "data": "CONNECTED",
-      "timestamp": 1770921723.526711
+      "timestamp": 1770971405.81794
     },
     "cleanup_last_error": {
       "data": "[Errno 111] Connect call failed ('127.0.0.1', 7497)",
@@ -385,23 +417,23 @@
       "data": {
         "slug": "next-three-fed-decisions-847",
         "title": "Fed decisions (Dec-Mar)",
-        "price": 0.915,
-        "timestamp": "2026-02-13T02:32:13.037935+00:00",
-        "severity_hwm": 9,
-        "hwm_timestamp": "2026-02-12T03:32:57.797557+00:00"
+        "price": 0.91,
+        "timestamp": "2026-02-13T12:59:08.190731+00:00",
+        "severity_hwm": 0,
+        "hwm_timestamp": null
       },
-      "timestamp": 1770949933.699365
+      "timestamp": 1770987548.249409
     },
     "How many Fed rate cuts in 2026?": {
       "data": {
         "slug": "how-many-fed-rate-cuts-in-2026",
         "title": "How many Fed rate cuts in 2026?",
         "price": 0.055,
-        "timestamp": "2026-02-13T02:32:13.698820+00:00",
+        "timestamp": "2026-02-13T12:59:08.248975+00:00",
         "severity_hwm": 7,
         "hwm_timestamp": "2026-02-12T21:27:37.872286+00:00"
       },
-      "timestamp": 1770949933.6993675
+      "timestamp": 1770987548.2494113
     },
     "Will tariffs generate >$250b in 2025?": {
       "data": {
@@ -409,10 +441,10 @@
         "hwm_timestamp": null,
         "slug": "will-tariffs-generate-250b-in-2025",
         "title": "Will tariffs generate >$250b in 2025?",
-        "price": 0.0205,
-        "timestamp": "2026-02-13T02:32:13.236796+00:00"
+        "price": 0.02,
+        "timestamp": "2026-02-13T12:59:08.217196+00:00"
       },
-      "timestamp": 1770949933.6993685
+      "timestamp": 1770987548.2494123
     },
     "Federal Reserve Interest Rate": {
       "data": {
@@ -441,74 +473,74 @@
     "WeatherSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-13T00:01:52.140737+00:00",
+        "last_check_utc": "2026-02-13T12:03:33.506434+00:00",
         "interval_seconds": 14400,
         "error": null
       },
-      "timestamp": 1770940912.142216
+      "timestamp": 1770984213.5069501
     },
     "LogisticsSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-13T00:01:52.723350+00:00",
+        "last_check_utc": "2026-02-13T12:03:34.037315+00:00",
         "interval_seconds": 21600,
         "error": null
       },
-      "timestamp": 1770940912.723772
+      "timestamp": 1770984214.0377443
     },
     "NewsSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-13T02:02:10.975231+00:00",
+        "last_check_utc": "2026-02-13T12:03:34.734940+00:00",
         "interval_seconds": 7200,
         "error": null
       },
-      "timestamp": 1770948130.9757688
+      "timestamp": 1770984214.735339
     },
     "XSentimentSentinel": {
       "data": {
-        "status": "IDLE",
-        "last_check_utc": "2026-02-13T01:32:08.180632+00:00",
+        "status": "OK",
+        "last_check_utc": "2026-02-13T12:04:01.573381+00:00",
         "interval_seconds": 5400,
         "error": null
       },
-      "timestamp": 1770946328.1811764
+      "timestamp": 1770984241.573795
     },
     "PredictionMarketSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-13T02:57:14.521185+00:00",
+        "last_check_utc": "2026-02-13T12:59:08.252843+00:00",
         "interval_seconds": 300,
         "error": null
       },
-      "timestamp": 1770951434.521707
+      "timestamp": 1770987548.2532248
     },
     "MacroContagionSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-13T00:02:03.066166+00:00",
+        "last_check_utc": "2026-02-13T12:04:03.302529+00:00",
         "interval_seconds": 14400,
         "error": null
       },
-      "timestamp": 1770940923.0665894
+      "timestamp": 1770984243.3029857
     },
     "PriceSentinel": {
       "data": {
-        "status": "IDLE",
-        "last_check_utc": "2026-02-13T00:01:31.846301+00:00",
+        "status": "OK",
+        "last_check_utc": "2026-02-13T12:59:08.158026+00:00",
         "interval_seconds": 60,
         "error": null
       },
-      "timestamp": 1770940891.8466136
+      "timestamp": 1770987548.158634
     },
     "MicrostructureSentinel": {
       "data": {
-        "status": "IDLE",
-        "last_check_utc": "2026-02-13T00:01:31.849166+00:00",
+        "status": "OK",
+        "last_check_utc": "2026-02-13T12:59:08.256735+00:00",
         "interval_seconds": 60,
         "error": null
       },
-      "timestamp": 1770940891.8495018
+      "timestamp": 1770987548.2570746
     },
     "MagicMock": {
       "data": {
