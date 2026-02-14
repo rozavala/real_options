@@ -202,7 +202,7 @@ async def generate_and_execute_orders(config: dict, connection_purpose: str = "o
     longer than the gap between scheduled times.
     """
     # === EARLY EXIT: Skip entirely on non-trading days ===
-    if not is_market_open():
+    if not is_market_open(config):
         logger.info("Market is closed (weekend/holiday). Skipping order generation cycle.")
         return
 

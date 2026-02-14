@@ -24,7 +24,7 @@ async def test_news_sentinel_uses_commodity_profile():
             tick_value=500,
             contract_size=50000,
             unit="lbs",
-            trading_hours_utc=""
+            trading_hours_et=""
         ),
         sentiment_search_queries=["cotton futures"]
     )

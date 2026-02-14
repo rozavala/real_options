@@ -1843,7 +1843,7 @@ async def start_monitoring(config: dict):
     logger.info("System shutdown flag CLEARED — new trading day beginning")
 
     # === EARLY EXIT: Don't start monitor on non-trading days ===
-    if not is_market_open():
+    if not is_market_open(config):
         logger.info("Market is closed (weekend/holiday). Skipping position monitoring startup.")
         return
 
@@ -2324,7 +2324,7 @@ async def _check_feedback_loop_health(config: dict):
 
 async def process_deferred_triggers(config: dict):
     """Process deferred triggers from overnight with deduplication."""
-    if not is_market_open():
+    if not is_market_open(config):
         logger.info("Market is closed. Skipping deferred trigger processing.")
         return
 
@@ -2517,7 +2517,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
         return
 
     # === NEW: MARKET HOURS GATE ===
-    if not is_market_open():
+    if not is_market_open(config):
         logger.info(f"Market closed. Queuing {trigger.source} alert for next session.")
         _sentinel_diag.info(f"OUTCOME {trigger.source}: DEFERRED (market closed)")
         StateManager.queue_deferred_trigger(trigger)
@@ -2527,10 +2527,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
     ny_tz = pytz.timezone('America/New_York')
     now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
 
-    # Read from config — default to 10:45
-    trading_cutoff = config.get('schedule', {}).get('daily_trading_cutoff_et', {'hour': 10, 'minute': 45})
-    cutoff_hour = trading_cutoff.get('hour', 10)
-    cutoff_minute = trading_cutoff.get('minute', 45)
+    cutoff_hour, cutoff_minute = get_trading_cutoff(config)
 
     if now_ny.hour > cutoff_hour or (now_ny.hour == cutoff_hour and now_ny.minute >= cutoff_minute):
         day_name = now_ny.strftime("%A")
@@ -3378,7 +3375,7 @@ async def run_sentinels(config: dict):
                 continue
 
             now = time_module.time()
-            market_open = is_market_open()
+            market_open = is_market_open(config)
             trading_day = is_trading_day()
 
             # Heartbeat: confirm sentinel loop is alive
@@ -3389,7 +3386,7 @@ async def run_sentinels(config: dict):
                 )
 
             # === 2. MARKET HOURS GATE: Only connect when market is OPEN ===
-            should_connect = market_open  # NOT trading_day - must be is_market_open()
+            should_connect = market_open  # NOT trading_day - must be is_market_open(config)
 
             if should_connect:
                 # Market is open - we need IB for Price/Microstructure sentinels
@@ -4035,10 +4032,12 @@ async def guarded_generate_orders(config: dict):
     except Exception as e:
         logger.warning(f"Pre-cycle quarantine check failed: {e}")
 
-    # === NEW: Shutdown proximity check ===
+    # === Shutdown proximity check ===
+    # Use cutoff + buffer as proxy for shutdown time (session-aware)
     ny_tz = pytz.timezone('America/New_York')
     now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
-    shutdown_time = time(13, 45)  # cancel_and_stop_monitoring time
+    co_h, co_m = get_trading_cutoff(config)
+    shutdown_time = time(co_h, co_m)
     minutes_to_shutdown = (
         datetime.combine(now_ny.date(), shutdown_time) -
         datetime.combine(now_ny.date(), now_ny.time())
@@ -4054,9 +4053,7 @@ async def guarded_generate_orders(config: dict):
     # Daily cutoff check
     ny_tz = pytz.timezone('America/New_York')
     now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
-    trading_cutoff = config.get('schedule', {}).get('daily_trading_cutoff_et', {'hour': 10, 'minute': 45})
-    cutoff_hour = trading_cutoff.get('hour', 10)
-    cutoff_minute = trading_cutoff.get('minute', 45)
+    cutoff_hour, cutoff_minute = get_trading_cutoff(config)
 
     if now_ny.hour > cutoff_hour or (now_ny.hour == cutoff_hour and now_ny.minute >= cutoff_minute):
         logger.info(f"Order generation BLOCKED: Past daily cutoff ({cutoff_hour}:{cutoff_minute:02d} ET)")
@@ -4153,14 +4150,138 @@ def _build_default_schedule() -> list:
     ]
 
 
+def _build_session_schedule(config: dict) -> list:
+    """Build schedule from session_template, anchored to commodity trading hours.
+
+    Derives all task times from the active commodity profile's trading_hours_et
+    field instead of absolute clock times.
+
+    Returns list[ScheduledTask] sorted by time_et.
+    """
+    from config.commodity_profiles import get_active_profile, parse_trading_hours
+
+    profile = get_active_profile(config)
+    open_t, close_t = parse_trading_hours(profile.contract.trading_hours_et)
+
+    tmpl = config['schedule']['session_template']
+    today = datetime.now(timezone.utc).date()
+
+    open_dt = datetime.combine(today, open_t)
+    close_dt = datetime.combine(today, close_t)
+    session_minutes = (close_dt - open_dt).total_seconds() / 60
+
+    result = []
+    seen_ids = set()
+
+    def _add_task(task_id, task_time, func_name, label):
+        if task_id in seen_ids:
+            raise ValueError(f"Duplicate schedule task ID: '{task_id}'")
+        seen_ids.add(task_id)
+        func = FUNCTION_REGISTRY.get(func_name)
+        if func is None:
+            logger.warning(f"Unknown function '{func_name}' in session task '{task_id}' — skipping")
+            return
+        result.append(ScheduledTask(
+            id=task_id,
+            time_et=task_time,
+            function=func,
+            func_name=func_name,
+            label=label,
+        ))
+
+    # 1. Pre-open tasks: open_time + offset_minutes (negative offsets = before open)
+    for entry in tmpl.get('pre_open_tasks', []):
+        dt = open_dt + timedelta(minutes=entry['offset_minutes'])
+        _add_task(entry['id'], dt.time(), entry['function'], entry.get('label', entry['id']))
+
+    # 2. Signal generation: evenly distributed between start_pct and end_pct
+    signal_count = tmpl.get('signal_count', 4)
+    start_pct = tmpl.get('signal_start_pct', 0.05)
+    end_pct = tmpl.get('signal_end_pct', 0.80)
+
+    signal_names = ['signal_open', 'signal_early', 'signal_mid', 'signal_late', 'signal_5']
+    signal_labels = ['Signal: Open', 'Signal: Early', 'Signal: Mid', 'Signal: Late', 'Signal: 5']
+
+    if signal_count == 1:
+        pcts = [start_pct]
+    else:
+        step = (end_pct - start_pct) / (signal_count - 1)
+        pcts = [start_pct + i * step for i in range(signal_count)]
+
+    for i, pct in enumerate(pcts):
+        dt = open_dt + timedelta(minutes=session_minutes * pct)
+        sid = signal_names[i] if i < len(signal_names) else f'signal_{i+1}'
+        slbl = signal_labels[i] if i < len(signal_labels) else f'Signal: {i+1}'
+        _add_task(sid, dt.time(), 'guarded_generate_orders', slbl)
+
+    # 3. Intra-session tasks: open_time + (session_minutes * session_pct)
+    for entry in tmpl.get('intra_session_tasks', []):
+        dt = open_dt + timedelta(minutes=session_minutes * entry['session_pct'])
+        _add_task(entry['id'], dt.time(), entry['function'], entry.get('label', entry['id']))
+
+    # 4. Pre-close tasks: close_time + offset_minutes (negative offsets = before close)
+    for entry in tmpl.get('pre_close_tasks', []):
+        dt = close_dt + timedelta(minutes=entry['offset_minutes'])
+        _add_task(entry['id'], dt.time(), entry['function'], entry.get('label', entry['id']))
+
+    # 5. Post-close tasks: close_time + offset_minutes (positive offsets = after close)
+    for entry in tmpl.get('post_close_tasks', []):
+        dt = close_dt + timedelta(minutes=entry['offset_minutes'])
+        _add_task(entry['id'], dt.time(), entry['function'], entry.get('label', entry['id']))
+
+    result.sort(key=lambda t: (t.time_et.hour, t.time_et.minute))
+    logger.info(f"Built session schedule: {len(result)} tasks for {profile.ticker} ({open_t.strftime('%H:%M')}-{close_t.strftime('%H:%M')} ET)")
+    return result
+
+
+def get_trading_cutoff(config: dict) -> tuple:
+    """Get the daily trading cutoff as (hour, minute) in ET.
+
+    In session mode: close_time - cutoff_before_close_minutes.
+    Fallback: daily_trading_cutoff_et from config.
+    """
+    schedule_cfg = config.get('schedule', {})
+    mode = schedule_cfg.get('mode', 'absolute')
+    tmpl = schedule_cfg.get('session_template')
+
+    if mode == 'session' and tmpl:
+        try:
+            from config.commodity_profiles import get_active_profile, parse_trading_hours
+            profile = get_active_profile(config)
+            _, close_t = parse_trading_hours(profile.contract.trading_hours_et)
+            cutoff_minutes = tmpl.get('cutoff_before_close_minutes', 78)
+            today = datetime.now(timezone.utc).date()
+            close_dt = datetime.combine(today, close_t)
+            cutoff_dt = close_dt - timedelta(minutes=cutoff_minutes)
+            return (cutoff_dt.time().hour, cutoff_dt.time().minute)
+        except Exception as e:
+            logger.warning(f"Failed to compute session cutoff: {e}")
+
+    # Fallback to absolute cutoff
+    cutoff_cfg = schedule_cfg.get('daily_trading_cutoff_et', {'hour': 10, 'minute': 45})
+    return (cutoff_cfg.get('hour', 10), cutoff_cfg.get('minute', 45))
+
+
 def build_schedule(config: dict) -> list:
-    """Build schedule from config.json tasks array, falling back to defaults.
+    """Build schedule from config, falling back to defaults.
+
+    Supports two modes:
+    - 'session': Derives times from commodity profile trading hours (preferred)
+    - 'absolute': Uses explicit time_et values from tasks array (legacy)
 
     Returns list[ScheduledTask] sorted by time_et.
     Raises ValueError on duplicate task IDs.
     Logs warning and skips unknown function names.
     """
-    tasks_cfg = config.get('schedule', {}).get('tasks')
+    schedule_cfg = config.get('schedule', {})
+    mode = schedule_cfg.get('mode', 'absolute')
+
+    # Session mode: derive times from commodity trading hours
+    if mode == 'session' and schedule_cfg.get('session_template'):
+        return _build_session_schedule(config)
+
+    # Absolute mode: explicit times from tasks array
+    tasks_cfg = schedule_cfg.get('tasks')
     if not tasks_cfg:
         logger.info("No schedule.tasks in config — using built-in default schedule")
         return _build_default_schedule()
@@ -4307,16 +4428,12 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
     now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
 
     # Cutoff check for BEFORE_CUTOFF policy
-    trading_cutoff = config.get('schedule', {}).get(
-        'daily_trading_cutoff_et', {'hour': 10, 'minute': 45}
-    )
-    cutoff_hour = trading_cutoff.get('hour', 10)
-    cutoff_minute = trading_cutoff.get('minute', 45)
+    cutoff_hour, cutoff_minute = get_trading_cutoff(config)
     before_cutoff = (
         now_ny.hour < cutoff_hour or
         (now_ny.hour == cutoff_hour and now_ny.minute < cutoff_minute)
     )
-    market_open = is_market_open()
+    market_open = is_market_open(config)
 
     # Normalize: support both ScheduledTask and legacy (time, name, func) tuples
     normalized = []
@@ -4495,7 +4612,7 @@ async def main():
     logger.info(f"Expiry filter window: {profile.min_dte}-{profile.max_dte} DTE")
 
     # Process deferred triggers from overnight - ONLY if market is open
-    if is_market_open():
+    if is_market_open(config):
         await process_deferred_triggers(config)
     else:
         logger.info("Market Closed. Deferred triggers will remain queued.")

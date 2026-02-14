@@ -6,6 +6,7 @@ agents, TMS) remains identical; only the Profile changes.
 """
 
 from dataclasses import dataclass, field
+from datetime import time
 from typing import List, Dict, Optional, Tuple
 from enum import Enum
 import os
@@ -13,6 +14,18 @@ import logging
 import json
 
 logger = logging.getLogger(__name__)
+
+
+def parse_trading_hours(hours_str: str) -> tuple:
+    """Parse 'HH:MM-HH:MM' to (open_time, close_time) as ET.
+
+    Returns:
+        Tuple of (datetime.time, datetime.time) representing market open and close.
+    """
+    open_str, close_str = hours_str.split('-')
+    oh, om = map(int, open_str.split(':'))
+    ch, cm = map(int, close_str.split(':'))
+    return time(oh, om), time(ch, cm)
 
 
 class CommodityType(Enum):
@@ -88,7 +101,7 @@ class ContractSpec:
     tick_value: float              # Dollar value per tick
     contract_size: float           # Units per contract
     unit: str                      # e.g., "cents/lb", "$/barrel"
-    trading_hours_utc: str         # e.g., "04:15-13:30"
+    trading_hours_et: str          # e.g., "04:15-13:30" (Eastern Time)
 
     # Position limits
     spot_month_limit: int = 0
@@ -213,7 +226,7 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
         tick_value=18.75,
         contract_size=37500,  # lbs
         unit="cents/lb",
-        trading_hours_utc="04:15-13:30",
+        trading_hours_et="04:15-13:30",
         spot_month_limit=500,
         all_months_limit=5000
     ),
@@ -484,7 +497,7 @@ COCOA_PROFILE = CommodityProfile(
         tick_value=10.0,
         contract_size=10,  # metric tons
         unit="$/metric ton",
-        trading_hours_utc="04:45-13:30",
+        trading_hours_et="04:45-13:30",
         spot_month_limit=1000,
         all_months_limit=10000
     ),
@@ -730,7 +743,8 @@ def _load_profile_from_json(path: str) -> CommodityProfile:
         tick_value=data['contract']['tick_value'],  # Was 'point_value' - FIXED
         contract_size=data['contract']['contract_size'],  # Was missing - ADDED
         unit=data['contract']['unit'],  # Was missing - ADDED
-        trading_hours_utc=data['contract'].get('trading_hours_utc', 'See exchange'),  # Was 'trading_hours' - FIXED
+        trading_hours_et=data['contract'].get('trading_hours_et',
+                         data['contract'].get('trading_hours_utc', 'See exchange')),
         # V3 FIX: Position limits (defaults match dataclass)
         spot_month_limit=data['contract'].get('spot_month_limit', 0),
         all_months_limit=data['contract'].get('all_months_limit', 0),
