@@ -21,3 +21,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-12 - Progressive Enhancement for Copy Functionality
 **Learning:** `st.popover` (Streamlit v1.33+) provides a cleaner UX for secondary actions like "Copy ID" compared to `st.expander`.
 **Action:** Use `if hasattr(st, "popover"):` to conditionally render the modern UI, falling back to `st.expander` to ensure accessibility and functionality across different deployments.
+
+## 2026-02-14 - Safety Interlock for Long-Running Utility Tasks
+**Learning:** In a trading dashboard, long-running utility tasks (like log collection or data reconciliation) can confuse users if they appear to "hang" the UI. Using the Safety Interlock pattern combined with tooltips that specify estimated duration (e.g., "~2-3 mins") significantly improves the user's perception of system stability and prevents accidental multi-minute UI freezes.
+**Action:** Always apply the Safety Interlock pattern to any button triggering a process known to take >30 seconds. Include the estimated duration in the button's `help` tooltip.

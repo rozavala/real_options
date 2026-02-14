@@ -50,10 +50,12 @@ Collect and archive logs to the centralized logs branch for analysis and debuggi
 This captures orchestrator logs, dashboard logs, state files, and trading data.
 """)
 
+confirm_logs = st.checkbox("I confirm I want to collect and archive logs", key="confirm_collect_logs")
 if st.button(
     "🚀 Collect Logs",
     type="primary",
-    help="Triggers the log collection script to archive system logs, state files, and trading data for analysis."
+    disabled=not confirm_logs,
+    help="Triggers the log collection script to archive system logs, state files, and trading data for analysis. (~2-3 mins)"
 ):
     with st.spinner(f"Collecting {current_env} logs..."):
         try:
@@ -97,7 +99,7 @@ st.markdown("Quick access to log analysis utilities for the current environment.
 row1_cols = st.columns(2)
 
 with row1_cols[0]:
-    if st.button("📋 View Status", width='stretch'):
+    if st.button("📋 View Status", width='stretch', help="Check the current operational status of system services."):
         with st.spinner("Fetching status..."):
             try:
                 result = subprocess.run(
@@ -112,7 +114,7 @@ with row1_cols[0]:
                 st.error(f"Error: {e}")
 
 with row1_cols[1]:
-    if st.button(f"🔍 Analyze {current_env.upper()}", width='stretch'):
+    if st.button(f"🔍 Analyze {current_env.upper()}", width='stretch', help=f"Run deep log analysis for the {current_env} environment."):
         with st.spinner(f"Analyzing {current_env} environment..."):
             try:
                 result = subprocess.run(
@@ -141,7 +143,7 @@ with error_cols[0]:
 
 with error_cols[1]:
     st.markdown("&nbsp;")  # Spacer
-    if st.button(f"🚨 Show Errors", width='stretch'):
+    if st.button(f"🚨 Show Errors", width='stretch', help=f"Filter logs for errors in the last {hours_option} hours."):
         with st.spinner(f"Finding errors from last {hours_option} hours..."):
             try:
                 result = subprocess.run(
@@ -164,7 +166,7 @@ st.markdown("##### 📈 Performance & Health")
 perf_cols = st.columns(2)
 
 with perf_cols[0]:
-    if st.button(f"📈 Trading Performance", width='stretch'):
+    if st.button(f"📈 Trading Performance", width='stretch', help="Analyze recent trading execution and P&L performance."):
         with st.spinner("Loading performance data..."):
             try:
                 result = subprocess.run(
@@ -179,7 +181,7 @@ with perf_cols[0]:
                 st.error(f"Error: {e}")
 
 with perf_cols[1]:
-    if st.button(f"🏥 System Health", width='stretch'):
+    if st.button(f"🏥 System Health", width='stretch', help="Check resource usage and connectivity health for the bot."):
         with st.spinner("Checking system health..."):
             try:
                 result = subprocess.run(
@@ -362,8 +364,10 @@ with manual_cols2[1]:
     st.info("ℹ️ **Sync Equity Data**")
     st.caption("Forces fresh equity sync from IB Flex Query")
 
+    confirm_equity_sync = st.checkbox("I confirm I want to sync equity data", key="confirm_equity_sync_s3")
     if st.button(
         "💰 Force Equity Sync",
+        disabled=not confirm_equity_sync,
         help="Manually triggers a fresh equity data pull from Interactive Brokers Flex Query reports."
     ):
         if not config:
@@ -401,7 +405,7 @@ diag_cols = st.columns(3)
 
 with diag_cols[0]:
     st.info("**IB Connection Test**")
-    if st.button("🔌 Test IB Gateway Connection"):
+    if st.button("🔌 Test IB Gateway Connection", help="Verify low-level connectivity to IB Gateway/TWS."):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -442,7 +446,7 @@ with diag_cols[0]:
 
 with diag_cols[1]:
     st.info("**Test Notifications**")
-    if st.button("📱 Send Test Notification"):
+    if st.button("📱 Send Test Notification", help="Send a test message via Pushover to verify notification credentials."):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -463,7 +467,7 @@ with diag_cols[1]:
 
 with diag_cols[2]:
     st.info("**Market Status**")
-    if st.button("🕐 Check Market Status"):
+    if st.button("🕐 Check Market Status", help="Determine if US markets are currently open and if today is a trading day."):
         try:
             import sys
             import os
@@ -500,7 +504,7 @@ state_cols = st.columns(2)
 
 with state_cols[0]:
     st.info("**View System State**")
-    if st.button("👁️ Show state.json Contents"):
+    if st.button("👁️ Show state.json Contents", help="Display the raw contents of the data/state.json file."):
         try:
             state_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "state.json")
             if os.path.exists(state_path):
@@ -519,7 +523,7 @@ with state_cols[1]:
     # Use a form with confirmation checkbox to prevent accidental clicks
     with st.form("clear_state_form"):
         confirm_clear = st.checkbox("I understand this will clear all state data")
-        submit_clear = st.form_submit_button("🗑️ Clear State File")
+        submit_clear = st.form_submit_button("🗑️ Clear State File", help="Permanently delete the system state.json file and create a backup. Use only if state is corrupted.")
 
         if submit_clear:
             if not confirm_clear:
@@ -557,7 +561,8 @@ This validates the entire architecture from sentinels to council to order execut
 validation_cols = st.columns([2, 1])
 
 with validation_cols[0]:
-    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch')
+    confirm_validation = st.checkbox("I confirm I want to run system validation", key="confirm_run_validation")
+    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch', disabled=not confirm_validation, help="Run comprehensive preflight checks to verify all system components. (~2 mins)")
 
 with validation_cols[1]:
     json_output = st.checkbox("JSON Output", value=False)
@@ -677,7 +682,8 @@ with recon_row1[0]:
     st.markdown("**📊 Council History**")
     st.caption("Backfill exit prices and P&L for closed positions")
 
-    if st.button("🔄 Reconcile Council History", width='stretch', key="recon_council"):
+    confirm_recon_council = st.checkbox("Confirm Council Recon", key="confirm_recon_council")
+    if st.button("🔄 Reconcile Council History", width='stretch', key="recon_council", disabled=not confirm_recon_council, help="Backfills missing exit prices and P&L for positions that have closed. (~2-3 mins)"):
         with st.spinner("Reconciling council history with market outcomes..."):
             try:
                 result = subprocess.run(
@@ -711,7 +717,8 @@ with recon_row1[1]:
     st.markdown("**📝 Trade Ledger**")
     st.caption("Compare local ledger with IB Flex Query reports")
 
-    if st.button("🔄 Reconcile Trade Ledger", width='stretch', key="recon_trades"):
+    confirm_recon_trades = st.checkbox("Confirm Ledger Recon", key="confirm_recon_trades")
+    if st.button("🔄 Reconcile Trade Ledger", width='stretch', key="recon_trades", disabled=not confirm_recon_trades, help="Compares the last 33 days of trades from IB with the local ledger. (~2 mins)"):
         with st.spinner("Reconciling trade ledger with IB reports..."):
             try:
                 result = subprocess.run(
@@ -749,7 +756,8 @@ with recon_row2[0]:
     st.markdown("**📍 Active Positions**")
     st.caption("Verify current positions against IB")
 
-    if st.button("🔄 Reconcile Positions", width='stretch', key="recon_positions"):
+    confirm_recon_positions = st.checkbox("Confirm Position Recon", key="confirm_recon_positions")
+    if st.button("🔄 Reconcile Positions", width='stretch', key="recon_positions", disabled=not confirm_recon_positions, help="Validates that current positions match between IB and local calculations. (~1 min)"):
         with st.spinner("Reconciling active positions..."):
             try:
                 # Create a temporary script to run just the position reconciliation
@@ -798,7 +806,8 @@ with recon_row2[1]:
     st.markdown("**💰 Equity History (Subprocess)**")
     st.caption("Sync equity data from IBKR Flex Query (Legacy)")
 
-    if st.button("🔄 Sync Equity Data", width='stretch', key="recon_equity"):
+    confirm_recon_equity = st.checkbox("Confirm Equity Sync", key="confirm_recon_equity_s7")
+    if st.button("🔄 Sync Equity Data", width='stretch', key="recon_equity", disabled=not confirm_recon_equity, help="Syncs official Net Asset Value history (last 365 days) from IBKR. (~1 min)"):
         with st.spinner("Syncing equity data from Flex Query..."):
             try:
                 result = subprocess.run(
@@ -845,7 +854,8 @@ with recon_row3[0]:
     except Exception:
         pass
 
-    if st.button("🔄 Reconcile Brier Scores", width='stretch', key="recon_brier"):
+    confirm_recon_brier = st.checkbox("Confirm Brier Recon", key="confirm_recon_brier")
+    if st.button("🔄 Reconcile Brier Scores", width='stretch', key="recon_brier", disabled=not confirm_recon_brier, help="Grades pending agent predictions against market outcomes. (~3-5 mins)"):
         with st.spinner("Running Brier reconciliation (council history + prediction grading)..."):
             try:
                 result = subprocess.run(
