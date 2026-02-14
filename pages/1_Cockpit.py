@@ -32,6 +32,21 @@ from dashboard_utils import (
     load_task_schedule_status
 )
 
+def _render_colored_pnl(label: str, value: float | None, help_text: str = None):
+    """
+    Renders a P&L metric with color coding (Green/Red) using st.markdown.
+    Avoids semantic misuse of st.metric's delta parameter for absolute values.
+    """
+    if value is None:
+        st.metric(label, "N/A", help=help_text)
+        return
+
+    color = "green" if value >= 0 else "red"
+    st.markdown(f"**{label}**", help=help_text)
+    # Use standard rounding for dashboard consistency
+    st.markdown(f":{color}[${value:+,.2f}]")
+
+
 def load_deduplicator_metrics() -> dict:
     """Load trigger deduplication metrics."""
     try:
@@ -186,16 +201,8 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
             if market_value is not None:
                 help_text += f"\n\nMarket Value: ${market_value:,.2f}"
 
-            if unrealized_pnl is not None:
-                # Use custom markdown for coloring without semantic misuse of delta
-                color = "green" if unrealized_pnl >= 0 else "red"
-                st.markdown(f"**Unrealized P&L**")
-                st.markdown(
-                    f":{color}[${unrealized_pnl:+,.2f}]",
-                    help=help_text
-                )
-            else:
-                st.metric("Unrealized P&L", "N/A", help=help_text)
+            with st.container():
+                _render_colored_pnl("Unrealized P&L", unrealized_pnl, help_text)
 
         with cols[2]:
             stop_help = "Calculated from invalidation triggers"
@@ -268,7 +275,8 @@ def render_portfolio_risk_summary(live_data: dict):
         if daily_pnl is None or (isinstance(daily_pnl, float) and math.isnan(daily_pnl)):
             st.metric("Daily P&L", "$0", delta="No data", delta_color="off")
         else:
-            st.metric("Daily P&L", f"${daily_pnl:+,.0f}", f"{daily_pnl:+,.0f}")
+            with st.container():
+                _render_colored_pnl("Daily P&L", daily_pnl)
 
     with cols[3]:
         pos_count = len([p for p in live_data.get('open_positions', []) if p.position != 0])
