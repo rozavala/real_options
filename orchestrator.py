@@ -2235,18 +2235,32 @@ async def _check_feedback_loop_health(config: dict):
             )
 
             # === ALERT IF PREDICTIONS ARE STALE ===
-            if age_hours > 48:
+            # Distinguish young PENDING (<24h, normal) from stale PENDING (>48h, needs attention)
+            stale_threshold_hours = 48
+            young_threshold_hours = 24
+            stale_count = 0
+            young_count = 0
+            if not pending_timestamps.empty:
+                now_utc = pd.Timestamp.now(tz='UTC')
+                for ts in pending_timestamps:
+                    hours_old = (now_utc - ts).total_seconds() / 3600
+                    if hours_old > stale_threshold_hours:
+                        stale_count += 1
+                    elif hours_old <= young_threshold_hours:
+                        young_count += 1
+
+            if stale_count > 0:
                 alert_msg = (
-                    f"⚠️ FEEDBACK LOOP STALE\n"
+                    f"⚠️ FEEDBACK LOOP: {stale_count} stale predictions\n"
                     f"Oldest PENDING: {age_hours:.0f}h ago\n"
-                    f"PENDING: {pending_count}/{total_count}\n"
+                    f"Stale (>48h): {stale_count} | Recent (<24h): {young_count}\n"
                     f"Resolution rate: {resolution_rate:.0f}%\n"
-                    f"Agent learning is NOT occurring!"
+                    f"PENDING: {pending_count}/{total_count}"
                 )
                 logger.warning(alert_msg)
                 send_pushover_notification(
                     config.get('notifications', {}),
-                    "🔴 Feedback Loop Alert",
+                    "🟡 Feedback Loop Alert",
                     alert_msg
                 )
 
@@ -4116,22 +4130,22 @@ def _build_default_schedule() -> list:
         ("start_monitoring",          time(3, 30),  start_monitoring,              "Start Position Monitoring"),
         ("process_deferred_triggers", time(3, 31),  process_deferred_triggers,     "Process Deferred Triggers"),
         ("cleanup_orphaned_theses",   time(5, 0),   cleanup_orphaned_theses,       "Daily Thesis Cleanup"),
-        ("signal_early",              time(9, 0),   guarded_generate_orders,       "Signal: Early Session (04:00 ET)"),
-        ("signal_euro",               time(11, 0),  guarded_generate_orders,       "Signal: EU Overlap (06:00 ET)"),
-        ("signal_us_open",            time(13, 0),  guarded_generate_orders,       "Signal: US Open (08:00 ET)"),
-        ("signal_peak",               time(15, 0),  guarded_generate_orders,       "Signal: Peak Liquidity (10:00 ET)"),
-        ("signal_settlement",         time(17, 0),  guarded_generate_orders,       "Signal: Settlement (12:00 ET)"),
-        ("audit_morning",             time(13, 30), run_position_audit_cycle,      "Audit: Morning (08:30 ET)"),
-        ("close_stale_primary",       time(15, 30), close_stale_positions,         "Close Stale (Primary)"),
-        ("audit_post_close",          time(15, 45), run_position_audit_cycle,      "Audit: Post-Close (10:45 ET)"),
-        ("close_stale_fallback",      time(16, 30), close_stale_positions_fallback,"Close Stale (Fallback)"),
-        ("audit_pre_close",           time(17, 15), run_position_audit_cycle,      "Audit: Pre-Close (12:15 ET)"),
-        ("emergency_hard_close",      time(17, 30), emergency_hard_close,          "Emergency Hard Close"),
-        ("eod_shutdown",              time(18, 0),  cancel_and_stop_monitoring,    "End-of-Day Shutdown"),
-        ("log_equity_snapshot",       time(18, 20), log_equity_snapshot,           "Log Equity Snapshot"),
-        ("reconcile_and_analyze",     time(18, 25), reconcile_and_analyze,         "Reconcile & Analyze"),
-        ("brier_reconciliation",      time(18, 35), run_brier_reconciliation,      "Brier Reconciliation"),
-        ("sentinel_effectiveness",    time(18, 40), sentinel_effectiveness_check,  "Sentinel Effectiveness Check"),
+        ("signal_early",              time(9, 0),   guarded_generate_orders,       "Signal: Early Session (09:00 ET)"),
+        ("signal_euro",               time(11, 0),  guarded_generate_orders,       "Signal: EU Overlap (11:00 ET)"),
+        ("signal_us_open",            time(13, 0),  guarded_generate_orders,       "Signal: US Open (13:00 ET)"),
+        ("signal_peak",               time(15, 0),  guarded_generate_orders,       "Signal: Peak Liquidity (15:00 ET)"),
+        ("signal_settlement",         time(17, 0),  guarded_generate_orders,       "Signal: Settlement (17:00 ET)"),
+        ("audit_morning",             time(13, 30), run_position_audit_cycle,      "Audit: Midday (13:30 ET)"),
+        ("close_stale_primary",       time(15, 30), close_stale_positions,         "Close Stale: Primary (15:30 ET)"),
+        ("audit_post_close",          time(15, 45), run_position_audit_cycle,      "Audit: Post-Close (15:45 ET)"),
+        ("close_stale_fallback",      time(16, 30), close_stale_positions_fallback,"Close Stale: Fallback (16:30 ET)"),
+        ("audit_pre_close",           time(17, 15), run_position_audit_cycle,      "Audit: Pre-Shutdown (17:15 ET)"),
+        ("emergency_hard_close",      time(17, 30), emergency_hard_close,          "Emergency Hard Close (17:30 ET)"),
+        ("eod_shutdown",              time(18, 0),  cancel_and_stop_monitoring,    "End-of-Day Shutdown (18:00 ET)"),
+        ("log_equity_snapshot",       time(18, 20), log_equity_snapshot,           "Log Equity Snapshot (18:20 ET)"),
+        ("reconcile_and_analyze",     time(18, 25), reconcile_and_analyze,         "Reconcile & Analyze (18:25 ET)"),
+        ("brier_reconciliation",      time(18, 35), run_brier_reconciliation,      "Brier Reconciliation (18:35 ET)"),
+        ("sentinel_effectiveness",    time(18, 40), sentinel_effectiveness_check,  "Sentinel Effectiveness Check (18:40 ET)"),
     ]
     return [
         ScheduledTask(id=tid, time_et=t, function=fn, func_name=fn.__name__, label=lbl)
