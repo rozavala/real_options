@@ -12,6 +12,7 @@ import csv
 import logging
 import os
 import shutil
+from typing import Any
 from datetime import datetime, time, timedelta, timezone, date
 import pytz
 from ib_insync import *
@@ -171,6 +172,18 @@ def _get_combo_description(trade: Trade) -> str:
         return f"Bag_{trade.order.permId}"
 
 
+def sanitize_for_csv(value: Any) -> Any:
+    """
+    Sanitizes values for CSV to prevent CSV Injection (Formula Injection).
+    Prepends a single quote if the string starts with =, +, -, or @.
+    """
+    if isinstance(value, str):
+        # Check both raw start and stripped start to be safe against leading whitespace
+        if value.startswith(('=', '+', '-', '@')) or value.strip().startswith(('=', '+', '-', '@')):
+             return f"'{value}"
+    return value
+
+
 def log_order_event(trade: Trade, status: str, message: str = ""):
     """Logs the status change of an order to the `order_events.csv` file.
 
@@ -209,7 +222,7 @@ def log_order_event(trade: Trade, status: str, message: str = ""):
                 'quantity': trade.order.totalQuantity,
                 'lmtPrice': trade.order.lmtPrice,
                 'status': status,
-                'message': message
+                'message': sanitize_for_csv(message)
             })
     except Exception as e:
         logging.error(f"Error writing to order event log: {e}")
@@ -497,7 +510,7 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
             'strike': strike_value,
             'right': contract.right if hasattr(contract, 'right') else 'N/A',
             'total_value_usd': total_value,
-            'reason': reason
+            'reason': sanitize_for_csv(reason)
         }
         rows_to_write.append(row)
 
@@ -594,7 +607,7 @@ def log_council_decision(decision_data):
     ]
 
     # Prepare the new row
-    row_data = {field: decision_data.get(field, '') for field in fieldnames}
+    row_data = {field: sanitize_for_csv(decision_data.get(field, '')) for field in fieldnames}
 
     # Fix precision for entry_price
     if row_data.get('entry_price'):
