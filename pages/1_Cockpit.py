@@ -187,10 +187,11 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
                 help_text += f"\n\nMarket Value: ${market_value:,.2f}"
 
             if unrealized_pnl is not None:
-                st.metric(
-                    "Unrealized P&L",
-                    f"${unrealized_pnl:+,.2f}",
-                    f"{unrealized_pnl:+,.2f}",
+                # Use custom markdown for coloring without semantic misuse of delta
+                color = "green" if unrealized_pnl >= 0 else "red"
+                st.markdown(f"**Unrealized P&L**")
+                st.markdown(
+                    f":{color}[${unrealized_pnl:+,.2f}]",
                     help=help_text
                 )
             else:
