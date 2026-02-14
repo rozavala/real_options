@@ -594,7 +594,10 @@ with st.expander("🔍 Sentinel Details"):
 
         col_status, col_last, col_freq = st.columns([3, 2, 2])
         with col_status:
-            st.write(f"{status_icon} {icon} **{display}**  —  {status_text}")
+            st.markdown(
+                f"{status_icon} {icon} **{display}**  —  {status_text}",
+                help=f"**Status:** {status}\n**Availability:** {info.get('availability', 'Unknown')}\n**Interval:** {info.get('interval_seconds', '?')}s"
+            )
         with col_last:
             if minutes is not None:
                 st.caption(f"Last check: {minutes}m ago")
@@ -610,7 +613,8 @@ with st.expander("🔍 Sentinel Details"):
                 st.caption("")
 
         if error:
-            st.caption(f"  ⚠️ `{error[:120]}`")
+            with st.expander("⚠️ View Error Details", expanded=False):
+                st.code(error, language="text")
 
     st.markdown("**Always-On Sentinels** (24/7, no IB required)")
     for name, info in always_on.items():
