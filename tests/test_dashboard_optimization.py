@@ -20,7 +20,49 @@ sys.modules['matplotlib.ticker'] = MagicMock()
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from dashboard_utils import grade_decision_quality
+from dashboard_utils import grade_decision_quality, calculate_agent_scores
+
+def test_calculate_agent_scores_basic():
+    """Test calculate_agent_scores with minimal data."""
+    data = {
+        'prediction_type': ['DIRECTIONAL', 'VOLATILITY', 'DIRECTIONAL'],
+        'strategy_type': ['BULL_CALL_SPREAD', 'LONG_STRADDLE', 'BEAR_PUT_SPREAD'],
+        'volatility_outcome': [None, 'BIG_MOVE', None],
+        'volatility_sentiment': ['NEUTRAL', 'HIGH', 'NEUTRAL'],
+        'master_decision': ['BULLISH', 'NEUTRAL', 'BEARISH'],
+        'entry_price': [100.0, 100.0, 100.0],
+        'actual_trend_direction': ['UP', None, 'UP'],
+        # Agent sentiments
+        'meteorologist_sentiment': ['BULLISH', 'NEUTRAL', 'BEARISH'],
+        'macro_sentiment': ['BEARISH', 'NEUTRAL', 'BULLISH'],
+    }
+    # Add other required agents with NEUTRAL
+    agents = [
+        'geopolitical_sentiment', 'fundamentalist_sentiment',
+        'sentiment_sentiment', 'technical_sentiment'
+    ]
+    for agent in agents:
+        data[agent] = ['NEUTRAL'] * 3
+
+    df = pd.DataFrame(data)
+
+    # Run calculation
+    scores = calculate_agent_scores(df, live_price=101.0) # Price up 1%
+
+    # Assertions
+    # 1. Meteorologist: Bullish on Up (Correct), Bearish on Up (Incorrect) -> 50%
+    assert scores['meteorologist_sentiment']['total'] == 2
+    assert scores['meteorologist_sentiment']['correct'] == 1
+    assert scores['meteorologist_sentiment']['accuracy'] == 0.5
+
+    # 2. Master Decision (Vol): Straddle + Big Move -> Win
+    # Master is scored on both Volatility and Directional trades
+    # Vol: 1 trade (Correct)
+    # Dir: 2 trades (1 Correct, 1 Incorrect)
+
+    assert scores['master_decision']['total'] == 3
+    assert scores['master_decision']['correct'] == 2
+    assert pytest.approx(scores['master_decision']['accuracy']) == 2/3
 
 def test_grade_decision_volatility():
     data = {

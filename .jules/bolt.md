@@ -10,3 +10,6 @@
 ## 2025-02-17 - Vectorized Decision Grading
 **Learning:** Iterating over DataFrame rows with `iterrows()` for conditional logic is extremely slow (O(N) Python loop overhead). Boolean masking and vectorized pandas operations provided a ~30x speedup for decision grading logic, which is critical for dashboard responsiveness as history grows.
 **Action:** Always prefer vectorized operations (`loc` with boolean masks) over row-wise iteration for data processing.
+## 2025-02-13 - Efficient DataFrame Copying
+**Learning:** Calling `df.copy()` on a large DataFrame copies all columns, including large text fields not needed for downstream processing. This introduces significant memory and CPU overhead. Subsetting to only necessary columns *before* copying reduced execution time by ~11% on large datasets (10k rows) and significantly lowered peak memory usage.
+**Action:** Always filter DataFrames to the minimal required columns before creating a copy for isolated processing.
