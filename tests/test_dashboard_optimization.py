@@ -184,5 +184,50 @@ def test_grade_decision_mixed_batch():
     assert graded.iloc[2]['outcome'] == 'WIN' # The volatility trade
     assert graded.iloc[3]['outcome'] == 'LOSS' # The last directional trade
 
+def test_grade_decision_columns_optimization():
+    """
+    Verify that grade_decision_quality drops unnecessary columns like 'master_reasoning'
+    but keeps required ones.
+    """
+    data = {
+        'timestamp': pd.date_range(start='2024-01-01', periods=3),
+        'contract': ['KCH26', 'KCK26', 'KCN26'],
+        'master_decision': ['BULLISH', 'BEARISH', 'NEUTRAL'],
+        'master_confidence': [0.8, 0.7, 0.5],
+        'strategy_type': ['BULL_CALL_SPREAD', 'BEAR_PUT_SPREAD', 'NONE'],
+        'prediction_type': ['DIRECTIONAL', 'DIRECTIONAL', 'DIRECTIONAL'],
+        'pnl_realized': [100.0, -50.0, 0.0],
+        'volatility_outcome': [None, None, None],
+        'actual_trend_direction': ['UP', 'UP', 'SIDEWAYS'],
+        'weighted_score': [1.0, -1.0, 0.0],
+
+        # Heavy columns that should be dropped
+        'master_reasoning': ['bla '*1000, 'bla '*1000, 'bla '*1000],
+        'full_prompt': ['prompt '*1000, 'prompt '*1000, 'prompt '*1000],
+        'raw_response': ['json '*1000, 'json '*1000, 'json '*1000],
+        'supporting_data': ['{}', '{}', '{}']
+    }
+
+    df = pd.DataFrame(data)
+
+    # Run the function
+    graded = grade_decision_quality(df)
+
+    # Check if necessary columns are present
+    required = [
+        'timestamp', 'contract', 'master_decision', 'master_confidence',
+        'strategy_type', 'prediction_type', 'pnl_realized',
+        'volatility_outcome', 'actual_trend_direction', 'weighted_score',
+        'outcome', 'pnl'
+    ]
+
+    for col in required:
+        assert col in graded.columns, f"Missing required column: {col}"
+
+    # Check if unnecessary columns are dropped
+    unnecessary = ['master_reasoning', 'full_prompt', 'raw_response', 'supporting_data']
+    for col in unnecessary:
+        assert col not in graded.columns, f"Unnecessary column retained: {col}"
+
 if __name__ == "__main__":
     pytest.main([__file__])

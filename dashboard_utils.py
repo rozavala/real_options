@@ -901,8 +901,19 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
     if council_df.empty:
         return pd.DataFrame()
 
-    # Work on a copy to avoid modifying original
-    graded_df = council_df.copy()
+    # OPTIMIZATION: Only copy necessary columns to avoid overhead from large text fields
+    # Use set to avoid duplicates and ensure minimal footprint
+    needed_cols = {
+        'timestamp', 'contract', 'master_decision', 'master_confidence',
+        'strategy_type', 'prediction_type', 'pnl_realized',
+        'volatility_outcome', 'actual_trend_direction', 'weighted_score'
+    }
+    # Keep strictly necessary columns + any that match the set
+    # Iterate over original columns to preserve order (deterministic)
+    available_cols = [c for c in council_df.columns if c in needed_cols]
+
+    # Work on a subset copy to minimize memory/time
+    graded_df = council_df[available_cols].copy()
 
     # Initialize outcome to PENDING
     graded_df['outcome'] = 'PENDING'

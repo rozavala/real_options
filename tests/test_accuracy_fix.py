@@ -1,6 +1,18 @@
 import pandas as pd
 import sys
+from unittest.mock import MagicMock
 sys.path.insert(0, '.')
+
+# Mock streamlit before importing dashboard_utils
+sys.modules['streamlit'] = MagicMock()
+sys.modules['streamlit'].cache_data = lambda func=None, ttl=None: (lambda f: f) if func is None else func
+sys.modules['streamlit'].error = MagicMock()
+
+# Mock matplotlib
+sys.modules['matplotlib'] = MagicMock()
+sys.modules['matplotlib.pyplot'] = MagicMock()
+sys.modules['matplotlib.dates'] = MagicMock()
+sys.modules['matplotlib.ticker'] = MagicMock()
 
 from dashboard_utils import grade_decision_quality
 
