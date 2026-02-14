@@ -63,7 +63,7 @@ class SelfHealingMonitor:
         except ImportError:
             return
 
-        if not is_market_open():
+        if not is_market_open(self.config):
             return
 
         state_file = Path("data/state.json")

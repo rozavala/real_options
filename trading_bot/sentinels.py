@@ -1501,7 +1501,7 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
         if not is_trading_day():
             _sentinel_diag.debug("XSentimentSentinel: skipped (not trading day)")
             return None
-        if not is_market_open():
+        if not is_market_open(self.config):
             if not hasattr(self, '_last_closed_market_check'): self._last_closed_market_check = None
             now = datetime.now(timezone.utc)
             if self._last_closed_market_check:
@@ -1959,7 +1959,7 @@ class PredictionMarketSentinel(Sentinel):
             if not hasattr(self, '_last_non_trading_check'): self._last_non_trading_check = 0
             if (now - self._last_non_trading_check) < 7200: return None
             self._last_non_trading_check = now
-        elif not is_market_open():
+        elif not is_market_open(self.config):
             if not hasattr(self, '_last_closed_market_check_pm'): self._last_closed_market_check_pm = 0
             if (now - self._last_closed_market_check_pm) < 1800: return None
             self._last_closed_market_check_pm = now

@@ -630,17 +630,21 @@ def log_council_decision(decision_data):
     except Exception as e:
         logging.error(f"Failed to log council decision: {e}")
 
-def is_market_open() -> bool:
+def is_market_open(config: dict = None) -> bool:
     """Check if ICE coffee futures market is currently open.
 
-    Based on ICE Coffee (KC) Trading Hours:
-    - Electronic: Sun 6:00 PM - Fri 5:00 PM ET
-    - Core Validation/Trading Hours: 03:30 AM - 02:00 PM ET
+    When config is provided, loads the active commodity profile and uses
+    its trading_hours_et field for the open/close window. Otherwise falls
+    back to hardcoded 03:30 AM - 02:00 PM ET (backward compat).
 
     This function checks:
     1. Weekends (Saturday/Sunday) -> CLOSED
     2. US Market Holidays (NYSE calendar) -> CLOSED
-    3. Time of day (03:30 - 14:00 ET) -> OPEN if within window
+    3. Time of day -> OPEN if within window
+
+    Args:
+        config: Application config dict (optional). When provided, uses
+                commodity profile trading hours instead of hardcoded defaults.
 
     Returns:
         bool: True if market is currently open, False otherwise.
@@ -673,10 +677,22 @@ def is_market_open() -> bool:
     if now_ny.date() in us_holidays:
         return False
 
-    # 3. Time Check (03:30 AM - 02:00 PM ET)
-    # Define thresholds in NY timezone
-    market_open_ny = now_ny.replace(hour=3, minute=30, second=0, microsecond=0)
-    market_close_ny = now_ny.replace(hour=14, minute=0, second=0, microsecond=0)
+    # 3. Time Check — use profile hours if config provided, else hardcoded
+    if config is not None:
+        try:
+            from config.commodity_profiles import get_active_profile, parse_trading_hours
+            profile = get_active_profile(config)
+            open_t, close_t = parse_trading_hours(profile.contract.trading_hours_et)
+            market_open_ny = now_ny.replace(hour=open_t.hour, minute=open_t.minute, second=0, microsecond=0)
+            market_close_ny = now_ny.replace(hour=close_t.hour, minute=close_t.minute, second=0, microsecond=0)
+        except Exception:
+            # Fallback to hardcoded if profile loading fails
+            market_open_ny = now_ny.replace(hour=3, minute=30, second=0, microsecond=0)
+            market_close_ny = now_ny.replace(hour=14, minute=0, second=0, microsecond=0)
+    else:
+        # Hardcoded fallback (03:30 AM - 02:00 PM ET)
+        market_open_ny = now_ny.replace(hour=3, minute=30, second=0, microsecond=0)
+        market_close_ny = now_ny.replace(hour=14, minute=0, second=0, microsecond=0)
 
     # Convert to UTC for comparison
     market_open_utc = market_open_ny.astimezone(utc)
