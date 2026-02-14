@@ -2235,18 +2235,32 @@ async def _check_feedback_loop_health(config: dict):
             )
 
             # === ALERT IF PREDICTIONS ARE STALE ===
-            if age_hours > 48:
+            # Distinguish young PENDING (<24h, normal) from stale PENDING (>48h, needs attention)
+            stale_threshold_hours = 48
+            young_threshold_hours = 24
+            stale_count = 0
+            young_count = 0
+            if not pending_timestamps.empty:
+                now_utc = pd.Timestamp.now(tz='UTC')
+                for ts in pending_timestamps:
+                    hours_old = (now_utc - ts).total_seconds() / 3600
+                    if hours_old > stale_threshold_hours:
+                        stale_count += 1
+                    elif hours_old <= young_threshold_hours:
+                        young_count += 1
+
+            if stale_count > 0:
                 alert_msg = (
-                    f"⚠️ FEEDBACK LOOP STALE\n"
+                    f"⚠️ FEEDBACK LOOP: {stale_count} stale predictions\n"
                     f"Oldest PENDING: {age_hours:.0f}h ago\n"
-                    f"PENDING: {pending_count}/{total_count}\n"
+                    f"Stale (>48h): {stale_count} | Recent (<24h): {young_count}\n"
                     f"Resolution rate: {resolution_rate:.0f}%\n"
-                    f"Agent learning is NOT occurring!"
+                    f"PENDING: {pending_count}/{total_count}"
                 )
                 logger.warning(alert_msg)
                 send_pushover_notification(
                     config.get('notifications', {}),
-                    "🔴 Feedback Loop Alert",
+                    "🟡 Feedback Loop Alert",
                     alert_msg
                 )
 
