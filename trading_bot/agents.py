@@ -236,6 +236,9 @@ class TradingCouncil:
         commodity_label = self.commodity_profile.name if self.commodity_profile else "General"
         logger.info(f"Trading Council initialized for {commodity_label}. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
 
+        # DSPy optimized prompt cache (loaded lazily, no dspy import)
+        self._optimized_prompt_cache: dict = {}
+
         # Load TMS decay rates from commodity profile
         self._tms_decay_rates = getattr(
             self.commodity_profile, 'tms_decay_rates', {'default': 0.05}
@@ -257,6 +260,49 @@ class TradingCouncil:
                 f"Grounded data cache invalidated ({cache_size} entries cleared). "
                 f"Next cycle will perform fresh searches."
             )
+
+    def _load_optimized_prompt(self, ticker: str, persona_key: str) -> dict | None:
+        """Load DSPy-optimized prompt from disk, with in-memory cache."""
+        cache_key = f"{ticker}/{persona_key}"
+        if cache_key in self._optimized_prompt_cache:
+            return self._optimized_prompt_cache[cache_key]
+
+        dspy_config = self.full_config.get("dspy", {})
+        prompts_dir = dspy_config.get("optimized_prompts_dir", "data/dspy_optimized")
+        if not os.path.isabs(prompts_dir):
+            prompts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), prompts_dir)
+
+        prompt_path = os.path.join(prompts_dir, ticker, persona_key, "prompt.json")
+        if not os.path.exists(prompt_path):
+            logger.debug(f"No optimized prompt at {prompt_path}, using default")
+            self._optimized_prompt_cache[cache_key] = None
+            return None
+
+        try:
+            with open(prompt_path, "r") as f:
+                data = json.load(f)
+            self._optimized_prompt_cache[cache_key] = data
+            return data
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning(f"Failed to load optimized prompt {prompt_path}: {e}")
+            self._optimized_prompt_cache[cache_key] = None
+            return None
+
+    @staticmethod
+    def _format_demos(demos: list[dict]) -> str:
+        """Format few-shot demonstration examples as readable text."""
+        parts = []
+        for i, demo in enumerate(demos, 1):
+            inp = demo.get("input", {})
+            out = demo.get("output", {})
+            parts.append(
+                f"--- Example {i} ---\n"
+                f"Context: {inp.get('market_context', 'N/A')}\n"
+                f"Direction: {out.get('direction', 'N/A')}\n"
+                f"Confidence: {out.get('confidence', 'N/A')}\n"
+                f"Analysis: {out.get('analysis', 'N/A')}"
+            )
+        return "\n\n".join(parts)
 
     def _validate_agent_output(self, agent_name: str, analysis: str, grounded_data: str) -> tuple:
         """
@@ -728,6 +774,19 @@ OUTPUT FORMAT (JSON):
                 # Fall back to legacy persona prompt (no change in behavior)
                 logger.debug(f"No commodity template for {persona_key}, using legacy: {e}")
                 pass  # persona_prompt already set above
+
+        # DSPy optimized prompt override (per-commodity toggle)
+        commodity_ticker = self.full_config.get("symbol", "KC")
+        dspy_config = self.full_config.get("dspy", {})
+        enabled_map = dspy_config.get("use_optimized_prompts", {})
+        if enabled_map.get(commodity_ticker, False):
+            optimized = self._load_optimized_prompt(commodity_ticker, persona_key)
+            if optimized:
+                persona_prompt = optimized["instruction"]
+                if optimized.get("demos"):
+                    demo_text = self._format_demos(optimized["demos"])
+                    persona_prompt = f"{persona_prompt}\n\nEXAMPLES OF GOOD ANALYSIS:\n{demo_text}"
+                logger.debug(f"[{persona_key}] Using DSPy-optimized prompt ({len(optimized.get('demos', []))} demos)")
 
         # Inject grounded data into prompt
         full_prompt = (
