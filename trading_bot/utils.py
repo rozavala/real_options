@@ -12,6 +12,7 @@ import csv
 import logging
 import os
 import shutil
+import re
 from datetime import datetime, time, timedelta, timezone, date
 import pytz
 from ib_insync import *
@@ -184,6 +185,15 @@ def sanitize_for_csv(value):
     if stripped and stripped[0] in ('=', '+', '@'):
         return f"'{value}"
     return value
+
+
+def escape_xml(text: str) -> str:
+    """Escape XML special characters to prevent prompt injection."""
+    if not isinstance(text, str):
+        return str(text)
+    # Strip invalid XML control characters (0x00-0x1F except tab, newline, carriage return)
+    clean_text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', text)
+    return clean_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def log_order_event(trade: Trade, status: str, message: str = ""):
@@ -886,7 +896,6 @@ def word_boundary_match(keyword: str, text: str) -> bool:
 
     Commodity-agnostic: works for any keyword vocabulary.
     """
-    import re
     kw_lower = keyword.lower()
     text_lower = text.lower()
 
