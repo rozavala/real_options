@@ -46,6 +46,11 @@ class BacktestConfig:
     condor_range_pct: float = 0.05  # 5% range for condors
     commission_per_contract: float = 2.50
     slippage_ticks: int = 1
+    max_hold_days: int = 5
+    spread_width_pct: float = 0.03  # Spread width as % of underlying (3%)
+    premium_ratio: float = 0.33  # Credit received as fraction of spread width
+    max_contracts: int = 10  # Cap contracts per trade
+    contract_multiplier: float = 1.0  # Price-to-dollar multiplier (KC coffee: 375)
 
 
 @dataclass
@@ -175,9 +180,20 @@ class SimpleBacktester:
         strategy: StrategyType
     ) -> Trade:
         """Open a new trade."""
-        # Calculate position size
         max_risk = self.equity * self.config.max_position_pct
-        contracts = max(1, int(max_risk / (price * 0.02)))  # Simplified sizing
+
+        mult = self.config.contract_multiplier
+
+        if strategy in (StrategyType.BULL_PUT_SPREAD, StrategyType.BEAR_CALL_SPREAD):
+            # Size by max loss of the spread (in real dollars)
+            spread_width = price * self.config.spread_width_pct
+            max_loss_per = spread_width * (1 - self.config.premium_ratio) * mult
+            contracts = min(
+                self.config.max_contracts,
+                max(1, int(max_risk / max_loss_per))
+            )
+        else:
+            contracts = max(1, int(max_risk / (price * 0.02 * mult)))
 
         return Trade(
             entry_date=date,
@@ -189,10 +205,9 @@ class SimpleBacktester:
 
     def _check_exit(self, trade: Trade, row: pd.Series, date: datetime) -> Trade:
         """Check exit conditions for open trade."""
-        # Simple time-based exit for options (5 days max)
         days_held = (date - trade.entry_date).days
 
-        if days_held >= 5:
+        if days_held >= self.config.max_hold_days:
             trade.exit_date = date
             trade.exit_price = row['close']
             trade.pnl = self._calc_pnl(trade)
@@ -205,37 +220,54 @@ class SimpleBacktester:
         if trade.exit_price is None:
             return 0.0
 
+        mult = self.config.contract_multiplier
         price_move_pct = (trade.exit_price - trade.entry_price) / trade.entry_price
 
         if trade.strategy == StrategyType.LONG_STRADDLE:
             # Straddle profits if move exceeds breakeven
             move_magnitude = abs(price_move_pct)
             if move_magnitude > self.config.straddle_breakeven_pct:
-                pnl = (move_magnitude - self.config.straddle_breakeven_pct) * trade.entry_price * trade.contracts
+                pnl = (move_magnitude - self.config.straddle_breakeven_pct) * trade.entry_price * trade.contracts * mult
             else:
-                pnl = -self.config.straddle_breakeven_pct * trade.entry_price * trade.contracts
+                pnl = -self.config.straddle_breakeven_pct * trade.entry_price * trade.contracts * mult
 
         elif trade.strategy == StrategyType.IRON_CONDOR:
             # Condor profits if price stays in range
             move_magnitude = abs(price_move_pct)
             if move_magnitude < self.config.condor_range_pct:
-                pnl = self.config.condor_range_pct * 0.5 * trade.entry_price * trade.contracts
+                pnl = self.config.condor_range_pct * 0.5 * trade.entry_price * trade.contracts * mult
             else:
-                pnl = -self.config.condor_range_pct * trade.entry_price * trade.contracts
+                pnl = -self.config.condor_range_pct * trade.entry_price * trade.contracts * mult
 
-        elif trade.strategy in [StrategyType.LONG_CALL, StrategyType.BULL_PUT_SPREAD]:
+        elif trade.strategy == StrategyType.BULL_PUT_SPREAD:
+            # Credit spread: collect premium, lose if price drops through spread
+            spread_width = trade.entry_price * self.config.spread_width_pct
+            premium = spread_width * self.config.premium_ratio
+            price_drop = max(0, trade.entry_price - trade.exit_price)
+            loss = min(price_drop, spread_width)
+            pnl = (premium - loss) * trade.contracts * mult
+
+        elif trade.strategy == StrategyType.BEAR_CALL_SPREAD:
+            # Credit spread: collect premium, lose if price rises through spread
+            spread_width = trade.entry_price * self.config.spread_width_pct
+            premium = spread_width * self.config.premium_ratio
+            price_rise = max(0, trade.exit_price - trade.entry_price)
+            loss = min(price_rise, spread_width)
+            pnl = (premium - loss) * trade.contracts * mult
+
+        elif trade.strategy == StrategyType.LONG_CALL:
             # Directional bullish
-            pnl = price_move_pct * trade.entry_price * trade.contracts
+            pnl = price_move_pct * trade.entry_price * trade.contracts * mult
 
-        elif trade.strategy in [StrategyType.LONG_PUT, StrategyType.BEAR_CALL_SPREAD]:
+        elif trade.strategy == StrategyType.LONG_PUT:
             # Directional bearish
-            pnl = -price_move_pct * trade.entry_price * trade.contracts
+            pnl = -price_move_pct * trade.entry_price * trade.contracts * mult
 
         else:
             pnl = 0.0
 
-        # Subtract commissions
-        pnl -= self.config.commission_per_contract * trade.contracts * 2  # Entry + exit
+        # Subtract commissions (entry + exit)
+        pnl -= self.config.commission_per_contract * trade.contracts * 2
 
         return pnl
 
