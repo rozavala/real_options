@@ -7,13 +7,15 @@ SMA crossover signal. Not meant to be profitable — just proves the
 engine works end-to-end and establishes a performance baseline.
 
 Usage:
-    python scripts/run_backtest.py
+    python scripts/run_backtest.py           # Single run with default config
+    python scripts/run_backtest.py --sweep   # Parameter sensitivity sweep (48 combos)
 """
 
 import sys
 import os
 import json
 from datetime import datetime, timezone
+from itertools import product
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -70,14 +72,10 @@ def sma_crossover_signal(row: pd.Series, historical: pd.DataFrame) -> dict:
     return None
 
 
-def main():
-    ticker = "KC=F"
-    period = "2y"
-
-    print(f"=== KC Coffee Futures Backtest ===")
+def fetch_data(ticker="KC=F", period="2y"):
+    """Fetch and normalize price data. Returns (DataFrame, start_date, end_date)."""
     print(f"Fetching {period} of {ticker} data...")
 
-    # Fetch price data
     data = yf.download(ticker, period=period, progress=False)
 
     if data.empty:
@@ -101,6 +99,118 @@ def main():
     print(f"Period: {start_date} to {end_date}")
     print(f"Data points: {len(data)}")
     print()
+
+    return data, start_date, end_date
+
+
+def run_sweep():
+    """Run parameter sensitivity sweep across a grid of config values."""
+    ticker = "KC=F"
+    period = "2y"
+
+    # Parameter grid
+    spread_widths = [0.015, 0.02, 0.03, 0.04]
+    hold_days = [1, 2, 3, 5]
+    premium_ratios = [0.25, 0.33, 0.40]
+
+    combos = list(product(spread_widths, hold_days, premium_ratios))
+    total = len(combos)
+
+    print(f"=== Parameter Sensitivity Sweep ({total} runs) ===")
+    data, start_date, end_date = fetch_data(ticker, period)
+
+    results = []
+    for i, (sw, hd, pr) in enumerate(combos, 1):
+        config = BacktestConfig(
+            initial_capital=50000.0,
+            max_position_pct=0.10,
+            max_hold_days=hd,
+            commission_per_contract=2.50,
+            contract_multiplier=375.0,
+            spread_width_pct=sw,
+            premium_ratio=pr,
+        )
+        backtester = SimpleBacktester(config)
+        result = backtester.run(data.copy(), sma_crossover_signal)
+        m = result.metrics
+        results.append({
+            "spread_width_pct": sw,
+            "max_hold_days": hd,
+            "premium_ratio": pr,
+            "total_trades": m.get("total_trades", 0),
+            "win_rate": m.get("win_rate", 0),
+            "total_pnl": m.get("total_pnl", 0),
+            "sharpe_ratio": m.get("sharpe_ratio", 0),
+            "profit_factor": m.get("profit_factor", 0),
+        })
+        if i % 12 == 0:
+            print(f"  ... {i}/{total} done")
+
+    # Sort by profit factor descending (inf sorts last)
+    results.sort(key=lambda r: r["profit_factor"] if r["profit_factor"] != float("inf") else -1, reverse=True)
+
+    # Print table
+    print()
+    header = f"{'Spread%':>8}  {'Hold':>4}  {'Premium':>7}  {'Trades':>6}  {'Win Rate':>8}  {'Total P&L':>12}  {'Sharpe':>7}  {'PF':>6}"
+    print(header)
+    print("-" * len(header))
+    for r in results:
+        pf_str = f"{r['profit_factor']:.2f}" if r["profit_factor"] != float("inf") else "inf"
+        print(
+            f"{r['spread_width_pct']:>8.3f}  {r['max_hold_days']:>4d}  {r['premium_ratio']:>7.2f}  "
+            f"{r['total_trades']:>6d}  {r['win_rate']:>7.1%}  ${r['total_pnl']:>11,.2f}  "
+            f"{r['sharpe_ratio']:>7.2f}  {pf_str:>6}"
+        )
+    print()
+
+    # Identify most sensitive parameter
+    param_ranges = {}
+    for param in ("spread_width_pct", "max_hold_days", "premium_ratio"):
+        by_val = {}
+        for r in results:
+            by_val.setdefault(r[param], []).append(r["total_pnl"])
+        means = {v: sum(pnls) / len(pnls) for v, pnls in by_val.items()}
+        param_ranges[param] = max(means.values()) - min(means.values())
+
+    most_sensitive = max(param_ranges, key=param_ranges.get)
+    print(f"Most sensitive parameter: {most_sensitive} (avg P&L range: ${param_ranges[most_sensitive]:,.0f})")
+    print()
+
+    # Save results JSON
+    results_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "backtest_results")
+    os.makedirs(results_dir, exist_ok=True)
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    results_file = os.path.join(results_dir, f"sweep_{timestamp}.json")
+
+    output = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "ticker": ticker,
+        "period": period,
+        "data_range": {"start": start_date, "end": end_date, "points": len(data)},
+        "total_combinations": total,
+        "parameter_grid": {
+            "spread_width_pct": spread_widths,
+            "max_hold_days": hold_days,
+            "premium_ratio": premium_ratios,
+        },
+        "most_sensitive_parameter": most_sensitive,
+        "parameter_pnl_ranges": {k: round(v, 2) for k, v in param_ranges.items()},
+        "results": [{k: round(v, 6) if isinstance(v, float) else v for k, v in r.items()} for r in results],
+    }
+
+    with open(results_file, "w") as f:
+        json.dump(output, f, indent=2)
+
+    print(f"Results saved to {results_file}")
+
+
+def main():
+    ticker = "KC=F"
+    period = "2y"
+
+    print(f"=== KC Coffee Futures Backtest ===")
+    data, start_date, end_date = fetch_data(ticker, period)
 
     # Configure backtest
     # KC coffee: 37,500 lbs/contract, price in cents/lb → multiplier = 375
@@ -186,4 +296,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "--sweep" in sys.argv:
+        run_sweep()
+    else:
+        main()
