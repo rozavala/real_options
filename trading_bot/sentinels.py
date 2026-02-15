@@ -17,6 +17,7 @@ import pytz
 import aiohttp
 import json
 import re
+import copy
 import functools
 from functools import wraps
 from notifications import send_pushover_notification
@@ -178,25 +179,47 @@ class Sentinel:
         return set()
 
     def _save_seen_cache(self):
-        """Save seen links to disk with timestamps."""
+        """Save seen links to disk with timestamps (Synchronous - use only in __init__)."""
+        import time as time_module
+        now = time_module.time()
+
+        # Rebuild dict ensuring only current _seen_links are saved,
+        # preserving timestamps for existing ones.
+        data_to_save = {}
+        for link in self._seen_links:
+            data_to_save[link] = self._seen_timestamps.get(link, now)
+
+        # Sync internal map
+        self._seen_timestamps = data_to_save
+
+        self._write_seen_cache_sync(data_to_save)
+
+    def _write_seen_cache_sync(self, data: dict):
+        """Internal synchronous file writer."""
         try:
             os.makedirs(self.CACHE_DIR, exist_ok=True)
-            import time as time_module
-            now = time_module.time()
-
-            # Rebuild dict ensuring only current _seen_links are saved,
-            # preserving timestamps for existing ones.
-            data_to_save = {}
-            for link in self._seen_links:
-                data_to_save[link] = self._seen_timestamps.get(link, now)
-
-            # Sync internal map
-            self._seen_timestamps = data_to_save
-
             with open(self._cache_file, 'w') as f:
-                json.dump(data_to_save, f)
+                json.dump(data, f)
         except Exception as e:
             logger.warning(f"Failed to save seen cache: {e}")
+
+    async def _save_seen_cache_async(self):
+        """Async save: Prepare data in main thread, write in executor."""
+        import time as time_module
+        now = time_module.time()
+
+        # Rebuild dict ensuring only current _seen_links are saved,
+        # preserving timestamps for existing ones.
+        data_to_save = {}
+        for link in self._seen_links:
+            data_to_save[link] = self._seen_timestamps.get(link, now)
+
+        # Sync internal map (Main Thread State Update)
+        self._seen_timestamps = data_to_save
+
+        # Offload File I/O to thread
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._write_seen_cache_sync, data_to_save)
 
     def _escape_xml(self, text: str) -> str:
         """Escape XML special characters to prevent prompt injection."""
@@ -496,20 +519,34 @@ class WeatherSentinel(Sentinel):
         return {}
 
     def _save_alert_state(self):
-        """Persist alert state to disk."""
+        """Persist alert state to disk (Synchronous)."""
+        data = self._prepare_alert_data()
+        self._write_alert_state_sync(data)
+
+    def _prepare_alert_data(self) -> dict:
+        """Prepare alert data for serialization."""
+        data = {}
+        for key, val in self._active_alerts.items():
+            data[key] = {
+                'time': val['time'].isoformat() if isinstance(val['time'], datetime) else val['time'],
+                'value': val['value']
+            }
+        return data
+
+    def _write_alert_state_sync(self, data: dict):
+        """Internal synchronous writer."""
         try:
             os.makedirs(os.path.dirname(self.ALERT_STATE_FILE) or '.', exist_ok=True)
-            # Serialize datetime to ISO format
-            data = {}
-            for key, val in self._active_alerts.items():
-                data[key] = {
-                    'time': val['time'].isoformat() if isinstance(val['time'], datetime) else val['time'],
-                    'value': val['value']
-                }
             with open(self.ALERT_STATE_FILE, 'w') as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
             logger.warning(f"Failed to save weather alert state: {e}")
+
+    async def _save_alert_state_async(self):
+        """Async save: Prepare in main thread, write in executor."""
+        data = self._prepare_alert_data()
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._write_alert_state_sync, data)
 
     async def _fetch_weather(self, region: GrowingRegion) -> List[Dict]:
         """Fetch weather data for a region."""
@@ -715,7 +752,7 @@ class WeatherSentinel(Sentinel):
                 logger.error(f"Weather Sentinel failed for {region.name}: {e}")
                 _sentinel_diag.error(f"WeatherSentinel: exception for {region.name}: {e}")
 
-        self._save_alert_state()
+        await self._save_alert_state_async()
 
         if all_alerts:
             # Return the most severe alert
@@ -863,7 +900,7 @@ class LogisticsSentinel(Sentinel):
         headlines = [title for sublist in results for title in sublist]
 
         # Save cache
-        self._save_seen_cache()
+        await self._save_seen_cache_async()
 
         if not headlines:
             _sentinel_diag.info("LogisticsSentinel: no fresh headlines, no trigger")
@@ -1051,7 +1088,7 @@ class NewsSentinel(Sentinel):
         headlines = [title for sublist in results for title in sublist]
 
         # Save cache
-        self._save_seen_cache()
+        await self._save_seen_cache_async()
 
         if not headlines:
             _sentinel_diag.info("NewsSentinel: no fresh headlines, no trigger")
@@ -1198,12 +1235,23 @@ class XSentimentSentinel(Sentinel):
 
     def _save_volume_state(self):
         """Persist volume baseline to disk."""
+        data = {'history': self.post_volume_history[-30:]}
+        self._write_volume_state_sync(data)
+
+    def _write_volume_state_sync(self, data: dict):
+        """Internal synchronous writer."""
         try:
             os.makedirs(self.CACHE_DIR, exist_ok=True)
             with open(self._volume_state_file, 'w') as f:
-                json.dump({'history': self.post_volume_history[-30:]}, f)
+                json.dump(data, f)
         except Exception as e:
             logger.warning(f"Failed to save X volume state: {e}")
+
+    async def _save_volume_state_async(self):
+        """Async save: Prepare in main thread, write in executor."""
+        data = {'history': self.post_volume_history[-30:]}
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._write_volume_state_sync, data)
 
     def get_sensor_status(self) -> dict:
         return {
@@ -1298,13 +1346,13 @@ class XSentimentSentinel(Sentinel):
             logger.error(f"X API request failed: {e}")
             return []
 
-    def _update_volume_stats(self, new_volume: int):
+    async def _update_volume_stats(self, new_volume: int):
         self.post_volume_history.append(new_volume)
         self.post_volume_history = self.post_volume_history[-30:]
         if len(self.post_volume_history) >= 5:
             self.volume_mean = statistics.mean(self.post_volume_history)
             self.volume_stddev = statistics.stdev(self.post_volume_history) if len(self.post_volume_history) > 1 else 0
-        self._save_volume_state()
+        await self._save_volume_state_async()
 
     async def _sem_bound_search(self, query: str) -> Optional[dict]:
         slot_acquired = await acquire_api_slot('xai', timeout=30.0)
@@ -1427,7 +1475,7 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                             f"  Grok result: sentiment={data['sentiment_score']}, confidence={data['confidence']}, "
                             f"volume={data['post_volume']}, summary={data.get('summary', '')[:80]}"
                         )
-                        if data['post_volume'] > 0: self._update_volume_stats(data['post_volume'])
+                        if data['post_volume'] > 0: await self._update_volume_stats(data['post_volume'])
                         return data
                     except (json.JSONDecodeError, ValueError, TypeError) as e:
                         logger.error(f"Failed to parse Grok response: {e}")
@@ -1755,6 +1803,14 @@ class PredictionMarketSentinel(Sentinel):
         except Exception as e:
             logger.warning(f"Failed to save prediction market state: {e}")
 
+    async def _save_state_cache_async(self):
+        try:
+            # Copy to avoid race condition with main thread updates
+            cache_copy = copy.deepcopy(self.state_cache)
+            await StateManager.save_state_async(cache_copy, namespace="prediction_market_state")
+        except Exception as e:
+            logger.warning(f"Failed to save prediction market state (async): {e}")
+
     def _calculate_severity(self, delta_pct: float) -> int:
         abs_delta = abs(delta_pct)
         if abs_delta >= 30: return self.severity_map.get('30_plus_pct', 9)
@@ -2050,7 +2106,7 @@ class PredictionMarketSentinel(Sentinel):
             except Exception as topic_error:
                 logger.warning(f"Error processing prediction market topic '{query}': {topic_error}")
                 continue
-        self._save_state_cache()
+        await self._save_state_cache_async()
         if triggers:
             triggers.sort(key=lambda t: t.severity, reverse=True)
             _sentinel_diag.info(f"PredictionMarketSentinel: {len(triggers)} triggers, returning severity={triggers[0].severity}")
