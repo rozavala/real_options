@@ -613,8 +613,13 @@ with st.expander("🔍 Sentinel Details"):
                 st.caption("")
 
         if error:
-            with st.expander("⚠️ View Error Details", expanded=False):
-                st.code(error, language="text")
+            # UX Improvement: Progressive enhancement for error details
+            if hasattr(st, "popover"):
+                with st.popover("⚠️ Error", help="View error details"):
+                    st.code(error, language="text")
+            else:
+                with st.expander("⚠️ View Error Details", expanded=False):
+                    st.code(error, language="text")
 
     st.markdown("**Always-On Sentinels** (24/7, no IB required)")
     for name, info in always_on.items():
