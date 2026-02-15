@@ -97,7 +97,7 @@ st.markdown("Quick access to log analysis utilities for the current environment.
 row1_cols = st.columns(2)
 
 with row1_cols[0]:
-    if st.button("📋 View Status", width='stretch'):
+    if st.button("📋 View Status", width='stretch', help="Show current orchestrator status and recent activity."):
         with st.spinner("Fetching status..."):
             try:
                 result = subprocess.run(
@@ -112,7 +112,7 @@ with row1_cols[0]:
                 st.error(f"Error: {e}")
 
 with row1_cols[1]:
-    if st.button(f"🔍 Analyze {current_env.upper()}", width='stretch'):
+    if st.button(f"🔍 Analyze {current_env.upper()}", width='stretch', help=f"Run log analysis for the {current_env} environment."):
         with st.spinner(f"Analyzing {current_env} environment..."):
             try:
                 result = subprocess.run(
@@ -141,7 +141,7 @@ with error_cols[0]:
 
 with error_cols[1]:
     st.markdown("&nbsp;")  # Spacer
-    if st.button(f"🚨 Show Errors", width='stretch'):
+    if st.button(f"🚨 Show Errors", width='stretch', help=f"Filter logs for errors in the last {hours_option} hours."):
         with st.spinner(f"Finding errors from last {hours_option} hours..."):
             try:
                 result = subprocess.run(
@@ -164,7 +164,7 @@ st.markdown("##### 📈 Performance & Health")
 perf_cols = st.columns(2)
 
 with perf_cols[0]:
-    if st.button(f"📈 Trading Performance", width='stretch'):
+    if st.button(f"📈 Trading Performance", width='stretch', help="Show trading performance metrics from recent logs."):
         with st.spinner("Loading performance data..."):
             try:
                 result = subprocess.run(
@@ -179,7 +179,7 @@ with perf_cols[0]:
                 st.error(f"Error: {e}")
 
 with perf_cols[1]:
-    if st.button(f"🏥 System Health", width='stretch'):
+    if st.button(f"🏥 System Health", width='stretch', help="Check system health: memory, disk, processes, and service status."):
         with st.spinner("Checking system health..."):
             try:
                 result = subprocess.run(
@@ -401,7 +401,7 @@ diag_cols = st.columns(3)
 
 with diag_cols[0]:
     st.info("**IB Connection Test**")
-    if st.button("🔌 Test IB Gateway Connection"):
+    if st.button("🔌 Test IB Gateway Connection", help="Open a test connection to IB Gateway and verify connectivity."):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -442,7 +442,7 @@ with diag_cols[0]:
 
 with diag_cols[1]:
     st.info("**Test Notifications**")
-    if st.button("📱 Send Test Notification"):
+    if st.button("📱 Send Test Notification", help="Send a test push notification via Pushover to verify alerting works."):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -463,7 +463,7 @@ with diag_cols[1]:
 
 with diag_cols[2]:
     st.info("**Market Status**")
-    if st.button("🕐 Check Market Status"):
+    if st.button("🕐 Check Market Status", help="Show current time in UTC/NY, trading day status, and market open/close."):
         try:
             import sys
             import os
@@ -500,7 +500,7 @@ state_cols = st.columns(2)
 
 with state_cols[0]:
     st.info("**View System State**")
-    if st.button("👁️ Show state.json Contents"):
+    if st.button("👁️ Show state.json Contents", help="Display the current orchestrator state file (sentinels, triggers, flags)."):
         try:
             state_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "state.json")
             if os.path.exists(state_path):
@@ -557,7 +557,7 @@ This validates the entire architecture from sentinels to council to order execut
 validation_cols = st.columns([2, 1])
 
 with validation_cols[0]:
-    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch')
+    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch', help="Run preflight checks on all system components (~30s in quick mode, ~2min full).")
 
 with validation_cols[1]:
     json_output = st.checkbox("JSON Output", value=False)
@@ -677,7 +677,7 @@ with recon_row1[0]:
     st.markdown("**📊 Council History**")
     st.caption("Backfill exit prices and P&L for closed positions")
 
-    if st.button("🔄 Reconcile Council History", width='stretch', key="recon_council"):
+    if st.button("🔄 Reconcile Council History", width='stretch', key="recon_council", help="Backfill exit prices and P&L from IB historical data (~2-3 min)."):
         with st.spinner("Reconciling council history with market outcomes..."):
             try:
                 result = subprocess.run(
@@ -711,7 +711,7 @@ with recon_row1[1]:
     st.markdown("**📝 Trade Ledger**")
     st.caption("Compare local ledger with IB Flex Query reports")
 
-    if st.button("🔄 Reconcile Trade Ledger", width='stretch', key="recon_trades"):
+    if st.button("🔄 Reconcile Trade Ledger", width='stretch', key="recon_trades", help="Compare local ledger with IB Flex Query reports (~1-2 min)."):
         with st.spinner("Reconciling trade ledger with IB reports..."):
             try:
                 result = subprocess.run(
@@ -749,7 +749,7 @@ with recon_row2[0]:
     st.markdown("**📍 Active Positions**")
     st.caption("Verify current positions against IB")
 
-    if st.button("🔄 Reconcile Positions", width='stretch', key="recon_positions"):
+    if st.button("🔄 Reconcile Positions", width='stretch', key="recon_positions", help="Verify current IB positions match local calculations (~30s)."):
         with st.spinner("Reconciling active positions..."):
             try:
                 # Create a temporary script to run just the position reconciliation
@@ -798,7 +798,7 @@ with recon_row2[1]:
     st.markdown("**💰 Equity History (Subprocess)**")
     st.caption("Sync equity data from IBKR Flex Query (Legacy)")
 
-    if st.button("🔄 Sync Equity Data", width='stretch', key="recon_equity"):
+    if st.button("🔄 Sync Equity Data", width='stretch', key="recon_equity", help="Sync equity history from IBKR Flex Query (~30s)."):
         with st.spinner("Syncing equity data from Flex Query..."):
             try:
                 result = subprocess.run(
@@ -845,7 +845,7 @@ with recon_row3[0]:
     except Exception:
         pass
 
-    if st.button("🔄 Reconcile Brier Scores", width='stretch', key="recon_brier"):
+    if st.button("🔄 Reconcile Brier Scores", width='stretch', key="recon_brier", help="Grade pending predictions against market outcomes (~3-5 min)."):
         with st.spinner("Running Brier reconciliation (council history + prediction grading)..."):
             try:
                 result = subprocess.run(

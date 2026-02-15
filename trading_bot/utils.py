@@ -171,6 +171,21 @@ def _get_combo_description(trade: Trade) -> str:
         return f"Bag_{trade.order.permId}"
 
 
+def sanitize_for_csv(value):
+    """Escape strings that could be interpreted as formulas by spreadsheet software.
+
+    Prepends a single quote to strings starting with =, +, or @ (after stripping
+    whitespace). Does NOT trigger on '-' since that would corrupt negative numbers
+    and markdown bullet points which are common in LLM agent output.
+    """
+    if not isinstance(value, str):
+        return value
+    stripped = value.strip()
+    if stripped and stripped[0] in ('=', '+', '@'):
+        return f"'{value}"
+    return value
+
+
 def log_order_event(trade: Trade, status: str, message: str = ""):
     """Logs the status change of an order to the `order_events.csv` file.
 
@@ -209,7 +224,7 @@ def log_order_event(trade: Trade, status: str, message: str = ""):
                 'quantity': trade.order.totalQuantity,
                 'lmtPrice': trade.order.lmtPrice,
                 'status': status,
-                'message': message
+                'message': sanitize_for_csv(message)
             })
     except Exception as e:
         logging.error(f"Error writing to order event log: {e}")
@@ -497,7 +512,7 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
             'strike': strike_value,
             'right': contract.right if hasattr(contract, 'right') else 'N/A',
             'total_value_usd': total_value,
-            'reason': reason
+            'reason': sanitize_for_csv(reason)
         }
         rows_to_write.append(row)
 
@@ -593,8 +608,20 @@ def log_council_decision(decision_data):
         "dissent_acknowledged",   # Strongest counter-argument Master chose to override
     ]
 
+    # Free-text fields that may contain LLM output — sanitize for CSV formula injection
+    _TEXT_FIELDS = {
+        'meteorologist_summary', 'macro_summary', 'geopolitical_summary',
+        'fundamentalist_summary', 'sentiment_summary', 'technical_summary',
+        'volatility_summary', 'master_reasoning', 'primary_catalyst',
+        'dissent_acknowledged', 'vote_breakdown',
+    }
+
     # Prepare the new row
-    row_data = {field: decision_data.get(field, '') for field in fieldnames}
+    row_data = {
+        field: sanitize_for_csv(decision_data.get(field, '')) if field in _TEXT_FIELDS
+        else decision_data.get(field, '')
+        for field in fieldnames
+    }
 
     # Fix precision for entry_price
     if row_data.get('entry_price'):
