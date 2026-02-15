@@ -21,3 +21,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-12 - Progressive Enhancement for Copy Functionality
 **Learning:** `st.popover` (Streamlit v1.33+) provides a cleaner UX for secondary actions like "Copy ID" compared to `st.expander`.
 **Action:** Use `if hasattr(st, "popover"):` to conditionally render the modern UI, falling back to `st.expander` to ensure accessibility and functionality across different deployments.
+
+## 2026-02-15 - Section-Level Safety Interlocks
+**Learning:** While individual safety interlocks are safest for high-impact actions, a single "unlock" checkbox for a group of related utility tools (like data reconciliation) provides a better balance between safety and UX by reducing repetitive confirmation clicks.
+**Action:** Use a section-level safety interlock for groups of related but non-destructive operational tools.

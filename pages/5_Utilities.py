@@ -50,9 +50,11 @@ Collect and archive logs to the centralized logs branch for analysis and debuggi
 This captures orchestrator logs, dashboard logs, state files, and trading data.
 """)
 
+confirm_logs = st.checkbox("I confirm I want to collect and archive logs", key="confirm_collect_logs")
 if st.button(
     "🚀 Collect Logs",
     type="primary",
+    disabled=not confirm_logs,
     help="Triggers the log collection script to archive system logs, state files, and trading data for analysis."
 ):
     with st.spinner(f"Collecting {current_env} logs..."):
@@ -362,8 +364,10 @@ with manual_cols2[1]:
     st.info("ℹ️ **Sync Equity Data**")
     st.caption("Forces fresh equity sync from IB Flex Query")
 
+    confirm_equity = st.checkbox("I confirm I want to sync equity data", key="confirm_equity_sync")
     if st.button(
         "💰 Force Equity Sync",
+        disabled=not confirm_equity,
         help="Manually triggers a fresh equity data pull from Interactive Brokers Flex Query reports."
     ):
         if not config:
@@ -504,6 +508,9 @@ with state_cols[0]:
         try:
             state_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "state.json")
             if os.path.exists(state_path):
+                # Display last modified time for better context
+                mtime = os.path.getmtime(state_path)
+                st.caption(f"Last Modified: {datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')}")
                 with open(state_path, 'r') as f:
                     state_data = json.load(f)
                     st.json(state_data)
@@ -557,7 +564,8 @@ This validates the entire architecture from sentinels to council to order execut
 validation_cols = st.columns([2, 1])
 
 with validation_cols[0]:
-    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch', help="Run preflight checks on all system components (~30s in quick mode, ~2min full).")
+    confirm_validation = st.checkbox("Confirm Validation", key="confirm_validation")
+    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch', disabled=not confirm_validation, help="Run preflight checks on all system components (~30s in quick mode, ~2min full).")
 
 with validation_cols[1]:
     json_output = st.checkbox("JSON Output", value=False)
@@ -668,6 +676,8 @@ These processes normally run automatically in the orchestrator but can be trigge
 on-demand for debugging or immediate verification.
 """)
 
+enable_recon = st.checkbox("Enable reconciliation tools", key="confirm_recon_all")
+
 # Create a 2x2 grid for reconciliation buttons
 recon_row1 = st.columns(2)
 recon_row2 = st.columns(2)
@@ -677,7 +687,7 @@ with recon_row1[0]:
     st.markdown("**📊 Council History**")
     st.caption("Backfill exit prices and P&L for closed positions")
 
-    if st.button("🔄 Reconcile Council History", width='stretch', key="recon_council", help="Backfill exit prices and P&L from IB historical data (~2-3 min)."):
+    if st.button("🔄 Reconcile Council History", width='stretch', key="recon_council", disabled=not enable_recon, help="Backfill exit prices and P&L from IB historical data (~2-3 min)."):
         with st.spinner("Reconciling council history with market outcomes..."):
             try:
                 result = subprocess.run(
@@ -711,7 +721,7 @@ with recon_row1[1]:
     st.markdown("**📝 Trade Ledger**")
     st.caption("Compare local ledger with IB Flex Query reports")
 
-    if st.button("🔄 Reconcile Trade Ledger", width='stretch', key="recon_trades", help="Compare local ledger with IB Flex Query reports (~1-2 min)."):
+    if st.button("🔄 Reconcile Trade Ledger", width='stretch', key="recon_trades", disabled=not enable_recon, help="Compare local ledger with IB Flex Query reports (~1-2 min)."):
         with st.spinner("Reconciling trade ledger with IB reports..."):
             try:
                 result = subprocess.run(
@@ -749,7 +759,7 @@ with recon_row2[0]:
     st.markdown("**📍 Active Positions**")
     st.caption("Verify current positions against IB")
 
-    if st.button("🔄 Reconcile Positions", width='stretch', key="recon_positions", help="Verify current IB positions match local calculations (~30s)."):
+    if st.button("🔄 Reconcile Positions", width='stretch', key="recon_positions", disabled=not enable_recon, help="Verify current IB positions match local calculations (~30s)."):
         with st.spinner("Reconciling active positions..."):
             try:
                 # Create a temporary script to run just the position reconciliation
@@ -798,7 +808,7 @@ with recon_row2[1]:
     st.markdown("**💰 Equity History (Subprocess)**")
     st.caption("Sync equity data from IBKR Flex Query (Legacy)")
 
-    if st.button("🔄 Sync Equity Data", width='stretch', key="recon_equity", help="Sync equity history from IBKR Flex Query (~30s)."):
+    if st.button("🔄 Sync Equity Data", width='stretch', key="recon_equity", disabled=not enable_recon, help="Sync equity history from IBKR Flex Query (~30s)."):
         with st.spinner("Syncing equity data from Flex Query..."):
             try:
                 result = subprocess.run(
@@ -845,7 +855,7 @@ with recon_row3[0]:
     except Exception:
         pass
 
-    if st.button("🔄 Reconcile Brier Scores", width='stretch', key="recon_brier", help="Grade pending predictions against market outcomes (~3-5 min)."):
+    if st.button("🔄 Reconcile Brier Scores", width='stretch', key="recon_brier", disabled=not enable_recon, help="Grade pending predictions against market outcomes (~3-5 min)."):
         with st.spinner("Running Brier reconciliation (council history + prediction grading)..."):
             try:
                 result = subprocess.run(
@@ -1005,7 +1015,8 @@ try:
                     st.metric(
                         label=name.replace('Sentinel', '').strip(),
                         value=f"{data['alerts_today']} today",
-                        delta=f"{data['conversion_rate']:.0%} → trades"
+                        delta=f"{data['conversion_rate']:.0%} → trades",
+                        help=f"Total alerts triggered today and percentage that resulted in trades for {name}."
                     )
     else:
         st.info("No sentinel alerts recorded yet.")
