@@ -31,6 +31,7 @@ from dashboard_utils import (
     get_commodity_profile,
     load_task_schedule_status
 )
+from trading_bot.calendars import is_trading_day
 
 def load_deduplicator_metrics() -> dict:
     """Load trigger deduplication metrics."""
@@ -457,15 +458,27 @@ utc_now = datetime.now(timezone.utc)
 ny_tz = pytz.timezone('America/New_York')
 ny_now = utc_now.astimezone(ny_tz)
 
-# Determine Market Status (using same logic as Utils but for display)
+# Determine Market Status (check hours, weekday, AND holidays)
 market_open_ny = ny_now.replace(hour=3, minute=30, second=0, microsecond=0)
 market_close_ny = ny_now.replace(hour=14, minute=0, second=0, microsecond=0)
-is_open = market_open_ny <= ny_now <= market_close_ny and ny_now.weekday() < 5
+is_weekday = ny_now.weekday() < 5
+is_within_hours = market_open_ny <= ny_now <= market_close_ny
+is_trading = is_trading_day(ny_now.date(), exchange='ICE')
+
+is_open = is_weekday and is_within_hours and is_trading
 
 status_color = "🟢" if is_open else "🔴"
 status_text = "OPEN" if is_open else "CLOSED"
 
-if is_open:
+# Add specific reason for closure if applicable
+if not is_open:
+    if not is_weekday:
+        status_text += " (Weekend)"
+    elif not is_trading:
+        status_text += " (Holiday)"
+    elif not is_within_hours:
+        status_text += " (After Hours)"
+elif is_open:
     delta = market_close_ny - ny_now
     # Ensure non-negative duration
     if delta.total_seconds() > 0:
