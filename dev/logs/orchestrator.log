@@ -205,3 +205,27 @@ ConnectionRefusedError: [Errno 111] Connect call failed ('100.102.50.16', 4002)
 2026-02-16 13:52:00,551 - Orchestrator - INFO - Next task 'signal_mid' (Signal: Mid) scheduled for 2026-02-16 14:20:00 UTC. Waiting for 0.47 hours.
 2026-02-16 13:54:38,263 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=435, market_open=False, trading_day=False
 2026-02-16 13:59:38,375 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=440, market_open=False, trading_day=False
+2026-02-16 14:04:38,607 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=445, market_open=False, trading_day=False
+2026-02-16 14:09:38,749 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=450, market_open=False, trading_day=False
+2026-02-16 14:14:38,943 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=455, market_open=False, trading_day=False
+2026-02-16 14:19:39,158 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=460, market_open=False, trading_day=False
+2026-02-16 14:20:00,004 - Orchestrator - INFO - --- Running scheduled task: signal_mid [guarded_generate_orders] ---
+2026-02-16 14:20:00,098 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-16 14:20:00,098 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'gemini', 'openai']
+2026-02-16 14:20:00,098 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'anthropic', 'gemini', 'openai'], 'diversity_score': 1.0}
+2026-02-16 14:20:00,105 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-16 14:20:00,110 - trading_bot.enhanced_brier - INFO - Loaded 601 predictions from ./data/enhanced_brier.json
+2026-02-16 14:20:00,174 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-16 14:20:00,174 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-16 14:20:00,174 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-16 14:20:00,175 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-16 14:20:00,175 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-16 14:20:00,175 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 78 [REMOTE/PAPER]...
+2026-02-16 14:20:00,183 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
+2026-02-16 14:20:00,184 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
+2026-02-16 14:20:00,689 - trading_bot.connection_pool - ERROR - IB (drawdown_check) connection failed: [Errno 111] Connect call failed ('100.102.50.16', 4002). Next retry backoff: 40.0s
+2026-02-16 14:20:00,689 - Orchestrator - WARNING - Failed to check drawdown guard before orders: [Errno 111] Connect call failed ('100.102.50.16', 4002)
+2026-02-16 14:20:00,690 - OrderManager - INFO - Market is closed (weekend/holiday). Skipping order generation cycle.
+2026-02-16 14:20:00,695 - Orchestrator - INFO - Next task 'signal_late' (Signal: Late) scheduled for 2026-02-16 16:39:00 UTC. Waiting for 2.32 hours.
+2026-02-16 14:24:39,255 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=465, market_open=False, trading_day=False
+2026-02-16 14:29:39,433 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=470, market_open=False, trading_day=False
