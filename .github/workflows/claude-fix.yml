@@ -30,21 +30,26 @@ jobs:
           prompt: |
             You are fixing issue #${{ github.event.issue.number }} in a production trading system.
 
-            IMPORTANT WORKFLOW:
+            WORKFLOW:
             1. Read CLAUDE.md for project conventions
             2. Run `git log --oneline -10` to see recent changes
             3. Understand the issue and root cause
             4. Make the fix — keep changes minimal and focused
             5. Run `pytest tests/` to verify no regressions
-            6. Commit your changes with `git commit` (the action handles branch and PR creation)
+            6. Stage and commit your changes with `git add` and `git commit`
+
+            CRITICAL — DO NOT DO ANY OF THESE:
+            - Do NOT run `git push` — the action handles pushing and PR creation
+            - Do NOT run `gh pr create` — the action handles PR creation
+            - Do NOT push to any branch — just commit locally and stop
+            - Do NOT modify execution-path files (order_manager.py, ib_interface.py,
+              compliance.py) without extreme care
 
             RULES:
             - This is a PRODUCTION TRADING SYSTEM that trades real money
-            - NEVER modify execution-path files (order_manager.py, ib_interface.py,
-              compliance.py) without extreme care
             - All components must fail closed — if unsure, block rather than allow
             - Keep changes minimal and focused on the issue
-          claude_args: '--max-turns 30 --allowedTools "Bash(*)" "Edit(*)" "Write(*)"'
+          claude_args: '--max-turns 30 --allowedTools "Bash(*)" "Edit(*)" "Write(*)" --disallowedTools "Bash(git push*)" "Bash(gh pr *)"'
 
       - name: Mark as attempted
         if: always()
