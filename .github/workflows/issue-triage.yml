@@ -1,0 +1,339 @@
+name: Issue Triage with Claude
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to triage'
+        required: true
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    # Skip issues created by this workflow or other bots to avoid loops
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.issue.user.login != 'github-actions[bot]' &&
+       !contains(github.event.issue.labels.*.name, 'triaged'))
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get issue details
+        id: issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = context.payload.inputs?.issue_number
+              ? parseInt(context.payload.inputs.issue_number)
+              : context.issue.number;
+
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+            });
+
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              per_page: 10,
+            });
+
+            core.setOutput('number', issueNumber);
+            core.setOutput('title', issue.data.title);
+            core.setOutput('body', issue.data.body || '(no description)');
+            core.setOutput('author', issue.data.user.login);
+            core.setOutput('labels', issue.data.labels.map(l => l.name).join(', '));
+            core.setOutput('comments', JSON.stringify(
+              comments.data.map(c => ({ author: c.user.login, body: c.body.substring(0, 500) }))
+            ));
+
+      - name: Read project context
+        id: context
+        run: |
+          # Gather key file list for Claude to understand the project
+          {
+            echo 'FILES<<EOF'
+            echo "## Key Project Files"
+            echo "Architecture: See CLAUDE.md for full details"
+            echo ""
+            echo "### Recent changes (last 10 commits):"
+            git log --oneline -10
+            echo ""
+            echo "### Open branches:"
+            git branch -r --sort=-committerdate | head -10
+            EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Triage with Claude
+        id: triage
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ISSUE_TITLE: ${{ steps.issue.outputs.title }}
+          ISSUE_BODY: ${{ steps.issue.outputs.body }}
+          ISSUE_AUTHOR: ${{ steps.issue.outputs.author }}
+          ISSUE_LABELS: ${{ steps.issue.outputs.labels }}
+          ISSUE_COMMENTS: ${{ steps.issue.outputs.comments }}
+          PROJECT_CONTEXT: ${{ steps.context.outputs.FILES }}
+        run: |
+          # Read CLAUDE.md for project understanding (first 100 lines for token efficiency)
+          CLAUDE_MD=$(head -100 CLAUDE.md)
+
+          # Build the prompt
+          cat > /tmp/triage_prompt.json << 'PROMPT_EOF'
+          {
+            "model": "claude-sonnet-4-5-20250929",
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "PLACEHOLDER"
+              }
+            ]
+          }
+          PROMPT_EOF
+
+          # Construct the actual prompt content
+          PROMPT_CONTENT=$(cat << CONTENT_EOF
+          You are a triage bot for a production commodity futures trading system (Real Options).
+
+          PROJECT CONTEXT:
+          ${CLAUDE_MD}
+
+          ${PROJECT_CONTEXT}
+
+          ISSUE #${ISSUE_NUMBER}:
+          Title: ${ISSUE_TITLE}
+          Author: ${ISSUE_AUTHOR}
+          Current Labels: ${ISSUE_LABELS}
+          Body:
+          ${ISSUE_BODY}
+
+          Comments: ${ISSUE_COMMENTS}
+
+          Triage this issue. Respond with ONLY a JSON object (no markdown, no code fences):
+          {
+            "priority": "critical|high|medium|low",
+            "category": "bug|feature|security|ops|docs|question",
+            "affected_components": ["list of affected files or modules"],
+            "summary": "1-2 sentence assessment",
+            "suggested_labels": ["label1", "label2"],
+            "requires_immediate_attention": true/false,
+            "recommended_action": "Brief recommendation for next steps"
+          }
+
+          Priority guide:
+          - critical: Production trading at risk, data loss, security vulnerability
+          - high: Affects trading decisions, model accuracy, or system reliability
+          - medium: Non-urgent improvements, non-critical bugs
+          - low: Documentation, cosmetic, nice-to-have
+          CONTENT_EOF
+          )
+
+          # Use python to make the API call (handles JSON escaping properly)
+          python3 << 'PYEOF'
+          import json, os, urllib.request, urllib.error
+
+          api_key = os.environ["ANTHROPIC_API_KEY"]
+          prompt = os.environ.get("PROMPT_CONTENT", "")
+
+          # Reconstruct prompt from env vars
+          claude_md = os.popen("head -100 CLAUDE.md").read()
+          project_ctx = os.environ.get("PROJECT_CONTEXT", "")
+          issue_title = os.environ.get("ISSUE_TITLE", "")
+          issue_body = os.environ.get("ISSUE_BODY", "")
+          issue_author = os.environ.get("ISSUE_AUTHOR", "")
+          issue_labels = os.environ.get("ISSUE_LABELS", "")
+          issue_comments = os.environ.get("ISSUE_COMMENTS", "")
+
+          prompt_text = f"""You are a triage bot for a production commodity futures trading system (Real Options).
+
+          PROJECT CONTEXT:
+          {claude_md}
+
+          {project_ctx}
+
+          ISSUE:
+          Title: {issue_title}
+          Author: {issue_author}
+          Current Labels: {issue_labels}
+          Body:
+          {issue_body}
+
+          Comments: {issue_comments}
+
+          Triage this issue. Respond with ONLY a JSON object (no markdown, no code fences):
+          {{
+            "priority": "critical|high|medium|low",
+            "category": "bug|feature|security|ops|docs|question",
+            "affected_components": ["list of affected files or modules"],
+            "summary": "1-2 sentence assessment",
+            "suggested_labels": ["label1", "label2"],
+            "requires_immediate_attention": true/false,
+            "recommended_action": "Brief recommendation for next steps"
+          }}
+
+          Priority guide:
+          - critical: Production trading at risk, data loss, security vulnerability
+          - high: Affects trading decisions, model accuracy, or system reliability
+          - medium: Non-urgent improvements, non-critical bugs
+          - low: Documentation, cosmetic, nice-to-have"""
+
+          payload = json.dumps({
+              "model": "claude-sonnet-4-5-20250929",
+              "max_tokens": 1024,
+              "messages": [{"role": "user", "content": prompt_text}]
+          }).encode()
+
+          req = urllib.request.Request(
+              "https://api.anthropic.com/v1/messages",
+              data=payload,
+              headers={
+                  "Content-Type": "application/json",
+                  "x-api-key": api_key,
+                  "anthropic-version": "2023-06-01",
+              },
+          )
+
+          try:
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  result = json.loads(resp.read())
+                  response_text = result["content"][0]["text"]
+
+                  # Try to parse as JSON
+                  try:
+                      triage = json.loads(response_text)
+                  except json.JSONDecodeError:
+                      # Try to extract JSON from response
+                      import re
+                      match = re.search(r'\{.*\}', response_text, re.DOTALL)
+                      if match:
+                          triage = json.loads(match.group())
+                      else:
+                          triage = {"summary": response_text, "priority": "medium", "category": "question",
+                                    "affected_components": [], "suggested_labels": [], "requires_immediate_attention": False,
+                                    "recommended_action": "Manual review needed"}
+
+                  # Write output
+                  with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                      # Escape newlines for GitHub Actions
+                      triage_json = json.dumps(triage)
+                      f.write(f"triage={triage_json}\n")
+                      f.write(f"priority={triage.get('priority', 'medium')}\n")
+                      f.write(f"category={triage.get('category', 'question')}\n")
+
+          except urllib.error.HTTPError as e:
+              print(f"API error: {e.code} {e.read().decode()}")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write('triage={"error": "API call failed"}\n')
+                  f.write("priority=medium\n")
+                  f.write("category=question\n")
+              exit(1)
+          PYEOF
+
+      - name: Post triage comment
+        if: steps.triage.outputs.triage != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = parseInt('${{ steps.issue.outputs.number }}');
+            const triageRaw = ${{ steps.triage.outputs.triage }};
+
+            if (triageRaw.error) {
+              console.log('Triage failed, skipping comment');
+              return;
+            }
+
+            const priorityEmoji = {
+              'critical': '🔴',
+              'high': '🟠',
+              'medium': '🟡',
+              'low': '🟢'
+            };
+
+            const categoryEmoji = {
+              'bug': '🐛',
+              'feature': '✨',
+              'security': '🔒',
+              'ops': '⚙️',
+              'docs': '📄',
+              'question': '❓'
+            };
+
+            const p = triageRaw;
+            const emoji = priorityEmoji[p.priority] || '⚪';
+            const catEmoji = categoryEmoji[p.category] || '📋';
+
+            let body = `## Automated Triage ${emoji}\n\n`;
+            body += `**Priority:** ${emoji} ${p.priority.toUpperCase()}\n`;
+            body += `**Category:** ${catEmoji} ${p.category}\n`;
+            if (p.requires_immediate_attention) {
+              body += `**⚠️ Requires immediate attention**\n`;
+            }
+            body += `\n### Assessment\n${p.summary}\n`;
+            if (p.affected_components && p.affected_components.length > 0) {
+              body += `\n### Affected Components\n`;
+              p.affected_components.forEach(c => { body += `- \`${c}\`\n`; });
+            }
+            body += `\n### Recommended Action\n${p.recommended_action}\n`;
+            body += `\n---\n*🤖 Triaged by Claude Sonnet*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: body,
+            });
+
+            // Add labels
+            const labelsToAdd = [
+              `priority:${p.priority}`,
+              p.category,
+              'triaged'
+            ];
+
+            // Ensure labels exist, create if needed
+            for (const label of labelsToAdd) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label,
+                });
+              } catch {
+                const colors = {
+                  'priority:critical': 'B60205',
+                  'priority:high': 'D93F0B',
+                  'priority:medium': 'FBCA04',
+                  'priority:low': '0E8A16',
+                  'bug': 'd73a4a',
+                  'feature': 'a2eeef',
+                  'security': 'e4e669',
+                  'ops': 'f9d0c4',
+                  'docs': '0075ca',
+                  'question': 'd876e3',
+                  'triaged': 'c5def5',
+                };
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label,
+                  color: colors[label] || 'ededed',
+                });
+              }
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: labelsToAdd,
+            });

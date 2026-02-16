@@ -34,7 +34,7 @@ jobs:
         run: python scripts/check_model_availability.py
 
       - name: Create issue on failure
-        if: failure()
+        if: failure() && steps.check.outcome == 'failure'
         uses: actions/github-script@v7
         with:
           script: |
