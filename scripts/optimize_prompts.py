@@ -12,6 +12,7 @@ Usage:
 import argparse
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -35,8 +36,15 @@ logger = logging.getLogger(__name__)
 
 
 def load_config(config_path: Path) -> dict:
-    with open(config_path, "r") as f:
-        return json.load(f)
+    try:
+        with open(config_path, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"Error: Config file not found: {config_path}")
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON in {config_path}: {e}")
+        sys.exit(1)
 
 
 def print_eval_table(stats: dict, readiness: dict, min_examples: int):
@@ -184,7 +192,15 @@ def main():
         print_eval_table(stats, readiness, min_examples)
         return
 
-    # Optimization mode
+    # Optimization mode — pre-flight checks
+    # Check for required API key before starting (avoids N identical failures)
+    bootstrap_model = dspy_config.get("bootstrap_model", "openai/gpt-4o-mini")
+    if bootstrap_model.startswith("openai/") and not os.environ.get("OPENAI_API_KEY"):
+        print("Error: OPENAI_API_KEY environment variable is required for --optimize mode.")
+        print(f"  Bootstrap model: {bootstrap_model}")
+        print("  Set the key or configure dspy.bootstrap_model in config.json.")
+        sys.exit(1)
+
     _ensure_signature()
 
     agents_to_optimize = []
@@ -224,6 +240,10 @@ def main():
             optimized_results[agent] = {"accuracy": 0.0, "skipped": True}
 
     print_optimization_results(baseline, optimized_results, ticker, output_dir, stats, min_for_suggest)
+
+    # Exit with error if all agents failed
+    if all(r.get("skipped") for r in optimized_results.values()):
+        sys.exit(1)
 
 
 if __name__ == "__main__":
