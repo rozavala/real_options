@@ -12,31 +12,14 @@ Usage:
 import csv
 import json
 import logging
+import math
 import os
-from datetime import datetime
+import re
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Agent name mapping: council_history CSV column prefixes → config persona keys
-# council_history.csv uses e.g. "meteorologist_sentiment" while
-# agent_accuracy_structured.csv and config.json use "agronomist".
-# ---------------------------------------------------------------------------
-AGENT_COLUMN_MAP = {
-    "meteorologist": "agronomist",
-    "fundamentalist": "inventory",
-}
-
-# Reverse map for looking up CSV columns from persona keys
-PERSONA_TO_COLUMN = {v: k for k, v in AGENT_COLUMN_MAP.items()}
-
-# Agents tracked in agent_accuracy_structured.csv
-KNOWN_AGENTS = {
-    "agronomist", "macro", "geopolitical", "sentiment",
-    "technical", "volatility", "inventory", "supply_chain",
-    "master_decision",
-}
 
 # Readiness thresholds (overridable via config)
 DEFAULT_MIN_EXAMPLES_PER_AGENT = 30
@@ -44,6 +27,19 @@ DEFAULT_MIN_EXAMPLES_FOR_SUGGEST = 100
 MIN_IMPROVEMENT_PCT = 5.0
 MIN_CLASS_RATIO = 0.15
 MIN_AGENTS_IMPROVED_RATIO = 0.60
+
+# Valid characters for path components (ticker, agent_name)
+_SAFE_PATH_RE = re.compile(r"^[a-zA-Z0-9_\-]+$")
+
+
+def _validate_path_component(value: str, label: str) -> str:
+    """Validate that a value is safe to use as a path component."""
+    if not _SAFE_PATH_RE.match(value):
+        raise ValueError(
+            f"Invalid {label} '{value}': must contain only alphanumeric, "
+            f"underscore, or hyphen characters"
+        )
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -55,6 +51,7 @@ class CouncilDataset:
 
     def __init__(self, data_dir: str):
         self.data_dir = Path(data_dir)
+        self._predictions_cache: dict[str, list[dict]] | None = None
 
     def load(self) -> dict[str, list[dict]]:
         """Return {agent_name: [example_dict]} with resolved predictions only.
@@ -63,6 +60,9 @@ class CouncilDataset:
         Each example_dict has keys: cycle_id, timestamp, direction, confidence,
         prob_bullish, actual, market_context (from council_history join).
         """
+        if self._predictions_cache is not None:
+            return self._predictions_cache
+
         accuracy_path = self.data_dir / "agent_accuracy_structured.csv"
         council_path = self.data_dir / "council_history.csv"
 
@@ -71,21 +71,37 @@ class CouncilDataset:
 
         # Load agent predictions, filter resolved
         predictions: dict[str, list[dict]] = {}
+        skipped_rows = 0
         with open(accuracy_path, "r", newline="") as f:
             reader = csv.DictReader(f)
-            for row in reader:
-                actual = row.get("actual", "PENDING").strip()
-                if actual == "PENDING" or not actual:
+            for row_num, row in enumerate(reader, start=2):
+                try:
+                    actual = row.get("actual", "PENDING").strip()
+                    if actual == "PENDING" or not actual:
+                        continue
+                    agent = row["agent"].strip()
+                    if not agent:
+                        continue
+
+                    # Safe float conversion with fallback
+                    confidence = _safe_float(row.get("confidence"), 0.5)
+                    prob_bullish = _safe_float(row.get("prob_bullish"), 0.5)
+
+                    predictions.setdefault(agent, []).append({
+                        "cycle_id": row.get("cycle_id", "").strip(),
+                        "timestamp": row.get("timestamp", "").strip(),
+                        "direction": row.get("direction", "").strip(),
+                        "confidence": confidence,
+                        "prob_bullish": prob_bullish,
+                        "actual": actual,
+                    })
+                except (KeyError, ValueError) as e:
+                    skipped_rows += 1
+                    logger.debug(f"Skipping malformed row {row_num}: {e}")
                     continue
-                agent = row["agent"].strip()
-                predictions.setdefault(agent, []).append({
-                    "cycle_id": row["cycle_id"].strip(),
-                    "timestamp": row["timestamp"].strip(),
-                    "direction": row["direction"].strip(),
-                    "confidence": float(row.get("confidence", 0.5)),
-                    "prob_bullish": float(row.get("prob_bullish", 0.5)),
-                    "actual": actual,
-                })
+
+        if skipped_rows > 0:
+            logger.warning(f"Skipped {skipped_rows} malformed rows in {accuracy_path}")
 
         # Load council history for market context (optional enrichment)
         council_context: dict[str, dict] = {}
@@ -113,6 +129,7 @@ class CouncilDataset:
                     f"Trigger: {ctx.get('trigger_type', 'N/A')}"
                 )
 
+        self._predictions_cache = predictions
         return predictions
 
     def stats(self) -> dict:
@@ -158,27 +175,47 @@ class CouncilDataset:
         }
 
 
+def _safe_float(value, default: float) -> float:
+    """Convert to float, returning default for None/empty/NaN/non-numeric."""
+    if value is None:
+        return default
+    try:
+        result = float(value)
+        if math.isnan(result):
+            return default
+        return result
+    except (ValueError, TypeError):
+        return default
+
+
 def _compute_brier(examples: list[dict]) -> float:
     """Compute Brier score from examples with prob_bullish vs actual outcome."""
     if not examples:
         return 1.0
     total = 0.0
+    valid_count = 0
     for ex in examples:
-        prob = float(ex.get("prob_bullish", 0.5))
+        prob = ex.get("prob_bullish", 0.5)
+        if not isinstance(prob, (int, float)) or math.isnan(prob):
+            prob = 0.5
         outcome = 1.0 if ex["actual"] == "BULLISH" else 0.0
         total += (prob - outcome) ** 2
-    return total / len(examples)
+        valid_count += 1
+    return total / valid_count if valid_count > 0 else 1.0
 
 
 def _class_balance(directions: list[str]) -> float:
-    """Return minority class ratio (0.0-0.5)."""
+    """Return minority class ratio (0.0-0.5).
+
+    Returns 0.0 for empty input or single-class data (maximum imbalance).
+    """
     if not directions:
         return 0.0
     from collections import Counter
     counts = Counter(directions)
-    total = len(directions)
-    if total == 0:
+    if len(counts) < 2:
         return 0.0
+    total = len(directions)
     min_count = min(counts.values())
     return min_count / total
 
@@ -248,6 +285,8 @@ def should_suggest_enable(
         )
 
     # 2 & 4. Improvement checks
+    avg_improvement = 0.0
+    pct_improved = 0.0
     improvements = []
     common_agents = set(baseline.keys()) & set(optimized.keys())
     for agent in common_agents:
@@ -292,6 +331,34 @@ def should_suggest_enable(
 # DSPy Optimization (only imported when --optimize is used)
 # ---------------------------------------------------------------------------
 
+# Lazily-initialized DSPy signature class. Replaced by _ensure_signature()
+# before any optimization runs. Do NOT use directly — call
+# _ensure_signature() first.
+AgentAnalysis = None
+
+
+def _define_signature():
+    """Lazily define the DSPy signature (avoids top-level dspy import)."""
+    import dspy
+
+    class _AgentAnalysis(dspy.Signature):
+        """Analyze market data for a commodity futures contract and predict direction."""
+        persona: str = dspy.InputField(desc="Agent role and domain expertise")
+        market_context: str = dspy.InputField(desc="Price, regime, trigger type")
+        task: str = dspy.InputField(desc="Specific analysis instruction")
+        analysis: str = dspy.OutputField(desc="Evidence-based market analysis")
+        direction: str = dspy.OutputField(desc="BULLISH, BEARISH, or NEUTRAL")
+        confidence: float = dspy.OutputField(desc="0.0-1.0")
+
+    return _AgentAnalysis
+
+
+def _ensure_signature():
+    """Replace the AgentAnalysis placeholder with a real dspy.Signature."""
+    global AgentAnalysis
+    AgentAnalysis = _define_signature()
+
+
 def optimize_agent(
     agent_name: str,
     examples: list[dict],
@@ -308,6 +375,13 @@ def optimize_agent(
     """
     import dspy
 
+    # Ensure signature is initialized (idempotent, safe to call multiple times)
+    global AgentAnalysis
+    if AgentAnalysis is None or not (
+        isinstance(AgentAnalysis, type) and issubclass(AgentAnalysis, dspy.Signature)
+    ):
+        _ensure_signature()
+
     # Build dspy.Example list
     trainset, valset = _build_splits(examples)
 
@@ -319,10 +393,9 @@ def optimize_agent(
     personas = config.get("gemini", {}).get("personas", {})
     persona_prompt = personas.get(agent_name, "You are a helpful market analyst.")
 
-    # Configure DSPy with a lightweight local model for bootstrap selection.
-    # The bootstrap metric evaluates demo quality, not the LLM itself — a
-    # small model suffices for selecting which historical examples to include.
-    lm = dspy.LM("openai/gpt-4o-mini", max_tokens=500)
+    # Configure DSPy with bootstrap model (configurable, defaults to gpt-4o-mini)
+    bootstrap_model = config.get("dspy", {}).get("bootstrap_model", "openai/gpt-4o-mini")
+    lm = dspy.LM(bootstrap_model, max_tokens=500)
     dspy.configure(lm=lm)
 
     # Define the module
@@ -398,35 +471,6 @@ def optimize_agent(
     return result
 
 
-class AgentAnalysis(dspy.Signature if "dspy" in dir() else object):
-    """Analyze market data for a commodity futures contract and predict direction."""
-    # This class is only usable when dspy is imported. The optimize_agent
-    # function imports dspy before using it.
-    pass
-
-
-def _define_signature():
-    """Lazily define the DSPy signature (avoids top-level dspy import)."""
-    import dspy
-
-    class _AgentAnalysis(dspy.Signature):
-        """Analyze market data for a commodity futures contract and predict direction."""
-        persona: str = dspy.InputField(desc="Agent role and domain expertise")
-        market_context: str = dspy.InputField(desc="Price, regime, trigger type")
-        task: str = dspy.InputField(desc="Specific analysis instruction")
-        analysis: str = dspy.OutputField(desc="Evidence-based market analysis")
-        direction: str = dspy.OutputField(desc="BULLISH, BEARISH, or NEUTRAL")
-        confidence: float = dspy.OutputField(desc="0.0-1.0")
-
-    return _AgentAnalysis
-
-
-# Replace the placeholder with the real signature at optimization time
-def _ensure_signature():
-    global AgentAnalysis
-    AgentAnalysis = _define_signature()
-
-
 def _build_splits(examples: list[dict], train_ratio: float = 0.8) -> tuple:
     """Convert raw example dicts into dspy.Example train/val splits."""
     import dspy
@@ -455,7 +499,10 @@ def export_optimized_prompt(
     output_dir: str,
     ticker: str = "KC",
 ):
-    """Save optimized instruction + few-shot demos to JSON."""
+    """Save optimized instruction + few-shot demos to JSON (atomic write)."""
+    _validate_path_component(agent_name, "agent_name")
+    _validate_path_component(ticker, "ticker")
+
     out_path = Path(output_dir) / ticker / agent_name
     out_path.mkdir(parents=True, exist_ok=True)
 
@@ -478,7 +525,7 @@ def export_optimized_prompt(
     payload = {
         "agent": agent_name,
         "ticker": ticker,
-        "optimized_at": datetime.utcnow().isoformat() + "Z",
+        "optimized_at": datetime.now(timezone.utc).isoformat(),
         "n_training_examples": result.get("n_demos", 0),
         "baseline_accuracy": result.get("baseline_accuracy", None),
         "optimized_accuracy": result.get("accuracy", None),
@@ -486,23 +533,46 @@ def export_optimized_prompt(
         "demos": result.get("demos", []),
     }
 
+    # Atomic write: temp file + os.replace()
     prompt_path = out_path / "prompt.json"
-    with open(prompt_path, "w") as f:
-        json.dump(payload, f, indent=2)
+    try:
+        fd, tmp_path = tempfile.mkstemp(dir=str(out_path), suffix=".tmp")
+        with os.fdopen(fd, "w") as f:
+            json.dump(payload, f, indent=2)
+        os.replace(tmp_path, str(prompt_path))
+    except Exception:
+        # Clean up temp file on failure
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
     logger.info(f"[{agent_name}] Saved optimized prompt to {prompt_path}")
 
 
 def load_optimized_prompt(ticker: str, agent_name: str, prompts_dir: str) -> dict | None:
     """Load an optimized prompt JSON for a given ticker/agent.
 
-    Returns the parsed dict or None if not found.
+    Returns the parsed dict or None if not found / invalid.
     """
+    try:
+        _validate_path_component(ticker, "ticker")
+        _validate_path_component(agent_name, "agent_name")
+    except ValueError as e:
+        logger.warning(f"Invalid path component: {e}")
+        return None
+
     prompt_path = Path(prompts_dir) / ticker / agent_name / "prompt.json"
     if not prompt_path.exists():
         return None
     try:
         with open(prompt_path, "r") as f:
-            return json.load(f)
+            data = json.load(f)
+        # Validate required key
+        if not isinstance(data, dict) or "instruction" not in data:
+            logger.warning(f"Optimized prompt {prompt_path} missing 'instruction' key")
+            return None
+        return data
     except (json.JSONDecodeError, OSError) as e:
         logger.warning(f"Failed to load optimized prompt {prompt_path}: {e}")
         return None

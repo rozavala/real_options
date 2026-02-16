@@ -261,8 +261,24 @@ class TradingCouncil:
                 f"Next cycle will perform fresh searches."
             )
 
+    def invalidate_optimized_prompt_cache(self):
+        """Clear cached optimized prompts so new files are picked up.
+
+        Call after generating new optimized prompts if the service is
+        already running. Without this, newly written prompt files won't
+        be loaded until the next service restart.
+        """
+        if hasattr(self, '_optimized_prompt_cache'):
+            cache_size = len(self._optimized_prompt_cache)
+            self._optimized_prompt_cache.clear()
+            logger.info(f"Optimized prompt cache invalidated ({cache_size} entries cleared).")
+
     def _load_optimized_prompt(self, ticker: str, persona_key: str) -> dict | None:
-        """Load DSPy-optimized prompt from disk, with in-memory cache."""
+        """Load DSPy-optimized prompt from disk, with in-memory cache.
+
+        Returns None (graceful fallback) if the file is missing, corrupt,
+        or lacks the required 'instruction' key.
+        """
         cache_key = f"{ticker}/{persona_key}"
         if cache_key in self._optimized_prompt_cache:
             return self._optimized_prompt_cache[cache_key]
@@ -281,6 +297,11 @@ class TradingCouncil:
         try:
             with open(prompt_path, "r") as f:
                 data = json.load(f)
+            # Validate required structure
+            if not isinstance(data, dict) or not data.get("instruction"):
+                logger.warning(f"Optimized prompt {prompt_path} missing 'instruction' key, skipping")
+                self._optimized_prompt_cache[cache_key] = None
+                return None
             self._optimized_prompt_cache[cache_key] = data
             return data
         except (json.JSONDecodeError, OSError) as e:
@@ -783,10 +804,11 @@ OUTPUT FORMAT (JSON):
             optimized = self._load_optimized_prompt(commodity_ticker, persona_key)
             if optimized:
                 persona_prompt = optimized["instruction"]
-                if optimized.get("demos"):
-                    demo_text = self._format_demos(optimized["demos"])
+                demos = optimized.get("demos")
+                if demos and isinstance(demos, list):
+                    demo_text = self._format_demos(demos)
                     persona_prompt = f"{persona_prompt}\n\nEXAMPLES OF GOOD ANALYSIS:\n{demo_text}"
-                logger.debug(f"[{persona_key}] Using DSPy-optimized prompt ({len(optimized.get('demos', []))} demos)")
+                logger.debug(f"[{persona_key}] Using DSPy-optimized prompt ({len(demos or [])} demos)")
 
         # Inject grounded data into prompt
         full_prompt = (
