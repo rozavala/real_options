@@ -73,6 +73,12 @@ jobs:
             EOF
           } >> "$GITHUB_OUTPUT"
 
+      - name: Read triage model from config
+        id: model
+        run: |
+          MODEL=$(python3 -c "import json; c=json.load(open('config.json')); print(c.get('error_reporter',{}).get('triage_model', c.get('model_registry',{}).get('anthropic',{}).get('pro','claude-sonnet-4-5-20250929')))")
+          echo "id=$MODEL" >> "$GITHUB_OUTPUT"
+
       - name: Triage with Claude
         id: triage
         env:
@@ -83,67 +89,14 @@ jobs:
           ISSUE_LABELS: ${{ steps.issue.outputs.labels }}
           ISSUE_COMMENTS: ${{ steps.issue.outputs.comments }}
           PROJECT_CONTEXT: ${{ steps.context.outputs.FILES }}
+          TRIAGE_MODEL: ${{ steps.model.outputs.id }}
         run: |
-          # Read CLAUDE.md for project understanding (first 100 lines for token efficiency)
-          CLAUDE_MD=$(head -100 CLAUDE.md)
-
-          # Build the prompt
-          cat > /tmp/triage_prompt.json << 'PROMPT_EOF'
-          {
-            "model": "claude-sonnet-4-5-20250929",
-            "max_tokens": 1024,
-            "messages": [
-              {
-                "role": "user",
-                "content": "PLACEHOLDER"
-              }
-            ]
-          }
-          PROMPT_EOF
-
-          # Construct the actual prompt content
-          PROMPT_CONTENT=$(cat << CONTENT_EOF
-          You are a triage bot for a production commodity futures trading system (Real Options).
-
-          PROJECT CONTEXT:
-          ${CLAUDE_MD}
-
-          ${PROJECT_CONTEXT}
-
-          ISSUE #${ISSUE_NUMBER}:
-          Title: ${ISSUE_TITLE}
-          Author: ${ISSUE_AUTHOR}
-          Current Labels: ${ISSUE_LABELS}
-          Body:
-          ${ISSUE_BODY}
-
-          Comments: ${ISSUE_COMMENTS}
-
-          Triage this issue. Respond with ONLY a JSON object (no markdown, no code fences):
-          {
-            "priority": "critical|high|medium|low",
-            "category": "bug|feature|security|ops|docs|question",
-            "affected_components": ["list of affected files or modules"],
-            "summary": "1-2 sentence assessment",
-            "suggested_labels": ["label1", "label2"],
-            "requires_immediate_attention": true/false,
-            "recommended_action": "Brief recommendation for next steps"
-          }
-
-          Priority guide:
-          - critical: Production trading at risk, data loss, security vulnerability
-          - high: Affects trading decisions, model accuracy, or system reliability
-          - medium: Non-urgent improvements, non-critical bugs
-          - low: Documentation, cosmetic, nice-to-have
-          CONTENT_EOF
-          )
-
           # Use python to make the API call (handles JSON escaping properly)
           python3 << 'PYEOF'
           import json, os, urllib.request, urllib.error
 
           api_key = os.environ["ANTHROPIC_API_KEY"]
-          prompt = os.environ.get("PROMPT_CONTENT", "")
+          triage_model = os.environ.get("TRIAGE_MODEL", "claude-sonnet-4-5-20250929")
 
           # Reconstruct prompt from env vars
           claude_md = os.popen("head -100 CLAUDE.md").read()
@@ -188,7 +141,7 @@ jobs:
           - low: Documentation, cosmetic, nice-to-have"""
 
           payload = json.dumps({
-              "model": "claude-sonnet-4-5-20250929",
+              "model": triage_model,
               "max_tokens": 1024,
               "messages": [{"role": "user", "content": prompt_text}]
           }).encode()
@@ -284,6 +237,7 @@ jobs:
               p.affected_components.forEach(c => { body += `- \`${c}\`\n`; });
             }
             body += `\n### Recommended Action\n${p.recommended_action}\n`;
+            body += `\n> The \`claude-fix\` label has been added — Claude will automatically attempt a fix and create a PR.\n`;
             body += `\n---\n*🤖 Triaged by Claude Sonnet*`;
 
             await github.rest.issues.createComment({
@@ -297,7 +251,8 @@ jobs:
             const labelsToAdd = [
               `priority:${p.priority}`,
               p.category,
-              'triaged'
+              'triaged',
+              'claude-fix'
             ];
 
             // Ensure labels exist, create if needed
@@ -321,6 +276,7 @@ jobs:
                   'docs': '0075ca',
                   'question': 'd876e3',
                   'triaged': 'c5def5',
+                  'claude-fix': '6f42c1',
                 };
                 await github.rest.issues.createLabel({
                   owner: context.repo.owner,

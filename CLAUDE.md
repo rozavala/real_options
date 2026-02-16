@@ -225,6 +225,15 @@ These files are generated at runtime and tracked in `.gitignore`:
 - `*.sqlite3` - SQLite databases
 - `.env` - Secrets
 
+## Automated Issue-to-PR Pipeline
+
+Issues are automatically created from log errors (`scripts/error_reporter.py`), triaged by Claude (`issue-triage.yml`), and fixed by Claude Code (`claude-fix.yml`). The `claude-fix` label triggers the fix workflow.
+
+**When fixing issues (in CI or locally):**
+- Always check `git log --oneline -20` to understand recent changes before modifying code
+- Look for related recent commits that may provide context for the issue
+- Read the full issue including any triage comments for context
+
 ## Things to Watch Out For
 
 - **Tick rounding**: Coffee options have specific tick sizes. Use `utils.py` tick-rounding helpers, not raw floats.
