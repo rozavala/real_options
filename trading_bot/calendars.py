@@ -2,7 +2,7 @@
 
 from pandas.tseries.holiday import (
     AbstractHolidayCalendar, Holiday, nearest_workday,
-    USMemorialDay, USLaborDay, USThanksgivingDay, USPresidentsDay, USFederalHolidayCalendar
+    USMemorialDay, USLaborDay, USThanksgivingDay, USFederalHolidayCalendar
 )
 from pandas.tseries.offsets import DateOffset, Easter
 from datetime import date, timedelta
@@ -10,10 +10,9 @@ import pandas as pd
 
 
 class ICEHolidayCalendar(AbstractHolidayCalendar):
-    """ICE US trading calendar (includes Good Friday and Presidents' Day)."""
+    """ICE US trading calendar (includes Good Friday)."""
     rules = [
         Holiday('New Year', month=1, day=1, observance=nearest_workday),
-        USPresidentsDay,
         USMemorialDay,
         Holiday('Independence Day', month=7, day=4, observance=nearest_workday),
         USLaborDay,
