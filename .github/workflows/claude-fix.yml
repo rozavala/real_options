@@ -43,7 +43,7 @@ jobs:
             - Run `pytest tests/` before committing to verify no regressions
             - Keep changes minimal and focused on the issue
             - Create the PR with "Closes #${{ github.event.issue.number }}" in the body
-          claude_args: "--max-turns 30"
+          claude_args: '--max-turns 30 --allowedTools "Bash(*)" "Edit(*)" "Write(*)"'
 
       - name: Mark as attempted
         if: always()
