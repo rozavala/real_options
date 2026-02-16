@@ -161,3 +161,47 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-16 13:19:36,798 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=400, market_open=False, trading_day=False
 2026-02-16 13:24:37,036 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=405, market_open=False, trading_day=False
 2026-02-16 13:29:37,197 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=410, market_open=False, trading_day=False
+2026-02-16 13:34:37,436 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=415, market_open=False, trading_day=False
+2026-02-16 13:39:37,648 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=420, market_open=False, trading_day=False
+2026-02-16 13:44:37,905 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=425, market_open=False, trading_day=False
+2026-02-16 13:49:38,060 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=430, market_open=False, trading_day=False
+2026-02-16 13:52:00,022 - Orchestrator - INFO - --- Running scheduled task: audit_mid_session [run_position_audit_cycle] ---
+2026-02-16 13:52:00,025 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-16 13:52:00,026 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 56 [REMOTE/PAPER]...
+2026-02-16 13:52:00,035 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
+2026-02-16 13:52:00,035 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
+2026-02-16 13:52:00,542 - trading_bot.connection_pool - ERROR - IB (audit) connection failed: [Errno 111] Connect call failed ('100.102.50.16', 4002). Next retry backoff: 10.0s
+2026-02-16 13:52:00,547 - Orchestrator - ERROR - Position Audit Cycle failed: [Errno 111] Connect call failed ('100.102.50.16', 4002)
+Traceback (most recent call last):
+  File "/home/rodrigo/real_options/orchestrator.py", line 1561, in run_position_audit_cycle
+    ib = await IBConnectionPool.get_connection("audit", config)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rodrigo/real_options/trading_bot/connection_pool.py", line 173, in get_connection
+    await ib.connectAsync(
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py", line 1748, in connectAsync
+    await self.client.connectAsync(host, port, clientId, timeout)
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/client.py", line 211, in connectAsync
+    await asyncio.wait_for(self.conn.connectAsync(host, port), timeout)
+  File "/usr/lib/python3.12/asyncio/tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/connection.py", line 39, in connectAsync
+    self.transport, _ = await loop.create_connection(
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1122, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1104, in create_connection
+    sock = await self._connect_sock(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1007, in _connect_sock
+    await self.sock_connect(sock, address)
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 651, in sock_connect
+    return await fut
+           ^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 691, in _sock_connect_cb
+    raise OSError(err, f'Connect call failed {address}')
+ConnectionRefusedError: [Errno 111] Connect call failed ('100.102.50.16', 4002)
+
+2026-02-16 13:52:00,551 - Orchestrator - INFO - Next task 'signal_mid' (Signal: Mid) scheduled for 2026-02-16 14:20:00 UTC. Waiting for 0.47 hours.
+2026-02-16 13:54:38,263 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=435, market_open=False, trading_day=False
+2026-02-16 13:59:38,375 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=440, market_open=False, trading_day=False
