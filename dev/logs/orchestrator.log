@@ -1,252 +1,55 @@
 Starting orchestrator from /home/rodrigo/real_options...
-2026-02-16 06:39:38,383 - Orchestrator - INFO - Deduplicator metrics stale (last reset: 2026-02-13), resetting counters
-2026-02-16 06:39:38,384 - Orchestrator - INFO - =============================================
-2026-02-16 06:39:38,384 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
-2026-02-16 06:39:38,384 - Orchestrator - INFO - =============================================
-2026-02-16 06:39:38,386 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-16 06:39:38,387 - Orchestrator - WARNING - ============================================================
-2026-02-16 06:39:38,387 - Orchestrator - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
-2026-02-16 06:39:38,387 - Orchestrator - WARNING -   Client IDs: DEV range (10-79)
-2026-02-16 06:39:38,387 - Orchestrator - WARNING -   Trading Mode: LIVE
-2026-02-16 06:39:38,387 - Orchestrator - WARNING - ============================================================
-2026-02-16 06:39:38,387 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-16 06:39:38,387 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
-2026-02-16 06:39:38,387 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-16 06:39:38,388 - Orchestrator - INFO - Expiry filter window: 45-365 DTE
-2026-02-16 06:39:38,519 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-16 06:39:38,519 - Orchestrator - INFO - Built session schedule: 17 tasks for KC (04:15-13:30 ET)
-2026-02-16 06:39:38,519 - Orchestrator - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
-2026-02-16 06:39:38,959 - Orchestrator - INFO - Running TopicDiscoveryAgent on startup...
-2026-02-16 06:39:39,084 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-02-16 06:39:51,327 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-16 06:39:51,446 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-16 06:39:51,568 - Orchestrator - INFO - Startup TopicDiscovery: 3 topics, No changes
-2026-02-16 06:39:51,570 - Orchestrator - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-16 08:30:00 UTC. Waiting for 1.84 hours.
-2026-02-16 06:39:51,571 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-16 06:39:51,945 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-02-16 06:44:08,712 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=False, trading_day=False
-2026-02-16 06:49:08,965 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_open=False, trading_day=False
-2026-02-16 06:54:09,181 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_open=False, trading_day=False
-2026-02-16 06:59:09,392 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_open=False, trading_day=False
-2026-02-16 07:04:09,589 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=25, market_open=False, trading_day=False
-2026-02-16 07:09:09,823 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=30, market_open=False, trading_day=False
-2026-02-16 07:14:09,944 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=35, market_open=False, trading_day=False
-2026-02-16 07:19:10,198 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=40, market_open=False, trading_day=False
-2026-02-16 07:24:10,432 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=45, market_open=False, trading_day=False
-2026-02-16 07:29:10,650 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=50, market_open=False, trading_day=False
-2026-02-16 07:34:10,842 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=55, market_open=False, trading_day=False
-2026-02-16 07:39:11,069 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=60, market_open=False, trading_day=False
-2026-02-16 07:44:11,261 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=65, market_open=False, trading_day=False
-2026-02-16 07:49:11,484 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=70, market_open=False, trading_day=False
-2026-02-16 07:54:11,673 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=75, market_open=False, trading_day=False
-2026-02-16 07:59:11,860 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=80, market_open=False, trading_day=False
-2026-02-16 08:04:12,084 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=85, market_open=False, trading_day=False
-2026-02-16 08:09:12,296 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=90, market_open=False, trading_day=False
-2026-02-16 08:14:12,472 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=95, market_open=False, trading_day=False
-2026-02-16 08:19:12,653 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=100, market_open=False, trading_day=False
-2026-02-16 08:24:12,914 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=105, market_open=False, trading_day=False
-2026-02-16 08:29:13,065 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=110, market_open=False, trading_day=False
-2026-02-16 08:30:00,008 - Orchestrator - INFO - --- Running scheduled task: start_monitoring [start_monitoring] ---
-2026-02-16 08:30:00,011 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
-2026-02-16 08:30:00,013 - Orchestrator - INFO - Market is closed (weekend/holiday). Skipping position monitoring startup.
-2026-02-16 08:30:00,018 - Orchestrator - INFO - Next task 'process_deferred_triggers' (Process Deferred Triggers) scheduled for 2026-02-16 08:31:00 UTC. Waiting for 0.02 hours.
-2026-02-16 08:31:00,048 - Orchestrator - INFO - --- Running scheduled task: process_deferred_triggers [process_deferred_triggers] ---
-2026-02-16 08:31:00,053 - Orchestrator - INFO - Market is closed. Skipping deferred trigger processing.
-2026-02-16 08:31:00,058 - Orchestrator - INFO - Next task 'cleanup_orphaned_theses' (Daily Thesis Cleanup) scheduled for 2026-02-16 09:00:00 UTC. Waiting for 0.48 hours.
-2026-02-16 08:34:13,189 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=115, market_open=False, trading_day=False
-2026-02-16 08:39:13,437 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=120, market_open=False, trading_day=False
-2026-02-16 08:44:14,837 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=125, market_open=False, trading_day=False
-2026-02-16 08:49:14,996 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=130, market_open=False, trading_day=False
-2026-02-16 08:54:15,165 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=135, market_open=False, trading_day=False
-2026-02-16 08:59:15,356 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=140, market_open=False, trading_day=False
-2026-02-16 09:00:00,007 - Orchestrator - INFO - --- Running scheduled task: cleanup_orphaned_theses [cleanup_orphaned_theses] ---
-2026-02-16 09:00:00,011 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
-2026-02-16 09:00:00,012 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 70 [REMOTE/PAPER]...
-2026-02-16 09:00:00,020 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
-2026-02-16 09:00:00,020 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
-2026-02-16 09:00:00,525 - trading_bot.connection_pool - ERROR - IB (cleanup) connection failed: [Errno 111] Connect call failed ('100.102.50.16', 4002). Next retry backoff: 10.0s
-2026-02-16 09:00:00,525 - Orchestrator - ERROR - Thesis cleanup failed: [Errno 111] Connect call failed ('100.102.50.16', 4002)
-2026-02-16 09:00:00,529 - Orchestrator - INFO - Next task 'signal_open' (Signal: Open) scheduled for 2026-02-16 09:42:00 UTC. Waiting for 0.70 hours.
-2026-02-16 09:04:15,577 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=145, market_open=False, trading_day=False
-2026-02-16 09:09:15,779 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=150, market_open=False, trading_day=False
-2026-02-16 09:14:15,980 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=155, market_open=False, trading_day=False
-2026-02-16 09:19:16,242 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=160, market_open=False, trading_day=False
-2026-02-16 09:24:16,445 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=165, market_open=False, trading_day=False
-2026-02-16 09:29:16,589 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=170, market_open=False, trading_day=False
-2026-02-16 09:34:16,764 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=175, market_open=False, trading_day=False
-2026-02-16 09:39:16,943 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=180, market_open=False, trading_day=False
-2026-02-16 09:42:00,029 - Orchestrator - INFO - --- Running scheduled task: signal_open [guarded_generate_orders] ---
-2026-02-16 09:42:00,153 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-02-16 09:42:00,153 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'gemini', 'openai']
-2026-02-16 09:42:00,153 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'anthropic', 'gemini', 'openai'], 'diversity_score': 1.0}
-2026-02-16 09:42:00,161 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-16 09:42:00,169 - trading_bot.enhanced_brier - INFO - Loaded 601 predictions from ./data/enhanced_brier.json
-2026-02-16 09:42:00,262 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
-2026-02-16 09:42:00,263 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
-2026-02-16 09:42:00,263 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
-2026-02-16 09:42:00,263 - trading_bot.agents - INFO - Observability Hub initialized.
-2026-02-16 09:42:00,263 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
-2026-02-16 09:42:00,264 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 75 [REMOTE/PAPER]...
-2026-02-16 09:42:00,274 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
-2026-02-16 09:42:00,274 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
-2026-02-16 09:42:00,780 - trading_bot.connection_pool - ERROR - IB (drawdown_check) connection failed: [Errno 111] Connect call failed ('100.102.50.16', 4002). Next retry backoff: 10.0s
-2026-02-16 09:42:00,780 - Orchestrator - WARNING - Failed to check drawdown guard before orders: [Errno 111] Connect call failed ('100.102.50.16', 4002)
-2026-02-16 09:42:00,781 - OrderManager - INFO - Market is closed (weekend/holiday). Skipping order generation cycle.
-2026-02-16 09:42:00,786 - Orchestrator - INFO - Next task 'signal_early' (Signal: Early) scheduled for 2026-02-16 12:01:00 UTC. Waiting for 2.32 hours.
-2026-02-16 09:44:17,159 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=185, market_open=False, trading_day=False
-2026-02-16 09:49:17,364 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=190, market_open=False, trading_day=False
-2026-02-16 09:54:17,525 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=195, market_open=False, trading_day=False
-2026-02-16 09:59:17,684 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=200, market_open=False, trading_day=False
-2026-02-16 10:04:17,844 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=205, market_open=False, trading_day=False
-2026-02-16 10:09:18,004 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=210, market_open=False, trading_day=False
-2026-02-16 10:14:18,164 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=215, market_open=False, trading_day=False
-2026-02-16 10:19:18,324 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=220, market_open=False, trading_day=False
-2026-02-16 10:24:18,484 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=225, market_open=False, trading_day=False
-2026-02-16 10:29:18,655 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=230, market_open=False, trading_day=False
-2026-02-16 10:34:18,805 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=235, market_open=False, trading_day=False
-2026-02-16 10:39:18,965 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=240, market_open=False, trading_day=False
-2026-02-16 10:40:24,041 - Orchestrator - INFO - WeatherSentinel: trigger detected (source=WeatherSentinel, severity=7)
-2026-02-16 10:40:24,045 - trading_bot.state_manager - INFO - Queued deferred trigger from WeatherSentinel
-2026-02-16 10:40:24,045 - Orchestrator - INFO - Deferred WeatherSentinel trigger for market open
-2026-02-16 10:40:24,666 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-02-16 10:44:28,308 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=245, market_open=False, trading_day=False
-2026-02-16 10:49:28,483 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=250, market_open=False, trading_day=False
-2026-02-16 10:54:28,628 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=255, market_open=False, trading_day=False
-2026-02-16 10:59:28,789 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=260, market_open=False, trading_day=False
-2026-02-16 11:04:28,990 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=265, market_open=False, trading_day=False
-2026-02-16 11:09:29,212 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=270, market_open=False, trading_day=False
-2026-02-16 11:14:29,372 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=275, market_open=False, trading_day=False
-2026-02-16 11:19:29,563 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=280, market_open=False, trading_day=False
-2026-02-16 11:24:29,708 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=285, market_open=False, trading_day=False
-2026-02-16 11:29:29,919 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=290, market_open=False, trading_day=False
-2026-02-16 11:34:30,117 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=295, market_open=False, trading_day=False
-2026-02-16 11:39:30,293 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=300, market_open=False, trading_day=False
-2026-02-16 11:44:30,452 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=305, market_open=False, trading_day=False
-2026-02-16 11:49:30,684 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=310, market_open=False, trading_day=False
-2026-02-16 11:54:30,844 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=315, market_open=False, trading_day=False
-2026-02-16 11:59:31,004 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=320, market_open=False, trading_day=False
-2026-02-16 12:01:00,030 - Orchestrator - INFO - --- Running scheduled task: signal_early [guarded_generate_orders] ---
-2026-02-16 12:01:00,149 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-02-16 12:01:00,150 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'gemini', 'openai']
-2026-02-16 12:01:00,150 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'anthropic', 'gemini', 'openai'], 'diversity_score': 1.0}
-2026-02-16 12:01:00,156 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-16 12:01:00,162 - trading_bot.enhanced_brier - INFO - Loaded 601 predictions from ./data/enhanced_brier.json
-2026-02-16 12:01:00,230 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
-2026-02-16 12:01:00,231 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
-2026-02-16 12:01:00,231 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
-2026-02-16 12:01:00,231 - trading_bot.agents - INFO - Observability Hub initialized.
-2026-02-16 12:01:00,231 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
-2026-02-16 12:01:00,232 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 78 [REMOTE/PAPER]...
-2026-02-16 12:01:00,240 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
-2026-02-16 12:01:00,241 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
-2026-02-16 12:01:00,746 - trading_bot.connection_pool - ERROR - IB (drawdown_check) connection failed: [Errno 111] Connect call failed ('100.102.50.16', 4002). Next retry backoff: 20.0s
-2026-02-16 12:01:00,747 - Orchestrator - WARNING - Failed to check drawdown guard before orders: [Errno 111] Connect call failed ('100.102.50.16', 4002)
-2026-02-16 12:01:00,748 - OrderManager - INFO - Market is closed (weekend/holiday). Skipping order generation cycle.
-2026-02-16 12:01:00,752 - Orchestrator - INFO - Next task 'audit_mid_session' (Audit: Mid-Session) scheduled for 2026-02-16 13:52:00 UTC. Waiting for 1.85 hours.
-2026-02-16 12:04:31,140 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=325, market_open=False, trading_day=False
-2026-02-16 12:09:31,325 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=330, market_open=False, trading_day=False
-2026-02-16 12:14:31,498 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=335, market_open=False, trading_day=False
-2026-02-16 12:19:31,652 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=340, market_open=False, trading_day=False
-2026-02-16 12:24:31,798 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=345, market_open=False, trading_day=False
-2026-02-16 12:29:32,071 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=350, market_open=False, trading_day=False
-2026-02-16 12:34:32,300 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=355, market_open=False, trading_day=False
-2026-02-16 12:39:32,460 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=360, market_open=False, trading_day=False
-2026-02-16 12:44:35,435 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=365, market_open=False, trading_day=False
-2026-02-16 12:49:35,673 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=370, market_open=False, trading_day=False
-2026-02-16 12:54:35,802 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=375, market_open=False, trading_day=False
-2026-02-16 12:59:35,944 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=380, market_open=False, trading_day=False
-2026-02-16 13:04:36,198 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=385, market_open=False, trading_day=False
-2026-02-16 13:09:36,381 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=390, market_open=False, trading_day=False
-2026-02-16 13:14:36,588 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=395, market_open=False, trading_day=False
-2026-02-16 13:19:36,798 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=400, market_open=False, trading_day=False
-2026-02-16 13:24:37,036 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=405, market_open=False, trading_day=False
-2026-02-16 13:29:37,197 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=410, market_open=False, trading_day=False
-2026-02-16 13:34:37,436 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=415, market_open=False, trading_day=False
-2026-02-16 13:39:37,648 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=420, market_open=False, trading_day=False
-2026-02-16 13:44:37,905 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=425, market_open=False, trading_day=False
-2026-02-16 13:49:38,060 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=430, market_open=False, trading_day=False
-2026-02-16 13:52:00,022 - Orchestrator - INFO - --- Running scheduled task: audit_mid_session [run_position_audit_cycle] ---
-2026-02-16 13:52:00,025 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
-2026-02-16 13:52:00,026 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 56 [REMOTE/PAPER]...
-2026-02-16 13:52:00,035 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
-2026-02-16 13:52:00,035 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
-2026-02-16 13:52:00,542 - trading_bot.connection_pool - ERROR - IB (audit) connection failed: [Errno 111] Connect call failed ('100.102.50.16', 4002). Next retry backoff: 10.0s
-2026-02-16 13:52:00,547 - Orchestrator - ERROR - Position Audit Cycle failed: [Errno 111] Connect call failed ('100.102.50.16', 4002)
-Traceback (most recent call last):
-  File "/home/rodrigo/real_options/orchestrator.py", line 1561, in run_position_audit_cycle
-    ib = await IBConnectionPool.get_connection("audit", config)
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/rodrigo/real_options/trading_bot/connection_pool.py", line 173, in get_connection
-    await ib.connectAsync(
-  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py", line 1748, in connectAsync
-    await self.client.connectAsync(host, port, clientId, timeout)
-  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/client.py", line 211, in connectAsync
-    await asyncio.wait_for(self.conn.connectAsync(host, port), timeout)
-  File "/usr/lib/python3.12/asyncio/tasks.py", line 520, in wait_for
-    return await fut
-           ^^^^^^^^^
-  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/connection.py", line 39, in connectAsync
-    self.transport, _ = await loop.create_connection(
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.12/asyncio/base_events.py", line 1122, in create_connection
-    raise exceptions[0]
-  File "/usr/lib/python3.12/asyncio/base_events.py", line 1104, in create_connection
-    sock = await self._connect_sock(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.12/asyncio/base_events.py", line 1007, in _connect_sock
-    await self.sock_connect(sock, address)
-  File "/usr/lib/python3.12/asyncio/selector_events.py", line 651, in sock_connect
-    return await fut
-           ^^^^^^^^^
-  File "/usr/lib/python3.12/asyncio/selector_events.py", line 691, in _sock_connect_cb
-    raise OSError(err, f'Connect call failed {address}')
-ConnectionRefusedError: [Errno 111] Connect call failed ('100.102.50.16', 4002)
-
-2026-02-16 13:52:00,551 - Orchestrator - INFO - Next task 'signal_mid' (Signal: Mid) scheduled for 2026-02-16 14:20:00 UTC. Waiting for 0.47 hours.
-2026-02-16 13:54:38,263 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=435, market_open=False, trading_day=False
-2026-02-16 13:59:38,375 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=440, market_open=False, trading_day=False
-2026-02-16 14:04:38,607 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=445, market_open=False, trading_day=False
-2026-02-16 14:09:38,749 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=450, market_open=False, trading_day=False
-2026-02-16 14:14:38,943 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=455, market_open=False, trading_day=False
-2026-02-16 14:19:39,158 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=460, market_open=False, trading_day=False
-2026-02-16 14:20:00,004 - Orchestrator - INFO - --- Running scheduled task: signal_mid [guarded_generate_orders] ---
-2026-02-16 14:20:00,098 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-02-16 14:20:00,098 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'gemini', 'openai']
-2026-02-16 14:20:00,098 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'anthropic', 'gemini', 'openai'], 'diversity_score': 1.0}
-2026-02-16 14:20:00,105 - trading_bot.tms - INFO - TMS initialized at ./data/tms
-2026-02-16 14:20:00,110 - trading_bot.enhanced_brier - INFO - Loaded 601 predictions from ./data/enhanced_brier.json
-2026-02-16 14:20:00,174 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
-2026-02-16 14:20:00,174 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
-2026-02-16 14:20:00,174 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
-2026-02-16 14:20:00,175 - trading_bot.agents - INFO - Observability Hub initialized.
-2026-02-16 14:20:00,175 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
-2026-02-16 14:20:00,175 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 78 [REMOTE/PAPER]...
-2026-02-16 14:20:00,183 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
-2026-02-16 14:20:00,184 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
-2026-02-16 14:20:00,689 - trading_bot.connection_pool - ERROR - IB (drawdown_check) connection failed: [Errno 111] Connect call failed ('100.102.50.16', 4002). Next retry backoff: 40.0s
-2026-02-16 14:20:00,689 - Orchestrator - WARNING - Failed to check drawdown guard before orders: [Errno 111] Connect call failed ('100.102.50.16', 4002)
-2026-02-16 14:20:00,690 - OrderManager - INFO - Market is closed (weekend/holiday). Skipping order generation cycle.
-2026-02-16 14:20:00,695 - Orchestrator - INFO - Next task 'signal_late' (Signal: Late) scheduled for 2026-02-16 16:39:00 UTC. Waiting for 2.32 hours.
-2026-02-16 14:24:39,255 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=465, market_open=False, trading_day=False
-2026-02-16 14:29:39,433 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=470, market_open=False, trading_day=False
-2026-02-16 14:34:39,641 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=475, market_open=False, trading_day=False
-2026-02-16 14:39:39,812 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=480, market_open=False, trading_day=False
-2026-02-16 14:40:44,944 - Orchestrator - INFO - WeatherSentinel: trigger detected (source=WeatherSentinel, severity=9)
-2026-02-16 14:40:44,947 - trading_bot.state_manager - INFO - Queued deferred trigger from WeatherSentinel
-2026-02-16 14:40:44,947 - Orchestrator - INFO - Deferred WeatherSentinel trigger for market open
-2026-02-16 14:44:46,764 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=485, market_open=False, trading_day=False
-2026-02-16 14:49:46,943 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=490, market_open=False, trading_day=False
-2026-02-16 14:54:47,084 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=495, market_open=False, trading_day=False
-2026-02-16 14:59:47,244 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=500, market_open=False, trading_day=False
-2026-02-16 15:04:47,434 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=505, market_open=False, trading_day=False
-2026-02-16 15:09:47,647 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=510, market_open=False, trading_day=False
-2026-02-16 15:14:47,788 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=515, market_open=False, trading_day=False
-2026-02-16 15:19:47,967 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=520, market_open=False, trading_day=False
-2026-02-16 15:24:48,200 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=525, market_open=False, trading_day=False
-2026-02-16 15:29:48,374 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=530, market_open=False, trading_day=False
-2026-02-16 15:34:48,540 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=535, market_open=False, trading_day=False
-2026-02-16 15:39:48,752 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=540, market_open=False, trading_day=False
-2026-02-16 15:44:48,924 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=545, market_open=False, trading_day=False
-2026-02-16 15:49:49,197 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=550, market_open=False, trading_day=False
-2026-02-16 15:54:49,409 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=555, market_open=False, trading_day=False
-2026-02-16 15:59:49,675 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=560, market_open=False, trading_day=False
+2026-02-16 16:22:53,339 - Orchestrator - INFO - =============================================
+2026-02-16 16:22:53,340 - Orchestrator - INFO - === Starting the Trading Bot Orchestrator ===
+2026-02-16 16:22:53,340 - Orchestrator - INFO - =============================================
+2026-02-16 16:22:53,342 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-16 16:22:53,342 - Orchestrator - WARNING - ============================================================
+2026-02-16 16:22:53,342 - Orchestrator - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
+2026-02-16 16:22:53,342 - Orchestrator - WARNING -   Client IDs: DEV range (10-79)
+2026-02-16 16:22:53,342 - Orchestrator - WARNING -   Trading Mode: LIVE
+2026-02-16 16:22:53,342 - Orchestrator - WARNING - ============================================================
+2026-02-16 16:22:53,342 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-16 16:22:53,343 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
+2026-02-16 16:22:53,343 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-16 16:22:53,343 - Orchestrator - INFO - Expiry filter window: 45-365 DTE
+2026-02-16 16:22:53,452 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-16 16:22:53,452 - Orchestrator - INFO - Built session schedule: 17 tasks for KC (04:15-13:30 ET)
+2026-02-16 16:22:53,452 - Orchestrator - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
+2026-02-16 16:22:53,456 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 7 scheduled tasks already passed:
+  - 03:30 ET: start_monitoring
+  - 03:31 ET: process_deferred_triggers
+  - 04:00 ET: cleanup_orphaned_theses
+  - 04:42 ET: signal_open
+  - 07:01 ET: signal_early
+  - 08:52 ET: audit_mid_session
+  - 09:20 ET: signal_mid
+2026-02-16 16:22:53,457 - Orchestrator - INFO - --- Recovery: Evaluating 7 missed tasks ---
+2026-02-16 16:22:53,457 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
+2026-02-16 16:22:53,457 - Orchestrator - INFO - ✅ ALREADY RAN: process_deferred_triggers completed earlier today (before restart). Skipping re-execution.
+2026-02-16 16:22:53,457 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 04:00 ET)
+2026-02-16 16:22:53,457 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-16 16:22:53,458 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 72 [REMOTE/PAPER]...
+2026-02-16 16:22:53,465 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
+2026-02-16 16:22:53,465 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
+2026-02-16 16:22:53,970 - trading_bot.connection_pool - ERROR - IB (cleanup) connection failed: [Errno 111] Connect call failed ('100.102.50.16', 4002). Next retry backoff: 10.0s
+2026-02-16 16:22:53,970 - Orchestrator - ERROR - Thesis cleanup failed: [Errno 111] Connect call failed ('100.102.50.16', 4002)
+2026-02-16 16:22:53,972 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-16 16:22:53,973 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
+2026-02-16 16:22:53,973 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
+2026-02-16 16:22:53,973 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_mid_session — market closed
+2026-02-16 16:22:53,973 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
+2026-02-16 16:22:53,973 - Orchestrator - INFO - System restarted with 7 missed tasks.
+✅ 1 recovered | ⏭️ 2 skipped | ✔️ 4 already ran
+2026-02-16 16:22:54,272 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-16 16:22:54,581 - Orchestrator - INFO - Running TopicDiscoveryAgent on startup...
+2026-02-16 16:22:54,634 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-16 16:23:09,005 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-16 16:23:09,091 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-16 16:23:09,151 - Orchestrator - INFO - Startup TopicDiscovery: 3 topics, No changes
+2026-02-16 16:23:09,152 - Orchestrator - INFO - Next task 'signal_late' (Signal: Late) scheduled for 2026-02-16 16:39:00 UTC. Waiting for 0.26 hours.
+2026-02-16 16:23:09,152 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-16 16:23:09,493 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-16 16:23:24,794 - Orchestrator - INFO - MacroContagionSentinel: trigger detected (source=MacroContagionSentinel, severity=9)
+2026-02-16 16:23:24,798 - trading_bot.state_manager - INFO - Queued deferred trigger from MacroContagionSentinel
+2026-02-16 16:23:24,798 - Orchestrator - INFO - Deferred MacroContagionSentinel trigger for market open
+2026-02-16 16:27:24,944 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=False, trading_day=False
