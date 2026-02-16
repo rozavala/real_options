@@ -21,3 +21,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-12 - Progressive Enhancement for Copy Functionality
 **Learning:** `st.popover` (Streamlit v1.33+) provides a cleaner UX for secondary actions like "Copy ID" compared to `st.expander`.
 **Action:** Use `if hasattr(st, "popover"):` to conditionally render the modern UI, falling back to `st.expander` to ensure accessibility and functionality across different deployments.
+
+## 2026-02-23 - Separating Status and Countdown
+**Learning:** Appending dynamic countdowns (e.g., "(opens in 12h)") to primary status labels often causes text truncation in fixed-width metric cards.
+**Action:** Use the `delta` parameter in `st.metric` for dynamic, secondary time information. It ensures the primary status remains readable and provides a dedicated, styled space for the countdown.

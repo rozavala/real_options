@@ -7,7 +7,7 @@ Purpose: "Morning coffee" screen - Is the system running? Is capital safe? Any e
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import pytz
 import sys
 import os
@@ -464,6 +464,7 @@ is_open = market_open_ny <= ny_now <= market_close_ny and ny_now.weekday() < 5
 
 status_color = "🟢" if is_open else "🔴"
 status_text = "OPEN" if is_open else "CLOSED"
+countdown_text = None
 
 if is_open:
     delta = market_close_ny - ny_now
@@ -471,7 +472,27 @@ if is_open:
     if delta.total_seconds() > 0:
         minutes = int(delta.total_seconds() // 60)
         hours, minutes = divmod(minutes, 60)
-        status_text += f" (closes in {hours}h {minutes}m)"
+        countdown_text = f"Closes in {hours}h {minutes}m"
+else:
+    # Calculate time until open
+    next_open = market_open_ny
+
+    # If currently past open time or it's a weekend, move to next weekday
+    if ny_now >= market_open_ny or ny_now.weekday() >= 5:
+        # Start with tomorrow
+        next_open = next_open + timedelta(days=1)
+        # Skip weekends (5=Sat, 6=Sun)
+        while next_open.weekday() >= 5:
+            next_open += timedelta(days=1)
+
+    # Reset time to the standard open time (using market_open_ny's components)
+    next_open = next_open.replace(hour=market_open_ny.hour, minute=market_open_ny.minute, second=0, microsecond=0)
+
+    delta = next_open - ny_now
+    if delta.total_seconds() > 0:
+        minutes = int(delta.total_seconds() // 60)
+        hours, minutes = divmod(minutes, 60)
+        countdown_text = f"Opens in {hours}h {minutes}m"
 
 clock_cols = st.columns(3)
 with clock_cols[0]:
@@ -479,7 +500,13 @@ with clock_cols[0]:
 with clock_cols[1]:
     st.metric("New York Time (Market)", ny_now.strftime("%H:%M:%S"))
 with clock_cols[2]:
-    st.metric("Market Status", f"{status_color} {status_text}", help="Trading Hours (ET): 03:30 - 14:00 (Mon-Fri)")
+    st.metric(
+        "Market Status",
+        f"{status_color} {status_text}",
+        delta=countdown_text,
+        delta_color="off",
+        help="Trading Hours (ET): 03:30 - 14:00 (Mon-Fri)"
+    )
 
 st.markdown("---")
 
