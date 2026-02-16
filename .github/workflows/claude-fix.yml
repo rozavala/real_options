@@ -1,0 +1,72 @@
+name: Auto-fix Issue with Claude
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.label.name == 'claude-fix' &&
+      !contains(github.event.issue.labels.*.name, 'claude-fix-attempted')
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are fixing issue #${{ github.event.issue.number }} in a production trading system.
+
+            BEFORE MAKING ANY CHANGES:
+            1. Read CLAUDE.md thoroughly — it contains critical project conventions
+            2. Run `git log --oneline -20` to understand recent changes
+            3. Check if recent commits are related to this issue's area
+            4. Read the issue carefully and understand the root cause
+
+            RULES:
+            - This is a PRODUCTION TRADING SYSTEM that trades real money
+            - NEVER modify execution-path files (order_manager.py, ib_interface.py,
+              compliance.py) without extreme care — these control real trades
+            - All components must fail closed — if unsure, block rather than allow
+            - Run `pytest tests/` before committing to verify no regressions
+            - Keep changes minimal and focused on the issue
+            - Create the PR with "Closes #${{ github.event.issue.number }}" in the body
+          claude_args: "--max-turns 30"
+
+      - name: Mark as attempted
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Add 'claude-fix-attempted' label to prevent re-runs
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'claude-fix-attempted',
+              });
+            } catch {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'claude-fix-attempted',
+                color: 'e0e0e0',
+              });
+            }
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['claude-fix-attempted'],
+            });
