@@ -263,13 +263,12 @@ else
 fi
 
 # =========================================================================
-# STEP 11: Error reporter cron (every 15 min) — idempotent cron.d file
+# STEP 11: Error reporter cron (every 15 min) — user crontab (no root needed)
 # =========================================================================
 echo "--- 11. Setting up error reporter cron... ---"
-cat > /etc/cron.d/trading-bot-error-reporter << CRON_EOF
-*/15 * * * * rodrigo cd $REPO_ROOT && $REPO_ROOT/venv/bin/python scripts/error_reporter.py >> logs/error_reporter.log 2>&1
-CRON_EOF
-chmod 644 /etc/cron.d/trading-bot-error-reporter
+CRON_LINE="*/15 * * * * cd $REPO_ROOT && $REPO_ROOT/venv/bin/python scripts/error_reporter.py >> logs/error_reporter.log 2>&1"
+# Add to user crontab if not already present (idempotent)
+( crontab -l 2>/dev/null | grep -v 'error_reporter\.py'; echo "$CRON_LINE" ) | crontab -
 echo "  ✅ Error reporter cron installed"
 
 echo ""
