@@ -116,3 +116,189 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-16 18:25:00,727 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
 2026-02-16 18:25:00,734 - Orchestrator - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-02-16 18:35:00 UTC. Waiting for 0.17 hours.
 2026-02-16 18:27:43,181 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=30, market_open=False, trading_day=False
+2026-02-16 18:32:43,340 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=35, market_open=False, trading_day=False
+2026-02-16 18:35:00,017 - Orchestrator - INFO - --- Running scheduled task: log_equity_snapshot [log_equity_snapshot] ---
+2026-02-16 18:35:00,020 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
+2026-02-16 18:35:00,020 - EquityLogger - INFO - Connecting to IB at 100.102.50.16:4002 with clientId 9943...
+2026-02-16 18:35:00,028 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
+2026-02-16 18:35:00,028 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
+2026-02-16 18:35:00,028 - EquityLogger - ERROR - Failed to log equity snapshot: [Errno 111] Connect call failed ('100.102.50.16', 4002)
+2026-02-16 18:35:00,033 - Orchestrator - INFO - Next task 'reconcile_and_analyze' (Reconcile & Analyze) scheduled for 2026-02-16 18:38:00 UTC. Waiting for 0.05 hours.
+2026-02-16 18:37:43,548 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=40, market_open=False, trading_day=False
+2026-02-16 18:38:00,018 - Orchestrator - INFO - --- Running scheduled task: reconcile_and_analyze [reconcile_and_analyze] ---
+2026-02-16 18:38:00,021 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-02-16 18:38:00,021 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
+2026-02-16 18:38:00,257 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-16 18:38:10,262 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-16 18:38:10,422 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-16 18:38:10,434 - EquityLogger - INFO - Preserving 15 local equity records not present in Flex Query.
+2026-02-16 18:38:10,436 - EquityLogger - INFO - Successfully synced 24 equity records to data/daily_equity.csv.
+2026-02-16 18:38:10,438 - Orchestrator - WARNING - ⚠️ Equity data is 25.6 hours stale.
+2026-02-16 18:38:10,761 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-16 18:38:10,762 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-02-16 18:38:10,763 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-02-16 18:38:10,765 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-16 18:38:10,765 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-02-16 18:38:10,949 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-16 18:38:20,959 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-16 18:38:21,085 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-16 18:38:21,088 - TradeReconciler - INFO - Parsed 45 executions from the Flex Query report.
+2026-02-16 18:38:21,103 - TradeReconciler - INFO - Successfully processed 45 trades into the reconciliation DataFrame.
+2026-02-16 18:38:21,104 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-02-16 18:38:21,301 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-16 18:38:31,307 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-16 18:38:31,432 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-16 18:38:31,434 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-02-16 18:38:31,434 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-02-16 18:38:31,436 - TradeReconciler - INFO - Consolidated to 45 unique trades from all reports.
+2026-02-16 18:38:31,436 - TradeReconciler - INFO - Found 4 archived ledger files.
+2026-02-16 18:38:31,443 - TradeReconciler - INFO - Consolidated a total of 44 trades from all ledgers.
+2026-02-16 18:38:31,444 - TradeReconciler - INFO - Filtered IB trades from 45 to 45 records within the last 90 days.
+2026-02-16 18:38:31,445 - TradeReconciler - INFO - Filtered local ledger from 44 to 44 records within the last 90 days.
+2026-02-16 18:38:31,513 - TradeReconciler - INFO - Reconciliation complete. Found 1 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
+2026-02-16 18:38:31,516 - TradeReconciler - INFO - Discrepancies found. Writing to output files.
+2026-02-16 18:38:31,519 - TradeReconciler - INFO - Successfully wrote 1 missing trade(s) to '/home/rodrigo/real_options/archive_ledger/trade_ledger_missing_trades.csv'.
+2026-02-16 18:38:31,519 - Orchestrator - WARNING - Trade reconciliation found discrepancies.
+2026-02-16 18:38:31,799 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-16 18:38:31,800 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-02-16 18:38:31,990 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-16 18:38:42,000 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-16 18:38:42,129 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-16 18:38:42,132 - TradeReconciler - INFO - Parsed 1 positions from the Flex Query report.
+2026-02-16 18:38:42,132 - TradeReconciler - INFO - Found 5 archived ledger files.
+2026-02-16 18:38:42,141 - TradeReconciler - INFO - Consolidated a total of 45 trades from all ledgers.
+2026-02-16 18:38:42,148 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-02-16 18:38:42,148 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-02-16 18:38:42,175 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
+2026-02-16 18:38:42,176 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
+2026-02-16 18:38:42,176 - trading_bot.reconciliation - ERROR - Failed to connect to IB for reconciliation: [Errno 111] Connect call failed ('100.102.50.16', 4002)
+2026-02-16 18:38:42,176 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-02-16 18:38:42,176 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-02-16 18:38:42,176 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260129_190559.csv
+2026-02-16 18:38:42,178 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260130_190602.csv
+2026-02-16 18:38:42,180 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260202_190601.csv
+2026-02-16 18:38:42,181 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260203_190605.csv
+2026-02-16 18:38:42,182 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_missing_trades.csv
+2026-02-16 18:38:42,186 - PerformanceAnalyzer - INFO - Consolidated a total of 45 trade records.
+2026-02-16 18:38:42,189 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-02-16 18:38:42,191 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
+2026-02-16 18:38:42,191 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
+2026-02-16 18:38:42,192 - PerformanceAnalyzer - ERROR - Failed to get live account data from IB: [Errno 111] Connect call failed ('100.102.50.16', 4002)
+Traceback (most recent call last):
+  File "/home/rodrigo/real_options/performance_analyzer.py", line 111, in get_live_account_data
+    await ib.connectAsync(
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py", line 1748, in connectAsync
+    await self.client.connectAsync(host, port, clientId, timeout)
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/client.py", line 211, in connectAsync
+    await asyncio.wait_for(self.conn.connectAsync(host, port), timeout)
+  File "/usr/lib/python3.12/asyncio/tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/connection.py", line 39, in connectAsync
+    self.transport, _ = await loop.create_connection(
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1122, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1104, in create_connection
+    sock = await self._connect_sock(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1007, in _connect_sock
+    await self.sock_connect(sock, address)
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 651, in sock_connect
+    return await fut
+           ^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 691, in _sock_connect_cb
+    raise OSError(err, f'Connect call failed {address}')
+ConnectionRefusedError: [Errno 111] Connect call failed ('100.102.50.16', 4002)
+2026-02-16 18:38:42,194 - PerformanceAnalyzer - INFO - Loading daily_equity.csv for equity curve.
+2026-02-16 18:38:42,197 - PerformanceAnalyzer - INFO - Dynamic Starting Capital from History: $50,000.00
+2026-02-16 18:38:42,198 - PerformanceAnalyzer - WARNING - Using last recorded equity for LTD P&L (Live NetLiq unavailable).
+2026-02-16 18:38:42,984 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-02-16 18:38:43,170 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-16 18:38:43,435 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
+2026-02-16 18:38:43,436 - root - INFO - 'trade_ledger.csv' not found, no action taken.
+2026-02-16 18:38:43,443 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-16 18:38:43,445 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=1748
+2026-02-16 18:38:43,445 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-02-16 18:38:43,445 - Orchestrator - INFO - Running feedback loop health check...
+2026-02-16 18:38:43,452 - Orchestrator - INFO - Feedback Loop Health: 47/489 PENDING (0 orphans excluded, resolution rate: 90%)
+2026-02-16 18:38:43,452 - Orchestrator - WARNING - ⚠️ FEEDBACK LOOP: 47 stale predictions
+Oldest PENDING: 149h ago
+Stale (>48h): 47 | Recent (<24h): 0
+Resolution rate: 90%
+PENDING: 47/489
+2026-02-16 18:38:43,671 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-16 18:38:43,678 - trading_bot.enhanced_brier - INFO - Loaded 601 predictions from ./data/enhanced_brier.json
+2026-02-16 18:38:43,743 - Orchestrator - INFO - Enhanced Brier Health: 9 agents tracked, 544 total resolved predictions
+2026-02-16 18:38:43,744 - Orchestrator - INFO - Feedback loop health check complete.
+2026-02-16 18:38:43,744 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-02-16 18:38:43,751 - Orchestrator - INFO - Next task 'brier_reconciliation' (Brier Reconciliation) scheduled for 2026-02-16 18:41:00 UTC. Waiting for 0.04 hours.
+2026-02-16 18:41:00,013 - Orchestrator - INFO - --- Running scheduled task: brier_reconciliation [run_brier_reconciliation] ---
+2026-02-16 18:41:00,035 - trading_bot.brier_reconciliation - INFO - Found 47 pending predictions
+2026-02-16 18:41:00,036 - trading_bot.brier_reconciliation - INFO - Total council decisions: 91
+2026-02-16 18:41:00,039 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 84/91
+2026-02-16 18:41:00,050 - trading_bot.brier_reconciliation - INFO - 
+==================================================
+2026-02-16 18:41:00,051 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
+2026-02-16 18:41:00,051 - trading_bot.brier_reconciliation - INFO -   Total predictions:            489
+2026-02-16 18:41:00,051 - trading_bot.brier_reconciliation - INFO -   Resolved:                     442 (+0 new)
+2026-02-16 18:41:00,051 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      47 (potential: 47)
+2026-02-16 18:41:00,051 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        0 (+0 new)
+2026-02-16 18:41:00,051 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     90% (excl. orphans)
+2026-02-16 18:41:00,051 - trading_bot.brier_reconciliation - INFO - ==================================================
+2026-02-16 18:41:00,051 - trading_bot.brier_reconciliation - INFO - 
+Running reconciliation could unlock up to 47 more predictions
+2026-02-16 18:41:00,051 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-02-16 18:41:00,118 - Orchestrator - WARNING - Brier stall: 57 pending, 0 resolved today (streak: 1 days)
+2026-02-16 18:41:00,123 - Orchestrator - INFO - Next task 'sentinel_effectiveness' (Sentinel Effectiveness Check) scheduled for 2026-02-16 18:44:00 UTC. Waiting for 0.05 hours.
+2026-02-16 18:42:43,873 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=45, market_open=False, trading_day=False
+2026-02-16 18:44:00,018 - Orchestrator - INFO - --- Running scheduled task: sentinel_effectiveness [sentinel_effectiveness_check] ---
+2026-02-16 18:44:00,021 - Orchestrator - INFO - --- Sentinel Effectiveness Check ---
+2026-02-16 18:44:00,086 - Orchestrator - INFO - Sentinel effectiveness OK: weekly change +2.0%, alerts: 6, sentinel trades: 1
+2026-02-16 18:44:00,090 - Orchestrator - INFO - Next task 'eod_shutdown' (End-of-Day Shutdown) scheduled for 2026-02-16 18:47:00 UTC. Waiting for 0.05 hours.
+2026-02-16 18:47:00,011 - Orchestrator - INFO - --- Running scheduled task: eod_shutdown [cancel_and_stop_monitoring] ---
+2026-02-16 18:47:00,014 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
+2026-02-16 18:47:00,014 - Orchestrator - INFO - System shutdown flag SET — no new trades or emergency cycles will be processed
+2026-02-16 18:47:00,014 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
+2026-02-16 18:47:00,015 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 33 [REMOTE/PAPER]...
+2026-02-16 18:47:00,023 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
+2026-02-16 18:47:00,023 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
+2026-02-16 18:47:00,528 - trading_bot.connection_pool - ERROR - IB (orchestrator_orders) connection failed: [Errno 111] Connect call failed ('100.102.50.16', 4002). Next retry backoff: 40.0s
+2026-02-16 18:47:00,531 - OrderManager - CRITICAL - A critical error occurred while canceling orders: [Errno 111] Connect call failed ('100.102.50.16', 4002)
+Traceback (most recent call last):
+  File "/home/rodrigo/real_options/trading_bot/order_manager.py", line 2531, in cancel_all_open_orders
+    ib = await IBConnectionPool.get_connection(connection_purpose, config)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rodrigo/real_options/trading_bot/connection_pool.py", line 173, in get_connection
+    await ib.connectAsync(
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py", line 1748, in connectAsync
+    await self.client.connectAsync(host, port, clientId, timeout)
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/client.py", line 211, in connectAsync
+    await asyncio.wait_for(self.conn.connectAsync(host, port), timeout)
+  File "/usr/lib/python3.12/asyncio/tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/connection.py", line 39, in connectAsync
+    self.transport, _ = await loop.create_connection(
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1122, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1104, in create_connection
+    sock = await self._connect_sock(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1007, in _connect_sock
+    await self.sock_connect(sock, address)
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 651, in sock_connect
+    return await fut
+           ^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 691, in _sock_connect_cb
+    raise OSError(err, f'Connect call failed {address}')
+ConnectionRefusedError: [Errno 111] Connect call failed ('100.102.50.16', 4002)
+
+2026-02-16 18:47:00,864 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-16 18:47:01,078 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-16 18:47:01,079 - trading_bot.connection_pool - WARNING - FORCE RESETTING connection: orchestrator_orders
+2026-02-16 18:47:01,080 - Orchestrator - WARNING - Monitoring process is not running or has already terminated.
+2026-02-16 18:47:01,253 - Orchestrator - INFO - Connection pool released — no stale connections for Gateway restart
+2026-02-16 18:47:01,254 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
+2026-02-16 18:47:01,258 - Orchestrator - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-17 08:30:00 UTC. Waiting for 13.72 hours.
