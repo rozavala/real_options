@@ -464,10 +464,18 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
                 logging.warning(f"Could not find detailed contract for {contract.conId}. Ledger may be incomplete.")
 
         execution = fill.execution
+        # Resolve multiplier: prefer IBKR contract data, fallback to profile
+        _fallback_mult = 37500.0  # ultimate fallback
         try:
-            multiplier = float(contract.multiplier) if contract.multiplier else 37500.0
+            from config.commodity_profiles import get_commodity_profile
+            _fb_profile = get_commodity_profile(get_active_ticker(config) if config else 'KC')
+            _fallback_mult = float(_fb_profile.contract.contract_size)
+        except Exception:
+            pass
+        try:
+            multiplier = float(contract.multiplier) if contract.multiplier else _fallback_mult
         except (ValueError, TypeError):
-            multiplier = 37500.0
+            multiplier = _fallback_mult
 
         total_value = (execution.price * execution.shares * multiplier) / 100.0
         action = 'BUY' if execution.side == 'BOT' else 'SELL'
@@ -490,7 +498,7 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
                 unit = profile.contract.unit.lower()
             except Exception:
                 pass
-            is_cents_based = any(ind in unit for ind in CENTS_INDICATORS) if unit else (multiplier == 37500.0)
+            is_cents_based = any(ind in unit for ind in CENTS_INDICATORS) if unit else False
             if is_cents_based and isinstance(strike_value, (int, float)):
                 if 0 < strike_value < 100.0:
                     strike_value = round(strike_value * 100.0, 2)

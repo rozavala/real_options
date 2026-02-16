@@ -53,12 +53,9 @@ if not _sentinel_diag.handlers:
 
 # Domain whitelists for prediction market filtering.
 # IMPORTANT: Keep terms specific. Avoid generic words that appear in unrelated titles.
-# Commodity-agnostic: each commodity profile can extend these via config.
+# 'commodity' key is populated dynamically from the active profile's news_keywords.
 DOMAIN_KEYWORD_WHITELISTS = {
-    'coffee': [
-        'coffee', 'arabica', 'robusta', 'kc', 'bean', 'starbucks',
-        'roast', 'harvest', 'crop'
-    ],
+    'commodity': [],  # Populated at runtime from profile.news_keywords
     'macro': [
         'fed', 'rate', 'inflation', 'cpi', 'fomc', 'powell',
         'yield', 'treasury', 'dollar', 'dxy', 'recession', 'gdp',
@@ -78,10 +75,6 @@ DOMAIN_KEYWORD_WHITELISTS = {
     'logistics': [
         'port', 'shipping', 'container', 'freight', 'strike',
         'rail', 'supply chain', 'suez', 'panama canal'
-    ],
-    'cocoa': [
-        'cocoa', 'cacao', 'cc', 'chocolate', 'grinding',
-        'harvest', 'crop', 'ivory coast', 'ghana'
     ],
 }
 
@@ -1638,6 +1631,14 @@ class PredictionMarketSentinel(Sentinel):
         self.topics = []
         self.reload_topics()
         self.poll_interval = self.sentinel_config.get('poll_interval_seconds', 300)
+
+        # Populate commodity keywords from profile
+        ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+        try:
+            _pm_profile = get_commodity_profile(ticker)
+            DOMAIN_KEYWORD_WHITELISTS['commodity'] = _pm_profile.news_keywords or []
+        except Exception:
+            pass
         self._last_poll_time = 0
         self.severity_map = self.sentinel_config.get('severity_mapping', {
             '10_to_20_pct': 6,
@@ -1779,8 +1780,8 @@ class PredictionMarketSentinel(Sentinel):
             for kw in keywords:
                 if word_boundary_match(kw, query_lower):
                     return category
-        commodity = self.config.get('commodity', {}).get('name', 'coffee').lower()
-        return commodity if commodity in DOMAIN_KEYWORD_WHITELISTS else commodity
+        # Default to 'commodity' category (populated from profile at init)
+        return 'commodity'
 
     def _passes_domain_filter(self, market: dict, query: str, topic_category: str = None) -> bool:
         """Check if market title is relevant to the query domain.
@@ -1974,7 +1975,7 @@ class PredictionMarketSentinel(Sentinel):
                 display_name = topic.get('display_name', query)
                 tag = topic.get('tag', 'Unknown')
                 importance = topic.get('importance', 'macro')
-                commodity_impact = topic.get('commodity_impact', topic.get('coffee_impact', 'Potential macro impact'))
+                commodity_impact = topic.get('commodity_impact', 'Potential macro impact')
                 relevance_keywords = topic.get('relevance_keywords', [])
                 min_relevance = topic.get('min_relevance_score', self.sentinel_config.get('min_relevance_score', 2))
 
@@ -2259,7 +2260,7 @@ class MacroContagionSentinel(Sentinel):
             _sentinel_diag.info(f"MacroContagionSentinel: contagion detected! precious_corr={contagion['correlation_precious']:.2f}")
             return SentinelTrigger(
                 source="MacroContagionSentinel",
-                reason=f"Cross-Commodity Contagion: Coffee correlating with Gold/Silver ({contagion['correlation_precious']:.2f})",
+                reason=f"Cross-Commodity Contagion: {self.profile.name} correlating with Gold/Silver ({contagion['correlation_precious']:.2f})",
                 payload=contagion,
                 severity=7
             )
