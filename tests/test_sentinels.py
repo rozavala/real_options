@@ -96,27 +96,35 @@ async def test_weather_sentinel_frost():
         }
     }
 
-    # Mock requests.get
-    with patch('requests.get') as mock_get:
-        mock_response = MagicMock()
-        # Mock API response: 1.0 degrees (Frost < 2.0)
-        mock_response.json.return_value = {
-            'daily': {
-                'time': ['2023-01-01', '2023-01-02', '2023-01-03'],
-                'temperature_2m_min': [10.0, 1.0, 12.0],
-                'precipitation_sum': [0.0, 0.0, 0.0]
-            }
+    sentinel = WeatherSentinel(config)
+    sentinel._active_alerts = {}
+
+    # Mock aiohttp session
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.json = AsyncMock(return_value={
+        'daily': {
+            'time': ['2023-01-01', '2023-01-02', '2023-01-03'],
+            'temperature_2m_min': [10.0, 1.0, 12.0],
+            'precipitation_sum': [0.0, 0.0, 0.0]
         }
-        mock_get.return_value = mock_response
+    })
 
-        sentinel = WeatherSentinel(config)
-        sentinel._active_alerts = {}  # Clear loaded state to avoid cooldown from production data
-        trigger = await sentinel.check()
+    # Setup context manager for session.get
+    mock_get_ctx = MagicMock()
+    mock_get_ctx.__aenter__ = AsyncMock(return_value=mock_response)
+    mock_get_ctx.__aexit__ = AsyncMock(return_value=None)
+    mock_session.get.return_value = mock_get_ctx
 
-        assert trigger is not None
-        assert trigger.source == "WeatherSentinel"
-        assert trigger.payload['type'] == "FROST"
-        assert trigger.payload['min_temp_c'] == 1.0
+    # Inject mock session
+    sentinel._get_session = AsyncMock(return_value=mock_session)
+
+    trigger = await sentinel.check()
+
+    assert trigger is not None
+    assert trigger.source == "WeatherSentinel"
+    assert trigger.payload['type'] == "FROST"
+    assert trigger.payload['min_temp_c'] == 1.0
 
 # --- Logistics Sentinel Tests ---
 @pytest.mark.asyncio
