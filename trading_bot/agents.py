@@ -821,7 +821,7 @@ OUTPUT FORMAT (JSON):
             f"OUTPUT FORMAT (JSON ONLY):\n"
             f"{{ \n"
             f"  'evidence': 'Cite 3-5 specific data points from the Grounded Data Packet above.',\n"
-            f"  'analysis': 'Explain what this data implies for Coffee supply/demand.',\n"
+            f"  'analysis': 'Explain what this data implies for {self.commodity_profile.name if self.commodity_profile else 'commodity'} supply/demand.',\n"
             f"  'confidence': 0.0-1.0 (Float based on data quality),\n"
             f"  'sentiment': 'BULLISH'|'BEARISH'|'NEUTRAL'\n"
             f"}}"

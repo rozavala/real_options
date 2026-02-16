@@ -148,7 +148,18 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
             try:
                 contract_to_close = Contract(conId=pos_to_close.contract.conId)
                 await asyncio.wait_for(ib.qualifyContractsAsync(contract_to_close), timeout=5)
-                if contract_to_close.strike > 100: contract_to_close.strike /= 100.0
+                # Normalize cents-based strikes: if strike is in cents (from ledger),
+                # convert to dollars for IBKR. Use profile unit instead of magic number.
+                from trading_bot.utils import CENTS_INDICATORS
+                try:
+                    from config.commodity_profiles import get_active_profile
+                    _prof = get_active_profile(config)
+                    _cents = any(ind in _prof.contract.unit.lower() for ind in CENTS_INDICATORS)
+                    if _cents and contract_to_close.strike > 100:
+                        contract_to_close.strike /= 100.0
+                except Exception:
+                    if contract_to_close.strike > 100:
+                        contract_to_close.strike /= 100.0
                 order = MarketOrder('BUY' if pos_to_close.position < 0 else 'SELL', abs(pos_to_close.position))
                 trade = ib.placeOrder(contract_to_close, order)
                 # Wait for fill with 60s timeout to prevent infinite blocking

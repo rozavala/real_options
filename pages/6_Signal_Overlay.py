@@ -439,7 +439,7 @@ with st.sidebar:
     st.markdown("---")
     st.header("Visuals")
     filter_to_market_hours = st.toggle("Filter to Market Hours Only", value=True,
-                                        help="Show only 03:30-13:30 ET candles")
+                                        help=f"Show only {profile.contract.trading_hours_et} ET candles")
     show_labels = st.toggle("Show Signal Labels", value=True)
     show_day_separators = st.toggle("Show Day/Week Separators", value=True)
     show_confidence = st.toggle("Show Confidence Scores", value=True)
@@ -502,15 +502,20 @@ def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
 
 def filter_market_hours(df):
     """
-    Filter to ICE Coffee core trading hours (03:30 - 13:30 ET).
+    Filter to core trading hours (from commodity profile) in ET.
     With categorical X-axis, this effectively hides the gaps.
     """
     if df is None or df.empty:
         return df
 
-    start_time = time(3, 30)
-    end_time = time(13, 30)
-    
+    # Use profile trading hours, fallback to wide window
+    try:
+        from config.commodity_profiles import parse_trading_hours
+        start_time, end_time = parse_trading_hours(profile.contract.trading_hours_et)
+    except Exception:
+        start_time = time(3, 30)
+        end_time = time(13, 30)
+
     mask = (df.index.time >= start_time) & (df.index.time <= end_time)
     return df.loc[mask]
 
@@ -519,7 +524,7 @@ def filter_non_trading_days(df):
     """
     Remove weekend days, US market holidays, and rows with missing OHLC data.
 
-    Coffee futures don't trade on weekends or holidays. YFinance may return:
+    Commodity futures don't trade on weekends or holidays. YFinance may return:
     - Rows for weekends with NaN OHLC but Volume=0
     - Rows for holidays with NaN OHLC but Volume=0
 
