@@ -60,18 +60,17 @@ jobs:
         id: context
         run: |
           # Gather key file list for Claude to understand the project
-          {
-            echo 'FILES<<EOF'
-            echo "## Key Project Files"
-            echo "Architecture: See CLAUDE.md for full details"
-            echo ""
-            echo "### Recent changes (last 10 commits):"
-            git log --oneline -10
-            echo ""
-            echo "### Open branches:"
-            git branch -r --sort=-committerdate | head -10
-            EOF
-          } >> "$GITHUB_OUTPUT"
+          # Use delimiter on its own unindented line for GITHUB_OUTPUT
+          echo 'FILES<<CTXEOF' >> "$GITHUB_OUTPUT"
+          echo "## Key Project Files" >> "$GITHUB_OUTPUT"
+          echo "Architecture: See CLAUDE.md for full details" >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"
+          echo "### Recent changes (last 10 commits):" >> "$GITHUB_OUTPUT"
+          git log --oneline -10 >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"
+          echo "### Open branches:" >> "$GITHUB_OUTPUT"
+          git branch -r --sort=-committerdate | head -10 >> "$GITHUB_OUTPUT"
+          echo 'CTXEOF' >> "$GITHUB_OUTPUT"
 
       - name: Read triage model from config
         id: model
