@@ -19,11 +19,29 @@ def test_at_prefix_escaped():
     assert sanitize_for_csv("@SUM(A1)") == "'@SUM(A1)"
 
 
-def test_dash_prefix_not_escaped():
-    """Dash is NOT a trigger — it would corrupt negative numbers and markdown bullets."""
+def test_dash_smart_handling():
+    """Dash handling is contextual: negative numbers/bullets allowed, potential formulas escaped."""
+    # Allowed (Negative Numbers)
     assert sanitize_for_csv("-0.35") == "-0.35"
-    assert sanitize_for_csv("- Coffee supply disrupted") == "- Coffee supply disrupted"
     assert sanitize_for_csv("-123.45") == "-123.45"
+    assert sanitize_for_csv("-5") == "-5"
+    assert sanitize_for_csv("-.5") == "-.5"
+    assert sanitize_for_csv("-1.2E-4") == "-1.2E-4"
+    assert sanitize_for_csv("-1e10") == "-1e10"
+
+    # Allowed (Bullet Points)
+    assert sanitize_for_csv("- Coffee supply disrupted") == "- Coffee supply disrupted"
+    assert sanitize_for_csv("-  Indented bullet") == "-  Indented bullet"
+
+    # Escaped (Potential Formulas)
+    assert sanitize_for_csv("-cmd|'/C calc'!A0") == "'-cmd|'/C calc'!A0"
+    assert sanitize_for_csv("-func(1,2)") == "'-func(1,2)"
+    assert sanitize_for_csv("-abc") == "'-abc"
+
+    # CRITICAL: Bypass attempt (Number prefixing a formula)
+    # The regex must be anchored to the end ($) to catch this
+    assert sanitize_for_csv("-5+cmd|'/C calc'!A0") == "'-5+cmd|'/C calc'!A0"
+    assert sanitize_for_csv("-1.5=HYPERLINK(...)") == "'-1.5=HYPERLINK(...)"
 
 
 def test_whitespace_prefix_escaped():
