@@ -26,23 +26,24 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
           prompt: |
             You are fixing issue #${{ github.event.issue.number }} in a production trading system.
 
-            BEFORE MAKING ANY CHANGES:
-            1. Read CLAUDE.md thoroughly — it contains critical project conventions
-            2. Run `git log --oneline -20` to understand recent changes
-            3. Check if recent commits are related to this issue's area
-            4. Read the issue carefully and understand the root cause
+            IMPORTANT WORKFLOW:
+            1. Read CLAUDE.md for project conventions
+            2. Run `git log --oneline -10` to see recent changes
+            3. Understand the issue and root cause
+            4. Make the fix — keep changes minimal and focused
+            5. Run `pytest tests/` to verify no regressions
+            6. Commit your changes with `git commit` (the action handles branch and PR creation)
 
             RULES:
             - This is a PRODUCTION TRADING SYSTEM that trades real money
             - NEVER modify execution-path files (order_manager.py, ib_interface.py,
-              compliance.py) without extreme care — these control real trades
+              compliance.py) without extreme care
             - All components must fail closed — if unsure, block rather than allow
-            - Run `pytest tests/` before committing to verify no regressions
             - Keep changes minimal and focused on the issue
-            - Create the PR with "Closes #${{ github.event.issue.number }}" in the body
           claude_args: '--max-turns 30 --allowedTools "Bash(*)" "Edit(*)" "Write(*)"'
 
       - name: Mark as attempted
