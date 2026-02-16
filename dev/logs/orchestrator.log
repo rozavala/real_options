@@ -53,3 +53,27 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-16 16:23:24,798 - trading_bot.state_manager - INFO - Queued deferred trigger from MacroContagionSentinel
 2026-02-16 16:23:24,798 - Orchestrator - INFO - Deferred MacroContagionSentinel trigger for market open
 2026-02-16 16:27:24,944 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=False, trading_day=False
+2026-02-16 16:32:25,149 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_open=False, trading_day=False
+2026-02-16 16:37:25,376 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_open=False, trading_day=False
+2026-02-16 16:39:00,035 - Orchestrator - INFO - --- Running scheduled task: signal_late [guarded_generate_orders] ---
+2026-02-16 16:39:00,227 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-16 16:39:00,228 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-16 16:39:00,228 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'openai', 'anthropic', 'xai'], 'diversity_score': 1.0}
+2026-02-16 16:39:00,249 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-16 16:39:00,259 - trading_bot.enhanced_brier - INFO - Loaded 601 predictions from ./data/enhanced_brier.json
+2026-02-16 16:39:00,382 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-16 16:39:00,383 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-16 16:39:00,383 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-16 16:39:00,383 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-16 16:39:00,383 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-16 16:39:00,386 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 76 [REMOTE/PAPER]...
+2026-02-16 16:39:00,401 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
+2026-02-16 16:39:00,401 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
+2026-02-16 16:39:00,907 - trading_bot.connection_pool - ERROR - IB (drawdown_check) connection failed: [Errno 111] Connect call failed ('100.102.50.16', 4002). Next retry backoff: 10.0s
+2026-02-16 16:39:00,907 - Orchestrator - WARNING - Failed to check drawdown guard before orders: [Errno 111] Connect call failed ('100.102.50.16', 4002)
+2026-02-16 16:39:00,909 - OrderManager - INFO - Market is closed (weekend/holiday). Skipping order generation cycle.
+2026-02-16 16:39:00,915 - Orchestrator - INFO - Next task 'audit_pre_close' (Audit: Pre-Close) scheduled for 2026-02-16 17:55:00 UTC. Waiting for 1.27 hours.
+2026-02-16 16:42:25,552 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_open=False, trading_day=False
+2026-02-16 16:47:25,696 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=25, market_open=False, trading_day=False
+2026-02-16 16:52:25,966 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=30, market_open=False, trading_day=False
+2026-02-16 16:57:26,206 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=35, market_open=False, trading_day=False
