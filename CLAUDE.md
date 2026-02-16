@@ -6,6 +6,13 @@ Real Options is an event-driven, multi-agent AI trading system for commodity fut
 
 **Production system.** This trades real money via Interactive Brokers. Every change must be treated with the care that implies.
 
+## Session Startup
+
+At the start of every conversation, check open GitHub issues and briefly summarize any that need attention:
+```bash
+gh issue list --state open --limit 10
+```
+
 ## Quick Reference
 
 ```bash
