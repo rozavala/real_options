@@ -683,10 +683,21 @@ class ComplianceGuardian:
                 prompt,
                 response_json=True
             )
+
+            if not response or not response.strip():
+                logger.error("Compliance Audit received empty LLM response (fail-closed)")
+                return {'approved': False, 'flagged_reason': 'Empty LLM response (fail-closed)'}
+
             text = response.strip()
             if text.startswith("```json"): text = text[7:]
             if text.startswith("```"): text = text[3:]
             if text.endswith("```"): text = text[:-3]
+            text = text.strip()
+
+            if not text:
+                logger.error("Compliance Audit: response was only markdown fences (fail-closed)")
+                return {'approved': False, 'flagged_reason': 'Empty LLM response after stripping markdown (fail-closed)'}
+
             return json.loads(text)
         except Exception as e:
             logger.error(f"Compliance Audit failed: {e}")

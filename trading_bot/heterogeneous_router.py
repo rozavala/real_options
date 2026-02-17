@@ -269,12 +269,16 @@ class GeminiClient(LLMClient):
                 ),
                 timeout=self.config.timeout
             )
+            text = response.text
+            if not text or not text.strip():
+                logger.error(f"Gemini returned empty response for model {self.config.model_name}")
+                raise ValueError(f"Empty response from Gemini/{self.config.model_name}")
             try:
                 in_tok = getattr(response.usage_metadata, 'prompt_token_count', 0) or 0
                 out_tok = getattr(response.usage_metadata, 'candidates_token_count', 0) or 0
             except Exception:
                 in_tok, out_tok = 0, 0
-            return response.text, in_tok, out_tok
+            return text, in_tok, out_tok
         except asyncio.TimeoutError:
             raise RuntimeError(f"Gemini timed out after {self.config.timeout}s")
 
@@ -308,6 +312,9 @@ class OpenAIClient(LLMClient):
 
         response = await self.client.chat.completions.create(**kwargs)
         text = response.choices[0].message.content
+        if not text or not text.strip():
+            logger.error(f"OpenAI returned empty response for model {self.config.model_name}")
+            raise ValueError(f"Empty response from OpenAI/{self.config.model_name}")
         try:
             in_tok = getattr(response.usage, 'prompt_tokens', 0) or 0
             out_tok = getattr(response.usage, 'completion_tokens', 0) or 0
@@ -387,6 +394,9 @@ class XAIClient(LLMClient):
             timeout=self.config.timeout
         )
         text = response.choices[0].message.content
+        if not text or not text.strip():
+            logger.error(f"xAI returned empty response for model {self.config.model_name}")
+            raise ValueError(f"Empty response from xAI/{self.config.model_name}")
         try:
             in_tok = getattr(response.usage, 'prompt_tokens', 0) or 0
             out_tok = getattr(response.usage, 'completion_tokens', 0) or 0
@@ -631,6 +641,12 @@ class HeterogeneousRouter:
                     client = self._get_client(primary_provider, primary_model)
                     text, in_tok, out_tok = await client.generate(prompt, system_prompt, response_json)
 
+                    # Defense-in-depth: catch empty responses that slipped past client validation
+                    if not text or not text.strip():
+                        raise ValueError(
+                            f"Empty response from {primary_provider.value}/{primary_model} for {role.value}"
+                        )
+
                     latency_ms = (time.time() - start_time) * 1000
 
                     # Record actual cost
@@ -710,6 +726,12 @@ class HeterogeneousRouter:
             try:
                 client = self._get_client(fallback_provider, fallback_model)
                 text, in_tok, out_tok = await client.generate(prompt, system_prompt, response_json)
+
+                # Defense-in-depth: catch empty responses from fallback providers
+                if not text or not text.strip():
+                    raise ValueError(
+                        f"Empty response from fallback {fallback_provider.value}/{fallback_model} for {role.value}"
+                    )
 
                 latency_ms = (time.time() - start_time) * 1000
 
