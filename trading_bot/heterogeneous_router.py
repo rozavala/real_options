@@ -490,8 +490,8 @@ class HeterogeneousRouter:
 
             # --- TIER 3: DECISION MAKERS (Safety & Debate) ---
             AgentRole.PERMABULL: (ModelProvider.XAI, xai_pro),             # Contrarian
-            AgentRole.PERMABEAR: (ModelProvider.ANTHROPIC, anth_pro),      # Safety (Opus)
-            AgentRole.COMPLIANCE_OFFICER: (ModelProvider.ANTHROPIC, anth_pro), # Veto (Opus)
+            AgentRole.PERMABEAR: (ModelProvider.ANTHROPIC, anth_pro),      # Safety (Sonnet)
+            AgentRole.COMPLIANCE_OFFICER: (ModelProvider.ANTHROPIC, anth_pro), # Veto (Sonnet)
 
             AgentRole.MASTER_STRATEGIST: (ModelProvider.OPENAI, oai_pro),  # Synthesis
         }
