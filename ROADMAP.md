@@ -1,6 +1,6 @@
 # Real Options — Engineering Roadmap
 
-**Last updated:** 2026-02-12
+**Last updated:** 2026-02-17
 **Reviewed by:** Rodrigo + Claude
 
 ---
@@ -23,11 +23,13 @@
 | B.2 TMS Temporal Filtering | **Done.** Exponential decay, `valid_from` timestamps, simulation clock for backtests in `tms.py` |
 | C.1 Semantic Cache Completion | **Done.** Wired into orchestrator-level council decision flow, sentinel-alert invalidation, config-enabled. PRs #812, #816 |
 | C.5 Budget Guard Wiring | **Done.** `record_cost()` called from router on every LLM call with actual token counts. Graduated priority throttling active. PR #815 |
+| F.4 Neuro-Symbolic Compliance | **Done.** PR #841. Deterministic pre-checks for confidence thresholds + max positions. 63 gates audited, 2 dead checks enforced |
+| E.2 Dynamic Exit Enhancements | **Done.** PR #841. Per-position P&L exits, DTE-aware acceleration, regime-aware directional exits. All config-driven, fail-closed |
+| A.1 DSPy Prompt Optimization | **Done.** PRs #873, #878. `trading_bot/dspy_optimizer.py` (595 lines) + `scripts/optimize_prompts.py`. BootstrapFewShot pipeline, readiness checks, baseline evaluation. Config-enabled via `dspy.use_optimized_prompts` |
 | F.2 Generative Simulacra | Research-grade (6-8 wk), unproven alpha source. Revisit after core profitability validated |
 | F.3 Liquid Neural Networks | Research-grade (8-12 wk), needs tick infrastructure that doesn't exist |
 | C.3 Knowledge Distillation (SLM) | Model API costs dropping fast. Training custom SLM for 4-6 weeks unlikely to break even |
 | B.1 Temporal GraphRAG | Heavy infra (Neo4j, 6-8 wk). TMS with temporal filtering covers 80% of use case |
-| G.6 Cross-Commodity Correlation | Premature — no second commodity running yet |
 | D.2 Time-Travel Data Layer | Massive data engineering, depends on D.1 which doesn't exist |
 | D.3 Walk-Forward Optimization | Depends on D.1 + D.2 |
 | G.8 Notification Expansion | Pushover works for single operator |
@@ -38,147 +40,136 @@
 
 ---
 
-## Prioritized Backlog
+## Prioritized Backlog (optimized for return on capital)
 
-### #1 — F.4 Neuro-Symbolic Compliance
-**Type:** Survival | **Effort:** 2-3 weeks | **Status:** Done
+### #1 — G.5 Multi-Commodity (1st new market)
+**Type:** Growth | **Effort:** 1-2 weeks | **Status:** Partial (architecture done, profiles missing)
 
-Extract deterministic rules from LLM compliance prompts into hard-coded symbolic checks: position limits, max loss per trade, concentration limits, wash trade detection. LLM compliance layer stays as a second opinion. Deterministic rules can't be "convinced" by a persuasive agent.
+Commodity-agnostic profile system is built (`config/commodity_profiles.py`, `CommodityProfile` dataclass, `get_commodity_profile()`). PR #879 replaced most hardcoded coffee constants with profile-driven logic. **Remaining work:** create actual profiles for Sugar (SB), Cocoa (CC), or Cotton (CT); audit ~80 remaining "KC"/coffee references in config and orchestrator; run end-to-end validation on paper trading.
 
-**Why #1:** LLM-based compliance is the single biggest structural risk on a live money system.
+**Why #1:** Doubles the trading opportunity set with minimal code work. Architecture is 80% done — this is mostly data entry (contract specs, growing regions, weather thresholds, logistics hubs) plus testing. Each additional commodity is a multiplicative revenue lever, not additive. Also validates the commodity-agnostic architecture claim.
 
-**Completed:** PR #841. Wired up confidence threshold gate (F.4.1) and max positions gate (F.4.2) as deterministic pre-checks. 63 existing gates audited, 2 dead checks now enforced at runtime.
-
----
-
-### #2 — E.2 Dynamic Exit Enhancements
-**Type:** P&L | **Effort:** 2-3 weeks | **Status:** Done
-
-Add trailing stops for winners, theta-burn acceleration for options approaching expiry, regime-aware exit thresholds. Current exit logic is binary (thesis valid/invalid). Need: ratcheting stops as positions move in favor, time-decay awareness, multi-factor thesis invalidation.
-
-**Why #2:** Biggest P&L lever. System enters fine but leaves money on the table or holds losers too long.
-
-**Completed:** PR #841. Added per-position P&L exits (E.2.A), DTE-aware acceleration (E.2.B), and regime-aware directional exits (E.2.C) to position audit cycle. All config-driven and fail-closed.
+**Revenue impact:** High — new revenue stream on existing infrastructure.
 
 ---
 
-### #3 — A.1 DSPy Prompt Optimization
-**Type:** Optimization | **Effort:** 3-4 weeks | **Status:** Not started
+### #2 — C.4 Surrogate Model Activation → C.2 Regime-Switching Inference
+**Type:** Cost → P&L | **Effort:** 3-4 weeks (both) | **Status:** Partial (surrogate exists, not wired)
 
-Replace manual prompt engineering with programmatic optimization. DSPy treats prompts as learnable parameters — bootstraps few-shot examples from winning trades, uses MIPROv2 to evolve instructions. New module `trading_bot/dspy_optimizer.py`. Training metric: composite of Sharpe, Brier improvement, max drawdown.
+**C.4 (2 weeks):** `backtesting/surrogate_models.py` has a complete GradientBoosting pipeline. Need: wire to live `council_history.csv` for training data, automated weekly retraining, model versioning in `data/surrogate_models/`, accuracy tracking via Brier-like metric.
 
-**Why #3:** Highest-leverage automation investment. Compounds over time. Trade journal (A.5) and reflexion (A.3) provide the training signal it needs.
+**C.2 (2 weeks, after C.4):** Route inference by market regime: quiet/range-bound days use surrogate model (~$0 per decision), news-driven days use lightweight 2-agent panel, crises use full Council. ~70% of trading days are quiet.
 
-**Prerequisites:** A.3, A.5 (both done or in progress by this point)
+**Why #2:** Direct bottom-line impact. If LLM costs are $500-1000/month, regime routing saves 60-80% ($300-800/month). The surrogate also provides a fast "second opinion" that can flag when the Council is hallucinating — decisions that diverge sharply from the surrogate's prediction warrant extra scrutiny.
 
----
+**Revenue impact:** High — cost savings drop straight to profit. Surrogate also serves as sanity check on Council quality.
 
-### #4 — E.1 Portfolio-Level VaR
-**Type:** Survival | **Effort:** 3-4 weeks | **Status:** Not started
-
-Historical simulation VaR at 95%/99% confidence. Currently only per-trade risk exists in `risk_management.py`. Need portfolio-level aggregation with correlation between positions, stress testing against known scenarios, integration with compliance to block new trades on VaR breach.
-
-**Why #4:** Critical for capital preservation, but lower urgency on single-commodity $50K account with 1-3 positions. Becomes top priority at multi-commodity stage.
+**Prerequisites:** C.4 before C.2.
 
 ---
 
-### #5 — E.4 Options Greeks Monitor
+### #3 — E.4 Options Greeks Monitor
 **Type:** Survival | **Effort:** 2-3 weeks | **Status:** Not started
 
-Real-time portfolio Greeks (Delta, Gamma, Theta, Vega). Options positions have non-linear risk — a "delta-neutral" straddle becomes directional after a price move. Need: per-position and portfolio-level Greeks, threshold alerts, hedging recommendations, integration with exit cycle.
+Real-time portfolio Greeks (Delta, Gamma, Theta, Vega). Options spreads have non-linear risk — a "delta-neutral" straddle becomes directional after a price move. Currently the system only uses delta for strike selection (`strategy.py:find_strike_by_delta`), with no monitoring after entry.
 
-**Why #5:** Same reasoning as E.1 — important but manageable at current portfolio size.
+Need: per-position and portfolio-level Greeks via IB's model, threshold alerts (e.g., portfolio delta exceeds ±50), theta-burn warnings, integration with position audit exit cycle.
+
+**Why #3:** Prevents invisible loss accumulation. Without Greeks monitoring, the exit cycle can't distinguish between "position is slightly down but structurally fine" and "position has become a naked directional bet due to gamma." Critical for spreads where one leg may have decayed to near-zero.
+
+**Revenue impact:** Medium-high — loss prevention on existing positions. Becomes critical with multi-commodity (more concurrent positions).
 
 ---
 
-### #6 — A.2 TextGrad
+### #4 — A.2 TextGrad
 **Type:** Optimization | **Effort:** 3-4 weeks | **Status:** Not started
 
-Textual backpropagation — when a trade loses, a Judge LLM generates specific critique ("the analysis failed to account for X") and suggests prompt edits. Completes the self-learning loop with DSPy: DSPy optimizes structure, TextGrad optimizes reasoning.
+Textual backpropagation — when a trade loses, a Judge LLM generates specific critique ("the analysis failed to account for X") and suggests prompt edits. Completes the self-learning loop: DSPy (done) optimizes structure, TextGrad optimizes reasoning.
 
-**Why #6:** Depends on A.1 (DSPy) for full value.
+**Why #4:** Now that DSPy is live, TextGrad is the next compounding investment. Every losing trade becomes a training signal. The trade journal (A.5, done) provides the raw material — TextGrad adds the "what should we do differently" layer.
 
-**Prerequisites:** A.1
+**Revenue impact:** Medium — improves win rate over time. Effect compounds.
 
----
-
-### #7 — C.4 Surrogate Model Activation
-**Type:** Foundation | **Effort:** 2 weeks | **Status:** Partial
-
-`backtesting/surrogate_models.py` has a complete GradientBoosting pipeline but isn't wired to live `council_history.csv`. Need: automated feature extraction, training trigger (weekly or on 50 new decisions), model versioning, accuracy tracking.
-
-**Why #7:** Foundation for backtesting (D.1) and regime switching (C.2).
+**Prerequisites:** A.1 (done)
 
 ---
 
-### #8 — C.2 Regime-Switching Inference
-**Type:** Cost | **Effort:** 3-4 weeks | **Status:** Not started
+### #5 — E.1 Portfolio-Level VaR
+**Type:** Survival | **Effort:** 3-4 weeks | **Status:** Not started
 
-Route inference by market regime: quiet days use surrogate model (~$0), news events use lightweight models, crises use full Council. ~70% of trading days are quiet — running full Council every time is waste.
+Historical simulation VaR at 95%/99% confidence. Currently only per-trade risk exists in `risk_management.py`. Need portfolio-level aggregation with correlation between positions, stress testing against known scenarios (2014 frost, 2020 COVID crash, 2022 Brazil drought), integration with compliance to block new trades on VaR breach.
 
-**Why #8:** 60-80% cost reduction. Needs surrogate (C.4).
+**Why #5:** Critical for capital preservation. Lower urgency on single-commodity $50K with 1-3 positions, but becomes a hard requirement once G.5 (multi-commodity) ships — correlated commodity positions can compound losses in ways per-trade checks miss.
 
-**Prerequisites:** C.4
+**Revenue impact:** Low direct (prevents losses, not generates returns), but unlocks confidence to size up positions and add commodities.
+
+**Prerequisites:** None, but becomes urgent after G.5.
 
 ---
 
-### #9 — G.2 A/B Testing Framework
+### #6 — G.2 A/B Testing Framework
 **Type:** Safety | **Effort:** 2-3 weeks | **Status:** Not started
 
-When DSPy/TextGrad propose prompt changes, run them as A/B tests. 50% of cycles use old prompt, 50% new. Statistical significance test determines winner. Auto-promote at p<0.05.
+When DSPy/TextGrad propose prompt changes, run them as A/B tests. 50% of cycles use old prompt, 50% new. Statistical significance test determines winner. Auto-promote at p<0.05, auto-reject at p>0.95 (null).
 
-**Why #9:** Without this, DSPy/TextGrad deploy unvalidated changes to a live money system.
+**Why #6:** DSPy is live and generating optimized prompts. Without A/B testing, there's no safe way to validate them on live markets. Currently `dspy.use_optimized_prompts` is a binary config toggle — no gradual rollout, no statistical validation.
 
-**Prerequisites:** A.1
+**Revenue impact:** Medium — safety gate for the optimization pipeline. Prevents bad prompts from going live.
+
+**Prerequisites:** A.1 (done)
 
 ---
 
-### #10 — D.1 Event-Driven Backtest Engine
+### #7 — D.5 Reasoning Quality Metrics
+**Type:** Insight | **Effort:** 3-4 weeks | **Status:** Not started
+
+Text-Based Information Coefficient (sentiment signal x confidence vs actual returns), Faithfulness via NLI (are claims supported by retrieved docs?), Debate Divergence (semantic distance between Permabear/Permabull — low = mode collapse).
+
+**Why #7:** Identifies *why* bad decisions happen, not just *that* they happened. Brier scoring (done) tells you accuracy; this tells you reasoning quality. Catches mode collapse (all agents agreeing for wrong reasons) and hallucination (confident claims unsupported by data).
+
+**Revenue impact:** Medium — diagnostic, not directly revenue-generating. But saves weeks of debugging when something goes wrong.
+
+---
+
+### #8 — F.5 Prediction Market Deep Integration
+**Type:** Validation | **Effort:** 2-3 weeks | **Status:** Partial (trigger only)
+
+`PredictionMarketSentinel` monitors Polymarket and generates triggers, but integration is one-way. Need: post-Council cross-check (does Council's bullish call align with prediction market odds?), divergence scoring, auto-flag or veto when Council diverges sharply from liquid prediction markets.
+
+**Why #8:** Free second opinion from real-money markets. A Council bullish call with Polymarket pricing in bearish outcomes is a red flag worth catching.
+
+**Revenue impact:** Medium — prevents bad trades when markets already know something the Council missed.
+
+---
+
+### #9 — D.1 Event-Driven Backtest Engine
 **Type:** Validation | **Effort:** 6-8 weeks | **Status:** Not started
 
 Discrete-event simulation replaying historical data through the full system. Priority queue architecture, simulated latency, strict temporal isolation. Uses surrogate (C.4) for normal regimes, full Council for crises.
 
-**Why #10:** The only rigorous way to validate strategy changes. Table-stakes for serious trading.
+**Why #9:** The only rigorous way to validate strategy changes. Table-stakes for serious trading.
 
 **Prerequisites:** C.4, B.2 (done)
 
 ---
 
-### #11 — D.4 Paper Trading Shadow Mode
+### #10 — D.4 Paper Trading Shadow Mode
 **Type:** Safety | **Effort:** 3-4 weeks | **Status:** Not started
 
 Run proposed changes in a paper-trading sandbox alongside live system. Both see same data; only live executes. Compare decisions and outcomes. Promotion gate: shadow must outperform live for N days.
 
-**Why #11:** Cheaper, faster validation than full backtesting for incremental changes.
+**Why #10:** Cheaper, faster validation than full backtesting for incremental changes.
 
 ---
 
-### #12 — D.5 Reasoning Quality Metrics
-**Type:** Insight | **Effort:** 3-4 weeks | **Status:** Not started
-
-Text-Based Information Coefficient (sentiment signal x confidence vs actual returns), Faithfulness via NLI (are claims supported by retrieved docs?), Debate Divergence (semantic distance between Permabear/Permabull — low = mode collapse).
-
-**Why #12:** Identifies *why* bad decisions happen, not just *that* they happened.
-
----
-
-### #13 — G.5 Multi-Commodity (1st new market)
-**Type:** Growth | **Effort:** 3-4 weeks | **Status:** Not started
-
-Create complete profiles for Sugar (SB), Cocoa (CC), or Cotton (CT). Run end-to-end validation. Fix any remaining coffee-specific hardcoding.
-
-**Why #13:** Revenue diversification + validates the commodity-agnostic architecture.
-
----
-
-### #14 — F.1 Dynamic Agent Recruiting
+### #11 — F.1 Dynamic Agent Recruiting
 **Type:** Intelligence | **Effort:** 3-4 weeks | **Status:** Not started
 
 Meta-agent spawns temporary specialists for unusual events (strikes, new regulations, pest outbreaks). Decommissions when event passes. Template library per event category.
 
 ---
 
-### #15 — B.3 Agentic RAG for Research
+### #12 — B.3 Agentic RAG for Research
 **Type:** Knowledge | **Effort:** 4-5 weeks | **Status:** Not started
 
 Researcher agent monitors preprint servers, USDA/ICO reports. Extracts causal mechanisms and quantitative findings. Stores in TMS as `type: RESEARCH_FINDING`.
@@ -187,28 +178,21 @@ Researcher agent monitors preprint servers, USDA/ICO reports. Extracts causal me
 
 ---
 
-### #16 — E.3 Liquidity-Aware Execution
+### #13 — E.3 Liquidity-Aware Execution
 **Type:** Execution | **Effort:** 2-3 weeks | **Status:** Basic
 
-Pre-execution book depth analysis, VWAP/TWAP for larger orders, thin-market detection. Matters more as account grows.
+Pre-execution book depth analysis, VWAP/TWAP for larger orders, thin-market detection. Currently uses static LMT orders with fixed slippage. Matters more as account grows or multi-commodity ships.
 
 ---
 
-### #17 — F.5 Prediction Market Deep Integration
-**Type:** Validation | **Effort:** 2-3 weeks | **Status:** Partial
+### #14 — G.1 Formal Observability (AgentOps)
+**Type:** Ops | **Effort:** 2-3 weeks | **Status:** Partial (internal only)
 
-Use Polymarket/Kalshi as cross-check against Council decisions. Divergence scoring, tiebreaker logic for close votes.
-
----
-
-### #18 — G.1 Formal Observability (AgentOps)
-**Type:** Ops | **Effort:** 2-3 weeks | **Status:** Not started
-
-Replace custom `observability.py` with AgentOps or LangSmith. Full trace replay, cost attribution, alert rules. Keep custom as fallback.
+Custom `observability.py` exists with HallucinationDetector, AgentTrace, and ObservabilityHub. Missing: third-party integration (AgentOps or LangSmith) for trace replay, cost attribution dashboards, and alert rules. Keep custom hallucination detection as it's commodity-aware.
 
 ---
 
-### #19 — F.6 Synthetic Rare Event Generation
+### #15 — F.6 Synthetic Rare Event Generation
 **Type:** Stress test | **Effort:** 3-4 weeks | **Status:** Not started
 
 Combine real historical events in novel ways for stress testing. "What if frost + strike + BRL crash simultaneously?" Augments DSPy training set.
@@ -220,9 +204,9 @@ Combine real historical events in novel ways for stress testing. "What if frost 
 ## Dependency Graph
 
 ```
-✅ A.3 Reflexion (done) ──→ A.1 DSPy ──→ A.2 TextGrad ──→ G.2 A/B Testing
-                               │
-✅ A.5 Trade Journal (done) ───┘
+✅ A.3 Reflexion (done) ──→ ✅ A.1 DSPy (done) ──→ A.2 TextGrad ──→ G.2 A/B Testing
+                                    │
+✅ A.5 Trade Journal (done) ────────┘
 
 ✅ C.1 Semantic Cache (done)
 ✅ C.5 Budget Guard (done)
@@ -240,14 +224,16 @@ C.4 Surrogate ──→ C.2 Regime Switching
 G.5 Multi-Commodity (independent, unlocks G.6 later)
 ```
 
-## Estimated Timeline (sequential, single-threaded)
+## Recommended Execution Plan
 
-| Phase | Items | Duration | Cumulative |
-|-------|-------|----------|------------|
-| ~~Phase 1~~ | ~~#1 A.3, #2 C.1, #5 C.5~~ | ~~3-5 weeks~~ | **Done** |
-| ~~Phase 2~~ | ~~#1 F.4, #2 E.2 (structural improvements)~~ | ~~4-6 weeks~~ | **Done** |
-| Phase 3 | #3 A.1, #4 E.1, #5 E.4 (self-learning + risk) | 8-11 weeks | 8-11 weeks |
-| Phase 4 | #6-#9 (cost + validation) | 10-15 weeks | 22-32 weeks |
-| Phase 5 | #10-#19 (growth + depth) | 25-35 weeks | 47-67 weeks |
+| Phase | Items | Duration | Focus |
+|-------|-------|----------|-------|
+| ~~Phase 1~~ | ~~A.3, C.1, C.5~~ | ~~3-5 weeks~~ | **Done** |
+| ~~Phase 2~~ | ~~F.4, E.2~~ | ~~4-6 weeks~~ | **Done** |
+| ~~Phase 3~~ | ~~A.1 DSPy~~ | ~~3-4 weeks~~ | **Done** |
+| **Phase 4** | **#1 G.5 Multi-Commodity + #2 C.4/C.2 Surrogate+Regime** | **4-6 weeks** | **Revenue growth + cost reduction** |
+| Phase 5 | #3 E.4 Greeks + #4 A.2 TextGrad | 5-7 weeks | Risk visibility + decision quality |
+| Phase 6 | #5 E.1 VaR + #6 G.2 A/B Testing | 5-7 weeks | Capital preservation + optimization safety |
+| Phase 7 | #7-#15 (depth + validation) | 20-30 weeks | Foundation for scale |
 
-Note: Many items are parallelizable. With concurrent work, Phase 2-3 could compress to ~8-12 weeks.
+**Phase 4 rationale:** Multi-commodity and surrogate/regime-switching are independent of each other and can run in parallel. Together they attack both sides of the P&L equation: more revenue opportunities (new commodities) and lower costs (regime routing). Both have the highest return-per-engineering-hour in the backlog.
