@@ -57,8 +57,12 @@ async def reconcile_council_history(config: dict, ib: IB = None):
     """
     logger.info("--- Starting Council History Reconciliation ---")
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    file_path = os.path.join(base_dir, 'data', 'council_history.csv')
+    data_dir = config.get('data_dir')
+    if data_dir:
+        file_path = os.path.join(data_dir, 'council_history.csv')
+    else:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        file_path = os.path.join(base_dir, 'data', 'council_history.csv')
 
     if not os.path.exists(file_path):
         logger.warning("No council_history.csv found. Skipping reconciliation.")

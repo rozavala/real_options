@@ -6,14 +6,25 @@ Streamlit's native multi-page support handles routing via the pages/ directory.
 """
 
 import streamlit as st
-from config_loader import load_config
+from config_loader import load_config, deep_merge
 from trading_bot.logging_config import setup_logging
 
-# Set up dashboard-specific logging
-setup_logging(log_file="logs/dashboard.log")
+# Set up dashboard-specific logging (per-commodity to avoid log collision)
+import os
+_dashboard_ticker = os.environ.get("COMMODITY_TICKER", "KC").lower()
+setup_logging(log_file=f"logs/dashboard_{_dashboard_ticker}.log")
 
 # Dynamic configuration for commodity-aware branding
 _cfg = load_config()
+_dashboard_ticker_upper = os.environ.get("COMMODITY_TICKER", "KC").upper()
+
+# Mirror orchestrator's commodity override logic
+if _cfg:
+    _overrides = _cfg.get('commodity_overrides', {}).get(_dashboard_ticker_upper, {})
+    if _overrides:
+        _cfg = deep_merge(_cfg, _overrides)
+    _cfg.setdefault('commodity', {})['ticker'] = _dashboard_ticker_upper
+
 _commodity_name = _cfg.get('commodity', {}).get('name', 'Coffee') if _cfg else 'Coffee'
 _commodity_emoji = {'Coffee': '☕', 'Cocoa': '🍫', 'Sugar': '🍬'}.get(_commodity_name.split()[0], '📊')
 

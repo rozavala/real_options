@@ -41,6 +41,7 @@ REQUIRED_DIRS=(
     "backtesting"
     "data"
     "data/surrogate_models"
+    "data/KC"              # Primary commodity data directory
     # "logs" # logs might not exist in fresh clone? but good to check
 )
 for dir in "${REQUIRED_DIRS[@]}"; do

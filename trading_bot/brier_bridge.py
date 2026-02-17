@@ -253,18 +253,27 @@ def get_calibration_data(agent: str = None) -> Dict:
 # === PRIVATE HELPERS ===
 
 _enhanced_tracker = None
+_enhanced_tracker_data_dir = None
 
 
-def _get_enhanced_tracker():
-    """Lazy singleton for EnhancedBrierTracker."""
-    global _enhanced_tracker
-    if _enhanced_tracker is None:
-        try:
-            from trading_bot.enhanced_brier import EnhancedBrierTracker
+def _get_enhanced_tracker(data_dir: str = None):
+    """Lazy singleton for EnhancedBrierTracker. Recreates if data_dir changes."""
+    global _enhanced_tracker, _enhanced_tracker_data_dir
+    effective_dir = data_dir or _enhanced_tracker_data_dir
+    if _enhanced_tracker is not None and effective_dir == _enhanced_tracker_data_dir:
+        return _enhanced_tracker
+    try:
+        from trading_bot.enhanced_brier import EnhancedBrierTracker
+        if effective_dir:
+            import os
+            data_path = os.path.join(effective_dir, "enhanced_brier.json")
+            _enhanced_tracker = EnhancedBrierTracker(data_path=data_path)
+        else:
             _enhanced_tracker = EnhancedBrierTracker()
-        except Exception as e:
-            logger.error(f"Failed to initialize EnhancedBrierTracker: {e}")
-            return None
+        _enhanced_tracker_data_dir = effective_dir
+    except Exception as e:
+        logger.error(f"Failed to initialize EnhancedBrierTracker: {e}")
+        return None
     return _enhanced_tracker
 
 

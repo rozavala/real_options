@@ -75,7 +75,7 @@ jobs:
       - name: Read triage model from config
         id: model
         run: |
-          MODEL=$(python3 -c "import json; c=json.load(open('config.json')); print(c.get('error_reporter',{}).get('triage_model', c.get('model_registry',{}).get('anthropic',{}).get('pro','claude-sonnet-4-5-20250929')))")
+          MODEL=$(python3 -c "import json; c=json.load(open('config.json')); print(c.get('error_reporter',{}).get('triage_model', c.get('model_registry',{}).get('anthropic',{}).get('pro','claude-sonnet-4-6')))")
           echo "id=$MODEL" >> "$GITHUB_OUTPUT"
 
       - name: Triage with Claude
@@ -95,7 +95,7 @@ jobs:
           import json, os, urllib.request, urllib.error
 
           api_key = os.environ["ANTHROPIC_API_KEY"]
-          triage_model = os.environ.get("TRIAGE_MODEL", "claude-sonnet-4-5-20250929")
+          triage_model = os.environ.get("TRIAGE_MODEL", "claude-sonnet-4-6")
 
           # Reconstruct prompt from env vars
           claude_md = os.popen("head -100 CLAUDE.md").read()

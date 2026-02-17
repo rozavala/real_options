@@ -459,7 +459,7 @@ class HeterogeneousRouter:
         gem_flash = self.registry.get('gemini', {}).get('flash', 'gemini-3-flash-preview')
         gem_pro = self.registry.get('gemini', {}).get('pro', 'gemini-3-pro-preview')
 
-        anth_pro = self.registry.get('anthropic', {}).get('pro', 'claude-opus-4-5-20251101')
+        anth_pro = self.registry.get('anthropic', {}).get('pro', 'claude-sonnet-4-6')
 
         oai_pro = self.registry.get('openai', {}).get('pro', 'gpt-4o')
         oai_reasoning = self.registry.get('openai', {}).get('reasoning', 'o3-2025-04-16')
@@ -537,7 +537,7 @@ class HeterogeneousRouter:
             fallbacks = []
 
             # Note: We hardcode the Pro models here to ensure quality
-            anth_pro = get_model('anthropic', 'pro', 'claude-opus-4-6')
+            anth_pro = get_model('anthropic', 'pro', 'claude-sonnet-4-6')
             oai_pro = get_model('openai', 'pro', 'gpt-5.2')
             gem_pro = get_model('gemini', 'pro', 'gemini-3-pro-preview')
 
@@ -562,7 +562,7 @@ class HeterogeneousRouter:
             gem_pro = get_model('gemini', 'pro', 'gemini-3-pro-preview')
             gem_flash = get_model('gemini', 'flash', 'gemini-3-flash-preview')
             oai_pro = get_model('openai', 'pro', 'gpt-5.2')
-            anth_pro = get_model('anthropic', 'pro', 'claude-opus-4-6')
+            anth_pro = get_model('anthropic', 'pro', 'claude-sonnet-4-6')
 
             if primary_provider == ModelProvider.GEMINI:
                 # Gemini Pro exhausted → try Flash (same provider, free tier) → then OpenAI

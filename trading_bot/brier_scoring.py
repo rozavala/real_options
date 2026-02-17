@@ -369,13 +369,16 @@ class BrierScoreTracker:
 # Singleton
 _tracker: Optional[BrierScoreTracker] = None
 
-def get_brier_tracker() -> BrierScoreTracker:
+def get_brier_tracker(data_dir: str = None) -> BrierScoreTracker:
     global _tracker
     if _tracker is None:
-        _tracker = BrierScoreTracker()
+        if data_dir:
+            _tracker = BrierScoreTracker(history_file=os.path.join(data_dir, "agent_accuracy.csv"))
+        else:
+            _tracker = BrierScoreTracker()
     return _tracker
 
-def resolve_pending_predictions(council_history_path: str = "data/council_history.csv") -> List[int]:
+def resolve_pending_predictions(council_history_path: str = None, data_dir: str = None) -> List[int]:
     """
     Resolve PENDING predictions by cross-referencing with reconciled council_history.
 
@@ -388,7 +391,10 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
     Returns:
         List of indices of newly resolved predictions
     """
-    structured_file = "data/agent_accuracy_structured.csv"
+    effective_dir = data_dir or "data"
+    if council_history_path is None:
+        council_history_path = os.path.join(effective_dir, "council_history.csv")
+    structured_file = os.path.join(effective_dir, "agent_accuracy_structured.csv")
 
     if not os.path.exists(structured_file):
         logger.info("No structured predictions file found — nothing to resolve")
@@ -540,7 +546,7 @@ def resolve_pending_predictions(council_history_path: str = "data/council_histor
 
             # Sync to legacy accuracy file
             newly_resolved_df = predictions_df.loc[newly_resolved_indices].copy()
-            _append_to_legacy_accuracy(newly_resolved_df)
+            _append_to_legacy_accuracy(newly_resolved_df, data_dir=effective_dir)
 
             # Reset singleton tracker so weighted voting picks up new scores
             _reset_tracker_singleton()
@@ -655,13 +661,14 @@ def _get_orphan_window_hours(timestamp: datetime) -> int:
         return 72  # Fallback
 
 
-def _append_to_legacy_accuracy(resolved_df: pd.DataFrame):
+def _append_to_legacy_accuracy(resolved_df: pd.DataFrame, data_dir: str = None):
     """
     Append newly resolved predictions to agent_accuracy.csv.
 
     Normalizes agent names before writing to ensure consistency.
     """
-    accuracy_file = "data/agent_accuracy.csv"
+    effective_dir = data_dir or "data"
+    accuracy_file = os.path.join(effective_dir, "agent_accuracy.csv")
 
     try:
         from trading_bot.agent_names import normalize_agent_name

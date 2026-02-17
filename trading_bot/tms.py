@@ -42,6 +42,17 @@ CROSS_CUE_RULES = {
 }
 
 
+# Default TMS path — overridden by set_data_dir() for multi-commodity
+_default_tms_path = "./data/tms"
+
+
+def set_data_dir(data_dir: str):
+    """Configure default TMS persist path for a commodity-specific data directory."""
+    global _default_tms_path
+    _default_tms_path = os.path.join(data_dir, "tms")
+    logger.info(f"TMS default path set to: {_default_tms_path}")
+
+
 class TransactiveMemory:
     """
     Shared memory system for cross-agent knowledge retrieval using Vector DB.
@@ -49,7 +60,8 @@ class TransactiveMemory:
     ENHANCED: Now supports temporal filtering for backtest integrity.
     """
 
-    def __init__(self, persist_path: str = "./data/tms"):
+    def __init__(self, persist_path: str = None):
+        persist_path = persist_path or _default_tms_path
         """Initialize TMS with ChromaDB backend."""
         os.makedirs(os.path.dirname(persist_path) if os.path.dirname(persist_path) else '.', exist_ok=True)
 
