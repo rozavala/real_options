@@ -176,14 +176,33 @@ def sanitize_for_csv(value):
     """Escape strings that could be interpreted as formulas by spreadsheet software.
 
     Prepends a single quote to strings starting with =, +, or @ (after stripping
-    whitespace). Does NOT trigger on '-' since that would corrupt negative numbers
-    and markdown bullet points which are common in LLM agent output.
+    whitespace). Also handles '-' selectively to allow negative numbers and
+    markdown bullet points while escaping potential formula injections.
     """
     if not isinstance(value, str):
         return value
+
     stripped = value.strip()
-    if stripped and stripped[0] in ('=', '+', '@'):
+    if not stripped:
+        return value
+
+    if stripped[0] in ('=', '+', '@'):
         return f"'{value}"
+
+    # Smart check for dash to allow negative numbers/bullets but block formulas
+    if stripped.startswith('-'):
+        # Allow negative numbers (integer, float, or scientific notation)
+        # Examples: -5, -5.5, -.5, -1.2E-4, -1e10
+        if re.fullmatch(r'-\s*(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?', stripped):
+            return value
+
+        # Allow markdown bullet points (dash followed by space)
+        if stripped.startswith('- '):
+            return value
+
+        # Escape everything else starting with dash (e.g. -cmd|...)
+        return f"'{value}"
+
     return value
 
 
