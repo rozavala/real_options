@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Tue Feb 17 16:00:02 UTC 2026
+Timestamp: Tue Feb 17 16:30:02 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  16:00:02 up 36 days, 22:23,  2 users,  load average: 2.53, 1.06, 0.63
+Uptime:  16:30:02 up 36 days, 22:53,  2 users,  load average: 0.61, 0.69, 0.71
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   56K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.9Gi       247Mi        39Mi       964Mi       930Mi
-Swap:          4.0Gi       352Mi       3.7Gi
+Mem:           3.8Gi       2.4Gi       492Mi        33Mi       1.1Gi       1.4Gi
+Swap:          4.0Gi       372Mi       3.6Gi
 
 === LOAD AVERAGE ===
-2.53 1.06 0.63 4/859 1180587
+0.61 0.69 0.71 2/811 1182182
 
 === PROCESS STATUS ===
 Trading processes:
-console  1167111  0.4 10.1 1912820 407284 ?      Ssl  01:51   3:36 /home/console/real_options/venv/bin/python -u orchestrator.py
-console  1173186  0.0  7.1 1348676 286984 ?      Sl   09:15   0:08 /home/console/real_options/venv/bin/python position_monitor.py
+console  1181992  8.2  9.3 1577008 374100 ?      Ssl  16:28   0:08 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1182006  4.3  6.4 744144 258768 ?       Sl   16:28   0:04 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1167130  0.3 11.9 3029424 478040 ?      Sl   01:51   2:42 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1182004  1.4  1.8 452636 72544 ?        Sl   16:28   0:01 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,13 +36,3 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-02-17 15:20:56,320 - ib_insync.client - ERROR - Peer closed connection.
-2026-02-17 15:20:56,320 - ib_insync.client - ERROR - Peer closed connection.
-2026-02-17 15:20:56,321 - Orchestrator - INFO - 2026-02-17 15:20:56,320 - ib_insync.client - ERROR - Peer closed connection.
-2026-02-17 15:21:28,145 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('127.0.0.1', 4001)")
-2026-02-17 15:21:28,148 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
-2026-02-17 15:21:28,678 - trading_bot.connection_pool - ERROR - IB (sentinel) connection failed: [Errno 111] Connect call failed ('127.0.0.1', 4001). Next retry backoff: 10.0s
-2026-02-17 15:28:14,196 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDsquwTmyPfLwanvfN9g'}
-2026-02-17 15:28:48,441 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDstRoNZDVTDmG7aarAL'}
-2026-02-17 15:29:23,845 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-6 failed for permabear: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDsw4dVFARMfx6yjWP7n'}
-2026-02-17 15:29:45,018 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDsw4dVFARMfx6yjWP7n'}
