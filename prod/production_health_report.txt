@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Tue Feb 17 14:00:03 UTC 2026
+Timestamp: Tue Feb 17 14:30:03 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  14:00:03 up 36 days, 20:23,  2 users,  load average: 0.02, 0.07, 0.02
+Uptime:  14:30:03 up 36 days, 20:53,  2 users,  load average: 0.07, 0.13, 0.09
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.7Gi       230Mi        34Mi       1.1Gi       1.2Gi
-Swap:          4.0Gi       320Mi       3.7Gi
+Mem:           3.8Gi       2.7Gi       282Mi        34Mi       1.1Gi       1.1Gi
+Swap:          4.0Gi       322Mi       3.7Gi
 
 === LOAD AVERAGE ===
-0.02 0.07 0.02 1/825 1177157
+0.07 0.13 0.09 2/835 1177858
 
 === PROCESS STATUS ===
 Trading processes:
-console  1167111  0.3 10.6 1903712 426828 ?      Ssl  01:51   2:30 /home/console/real_options/venv/bin/python -u orchestrator.py
-console  1173186  0.0  7.1 1348676 286984 ?      Sl   09:15   0:06 /home/console/real_options/venv/bin/python position_monitor.py
+console  1167111  0.4 10.9 1912556 437796 ?      Ssl  01:51   3:17 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1173186  0.0  7.1 1348676 287112 ?      Sl   09:15   0:07 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1167130  0.2  1.9 606120 77944 ?        Sl   01:51   1:57 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1167130  0.2  1.9 606120 77560 ?        Sl   01:51   2:03 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,13 +36,13 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-02-17 13:53:32,436 - ib_insync.wrapper - ERROR - Error 354, reqId 40: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
-2026-02-17 13:53:33,917 - ib_insync.wrapper - ERROR - Error 354, reqId 42: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
-2026-02-17 13:53:35,781 - ib_insync.wrapper - ERROR - Error 300, reqId 42: Can't find EId with tickerId:42
-2026-02-17 13:53:36,021 - ib_insync.wrapper - ERROR - Error 354, reqId 43: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
-2026-02-17 13:53:40,799 - ib_insync.wrapper - ERROR - Error 300, reqId 43: Can't find EId with tickerId:43
-2026-02-17 13:57:14,798 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDkukMo2aky6pz8PCtTX'}
-2026-02-17 13:57:36,185 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDkwK6p3RgBhc7nLMefX'}
-2026-02-17 13:57:58,854 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-6 failed for compliance: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDkxxUPmFP8PdHkNcdHP'}
-2026-02-17 13:58:08,839 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> openai. Reason: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDkxxUPmFP8PdHkNcdHP'}
-2026-02-17 13:58:08,839 - Orchestrator - WARNING - COMPLIANCE BLOCKED Emergency Trade: Multiple unsupported or un-verifiable factual claims in the Decision reasoning given the provided evidence snippets. (1) It cites “price well below the 200-day SMA” and a “bearish bias below nearby resistance,” but the TECHNICAL evidence shown only includes last price (282.90) and support levels (280.08/277.2); no 200-DMA or resistance/bias is present in the excerpt → data gap/unsupported. (2) It asserts “front IV elevated and inverted vs deferred,” but the VOLATILITY evidence excerpt shown is about Brazil production forecast (+17.2% YoY to 66.2m bags) and Market Context shows IV metrics as N/A; no term-structure inversion is provided → data gap/unsupported. (3) It claims “Cecafé confirms a large year-over-year drop in January Brazil exports,” yet the only SUPPLY_CHAIN snippet visible says Brazil exported 2.78m bags in Jan 2026 (a 30…% figure is truncated) and does not explicitly state a YoY drop; could be true but cannot be verified from the excerpt → data gap. (4) It states “market is in backwardation,” but no backwardation/structure data appears in the provided INVENTORY excerpt → unsupported. (5) It references an “URGENT TRIGGER (Colombia Huila drought 13.1mm at vegetative stage)” which is not present in the AGRONOMIST evidence list; the agronomist instead indicates the drought alert is likely false given precipitation forecasts → hallucination/unsupported specific number. Critical-risk handling: the reasoning does acknowledge the key agronomist point (excess moisture / drought alert contradicted), so it does not ignore that risk. Direction vs sentiment: agronomist is bullish, but other agent reports are stale/truncated; not enough to say the overall sentiment is overwhelmingly one-sided. Main issue is the inclusion of several specific market-structure/technical/vol claims not supported by the evidence provided.
+2026-02-17 14:26:51,552 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoAdMWxtp7eWyHGJDte'}
+2026-02-17 14:27:19,032 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-6 failed for compliance: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoCe9h2KhxcpyHxEv7w'}
+2026-02-17 14:27:25,037 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> openai. Reason: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoCe9h2KhxcpyHxEv7w'}
+2026-02-17 14:27:25,038 - trading_bot.signal_generator - WARNING - COMPLIANCE BLOCKED KCK6 (202605): (1) Hallucination / unsupported specificity: The decision states the -4.74% 24h move 'meets the framework’s “assume Technical Liquidation” threshold.' No report or evidence packet defines such a threshold or framework rule, so this is an uncited rule/assertion. (2) Minor internal inconsistency: It cites May-26 price action as -4.74% (Market Context) but elsewhere in the packet Technical has May-26 at -0.98% d/d and Volatility has ~-4%; not fatal, but the reasoning should clarify which contract/print it is anchoring to. (3) No critical-risk omission detected: bounce/mean-reversion risk from oversold/positioning is acknowledged; logistics-causality caveat is incorporated; IV-expensive options noted. (4) Direction not contradictory: Most fundamental/inventory/technical/volatility reports lean bearish; only Supply_Chain is bullish and is explicitly rebutted.
+2026-02-17 14:27:33,052 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoDL8krT2iUUM7P3B3L'}
+2026-02-17 14:27:57,974 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoFaXVLhKFGh1EEyixs'}
+2026-02-17 14:28:26,870 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-6 failed for permabear: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoHSVrQvGBUC5nCGV5K'}
+2026-02-17 14:28:40,667 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoHSVrQvGBUC5nCGV5K'}
+2026-02-17 14:29:47,008 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoPMDmbnQv3cGjkJW75'}
+2026-02-17 14:29:54,050 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoPwjRLqxcmk3MjEcR8'}
