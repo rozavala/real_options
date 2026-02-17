@@ -34,7 +34,13 @@ async def sync_equity_from_flex(config: dict):
     The Flex Query returns 'ReportDate' and 'Total'.
     This function normalizes the date to closing time (17:00 NY Time) and saves
     the file to ensure the local equity history matches the broker's official record.
+
+    Only runs for the primary commodity (KC) since NetLiquidation is account-wide.
     """
+    if not config.get('commodity', {}).get('is_primary', True):
+        logger.info("Skipping equity sync — non-primary commodity (account equity tracked by primary)")
+        return
+
     logger.info("--- Starting Equity Synchronization from Flex Query ---")
 
     # Get the ID from the config (loaded from .env), or fallback to os.getenv just in case
@@ -134,7 +140,13 @@ async def sync_equity_from_flex(config: dict):
 async def log_equity_snapshot(config: dict):
     """
     Connects to IB, fetches NetLiquidation, and logs it to data/{ticker}/daily_equity.csv.
+
+    Only runs for the primary commodity (KC) since NetLiquidation is account-wide.
     """
+    if not config.get('commodity', {}).get('is_primary', True):
+        logger.info("Skipping equity snapshot — non-primary commodity (account equity tracked by primary)")
+        return
+
     logger.info("--- Starting Equity Snapshot Logging ---")
 
     data_dir = config.get('data_dir', 'data')

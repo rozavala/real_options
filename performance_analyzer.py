@@ -427,13 +427,15 @@ async def analyze_performance(config: dict) -> dict | None:
         todays_fills = live_data.get('executions') if live_data else []
         live_net_liq = live_data.get('net_liquidation') if live_data else None
 
-        # Load equity history if available
+        is_primary = config.get('commodity', {}).get('is_primary', True)
+
+        # Load equity history if available (primary commodity only — equity is account-wide)
         equity_df = pd.DataFrame()
         data_dir = config.get('data_dir', 'data')
         equity_file = os.path.join(data_dir, "daily_equity.csv")
         starting_capital = _get_default_starting_capital()
 
-        if os.path.exists(equity_file):
+        if is_primary and os.path.exists(equity_file):
             logger.info("Loading daily_equity.csv for equity curve.")
             equity_df = pd.read_csv(equity_file)
             if not equity_df.empty:
@@ -443,8 +445,15 @@ async def analyze_performance(config: dict) -> dict | None:
                 logger.info(f"Dynamic Starting Capital from History: ${starting_capital:,.2f}")
             else:
                 logger.warning("daily_equity.csv is empty, using default starting capital.")
-        else:
+        elif is_primary:
             logger.warning(f"daily_equity.csv not found, using default starting capital: ${starting_capital:,.2f}")
+
+        # Filter portfolio and fills to active commodity (IB returns all account data)
+        ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+        live_portfolio = [p for p in live_portfolio
+                          if getattr(getattr(p, 'contract', None), 'localSymbol', '').startswith(ticker)]
+        todays_fills = [f for f in todays_fills
+                        if getattr(getattr(f, 'contract', None), 'localSymbol', '').startswith(ticker)]
 
         # --- Generate Report Sections and get P&L values from LIVE data ---
         open_positions_report, unrealized_pnl = generate_open_positions_report(live_portfolio)
@@ -454,12 +463,14 @@ async def analyze_performance(config: dict) -> dict | None:
         # Calculate Total P&L as the sum of its parts for consistency
         total_daily_pnl = realized_pnl + unrealized_pnl
 
-        # Calculate LTD Total P&L from Equity (if available)
+        # Calculate LTD Total P&L from Equity (primary commodity only)
+        # NetLiquidation is account-wide — only the primary commodity uses it for P&L.
+        # Non-primary commodities report LTD P&L from trade ledger only.
         ltd_total_pnl = None
-        if live_net_liq:
+        if is_primary and live_net_liq:
             ltd_total_pnl = live_net_liq - starting_capital
             logger.info(f"Calculated LTD Total P&L (Equity): ${ltd_total_pnl:,.2f}")
-        elif not equity_df.empty:
+        elif is_primary and not equity_df.empty:
             # Fallback to last recorded equity
             last_equity = equity_df['total_value_usd'].iloc[-1]
             ltd_total_pnl = last_equity - starting_capital

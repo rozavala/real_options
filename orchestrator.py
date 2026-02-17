@@ -4585,6 +4585,9 @@ async def main(commodity_ticker: str = None):
     config['data_dir'] = data_dir
     config['symbol'] = ticker
     config.setdefault('commodity', {})['ticker'] = ticker
+    # Primary commodity owns account-wide equity tracking (NetLiquidation).
+    # Non-primary commodities skip equity snapshots to avoid duplicate data.
+    config['commodity']['is_primary'] = (ticker == 'KC')
 
     # --- Initialize all path-dependent modules BEFORE anything else ---
     from trading_bot.state_manager import StateManager
