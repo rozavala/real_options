@@ -357,6 +357,7 @@ fi
 
 REPO_DIR="${COFFEE_BOT_PATH:-$(pwd)}"
 BRANCH="${LOG_BRANCH:-logs}"
+TICKER="${COMMODITY_TICKER:-KC}"
 
 # Color codes for output
 RED='\033[0;31m'
@@ -488,15 +489,21 @@ analyze_environment() {
         grep -A 10 "=== PROCESS STATUS ===" "$health_file" | grep -v "==="
     fi
 
-    # Trading Performance
-    if [ -f "$env/data/council_history.csv" ]; then
+    # Trading Performance — check per-commodity dir first, then legacy
+    local council_file=""
+    if [ -f "$env/data/$TICKER/council_history.csv" ]; then
+        council_file="$env/data/$TICKER/council_history.csv"
+    elif [ -f "$env/data/council_history.csv" ]; then
+        council_file="$env/data/council_history.csv"
+    fi
+    if [ -n "$council_file" ]; then
         echo ""
         echo -e "${YELLOW}📈 Trading Activity:${NC}"
-        local decisions=$(tail -n +2 "$env/data/council_history.csv" | wc -l)
+        local decisions=$(tail -n +2 "$council_file" | wc -l)
         echo "  Total decisions: $decisions"
 
         if [ $decisions -gt 0 ]; then
-            local recent_decisions=$(tail -5 "$env/data/council_history.csv" | wc -l)
+            local recent_decisions=$(tail -5 "$council_file" | wc -l)
             echo "  Recent decisions: $recent_decisions"
         fi
     fi
@@ -557,31 +564,43 @@ show_performance() {
     echo -e "${BLUE}📈 Trading Performance Summary ($env)${NC}"
     echo "===================================="
     
-    # Council History Analysis
-    if [ -f "$env/data/council_history.csv" ]; then
+    # Council History Analysis — check per-commodity dir first, then legacy
+    local council_file=""
+    if [ -f "$env/data/$TICKER/council_history.csv" ]; then
+        council_file="$env/data/$TICKER/council_history.csv"
+    elif [ -f "$env/data/council_history.csv" ]; then
+        council_file="$env/data/council_history.csv"
+    fi
+    if [ -n "$council_file" ]; then
         echo ""
         echo -e "${YELLOW}🧠 Council Decisions:${NC}"
 
         # Basic stats
-        local total_decisions=$(tail -n +2 "$env/data/council_history.csv" | wc -l)
+        local total_decisions=$(tail -n +2 "$council_file" | wc -l)
         echo "  Total decisions: $total_decisions"
 
         if [ $total_decisions -gt 0 ]; then
             # Recent decisions
             echo ""
             echo -e "${YELLOW}📊 Recent Decisions (Last 5):${NC}"
-            head -1 "$env/data/council_history.csv"
-            tail -5 "$env/data/council_history.csv"
+            head -1 "$council_file"
+            tail -5 "$council_file"
         fi
     fi
 
-    # Equity Data
-    if [ -f "$env/data/daily_equity.csv" ]; then
+    # Equity Data — check per-commodity dir first, then legacy
+    local equity_file=""
+    if [ -f "$env/data/$TICKER/daily_equity.csv" ]; then
+        equity_file="$env/data/$TICKER/daily_equity.csv"
+    elif [ -f "$env/data/daily_equity.csv" ]; then
+        equity_file="$env/data/daily_equity.csv"
+    fi
+    if [ -n "$equity_file" ]; then
         echo ""
         echo -e "${YELLOW}💰 Equity Curve:${NC}"
         echo "  Recent equity data (Last 5 days):"
-        head -1 "$env/data/daily_equity.csv"
-        tail -5 "$env/data/daily_equity.csv"
+        head -1 "$equity_file"
+        tail -5 "$equity_file"
     fi
 
     # Trade Ledger
