@@ -699,6 +699,12 @@ class ComplianceGuardian:
                 return {'approved': False, 'flagged_reason': 'Empty LLM response after stripping markdown (fail-closed)'}
 
             return json.loads(text)
+        except json.JSONDecodeError as e:
+            logger.error(
+                f"Compliance Audit JSON parse failed: {e}. "
+                f"Raw response (first 300 chars): {response[:300]!r}"
+            )
+            return {'approved': False, 'flagged_reason': f"Audit Error: {str(e)}"}
         except Exception as e:
             logger.error(f"Compliance Audit failed: {e}")
             return {'approved': False, 'flagged_reason': f"Audit Error: {str(e)}"}
