@@ -3,16 +3,6 @@
     "events": {
       "data": [
         {
-          "source": "MicrostructureSentinel",
-          "reason": "Liquidity Depletion: 49% of average",
-          "payload": {
-            "type": "LIQUIDITY_DEPLETION",
-            "contract": "KCK6",
-            "depth_ratio": 0.4915254237288136
-          },
-          "timestamp": "2026-02-13T16:31:54.335458+00:00"
-        },
-        {
           "source": "XSentimentSentinel",
           "reason": "UNUSUAL X ACTIVITY SPIKE (16 posts)",
           "payload": {
@@ -83,75 +73,117 @@
             "depth_ratio": 0.48484848484848486
           },
           "timestamp": "2026-02-13T18:29:52.650781+00:00"
+        },
+        {
+          "source": "XSentimentSentinel",
+          "reason": "UNUSUAL X ACTIVITY SPIKE (18 posts)",
+          "payload": {
+            "sentiment_score": 5.67,
+            "confidence": 0.24,
+            "top_themes": [
+              "Rising prices",
+              "Arabica as luxury good",
+              "Sustainability and traceability improvements",
+              "Business acquisitions and expansions",
+              "Tariff impacts on import costs"
+            ],
+            "post_volume": 18,
+            "volume_baseline": 4.1,
+            "volume_spike": true,
+            "query_results": [
+              {
+                "query": "coffee futures",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.1,
+                "top_post": null
+              },
+              {
+                "query": "arabica prices",
+                "score": 5.0,
+                "volume": 1,
+                "confidence": 0.2,
+                "top_post": "What needs to be specified, which coffee? Arabica might become luxury soon because of the rising prices, does Robusta have all the same capabilities? https://t.co/YUIr4xL9lX"
+              },
+              {
+                "query": "KC futures",
+                "score": 5.0,
+                "volume": 0,
+                "confidence": 0.2,
+                "top_post": null
+              }
+            ]
+          },
+          "timestamp": "2026-02-17T11:18:33.327353+00:00"
         }
       ],
-      "timestamp": 1771007392.6512825
+      "timestamp": 1771327113.3278925
     }
   },
   "reports": {
     "agronomist": {
       "data": {
-        "data": "[EVIDENCE]: Somar Meteorologia reported Minas Gerais received 72.6 mm of rain (113% of historical average) for the week ending Feb 6, 2026. Agronomic data confirms the crop is in the 'bean-filling' stage. Conab forecasts a record 2026 Brazil coffee crop of 66.2 million bags, with Arabica production up 23.2%. 10-day forecasts predict continued passing showers and temperatures between 62-85\u00b0F.\n[ANALYSIS]: The convergence of Somar's meteorological data showing above-average rainfall (113%) and Conab's record production forecast creates a robust bearish signal. Agronomically, moisture during the 'bean-filling' stage is crucial for maximizing yield weight, validating the projected 23.2% increase in Arabica output. The absence of weather stress (drought or excessive heat) removes supply-side risk premiums, solidifying expectations for a surplus that will likely depress prices.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: BEARISH]",
+        "data": "[EVIDENCE]: Somar Meteorologia reported Minas Gerais received 72.6 mm of rain (113% of historical average) for the week ending Feb 6, 2026. Conab forecasts a record 2026 crop of 66.2 million bags. Cepea researchers (Feb 5, 2026) confirm the crop is in the 'grain filling' stage and note stabilizing expectations for higher output.\n[ANALYSIS]: The convergence of meteorological data and agronomic reports confirms a bearish supply outlook. With Minas Gerais receiving 113% of historical rainfall during the critical 'grain filling' stage, the risk of hydrological stress is negated, directly supporting bean density and weight. This weather pattern validates Conab's projection of a record 66.2 million bag harvest. While daily storms pose a minor risk of fungal proliferation, the primary impact is a maximization of yield potential, exerting downward pressure on future prices.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: BEARISH]",
         "confidence": 0.8,
         "sentiment": "BEARISH"
       },
-      "timestamp": 1770905578.1588879
+      "timestamp": 1771330647.982298
     },
     "macro": {
       "data": {
-        "data": "[EVIDENCE]: USD/BRL exchange rate is trading around 5.20. Brazilian farmers selling soybeans at a slower pace of 33.9% due to strengthening BRL. Central Bank's Focus Bulletin projects year-end Selic rate at 12.25% and inflation at 3.97%. Markets expect a Selic rate cut for the March meeting.\n[ANALYSIS]: The USD/BRL exchange rate's strength signals that the BRL will return less value from USD-denominated commodity sales, leading to slower selling by Brazilian farmers. This pattern is noted in soybean sales and could extend to other commodities like coffee. The high Selic rate maintains BRL strength but potential future cuts could impact selling behavior. Currently, constrained supply from Brazil might support higher coffee prices, although the direct effect on coffee due to soybean sales requires cautious interpretation to avoid false causation.\n[CONFIDENCE]: 0.65\n[SENTIMENT TAG]: [SENTIMENT: BULLISH]",
-        "confidence": 0.65,
-        "sentiment": "BULLISH"
+        "data": "[EVIDENCE]: 1) [2026-02-17] USD/BRL ~5.24 (Trading Economics / Wise). 2) Packet: USD/BRL ~5.22\u20135.24; BRL appreciated from ~5.59 in Dec 2025 to best levels since May 2024. 3) [2026-02-10] Brazil farmers sold 33.9% of 2025/26 soybean crop vs ~45% historical avg; attributed to strengthening BRL + low prices (Ukragroconsult citing Safras & Mercado). 4) [2026-01-28] Copom held Selic at 15.00% (Argus Media). 5) [2026-02-16] Focus Report: consensus expects Selic cuts to start Mar 2026 (Banco Central do Brasil / Investing.com).\n[ANALYSIS]: Critique of prior analysis:\n- Potential logical issues:\n  \u2022 Cross-commodity inference risk: Using soybean farmer-selling behavior as a proxy for coffee producer behavior can be suggestive but is not proof; coffee has different storage, cash-flow timing, hedging norms, and producer structure.\n  \u2022 Overreach from mechanism to conclusion: It is economically plausible that a stronger BRL reduces local-currency returns on USD-priced exports and can slow selling, but the analysis implicitly treated this as the dominant driver without quantifying or ruling out other factors (basis, differentials, credit conditions, farmer inventory needs, forward curve).\n  \u2022 Recency/anchoring: Emphasizing the move from 5.59 to ~5.23 may overweight the recent trend without assessing whether levels are still historically high/low enough to change behavior materially, or whether volatility itself is the key factor.\n  \u2022 Sentiment mapping jump: Moving from \u201cBRL discourages selling\u201d to \u201cbullish Arabica\u201d assumes reduced selling translates to tighter export flows and higher prices; that requires additional evidence (coffee-specific export pace, certified stocks, on-farm inventory, differentials, ICE spreads).\n- Source specificity:\n  \u2022 The prior write-up did cite specific sources and dates for FX levels, soybean selling pace, Selic decision, and Focus expectations. That part was solid.\n  \u2022 The weaker part was coffee-specific: there was no direct coffee producer selling/export/hedging evidence cited\u2014only an analogy.\n- Sentiment tag justification:\n  \u2022 With the provided evidence, the strongest defensible conclusion is about direction of incentive for USD-priced producer selling (discouraging). A \u201cBULLISH\u201d tag for Arabica is not well-supported because the causal chain to coffee prices is unverified in the evidence set. A more appropriate stance is NEUTRAL-to-slightly-BULLISH with low confidence; given the task\u2019s need for one tag, NEUTRAL is safer.\n\nRevised analysis (improved):\n- Facts from evidence: BRL has appreciated materially (USD/BRL down from ~5.59 in Dec 2025 to ~5.22\u20135.24 now). In another major Brazilian USD-export crop (soybeans), farmer sales are running below historical pace, and reporting explicitly links slow selling to the stronger BRL and low prices. Selic remains very high (15%), but market consensus expects rate cuts to begin in March 2026.\n- Interpretation constrained to evidence: The FX move mechanically reduces BRL revenue per USD of export sales at a given USD commodity price, which tends to weaken incentives to sell/hedge in USD terms. The soybean data point provides corroborating, Brazil-specific behavioral evidence that a stronger BRL is currently associated with slower producer selling. Therefore, based on the evidence provided, the BRL trend is more likely discouraging than encouraging Brazilian farmer selling right now.\n- Key uncertainty / conditional risk: Expected Selic cuts could change the FX backdrop (potential BRL weakening), which would *if realized* improve local-currency returns and could re-accelerate selling later; this is a forward-looking conditional, not confirmed.\n- Commodity-price implication: The evidence does not directly demonstrate coffee-specific selling/exports tightening, so translating this into a confident bullish Arabica call is not warranted from this packet alone.\n[CONFIDENCE]: 0.55\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
+        "confidence": 0.55,
+        "sentiment": "NEUTRAL"
       },
-      "timestamp": 1770905578.1588914
+      "timestamp": 1771330647.9823
     },
     "geopolitical": {
       "data": {
-        "data": "[EVIDENCE]: The analysis draws from multiple sources: Env\u00edo International and Seatrade Maritime report strikes affecting Brazilian ports; Maersk/Maritime Executive mention the resumption of Red Sea transits; Euractiv discusses EUDR delays.\n[ANALYSIS]: The analysis correctly identifies the impact of the port worker strike in Brazil as a significant factor affecting coffee exports, which is accurate given the blockade of vessels in critical ports like Santos. It mentions Maersk and Hapag-Lloyd's resumption of Red Sea transits, but this seems to have minimal direct impact on the Brazilian situation, possibly overstating its relevance here. The delay in the EUDR implementation is correctly noted as regulatory relief but perhaps overly suggests it bears little impact on immediate logistics. Overall, the potential for coffee supply disruptions due to the strikes is a valid concern and could lead to market volatility. There is no apparent logical fallacy, but the impact of the resumed Red Sea transits should not be construed as significant within this Brazilian context.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: BEARISH]",
-        "confidence": 0.8,
-        "sentiment": "BEARISH"
+        "data": "[EVIDENCE]: - [2026-02-09] Maersk\u2019s mixed messages about returning to the Suez Canal with military escorts have caused confusion among shippers, while most carriers maintain the Cape of Good Hope route. (Seatrade Maritime)\n- [2026-01-27] In Dec 2025, 55% of vessels at Brazil\u2019s main ports faced delays, preventing the export of 1,824 coffee containers. (DatamarNews)\n- [2026-02-16] U.S. coffee prices rose 18.3% YoY in Jan, partly attributed to supply chain disruptions. (Los Angeles Times)\n- [2026-02-11] European Commission will not reopen the EUDR text; it will propose a simplification package by end-April 2026. (Euractiv)\n- [2026-02-14] Analysts warn a full return to Red Sea transits could reveal structural shipping overcapacity and crash freight rates. (Gulf News / AFP)\n[ANALYSIS]: Critique of prior analysis (key weaknesses addressed in this revision):\n- Potential false-causation / over-attribution: The prior write-up leaned toward linking logistics issues to \u201cArabica price support.\u201d The provided evidence directly supports logistics disruption and consumer price inflation partly tied to disruptions, but it does not directly establish a causal chain to Arabica futures/spot price direction, nor quantify how much of the 18.3% YoY change is logistics-driven versus other factors.\n- Confirmation/selection bias risk: It emphasized constraining factors (Red Sea rerouting, Brazil port delays) and treated the \u201cpossible offset\u201d (normalization) only briefly. The evidence set itself is skewed toward disruption narratives; sentiment should reflect that limitation.\n- Recency bias risk: The analysis uses a December 2025 port-delay datapoint and February 2026 shipping notes to infer a continuing condition (\u201csustained chokepoint risk\u201d) without a time series showing persistence into 2026.\n- Precision vs scope: It asserted \u201cArabica flows\u201d and referenced Santos/Arabica relevance without explicit evidence in the packet that the delayed containers were Arabica (vs robusta or mixed) or that Santos was specifically implicated in the 1,824 container figure.\n- Source specificity: The prior version generally cited sources properly, but some claims were interpretive (e.g., \u201creduces immediate policy uncertainty,\u201d \u201csupply-supportive for Arabica\u201d) and should be framed as hypotheses, not conclusions.\n\nRevised analysis (more conservative, better-scoped):\nThe evidence set supports the existence of material logistics frictions affecting global shipping and Brazil\u2019s export throughput. Specifically, most carriers are still routing around the Red Sea/Suez via the Cape of Good Hope, and Maersk\u2019s mixed signaling is creating planning uncertainty for shippers (Seatrade Maritime). Separately, Brazil\u2019s main ports experienced significant congestion in Dec 2025 (55% of vessels delayed), with delays preventing the export of 1,824 coffee containers that month (DatamarNews). These datapoints indicate a risk of delayed physical availability and longer lead times for coffee shipments originating from Brazil and for coffee moving on Asia\u2013Europe lanes affected by rerouting.\n\nOn downstream impacts, U.S. retail coffee prices rose 18.3% YoY in January, and the cited reporting attributes this at least partly to supply chain disruptions (Los Angeles Times). This is consistent with (but does not prove) the idea that logistics frictions can contribute to higher end-market prices via higher landed costs, timing mismatches, or reduced near-term availability.\n\nPolicy-wise, the European Commission\u2019s stance that it will not reopen the EUDR text limits the probability of a near-term rollback of core obligations, while a simplification package by end-April 2026 may reduce implementation friction at the margin (Euractiv). The evidence here is about regulatory process and timing, not directly about coffee volumes or prices.\n\nFinally, the packet does not establish that Red Sea transits have normalized; it only notes that a full return could pressure freight rates due to overcapacity (Gulf News / AFP). Therefore, any \u201crelief\u201d scenario should be treated as conditional and not assumed.\n\nNet assessment: The evidence is directionally supportive of continued logistics-related uncertainty and potential friction in physical coffee flows, but it is insufficient to confidently label the market as outright bullish for Arabica prices. A neutral stance is more defensible given (a) lack of direct linkage to Arabica pricing data, (b) limited persistence evidence beyond Dec 2025 for Brazil port delays, and (c) the possibility (not confirmed) of easing shipping constraints.\n[CONFIDENCE]: 0.65\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
+        "confidence": 0.65,
+        "sentiment": "NEUTRAL"
       },
-      "timestamp": 1770905578.1588933
+      "timestamp": 1771330647.9823012
     },
     "supply_chain": {
       "data": {
-        "data": "[EVIDENCE]: ['Cecaf\u00e9 reported (Feb 11, 2026) that January 2026 coffee exports totaled 2.78 million bags, a 30.8% YoY decrease, correcting earlier preliminary estimates.', '55% of vessels at the Port of Santos faced delays or schedule changes in January 2026, contributing to logistical losses.', 'Canephora (Robusta) exports plunged 45.6% YoY to 181,559 bags as supply was diverted to the Brazilian domestic market.', 'Drewry World Container Index fell 7% to $1,959 per 40ft container (Feb 5, 2026), indicating loosening global carrier capacity.']\n[ANALYSIS]: Cecaf\u00e9's confirmed 30.8% YoY drop in January exports validates a significant supply shock, driven by a combination of logistical failure and domestic absorption rather than a lack of global shipping capacity. While the 7% decline in the Drewry Index suggests global freight constraints are easing, the 55% vessel delay rate at Santos isolates the bottleneck specifically to Brazilian infrastructure. Crucially, the 45.6% plunge in Robusta exports indicates that domestic industry is aggressively securing supply to substitute for Arabica, effectively removing this volume from the global balance sheet. This creates a structural deficit for international buyers that lower freight rates cannot resolve.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: BULLISH]",
+        "data": "[EVIDENCE]: Cecaf\u00e9 reported (Feb 11, 2026) January 2026 coffee exports at 2.78 million bags (-30.8% YoY). Drewry World Container Index fell 1% to $1,933 (Feb 12, 2026). Port of Santos handles 81% of exports but recorded 55% vessel delays over the last year.\n[ANALYSIS]: The 30.8% YoY contraction in Brazilian exports represents a material supply shock to destination markets, overriding the deflationary signal from the 1% drop in global freight rates ($1,933). While falling shipping costs typically ease inflation, the structural failure at the Port of Santos\u2014evidenced by 55% vessel delays and its dominant 81% market share\u2014confirms that physical constraints, not cost, are the primary barrier to trade. This creates a bullish scarcity scenario for importers despite the softening global logistics pricing environment.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: BULLISH]",
         "confidence": 0.8,
         "sentiment": "BULLISH"
       },
-      "timestamp": 1770905578.1588943
+      "timestamp": 1771330647.9823022
     },
     "inventory": {
       "data": {
-        "data": "[EVIDENCE]: As of Feb 10, 2026, ICE Coffee C certified stocks stood at 426,321 bags, a decrease from 428,064 bags reported on the previous day. On Feb 9, 2026, the forward curve remained in 'clear backwardation,' with the March 2026 contract settling at 299.20 cents/lb, a premium over the May 2026 contract at 293.10 cents/lb. Arabica futures prices recovered to 297.39 US cents/lb on Feb 12, 2026, following the recent inventory draw and curve structure signals.\n[ANALYSIS]: The previous analysis correctly identified the bullish trend but introduced external information regarding Conab forecasts that was not present in the provided evidence. A stricter interpretation relies solely on the interplay between market structure and inventory. The 'clear backwardation' (March trading at a 6.10 cent premium over May) is the strongest indicator of immediate supply stress, as it financially penalizes holding inventory. This structural signal is directly validated by the physical drawdown of 1,743 bags reported on Feb 10. The subsequent price recovery on Feb 12 confirms that the market is reacting efficiently to these scarcity signals. Therefore, the bullish outlook is robustly supported by the convergence of falling stocks and an inverted forward curve.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: BULLISH]",
-        "confidence": 0.8,
-        "sentiment": "BULLISH"
+        "data": "[EVIDENCE]: ICE Coffee C certified stocks reported at 428,631 bags on Feb 13, 2026 (trending lower). Forward curve remains in backwardation as of Feb 17, 2026. Brazil's Conab projects a 2026 crop of 66.2 million bags, a 17.2% year-over-year increase.\n[ANALYSIS]: The previous analysis exhibited confirmation bias by overweighting immediate market structure (backwardation) while dismissing the magnitude of the fundamental supply shift. While the backwardated curve and drawing stocks confirm acute short-term scarcity, the Conab forecast of a 17.2% production increase represents a massive bearish headwind that caps long-term upside. The market is currently in a transitional phase: spot prices are supported by immediate inventory tightness, but the medium-term trajectory is bearish due to the looming supply glut. Consequently, the sentiment is revised to reflect this equilibrium between current scarcity and future abundance.\n[CONFIDENCE]: 0.65\n[SENTIMENT TAG]: [SENTIMENT: NEUTRAL]",
+        "confidence": 0.65,
+        "sentiment": "NEUTRAL"
       },
-      "timestamp": 1770905578.1588957
+      "timestamp": 1771330647.9823027
     },
     "sentiment": {
       "data": {
-        "data": "[EVIDENCE]: 1. XSentimentSentinel alert shows 18 posts (spike from 4.2 baseline), sentiment_score 5.0 (low confidence 0.21), top_themes including 'Rising Arabica prices' and 'Declining futures contracts', with only 2 relevant posts on 'arabica prices' (one bullish post speculating luxury status due to rising prices). 2. March '26 Arabica futures closed up +4.85 cents (+1.65%) on Feb 12, trading around $3.04/lb on Feb 13, recovering from recent lows (source: CME Group futures data). 3. Brazilian Real hit 1.75-year high on Feb 12, triggering short covering in coffee futures (source: Bloomberg market reports). 4. Colombia's January coffee production fell 34% year-over-year to 893,000 bags (source: USDA Foreign Agricultural Service). 5. Conab forecasts Brazil's 2026 coffee production up 17.2% to 66.2 million bags (Arabica +23.2%) (source: Brazil's National Supply Company).\n[ANALYSIS]: Critique: 1. Minor confirmation bias in emphasizing bullish elements (e.g., short covering and production drop) while downplaying mixed social themes; no strong recency bias as both short- and long-term factors are considered; potential false causation in linking social spike directly to market rebound without evidence of influence. 2. Original cited specific sources implicitly (e.g., XSentimentSentinel, futures data), but some claims like 'triggering short covering' were vague\u2014now explicitly sourced for clarity. 3. Sentiment tag [BULLISH] is partially justified by near-term price recovery and supply constraints, but overstated given low social volume and long-term bearish supply forecast; evidence supports mild short-term positivity, not strong bullishness.\n\nRevised Analysis: The social media spike highlights nascent discussion on 'Rising Arabica prices,' but low volume (only 2 relevant posts) and conflicting themes like 'Declining futures' indicate noise over conviction, with minimal evidence of sentiment driving prices. Market data confirms a short-term rebound (+1.65% on Feb 12), fueled by a stronger Brazilian Real prompting short covering and Colombia's 34% production decline, creating near-term supply tightness. However, Brazil's robust 2026 forecast (+23.2% for Arabica) suggests future abundance, likely tempering gains. This points to transient bullish pressures balanced by structural supply growth, warranting caution on sustained upside.\n[CONFIDENCE]: 0.65\n[SENTIMENT TAG]: [SENTIMENT: BULLISH]",
+        "data": "[EVIDENCE]: 1. CFTC COT report (data as of Feb 10, released Feb 13) shows Non-Commercial Net Length at 13,931 contracts, reflecting a reduction with decreased long positions and increased short positions (source: MarketBulls / CFTC). 2. Managed Money net long position at 19,077 contracts in the Disaggregated report (source: MarketBulls / CFTC). 3. Coffee futures traded around $2.93/lb as of Feb 17, down 17% over the past month and near 6-month lows (source: Trading Economics). 4. Analysts described a 'sharp technical rebound' after multi-month lows, suggesting oversold conditions rather than overbought (source: CocoaIntel). 5. Bearish fundamentals include a projected record 2026 Brazilian crop weighing on sentiment (source: USDA reports via Reuters).\n[ANALYSIS]: The reduction in non-commercial net long positions to 13,931 contracts, alongside a higher managed money net long of 19,077 in the disaggregated report, indicates mixed speculator behavior: overall deleveraging in the legacy category but persistent bullishness among larger traders. This occurs amid prices at $2.93/lb, down 17% monthly and near 6-month lows, driven by expectations of abundant supply from Brazil's projected record 2026 crop. The technical rebound from oversold levels provides short-term support but does not counter the fundamental bearish outlook from excess supply prospects, though demand factors like weather risks in other regions could introduce upside volatility.\n[CONFIDENCE]: 0.65\n[SENTIMENT TAG]: [SENTIMENT: BEARISH]",
         "confidence": 0.65,
-        "sentiment": "BULLISH"
+        "sentiment": "BEARISH"
       },
-      "timestamp": 1770984302.5527644
+      "timestamp": 1771330647.982304
     },
     "technical": {
       "data": {
-        "data": "[EVIDENCE]: [2026-02-09] Coffee Mar '27 (KCH7) last price = 276.80 \u00a2/lb, 5-day change \u20135.95 % (Barchart.com); [2026-02-12] 200-day Simple Moving Average for the active Mar \u201926 contract (KCH6) = 334.78 \u00a2/lb (Investing.com); [2026-02-09] KCH7 RSI(14) = 29.50 (Barchart.com); [2026-02-09] KCH7 support: 272.07 / 267.33 \u00a2; resistance: 279.47 / 282.13 \u00a2 (Barchart.com); [2026-02-11] Weekly RSI shows bearish divergence on the active contract (Investing.com)\n[ANALYSIS]: Self-critique: \n1. Logical fallacies \u2013 The original note assumed that because price is below the 200-day SMA, the long-term trend is down. That inference is incomplete: we did not check the slope of the moving average; price can trade below a rising SMA during a corrective phase. We also treated an oversold RSI (29.5) as evidence of continuing weakness, ignoring the possibility of a momentum reversal. This is a form of confirmation bias. The mention of \"improved Brazilian crop prospects\" introduced an un-sourced causal claim (potential false causation) and recency bias because it was not part of the documented evidence.\n2. Source quality \u2013 All market-generated data points were properly cited, but the fundamental claim about Brazilian supply had no citation.\n3. Sentiment tag \u2013 Bearish bias was defensible given price action, but the analysis discounted oversold and divergence signals that often precede counter-trend rallies. A more balanced stance (moderately bearish or even neutral) would be more consistent with the mixed evidence.\n\nRevised view:\n\u2022 Price is 58 \u00a2/lb below the quoted 200-day SMA. Without the slope of that SMA we can only say price is trading under long-term average value, a traditionally bearish\u2014but not decisive\u2014condition.\n\u2022 Daily RSI at 29.5 places the market in oversold territory; this can either signal continued weakness in a strong down-trend or the proximity of a short-covering bounce. Weekly RSI divergence adds a warning that downside momentum may be tiring.\n\u2022 First support rests at 272.07 and 267.33 \u00a2. A decisive close under 267 \u00a2 would confirm a continuation of lower lows; conversely, a rebound above 282.13 \u00a2 would open a test of the 290-300 \u00a2 congestion zone (not yet visible but derived from January price action).\n\u2022 Because technical conditions are stretched while the contract remains beneath key averages, the near-term outlook is cautiously bearish: downside risk persists, but risk-to-reward for initiating fresh shorts here is less attractive than it was above 300 \u00a2.\n\u2022 No fundamental conclusions are drawn due to lack of verifiable supply-demand data in the evidence set.\n\nTrading implication: Existing shorts could trail stops just above 282 \u00a2 to protect gains. New positions may wait for either a breakdown through 267 \u00a2 (momentum entry) or a corrective rally toward the falling 50-day EMA (not provided) to improve risk-reward.\n[CONFIDENCE]: 0.65\n[SENTIMENT TAG]: [SENTIMENT: BEARISH]",
+        "data": "[EVIDENCE]: [2026-02-17] Coffee Mar \u201927 (KCH7) last = 282.90 \u00a2/lb (Barchart); 200-day SMA = 328.56 \u00a2/lb (Investing.com); RSI(14) = 38.15 (Barchart); Support 280.08 / 277.27 \u00a2 \u2013 Resistance 287.68 / 292.47 \u00a2 (Barchart); Brazil 2026 crop forecast record 66.2 m bags, +17.2 % y/y (Conab via Investing.com)\n[ANALYSIS]: Self-critique\n1. Logical fallacies: The original note leaned on confirmation bias\u2014highlighting only bearish inputs (sub-200 SMA, record Brazilian crop) while ignoring information that could temper the view (e.g., approaching a well-defined support zone, the fact that RSI is not extremely oversold, or possible demand surprises). It also hinted at false causation by implying that being 14 % under the 200-day SMA necessarily \u2018confirms\u2019 lower lows; trend confirmation actually requires a sequence of price action, not just a single distance from a moving average.\n2. Source quality: Concrete numbers and sources were cited, so the evidence base is solid. However, the Brazilian crop figure is a forecast\u2014treating it as certain overstated its weight.\n3. Sentiment tag: \u2018BEARISH\u2019 was defensible but lacked nuance; data justify a cautious, not outright, bearish stance because prices are testing strong support and momentum is only moderately weak.\n\nRevised view\nTechnically, KCH7 is locked in a downtrend (price < 50-, 100-, and 200-day SMAs; 14 % below the 200-day). Yet it is testing the 280\u2013277 \u00a2 support band that held three times since December; failure to break could spark a short-covering bounce toward 288\u2013292 \u00a2. RSI at 38 signals sellers in control but not at capitulation, leaving both downside room to 270 \u00a2 and upside room for a relief rally.\nFundamentally, the record-size Brazilian crop adds supply pressure, but the number is still a projection; adverse weather during flowering or logistics snags could trim output. Meanwhile, consumer stocks remain below their five-year average and Vietnam\u2019s shipping delays are tightening robusta availability, which can spill over into arabica demand.\nNetting these factors, the balance of risk remains skewed lower, but support just below spot and mixed fundamental cross-currents argue for only a moderately bearish bias, not an aggressive one. Traders might wait for a decisive break of 277 \u00a2 (on volume) before pressing shorts, or look for a failed rally into 292 \u00a2 to sell strength.\n\n[CONFIDENCE]: 0.65\n[SENTIMENT TAG]: [SENTIMENT: BEARISH]",
         "confidence": 0.65,
         "sentiment": "BEARISH"
       },
-      "timestamp": 1770905578.1588984
+      "timestamp": 1771330647.9823048
     },
     "volatility": {
       "data": {
-        "data": "[EVIDENCE]: As of February 12, 2026, March 2026 (KCH26) Implied Volatility is elevated at 48-52%, significantly exceeding the ~30% IV of 2027 contracts [Source: Barchart]. Brazil's 2026 coffee production is forecast to reach a record 66.2 million bags (+17.2%), driving futures to 6-month lows around 298.40 cents/lb [Source: Conab / Barchart]. Raw Research classifies front-month premiums as 'expensive' relative to historical norms, noting a steep volatility term structure and put-skew driven by bearish pressure [Source: Raw Research].\n[ANALYSIS]: The volatility environment is confirmed as HIGH_VOL, characterized by a steep inversion where front-month IV (~52%) vastly exceeds back-month levels (~30%). This pricing anomaly, combined with the fundamental catalyst of a record Brazilian crop (66.2M bags), creates a high-probability setup for selling strategies. The critique of the prior analysis highlights the need to account for gamma risk given the proximity to the March expiration (Feb 12); however, the 'expensive' premium designation validates the short-volatility approach. Consequently, the Bear Call Spread remains the optimal execution, allowing traders to capture the inflated volatility premium while aligning with the strong bearish trend established by the break to 6-month lows.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: BEARISH]",
+        "data": "[EVIDENCE]: As of Feb 17, 2026, Coffee futures (KC) trade at $2.93/lb, a 6-month low following a 17.43% monthly decline [Source: Trading Economics]. Brazil's 2026 production is forecast at a record 66.2 million bags, up 17.2% YoY, creating a massive supply surplus [Source: Conab]. Implied Volatility for March 2026 (44-48%) and May 2026 (~36%) trades at a significant premium to the 30-35% annualized Historical Volatility [Source: Barchart]. The volatility term structure is in backwardation, indicating immediate market stress [Source: Raw Research].\n[ANALYSIS]: The confluence of a record fundamental supply shock (Conab's +17.2% forecast) and a technical breakdown to 6-month lows confirms a structural bear market. The volatility regime is definitively HIGH_VOL, with IV premiums (44-48%) overpriced relative to realized movement (30-35%), offering a statistical edge to premium sellers. While the sharp 17% drop suggests potential for a technical oversold bounce, the sheer scale of the Brazilian crop creates a hard fundamental ceiling, making sustained rallies unlikely. The backwardated volatility curve further validates near-term downside pressure. Consequently, a Bear Call Spread is the optimal strategy; it monetizes the 'expensive' volatility premium and aligns with the bearish delta, while providing a margin of safety against minor technical retracements that a naked short position would lack.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: BEARISH]",
         "confidence": 0.8,
         "sentiment": "BEARISH"
       },
-      "timestamp": 1770905578.1589
+      "timestamp": 1771330647.9823055
     },
     "latest_ml_signals": {
       "data": [
@@ -235,19 +267,19 @@
         "consecutive_failures": 0,
         "degraded_until": null
       },
-      "timestamp": 1771011813.3784506
+      "timestamp": 1771332552.3882465
     },
     "sentinel_ib_status": {
       "data": "CONNECTED",
-      "timestamp": 1771006373.8050876
+      "timestamp": 1771319737.544917
     },
     "last_ib_success": {
-      "data": "2026-02-17T01:48:54.256275+00:00",
-      "timestamp": 1771292934.256778
+      "data": "2026-02-17T12:01:03.893798+00:00",
+      "timestamp": 1771329663.8943684
     },
     "microstructure_ib_status": {
       "data": "CONNECTED",
-      "timestamp": 1771006374.287116
+      "timestamp": 1771319737.957759
     },
     "audit_ib_status": {
       "data": "DISCONNECTED",
@@ -270,8 +302,8 @@
       "timestamp": 1770229516.0886695
     },
     "last_ib_failure": {
-      "data": "2026-02-16T22:49:51.158820+00:00",
-      "timestamp": 1771282191.1595445
+      "data": "2026-02-17T09:15:59.077811+00:00",
+      "timestamp": 1771319759.0783827
     },
     "test_ib_status": {
       "data": "CONNECTED",
@@ -306,12 +338,12 @@
       "timestamp": 1769765385.1030705
     },
     "drawdown_check_ib_status": {
-      "data": "DISCONNECTED",
-      "timestamp": 1771259940.9036248
+      "data": "CONNECTED",
+      "timestamp": 1771329660.6155522
     },
     "orchestrator_orders_ib_status": {
-      "data": "DISCONNECTED",
-      "timestamp": 1771267620.5247612
+      "data": "CONNECTED",
+      "timestamp": 1771329663.894365
     },
     "dashboard_orders_ib_status": {
       "data": "CONNECTED",
@@ -319,11 +351,11 @@
     },
     "cleanup_ib_status": {
       "data": "CONNECTED",
-      "timestamp": 1771292934.256774
+      "timestamp": 1771318800.476959
     },
     "monitor_ib_status": {
-      "data": "CONNECTED",
-      "timestamp": 1771006360.5611436
+      "data": "DISCONNECTED",
+      "timestamp": 1771319759.078378
     },
     "cleanup_last_error": {
       "data": "[Errno 111] Connect call failed ('100.102.50.16', 4002)",
@@ -344,6 +376,10 @@
     "orchestrator_orders_last_error": {
       "data": "[Errno 111] Connect call failed ('100.102.50.16', 4002)",
       "timestamp": 1771267620.5247643
+    },
+    "monitor_last_error": {
+      "data": "",
+      "timestamp": 1771319759.0783815
     }
   },
   "test": {
@@ -353,7 +389,7 @@
     },
     "_test": {
       "data": "ok",
-      "timestamp": 1771292921.7378
+      "timestamp": 1771305391.708193
     }
   },
   "prediction_market_state": {
@@ -362,22 +398,22 @@
         "slug": "next-three-fed-decisions-847",
         "title": "Fed decisions (Dec-Mar)",
         "price": 0.925,
-        "timestamp": "2026-02-17T01:49:14.069169+00:00",
+        "timestamp": "2026-02-17T12:59:12.791321+00:00",
         "severity_hwm": 0,
         "hwm_timestamp": null
       },
-      "timestamp": 1771292954.7147632
+      "timestamp": 1771333152.8287394
     },
     "How many Fed rate cuts in 2026?": {
       "data": {
         "slug": "how-many-fed-rate-cuts-in-2026",
         "title": "How many Fed rate cuts in 2026?",
-        "price": 0.255,
-        "timestamp": "2026-02-17T01:49:14.714125+00:00",
-        "severity_hwm": 0,
-        "hwm_timestamp": null
+        "price": 0.245,
+        "timestamp": "2026-02-17T12:59:12.827974+00:00",
+        "severity_hwm": 7,
+        "hwm_timestamp": "2026-02-17T03:49:29.733980+00:00"
       },
-      "timestamp": 1771292954.7147665
+      "timestamp": 1771333152.828742
     },
     "Will tariffs generate >$250b in 2025?": {
       "data": {
@@ -385,10 +421,10 @@
         "hwm_timestamp": null,
         "slug": "will-tariffs-generate-250b-in-2025",
         "title": "Will tariffs generate >$250b in 2025?",
-        "price": 0.0175,
-        "timestamp": "2026-02-17T01:49:14.243230+00:00"
+        "price": 0.0135,
+        "timestamp": "2026-02-17T12:59:12.805964+00:00"
       },
-      "timestamp": 1771292954.7147684
+      "timestamp": 1771333152.8287435
     },
     "Federal Reserve Interest Rate": {
       "data": {
@@ -417,74 +453,74 @@
     "WeatherSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-17T01:49:12.560368+00:00",
+        "last_check_utc": "2026-02-17T09:17:41.766958+00:00",
         "interval_seconds": 14400,
         "error": null
       },
-      "timestamp": 1771292952.5608044
+      "timestamp": 1771319861.7678862
     },
     "LogisticsSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-17T01:49:13.107424+00:00",
+        "last_check_utc": "2026-02-17T11:17:10.697973+00:00",
         "interval_seconds": 21600,
         "error": null
       },
-      "timestamp": 1771292953.108137
+      "timestamp": 1771327030.6986566
     },
     "NewsSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-17T01:49:13.831193+00:00",
+        "last_check_utc": "2026-02-17T11:18:11.395839+00:00",
         "interval_seconds": 7200,
         "error": null
       },
-      "timestamp": 1771292953.8316307
+      "timestamp": 1771327091.3967004
     },
     "XSentimentSentinel": {
       "data": {
-        "status": "IDLE",
-        "last_check_utc": "2026-02-17T01:49:13.835729+00:00",
+        "status": "OK",
+        "last_check_utc": "2026-02-17T12:49:12.396915+00:00",
         "interval_seconds": 5400,
         "error": null
       },
-      "timestamp": 1771292953.8361175
+      "timestamp": 1771332552.397556
     },
     "PredictionMarketSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-17T02:59:26.024541+00:00",
+        "last_check_utc": "2026-02-17T12:59:12.833189+00:00",
         "interval_seconds": 300,
         "error": null
       },
-      "timestamp": 1771297166.0250452
+      "timestamp": 1771333152.833851
     },
     "MacroContagionSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-17T01:49:23.457068+00:00",
+        "last_check_utc": "2026-02-17T09:17:47.731901+00:00",
         "interval_seconds": 14400,
         "error": null
       },
-      "timestamp": 1771292963.4577322
+      "timestamp": 1771319867.7325847
     },
     "PriceSentinel": {
       "data": {
-        "status": "IDLE",
-        "last_check_utc": "2026-02-17T01:49:10.764234+00:00",
+        "status": "OK",
+        "last_check_utc": "2026-02-17T12:59:12.751845+00:00",
         "interval_seconds": 60,
         "error": null
       },
-      "timestamp": 1771292950.765074
+      "timestamp": 1771333152.7525325
     },
     "MicrostructureSentinel": {
       "data": {
-        "status": "IDLE",
-        "last_check_utc": "2026-02-17T01:49:10.768696+00:00",
+        "status": "OK",
+        "last_check_utc": "2026-02-17T12:59:12.837766+00:00",
         "interval_seconds": 60,
         "error": null
       },
-      "timestamp": 1771292950.7693472
+      "timestamp": 1771333152.8384445
     },
     "MagicMock": {
       "data": {
