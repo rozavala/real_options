@@ -6,6 +6,8 @@ set -e
 # HRO-Enhanced: Adds directory scaffolding, migration framework, post-deploy
 # verification gate, and automatic rollback on failure.
 #
+# Multi-commodity: Manages all commodity services (KC, CC, ...) in a single deploy.
+#
 # Called by: .github/workflows/deploy.yml (via SSH after git pull)
 # Rollback: If verify_deploy.sh fails, reverts to previous commit and restarts.
 # =============================================================================
@@ -25,6 +27,15 @@ cd "$REPO_ROOT"
 TICKER="${COMMODITY_TICKER:-KC}"
 TICKER_LOWER=$(echo "$TICKER" | tr '[:upper:]' '[:lower:]')
 
+# All commodity tickers to manage (KC always present, CC if service installed)
+ALL_TICKERS=("KC")
+if [ -f "/etc/systemd/system/trading-bot-cc.service" ]; then
+    ALL_TICKERS+=("CC")
+fi
+
+# Primary service name (KC)
+SERVICE_NAME="${BOT_SERVICE_NAME:-trading-bot}"
+
 # Prevent collect_logs.sh from switching branches during deploy
 DEPLOY_LOCK="/tmp/trading-bot-deploy.lock"
 echo "$$" > "$DEPLOY_LOCK"
@@ -36,6 +47,7 @@ trap "rm -f '$DEPLOY_LOCK'" EXIT
 PREV_COMMIT=$(git rev-parse HEAD~1 2>/dev/null || echo "")
 CURR_COMMIT=$(git rev-parse HEAD)
 echo "--- Deploy: $CURR_COMMIT (rollback target: ${PREV_COMMIT:-none}) ---"
+echo "--- Commodities: ${ALL_TICKERS[*]} ---"
 
 # Define rollback function
 rollback_and_restart() {
@@ -57,35 +69,36 @@ rollback_and_restart() {
         # Ensure log directory exists and is writable before restarting
         mkdir -p logs
         chmod 755 logs 2>/dev/null || true
-        touch "logs/orchestrator_${TICKER_LOWER}.log" "logs/dashboard_${TICKER_LOWER}.log" logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
-        chmod 664 "logs/orchestrator_${TICKER_LOWER}.log" "logs/dashboard_${TICKER_LOWER}.log" logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
+        for _t in "${ALL_TICKERS[@]}"; do
+            _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
+            touch "logs/orchestrator_${_tl}.log" "logs/dashboard_${_tl}.log" 2>/dev/null || true
+            chmod 664 "logs/orchestrator_${_tl}.log" "logs/dashboard_${_tl}.log" 2>/dev/null || true
+        done
+        touch logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
 
         # Kill any orphaned processes before restarting
         pkill -9 -f "orchestrator.py" 2>/dev/null || true
         pkill -f "streamlit run dashboard.py" 2>/dev/null || true
         sleep 2
 
-        # Restart orchestrator via systemd (keeps it visible to future deploys)
+        # Restart ALL commodity services via systemd
         sudo systemctl daemon-reload
-        sudo systemctl start "$SERVICE_NAME"
-        sleep 3
-
-        # Verify systemd started it
-        if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
-            ORCH_PID=$(pgrep -f "python.*orchestrator\.py" | head -1)
-            echo "  ✅ Rollback: $SERVICE_NAME restarted via systemd (PID: ${ORCH_PID:-unknown})"
-        else
-            echo "  ⚠️  Rollback: systemd start failed, falling back to nohup"
-            if [ -f "scripts/start_orchestrator.sh" ]; then
-                chmod +x scripts/start_orchestrator.sh
-                nohup ./scripts/start_orchestrator.sh >> "logs/orchestrator_${TICKER_LOWER}.log" 2>&1 &
+        _rb_port=8501
+        for _t in "${ALL_TICKERS[@]}"; do
+            _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
+            if [ "$_t" = "KC" ]; then _svc="$SERVICE_NAME"; else _svc="trading-bot-${_tl}"; fi
+            sudo systemctl start "$_svc" 2>/dev/null || true
+            sleep 3
+            if sudo systemctl is-active --quiet "$_svc"; then
+                echo "  Rollback: $_svc restarted via systemd"
             else
-                nohup python -u orchestrator.py --commodity "$TICKER" >> "logs/orchestrator_${TICKER_LOWER}.log" 2>&1 &
+                echo "  Rollback: $_svc start failed, falling back to nohup"
+                nohup python -u orchestrator.py --commodity "$_t" >> "logs/orchestrator_${_tl}.log" 2>&1 &
             fi
-        fi
-
-        # Restart dashboard (not managed by systemd — manual start is correct here)
-        nohup streamlit run dashboard.py --server.address 0.0.0.0 > "logs/dashboard_${TICKER_LOWER}.log" 2>&1 &
+            # Restart dashboard for this commodity
+            COMMODITY_TICKER="$_t" nohup streamlit run dashboard.py --server.address 0.0.0.0 --server.port "$_rb_port" > "logs/dashboard_${_tl}.log" 2>&1 &
+            _rb_port=$((_rb_port + 1))
+        done
 
         echo "--- Rollback complete. Old version restarted. ---"
         echo "--- MANUAL INVESTIGATION REQUIRED ---"
@@ -108,57 +121,75 @@ send_pushover_notification({}, 'DEPLOY ROLLBACK', 'Deploy of $CURR_COMMIT failed
 # =========================================================================
 echo "--- 1. Stopping old processes... ---"
 
-# Stop the systemd service (passwordless sudo configured in /etc/sudoers.d/coffee-bot)
-SERVICE_NAME="${BOT_SERVICE_NAME:-trading-bot}"
-echo "  🛑 Stopping $SERVICE_NAME service..."
-sudo systemctl stop "$SERVICE_NAME"
+# Stop ALL commodity services (passwordless sudo configured in /etc/sudoers.d/coffee-bot)
+for _t in "${ALL_TICKERS[@]}"; do
+    _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
+    if [ "$_t" = "KC" ]; then _svc="$SERVICE_NAME"; else _svc="trading-bot-${_tl}"; fi
+    if sudo systemctl is-active --quiet "$_svc" 2>/dev/null; then
+        echo "  Stopping $_svc service..."
+        sudo systemctl stop "$_svc"
+    fi
+done
 
-# Wait for systemd to fully stop the service
-echo "  ⏳ Waiting for clean shutdown..."
+# Wait for systemd to fully stop the services
+echo "  Waiting for clean shutdown..."
 sleep 5
 
-# Verify the service is actually stopped
-if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
-    echo "  ❌ ERROR: Service still active after stop command!"
-    echo "  📋 Service status:"
-    sudo systemctl status "$SERVICE_NAME" --no-pager
-    rollback_and_restart
-fi
+# Verify all services are actually stopped
+for _t in "${ALL_TICKERS[@]}"; do
+    _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
+    if [ "$_t" = "KC" ]; then _svc="$SERVICE_NAME"; else _svc="trading-bot-${_tl}"; fi
+    if sudo systemctl is-active --quiet "$_svc" 2>/dev/null; then
+        echo "  ERROR: $_svc still active after stop command!"
+        echo "  Service status:"
+        sudo systemctl status "$_svc" --no-pager
+        rollback_and_restart
+    fi
+done
 
 # Double-check no orchestrator processes remain
 if pgrep -f "orchestrator.py" > /dev/null; then
-    echo "  ⚠️  WARNING: Orphaned orchestrator processes detected!"
+    echo "  WARNING: Orphaned orchestrator processes detected!"
     ps aux | grep orchestrator.py | grep -v grep
-    echo "  🔨 Force cleaning..."
+    echo "  Force cleaning..."
     pkill -9 -f orchestrator.py
     sleep 2
 fi
 
-# Also stop dashboard and monitor (these aren't managed by systemd)
+# Also stop ALL dashboards and monitors (these aren't managed by systemd)
 pkill -f "streamlit run dashboard.py" || true
 pkill -f "position_monitor.py" || true
 sleep 2
 
-echo "  ✅ All processes stopped and verified"
+echo "  All processes stopped and verified"
 
 # =========================================================================
 # STEP 2: Rotate logs
 # =========================================================================
 echo "--- 2. Rotating logs... ---"
 mkdir -p logs
-[ -f "logs/orchestrator_${TICKER_LOWER}.log" ] && mv "logs/orchestrator_${TICKER_LOWER}.log" "logs/orchestrator_${TICKER_LOWER}-$(date --iso=s).log" || true
-[ -f "logs/dashboard_${TICKER_LOWER}.log" ] && mv "logs/dashboard_${TICKER_LOWER}.log" "logs/dashboard_${TICKER_LOWER}-$(date --iso=s).log" || true
-[ -f logs/equity_logger.log ] && mv logs/equity_logger.log logs/equity_logger-$(date --iso=s).log || true
-[ -f logs/sentinels.log ] && mv logs/sentinels.log logs/sentinels-$(date --iso=s).log || true
+ROTATE_DATE=$(date --iso=s)
+for _t in "${ALL_TICKERS[@]}"; do
+    _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
+    [ -f "logs/orchestrator_${_tl}.log" ] && mv "logs/orchestrator_${_tl}.log" "logs/orchestrator_${_tl}-${ROTATE_DATE}.log" || true
+    [ -f "logs/dashboard_${_tl}.log" ] && mv "logs/dashboard_${_tl}.log" "logs/dashboard_${_tl}-${ROTATE_DATE}.log" || true
+done
+[ -f logs/equity_logger.log ] && mv logs/equity_logger.log "logs/equity_logger-${ROTATE_DATE}.log" || true
+[ -f logs/sentinels.log ] && mv logs/sentinels.log "logs/sentinels-${ROTATE_DATE}.log" || true
 
 # Clean up rotated logs older than 7 days
 find logs/ -name "*-20*.log" -mtime +7 -delete 2>/dev/null || true
 
 # Ensure logs directory exists with correct permissions
 chmod 755 logs
-touch "logs/orchestrator_${TICKER_LOWER}.log" "logs/dashboard_${TICKER_LOWER}.log" logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log
-chmod 664 "logs/orchestrator_${TICKER_LOWER}.log" "logs/dashboard_${TICKER_LOWER}.log" logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log
-chown rodrigo:rodrigo "logs/orchestrator_${TICKER_LOWER}.log" "logs/dashboard_${TICKER_LOWER}.log" logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
+LOG_FILES=(logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log)
+for _t in "${ALL_TICKERS[@]}"; do
+    _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
+    LOG_FILES+=("logs/orchestrator_${_tl}.log" "logs/dashboard_${_tl}.log")
+done
+touch "${LOG_FILES[@]}"
+chmod 664 "${LOG_FILES[@]}"
+chown rodrigo:rodrigo "${LOG_FILES[@]}" 2>/dev/null || true
 
 # =========================================================================
 # STEP 3: Activate venv + install deps
@@ -179,14 +210,16 @@ mkdir -p config/profiles          # Custom JSON commodity profiles
 mkdir -p trading_bot/prompts      # Templatized agent prompts
 mkdir -p backtesting              # Backtesting framework
 mkdir -p data/surrogate_models    # Surrogate model cache (runtime)
-mkdir -p "data/$TICKER"           # Per-commodity data directory
-echo "  ✅ Directories OK"
+for _t in "${ALL_TICKERS[@]}"; do
+    mkdir -p "data/$_t"           # Per-commodity data directory
+done
+echo "  Directories OK"
 
 # =========================================================================
-# STEP 7: Sync equity data
+# STEP 7: Sync equity data (only for primary commodity — is_primary handles this)
 # =========================================================================
 echo "--- 7. Syncing Equity Data... ---"
-python equity_logger.py --sync --commodity "$TICKER" || true
+python equity_logger.py --sync --commodity KC || true
 
 # =========================================================================
 # STEP 8: Post-deploy verification gate
@@ -198,7 +231,7 @@ if [ -f "scripts/verify_deploy.sh" ]; then
         rollback_and_restart
     fi
 else
-    echo "  ⏭️  No verification script found, skipping"
+    echo "  No verification script found, skipping"
 fi
 
 # =========================================================================
@@ -207,63 +240,70 @@ fi
 echo "--- 9. Starting services... ---"
 
 # Reload systemd configuration (in case service file changed)
-echo "  🔄 Reloading systemd..."
+echo "  Reloading systemd..."
 sudo systemctl daemon-reload
 
-# Start the orchestrator via systemd
-echo "  🚀 Starting $SERVICE_NAME service..."
-sudo systemctl start "$SERVICE_NAME"
+# Start all commodity services and their dashboards
+DASHBOARD_PORT=8501
+for _t in "${ALL_TICKERS[@]}"; do
+    _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
+    if [ "$_t" = "KC" ]; then _svc="$SERVICE_NAME"; else _svc="trading-bot-${_tl}"; fi
 
-# Wait for service to initialize
-sleep 5
+    echo "  Starting $_svc service..."
+    sudo systemctl start "$_svc"
+    sleep 5
 
-# Verify service started successfully
-if ! sudo systemctl is-active --quiet "$SERVICE_NAME"; then
-    echo "  ❌ ERROR: $SERVICE_NAME service failed to start!"
-    echo "  📋 Service status:"
-    sudo systemctl status "$SERVICE_NAME" --no-pager
-    echo ""
-    echo "  📋 Recent logs:"
-    tail -50 "logs/orchestrator_${TICKER_LOWER}.log"
-    rollback_and_restart
-fi
+    # Verify service started successfully
+    if ! sudo systemctl is-active --quiet "$_svc"; then
+        echo "  ERROR: $_svc service failed to start!"
+        echo "  Service status:"
+        sudo systemctl status "$_svc" --no-pager
+        echo ""
+        echo "  Recent logs:"
+        tail -50 "logs/orchestrator_${_tl}.log" 2>/dev/null || true
+        rollback_and_restart
+    fi
 
-# Verify orchestrator process is running (use systemd MainPID for reliability)
-ORCH_PID=$(sudo systemctl show -p MainPID --value "$SERVICE_NAME" 2>/dev/null || true)
-# Strip "MainPID=" prefix if --value flag not supported
-ORCH_PID="${ORCH_PID#MainPID=}"
-if [ -z "$ORCH_PID" ] || [ "$ORCH_PID" = "0" ]; then
-    # Fallback to pgrep with specific pattern
-    ORCH_PID=$(pgrep -f "python.*orchestrator\.py" | head -1)
-fi
+    # Verify orchestrator process is running (use systemd MainPID for reliability)
+    SVC_PID=$(sudo systemctl show -p MainPID --value "$_svc" 2>/dev/null || true)
+    SVC_PID="${SVC_PID#MainPID=}"
+    if [ -z "$SVC_PID" ] || [ "$SVC_PID" = "0" ]; then
+        SVC_PID=$(pgrep -f "python.*orchestrator\.py.*--commodity $_t" | head -1)
+    fi
 
-if [ -z "$ORCH_PID" ] || ! kill -0 "$ORCH_PID" 2>/dev/null; then
-    echo "  ❌ ERROR: No orchestrator process found!"
-    ps aux | grep orchestrator.py | grep -v grep
-    sudo systemctl stop "$SERVICE_NAME"
-    rollback_and_restart
-fi
-echo "  ✅ $SERVICE_NAME service started (PID: $ORCH_PID)"
+    if [ -z "$SVC_PID" ] || ! kill -0 "$SVC_PID" 2>/dev/null; then
+        echo "  ERROR: No orchestrator process found for $_t!"
+        ps aux | grep orchestrator.py | grep -v grep
+        sudo systemctl stop "$_svc"
+        rollback_and_restart
+    fi
+    echo "  $_svc service started (PID: $SVC_PID)"
 
-# Start dashboard (not managed by systemd)
-echo "  🚀 Starting dashboard..."
-nohup streamlit run dashboard.py --server.address 0.0.0.0 > "logs/dashboard_${TICKER_LOWER}.log" 2>&1 &
-DASH_PID=$!
-echo "  ✅ Dashboard started (PID: $DASH_PID)"
+    # Start dashboard for this commodity
+    echo "  Starting $_t dashboard on port $DASHBOARD_PORT..."
+    COMMODITY_TICKER="$_t" nohup streamlit run dashboard.py --server.address 0.0.0.0 --server.port "$DASHBOARD_PORT" > "logs/dashboard_${_tl}.log" 2>&1 &
+    echo "  $_t dashboard started (PID: $!, port: $DASHBOARD_PORT)"
 
-# Final verification after 3 more seconds — check the SPECIFIC PID is still alive
+    DASHBOARD_PORT=$((DASHBOARD_PORT + 1))
+done
+
+# Final verification after 3 more seconds — check all services are still alive
 sleep 3
-if ! kill -0 "$ORCH_PID" 2>/dev/null; then
-    echo "  ❌ ERROR: Orchestrator PID $ORCH_PID no longer running!"
-    ps aux | grep orchestrator.py | grep -v grep
-    sudo systemctl stop "$SERVICE_NAME"
-    rollback_and_restart
-fi
+for _t in "${ALL_TICKERS[@]}"; do
+    _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
+    if [ "$_t" = "KC" ]; then _svc="$SERVICE_NAME"; else _svc="trading-bot-${_tl}"; fi
+    if ! sudo systemctl is-active --quiet "$_svc"; then
+        echo "  ERROR: $_svc no longer running after 3s!"
+        sudo systemctl stop "$_svc" 2>/dev/null || true
+        rollback_and_restart
+    fi
+done
 
-# Warn if extra orchestrator processes exist (don't fail — PID check above is authoritative)
+# Warn if extra orchestrator processes exist
 ORCH_COUNT=$(pgrep -fc "python.*orchestrator\.py" 2>/dev/null || echo 0)
-if [ "$ORCH_COUNT" -gt 1 ]; then
-    echo "  ⚠️  WARNING: $ORCH_COUNT orchestrator processes found (expected 1)"
+EXPECTED_COUNT=${#ALL_TICKERS[@]}
+if [ "$ORCH_COUNT" -gt "$EXPECTED_COUNT" ]; then
+    echo "  WARNING: $ORCH_COUNT orchestrator processes found (expected $EXPECTED_COUNT)"
     ps aux | grep orchestrator.py | grep -v grep
 fi
 
@@ -273,9 +313,9 @@ fi
 echo "--- 10. Syncing Claude Code worktree... ---"
 chmod +x scripts/sync_worktree.sh 2>/dev/null || true
 if [ -f "scripts/sync_worktree.sh" ]; then
-    bash scripts/sync_worktree.sh || echo "  ⚠️  Worktree sync encountered an issue (non-blocking)"
+    bash scripts/sync_worktree.sh || echo "  Worktree sync encountered an issue (non-blocking)"
 else
-    echo "  ⏭️  No worktree sync script found, skipping"
+    echo "  No worktree sync script found, skipping"
 fi
 
 # =========================================================================
@@ -286,10 +326,10 @@ echo "--- 11. Setting up error reporter cron... ---"
 CRON_LINE="0 * * * * cd $REPO_ROOT && $REPO_ROOT/venv/bin/python scripts/error_reporter.py >> logs/error_reporter.log 2>&1"
 # Add to user crontab if not already present (idempotent)
 ( crontab -l 2>/dev/null | grep -v 'error_reporter\.py'; echo "$CRON_LINE" ) | crontab -
-echo "  ✅ Error reporter cron installed"
+echo "  Error reporter cron installed"
 
 echo ""
-echo "--- ✅ Deployment finished successfully! ---"
+echo "--- Deployment finished successfully! ---"
 echo "--- Commit: $CURR_COMMIT ---"
-echo "--- Services: trading-bot (systemd) + dashboard (manual) ---"
+echo "--- Commodities: ${ALL_TICKERS[*]} ---"
 echo "--- $(date) ---"
