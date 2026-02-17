@@ -20,7 +20,8 @@ from dashboard_utils import (
     calculate_confusion_matrix,
     calculate_agent_scores,
     fetch_live_dashboard_data,
-    get_config
+    get_config,
+    _resolve_data_path
 )
 
 def create_process_outcome_matrix(df: pd.DataFrame):
@@ -374,10 +375,7 @@ st.markdown("---")
 # === FEEDBACK LOOP HEALTH ===
 st.subheader("🔄 Feedback Loop Health")
 
-# Locate data directory relative to this file
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-data_dir = os.path.join(base_dir, 'data')
-structured_file = os.path.join(data_dir, "agent_accuracy_structured.csv")
+structured_file = _resolve_data_path("agent_accuracy_structured.csv")
 
 if os.path.exists(structured_file):
     struct_df = pd.read_csv(structured_file)
