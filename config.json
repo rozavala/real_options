@@ -139,6 +139,22 @@
     "max_entries": 100,
     "severity_bypass_threshold": 8
   },
+  "rate_limits": {
+    "env_limits": {
+      "DEV": {
+        "gemini": 30,
+        "openai": 400,
+        "anthropic": 80,
+        "xai": 25
+      },
+      "PROD": {
+        "gemini": 60,
+        "openai": 500,
+        "anthropic": 100,
+        "xai": 40
+      }
+    }
+  },
   "sentinels": {
     "post_cycle_debounce_seconds": 1800,
     "post_cycle_debounce_neutral_seconds": 300,
