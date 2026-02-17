@@ -3,3 +3,126 @@
 
   URL: http://0.0.0.0:8501
 
+2026-02-17 15:58:29,882 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-02-17 15:58:29,883 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-02-17 15:58:29,884 - trading_bot.connection_pool - INFO - Connecting IB (dashboard_orders) ID: 39 [REMOTE/PAPER]...
+2026-02-17 15:58:29,884 - ib_insync.client - INFO - Connecting to 100.102.50.16:4002 with clientId 39...
+2026-02-17 15:58:29,886 - ib_insync.client - INFO - Connected
+2026-02-17 15:58:29,890 - ib_insync.client - INFO - Logged on to server version 176
+2026-02-17 15:58:29,896 - ib_insync.wrapper - INFO - Warning 2104, reqId -1: Market data farm connection is OK:usfuture.nj
+2026-02-17 15:58:29,896 - ib_insync.wrapper - INFO - Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-02-17 15:58:29,896 - ib_insync.wrapper - INFO - Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-02-17 15:58:29,896 - ib_insync.wrapper - INFO - Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-02-17 15:58:29,896 - ib_insync.client - INFO - API connection ready
+2026-02-17 15:58:29,901 - ib_insync.wrapper - INFO - position: Position(account='DUM450165', contract=Future(conId=646040490, symbol='KC', lastTradeDateOrContractMonth='20260721', multiplier='37500', currency='USD', localSymbol='KCN6', tradingClass='KC'), position=0.0, avgCost=0.0)
+2026-02-17 15:58:30,106 - ib_insync.wrapper - INFO - updatePortfolio: PortfolioItem(contract=Future(conId=646040490, symbol='KC', lastTradeDateOrContractMonth='20260721', right='0', multiplier='37500', primaryExchange='NYBOT', currency='USD', localSymbol='KCN6', tradingClass='KC'), position=0.0, marketPrice=2.806, marketValue=0.0, averageCost=0.0, unrealizedPNL=0.0, realizedPNL=-3868.44, account='DUM450165')
+2026-02-17 15:58:30,205 - ib_insync.wrapper - INFO - execDetails Execution(execId='0000e1a7.69940b47.01.01', time=datetime.datetime(2026, 2, 17, 9, 15, tzinfo=datetime.timezone.utc), acctNumber='DUM450165', exchange='NYBOT', side='SLD', shares=1.0, price=290.9, permId=1451222106, clientId=0, orderId=0, liquidation=0, cumQty=1.0, avgPrice=290.9, orderRef='99182199', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=1)
+2026-02-17 15:58:30,205 - ib_insync.wrapper - INFO - commissionReport: CommissionReport(execId='0000e1a7.69940b47.01.01', commission=2.97, currency='USD', realizedPNL=-3868.44, yield_=0.0, yieldRedemptionDate=0)
+2026-02-17 15:58:30,206 - ib_insync.ib - INFO - Synchronization complete
+2026-02-17 15:58:30,206 - trading_bot.connection_pool - INFO - IB (dashboard_orders) connected successfully with ID 39
+2026-02-17 15:58:30,212 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-17 15:58:30,212 - OrderManager - INFO - Connected to IB for signal generation (purpose: dashboard_orders).
+2026-02-17 15:58:30,212 - OrderManager - INFO - Step 1: Generating structured signals via Council...
+2026-02-17 15:58:30,212 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
+2026-02-17 15:58:30,394 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-17 15:58:30,394 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'openai', 'gemini', 'anthropic']
+2026-02-17 15:58:30,394 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'openai', 'gemini', 'anthropic'], 'diversity_score': 1.0}
+2026-02-17 15:58:30,402 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-17 15:58:30,409 - trading_bot.enhanced_brier - INFO - Loaded 744 predictions from ./data/enhanced_brier.json
+2026-02-17 15:58:30,528 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-17 15:58:30,529 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-17 15:58:30,529 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-17 15:58:30,529 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-17 15:58:30,529 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-17 15:58:30,529 - trading_bot.agents - INFO - Grounded data cache invalidated (0 entries cleared). Next cycle will perform fresh searches.
+2026-02-17 15:58:30,529 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-17 15:58:30,529 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'openai', 'gemini', 'anthropic']
+2026-02-17 15:58:30,529 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-17 15:58:30,531 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-17 15:58:30,703 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-17 15:58:30,705 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-17 15:58:30,705 - trading_bot.market_data_provider - INFO - Building market context for 5 contracts...
+2026-02-17 15:58:30,706 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-17 15:58:30,706 - trading_bot.market_data_provider - INFO - Building market context for KCN6 (202607)...
+2026-02-17 15:58:30,706 - trading_bot.market_data_provider - INFO - Building market context for KCU6 (202609)...
+2026-02-17 15:58:31,625 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=283.30, sma_200=332.72900000000004, regime=RANGE_BOUND, vol_5d=0.0243
+2026-02-17 15:58:31,626 - trading_bot.market_data_provider - INFO - Building market context for KCZ6 (202612)...
+2026-02-17 15:58:31,724 - trading_bot.market_data_provider - INFO - Market context for KCN6 (202607): price=280.10, sma_200=322.80575, regime=RANGE_BOUND, vol_5d=0.0241
+2026-02-17 15:58:31,727 - trading_bot.market_data_provider - INFO - Building market context for KCH7 (202703)...
+2026-02-17 15:58:31,825 - trading_bot.market_data_provider - INFO - Market context for KCU6 (202609): price=276.65, sma_200=312.58875, regime=RANGE_BOUND, vol_5d=0.0236
+2026-02-17 15:58:32,447 - trading_bot.market_data_provider - INFO - Market context for KCH7 (202703): price=270.10, sma_200=299.32975, regime=RANGE_BOUND, vol_5d=0.0232
+2026-02-17 15:58:32,558 - trading_bot.market_data_provider - INFO - Market context for KCZ6 (202612): price=273.05, sma_200=304.68825, regime=RANGE_BOUND, vol_5d=0.0231
+2026-02-17 15:58:32,558 - trading_bot.market_data_provider - INFO - Market context complete: 5/5 contracts successful
+2026-02-17 15:58:32,558 - trading_bot.signal_generator - INFO - Market context built for 5 contracts
+2026-02-17 15:58:32,558 - trading_bot.signal_generator - INFO - Convening Council for KCK6 (202605) (Cycle: KC-82a291e9)...
+2026-02-17 15:58:32,558 - trading_bot.signal_generator - INFO - Convening Council for KCN6 (202607) (Cycle: KC-0ccc87a1)...
+2026-02-17 15:58:32,559 - trading_bot.signal_generator - INFO - Convening Council for KCU6 (202609) (Cycle: KC-f2a110f2)...
+2026-02-17 15:58:33,993 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-17 15:58:33,994 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-17 15:58:33,995 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-17 15:58:34,576 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-17 15:58:34,576 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-17 15:58:34,577 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-17 15:58:35,360 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-17 15:58:35,360 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-17 15:58:35,361 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-17 15:58:35,977 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-17 15:58:35,977 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-17 15:58:36,536 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-17 15:58:36,537 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-17 15:58:37,092 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-17 15:58:37,092 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-17 15:58:37,619 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-17 15:58:37,621 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-17 15:58:38,001 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-17 15:58:38,002 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-17 15:58:38,427 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-17 15:58:38,428 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-17 15:58:38,802 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-17 15:58:38,802 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-17 15:58:39,273 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-17 15:58:39,273 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-17 15:58:39,701 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-17 15:58:39,701 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-17 15:58:40,106 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-17 15:58:40,106 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-17 15:58:40,483 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-17 15:58:40,483 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-17 15:58:40,950 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-17 15:58:40,950 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-17 15:58:41,374 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-17 15:58:41,374 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-17 15:58:41,871 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-17 15:58:41,871 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-17 15:58:42,253 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-17 15:58:42,253 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-17 15:58:42,702 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-17 15:58:42,703 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-17 15:58:43,172 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-17 15:58:43,172 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-17 15:58:43,657 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-17 15:58:43,657 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-17 15:58:44,166 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-17 15:58:44,166 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-17 15:58:44,533 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-17 15:58:44,533 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-17 15:58:44,935 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-17 15:58:44,935 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-17 15:59:24,573 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-17 15:59:26,658 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-17 15:59:34,195 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-17 15:59:38,726 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-17 15:59:40,510 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-17 15:59:41,327 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-17 15:59:47,318 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-17 15:59:47,328 - trading_bot.agents - WARNING - [macro] Output validation issues: ['Direction-evidence mismatch: BULLISH call but 4 bearish vs 1 bullish evidence words']
+2026-02-17 15:59:47,330 - trading_bot.agents - WARNING - [macro] Validation issues: ['Direction-evidence mismatch: BULLISH call but 4 bearish vs 1 bullish evidence words']
+2026-02-17 15:59:47,331 - trading_bot.agents - INFO - [macro] Confidence clamped: 0.78 → 0.30 (adjustment: 0.30)
+2026-02-17 15:59:47,830 - trading_bot.tms - INFO - TMS: macro insight cues -> ['geopolitical', 'fundamentalist']
+2026-02-17 15:59:54,352 - trading_bot.agents - WARNING - [agronomist] Output validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-17 15:59:54,354 - trading_bot.agents - WARNING - [agronomist] Validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-17 15:59:54,355 - trading_bot.agents - INFO - [agronomist] Confidence clamped: 0.95 → 0.65 (adjustment: 0.65)
+2026-02-17 15:59:54,906 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-17 15:59:56,260 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
+2026-02-17 15:59:56,334 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-17 15:59:58,293 - google_genai.models - INFO - AFC is enabled with max remote calls: 10.
