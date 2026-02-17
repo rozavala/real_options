@@ -1,0 +1,22 @@
+[Unit]
+Description=Real Options Trading Bot - Coffee (KC)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=coffee-bot
+Group=coffee-bot
+WorkingDirectory=/opt/real_options
+Environment=COMMODITY_TICKER=KC
+Environment=ENV_NAME=PROD
+
+ExecStart=/opt/real_options/venv/bin/python -u orchestrator.py --commodity KC
+Restart=on-failure
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=trading-bot
+
+[Install]
+WantedBy=multi-user.target
