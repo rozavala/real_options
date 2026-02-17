@@ -1534,3 +1534,33 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-17 16:57:05,617 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 41% of average (Sev: 5)
 2026-02-17 16:57:05,625 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
 2026-02-17 16:59:21,829 - OrderManager - INFO - Order 24 (KC-4LEG-BAG): Still at cap -5.30 for 25 minutes. Current market: Submitted
+2026-02-17 17:00:06,111 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=35, market_open=True, trading_day=True
+2026-02-17 17:00:20,908 - OrderManager - WARNING - Monitoring loop timed out. Some orders may not be in a terminal state.
+2026-02-17 17:00:20,916 - OrderManager - CRITICAL - A critical error occurred during order placement/monitoring: Not connected
+Traceback (most recent call last):
+  File "/home/rodrigo/real_options/trading_bot/order_manager.py", line 1503, in place_queued_orders
+    final_bag_ticker = ib.reqMktData(trade.contract, '', False, False)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py", line 1234, in reqMktData
+    reqId = self.client.getReqId()
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/client.py", line 160, in getReqId
+    raise ConnectionError('Not connected')
+ConnectionError: Not connected
+
+2026-02-17 17:00:21,123 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-17 17:00:21,128 - trading_bot.connection_pool - WARNING - FORCE RESETTING connection: orchestrator_orders
+2026-02-17 17:00:21,128 - Orchestrator - INFO - Emergency Order Placed (Qty: 1).
+2026-02-17 17:00:21,302 - Orchestrator - INFO - Post-cycle debounce: 1800s (actionable trade)
+2026-02-17 17:04:59,595 - Orchestrator - INFO - 2026-02-17 17:04:59,594 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-17 17:05:07,419 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=40, market_open=True, trading_day=True
+2026-02-17 17:10:08,702 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=45, market_open=True, trading_day=True
+2026-02-17 17:10:08,931 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 43% of average (Sev: 5)
+2026-02-17 17:10:08,937 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-17 17:14:59,712 - Orchestrator - INFO - 2026-02-17 17:14:59,712 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-17 17:15:09,984 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=50, market_open=True, trading_day=True
+2026-02-17 17:20:11,416 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=55, market_open=True, trading_day=True
+2026-02-17 17:24:59,800 - Orchestrator - INFO - 2026-02-17 17:24:59,799 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-17 17:25:12,729 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=60, market_open=True, trading_day=True
+2026-02-17 17:29:14,086 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 40% of average (Sev: 6)
+2026-02-17 17:29:14,095 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
