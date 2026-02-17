@@ -1809,3 +1809,150 @@ Starting orchestrator from /home/rodrigo/real_options...
 2026-02-17 12:47:45,633 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=450, market_open=True, trading_day=True
 2026-02-17 12:53:12,534 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=455, market_open=True, trading_day=True
 2026-02-17 12:58:12,729 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=460, market_open=True, trading_day=True
+2026-02-17 13:03:12,889 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=465, market_open=True, trading_day=True
+2026-02-17 13:08:13,052 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=470, market_open=True, trading_day=True
+2026-02-17 13:13:13,209 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=475, market_open=True, trading_day=True
+2026-02-17 13:16:13,341 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-17 13:16:13,345 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-17 13:16:13,424 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-17 13:16:13,424 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-17 13:16:13,424 - Orchestrator - INFO - Refreshed contract cache: KCK6
+2026-02-17 13:18:13,452 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=480, market_open=True, trading_day=True
+2026-02-17 13:18:15,282 - Orchestrator - INFO - WeatherSentinel: trigger detected (source=WeatherSentinel, severity=7)
+2026-02-17 13:18:15,298 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-02-17 13:18:15,298 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: DROUGHT in Sidamo/Yirgacheffe: 0.3mm (NEUTRAL, VEGETATIVE stage) (Cycle: KC-22337af7)
+2026-02-17 13:18:15,636 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-17 13:18:15,650 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-17 13:18:15,802 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-17 13:18:15,802 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'xai', 'anthropic', 'openai']
+2026-02-17 13:18:15,802 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'xai', 'anthropic', 'openai'], 'diversity_score': 1.0}
+2026-02-17 13:18:15,808 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-17 13:18:15,815 - trading_bot.enhanced_brier - INFO - Loaded 696 predictions from ./data/enhanced_brier.json
+2026-02-17 13:18:15,915 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 2 created from CSV, 0 resolved from council_history
+2026-02-17 13:18:15,916 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-17 13:18:15,916 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-17 13:18:15,916 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-17 13:18:15,917 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-17 13:18:15,917 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-17 13:18:15,917 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-17 13:18:15,919 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-17 13:18:15,997 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-17 13:18:15,997 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-17 13:18:15,997 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-17 13:18:20,478 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-17 13:18:20,969 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=283.20, sma_200=332.7285, regime=RANGE_BOUND, vol_5d=0.0244
+2026-02-17 13:18:20,969 - Orchestrator - INFO - Emergency market context: price=283.2, regime=RANGE_BOUND
+2026-02-17 13:18:20,970 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
+2026-02-17 13:18:20,970 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
+2026-02-17 13:18:20,970 - trading_bot.agents - INFO - Waking up agronomist...
+2026-02-17 13:18:21,281 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-17 13:18:21,282 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-17 13:20:02,906 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-17 13:20:02,907 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=3.0 \u00d7 reliability=1.1 = 3.15", "macro": "domain=1.0 \u00d7 reliability=0.7 = 0.65", "geopolitical": "domain=0.5 \u00d7 reliability=1.1 = 0.53", "supply_chain": "domain=1.5 \u00d7 reliability=0.7 = 0.99", "inventory": "domain=1.5 \u00d7 reliability=0.6 = 0.94", "sentiment": "domain=1.0 \u00d7 reliability=1.0 = 0.96", "technical": "domain=2.2 \u00d7 reliability=1.0 = 2.29", "volatility": "domain=1.4 \u00d7 reliability=0.9 = 1.28"}
+2026-02-17 13:20:02,908 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.017, dominant=agronomist)
+2026-02-17 13:20:02,908 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 3.0,
+    "reliability_mult": 1.05,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 3.15,
+    "contribution": 2.522
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.55,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.65,
+    "staleness_weight": 1.0,
+    "age_hours": 1.0,
+    "final_weight": 0.65,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 0.5,
+    "reliability_mult": 1.05,
+    "staleness_weight": 1.0,
+    "age_hours": 1.0,
+    "final_weight": 0.53,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.66,
+    "staleness_weight": 1.0,
+    "age_hours": 1.0,
+    "final_weight": 0.99,
+    "contribution": 0.792
+  },
+  {
+    "agent": "inventory",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.62,
+    "staleness_weight": 1.0,
+    "age_hours": 1.0,
+    "final_weight": 0.94,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.96,
+    "staleness_weight": 1.0,
+    "age_hours": 1.0,
+    "final_weight": 0.96,
+    "contribution": -0.624
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.02,
+    "staleness_weight": 1.0,
+    "age_hours": 1.0,
+    "final_weight": 2.29,
+    "contribution": -1.486
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.4,
+    "reliability_mult": 0.91,
+    "staleness_weight": 1.0,
+    "age_hours": 1.0,
+    "final_weight": 1.28,
+    "contribution": -1.022
+  }
+]
+2026-02-17 13:21:22,184 - trading_bot.agents - INFO - Master Decision: NEUTRAL | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Competing fundamentals: near-term tightness signals (lower I
+2026-02-17 13:21:22,186 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.7)
+2026-02-17 13:21:22,187 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-17 13:21:22,188 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-17 13:21:22,188 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-17 13:21:22,189 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-17 13:21:22,195 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-17 13:21:22,196 - Orchestrator - INFO - Emergency Cycle ACTION: VOLATILITY (VOLATILITY)
+2026-02-17 13:21:22,196 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-17 13:21:22,196 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'xai', 'anthropic', 'openai']
+2026-02-17 13:21:45,502 - trading_bot.compliance - ERROR - Compliance Audit failed: Expecting value: line 1 column 1 (char 0)
+2026-02-17 13:21:45,502 - Orchestrator - WARNING - COMPLIANCE BLOCKED Emergency Trade: Audit Error: Expecting value: line 1 column 1 (char 0)
+2026-02-17 13:21:45,785 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-17 13:21:45,791 - Orchestrator - INFO - Post-cycle debounce: 1800s (actionable trade)
+2026-02-17 13:23:17,256 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=485, market_open=True, trading_day=True
+2026-02-17 13:28:17,427 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=490, market_open=True, trading_day=True

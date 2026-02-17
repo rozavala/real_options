@@ -3,48 +3,6 @@
     "events": {
       "data": [
         {
-          "source": "XSentimentSentinel",
-          "reason": "UNUSUAL X ACTIVITY SPIKE (16 posts)",
-          "payload": {
-            "sentiment_score": 5.19,
-            "confidence": 0.2,
-            "top_themes": [
-              "Rising Arabica prices",
-              "Declining coffee futures",
-              "Impact on coffee consumers/producers",
-              "supply shortages",
-              "climate-related disruptions"
-            ],
-            "post_volume": 16,
-            "volume_baseline": 4.3,
-            "volume_spike": true,
-            "query_results": [
-              {
-                "query": "coffee futures",
-                "score": 5.0,
-                "volume": 0,
-                "confidence": 0.1,
-                "top_post": null
-              },
-              {
-                "query": "arabica prices",
-                "score": 5.0,
-                "volume": 2,
-                "confidence": 0.3,
-                "top_post": "'Arabica might become luxury soon because of the rising prices' (404Alta, bullish tone on prices)"
-              },
-              {
-                "query": "KC futures",
-                "score": 5.0,
-                "volume": 0,
-                "confidence": 0.1,
-                "top_post": null
-              }
-            ]
-          },
-          "timestamp": "2026-02-13T16:36:22.864541+00:00"
-        },
-        {
           "source": "MicrostructureSentinel",
           "reason": "Liquidity Depletion: 39% of average",
           "payload": {
@@ -115,19 +73,33 @@
             ]
           },
           "timestamp": "2026-02-17T11:18:33.327353+00:00"
+        },
+        {
+          "source": "WeatherSentinel",
+          "reason": "DROUGHT in Sidamo/Yirgacheffe: 0.3mm (NEUTRAL, VEGETATIVE stage)",
+          "payload": {
+            "type": "DROUGHT",
+            "region": "Sidamo/Yirgacheffe",
+            "weekly_precip_mm": 0.30000000000000004,
+            "threshold": 30.0,
+            "stage": "VEGETATIVE",
+            "direction": "NEUTRAL",
+            "severity": "HIGH"
+          },
+          "timestamp": "2026-02-17T13:18:15.294536+00:00"
         }
       ],
-      "timestamp": 1771327113.3278925
+      "timestamp": 1771334295.294965
     }
   },
   "reports": {
     "agronomist": {
       "data": {
-        "data": "[EVIDENCE]: Somar Meteorologia reported Minas Gerais received 72.6 mm of rain (113% of historical average) for the week ending Feb 6, 2026. Conab forecasts a record 2026 crop of 66.2 million bags. Cepea researchers (Feb 5, 2026) confirm the crop is in the 'grain filling' stage and note stabilizing expectations for higher output.\n[ANALYSIS]: The convergence of meteorological data and agronomic reports confirms a bearish supply outlook. With Minas Gerais receiving 113% of historical rainfall during the critical 'grain filling' stage, the risk of hydrological stress is negated, directly supporting bean density and weight. This weather pattern validates Conab's projection of a record 66.2 million bag harvest. While daily storms pose a minor risk of fungal proliferation, the primary impact is a maximization of yield potential, exerting downward pressure on future prices.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: BEARISH]",
+        "data": "[EVIDENCE]: Sidamo/Yirgacheffe rainfall recorded at 0.3mm (Threshold: 30.0mm); Local Ethiopian cherry prices surged from 40 to 145 ETB/kg (+262%); Global Arabica futures traded at 4-month lows ($2.93-$3.20/lb) on Feb 17, 2026, driven by Brazil's outlook.\n[ANALYSIS]: The previous analysis suffered from a weighting bias, prioritizing the global futures benchmark over the specific asset's fundamentals. While the global 'C' market is bearish due to Brazil, the 262% surge in local Ethiopian input costs and severe moisture deficits guarantee a decoupling of physical prices. The scarcity of high-grade Ethiopian lots will force differentials to expand significantly, likely outweighing the drop in the underlying futures price. Consequently, the sentiment is revised to reflect the rising cost structure for this specific origin.\n[CONFIDENCE]: 0.8\n[SENTIMENT TAG]: [SENTIMENT: BULLISH]",
         "confidence": 0.8,
-        "sentiment": "BEARISH"
+        "sentiment": "BULLISH"
       },
-      "timestamp": 1771330647.982298
+      "timestamp": 1771334402.7867124
     },
     "macro": {
       "data": {
@@ -398,22 +370,22 @@
         "slug": "next-three-fed-decisions-847",
         "title": "Fed decisions (Dec-Mar)",
         "price": 0.925,
-        "timestamp": "2026-02-17T12:59:12.791321+00:00",
+        "timestamp": "2026-02-17T13:29:17.498814+00:00",
         "severity_hwm": 0,
         "hwm_timestamp": null
       },
-      "timestamp": 1771333152.8287394
+      "timestamp": 1771334957.5467455
     },
     "How many Fed rate cuts in 2026?": {
       "data": {
         "slug": "how-many-fed-rate-cuts-in-2026",
         "title": "How many Fed rate cuts in 2026?",
-        "price": 0.245,
-        "timestamp": "2026-02-17T12:59:12.827974+00:00",
+        "price": 0.26,
+        "timestamp": "2026-02-17T13:29:17.546144+00:00",
         "severity_hwm": 7,
         "hwm_timestamp": "2026-02-17T03:49:29.733980+00:00"
       },
-      "timestamp": 1771333152.828742
+      "timestamp": 1771334957.546748
     },
     "Will tariffs generate >$250b in 2025?": {
       "data": {
@@ -422,9 +394,9 @@
         "slug": "will-tariffs-generate-250b-in-2025",
         "title": "Will tariffs generate >$250b in 2025?",
         "price": 0.0135,
-        "timestamp": "2026-02-17T12:59:12.805964+00:00"
+        "timestamp": "2026-02-17T13:29:17.521299+00:00"
       },
-      "timestamp": 1771333152.8287435
+      "timestamp": 1771334957.5467489
     },
     "Federal Reserve Interest Rate": {
       "data": {
@@ -453,11 +425,11 @@
     "WeatherSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-17T09:17:41.766958+00:00",
+        "last_check_utc": "2026-02-17T13:18:15.288126+00:00",
         "interval_seconds": 14400,
         "error": null
       },
-      "timestamp": 1771319861.7678862
+      "timestamp": 1771334295.288955
     },
     "LogisticsSentinel": {
       "data": {
@@ -471,11 +443,11 @@
     "NewsSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-17T11:18:11.395839+00:00",
+        "last_check_utc": "2026-02-17T13:18:16.640387+00:00",
         "interval_seconds": 7200,
         "error": null
       },
-      "timestamp": 1771327091.3967004
+      "timestamp": 1771334296.641256
     },
     "XSentimentSentinel": {
       "data": {
@@ -489,38 +461,38 @@
     "PredictionMarketSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-17T12:59:12.833189+00:00",
+        "last_check_utc": "2026-02-17T13:29:17.551956+00:00",
         "interval_seconds": 300,
         "error": null
       },
-      "timestamp": 1771333152.833851
+      "timestamp": 1771334957.5525606
     },
     "MacroContagionSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-17T09:17:47.731901+00:00",
+        "last_check_utc": "2026-02-17T13:18:17.090872+00:00",
         "interval_seconds": 14400,
         "error": null
       },
-      "timestamp": 1771319867.7325847
+      "timestamp": 1771334297.0915177
     },
     "PriceSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-17T12:59:12.751845+00:00",
+        "last_check_utc": "2026-02-17T13:29:17.449939+00:00",
         "interval_seconds": 60,
         "error": null
       },
-      "timestamp": 1771333152.7525325
+      "timestamp": 1771334957.450888
     },
     "MicrostructureSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-17T12:59:12.837766+00:00",
+        "last_check_utc": "2026-02-17T13:29:17.557623+00:00",
         "interval_seconds": 60,
         "error": null
       },
-      "timestamp": 1771333152.8384445
+      "timestamp": 1771334957.5581386
     },
     "MagicMock": {
       "data": {
