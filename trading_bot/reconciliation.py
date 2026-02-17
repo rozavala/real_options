@@ -255,8 +255,9 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
         contract_str = row.get('contract', '')  # e.g., "KC H4 (202403)" or just "KC H4"
         entry_price = float(row.get('entry_price', 0)) if pd.notna(row.get('entry_price')) else 0.0
         decision = row.get('master_decision', '')
+        missing_entry_price = (entry_price == 0)
 
-        if not contract_str or entry_price == 0:
+        if not contract_str:
             continue
 
         logger.info(f"Reconciling trade from {entry_time}: {contract_str} ({decision})")
@@ -409,6 +410,22 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                     continue
 
                 exit_price = matched_bar.close
+
+                # If entry_price was missing, derive it from entry-day bar
+                if missing_entry_price:
+                    entry_date_obj = entry_time.date()
+                    entry_bar = next((b for b in sorted_bars if b.date == entry_date_obj), None)
+                    if not entry_bar:
+                        # Fallback: last bar on or before entry date
+                        on_or_before = [b for b in sorted_bars if b.date <= entry_date_obj]
+                        entry_bar = on_or_before[-1] if on_or_before else None
+                    if entry_bar:
+                        entry_price = entry_bar.close
+                        df.at[index, 'entry_price'] = entry_price
+                        logger.info(f"Backfilled entry_price for {contract_str}: {entry_price:.2f} (from {entry_bar.date} bar)")
+                    else:
+                        logger.warning(f"Cannot derive entry_price for {contract_str} — no entry-day bar")
+                        continue
 
 
             # ================================================================
