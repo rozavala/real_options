@@ -877,9 +877,15 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
     # Initialize Drawdown Guard
     drawdown_guard = DrawdownGuard(config)
 
-    # Use Connection Pool
-    ib = await IBConnectionPool.get_connection(connection_purpose, config)
-    configure_market_data_type(ib)
+    # Use Connection Pool - wrap in try-except to handle connection failures gracefully
+    try:
+        ib = await IBConnectionPool.get_connection(connection_purpose, config)
+        configure_market_data_type(ib)
+    except Exception as e:
+        msg = f"Failed to establish IB connection for order placement: {e}\n{traceback.format_exc()}"
+        logger.critical(msg)
+        send_pushover_notification(config.get('notifications', {}), "Order Placement Connection Failed", msg)
+        return  # Fail closed - cannot place orders without connection
 
     live_orders = {} # Dictionary to track order status by orderId
 
