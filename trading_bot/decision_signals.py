@@ -52,9 +52,16 @@ from trading_bot.timestamps import format_ts, parse_ts_column
 
 logger = logging.getLogger(__name__)
 
-# File lives at repo root alongside trade_ledger.csv
+# File lives at repo root alongside trade_ledger.csv (legacy default)
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SIGNALS_FILE_PATH = os.path.join(_BASE_DIR, 'decision_signals.csv')
+
+
+def set_data_dir(data_dir: str):
+    """Configure decision signals path for a commodity-specific data directory."""
+    global SIGNALS_FILE_PATH
+    SIGNALS_FILE_PATH = os.path.join(data_dir, 'decision_signals.csv')
+    logger.info(f"DecisionSignals data_dir set to: {data_dir}")
 
 # Canonical schema — order matters for CSV columns
 SCHEMA_COLUMNS = [

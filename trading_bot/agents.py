@@ -201,10 +201,17 @@ class TradingCouncil:
         ]
 
         # 6. Initialize Cognitive Infrastructure
-        self.tms = TransactiveMemory()
-        self.scorer = ReliabilityScorer()
+        data_dir = config.get('data_dir')
+        if data_dir:
+            import os as _os
+            self.tms = TransactiveMemory(persist_path=_os.path.join(data_dir, 'tms'))
+            self.scorer = ReliabilityScorer(scores_file=_os.path.join(data_dir, 'agent_scores.json'))
+            self.brier_tracker = EnhancedBrierTracker(data_path=_os.path.join(data_dir, 'enhanced_brier.json'))
+        else:
+            self.tms = TransactiveMemory()
+            self.scorer = ReliabilityScorer()
+            self.brier_tracker = EnhancedBrierTracker()
         self.response_tracker = ResponseTimeTracker()
-        self.brier_tracker = EnhancedBrierTracker()
         self._search_cache = {}  # Cache for grounded data
 
         # Rate limiter state for grounded data gathering (Gemini with tools)

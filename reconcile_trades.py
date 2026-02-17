@@ -340,16 +340,19 @@ def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) 
     return pd.DataFrame(missing_from_local), local_trades_unmatched
 
 
-def get_trade_ledger_df() -> pd.DataFrame:
+def get_trade_ledger_df(data_dir: str = None) -> pd.DataFrame:
     """
     Reads and consolidates the main and archived trade ledgers into a single
     DataFrame for analysis.
-    (This function is unchanged from your original script)
     """
-    # Define paths relative to the script's location, which is the project root.
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-    archive_dir = os.path.join(base_dir, 'archive_ledger')
+    if data_dir:
+        ledger_path = os.path.join(data_dir, 'trade_ledger.csv')
+        archive_dir = os.path.join(data_dir, 'archive_ledger')
+    else:
+        # Legacy: define paths relative to the script's location (project root)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
+        archive_dir = os.path.join(base_dir, 'archive_ledger')
 
     dataframes = []
 

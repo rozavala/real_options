@@ -43,11 +43,15 @@ def _load_archive_file(filepath: str, mtime: float) -> pd.DataFrame:
     return pd.read_csv(filepath)
 
 
-def get_trade_ledger_df():
+def get_trade_ledger_df(data_dir: str = None):
     """Reads and consolidates the main and archived trade ledgers for analysis."""
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-    archive_dir = os.path.join(base_dir, 'archive_ledger')
+    if data_dir:
+        ledger_path = os.path.join(data_dir, 'trade_ledger.csv')
+        archive_dir = os.path.join(data_dir, 'archive_ledger')
+    else:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
+        archive_dir = os.path.join(base_dir, 'archive_ledger')
 
     dataframes = []
     logger.info("--- Consolidating Trade Ledgers ---")

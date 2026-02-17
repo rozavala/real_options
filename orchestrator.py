@@ -66,7 +66,8 @@ from trading_bot.utils import get_active_ticker
 from trading_bot.sentinel_stats import SENTINEL_STATS
 
 # --- Logging Setup ---
-setup_logging(log_file="logs/orchestrator.log")
+# NOTE: setup_logging() is called in main() after --commodity arg is parsed,
+# so that the log file can be per-commodity (e.g. logs/orchestrator_kc.log).
 logger = logging.getLogger("Orchestrator")
 
 # --- Global Process Handle for the monitor ---
@@ -236,8 +237,8 @@ class TriggerDeduplicator:
             del self.cooldowns[source]
             self._save_state()
 
-# Global Deduplicator Instance
-GLOBAL_DEDUPLICATOR = TriggerDeduplicator()
+# Global Deduplicator Instance — initialized in main() with commodity-specific state_file
+GLOBAL_DEDUPLICATOR = None
 
 # Concurrent Cycle Lock (Global)
 EMERGENCY_LOCK = asyncio.Lock()
@@ -4548,16 +4549,61 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
     )
 
 
-async def main():
+async def main(commodity_ticker: str = None):
     """The main long-running orchestrator process."""
+    # --- Multi-commodity path isolation ---
+    ticker = commodity_ticker or os.environ.get("COMMODITY_TICKER", "KC")
+    ticker = ticker.upper()
+    os.environ["COMMODITY_TICKER"] = ticker  # Expose to notifications and dashboard
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, 'data', ticker)
+    os.makedirs(data_dir, exist_ok=True)
+
+    # Per-commodity logging (must be first — before any logger.info calls)
+    setup_logging(log_file=f"logs/orchestrator_{ticker.lower()}.log")
+
     logger.info("=============================================")
-    logger.info("=== Starting the Trading Bot Orchestrator ===")
+    logger.info(f"=== Starting Trading Bot Orchestrator [{ticker}] ===")
     logger.info("=============================================")
+    logger.info(f"Data directory: {data_dir}")
 
     config = load_config()
     if not config:
         logger.critical("Orchestrator cannot start without a valid configuration.")
         return
+
+    # Apply per-commodity config overrides (e.g. commodity_overrides.CC)
+    from config_loader import deep_merge
+    commodity_overrides = config.get('commodity_overrides', {}).get(ticker, {})
+    if commodity_overrides:
+        config = deep_merge(config, commodity_overrides)
+        logger.info(f"Applied commodity overrides for {ticker}: {list(commodity_overrides.keys())}")
+
+    # Inject data_dir and ticker into config for downstream modules
+    config['data_dir'] = data_dir
+    config.setdefault('commodity', {})['ticker'] = ticker
+
+    # --- Initialize all path-dependent modules BEFORE anything else ---
+    from trading_bot.state_manager import StateManager
+    from trading_bot.task_tracker import set_data_dir as set_tracker_dir
+    from trading_bot.decision_signals import set_data_dir as set_signals_dir
+    from trading_bot.order_manager import set_capital_state_dir
+    from trading_bot.sentinel_stats import set_data_dir as set_stats_dir
+    from trading_bot.utils import set_data_dir as set_utils_data_dir
+    from trading_bot.tms import set_data_dir as set_tms_dir
+
+    StateManager.set_data_dir(data_dir)
+    set_tracker_dir(data_dir)
+    set_signals_dir(data_dir)
+    set_capital_state_dir(data_dir)
+    set_stats_dir(data_dir)
+    set_utils_data_dir(data_dir)
+    set_tms_dir(data_dir)
+
+    global GLOBAL_DEDUPLICATOR
+    GLOBAL_DEDUPLICATOR = TriggerDeduplicator(
+        state_file=os.path.join(data_dir, 'deduplicator_state.json')
+    )
 
     # Initialize trading mode
     from trading_bot.utils import set_trading_mode, is_trading_off
@@ -4597,7 +4643,6 @@ async def main():
             )
 
     # Update deduplicator with config values
-    global GLOBAL_DEDUPLICATOR
     GLOBAL_DEDUPLICATOR.critical_severity_threshold = config.get('sentinels', {}).get('critical_severity_threshold', 9)
 
     # Initialize Budget Guard (singleton — shared with heterogeneous_router)
@@ -4667,9 +4712,7 @@ async def main():
                 for task in task_list
             ]
         }
-        schedule_file = os.path.join(
-            os.path.dirname(__file__), 'data', 'active_schedule.json'
-        )
+        schedule_file = os.path.join(data_dir, 'active_schedule.json')
         os.makedirs(os.path.dirname(schedule_file), exist_ok=True)
         with open(schedule_file, 'w') as f:
             json.dump(schedule_data, f, indent=2)
@@ -4789,14 +4832,26 @@ async def sequential_main():
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Trading Bot Orchestrator")
+    parser.add_argument(
+        '--commodity', type=str,
+        default=os.environ.get("COMMODITY_TICKER", "KC"),
+        help="Commodity ticker (e.g. KC, CC). Default: $COMMODITY_TICKER or KC"
+    )
+    parser.add_argument(
+        '--sequential', action='store_true',
+        help="Run tasks sequentially (legacy mode)"
+    )
+    args = parser.parse_args()
 
-    if len(sys.argv) > 1:
+    if args.sequential:
         asyncio.run(sequential_main())
     else:
         loop = asyncio.get_event_loop()
         main_task = None
         try:
-            main_task = loop.create_task(main())
+            main_task = loop.create_task(main(commodity_ticker=args.commodity))
             loop.run_until_complete(main_task)
         except (KeyboardInterrupt, SystemExit):
             logger.info("Orchestrator stopped by user.")

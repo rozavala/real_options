@@ -9,8 +9,10 @@ import streamlit as st
 from config_loader import load_config
 from trading_bot.logging_config import setup_logging
 
-# Set up dashboard-specific logging
-setup_logging(log_file="logs/dashboard.log")
+# Set up dashboard-specific logging (per-commodity to avoid log collision)
+import os
+_dashboard_ticker = os.environ.get("COMMODITY_TICKER", "KC").lower()
+setup_logging(log_file=f"logs/dashboard_{_dashboard_ticker}.log")
 
 # Dynamic configuration for commodity-aware branding
 _cfg = load_config()

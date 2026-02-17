@@ -48,6 +48,11 @@ def send_pushover_notification(config: dict, title: str, message: str, attachmen
     if os.getenv("TRADING_MODE", "LIVE").upper().strip() == "OFF":
         env_prefix = f"OFF {env_prefix}".strip() if env_prefix else "OFF"
 
+    # Add commodity ticker prefix for multi-commodity isolation
+    commodity_ticker = os.getenv("COMMODITY_TICKER", "")
+    if commodity_ticker:
+        env_prefix = f"[{commodity_ticker}] {env_prefix}".strip() if env_prefix else f"[{commodity_ticker}]"
+
     # Only add the prefix if it exists
     if env_prefix:
         title = f"{env_prefix} - {title}"

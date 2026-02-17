@@ -66,7 +66,8 @@ class SelfHealingMonitor:
         if not is_market_open(self.config):
             return
 
-        state_file = Path("data/state.json")
+        data_dir = self.config.get('data_dir', 'data')
+        state_file = Path(os.path.join(data_dir, "state.json"))
         if state_file.exists():
             mtime = datetime.fromtimestamp(
                 state_file.stat().st_mtime, tz=timezone.utc

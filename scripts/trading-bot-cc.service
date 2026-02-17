@@ -1,0 +1,25 @@
+[Unit]
+Description=Real Options Trading Bot - Cocoa (CC)
+After=network.target trading-bot.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=coffee-bot
+Group=coffee-bot
+WorkingDirectory=/opt/real_options
+Environment=COMMODITY_TICKER=CC
+Environment=ENV_NAME=PROD
+
+# Staggered boot: wait 30s after KC to prevent IBKR pacing violations
+ExecStartPre=/bin/sleep 30
+
+ExecStart=/opt/real_options/venv/bin/python -u orchestrator.py --commodity CC
+Restart=on-failure
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=trading-bot-cc
+
+[Install]
+WantedBy=multi-user.target

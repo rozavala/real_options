@@ -44,12 +44,32 @@ from config_loader import load_config
 from trading_bot.utils import configure_market_data_type
 from trading_bot.timestamps import parse_ts_column
 
+# === MULTI-COMMODITY PATH RESOLUTION ===
+def _resolve_data_path(filename: str) -> str:
+    """Resolve a data file path with multi-commodity fallback.
+
+    3-tier fallback:
+    1. data/{COMMODITY_TICKER}/{filename} — per-commodity isolated path
+    2. data/{filename} — legacy pre-migration path
+    3. Returns data/{COMMODITY_TICKER}/{filename} — targeted path for file creation
+    """
+    ticker = os.environ.get("COMMODITY_TICKER", "KC")
+    commodity_path = os.path.join("data", ticker, filename)
+    legacy_path = os.path.join("data", filename)
+
+    if os.path.exists(commodity_path):
+        return commodity_path
+    if os.path.exists(legacy_path):
+        return legacy_path
+    return commodity_path  # Default to commodity path for creation
+
+
 # === CONFIGURATION ===
 # E4 FIX: Dynamic starting capital handled in get_starting_capital function
-STATE_FILE_PATH = 'data/state.json'
+STATE_FILE_PATH = _resolve_data_path('state.json')
 ORCHESTRATOR_LOG_PATH = 'logs/orchestrator.log'
-COUNCIL_HISTORY_PATH = 'data/council_history.csv'
-DAILY_EQUITY_PATH = 'data/daily_equity.csv'
+COUNCIL_HISTORY_PATH = _resolve_data_path('council_history.csv')
+DAILY_EQUITY_PATH = _resolve_data_path('daily_equity.csv')
 
 
 # === DATA LOADING FUNCTIONS ===

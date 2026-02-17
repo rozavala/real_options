@@ -92,7 +92,8 @@ async def sync_equity_from_flex(config: dict):
         return
 
     # 4. Merge with Local Data (Preserving extra local data)
-    file_path = os.path.join("data", "daily_equity.csv")
+    data_dir = config.get('data_dir', 'data')
+    file_path = os.path.join(data_dir, "daily_equity.csv")
 
     final_df = flex_df.copy() # Start with Flex data as base (Source of Truth)
 
@@ -136,7 +137,9 @@ async def log_equity_snapshot(config: dict):
     """
     logger.info("--- Starting Equity Snapshot Logging ---")
 
-    file_path = os.path.join("data", "daily_equity.csv")
+    data_dir = config.get('data_dir', 'data')
+    file_path = os.path.join(data_dir, "daily_equity.csv")
+    os.makedirs(data_dir, exist_ok=True)
 
     # 1. Connect to IB
     ib = IB()
