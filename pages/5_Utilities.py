@@ -16,7 +16,7 @@ import logging
 from datetime import datetime, timezone
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dashboard_utils import get_config
+from dashboard_utils import get_config, _resolve_data_path
 from trading_bot.weighted_voting import TriggerType
 
 # Load config at module level
@@ -502,7 +502,7 @@ with state_cols[0]:
     st.info("**View System State**")
     if st.button("👁️ Show state.json Contents", help="Display the current orchestrator state file (sentinels, triggers, flags)."):
         try:
-            state_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "state.json")
+            state_path = _resolve_data_path("state.json")
             if os.path.exists(state_path):
                 with open(state_path, 'r') as f:
                     state_data = json.load(f)
@@ -526,7 +526,7 @@ with state_cols[1]:
                 st.error("❌ Please confirm by checking the box")
             else:
                 try:
-                    state_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "state.json")
+                    state_path = _resolve_data_path("state.json")
                     if os.path.exists(state_path):
                         # Create backup first
                         backup_path = f"{state_path}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -836,7 +836,7 @@ with recon_row3[0]:
     # Show pending count
     try:
         import pandas as pd
-        structured_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "agent_accuracy_structured.csv")
+        structured_path = _resolve_data_path("agent_accuracy_structured.csv")
         if os.path.exists(structured_path):
             structured_df = pd.read_csv(structured_path)
             pending_count = (structured_df['actual'] == 'PENDING').sum() if 'actual' in structured_df.columns else 0
