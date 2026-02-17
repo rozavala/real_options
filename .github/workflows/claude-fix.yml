@@ -10,6 +10,13 @@ permissions:
   pull-requests: write
   id-token: write
 
+# Prevent duplicate runs when multiple labels are added to the same issue.
+# The error_reporter adds labels at creation (via PAT), each firing a 'labeled'
+# event. Only the claude-fix label matters — cancel earlier runs for same issue.
+concurrency:
+  group: claude-fix-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   fix:
     runs-on: ubuntu-latest
