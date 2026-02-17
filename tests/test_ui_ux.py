@@ -67,5 +67,53 @@ class TestCockpitUX(unittest.TestCase):
         self.assertTrue(found_progressive_enhancement,
                         "Did not find progressive enhancement pattern for error display")
 
+class TestUtilitiesUX(unittest.TestCase):
+    def test_log_collection_safety_interlock(self):
+        """
+        Verify that the "Collect Logs" button in pages/5_Utilities.py
+        is protected by a safety interlock (st.checkbox).
+        """
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '5_Utilities.py')
+
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        # Scan for confirm_logs = st.checkbox(...) and st.button(..., disabled=not confirm_logs)
+        found_checkbox = False
+        found_protected_button = False
+
+        for node in ast.walk(tree):
+            # Find checkbox assignment: confirm_logs = st.checkbox(...)
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id == 'confirm_logs':
+                        if (isinstance(node.value, ast.Call) and
+                            isinstance(node.value.func, ast.Attribute) and
+                            node.value.func.attr == 'checkbox'):
+                            found_checkbox = True
+
+            # Find button call: st.button("🚀 Collect Logs", ..., disabled=not confirm_logs)
+            if isinstance(node, ast.Call):
+                if (isinstance(node.func, ast.Attribute) and
+                    node.func.attr == 'button'):
+
+                    # Check if first argument is "🚀 Collect Logs"
+                    is_collect_logs = False
+                    if node.args and isinstance(node.args[0], ast.Constant) and "Collect Logs" in str(node.args[0].value):
+                        is_collect_logs = True
+
+                    if is_collect_logs:
+                        # Check keyword arguments for disabled=not confirm_logs
+                        for kw in node.keywords:
+                            if kw.arg == 'disabled':
+                                if (isinstance(kw.value, ast.UnaryOp) and
+                                    isinstance(kw.value.op, ast.Not) and
+                                    isinstance(kw.value.operand, ast.Name) and
+                                    kw.value.operand.id == 'confirm_logs'):
+                                    found_protected_button = True
+
+        self.assertTrue(found_checkbox, "Safety checkbox 'confirm_logs' not found in Utilities")
+        self.assertTrue(found_protected_button, "Collect Logs button is not protected by 'confirm_logs' interlock")
+
 if __name__ == '__main__':
     unittest.main()

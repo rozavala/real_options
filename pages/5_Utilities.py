@@ -50,10 +50,14 @@ Collect and archive logs to the centralized logs branch for analysis and debuggi
 This captures orchestrator logs, dashboard logs, state files, and trading data.
 """)
 
+# Safety Interlock
+confirm_logs = st.checkbox("I confirm I want to collect and archive logs", key="confirm_logs")
+
 if st.button(
     "🚀 Collect Logs",
     type="primary",
-    help="Triggers the log collection script to archive system logs, state files, and trading data for analysis."
+    disabled=not confirm_logs,
+    help="Triggers the log collection script to archive system logs, state files, and trading data for analysis. Requires confirmation."
 ):
     with st.spinner(f"Collecting {current_env} logs..."):
         try:
