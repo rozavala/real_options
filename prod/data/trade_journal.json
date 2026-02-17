@@ -1271,5 +1271,128 @@
       "rule_suggestion": "For agricultural supply thesis trades, select expiration at least 30 days AFTER expected physical delivery/arrival of new supply, not before."
     },
     "key_lesson": "For supply-driven bearish theses, align contract expiration with the actual timeline of supply hitting the market, not the forecast announcement date."
+  },
+  {
+    "position_id": "KC-5ca9e399",
+    "contract": "KCK6 (202605)",
+    "timestamp": "2026-02-16T23:25:44.498187+00:00",
+    "pnl": -0.9429999999999996,
+    "outcome": "LOSS",
+    "entry_thesis": "The debate centers around a temporary supply disruption due to logistics and the longer-term bearish outlook from a record Brazilian coffee crop. The Permabear presents multiple strong arguments centered on the physical reality of an abundant upcoming supply. This is supported by the Agronomist Report, which highlights excellent growing conditions in Brazil. Although the Permabull points to current logistical bottlenecks as a source of ongoing tightness, the voluminous supply is likely eventually to reach markets. The mixed XSentimentSentinel data, with a non-convincing sentiment score, does not provide strong bullish evidence. The Bear argues effectively against the bullish position by stating that the market already prices in future supply, indicated by current prices being significantly below the 200-day SMA. The consensus from the desk reports further strengthens the bearish case by emphasizing the impact of the potential upcoming supply surge. [DA VETO: SHORT SQUEEZE SCENARIO: With RSI at 29.50 (deeply oversold) and price sitting just 1.7% above first support at 272.07, a violent short-covering rally is highly probable. Commercial buyers and algorithmic systems routinely trigger mean-reversion trades at these extremes. A 10-15% snapback to 305-320 range would devastate the bearish position within days.]",
+    "entry_direction": "NEUTRAL",
+    "entry_confidence": 0.0,
+    "entry_strategy": "IRON_CONDOR",
+    "trigger_type": "XSentimentSentinel",
+    "narrative": {
+      "summary": "Neutral iron condor on coffee futures lost $0.94 as the market likely moved outside the expected range despite the balanced supply disruption vs. Brazilian crop thesis.",
+      "thesis_validated": false,
+      "what_went_right": [
+        "Correctly identified competing forces: short-term logistics disruption vs. long-term bearish supply fundamentals",
+        "Selected an appropriate neutral strategy (iron condor) given the conflicting signals",
+        "Recognized the significance of the record Brazilian coffee crop as a bearish factor"
+      ],
+      "what_went_wrong": [
+        "Entry confidence of 0.0 should have been a disqualifying factor - no conviction means no trade",
+        "XSentimentSentinel trigger may not be appropriate for commodity fundamentals-driven thesis",
+        "Failed to account for how quickly logistics disruptions can resolve or escalate, causing directional moves",
+        "Thesis was incomplete (truncated), suggesting insufficient analysis before entry",
+        "Neutral stance in a market with known supply shocks is inherently risky"
+      ],
+      "lesson": "Never enter a trade with 0.0 confidence - if the system cannot generate conviction, the thesis is not tradeable regardless of how balanced the arguments appear.",
+      "rule_suggestion": "Reject any trade where entry_confidence < 0.3; additionally, avoid iron condors on agricultural commodities when active supply disruption events are in progress"
+    },
+    "key_lesson": "Never enter a trade with 0.0 confidence - if the system cannot generate conviction, the thesis is not tradeable regardless of how balanced the arguments appear."
+  },
+  {
+    "position_id": "KC-1f200878",
+    "contract": "KCK6 (202605)",
+    "timestamp": "2026-02-16T23:25:55.971685+00:00",
+    "pnl": 3.25,
+    "outcome": "WIN",
+    "entry_thesis": "The evidence from multiple reports highlights a potentially overwhelming supply-side pressure with Brazil's forecasted record coffee crop of 66.2 million bags. The primary bearish argument centers on this fundamental oversupply, which is likely to dominate market conditions once current short-term factors such as the Brazilian Real's strength exhaust themselves. The recent crash in the 'Fed decisions (Dec-Mar)' market indicates that earlier expectations for a rate cut have sharply reversed, implying potential US Dollar strength that could undermine temporary bullishness driven by the Real's appreciation. The Agronomist and Inventory reports align, showing no substantial weather disruptions and a macro backdrop of significant inventory expansion, casting a bearish shadow over the medium to long-term outlook. Although the bullish side presents valid points about immediate supply tightness due to decreased exports and shipping delays, these are possibly temporary and insufficient to counterbalance the looming wave of supply. [DIVERGENT CONSENSUS: Vote=BULLISH, trading smaller]",
+    "entry_direction": "BEARISH",
+    "entry_confidence": 0.35,
+    "entry_strategy": "DIRECTIONAL",
+    "trigger_type": "PredictionMarketSentinel",
+    "narrative": {
+      "summary": "Low-confidence bearish coffee trade triggered by PredictionMarketSentinel captured a small profit ($3.25) on thesis of Brazilian oversupply pressuring prices.",
+      "thesis_validated": true,
+      "what_went_right": [
+        "Correctly identified Brazil's record 66.2M bag crop as bearish fundamental driver",
+        "Supply-side pressure thesis proved directionally accurate",
+        "PredictionMarketSentinel trigger identified actionable entry point",
+        "Trade converted to profit despite very low entry confidence (0.35)"
+      ],
+      "what_went_wrong": [
+        "Entry confidence was extremely low (0.35) suggesting weak conviction - yet trade was still taken",
+        "P&L of $3.25 suggests either minimal position sizing or quick exit that may have left money on table",
+        "Thesis mentioned Brazilian Real strength as headwind but unclear if this was properly weighted",
+        "Fed rate decision market correlation mentioned but thesis was truncated - incomplete analysis"
+      ],
+      "lesson": "When fundamental supply thesis is strong but entry confidence is below 0.40, either size down proportionally or wait for additional confirming signals rather than taking marginal entries.",
+      "rule_suggestion": "For DIRECTIONAL trades with entry confidence < 0.40, require at least one additional confirming trigger (technical or sentiment) before entry, OR reduce position size to 50% of standard allocation."
+    },
+    "key_lesson": "When fundamental supply thesis is strong but entry confidence is below 0.40, either size down proportionally or wait for additional confirming signals rather than taking marginal entries."
+  },
+  {
+    "position_id": "KC-34d80709",
+    "contract": "KCK6 (202605)",
+    "timestamp": "2026-02-16T23:26:05.406017+00:00",
+    "pnl": 3.0,
+    "outcome": "WIN",
+    "entry_thesis": "The debate leans towards a bearish outlook primarily due to overwhelming supply fundamentals. The Agronomist, Inventory, and multiple high-confidence reports consistently highlight a record 66.2 million bag coffee forecast for Brazil, with 113% of historical average rainfall benefiting crop development. This suggests a significant increase in supply that will exert downward pressure on prices once logistical bottlenecks clear, as indicated by reports of resumed Red Sea transits and easing shipping rates. The Permabear critique effectively dismantled the bullish argument that relied heavily on transitory factors such as Brazilian Real appreciation. The market's current position below the 200-day SMA and the bearish sentiment from technical trends further validate this outlook. While short-term rallies driven by currency fluctuations and oversold technical indicators are possible, they lack the structural support to challenge the impending supply-driven bearish pressure. [DIVERGENT CONSENSUS: Vote=BULLISH, trading smaller]",
+    "entry_direction": "BEARISH",
+    "entry_confidence": 0.35,
+    "entry_strategy": "DIRECTIONAL",
+    "trigger_type": "XSentimentSentinel",
+    "narrative": {
+      "summary": "Low-confidence bearish trade on KC coffee futures based on Brazil supply fundamentals resulted in a small $3.00 win, validating the directional thesis despite minimal conviction.",
+      "thesis_validated": true,
+      "what_went_right": [
+        "Correctly identified bearish supply pressure from record 66.2M bag Brazil coffee forecast",
+        "XSentimentSentinel trigger captured the bearish sentiment shift accurately",
+        "Fundamental thesis around abundant rainfall (113% of historical average) supporting crop development proved correct",
+        "Anticipated that logistical improvements (resumed Red Sea transits) would ease supply bottlenecks"
+      ],
+      "what_went_wrong": [
+        "Entry confidence was very low at 0.35, suggesting insufficient conviction for the position size taken",
+        "Small P&L of $3.00 indicates either minimal position sizing or brief holding period - likely left money on the table if thesis was correct",
+        "Original thesis was incomplete/truncated, suggesting rushed analysis or documentation issues"
+      ],
+      "lesson": "When fundamental supply analysis aligns across multiple sources (Agronomist, Inventory reports) with high agreement, consider scaling up confidence scores rather than defaulting to low conviction entries that limit upside capture.",
+      "rule_suggestion": "Require minimum 0.50 entry confidence for directional trades; if confidence < 0.50 but fundamentals show 3+ confirming sources, either upgrade confidence or skip the trade entirely."
+    },
+    "key_lesson": "When fundamental supply analysis aligns across multiple sources (Agronomist, Inventory reports) with high agreement, consider scaling up confidence scores rather than defaulting to low conviction entries that limit upside capture."
+  },
+  {
+    "position_id": "KC-4a43184c",
+    "contract": "KCK6 (202605)",
+    "timestamp": "2026-02-16T23:26:14.662138+00:00",
+    "pnl": -0.6999999999999886,
+    "outcome": "LOSS",
+    "entry_thesis": "The overarching evidence points toward a bearish outlook. The primary bearish driver is the Conab forecast projecting a record crop of 66.2 million bags, which suggests a significant increase in upcoming supply. The Permabear's arguments highlight the fragility of the recent FX-driven price surge and emphasize that this is not supported by a fundamental supply-demand shift. Both the Agronomist and Inventory Reports support this bearish supply outlook, pointing to ideal weather conditions and a narrowing backwardation as evidence of expected ample supply. Meanwhile, the bullish arguments hinge on short-term factors like BRL appreciation and social media sentiment, which are not seen as sustainable drivers compared to the impending large supply. The XSentimentSentinel's low confidence further undermines the bullish position, indicating social noise rather than a predictive trend. [DIVERGENT CONSENSUS: Vote=BULLISH, trading smaller]",
+    "entry_direction": "BEARISH",
+    "entry_confidence": 0.35,
+    "entry_strategy": "DIRECTIONAL",
+    "trigger_type": "XSentimentSentinel",
+    "narrative": {
+      "summary": "Low-confidence bearish coffee trade triggered by sentiment signal resulted in a small loss despite fundamentally sound supply-side thesis.",
+      "thesis_validated": false,
+      "what_went_right": [
+        "Correctly identified bearish supply fundamentals with Conab's record 66.2M bag forecast",
+        "Properly recognized FX-driven price surge as fragile and non-fundamental",
+        "Small position size limited downside given low confidence (0.35)",
+        "Multiple data sources (Agronomist, Inventory Reports) aligned with thesis"
+      ],
+      "what_went_wrong": [
+        "Entry confidence of 0.35 was too low to justify taking the trade",
+        "Sentiment-based trigger may have entered against short-term momentum",
+        "Failed to account for timing mismatch between long-term supply thesis and short-term price action",
+        "FX volatility impact was acknowledged but not adequately weighted in entry decision"
+      ],
+      "lesson": "When entry confidence is below 0.40, require additional confirming signals beyond a single sentiment trigger before initiating directional trades, especially in FX-sensitive commodities.",
+      "rule_suggestion": "Do not enter DIRECTIONAL trades when Entry Confidence < 0.40 unless at least 2 independent trigger signals confirm, and avoid bearish coffee entries when BRL is weakening more than 1% intraday."
+    },
+    "key_lesson": "When entry confidence is below 0.40, require additional confirming signals beyond a single sentiment trigger before initiating directional trades, especially in FX-sensitive commodities."
   }
 ]

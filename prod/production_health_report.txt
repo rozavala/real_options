@@ -1,13 +1,13 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Mon Feb 16 21:30:02 UTC 2026
+Timestamp: Tue Feb 17 03:00:03 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  21:30:02 up 36 days,  3:53,  2 users,  load average: 0.01, 0.03, 0.00
+Uptime:  03:00:03 up 36 days,  9:23,  2 users,  load average: 0.28, 0.08, 0.02
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
 tmpfs           392M  1.2M  391M   1% /run
-/dev/vda1        48G   24G   25G  50% /
+/dev/vda1        48G   24G   24G  50% /
 tmpfs           2.0G  2.1M  2.0G   1% /dev/shm
 tmpfs           5.0M     0  5.0M   0% /run/lock
 /dev/vda16      881M  117M  703M  15% /boot
@@ -16,18 +16,18 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.2Gi       249Mi        31Mi       1.6Gi       1.6Gi
-Swap:          4.0Gi       543Mi       3.5Gi
+Mem:           3.8Gi       2.4Gi       256Mi        34Mi       1.4Gi       1.4Gi
+Swap:          4.0Gi       204Mi       3.8Gi
 
 === LOAD AVERAGE ===
-0.01 0.03 0.00 1/704 1161283
+0.28 0.08 0.02 1/760 1167843
 
 === PROCESS STATUS ===
 Trading processes:
-console  1044271  0.0  9.3 1897304 375924 ?      Ssl  Feb13   2:16 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1167111  0.2  9.1 1644472 367204 ?      Ssl  01:51   0:08 /home/console/real_options/venv/bin/python -u orchestrator.py
 
 Dashboard processes:
-console  1044291  0.2  8.2 2855048 329124 ?      Sl   Feb13  16:42 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1167130  0.2  1.9 606120 78968 ?        Sl   01:51   0:11 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -35,13 +35,3 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-02-13 15:25:48,832 - ib_insync.wrapper - ERROR - Error 162, reqId 6: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=744635069, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=302.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P3.025', tradingClass='KO')
-2026-02-13 16:56:02,859 - ib_insync.wrapper - ERROR - Error 162, reqId 18: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=743955652, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=297.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P2.975', tradingClass='KO')
-2026-02-13 20:00:00,932 - Orchestrator - INFO - 2026-02-13 20:00:00,930 - ib_insync.client - ERROR - Peer closed connection.
-2026-02-16 10:00:00,015 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('127.0.0.1', 4001)")
-2026-02-16 10:00:00,016 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
-2026-02-16 10:00:00,517 - Orchestrator - ERROR - Thesis cleanup failed: 'cleanup'
-2026-02-16 14:00:10,756 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('127.0.0.1', 4001)")
-2026-02-16 14:00:10,756 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
-2026-02-16 16:00:00,201 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('127.0.0.1', 4001)")
-2026-02-16 16:00:00,201 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
