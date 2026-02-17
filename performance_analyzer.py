@@ -115,7 +115,7 @@ async def get_live_account_data(config: dict) -> dict | None:
         await ib.connectAsync(
             host=conn_settings.get('host', '127.0.0.1'),
             port=conn_settings.get('port', 7497),
-            clientId=random.randint(200, 2000),
+            clientId=random.randint(5000, 9999),
             timeout=15
         )
 
@@ -398,7 +398,7 @@ async def check_for_open_orders(config: dict) -> list:
         await ib.connectAsync(
             host=conn_settings.get('host', '127.0.0.1'),
             port=conn_settings.get('port', 7497),
-            clientId=random.randint(200, 2000),
+            clientId=random.randint(5000, 9999),
             timeout=10
         )
         open_orders = await ib.reqAllOpenOrdersAsync()
@@ -412,7 +412,7 @@ async def analyze_performance(config: dict) -> dict | None:
     Analyzes trading performance and generates a dictionary of report parts.
     """
     # Ledger is still needed for LTD stats and charts
-    trade_df = get_trade_ledger_df()
+    trade_df = get_trade_ledger_df(config.get('data_dir'))
     signals_df = get_decision_signals_df()
 
     logger.info("--- Starting Daily Performance Analysis ---")
@@ -429,7 +429,8 @@ async def analyze_performance(config: dict) -> dict | None:
 
         # Load equity history if available
         equity_df = pd.DataFrame()
-        equity_file = os.path.join("data", "daily_equity.csv")
+        data_dir = config.get('data_dir', 'data')
+        equity_file = os.path.join(data_dir, "daily_equity.csv")
         starting_capital = _get_default_starting_capital()
 
         if os.path.exists(equity_file):

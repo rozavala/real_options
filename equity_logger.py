@@ -218,12 +218,22 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--sync', action='store_true', help='Sync equity from Flex Query')
+    parser.add_argument('--commodity', type=str,
+                        default=os.environ.get("COMMODITY_TICKER", "KC"),
+                        help="Commodity ticker (e.g. KC, CC)")
     args = parser.parse_args()
+
+    ticker = args.commodity.upper()
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, 'data', ticker)
+    os.makedirs(data_dir, exist_ok=True)
 
     setup_logging(log_file="logs/equity_logger.log")
     cfg = load_config()
 
     if cfg:
+        cfg['data_dir'] = data_dir
+        cfg.setdefault('commodity', {})['ticker'] = ticker
         if args.sync:
             asyncio.run(sync_equity_from_flex(cfg))
         else:

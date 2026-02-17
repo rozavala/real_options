@@ -67,7 +67,8 @@ def _resolve_data_path(filename: str) -> str:
 # === CONFIGURATION ===
 # E4 FIX: Dynamic starting capital handled in get_starting_capital function
 STATE_FILE_PATH = _resolve_data_path('state.json')
-ORCHESTRATOR_LOG_PATH = 'logs/orchestrator.log'
+_ticker_for_log = os.environ.get("COMMODITY_TICKER", "KC").lower()
+ORCHESTRATOR_LOG_PATH = f'logs/orchestrator_{_ticker_for_log}.log'
 COUNCIL_HISTORY_PATH = _resolve_data_path('council_history.csv')
 DAILY_EQUITY_PATH = _resolve_data_path('daily_equity.csv')
 
@@ -274,7 +275,8 @@ def load_log_data():
         logs_content = {}
         for log_path in list_of_logs:
             filename = os.path.basename(log_path)
-            if any(char.isdigit() for char in filename):
+            # Only skip RotatingFileHandler backups (e.g., orchestrator.log.1, .log.2)
+            if re.match(r'.*\.log\.\d+$', filename):
                 continue
             name = filename.split('.')[0].capitalize()
             logs_content[name] = tail_file(log_path, n_lines=50)
@@ -330,14 +332,8 @@ def get_system_heartbeat():
 
 # === TASK SCHEDULE TRACKER ===
 
-ACTIVE_SCHEDULE_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    'data', 'active_schedule.json'
-)
-TASK_COMPLETIONS_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    'data', 'task_completions.json'
-)
+ACTIVE_SCHEDULE_PATH = _resolve_data_path('active_schedule.json')
+TASK_COMPLETIONS_PATH = _resolve_data_path('task_completions.json')
 
 # Legacy labels: fallback for old active_schedule.json files without 'label' field.
 # New schedules include per-instance labels (e.g., "Signal: Early Session (04:00 ET)")

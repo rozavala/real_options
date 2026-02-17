@@ -1049,7 +1049,7 @@ async def cleanup_orphaned_theses(config: dict):
     try:
         ib = await IBConnectionPool.get_connection("cleanup", config)
         tms = TransactiveMemory()
-        trade_ledger = get_trade_ledger_df()
+        trade_ledger = get_trade_ledger_df(config.get('data_dir'))
 
         cleaned = await _reconcile_orphaned_theses(ib, trade_ledger, tms, config)
 
@@ -1088,7 +1088,8 @@ async def check_and_recover_equity_data(config: dict) -> bool:
     from equity_logger import sync_equity_from_flex
     from pathlib import Path
 
-    equity_file = Path("data/daily_equity.csv")
+    data_dir = config.get('data_dir', 'data')
+    equity_file = Path(os.path.join(data_dir, "daily_equity.csv"))
     max_staleness_hours = config.get('monitoring', {}).get('equity_max_staleness_hours', 24)
 
     # Check staleness
