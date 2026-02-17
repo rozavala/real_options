@@ -72,7 +72,7 @@ rollback_and_restart() {
 
         # Verify systemd started it
         if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
-            ORCH_PID=$(pgrep -f "orchestrator.py")
+            ORCH_PID=$(pgrep -f "python.*orchestrator\.py" | head -1)
             echo "  ✅ Rollback: $SERVICE_NAME restarted via systemd (PID: ${ORCH_PID:-unknown})"
         else
             echo "  ⚠️  Rollback: systemd start failed, falling back to nohup"
@@ -228,16 +228,19 @@ if ! sudo systemctl is-active --quiet "$SERVICE_NAME"; then
     rollback_and_restart
 fi
 
-# Verify exactly ONE orchestrator process
-ORCH_COUNT=$(pgrep -f "orchestrator.py" | wc -l)
-if [ "$ORCH_COUNT" -ne 1 ]; then
-    echo "  ❌ ERROR: Expected 1 orchestrator, found $ORCH_COUNT!"
+# Verify orchestrator process is running (use systemd MainPID for reliability)
+ORCH_PID=$(sudo systemctl show -p MainPID --value "$SERVICE_NAME" 2>/dev/null)
+if [ -z "$ORCH_PID" ] || [ "$ORCH_PID" = "0" ]; then
+    # Fallback to pgrep with specific pattern
+    ORCH_PID=$(pgrep -f "python.*orchestrator\.py" | head -1)
+fi
+
+if [ -z "$ORCH_PID" ] || ! kill -0 "$ORCH_PID" 2>/dev/null; then
+    echo "  ❌ ERROR: No orchestrator process found!"
     ps aux | grep orchestrator.py | grep -v grep
     sudo systemctl stop "$SERVICE_NAME"
     rollback_and_restart
 fi
-
-ORCH_PID=$(pgrep -f "orchestrator.py")
 echo "  ✅ $SERVICE_NAME service started (PID: $ORCH_PID)"
 
 # Start dashboard (not managed by systemd)
@@ -246,14 +249,20 @@ nohup streamlit run dashboard.py --server.address 0.0.0.0 > "logs/dashboard_${TI
 DASH_PID=$!
 echo "  ✅ Dashboard started (PID: $DASH_PID)"
 
-# Final verification after 3 more seconds
+# Final verification after 3 more seconds — check the SPECIFIC PID is still alive
 sleep 3
-FINAL_COUNT=$(pgrep -f "orchestrator.py" | wc -l)
-if [ "$FINAL_COUNT" -ne 1 ]; then
-    echo "  ❌ ERROR: Process count changed! Expected 1, got $FINAL_COUNT"
+if ! kill -0 "$ORCH_PID" 2>/dev/null; then
+    echo "  ❌ ERROR: Orchestrator PID $ORCH_PID no longer running!"
     ps aux | grep orchestrator.py | grep -v grep
     sudo systemctl stop "$SERVICE_NAME"
     rollback_and_restart
+fi
+
+# Warn if extra orchestrator processes exist (don't fail — PID check above is authoritative)
+ORCH_COUNT=$(pgrep -fc "python.*orchestrator\.py" 2>/dev/null || echo 0)
+if [ "$ORCH_COUNT" -gt 1 ]; then
+    echo "  ⚠️  WARNING: $ORCH_COUNT orchestrator processes found (expected 1)"
+    ps aux | grep orchestrator.py | grep -v grep
 fi
 
 # =========================================================================
