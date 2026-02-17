@@ -768,7 +768,9 @@ async def check_state_manager() -> CheckResult:
 
 @timed_check
 async def check_data_directories() -> CheckResult:
-    dirs = ['./data', './data/tms', './logs']
+    ticker = os.environ.get("COMMODITY_TICKER", "KC")
+    data_dir = os.path.join('data', ticker)
+    dirs = [data_dir, os.path.join(data_dir, 'tms'), './logs']
     missing = [d for d in dirs if not os.path.exists(d)]
     if missing:
         return CheckResult("Data Directories", CheckStatus.FAIL, f"Missing: {missing}")
@@ -776,13 +778,17 @@ async def check_data_directories() -> CheckResult:
 
 @timed_check
 async def check_trade_ledger() -> CheckResult:
-    if os.path.exists('./trade_ledger.csv'):
+    ticker = os.environ.get("COMMODITY_TICKER", "KC")
+    ledger_path = os.path.join('data', ticker, 'trade_ledger.csv')
+    if os.path.exists(ledger_path):
         return CheckResult("Trade Ledger", CheckStatus.PASS, "File exists")
     return CheckResult("Trade Ledger", CheckStatus.WARN, "File missing (will be created)")
 
 @timed_check
 async def check_council_history() -> CheckResult:
-    if os.path.exists('./data/council_history.csv'):
+    ticker = os.environ.get("COMMODITY_TICKER", "KC")
+    history_path = os.path.join('data', ticker, 'council_history.csv')
+    if os.path.exists(history_path):
         return CheckResult("Council History", CheckStatus.PASS, "File exists")
     return CheckResult("Council History", CheckStatus.WARN, "File missing (will be created)")
 

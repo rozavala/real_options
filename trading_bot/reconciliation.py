@@ -49,7 +49,7 @@ async def reconcile_council_history(config: dict, ib: IB = None):
     Reconciles the Council History CSV by backfilling missing exit prices and outcomes.
 
     Logic:
-    1. Loads 'data/council_history.csv'.
+    1. Loads 'data/{ticker}/council_history.csv'.
     2. Identifies rows where 'exit_price' is missing and enough time has passed (approx 27h).
     3. Connects to IB (if not provided) to fetch historical prices for those contracts.
     4. Calculates realized P&L (theoretical) and actual trend direction.
@@ -615,7 +615,7 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                 # Removed inner import pandas as pd to fix scoping issue
 
                 # Read the just-resolved structured predictions to find what was resolved
-                structured_file = "data/agent_accuracy_structured.csv"
+                structured_file = os.path.join(config.get('data_dir', 'data'), "agent_accuracy_structured.csv")
                 if os.path.exists(structured_file):
                     struct_df = pd.read_csv(structured_file)
 

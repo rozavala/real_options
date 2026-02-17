@@ -405,7 +405,8 @@ def render_prediction_markets():
             static_topics = pm_cfg.get('topics_to_watch', [])
             enabled_static = [t for t in static_topics if t.get('enabled', True)]
 
-            discovered_file = "data/discovered_topics.json"
+            from dashboard_utils import _resolve_data_path
+            discovered_file = _resolve_data_path("discovered_topics.json")
             all_topic_queries = set()
             for t in enabled_static:
                 q = t.get('query', '')

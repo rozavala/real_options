@@ -296,7 +296,8 @@ class TradingCouncil:
             return self._optimized_prompt_cache[cache_key]
 
         dspy_config = self.full_config.get("dspy", {})
-        prompts_dir = dspy_config.get("optimized_prompts_dir", "data/dspy_optimized")
+        data_dir = self.full_config.get('data_dir', 'data')
+        prompts_dir = dspy_config.get("optimized_prompts_dir", os.path.join(data_dir, "dspy_optimized"))
         if not os.path.isabs(prompts_dir):
             prompts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), prompts_dir)
 

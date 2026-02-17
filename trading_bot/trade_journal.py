@@ -18,26 +18,26 @@ logger = logging.getLogger(__name__)
 class TradeJournal:
     """Generate and store post-mortem narratives for closed trades."""
 
-    JOURNAL_FILE = "data/trade_journal.json"
-
     def __init__(self, config: dict, tms=None, router=None):
         self.config = config
         self.tms = tms
         self.router = router
+        data_dir = config.get('data_dir', 'data')
+        self.journal_file = os.path.join(data_dir, "trade_journal.json")
         self._entries = self._load_entries()
 
     def _load_entries(self) -> list:
-        if os.path.exists(self.JOURNAL_FILE):
+        if os.path.exists(self.journal_file):
             try:
-                with open(self.JOURNAL_FILE, 'r') as f:
+                with open(self.journal_file, 'r') as f:
                     return json.load(f)
             except Exception:
                 return []
         return []
 
     def _save_entries(self):
-        os.makedirs(os.path.dirname(self.JOURNAL_FILE) or '.', exist_ok=True)
-        with open(self.JOURNAL_FILE, 'w') as f:
+        os.makedirs(os.path.dirname(self.journal_file) or '.', exist_ok=True)
+        with open(self.journal_file, 'w') as f:
             json.dump(self._entries, f, indent=2, default=str)
 
     async def generate_post_mortem(

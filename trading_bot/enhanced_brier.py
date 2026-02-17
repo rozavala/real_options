@@ -196,7 +196,7 @@ class EnhancedBrierTracker:
     - Dynamic weight multipliers
     """
 
-    def __init__(self, data_path: str = "./data/enhanced_brier.json"):
+    def __init__(self, data_path: str = "./data/KC/enhanced_brier.json"):
         self.data_path = data_path
         self.predictions: List[ProbabilisticPrediction] = []
 
@@ -341,7 +341,7 @@ class EnhancedBrierTracker:
         logger.warning(f"No matching prediction found for {agent} (cycle={cycle_id})")
         return None
 
-    def backfill_from_resolved_csv(self, structured_csv_path: str = "data/agent_accuracy_structured.csv") -> int:
+    def backfill_from_resolved_csv(self, structured_csv_path: str = None) -> int:
         """
         Catch-up mechanism: resolve Enhanced Brier predictions that were
         resolved in the legacy CSV but missed in the JSON.
@@ -354,6 +354,9 @@ class EnhancedBrierTracker:
         """
         import pandas as pd
         from trading_bot.cycle_id import is_valid_cycle_id
+
+        if structured_csv_path is None:
+            structured_csv_path = os.path.join(os.path.dirname(self.data_path), "agent_accuracy_structured.csv")
 
         if not os.path.exists(structured_csv_path):
             return 0

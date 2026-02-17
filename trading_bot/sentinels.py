@@ -111,7 +111,7 @@ class SentinelTrigger:
 
 class Sentinel:
     """Base class for all sentinels."""
-    CACHE_DIR = "data/sentinel_caches"
+    CACHE_DIR = "data/KC/sentinel_caches"
 
     def __init__(self, config: dict):
         self.config = config
@@ -451,7 +451,7 @@ class WeatherSentinel(Sentinel):
     Monitors specific coffee-growing regions for frost or drought risks.
     Frequency: Every 4 Hours (24/7).
     """
-    ALERT_STATE_FILE = "data/weather_sentinel_alerts.json"
+    ALERT_STATE_FILE = "data/KC/weather_sentinel_alerts.json"
 
     def __init__(self, config: dict):
         super().__init__(config)
@@ -1729,7 +1729,8 @@ class PredictionMarketSentinel(Sentinel):
                     self.state_cache.pop(topic_key)
 
     def _merge_discovered_topics(self, static_topics: List[Dict]) -> List[Dict]:
-        discovered_file = "data/discovered_topics.json"
+        data_dir = self.config.get('data_dir', 'data')
+        discovered_file = os.path.join(data_dir, "discovered_topics.json")
 
         # Filter out disabled static topics BEFORE merging.
         # Disabled topics should not inflate the active count or occupy
@@ -2326,7 +2327,8 @@ class FundamentalRegimeSentinel(Sentinel):
         ticker = config.get('commodity', {}).get('ticker', 'KC')
         self.profile = get_commodity_profile(ticker)
         self.check_interval = 604800  # 1 week
-        self.regime_file = Path("data/fundamental_regime.json")
+        data_dir = config.get('data_dir', 'data')
+        self.regime_file = Path(os.path.join(data_dir, "fundamental_regime.json"))
         self.current_regime = self._load_regime()
         self.last_check = 0
 

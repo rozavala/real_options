@@ -12,7 +12,7 @@ from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
-STATS_FILE = Path("data/sentinel_stats.json")
+STATS_FILE = Path("data/KC/sentinel_stats.json")
 
 
 def set_data_dir(data_dir: str):
