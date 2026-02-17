@@ -17,7 +17,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Default paths — overridden by set_data_dir() for multi-commodity isolation
-_BASE_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+_BASE_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'KC')
 STATE_FILE = os.path.join(_BASE_DATA_DIR, 'state.json')
 
 def _validate_confidence(value: Any) -> float:
@@ -51,7 +51,7 @@ class StateManager:
     """
     _async_lock = asyncio.Lock()
     REPORT_TTL_SECONDS = 3600  # 1 hour staleness threshold
-    DEFERRED_TRIGGERS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'deferred_triggers.json')
+    DEFERRED_TRIGGERS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'KC', 'deferred_triggers.json')
 
     # Class-level path variables — overridden by set_data_dir() for multi-commodity
     _state_file = None  # When None, falls back to module-level STATE_FILE
@@ -133,11 +133,11 @@ class StateManager:
     # Single global lock file for ALL state writes to prevent cross-namespace races.
     # Previously used per-namespace locks (data/.state_{ns}.lock) which allowed
     # concurrent writes from different namespaces to clobber each other's data.
-    _STATE_LOCK_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', '.state_global.lock')
+    _STATE_LOCK_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'KC', '.state_global.lock')
 
     # Separate lock file for deferred triggers (prevents race between sentinel
     # queue_deferred_trigger and orchestrator get_deferred_triggers).
-    _DEFERRED_LOCK_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', '.deferred_triggers.lock')
+    _DEFERRED_LOCK_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'KC', '.deferred_triggers.lock')
 
     @classmethod
     def _with_state_lock(cls, fn):
