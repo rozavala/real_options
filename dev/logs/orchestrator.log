@@ -104,3 +104,16 @@ ConnectionError: Connection audit in backoff period
 2026-02-17 17:59:54,686 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 48
 2026-02-17 17:59:54,695 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
 2026-02-17 17:59:59,881 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-17 18:00:26,282 - openai._base_client - INFO - Retrying request to /chat/completions in 0.384471 seconds
+2026-02-17 18:04:59,409 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=True, trading_day=True
+2026-02-17 18:05:00,001 - Orchestrator - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-02-17 18:05:00,005 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-17 18:05:00,006 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 34 [REMOTE/PAPER]...
+2026-02-17 18:05:00,306 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 34
+2026-02-17 18:05:00,312 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-17 18:05:00,312 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-17 18:05:00,414 - OrderManager - INFO - Found 1 live position legs in the IB account.
+2026-02-17 18:05:00,415 - OrderManager - INFO -   Filtered to 0 positions with non-zero quantity (1 already closed/zero-qty excluded)
+2026-02-17 18:05:00,415 - OrderManager - INFO - All returned positions have zero quantity — nothing to close.
+2026-02-17 18:05:00,415 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-17 18:05:03,421 - Orchestrator - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-02-17 18:15:00 UTC. Waiting for 0.17 hours.
