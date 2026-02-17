@@ -107,7 +107,7 @@ def _record_sentinel_health(name: str, status: str, interval_seconds: int, error
         logger.warning(f"Failed to record sentinel health for {name}: {e}")
 
 class TriggerDeduplicator:
-    def __init__(self, window_seconds: int = 7200, state_file="data/deduplicator_state.json", critical_severity_threshold: int = 9):
+    def __init__(self, window_seconds: int = 7200, state_file="data/KC/deduplicator_state.json", critical_severity_threshold: int = 9):
         self.state_file = state_file
         self.window = window_seconds
         self.critical_severity_threshold = critical_severity_threshold

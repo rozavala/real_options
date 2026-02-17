@@ -626,7 +626,7 @@ def archive_trade_ledger():
 
 def log_council_decision(decision_data):
     """
-    Appends a row to 'data/council_history.csv' with the FULL details of the decision.
+    Appends a row to 'data/{ticker}/council_history.csv' with the FULL details of the decision.
 
     UPDATED: Uses in-place schema migration instead of archiving to preserve history.
     """

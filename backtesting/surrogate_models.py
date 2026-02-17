@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SurrogateConfig:
     """Configuration for surrogate model training."""
-    model_dir: str = "./data/surrogate_models"
+    model_dir: str = "./data/KC/surrogate_models"
     min_training_samples: int = 100
     test_size: float = 0.2
     random_state: int = 42

@@ -49,7 +49,7 @@ async def reconcile_council_history(config: dict, ib: IB = None):
     Reconciles the Council History CSV by backfilling missing exit prices and outcomes.
 
     Logic:
-    1. Loads 'data/council_history.csv'.
+    1. Loads 'data/{ticker}/council_history.csv'.
     2. Identifies rows where 'exit_price' is missing and enough time has passed (approx 27h).
     3. Connects to IB (if not provided) to fetch historical prices for those contracts.
     4. Calculates realized P&L (theoretical) and actual trend direction.

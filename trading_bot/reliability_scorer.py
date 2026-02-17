@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 class ReliabilityScorer:
     """Tracks and scores agent prediction accuracy using Brier scores."""
 
-    def __init__(self, scores_file: str = "./data/agent_scores.json"):
+    def __init__(self, scores_file: str = "./data/KC/agent_scores.json"):
         self.scores_file = Path(scores_file)
         self.scores = self._load_scores()
 

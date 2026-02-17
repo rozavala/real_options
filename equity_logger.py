@@ -29,7 +29,7 @@ logger = logging.getLogger("EquityLogger")
 async def sync_equity_from_flex(config: dict):
     """
     Fetches the last 365 days of Net Asset Value from IBKR Flex Query (ID 1341111)
-    and updates `data/daily_equity.csv`.
+    and updates `data/{ticker}/daily_equity.csv`.
 
     The Flex Query returns 'ReportDate' and 'Total'.
     This function normalizes the date to closing time (17:00 NY Time) and saves
@@ -133,7 +133,7 @@ async def sync_equity_from_flex(config: dict):
 
 async def log_equity_snapshot(config: dict):
     """
-    Connects to IB, fetches NetLiquidation, and logs it to data/daily_equity.csv.
+    Connects to IB, fetches NetLiquidation, and logs it to data/{ticker}/daily_equity.csv.
     """
     logger.info("--- Starting Equity Snapshot Logging ---")
 

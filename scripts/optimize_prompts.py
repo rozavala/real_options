@@ -169,7 +169,8 @@ def main():
     # Resolve paths
     ticker = args.ticker or config.get("symbol", "KC")
     data_dir = args.data_dir or config.get("data_directory", str(PROJECT_ROOT / "data"))
-    output_dir = dspy_config.get("optimized_prompts_dir", "data/dspy_optimized")
+    ticker_dir = os.path.join("data", ticker, "dspy_optimized")
+    output_dir = dspy_config.get("optimized_prompts_dir", ticker_dir)
     if not Path(output_dir).is_absolute():
         output_dir = str(PROJECT_ROOT / output_dir)
     min_examples = dspy_config.get("min_examples_per_agent", DEFAULT_MIN_EXAMPLES_PER_AGENT)

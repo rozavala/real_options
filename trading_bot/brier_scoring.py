@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class BrierScoreTracker:
     """Tracks agent prediction accuracy over time."""
 
-    def __init__(self, history_file: str = "data/agent_accuracy.csv"):
+    def __init__(self, history_file: str = "data/KC/agent_accuracy.csv"):
         self.history_file = history_file
 
         # Ensure directory exists
