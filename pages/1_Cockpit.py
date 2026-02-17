@@ -478,7 +478,7 @@ if not is_open:
         status_text += " (Holiday)"
     elif not is_within_hours:
         status_text += " (After Hours)"
-elif is_open:
+else:
     delta = market_close_ny - ny_now
     # Ensure non-negative duration
     if delta.total_seconds() > 0:
