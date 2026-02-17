@@ -760,6 +760,9 @@ async def check_notifications(config: dict) -> CheckResult:
 async def check_state_manager() -> CheckResult:
     try:
         from trading_bot.state_manager import StateManager
+        ticker = os.environ.get("COMMODITY_TICKER", "KC")
+        data_dir = os.path.join('data', ticker)
+        StateManager.set_data_dir(data_dir)
         state = StateManager.load_state()
         StateManager.save_state({"_test": "ok"}, namespace="test")
         return CheckResult("State Manager", CheckStatus.PASS, f"Read/Write OK | {len(state)} keys")
