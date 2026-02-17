@@ -2220,3 +2220,169 @@
 2026-02-17 13:18:06,160 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=685, market_open=True, trading_day=True
 2026-02-17 13:23:07,590 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=690, market_open=True, trading_day=True
 2026-02-17 13:28:08,737 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=695, market_open=True, trading_day=True
+2026-02-17 13:33:10,111 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=700, market_open=True, trading_day=True
+2026-02-17 13:38:12,087 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=705, market_open=True, trading_day=True
+2026-02-17 13:43:13,507 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=710, market_open=True, trading_day=True
+2026-02-17 13:48:14,623 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=715, market_open=True, trading_day=True
+2026-02-17 13:52:00,045 - Orchestrator - INFO - --- Running scheduled task: audit_mid_session [run_position_audit_cycle] ---
+2026-02-17 13:52:00,058 - Orchestrator - INFO - [OFF] run_position_audit_cycle skipped — no positions exist in OFF mode
+2026-02-17 13:52:00,064 - Orchestrator - INFO - Next task 'signal_mid' (Signal: Mid) scheduled for 2026-02-17 14:20:00 UTC. Waiting for 0.47 hours.
+2026-02-17 13:52:15,811 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-17 13:52:28,788 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-17 13:52:28,790 - Orchestrator - INFO - TopicDiscovery: 3 topics, No changes
+2026-02-17 13:53:28,841 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=720, market_open=True, trading_day=True
+2026-02-17 13:53:30,521 - Orchestrator - INFO - WeatherSentinel: trigger detected (source=WeatherSentinel, severity=7)
+2026-02-17 13:53:30,653 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-02-17 13:53:30,654 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: DROUGHT in Colombia Huila: 13.1mm (NEUTRAL, VEGETATIVE stage) (Cycle: KC-fa2c4f31)
+2026-02-17 13:53:30,970 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-17 13:53:30,979 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-17 13:53:31,093 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-17 13:53:31,094 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'xai', 'anthropic', 'openai']
+2026-02-17 13:53:31,094 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'xai', 'anthropic', 'openai'], 'diversity_score': 1.0}
+2026-02-17 13:53:31,100 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-17 13:53:31,104 - trading_bot.enhanced_brier - INFO - Loaded 464 predictions from ./data/enhanced_brier.json
+2026-02-17 13:53:31,177 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 7 created from CSV, 0 resolved from council_history
+2026-02-17 13:53:31,178 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-17 13:53:31,178 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-17 13:53:31,178 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-17 13:53:31,178 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-17 13:53:31,178 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview
+2026-02-17 13:53:31,179 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-17 13:53:31,181 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-17 13:53:31,181 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-17 13:53:31,298 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-17 13:53:31,299 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-17 13:53:31,299 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-17 13:53:32,436 - ib_insync.wrapper - ERROR - Error 354, reqId 40: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
+2026-02-17 13:53:33,917 - ib_insync.wrapper - ERROR - Error 354, reqId 42: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
+2026-02-17 13:53:35,780 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-17 13:53:35,781 - ib_insync.wrapper - ERROR - Error 300, reqId 42: Can't find EId with tickerId:42
+2026-02-17 13:53:36,021 - ib_insync.wrapper - ERROR - Error 354, reqId 43: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
+2026-02-17 13:53:40,799 - ib_insync.wrapper - ERROR - Error 300, reqId 43: Can't find EId with tickerId:43
+2026-02-17 13:53:41,007 - trading_bot.market_data_provider - INFO - Using HMDS fallback price for KCK6: 283.2
+2026-02-17 13:53:41,296 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=283.20, sma_200=332.7285, regime=RANGE_BOUND, vol_5d=0.0244
+2026-02-17 13:53:41,296 - Orchestrator - INFO - Emergency market context: price=283.2, regime=RANGE_BOUND
+2026-02-17 13:53:41,297 - trading_bot.semantic_cache - INFO - CACHE CROSS-SOURCE INVALIDATION: 1 entries removed for KCK6 (202605) (kept WeatherSentinel)
+2026-02-17 13:53:41,297 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
+2026-02-17 13:53:41,297 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
+2026-02-17 13:53:41,297 - trading_bot.agents - INFO - Waking up agronomist...
+2026-02-17 13:53:41,684 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-17 13:53:41,685 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-17 13:55:30,939 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-17 13:55:30,940 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=3.0 \u00d7 reliability=0.5 = 1.44", "macro": "domain=1.0 \u00d7 reliability=0.7 = 0.62", "geopolitical": "domain=0.5 \u00d7 reliability=0.9 = 0.44", "supply_chain": "domain=1.5 \u00d7 reliability=1.2 = 1.75", "inventory": "domain=1.5 \u00d7 reliability=0.9 = 1.31", "sentiment": "domain=1.0 \u00d7 reliability=0.4 = 0.38", "technical": "domain=2.2 \u00d7 reliability=0.7 = 1.40", "volatility": "domain=1.4 \u00d7 reliability=0.5 = 0.68"}
+2026-02-17 13:55:30,941 - trading_bot.weighted_voting - INFO - Weighted Vote: BULLISH (score=0.210, dominant=agronomist)
+2026-02-17 13:55:30,941 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 3.0,
+    "reliability_mult": 0.48,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.44,
+    "contribution": 1.152
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.66,
+    "staleness_weight": 0.94,
+    "age_hours": 1.6,
+    "final_weight": 0.62,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 0.5,
+    "reliability_mult": 0.93,
+    "staleness_weight": 0.94,
+    "age_hours": 1.6,
+    "final_weight": 0.44,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.24,
+    "staleness_weight": 0.94,
+    "age_hours": 1.6,
+    "final_weight": 1.75,
+    "contribution": 1.135
+  },
+  {
+    "agent": "inventory",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.93,
+    "staleness_weight": 0.94,
+    "age_hours": 1.6,
+    "final_weight": 1.31,
+    "contribution": 0.848
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.4,
+    "staleness_weight": 0.95,
+    "age_hours": 1.5,
+    "final_weight": 0.38,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.66,
+    "staleness_weight": 0.94,
+    "age_hours": 1.6,
+    "final_weight": 1.4,
+    "contribution": -0.907
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.4,
+    "reliability_mult": 0.52,
+    "staleness_weight": 0.94,
+    "age_hours": 1.6,
+    "final_weight": 0.68,
+    "contribution": -0.546
+  }
+]
+2026-02-17 13:56:53,793 - trading_bot.agents - INFO - Master Decision: NEUTRAL | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Tug-of-war between near-term physical tightness (export shor
+2026-02-17 13:56:53,807 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.52)
+2026-02-17 13:56:53,808 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-17 13:56:53,808 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-17 13:56:53,808 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-17 13:56:53,809 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-17 13:56:53,813 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-17 13:56:53,814 - Orchestrator - INFO - Emergency Cycle ACTION: VOLATILITY (VOLATILITY)
+2026-02-17 13:56:53,814 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-17 13:56:53,814 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'xai', 'anthropic', 'openai']
+2026-02-17 13:57:00,637 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.461756 seconds
+2026-02-17 13:57:07,752 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.797491 seconds
+2026-02-17 13:57:14,798 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDkukMo2aky6pz8PCtTX'}
+2026-02-17 13:57:22,454 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.461796 seconds
+2026-02-17 13:57:28,938 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.833470 seconds
+2026-02-17 13:57:36,185 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDkwK6p3RgBhc7nLMefX'}
+2026-02-17 13:57:45,036 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.466507 seconds
+2026-02-17 13:57:51,159 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.913949 seconds
+2026-02-17 13:57:58,854 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-6 failed for compliance: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDkxxUPmFP8PdHkNcdHP'}
+2026-02-17 13:58:08,838 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-5.2 for compliance after primary failure.
+2026-02-17 13:58:08,839 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> openai. Reason: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDkxxUPmFP8PdHkNcdHP'}
+2026-02-17 13:58:08,839 - Orchestrator - WARNING - COMPLIANCE BLOCKED Emergency Trade: Multiple unsupported or un-verifiable factual claims in the Decision reasoning given the provided evidence snippets. (1) It cites “price well below the 200-day SMA” and a “bearish bias below nearby resistance,” but the TECHNICAL evidence shown only includes last price (282.90) and support levels (280.08/277.2); no 200-DMA or resistance/bias is present in the excerpt → data gap/unsupported. (2) It asserts “front IV elevated and inverted vs deferred,” but the VOLATILITY evidence excerpt shown is about Brazil production forecast (+17.2% YoY to 66.2m bags) and Market Context shows IV metrics as N/A; no term-structure inversion is provided → data gap/unsupported. (3) It claims “Cecafé confirms a large year-over-year drop in January Brazil exports,” yet the only SUPPLY_CHAIN snippet visible says Brazil exported 2.78m bags in Jan 2026 (a 30…% figure is truncated) and does not explicitly state a YoY drop; could be true but cannot be verified from the excerpt → data gap. (4) It states “market is in backwardation,” but no backwardation/structure data appears in the provided INVENTORY excerpt → unsupported. (5) It references an “URGENT TRIGGER (Colombia Huila drought 13.1mm at vegetative stage)” which is not present in the AGRONOMIST evidence list; the agronomist instead indicates the drought alert is likely false given precipitation forecasts → hallucination/unsupported specific number. Critical-risk handling: the reasoning does acknowledge the key agronomist point (excess moisture / drought alert contradicted), so it does not ignore that risk. Direction vs sentiment: agronomist is bullish, but other agent reports are stale/truncated; not enough to say the overall sentiment is overwhelmingly one-sided. Main issue is the inclusion of several specific market-structure/technical/vol claims not supported by the evidence provided.
+2026-02-17 13:58:09,073 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-17 13:58:09,079 - Orchestrator - INFO - Post-cycle debounce: 1800s (actionable trade)
+2026-02-17 13:58:59,328 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=725, market_open=True, trading_day=True
