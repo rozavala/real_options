@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Tue Feb 17 14:30:03 UTC 2026
+Timestamp: Tue Feb 17 15:00:03 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  14:30:03 up 36 days, 20:53,  2 users,  load average: 0.07, 0.13, 0.09
+Uptime:  15:00:03 up 36 days, 21:23,  2 users,  load average: 0.04, 0.05, 0.03
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.7Gi       282Mi        34Mi       1.1Gi       1.1Gi
-Swap:          4.0Gi       322Mi       3.7Gi
+Mem:           3.8Gi       2.6Gi       322Mi        34Mi       1.1Gi       1.2Gi
+Swap:          4.0Gi       320Mi       3.7Gi
 
 === LOAD AVERAGE ===
-0.07 0.13 0.09 2/835 1177858
+0.04 0.05 0.03 1/831 1178462
 
 === PROCESS STATUS ===
 Trading processes:
-console  1167111  0.4 10.9 1912556 437796 ?      Ssl  01:51   3:17 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1167111  0.4 10.9 1912936 439472 ?      Ssl  01:51   3:31 /home/console/real_options/venv/bin/python -u orchestrator.py
 console  1173186  0.0  7.1 1348676 287112 ?      Sl   09:15   0:07 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1167130  0.2  1.9 606120 77560 ?        Sl   01:51   2:03 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1167130  0.2  1.9 606120 77560 ?        Sl   01:51   2:08 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,13 +36,13 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-02-17 14:26:51,552 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoAdMWxtp7eWyHGJDte'}
-2026-02-17 14:27:19,032 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-6 failed for compliance: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoCe9h2KhxcpyHxEv7w'}
-2026-02-17 14:27:25,037 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> openai. Reason: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoCe9h2KhxcpyHxEv7w'}
-2026-02-17 14:27:25,038 - trading_bot.signal_generator - WARNING - COMPLIANCE BLOCKED KCK6 (202605): (1) Hallucination / unsupported specificity: The decision states the -4.74% 24h move 'meets the framework’s “assume Technical Liquidation” threshold.' No report or evidence packet defines such a threshold or framework rule, so this is an uncited rule/assertion. (2) Minor internal inconsistency: It cites May-26 price action as -4.74% (Market Context) but elsewhere in the packet Technical has May-26 at -0.98% d/d and Volatility has ~-4%; not fatal, but the reasoning should clarify which contract/print it is anchoring to. (3) No critical-risk omission detected: bounce/mean-reversion risk from oversold/positioning is acknowledged; logistics-causality caveat is incorporated; IV-expensive options noted. (4) Direction not contradictory: Most fundamental/inventory/technical/volatility reports lean bearish; only Supply_Chain is bullish and is explicitly rebutted.
-2026-02-17 14:27:33,052 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoDL8krT2iUUM7P3B3L'}
-2026-02-17 14:27:57,974 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoFaXVLhKFGh1EEyixs'}
-2026-02-17 14:28:26,870 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-6 failed for permabear: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoHSVrQvGBUC5nCGV5K'}
-2026-02-17 14:28:40,667 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoHSVrQvGBUC5nCGV5K'}
-2026-02-17 14:29:47,008 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoPMDmbnQv3cGjkJW75'}
-2026-02-17 14:29:54,050 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoPwjRLqxcmk3MjEcR8'}
+2026-02-17 14:33:30,564 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> openai. Reason: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDofXsAo6xCCsHVzAqkE'}
+2026-02-17 14:33:30,564 - trading_bot.signal_generator - WARNING - COMPLIANCE BLOCKED KCU6 (202609): Hallucination / unsupported specifics and a key data mismatch. (1) The decision says the market is in a “range-bound regime” and references a “framework’s liquidation threshold” and “buy-the-dip is disallowed unless…,” but no report or market-context evidence defines a range-bound regime, a liquidation threshold, or those framework rules (unsupported). (2) It claims ICE certified stocks ‘have recovered from extremes’; evidence only gives a single point (428,631 bags on Feb 13) with no prior ‘extremes’ series, so ‘recovered from extremes’ is not evidenced. (3) It characterizes the bull as claiming ‘export contraction equals supply shortage’; the Supply_Chain report explicitly framed exports down due to Santos bottlenecks (origin constraint), not a production shortfall—decision’s paraphrase is a strawman risk. (4) It states the contract is below the 200-day SMA—supported—but its ‘market reality check’ logic cites a sharp 24h drop; the provided market context price (277.15) conflicts with other evidence showing ~284.69 on Feb 17, creating an unaddressed data consistency gap. Critical risks: it does acknowledge short-covering/bounce risk and Santos bottlenecks, so no major omitted explicit risk. Direction is not contradictory to reports (many bearish), but approval fails due to the unsupported framework claims and the inventory ‘recovered’ assertion.
+2026-02-17 14:37:28,028 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoyWMtJSBY3swFsTqwU'}
+2026-02-17 14:37:55,558 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDp1RaTKfWNACQvWgUuw'}
+2026-02-17 14:38:26,876 - trading_bot.compliance - ERROR - Compliance Audit failed: Expecting value: line 1 column 1 (char 0)
+2026-02-17 14:38:26,876 - trading_bot.signal_generator - WARNING - COMPLIANCE BLOCKED KCH7 (202703): Audit Error: Expecting value: line 1 column 1 (char 0)
+2026-02-17 14:38:28,008 - ib_insync.wrapper - ERROR - Error 354, reqId 30: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
+2026-02-17 14:38:28,108 - ib_insync.wrapper - ERROR - Error 354, reqId 31: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC JUL'26 (KCN6) /TOP/ALL, contract: Contract(secType='FUT', conId=646040490, symbol='KC', lastTradeDateOrContractMonth='20260721', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCN6', tradingClass='KC')
+2026-02-17 14:38:28,176 - ib_insync.wrapper - ERROR - Error 354, reqId 32: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC SEP'26 (KCU6) /TOP/ALL, contract: Contract(secType='FUT', conId=657732419, symbol='KC', lastTradeDateOrContractMonth='20260918', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCU6', tradingClass='KC')
+2026-02-17 14:38:28,176 - ib_insync.wrapper - ERROR - Error 354, reqId 33: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC DEC'26 (KCZ6) /TOP/ALL, contract: Contract(secType='FUT', conId=675565688, symbol='KC', lastTradeDateOrContractMonth='20261218', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCZ6', tradingClass='KC')
