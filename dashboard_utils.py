@@ -102,11 +102,7 @@ def get_config():
     if config is None:
         st.error("Fatal: Could not load config.json.")
         return {}
-    # Inject active commodity ticker (matches orchestrator's main() override)
-    ticker = os.environ.get("COMMODITY_TICKER", "KC")
-    config['symbol'] = ticker
-    config.setdefault('commodity', {})['ticker'] = ticker
-    config['data_dir'] = os.path.join('data', ticker)
+    # COMMODITY_TICKER override is now handled in load_config() itself
     return config
 
 

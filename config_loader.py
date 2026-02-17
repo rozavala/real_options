@@ -181,6 +181,16 @@ def load_config() -> dict | None:
     if trading_mode == "OFF":
         logger.warning("*** TRADING MODE OFF — No real orders will be placed ***")
 
+    # 10. COMMODITY TICKER: Override symbol from environment
+    # This ensures dashboards and any caller of load_config() get the correct commodity
+    # without needing to duplicate the override logic. The orchestrator also sets this
+    # from --commodity CLI arg in main(), but the env var covers all other callers.
+    commodity_ticker = os.getenv("COMMODITY_TICKER")
+    if commodity_ticker:
+        config['symbol'] = commodity_ticker
+        config.setdefault('commodity', {})['ticker'] = commodity_ticker
+        config['data_dir'] = os.path.join(base_dir, 'data', commodity_ticker)
+
     # Log successful load
     loaded_providers = [p for p in ['gemini', 'anthropic', 'openai', 'xai'] if config.get(p, {}).get('api_key')]
     logger.info(f"Config loaded successfully. Mode: {trading_mode}. Providers: {', '.join(loaded_providers)}")
