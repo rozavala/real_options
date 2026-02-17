@@ -145,3 +145,124 @@ ConnectionError: Connection audit in backoff period
 2026-02-17 18:25:03,494 - Orchestrator - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-02-17 18:35:00 UTC. Waiting for 0.17 hours.
 2026-02-17 18:25:08,462 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=25, market_open=True, trading_day=True
 2026-02-17 18:29:37,782 - Orchestrator - INFO - 2026-02-17 18:29:37,781 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-17 18:30:11,722 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=30, market_open=False, trading_day=True
+2026-02-17 18:30:11,724 - Orchestrator - INFO - Market Closed: Releasing Sentinel IB connection to pool.
+2026-02-17 18:30:11,724 - trading_bot.connection_pool - INFO - Disconnecting IB (sentinel)...
+2026-02-17 18:30:17,739 - Orchestrator - INFO - Market Closed: Disengaging Microstructure Sentinel
+2026-02-17 18:30:17,742 - trading_bot.connection_pool - INFO - Disconnecting IB (microstructure)...
+2026-02-17 18:35:00,006 - Orchestrator - INFO - --- Running scheduled task: log_equity_snapshot [log_equity_snapshot] ---
+2026-02-17 18:35:00,012 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
+2026-02-17 18:35:00,013 - EquityLogger - INFO - Connecting to IB at 100.102.50.16:4002 with clientId 6347...
+2026-02-17 18:35:00,521 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-17 18:35:00,685 - EquityLogger - INFO - Fetched NetLiquidation: $39,720.53
+2026-02-17 18:35:01,040 - EquityLogger - INFO - Updated data/daily_equity.csv with value $39,720.53
+2026-02-17 18:35:04,044 - EquityLogger - INFO - Disconnected from IB.
+2026-02-17 18:35:04,052 - Orchestrator - INFO - Next task 'reconcile_and_analyze' (Reconcile & Analyze) scheduled for 2026-02-17 18:38:00 UTC. Waiting for 0.05 hours.
+2026-02-17 18:35:22,109 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=35, market_open=False, trading_day=True
+2026-02-17 18:38:00,036 - Orchestrator - INFO - --- Running scheduled task: reconcile_and_analyze [reconcile_and_analyze] ---
+2026-02-17 18:38:00,042 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-02-17 18:38:00,043 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
+2026-02-17 18:38:00,425 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-17 18:38:10,436 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-17 18:38:10,616 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-17 18:38:10,672 - EquityLogger - INFO - Preserving 19 local equity records not present in Flex Query.
+2026-02-17 18:38:10,677 - EquityLogger - INFO - Successfully synced 26 equity records to data/daily_equity.csv.
+2026-02-17 18:38:10,693 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-02-17 18:38:10,694 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-02-17 18:38:10,704 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-17 18:38:10,705 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-02-17 18:38:10,956 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-17 18:38:20,959 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-17 18:38:21,159 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-17 18:38:21,170 - TradeReconciler - INFO - Parsed 45 executions from the Flex Query report.
+2026-02-17 18:38:21,240 - TradeReconciler - INFO - Successfully processed 45 trades into the reconciliation DataFrame.
+2026-02-17 18:38:21,240 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-02-17 18:38:21,419 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-17 18:38:31,424 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-17 18:38:31,544 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-17 18:38:31,548 - TradeReconciler - INFO - Parsed 1 executions from the Flex Query report.
+2026-02-17 18:38:31,560 - TradeReconciler - INFO - Successfully processed 1 trades into the reconciliation DataFrame.
+2026-02-17 18:38:31,567 - TradeReconciler - INFO - Consolidated to 46 unique trades from all reports.
+2026-02-17 18:38:31,568 - TradeReconciler - INFO - Found 5 archived ledger files.
+2026-02-17 18:38:31,583 - TradeReconciler - INFO - Consolidated a total of 45 trades from all ledgers.
+2026-02-17 18:38:31,586 - TradeReconciler - INFO - Filtered IB trades from 46 to 46 records within the last 90 days.
+2026-02-17 18:38:31,586 - TradeReconciler - INFO - Filtered local ledger from 45 to 45 records within the last 90 days.
+2026-02-17 18:38:31,706 - TradeReconciler - INFO - Reconciliation complete. Found 1 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
+2026-02-17 18:38:31,709 - TradeReconciler - INFO - Discrepancies found. Writing to output files.
+2026-02-17 18:38:31,718 - TradeReconciler - INFO - Successfully wrote 1 missing trade(s) to '/home/rodrigo/real_options/archive_ledger/trade_ledger_missing_trades.csv'.
+2026-02-17 18:38:31,719 - Orchestrator - WARNING - Trade reconciliation found discrepancies.
+2026-02-17 18:38:32,045 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-17 18:38:32,047 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-02-17 18:38:32,237 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-17 18:38:42,241 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-17 18:38:42,407 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-17 18:38:42,411 - TradeReconciler - INFO - Parsed 1 positions from the Flex Query report.
+2026-02-17 18:38:42,412 - TradeReconciler - INFO - Found 6 archived ledger files.
+2026-02-17 18:38:42,428 - TradeReconciler - INFO - Consolidated a total of 46 trades from all ledgers.
+2026-02-17 18:38:42,443 - TradeReconciler - INFO - Skipping reconciliation for recently traded symbols: {'KCN6'}
+2026-02-17 18:38:42,454 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-02-17 18:38:42,455 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-02-17 18:38:42,986 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-17 18:38:42,992 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-17 18:38:42,993 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['anthropic', 'xai', 'openai', 'gemini']
+2026-02-17 18:38:43,002 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-11 04:34:38.529783+00:00: KCZ25 (202512) (NEUTRAL)
+2026-02-17 18:38:43,042 - trading_bot.reconciliation - INFO - Exit time adjusted for KCZ25 (202512): default Thu 07:34 UTC → actual Wed 16:00 UTC (weekly close policy)
+2026-02-17 18:38:43,792 - ib_insync.wrapper - ERROR - Error 162, reqId 4: Historical Market Data Service error message:HMDS query returned no data: KCZ5@NYBOT Trades, contract: Contract(secType='FUT', conId=606234331, symbol='KC', lastTradeDateOrContractMonth='20251218', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCZ5', tradingClass='KC', includeExpired=True)
+2026-02-17 18:38:43,793 - trading_bot.reconciliation - WARNING - No historical data found for KCZ25 (202512)
+2026-02-17 18:38:43,797 - trading_bot.reconciliation - INFO - No rows required updates.
+2026-02-17 18:38:46,800 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-02-17 18:38:46,801 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-02-17 18:38:46,802 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260129_190559.csv
+2026-02-17 18:38:46,805 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260130_190602.csv
+2026-02-17 18:38:46,808 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260202_190601.csv
+2026-02-17 18:38:46,810 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260217_190602.csv
+2026-02-17 18:38:46,812 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260203_190605.csv
+2026-02-17 18:38:46,816 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_missing_trades.csv
+2026-02-17 18:38:46,820 - PerformanceAnalyzer - INFO - Consolidated a total of 46 trade records.
+2026-02-17 18:38:46,825 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-02-17 18:38:47,248 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $39,720.53
+2026-02-17 18:38:49,258 - PerformanceAnalyzer - INFO - Successfully fetched 1 execution(s) for today from IB.
+2026-02-17 18:38:52,262 - PerformanceAnalyzer - INFO - Loading daily_equity.csv for equity curve.
+2026-02-17 18:38:52,266 - PerformanceAnalyzer - INFO - Dynamic Starting Capital from History: $50,000.00
+2026-02-17 18:38:52,270 - PerformanceAnalyzer - INFO - Calculated LTD Total P&L (Equity): $-10,279.47
+2026-02-17 18:38:53,270 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-02-17 18:38:53,458 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-17 18:38:53,898 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-17 18:38:54,146 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
+2026-02-17 18:38:54,149 - root - INFO - 'trade_ledger.csv' not found, no action taken.
+2026-02-17 18:38:54,158 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-17 18:38:54,168 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=1997
+2026-02-17 18:38:54,168 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-02-17 18:38:54,169 - Orchestrator - INFO - Running feedback loop health check...
+2026-02-17 18:38:54,180 - Orchestrator - INFO - Feedback Loop Health: 261/703 PENDING (0 orphans excluded, resolution rate: 63%)
+2026-02-17 18:38:54,182 - Orchestrator - WARNING - ⚠️ FEEDBACK LOOP: 47 stale predictions
+Oldest PENDING: 173h ago
+Stale (>48h): 47 | Recent (<24h): 214
+Resolution rate: 63%
+PENDING: 261/703
+2026-02-17 18:38:54,369 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-17 18:38:54,385 - trading_bot.enhanced_brier - INFO - Loaded 841 predictions from ./data/enhanced_brier.json
+2026-02-17 18:38:54,478 - Orchestrator - INFO - Enhanced Brier Health: 9 agents tracked, 588 total resolved predictions
+2026-02-17 18:38:54,478 - Orchestrator - INFO - Feedback loop health check complete.
+2026-02-17 18:38:54,479 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-02-17 18:38:54,486 - Orchestrator - INFO - Next task 'brier_reconciliation' (Brier Reconciliation) scheduled for 2026-02-17 18:41:00 UTC. Waiting for 0.03 hours.
+2026-02-17 18:39:37,815 - Orchestrator - INFO - 2026-02-17 18:39:37,815 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-17 18:40:22,304 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=40, market_open=False, trading_day=True
+2026-02-17 18:41:00,035 - Orchestrator - INFO - --- Running scheduled task: brier_reconciliation [run_brier_reconciliation] ---
+2026-02-17 18:41:00,069 - trading_bot.brier_reconciliation - INFO - Found 261 pending predictions
+2026-02-17 18:41:00,071 - trading_bot.brier_reconciliation - INFO - Total council decisions: 120
+2026-02-17 18:41:00,076 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 84/120
+2026-02-17 18:41:00,138 - trading_bot.brier_reconciliation - INFO - 
+==================================================
+2026-02-17 18:41:00,138 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
+2026-02-17 18:41:00,138 - trading_bot.brier_reconciliation - INFO -   Total predictions:            703
+2026-02-17 18:41:00,138 - trading_bot.brier_reconciliation - INFO -   Resolved:                     442 (+0 new)
+2026-02-17 18:41:00,139 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      261 (potential: 261)
+2026-02-17 18:41:00,139 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        0 (+0 new)
+2026-02-17 18:41:00,139 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     63% (excl. orphans)
+2026-02-17 18:41:00,139 - trading_bot.brier_reconciliation - INFO - ==================================================
+2026-02-17 18:41:00,139 - trading_bot.brier_reconciliation - INFO - 
+Running reconciliation could unlock up to 261 more predictions
+2026-02-17 18:41:00,139 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-02-17 18:41:00,236 - Orchestrator - INFO - Brier reconciliation: 44 predictions resolved today
+2026-02-17 18:41:00,243 - Orchestrator - INFO - Next task 'sentinel_effectiveness' (Sentinel Effectiveness Check) scheduled for 2026-02-17 18:44:00 UTC. Waiting for 0.05 hours.
