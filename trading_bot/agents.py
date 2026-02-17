@@ -160,6 +160,10 @@ class TradingCouncil:
         # 3. Model Names
         self.agent_model_name = self.config.get('agent_model', 'gemini-1.5-flash')
         self.master_model_name = self.config.get('master_model', 'gemini-1.5-pro')
+        # Use Flash for grounded data gathering (web search + summarization)
+        # to conserve Pro's limited daily quota (250 RPD) for reasoning tasks
+        registry = config.get('model_registry', {})
+        self.grounded_data_model = registry.get('gemini', {}).get('flash', 'gemini-3-flash-preview')
 
         # Semaphore for grounded data calls (rate limiting)
         self._grounded_data_semaphore = asyncio.Semaphore(3)
@@ -235,7 +239,7 @@ class TradingCouncil:
                 self.commodity_profile = None
 
         commodity_label = self.commodity_profile.name if self.commodity_profile else "General"
-        logger.info(f"Trading Council initialized for {commodity_label}. Agents: {self.agent_model_name}, Master: {self.master_model_name}")
+        logger.info(f"Trading Council initialized for {commodity_label}. Agents: {self.agent_model_name}, Master: {self.master_model_name}, Grounded: {self.grounded_data_model}")
 
         # DSPy optimized prompt cache (loaded lazily, no dspy import)
         self._optimized_prompt_cache: dict = {}
@@ -614,7 +618,7 @@ OUTPUT FORMAT (JSON):
                             await asyncio.sleep(self._grounded_data_min_interval - elapsed)
 
                         response = await self._call_model(
-                            self.master_model_name,
+                            self.grounded_data_model,
                             gathering_prompt,
                             use_tools=True,
                             response_json=True
