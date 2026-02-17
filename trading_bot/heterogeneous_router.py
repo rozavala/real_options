@@ -345,6 +345,14 @@ class AnthropicClient(LLMClient):
         if system_prompt:
             kwargs["system"] = system_prompt
 
+        # Anthropic has no response_format like OpenAI — enforce JSON via system prompt
+        if response_json:
+            json_instruction = "You MUST respond with valid JSON only. No preamble, no markdown fences, no explanation — just the raw JSON object."
+            if kwargs.get("system"):
+                kwargs["system"] = f"{kwargs['system']}\n\n{json_instruction}"
+            else:
+                kwargs["system"] = json_instruction
+
         response = await self.client.messages.create(**kwargs)
 
         # --- FIX: Validate response integrity before access ---
@@ -386,13 +394,19 @@ class XAIClient(LLMClient):
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        response = await self.client.chat.completions.create(
-            model=self.config.model_name,
-            messages=messages,
-            temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens,
-            timeout=self.config.timeout
-        )
+        kwargs = {
+            "model": self.config.model_name,
+            "messages": messages,
+            "temperature": self.config.temperature,
+            "max_tokens": self.config.max_tokens,
+            "timeout": self.config.timeout
+        }
+
+        # xAI supports OpenAI-compatible response_format
+        if response_json:
+            kwargs["response_format"] = {"type": "json_object"}
+
+        response = await self.client.chat.completions.create(**kwargs)
         text = response.choices[0].message.content
         if not text or not text.strip():
             logger.error(f"xAI returned empty response for model {self.config.model_name}")
