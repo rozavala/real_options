@@ -50,6 +50,7 @@ DATA_FILES = [
     'trade_journal.json',
     'discovered_topics.json',
     'fundamental_regime.json',
+    'weight_evolution.csv',
 ]
 
 # Directories to move from data/ to data/KC/

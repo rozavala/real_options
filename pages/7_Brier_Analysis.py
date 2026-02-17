@@ -16,6 +16,7 @@ import json
 from datetime import datetime, timezone, timedelta
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from dashboard_utils import _resolve_data_path
 
 st.set_page_config(layout="wide", page_title="Brier Analysis | Real Options")
 st.title("🎯 Brier Analysis")
@@ -306,7 +307,7 @@ except Exception as e:
 st.markdown("---")
 st.subheader("📈 Weight Evolution")
 
-weight_csv = os.path.join('data', 'weight_evolution.csv')
+weight_csv = _resolve_data_path('weight_evolution.csv')
 if os.path.exists(weight_csv):
     try:
         weight_df = pd.read_csv(weight_csv, parse_dates=['timestamp'])
