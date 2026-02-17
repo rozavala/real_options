@@ -1077,6 +1077,7 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
     Calculates accuracy scores for each sub-agent based on actual outcomes.
 
     VECTORIZED OPTIMIZATION: Uses pandas masking instead of iterrows for 50x+ speedup.
+    MEMORY OPTIMIZATION: Subsets dataframe columns before copying to avoid duplicating large text fields.
 
     ARCHITECTURE NOTES:
     - Agent Accuracy = Did the agent correctly predict market behavior?
@@ -1108,8 +1109,21 @@ def calculate_agent_scores(council_df: pd.DataFrame, live_price: float = None) -
     if council_df.empty:
         return scores
 
-    # Work on a copy to avoid SettingWithCopy warnings and preserve original df
-    df = council_df.copy()
+    # OPTIMIZATION: Only copy necessary columns to avoid overhead from large text fields
+    # Use set to avoid duplicates (e.g. master_decision is in agents list too)
+    needed_cols = {
+        'prediction_type', 'strategy_type', 'volatility_outcome',
+        'volatility_sentiment', 'master_decision', 'entry_price',
+        'actual_trend_direction'
+    }
+    needed_cols.update(agents)
+
+    # Intersect with available columns
+    available_cols = [c for c in needed_cols if c in council_df.columns]
+
+    # Work on a subset copy to minimize memory/time
+    # Avoid SettingWithCopy warnings and preserve original df
+    df = council_df[available_cols].copy()
 
     # === PRE-PROCESSING: Fill missing prediction_type ===
     if 'prediction_type' not in df.columns:

@@ -38,7 +38,7 @@ from trading_bot.order_manager import (
     place_queued_orders,
     get_trade_ledger_df
 )
-from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, round_to_tick, get_tick_size, word_boundary_match
+from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, round_to_tick, get_tick_size, word_boundary_match, hours_until_weekly_close
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, PredictionMarketSentinel, MacroContagionSentinel, SentinelTrigger, _sentinel_diag
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
@@ -1843,7 +1843,7 @@ async def start_monitoring(config: dict):
     logger.info("System shutdown flag CLEARED — new trading day beginning")
 
     # === EARLY EXIT: Don't start monitor on non-trading days ===
-    if not is_market_open():
+    if not is_market_open(config):
         logger.info("Market is closed (weekend/holiday). Skipping position monitoring startup.")
         return
 
@@ -2235,18 +2235,32 @@ async def _check_feedback_loop_health(config: dict):
             )
 
             # === ALERT IF PREDICTIONS ARE STALE ===
-            if age_hours > 48:
+            # Distinguish young PENDING (<24h, normal) from stale PENDING (>48h, needs attention)
+            stale_threshold_hours = 48
+            young_threshold_hours = 24
+            stale_count = 0
+            young_count = 0
+            if not pending_timestamps.empty:
+                now_utc = pd.Timestamp.now(tz='UTC')
+                for ts in pending_timestamps:
+                    hours_old = (now_utc - ts).total_seconds() / 3600
+                    if hours_old > stale_threshold_hours:
+                        stale_count += 1
+                    elif hours_old <= young_threshold_hours:
+                        young_count += 1
+
+            if stale_count > 0:
                 alert_msg = (
-                    f"⚠️ FEEDBACK LOOP STALE\n"
+                    f"⚠️ FEEDBACK LOOP: {stale_count} stale predictions\n"
                     f"Oldest PENDING: {age_hours:.0f}h ago\n"
-                    f"PENDING: {pending_count}/{total_count}\n"
+                    f"Stale (>48h): {stale_count} | Recent (<24h): {young_count}\n"
                     f"Resolution rate: {resolution_rate:.0f}%\n"
-                    f"Agent learning is NOT occurring!"
+                    f"PENDING: {pending_count}/{total_count}"
                 )
                 logger.warning(alert_msg)
                 send_pushover_notification(
                     config.get('notifications', {}),
-                    "🔴 Feedback Loop Alert",
+                    "🟡 Feedback Loop Alert",
                     alert_msg
                 )
 
@@ -2310,7 +2324,7 @@ async def _check_feedback_loop_health(config: dict):
 
 async def process_deferred_triggers(config: dict):
     """Process deferred triggers from overnight with deduplication."""
-    if not is_market_open():
+    if not is_market_open(config):
         logger.info("Market is closed. Skipping deferred trigger processing.")
         return
 
@@ -2503,7 +2517,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
         return
 
     # === NEW: MARKET HOURS GATE ===
-    if not is_market_open():
+    if not is_market_open(config):
         logger.info(f"Market closed. Queuing {trigger.source} alert for next session.")
         _sentinel_diag.info(f"OUTCOME {trigger.source}: DEFERRED (market closed)")
         StateManager.queue_deferred_trigger(trigger)
@@ -2513,10 +2527,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
     ny_tz = pytz.timezone('America/New_York')
     now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
 
-    # Read from config — default to 10:45
-    trading_cutoff = config.get('schedule', {}).get('daily_trading_cutoff_et', {'hour': 10, 'minute': 45})
-    cutoff_hour = trading_cutoff.get('hour', 10)
-    cutoff_minute = trading_cutoff.get('minute', 45)
+    cutoff_hour, cutoff_minute = get_trading_cutoff(config)
 
     if now_ny.hour > cutoff_hour or (now_ny.hour == cutoff_hour and now_ny.minute >= cutoff_minute):
         day_name = now_ny.strftime("%A")
@@ -2938,9 +2949,9 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         prediction_type=council_log_entry.get('prediction_type', 'DIRECTIONAL'),
                         strategy=council_log_entry.get('strategy_type', 'NONE'),
                         price=council_log_entry.get('entry_price'),
-                        sma_200=None,
+                        sma_200=market_data.get('sma_200'),
                         confidence=council_log_entry.get('master_confidence'),
-                        regime='UNKNOWN',
+                        regime=market_data.get('regime', 'UNKNOWN'),
                         trigger_type='EMERGENCY',
                     )
                 except Exception as e:
@@ -3009,6 +3020,27 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         return
 
                     logger.info("Decision is actionable. Generating order...")
+
+                    # === HOLDING-TIME GATE (same logic as scheduled path) ===
+                    remaining_hours = hours_until_weekly_close(config)
+                    if remaining_hours < float('inf'):
+                        min_holding = config.get('risk_management', {}).get('friday_min_holding_hours', 2.0)
+                    else:
+                        min_holding = config.get('risk_management', {}).get('min_holding_hours', 6.0)
+
+                    if remaining_hours < min_holding:
+                        logger.info(
+                            f"Emergency holding-time gate: Only {remaining_hours:.1f}h until weekly close "
+                            f"(minimum: {min_holding}h). Skipping emergency order."
+                        )
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "📅 Emergency Order Skipped",
+                            f"Weekly close in {remaining_hours:.1f}h — below {min_holding}h minimum. "
+                            f"Emergency signal from {trigger.source} not executed."
+                        )
+                        _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (holding-time gate: {remaining_hours:.1f}h < {min_holding}h)")
+                        return
 
                     # === NEW: Dynamic Position Sizing ===
                     sizer = DynamicPositionSizer(config)
@@ -3343,7 +3375,7 @@ async def run_sentinels(config: dict):
                 continue
 
             now = time_module.time()
-            market_open = is_market_open()
+            market_open = is_market_open(config)
             trading_day = is_trading_day()
 
             # Heartbeat: confirm sentinel loop is alive
@@ -3354,7 +3386,7 @@ async def run_sentinels(config: dict):
                 )
 
             # === 2. MARKET HOURS GATE: Only connect when market is OPEN ===
-            should_connect = market_open  # NOT trading_day - must be is_market_open()
+            should_connect = market_open  # NOT trading_day - must be is_market_open(config)
 
             if should_connect:
                 # Market is open - we need IB for Price/Microstructure sentinels
@@ -3718,10 +3750,19 @@ async def run_sentinels(config: dict):
             logger.error(f"Error in Sentinel Loop: {e}")
             await asyncio.sleep(60)
 
-    # IBConnectionPool manages disconnects, so explicit disconnect is not strictly needed,
-    # but good practice if task is cancelled.
-    # However, pool is shared (conceptually not shared here but...)
-    # We leave it connected.
+    # Close shared aiohttp sessions on all sentinels
+    for s in [weather_sentinel, logistics_sentinel, news_sentinel,
+              x_sentinel, prediction_market_sentinel, macro_contagion_sentinel,
+              price_sentinel]:
+        try:
+            await s.close()
+        except Exception:
+            pass
+    if micro_sentinel is not None:
+        try:
+            await micro_sentinel.close()
+        except Exception:
+            pass
 
 
 # --- Main Schedule ---
@@ -4000,10 +4041,12 @@ async def guarded_generate_orders(config: dict):
     except Exception as e:
         logger.warning(f"Pre-cycle quarantine check failed: {e}")
 
-    # === NEW: Shutdown proximity check ===
+    # === Shutdown proximity check ===
+    # Use cutoff + buffer as proxy for shutdown time (session-aware)
     ny_tz = pytz.timezone('America/New_York')
     now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
-    shutdown_time = time(13, 45)  # cancel_and_stop_monitoring time
+    co_h, co_m = get_trading_cutoff(config)
+    shutdown_time = time(co_h, co_m)
     minutes_to_shutdown = (
         datetime.combine(now_ny.date(), shutdown_time) -
         datetime.combine(now_ny.date(), now_ny.time())
@@ -4019,9 +4062,7 @@ async def guarded_generate_orders(config: dict):
     # Daily cutoff check
     ny_tz = pytz.timezone('America/New_York')
     now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
-    trading_cutoff = config.get('schedule', {}).get('daily_trading_cutoff_et', {'hour': 10, 'minute': 45})
-    cutoff_hour = trading_cutoff.get('hour', 10)
-    cutoff_minute = trading_cutoff.get('minute', 45)
+    cutoff_hour, cutoff_minute = get_trading_cutoff(config)
 
     if now_ny.hour > cutoff_hour or (now_ny.hour == cutoff_hour and now_ny.minute >= cutoff_minute):
         logger.info(f"Order generation BLOCKED: Past daily cutoff ({cutoff_hour}:{cutoff_minute:02d} ET)")
@@ -4095,22 +4136,22 @@ def _build_default_schedule() -> list:
         ("start_monitoring",          time(3, 30),  start_monitoring,              "Start Position Monitoring"),
         ("process_deferred_triggers", time(3, 31),  process_deferred_triggers,     "Process Deferred Triggers"),
         ("cleanup_orphaned_theses",   time(5, 0),   cleanup_orphaned_theses,       "Daily Thesis Cleanup"),
-        ("signal_early",              time(9, 0),   guarded_generate_orders,       "Signal: Early Session (04:00 ET)"),
-        ("signal_euro",               time(11, 0),  guarded_generate_orders,       "Signal: EU Overlap (06:00 ET)"),
-        ("signal_us_open",            time(13, 0),  guarded_generate_orders,       "Signal: US Open (08:00 ET)"),
-        ("signal_peak",               time(15, 0),  guarded_generate_orders,       "Signal: Peak Liquidity (10:00 ET)"),
-        ("signal_settlement",         time(17, 0),  guarded_generate_orders,       "Signal: Settlement (12:00 ET)"),
-        ("audit_morning",             time(13, 30), run_position_audit_cycle,      "Audit: Morning (08:30 ET)"),
-        ("close_stale_primary",       time(15, 30), close_stale_positions,         "Close Stale (Primary)"),
-        ("audit_post_close",          time(15, 45), run_position_audit_cycle,      "Audit: Post-Close (10:45 ET)"),
-        ("close_stale_fallback",      time(16, 30), close_stale_positions_fallback,"Close Stale (Fallback)"),
-        ("audit_pre_close",           time(17, 15), run_position_audit_cycle,      "Audit: Pre-Close (12:15 ET)"),
-        ("emergency_hard_close",      time(17, 30), emergency_hard_close,          "Emergency Hard Close"),
-        ("eod_shutdown",              time(18, 0),  cancel_and_stop_monitoring,    "End-of-Day Shutdown"),
-        ("log_equity_snapshot",       time(18, 20), log_equity_snapshot,           "Log Equity Snapshot"),
-        ("reconcile_and_analyze",     time(18, 25), reconcile_and_analyze,         "Reconcile & Analyze"),
-        ("brier_reconciliation",      time(18, 35), run_brier_reconciliation,      "Brier Reconciliation"),
-        ("sentinel_effectiveness",    time(18, 40), sentinel_effectiveness_check,  "Sentinel Effectiveness Check"),
+        ("signal_early",              time(9, 0),   guarded_generate_orders,       "Signal: Early Session (09:00 ET)"),
+        ("signal_euro",               time(11, 0),  guarded_generate_orders,       "Signal: EU Overlap (11:00 ET)"),
+        ("signal_us_open",            time(13, 0),  guarded_generate_orders,       "Signal: US Open (13:00 ET)"),
+        ("signal_peak",               time(15, 0),  guarded_generate_orders,       "Signal: Peak Liquidity (15:00 ET)"),
+        ("signal_settlement",         time(17, 0),  guarded_generate_orders,       "Signal: Settlement (17:00 ET)"),
+        ("audit_morning",             time(13, 30), run_position_audit_cycle,      "Audit: Midday (13:30 ET)"),
+        ("close_stale_primary",       time(15, 30), close_stale_positions,         "Close Stale: Primary (15:30 ET)"),
+        ("audit_post_close",          time(15, 45), run_position_audit_cycle,      "Audit: Post-Close (15:45 ET)"),
+        ("close_stale_fallback",      time(16, 30), close_stale_positions_fallback,"Close Stale: Fallback (16:30 ET)"),
+        ("audit_pre_close",           time(17, 15), run_position_audit_cycle,      "Audit: Pre-Shutdown (17:15 ET)"),
+        ("emergency_hard_close",      time(17, 30), emergency_hard_close,          "Emergency Hard Close (17:30 ET)"),
+        ("eod_shutdown",              time(18, 0),  cancel_and_stop_monitoring,    "End-of-Day Shutdown (18:00 ET)"),
+        ("log_equity_snapshot",       time(18, 20), log_equity_snapshot,           "Log Equity Snapshot (18:20 ET)"),
+        ("reconcile_and_analyze",     time(18, 25), reconcile_and_analyze,         "Reconcile & Analyze (18:25 ET)"),
+        ("brier_reconciliation",      time(18, 35), run_brier_reconciliation,      "Brier Reconciliation (18:35 ET)"),
+        ("sentinel_effectiveness",    time(18, 40), sentinel_effectiveness_check,  "Sentinel Effectiveness Check (18:40 ET)"),
     ]
     return [
         ScheduledTask(id=tid, time_et=t, function=fn, func_name=fn.__name__, label=lbl)
@@ -4118,14 +4159,138 @@ def _build_default_schedule() -> list:
     ]
 
 
+def _build_session_schedule(config: dict) -> list:
+    """Build schedule from session_template, anchored to commodity trading hours.
+
+    Derives all task times from the active commodity profile's trading_hours_et
+    field instead of absolute clock times.
+
+    Returns list[ScheduledTask] sorted by time_et.
+    """
+    from config.commodity_profiles import get_active_profile, parse_trading_hours
+
+    profile = get_active_profile(config)
+    open_t, close_t = parse_trading_hours(profile.contract.trading_hours_et)
+
+    tmpl = config['schedule']['session_template']
+    today = datetime.now(timezone.utc).date()
+
+    open_dt = datetime.combine(today, open_t)
+    close_dt = datetime.combine(today, close_t)
+    session_minutes = (close_dt - open_dt).total_seconds() / 60
+
+    result = []
+    seen_ids = set()
+
+    def _add_task(task_id, task_time, func_name, label):
+        if task_id in seen_ids:
+            raise ValueError(f"Duplicate schedule task ID: '{task_id}'")
+        seen_ids.add(task_id)
+        func = FUNCTION_REGISTRY.get(func_name)
+        if func is None:
+            logger.warning(f"Unknown function '{func_name}' in session task '{task_id}' — skipping")
+            return
+        result.append(ScheduledTask(
+            id=task_id,
+            time_et=task_time,
+            function=func,
+            func_name=func_name,
+            label=label,
+        ))
+
+    # 1. Pre-open tasks: open_time + offset_minutes (negative offsets = before open)
+    for entry in tmpl.get('pre_open_tasks', []):
+        dt = open_dt + timedelta(minutes=entry['offset_minutes'])
+        _add_task(entry['id'], dt.time(), entry['function'], entry.get('label', entry['id']))
+
+    # 2. Signal generation: evenly distributed between start_pct and end_pct
+    signal_count = tmpl.get('signal_count', 4)
+    start_pct = tmpl.get('signal_start_pct', 0.05)
+    end_pct = tmpl.get('signal_end_pct', 0.80)
+
+    signal_names = ['signal_open', 'signal_early', 'signal_mid', 'signal_late', 'signal_5']
+    signal_labels = ['Signal: Open', 'Signal: Early', 'Signal: Mid', 'Signal: Late', 'Signal: 5']
+
+    if signal_count == 1:
+        pcts = [start_pct]
+    else:
+        step = (end_pct - start_pct) / (signal_count - 1)
+        pcts = [start_pct + i * step for i in range(signal_count)]
+
+    for i, pct in enumerate(pcts):
+        dt = open_dt + timedelta(minutes=session_minutes * pct)
+        sid = signal_names[i] if i < len(signal_names) else f'signal_{i+1}'
+        slbl = signal_labels[i] if i < len(signal_labels) else f'Signal: {i+1}'
+        _add_task(sid, dt.time(), 'guarded_generate_orders', slbl)
+
+    # 3. Intra-session tasks: open_time + (session_minutes * session_pct)
+    for entry in tmpl.get('intra_session_tasks', []):
+        dt = open_dt + timedelta(minutes=session_minutes * entry['session_pct'])
+        _add_task(entry['id'], dt.time(), entry['function'], entry.get('label', entry['id']))
+
+    # 4. Pre-close tasks: close_time + offset_minutes (negative offsets = before close)
+    for entry in tmpl.get('pre_close_tasks', []):
+        dt = close_dt + timedelta(minutes=entry['offset_minutes'])
+        _add_task(entry['id'], dt.time(), entry['function'], entry.get('label', entry['id']))
+
+    # 5. Post-close tasks: close_time + offset_minutes (positive offsets = after close)
+    for entry in tmpl.get('post_close_tasks', []):
+        dt = close_dt + timedelta(minutes=entry['offset_minutes'])
+        _add_task(entry['id'], dt.time(), entry['function'], entry.get('label', entry['id']))
+
+    result.sort(key=lambda t: (t.time_et.hour, t.time_et.minute))
+    logger.info(f"Built session schedule: {len(result)} tasks for {profile.ticker} ({open_t.strftime('%H:%M')}-{close_t.strftime('%H:%M')} ET)")
+    return result
+
+
+def get_trading_cutoff(config: dict) -> tuple:
+    """Get the daily trading cutoff as (hour, minute) in ET.
+
+    In session mode: close_time - cutoff_before_close_minutes.
+    Fallback: daily_trading_cutoff_et from config.
+    """
+    schedule_cfg = config.get('schedule', {})
+    mode = schedule_cfg.get('mode', 'absolute')
+    tmpl = schedule_cfg.get('session_template')
+
+    if mode == 'session' and tmpl:
+        try:
+            from config.commodity_profiles import get_active_profile, parse_trading_hours
+            profile = get_active_profile(config)
+            _, close_t = parse_trading_hours(profile.contract.trading_hours_et)
+            cutoff_minutes = tmpl.get('cutoff_before_close_minutes', 78)
+            today = datetime.now(timezone.utc).date()
+            close_dt = datetime.combine(today, close_t)
+            cutoff_dt = close_dt - timedelta(minutes=cutoff_minutes)
+            return (cutoff_dt.time().hour, cutoff_dt.time().minute)
+        except Exception as e:
+            logger.warning(f"Failed to compute session cutoff: {e}")
+
+    # Fallback to absolute cutoff
+    cutoff_cfg = schedule_cfg.get('daily_trading_cutoff_et', {'hour': 10, 'minute': 45})
+    return (cutoff_cfg.get('hour', 10), cutoff_cfg.get('minute', 45))
+
+
 def build_schedule(config: dict) -> list:
-    """Build schedule from config.json tasks array, falling back to defaults.
+    """Build schedule from config, falling back to defaults.
+
+    Supports two modes:
+    - 'session': Derives times from commodity profile trading hours (preferred)
+    - 'absolute': Uses explicit time_et values from tasks array (legacy)
 
     Returns list[ScheduledTask] sorted by time_et.
     Raises ValueError on duplicate task IDs.
     Logs warning and skips unknown function names.
     """
-    tasks_cfg = config.get('schedule', {}).get('tasks')
+    schedule_cfg = config.get('schedule', {})
+    mode = schedule_cfg.get('mode', 'absolute')
+
+    # Session mode: derive times from commodity trading hours
+    if mode == 'session' and schedule_cfg.get('session_template'):
+        return _build_session_schedule(config)
+
+    # Absolute mode: explicit times from tasks array
+    tasks_cfg = schedule_cfg.get('tasks')
     if not tasks_cfg:
         logger.info("No schedule.tasks in config — using built-in default schedule")
         return _build_default_schedule()
@@ -4272,16 +4437,12 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
     now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
 
     # Cutoff check for BEFORE_CUTOFF policy
-    trading_cutoff = config.get('schedule', {}).get(
-        'daily_trading_cutoff_et', {'hour': 10, 'minute': 45}
-    )
-    cutoff_hour = trading_cutoff.get('hour', 10)
-    cutoff_minute = trading_cutoff.get('minute', 45)
+    cutoff_hour, cutoff_minute = get_trading_cutoff(config)
     before_cutoff = (
         now_ny.hour < cutoff_hour or
         (now_ny.hour == cutoff_hour and now_ny.minute < cutoff_minute)
     )
-    market_open = is_market_open()
+    market_open = is_market_open(config)
 
     # Normalize: support both ScheduledTask and legacy (time, name, func) tuples
     normalized = []
@@ -4460,7 +4621,7 @@ async def main():
     logger.info(f"Expiry filter window: {profile.min_dte}-{profile.max_dte} DTE")
 
     # Process deferred triggers from overnight - ONLY if market is open
-    if is_market_open():
+    if is_market_open(config):
         await process_deferred_triggers(config)
     else:
         logger.info("Market Closed. Deferred triggers will remain queued.")

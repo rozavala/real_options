@@ -517,11 +517,11 @@ async def fetch_flex_query_report(
             return None
 
 
-def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
+def parse_flex_csv_to_df(csv_data: str, config: dict = None) -> pd.DataFrame:
     """
     Parses the raw CSV string from the Flex Query into a clean DataFrame
     that matches the script's required format.
-    
+
     This new version reads the CSV data directly, as the debug file shows
     a clean CSV without extra section headers.
     """
@@ -557,20 +557,34 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     }
     df.rename(columns=column_mappings, inplace=True)
         
+    # --- Commodity profile info for multiplier/cents detection ---
+    from trading_bot.utils import get_active_ticker, CENTS_INDICATORS
+    from config.commodity_profiles import get_commodity_profile
+    _cfg = config or {}
+    _ticker = get_active_ticker(_cfg)
+    try:
+        _profile = get_commodity_profile(_ticker)
+        _default_multiplier = float(_profile.contract.contract_size)
+        _is_cents_based = any(ind in _profile.contract.unit.lower() for ind in CENTS_INDICATORS)
+    except Exception:
+        _default_multiplier = 37500.0
+        _is_cents_based = True  # Safe fallback (KC)
+
     # --- Data Cleaning and Type Conversion ---
     try:
         # Use the exact column names from your debug_report.csv
         df['TradePrice'] = pd.to_numeric(df['TradePrice'])
         df['Quantity'] = pd.to_numeric(df['Quantity'])
-        df['Multiplier'] = pd.to_numeric(df['Multiplier'].replace('', '37500.0')).fillna(37500.0)
+        df['Multiplier'] = pd.to_numeric(df['Multiplier'].replace('', str(_default_multiplier))).fillna(_default_multiplier)
 
         # Parse Strike: Convert empty to 0
         df['Strike'] = pd.to_numeric(df['Strike'].replace('', '0')).fillna(0)
-        
-        # Normalize Strike for Coffee (KC) options (Multiplier 37500)
+
+        # Normalize Strike for cents-based contracts (e.g., KC cents/lb)
         # Ledger uses cents (e.g. 550.0 for 5.5), while IB report uses dollars (5.5).
         # We multiply by 100 to match the ledger convention.
-        df['Strike'] = df['Strike'].where(df['Multiplier'] != 37500.0, df['Strike'] * 100)
+        if _is_cents_based:
+            df['Strike'] = df['Strike'] * 100
 
         # Parse the specific 'DateTime' format from your report: '20251106;122010'
         df['parsed_datetime'] = pd.to_datetime(df['DateTime'], format='%Y%m%d;%H%M%S')
@@ -628,10 +642,12 @@ def parse_flex_csv_to_df(csv_data: str) -> pd.DataFrame:
     # --- Calculate Value (using your original script's logic) ---
     # A 'BUY' is a negative value (cash outflow)
     multiplier = df['Multiplier']
-    # Normalize TradePrice to CENTS if multiplier is 37500 (Coffee) to match local ledger format.
-    # If the price is already in cents (unlikely for Flex Query), this might be wrong,
-    # but based on discrepancies, Flex Query returns dollars (e.g. 0.41) while ledger uses cents (41.0).
-    df_out['avg_fill_price'] = df['TradePrice'].where(multiplier != 37500.0, df['TradePrice'] * 100)
+    # Normalize TradePrice to CENTS for cents-based contracts to match local ledger format.
+    # Flex Query returns dollars (e.g. 0.41) while ledger uses cents (41.0).
+    if _is_cents_based:
+        df_out['avg_fill_price'] = df['TradePrice'] * 100
+    else:
+        df_out['avg_fill_price'] = df['TradePrice']
 
     # Calculate Value
     # If we use the normalized price (cents), we divide by 100.
@@ -671,7 +687,7 @@ async def main(lookback_days: int = None):
         logger.info(f"Fetching report for Query ID: {query_id}")
         csv_data = await fetch_flex_query_report(token, query_id)
         if csv_data:
-            ib_trades_df = parse_flex_csv_to_df(csv_data)
+            ib_trades_df = parse_flex_csv_to_df(csv_data, config=config)
             if not ib_trades_df.empty:
                 all_ib_trades.append(ib_trades_df)
         else:

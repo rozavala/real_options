@@ -163,6 +163,26 @@ def backfill_enhanced_from_csv() -> int:
         return 0
 
 
+def auto_orphan_enhanced_brier(max_age_hours: float = 168.0) -> int:
+    """
+    Orphan stale Enhanced Brier predictions that have been PENDING too long.
+
+    Called from orchestrator's periodic maintenance. Safe to call frequently —
+    only affects predictions older than max_age_hours.
+
+    Returns:
+        Number of predictions orphaned
+    """
+    try:
+        tracker = _get_enhanced_tracker()
+        if tracker is None:
+            return 0
+        return tracker.auto_orphan_stale_predictions(max_age_hours)
+    except Exception as e:
+        logger.warning(f"Enhanced Brier auto-orphan failed (non-fatal): {e}")
+        return 0
+
+
 def get_agent_reliability(agent_name: str, regime: str = "NORMAL", window: int = 20) -> float:
     """
     Rolling reliability multiplier from Enhanced Brier scores.

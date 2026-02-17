@@ -334,7 +334,7 @@ if os.path.exists(weight_csv):
                 latest = weight_df.sort_values('timestamp').groupby('agent').last()
                 st.dataframe(
                     latest[['regime', 'domain_weight', 'reliability_mult', 'final_weight']],
-                    use_container_width=True
+                    width="stretch"
                 )
         else:
             st.info("Weight evolution data will appear after the next trading cycle.")

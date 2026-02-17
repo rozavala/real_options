@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 import numpy as np
 import sys
 import os
+import html
 from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -374,7 +375,7 @@ if thesis_strength != "UNKNOWN":
     st.markdown(f"""
     <div style="display: inline-block; background-color: {thesis_color}; padding: 5px 15px;
                 border-radius: 20px; color: white; font-weight: bold; margin-bottom: 10px;">
-        Thesis: {thesis_strength}
+        Thesis: {html.escape(thesis_strength)}
     </div>
     """, unsafe_allow_html=True)
 
@@ -389,7 +390,7 @@ with master_cols[0]:
     color = "#00CC96" if decision == 'BULLISH' else "#EF553B" if decision == 'BEARISH' else "#888888"
     st.markdown(f"""
     <div style="background-color: {color}; padding: 20px; border-radius: 10px; text-align: center;">
-        <h2 style="color: white; margin: 0;">{decision}</h2>
+        <h2 style="color: white; margin: 0;">{html.escape(decision)}</h2>
     </div>
     """, unsafe_allow_html=True)
 

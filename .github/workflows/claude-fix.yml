@@ -1,0 +1,79 @@
+name: Auto-fix Issue with Claude
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.label.name == 'claude-fix' &&
+      !contains(github.event.issue.labels.*.name, 'claude-fix-attempted')
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
+          prompt: |
+            You are fixing issue #${{ github.event.issue.number }} in a production trading system.
+
+            WORKFLOW:
+            1. Read CLAUDE.md for project conventions
+            2. Run `git log --oneline -10` to see recent changes
+            3. Understand the issue and root cause
+            4. Make the fix — keep changes minimal and focused
+            5. Run `pytest tests/` to verify no regressions
+            6. Create a branch, commit, push, and open a PR:
+               - `git checkout -b claude/fix-issue-${{ github.event.issue.number }}`
+               - `git add <files>` and `git commit`
+               - `git push -u origin claude/fix-issue-${{ github.event.issue.number }}`
+               - `gh pr create` with "Closes #${{ github.event.issue.number }}" in the body
+
+            CRITICAL:
+            - NEVER push to main — always create a new branch
+            - NEVER modify execution-path files (order_manager.py, ib_interface.py,
+              compliance.py) without extreme care
+            - This is a PRODUCTION TRADING SYSTEM that trades real money
+            - All components must fail closed — if unsure, block rather than allow
+            - Keep changes minimal and focused on the issue
+          claude_args: '--max-turns 30 --allowedTools "Bash(*)" "Edit(*)" "Write(*)" --disallowedTools "Bash(git push * main*)" "Bash(git push origin main*)"'
+
+      - name: Mark as attempted
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Add 'claude-fix-attempted' label to prevent re-runs
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'claude-fix-attempted',
+              });
+            } catch {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'claude-fix-attempted',
+                color: 'e0e0e0',
+              });
+            }
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['claude-fix-attempted'],
+            });

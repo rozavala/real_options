@@ -214,6 +214,10 @@ class EnhancedBrierTracker:
                 self.backfill_from_resolved_csv()
             except Exception as e:
                 logger.warning(f"Auto-backfill on init failed (non-fatal): {e}")
+            try:
+                self.auto_orphan_stale_predictions()
+            except Exception as e:
+                logger.warning(f"Auto-orphan on init failed (non-fatal): {e}")
 
     def record_prediction(
         self,
@@ -489,6 +493,43 @@ class EnhancedBrierTracker:
             )
 
         return total_changes
+
+    def auto_orphan_stale_predictions(self, max_age_hours: float = 168.0) -> int:
+        """
+        Mark predictions older than max_age_hours as ORPHANED.
+
+        Enhanced Brier predictions that remain PENDING indefinitely (no
+        matching resolution from council_history or CSV) create stale
+        entries. This mirrors the legacy CSV's 72h orphaning but uses a
+        more generous 7-day window for the enhanced system.
+
+        Args:
+            max_age_hours: Maximum age before orphaning (default: 168 = 7 days)
+
+        Returns:
+            Number of predictions orphaned
+        """
+        now = datetime.now(timezone.utc)
+        orphaned = 0
+
+        for pred in self.predictions:
+            if pred.actual_outcome is not None:
+                continue  # Already resolved or orphaned
+
+            age_hours = (now - pred.timestamp).total_seconds() / 3600
+            if age_hours > max_age_hours:
+                pred.actual_outcome = "ORPHANED"
+                pred.resolved_at = now
+                orphaned += 1
+
+        if orphaned > 0:
+            self._save()
+            logger.info(
+                f"Auto-orphaned {orphaned} Enhanced Brier predictions "
+                f"older than {max_age_hours:.0f}h"
+            )
+
+        return orphaned
 
     def get_agent_reliability(self, agent: str, regime: str = "NORMAL") -> float:
         """

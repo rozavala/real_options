@@ -1,0 +1,204 @@
+name: Claude PR Revise
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  revise:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.review.state == 'changes_requested' &&
+      startsWith(github.event.pull_request.head.ref, 'claude/') &&
+      github.event.review.user.type != 'Bot'
+    timeout-minutes: 30
+
+    concurrency:
+      group: claude-pr-revise-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+
+    env:
+      MAX_REVISIONS: 3
+
+    steps:
+      - name: Check revision limit
+        id: revision-check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commits = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+
+            const revisionCount = commits.data.filter(
+              c => c.commit.message.includes('[claude-revision]')
+            ).length;
+
+            core.setOutput('revision_count', revisionCount);
+            core.setOutput('next_revision', revisionCount + 1);
+
+            const max = parseInt(process.env.MAX_REVISIONS, 10);
+            if (revisionCount >= max) {
+              core.setOutput('limit_reached', 'true');
+            } else {
+              core.setOutput('limit_reached', 'false');
+            }
+
+      - name: Post limit-reached comment
+        if: steps.revision-check.outputs.limit_reached == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const max = parseInt(process.env.MAX_REVISIONS, 10);
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `Revision limit reached (${max}/${max}). Further changes require manual intervention.\n\nThis PR has already been revised ${max} times by Claude. Please make the remaining changes manually or close this PR and open a new issue.`,
+            });
+
+            // Add label so it's easy to find PRs that hit the limit
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'claude-revision-limit',
+              });
+            } catch {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'claude-revision-limit',
+                color: 'e8963e',
+              });
+            }
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ['claude-revision-limit'],
+            });
+
+      - name: Fetch inline review comments
+        if: steps.revision-check.outputs.limit_reached != 'true'
+        id: review-comments
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get inline comments from this specific review
+            const comments = await github.rest.pulls.listCommentsForReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              review_id: context.payload.review.id,
+              per_page: 100,
+            });
+
+            let formatted = '';
+            for (const c of comments.data) {
+              const file = c.path;
+              const line = c.line || c.original_line || '?';
+              const side = c.side || 'RIGHT';
+              formatted += `### ${file}:${line}\n`;
+              if (c.diff_hunk) {
+                formatted += '```diff\n' + c.diff_hunk + '\n```\n';
+              }
+              formatted += c.body + '\n\n';
+            }
+
+            if (!formatted) {
+              formatted = '(No inline comments — see the top-level review body above)';
+            }
+
+            // Write to file to avoid shell escaping issues
+            const fs = require('fs');
+            fs.writeFileSync('/tmp/review_comments.md', formatted);
+            core.setOutput('comment_count', comments.data.length.toString());
+
+      - name: Checkout PR branch
+        if: steps.revision-check.outputs.limit_reached != 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 50
+
+      - name: Run Claude Code
+        if: steps.revision-check.outputs.limit_reached != 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
+          prompt: |
+            You are revising PR #${{ github.event.pull_request.number }} in a production trading system.
+
+            PR CONTEXT:
+            - Title: ${{ github.event.pull_request.title }}
+            - Branch: ${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}
+            - Revision: ${{ steps.revision-check.outputs.next_revision }}/${{ env.MAX_REVISIONS }}
+
+            REVIEWER FEEDBACK (from @${{ github.event.review.user.login }}):
+            ${{ github.event.review.body }}
+
+            INLINE COMMENTS (${{ steps.review-comments.outputs.comment_count }} comments):
+            Read the file /tmp/review_comments.md for file-specific inline feedback with diff context.
+
+            WORKFLOW:
+            1. Read CLAUDE.md for project conventions
+            2. Read /tmp/review_comments.md for the full inline review comments
+            3. Run `git log --oneline -10` to see recent changes on this branch
+            4. Read and understand the files mentioned in the review
+            5. Address ALL feedback from the reviewer — both the top-level body and inline comments
+            6. Run `pytest tests/` to verify no regressions
+            7. Stage, commit, and push:
+               - `git add <files>`
+               - `git commit` with a descriptive message ending with `[claude-revision]`
+               - `git push origin ${{ github.event.pull_request.head.ref }}`
+
+            CRITICAL:
+            - NEVER push to main — only push to the existing PR branch
+            - NEVER create new branches — stay on the current branch
+            - NEVER modify execution-path files (order_manager.py, ib_interface.py,
+              compliance.py) without extreme care
+            - This is a PRODUCTION TRADING SYSTEM that trades real money
+            - All components must fail closed — if unsure, block rather than allow
+            - Keep changes minimal and focused on the review feedback
+          claude_args: '--max-turns 30 --allowedTools "Bash(*)" "Edit(*)" "Write(*)" "Read(*)" --disallowedTools "Bash(git push * main*)" "Bash(git push origin main*)" "Bash(git checkout -b *)"'
+
+      - name: Post success comment
+        if: steps.revision-check.outputs.limit_reached != 'true' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const revision = '${{ steps.revision-check.outputs.next_revision }}';
+            const max = process.env.MAX_REVISIONS;
+            const reviewer = context.payload.review.user.login;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `Revision ${revision}/${max} — Addressed review feedback from @${reviewer}.\n\nPlease re-review the latest changes.`,
+            });
+
+      - name: Post failure comment
+        if: steps.revision-check.outputs.limit_reached != 'true' && failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const revision = '${{ steps.revision-check.outputs.next_revision }}';
+            const max = process.env.MAX_REVISIONS;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `Revision ${revision}/${max} failed. Claude was unable to address the review feedback automatically.\n\n[View workflow run](${runUrl}) for details. Manual intervention may be needed.`,
+            });

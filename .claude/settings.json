@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(_live_*/**)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Edit(**/credentials*)",
+      "Edit(**/secrets*)",
+      "Edit(**/*.key)",
+      "Edit(**/*.pem)",
+      "Edit(deploy.sh)",
+      "Edit(collect_logs.py)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/check_github_issues.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

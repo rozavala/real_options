@@ -6,6 +6,13 @@ Real Options is an event-driven, multi-agent AI trading system for commodity fut
 
 **Production system.** This trades real money via Interactive Brokers. Every change must be treated with the care that implies.
 
+## Session Startup
+
+At the start of every conversation, check open GitHub issues and briefly summarize any that need attention:
+```bash
+gh issue list --state open --limit 10
+```
+
 ## Quick Reference
 
 ```bash
@@ -217,6 +224,15 @@ These files are generated at runtime and tracked in `.gitignore`:
 - `*.log` - Log files in `logs/`
 - `*.sqlite3` - SQLite databases
 - `.env` - Secrets
+
+## Automated Issue-to-PR Pipeline
+
+Issues are automatically created from log errors (`scripts/error_reporter.py`), triaged by Claude (`issue-triage.yml`), and fixed by Claude Code (`claude-fix.yml`). The `claude-fix` label triggers the fix workflow.
+
+**When fixing issues (in CI or locally):**
+- Always check `git log --oneline -20` to understand recent changes before modifying code
+- Look for related recent commits that may provide context for the issue
+- Read the full issue including any triage comments for context
 
 ## Things to Watch Out For
 

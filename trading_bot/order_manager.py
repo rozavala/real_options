@@ -202,15 +202,22 @@ async def generate_and_execute_orders(config: dict, connection_purpose: str = "o
     longer than the gap between scheduled times.
     """
     # === EARLY EXIT: Skip entirely on non-trading days ===
-    if not is_market_open():
+    if not is_market_open(config):
         logger.info("Market is closed (weekend/holiday). Skipping order generation cycle.")
         return
 
     # === HOLDING-TIME GATE: Skip if insufficient time before forced close ===
-    min_holding_hours = config.get('risk_management', {}).get(
-        'min_holding_hours', 6.0
-    )
     remaining_hours = hours_until_weekly_close(config)
+
+    # Use relaxed threshold on weekly-close days (Friday / pre-holiday Thursday)
+    if remaining_hours < float('inf'):
+        min_holding_hours = config.get('risk_management', {}).get(
+            'friday_min_holding_hours', 2.0
+        )
+    else:
+        min_holding_hours = config.get('risk_management', {}).get(
+            'min_holding_hours', 6.0
+        )
 
     if remaining_hours < min_holding_hours:
         logger.info(
@@ -1811,7 +1818,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                     positions_to_close[f"ORPHAN_{symbol}"].append({
                         'conId': pos.contract.conId,
                         'symbol': symbol,
-                        'exchange': pos.contract.exchange or 'SMART',
+                        'exchange': pos.contract.exchange or config.get('exchange', 'SMART'),
+                        'secType': pos.contract.secType or 'FOP',
                         'action': close_action,
                         'quantity': live_qty,
                         'multiplier': pos.contract.multiplier,
@@ -1935,9 +1943,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                         contract = Contract()
                         contract.conId = leg['conId']
                         contract.symbol = config.get('symbol', 'KC')
-                        contract.secType = "FOP"
-
-                    contract.exchange = leg['exchange'] or config.get('exchange', 'SMART')
+                        contract.secType = leg.get('secType', 'FOP')
+                        contract.exchange = leg['exchange'] or config.get('exchange', 'SMART')
 
                     order_size = leg['quantity']
                     logger.info(f"Constructed SINGLE order for Pos ID {pos_id}: {leg['action']} {order_size} {leg['symbol']}")

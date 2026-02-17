@@ -12,6 +12,7 @@ import csv
 import logging
 import os
 import shutil
+import re
 from datetime import datetime, time, timedelta, timezone, date
 import pytz
 from ib_insync import *
@@ -171,6 +172,49 @@ def _get_combo_description(trade: Trade) -> str:
         return f"Bag_{trade.order.permId}"
 
 
+def sanitize_for_csv(value):
+    """Escape strings that could be interpreted as formulas by spreadsheet software.
+
+    Prepends a single quote to strings starting with =, +, or @ (after stripping
+    whitespace). Also handles '-' selectively to allow negative numbers and
+    markdown bullet points while escaping potential formula injections.
+    """
+    if not isinstance(value, str):
+        return value
+
+    stripped = value.strip()
+    if not stripped:
+        return value
+
+    if stripped[0] in ('=', '+', '@'):
+        return f"'{value}"
+
+    # Smart check for dash to allow negative numbers/bullets but block formulas
+    if stripped.startswith('-'):
+        # Allow negative numbers (integer, float, or scientific notation)
+        # Examples: -5, -5.5, -.5, -1.2E-4, -1e10
+        if re.fullmatch(r'-\s*(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?', stripped):
+            return value
+
+        # Allow markdown bullet points (dash followed by space)
+        if stripped.startswith('- '):
+            return value
+
+        # Escape everything else starting with dash (e.g. -cmd|...)
+        return f"'{value}"
+
+    return value
+
+
+def escape_xml(text: str) -> str:
+    """Escape XML special characters to prevent prompt injection."""
+    if not isinstance(text, str):
+        return str(text)
+    # Strip invalid XML control characters (0x00-0x1F except tab, newline, carriage return)
+    clean_text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', text)
+    return clean_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
 def log_order_event(trade: Trade, status: str, message: str = ""):
     """Logs the status change of an order to the `order_events.csv` file.
 
@@ -209,7 +253,7 @@ def log_order_event(trade: Trade, status: str, message: str = ""):
                 'quantity': trade.order.totalQuantity,
                 'lmtPrice': trade.order.lmtPrice,
                 'status': status,
-                'message': message
+                'message': sanitize_for_csv(message)
             })
     except Exception as e:
         logging.error(f"Error writing to order event log: {e}")
@@ -449,10 +493,18 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
                 logging.warning(f"Could not find detailed contract for {contract.conId}. Ledger may be incomplete.")
 
         execution = fill.execution
+        # Resolve multiplier: prefer IBKR contract data, fallback to profile
+        _fallback_mult = 37500.0  # ultimate fallback
         try:
-            multiplier = float(contract.multiplier) if contract.multiplier else 37500.0
+            from config.commodity_profiles import get_commodity_profile
+            _fb_profile = get_commodity_profile(get_active_ticker(config) if config else 'KC')
+            _fallback_mult = float(_fb_profile.contract.contract_size)
+        except Exception:
+            pass
+        try:
+            multiplier = float(contract.multiplier) if contract.multiplier else _fallback_mult
         except (ValueError, TypeError):
-            multiplier = 37500.0
+            multiplier = _fallback_mult
 
         total_value = (execution.price * execution.shares * multiplier) / 100.0
         action = 'BUY' if execution.side == 'BOT' else 'SELL'
@@ -475,7 +527,7 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
                 unit = profile.contract.unit.lower()
             except Exception:
                 pass
-            is_cents_based = any(ind in unit for ind in CENTS_INDICATORS) if unit else (multiplier == 37500.0)
+            is_cents_based = any(ind in unit for ind in CENTS_INDICATORS) if unit else False
             if is_cents_based and isinstance(strike_value, (int, float)):
                 if 0 < strike_value < 100.0:
                     strike_value = round(strike_value * 100.0, 2)
@@ -497,7 +549,7 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
             'strike': strike_value,
             'right': contract.right if hasattr(contract, 'right') else 'N/A',
             'total_value_usd': total_value,
-            'reason': reason
+            'reason': sanitize_for_csv(reason)
         }
         rows_to_write.append(row)
 
@@ -593,8 +645,20 @@ def log_council_decision(decision_data):
         "dissent_acknowledged",   # Strongest counter-argument Master chose to override
     ]
 
+    # Free-text fields that may contain LLM output — sanitize for CSV formula injection
+    _TEXT_FIELDS = {
+        'meteorologist_summary', 'macro_summary', 'geopolitical_summary',
+        'fundamentalist_summary', 'sentiment_summary', 'technical_summary',
+        'volatility_summary', 'master_reasoning', 'primary_catalyst',
+        'dissent_acknowledged', 'vote_breakdown',
+    }
+
     # Prepare the new row
-    row_data = {field: decision_data.get(field, '') for field in fieldnames}
+    row_data = {
+        field: sanitize_for_csv(decision_data.get(field, '')) if field in _TEXT_FIELDS
+        else decision_data.get(field, '')
+        for field in fieldnames
+    }
 
     # Fix precision for entry_price
     if row_data.get('entry_price'):
@@ -630,17 +694,21 @@ def log_council_decision(decision_data):
     except Exception as e:
         logging.error(f"Failed to log council decision: {e}")
 
-def is_market_open() -> bool:
+def is_market_open(config: dict = None) -> bool:
     """Check if ICE coffee futures market is currently open.
 
-    Based on ICE Coffee (KC) Trading Hours:
-    - Electronic: Sun 6:00 PM - Fri 5:00 PM ET
-    - Core Validation/Trading Hours: 03:30 AM - 02:00 PM ET
+    When config is provided, loads the active commodity profile and uses
+    its trading_hours_et field for the open/close window. Otherwise falls
+    back to hardcoded 03:30 AM - 02:00 PM ET (backward compat).
 
     This function checks:
     1. Weekends (Saturday/Sunday) -> CLOSED
     2. US Market Holidays (NYSE calendar) -> CLOSED
-    3. Time of day (03:30 - 14:00 ET) -> OPEN if within window
+    3. Time of day -> OPEN if within window
+
+    Args:
+        config: Application config dict (optional). When provided, uses
+                commodity profile trading hours instead of hardcoded defaults.
 
     Returns:
         bool: True if market is currently open, False otherwise.
@@ -673,10 +741,22 @@ def is_market_open() -> bool:
     if now_ny.date() in us_holidays:
         return False
 
-    # 3. Time Check (03:30 AM - 02:00 PM ET)
-    # Define thresholds in NY timezone
-    market_open_ny = now_ny.replace(hour=3, minute=30, second=0, microsecond=0)
-    market_close_ny = now_ny.replace(hour=14, minute=0, second=0, microsecond=0)
+    # 3. Time Check — use profile hours if config provided, else hardcoded
+    if config is not None:
+        try:
+            from config.commodity_profiles import get_active_profile, parse_trading_hours
+            profile = get_active_profile(config)
+            open_t, close_t = parse_trading_hours(profile.contract.trading_hours_et)
+            market_open_ny = now_ny.replace(hour=open_t.hour, minute=open_t.minute, second=0, microsecond=0)
+            market_close_ny = now_ny.replace(hour=close_t.hour, minute=close_t.minute, second=0, microsecond=0)
+        except Exception:
+            # Fallback to hardcoded if profile loading fails
+            market_open_ny = now_ny.replace(hour=3, minute=30, second=0, microsecond=0)
+            market_close_ny = now_ny.replace(hour=14, minute=0, second=0, microsecond=0)
+    else:
+        # Hardcoded fallback (03:30 AM - 02:00 PM ET)
+        market_open_ny = now_ny.replace(hour=3, minute=30, second=0, microsecond=0)
+        market_close_ny = now_ny.replace(hour=14, minute=0, second=0, microsecond=0)
 
     # Convert to UTC for comparison
     market_open_utc = market_open_ny.astimezone(utc)
@@ -843,7 +923,6 @@ def word_boundary_match(keyword: str, text: str) -> bool:
 
     Commodity-agnostic: works for any keyword vocabulary.
     """
-    import re
     kw_lower = keyword.lower()
     text_lower = text.lower()
 

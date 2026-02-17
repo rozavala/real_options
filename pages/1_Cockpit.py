@@ -7,7 +7,7 @@ Purpose: "Morning coffee" screen - Is the system running? Is capital safe? Any e
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import pytz
 import sys
 import os
@@ -31,6 +31,7 @@ from dashboard_utils import (
     get_commodity_profile,
     load_task_schedule_status
 )
+from trading_bot.calendars import is_trading_day
 
 def load_deduplicator_metrics() -> dict:
     """Load trigger deduplication metrics."""
@@ -156,7 +157,7 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
             # UX Improvement: Copy ID Button
             label = f"🆔 {position_id[:8]}"
             if hasattr(st, "popover"):
-                with st.popover(label, use_container_width=True):
+                with st.popover(label, width="stretch"):
                     st.code(position_id, language=None)
                     st.caption("Full Position ID")
             else:
@@ -181,7 +182,12 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
 
         with cols[1]:
             if unrealized_pnl is not None:
-                st.metric("Unrealized P&L", f"${unrealized_pnl:+,.2f}")
+                st.metric(
+                    "Unrealized P&L",
+                    f"${unrealized_pnl:+,.2f}",
+                    delta=f"${unrealized_pnl:+,.2f}",
+                    delta_color="normal",
+                )
             else:
                 st.metric("Unrealized P&L", "N/A")
 
@@ -256,7 +262,12 @@ def render_portfolio_risk_summary(live_data: dict):
         if daily_pnl is None or (isinstance(daily_pnl, float) and math.isnan(daily_pnl)):
             st.metric("Daily P&L", "$0", delta="No data", delta_color="off")
         else:
-            st.metric("Daily P&L", f"${daily_pnl:+,.0f}")
+            st.metric(
+                "Daily P&L",
+                f"${daily_pnl:+,.0f}",
+                delta=f"${daily_pnl:+,.0f}",
+                delta_color="normal",
+            )
 
     with cols[3]:
         pos_count = len([p for p in live_data.get('open_positions', []) if p.position != 0])
@@ -447,21 +458,44 @@ utc_now = datetime.now(timezone.utc)
 ny_tz = pytz.timezone('America/New_York')
 ny_now = utc_now.astimezone(ny_tz)
 
-# Determine Market Status (using same logic as Utils but for display)
+# Determine Market Status (check hours, weekday, AND holidays)
 market_open_ny = ny_now.replace(hour=3, minute=30, second=0, microsecond=0)
 market_close_ny = ny_now.replace(hour=14, minute=0, second=0, microsecond=0)
-is_open = market_open_ny <= ny_now <= market_close_ny and ny_now.weekday() < 5
+is_weekday = ny_now.weekday() < 5
+is_within_hours = market_open_ny <= ny_now <= market_close_ny
+is_trading = is_trading_day(ny_now.date(), exchange='ICE')
+
+is_open = is_weekday and is_within_hours and is_trading
 
 status_color = "🟢" if is_open else "🔴"
 status_text = "OPEN" if is_open else "CLOSED"
+countdown_text = None
 
-if is_open:
+# Add specific reason for closure and compute countdown
+if not is_open:
+    if not is_weekday:
+        status_text += " (Weekend)"
+    elif not is_trading:
+        status_text += " (Holiday)"
+    elif not is_within_hours:
+        status_text += " (After Hours)"
+    # Calculate "opens in" countdown to next trading day open
+    next_open = ny_now.replace(hour=3, minute=30, second=0, microsecond=0)
+    if ny_now >= next_open:
+        next_open += timedelta(days=1)
+    # Advance to next trading day
+    while next_open.weekday() >= 5 or not is_trading_day(next_open.date(), exchange='ICE'):
+        next_open += timedelta(days=1)
+    delta = next_open - ny_now
+    total_mins = int(delta.total_seconds() // 60)
+    h, m = divmod(total_mins, 60)
+    countdown_text = f"Opens in {h}h {m}m"
+else:
     delta = market_close_ny - ny_now
-    # Ensure non-negative duration
     if delta.total_seconds() > 0:
-        minutes = int(delta.total_seconds() // 60)
-        hours, minutes = divmod(minutes, 60)
-        status_text += f" (closes in {hours}h {minutes}m)"
+        total_mins = int(delta.total_seconds() // 60)
+        h, m = divmod(total_mins, 60)
+        countdown_text = f"Closes in {h}h {m}m"
 
 clock_cols = st.columns(3)
 with clock_cols[0]:
@@ -469,7 +503,8 @@ with clock_cols[0]:
 with clock_cols[1]:
     st.metric("New York Time (Market)", ny_now.strftime("%H:%M:%S"))
 with clock_cols[2]:
-    st.metric("Market Status", f"{status_color} {status_text}", help="Trading Hours (ET): 03:30 - 14:00 (Mon-Fri)")
+    st.metric("Market Status", f"{status_color} {status_text}", delta=countdown_text, delta_color="off",
+              help="Trading Hours (ET): 03:30 - 14:00 (Mon-Fri)")
 
 st.markdown("---")
 
@@ -584,7 +619,10 @@ with st.expander("🔍 Sentinel Details"):
 
         col_status, col_last, col_freq = st.columns([3, 2, 2])
         with col_status:
-            st.write(f"{status_icon} {icon} **{display}**  —  {status_text}")
+            st.markdown(
+                f"{status_icon} {icon} **{display}**  —  {status_text}",
+                help=f"**Status:** {status}\n**Availability:** {info.get('availability', 'Unknown')}\n**Interval:** {info.get('interval_seconds', '?')}s"
+            )
         with col_last:
             if minutes is not None:
                 st.caption(f"Last check: {minutes}m ago")
@@ -600,7 +638,13 @@ with st.expander("🔍 Sentinel Details"):
                 st.caption("")
 
         if error:
-            st.caption(f"  ⚠️ `{error[:120]}`")
+            # UX Improvement: Progressive enhancement for error details
+            if hasattr(st, "popover"):
+                with st.popover("⚠️ Error", help="View error details"):
+                    st.code(error, language="text")
+            else:
+                with st.expander("⚠️ View Error Details", expanded=False):
+                    st.code(error, language="text")
 
     st.markdown("**Always-On Sentinels** (24/7, no IB required)")
     for name, info in always_on.items():
@@ -639,7 +683,7 @@ if task_data['available']:
 
         import pandas as pd
         df = pd.DataFrame(table_rows)
-        st.dataframe(df, hide_index=True, use_container_width=True)
+        st.dataframe(df, hide_index=True, width="stretch")
 
         # Environment badge
         env = task_data['schedule_env']
@@ -712,7 +756,7 @@ if task_data['available']:
 
         import pandas as pd
         df = pd.DataFrame(table_rows)
-        st.dataframe(df, hide_index=True, use_container_width=True)
+        st.dataframe(df, hide_index=True, width="stretch")
 
         # Environment badge
         env = task_data['schedule_env']

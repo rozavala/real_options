@@ -17,6 +17,7 @@ from typing import Optional, Any
 from trading_bot.brier_bridge import get_agent_reliability
 from trading_bot.strategy_router import extract_agent_prediction
 from trading_bot.confidence_utils import CONFIDENCE_BANDS, parse_confidence
+from trading_bot.agent_names import DEPRECATED_AGENTS
 
 logger = logging.getLogger(__name__)
 
@@ -394,6 +395,11 @@ async def calculate_weighted_decision(
     votes: list[AgentVote] = []
 
     for agent_name, report in agent_reports.items():
+        # === EARLY SKIP: Deprecated agents (stale state.json entries) ===
+        if agent_name in DEPRECATED_AGENTS:
+            logger.debug(f"Agent {agent_name}: Skipping — deprecated agent")
+            continue
+
         # === EARLY SKIP: Explicitly unavailable data ===
         if not report or report in ["Data Unavailable", "N/A"]:
             logger.debug(f"Agent {agent_name}: Skipping - Data Unavailable")

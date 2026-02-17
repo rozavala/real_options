@@ -5,10 +5,10 @@
       "flash": "gemini-3-flash-preview"
     },
     "anthropic": {
-      "pro": "claude-opus-4-5-20251101"
+      "pro": "claude-opus-4-6"
     },
     "openai": {
-      "pro": "gpt-4o",
+      "pro": "gpt-5.2",
       "reasoning": "o3-2025-04-16"
     },
     "xai": {
@@ -59,6 +59,7 @@
   "risk_management": {
     "max_holding_days": 2,
     "min_holding_hours": 6.0,
+    "friday_min_holding_hours": 2.0,
     "check_interval_seconds": 600,
     "min_confidence_threshold": 0.60,
     "monitoring_grace_period_seconds": 300,
@@ -475,31 +476,48 @@
   },
   "schedule": {
     "dev_offset_minutes": 0,
+    "mode": "session",
     "daily_trading_cutoff_et": {
       "hour": 12,
       "minute": 15
     },
-    "tasks": [
-      {"id": "start_monitoring",          "time_et": "03:30", "function": "start_monitoring",              "label": "Start Position Monitoring"},
-      {"id": "process_deferred_triggers", "time_et": "03:31", "function": "process_deferred_triggers",     "label": "Process Deferred Triggers"},
-      {"id": "cleanup_orphaned_theses",   "time_et": "05:00", "function": "cleanup_orphaned_theses",       "label": "Daily Thesis Cleanup"},
-      {"id": "signal_early",              "time_et": "09:00", "function": "guarded_generate_orders",       "label": "Signal: Early Session (04:00 ET)"},
-      {"id": "signal_euro",               "time_et": "11:00", "function": "guarded_generate_orders",       "label": "Signal: EU Overlap (06:00 ET)"},
-      {"id": "signal_us_open",            "time_et": "13:00", "function": "guarded_generate_orders",       "label": "Signal: US Open (08:00 ET)"},
-      {"id": "signal_peak",               "time_et": "15:00", "function": "guarded_generate_orders",       "label": "Signal: Peak Liquidity (10:00 ET)"},
-      {"id": "signal_settlement",         "time_et": "17:00", "function": "guarded_generate_orders",       "label": "Signal: Settlement (12:00 ET)"},
-      {"id": "audit_morning",             "time_et": "13:30", "function": "run_position_audit_cycle",      "label": "Audit: Morning (08:30 ET)"},
-      {"id": "close_stale_primary",       "time_et": "15:30", "function": "close_stale_positions",         "label": "Close Stale (Primary)"},
-      {"id": "audit_post_close",          "time_et": "15:45", "function": "run_position_audit_cycle",      "label": "Audit: Post-Close (10:45 ET)"},
-      {"id": "close_stale_fallback",      "time_et": "16:30", "function": "close_stale_positions_fallback","label": "Close Stale (Fallback)"},
-      {"id": "audit_pre_close",           "time_et": "17:15", "function": "run_position_audit_cycle",      "label": "Audit: Pre-Close (12:15 ET)"},
-      {"id": "emergency_hard_close",      "time_et": "17:30", "function": "emergency_hard_close",          "label": "Emergency Hard Close"},
-      {"id": "eod_shutdown",              "time_et": "18:00", "function": "cancel_and_stop_monitoring",    "label": "End-of-Day Shutdown"},
-      {"id": "log_equity_snapshot",       "time_et": "18:20", "function": "log_equity_snapshot",           "label": "Log Equity Snapshot"},
-      {"id": "reconcile_and_analyze",     "time_et": "18:25", "function": "reconcile_and_analyze",         "label": "Reconcile & Analyze"},
-      {"id": "brier_reconciliation",      "time_et": "18:35", "function": "run_brier_reconciliation",     "label": "Brier Reconciliation"},
-      {"id": "sentinel_effectiveness",    "time_et": "18:40", "function": "sentinel_effectiveness_check",  "label": "Sentinel Effectiveness Check"}
-    ]
+    "session_template": {
+      "signal_count": 4,
+      "signal_start_pct": 0.05,
+      "signal_end_pct": 0.80,
+      "cutoff_before_close_minutes": 78,
+
+      "pre_open_tasks": [
+        {"id": "start_monitoring",          "offset_minutes": -45, "function": "start_monitoring",          "label": "Start Position Monitoring"},
+        {"id": "process_deferred_triggers", "offset_minutes": -44, "function": "process_deferred_triggers", "label": "Process Deferred Triggers"},
+        {"id": "cleanup_orphaned_theses",   "offset_minutes": -15, "function": "cleanup_orphaned_theses",   "label": "Daily Thesis Cleanup"}
+      ],
+
+      "intra_session_tasks": [
+        {"id": "audit_mid_session", "session_pct": 0.50, "function": "run_position_audit_cycle", "label": "Audit: Mid-Session"}
+      ],
+
+      "pre_close_tasks": [
+        {"id": "audit_pre_close",      "offset_minutes": -35, "function": "run_position_audit_cycle",       "label": "Audit: Pre-Close"},
+        {"id": "close_stale_primary",  "offset_minutes": -25, "function": "close_stale_positions",          "label": "Close Stale: Primary"},
+        {"id": "close_stale_fallback", "offset_minutes": -15, "function": "close_stale_positions_fallback", "label": "Close Stale: Fallback"},
+        {"id": "emergency_hard_close", "offset_minutes": -5,  "function": "emergency_hard_close",           "label": "Emergency Hard Close"}
+      ],
+
+      "post_close_tasks": [
+        {"id": "log_equity_snapshot",    "offset_minutes": 5,  "function": "log_equity_snapshot",          "label": "Log Equity Snapshot"},
+        {"id": "reconcile_and_analyze",  "offset_minutes": 8,  "function": "reconcile_and_analyze",        "label": "Reconcile & Analyze"},
+        {"id": "brier_reconciliation",   "offset_minutes": 11, "function": "run_brier_reconciliation",     "label": "Brier Reconciliation"},
+        {"id": "sentinel_effectiveness", "offset_minutes": 14, "function": "sentinel_effectiveness_check", "label": "Sentinel Effectiveness Check"},
+        {"id": "eod_shutdown",           "offset_minutes": 17, "function": "cancel_and_stop_monitoring",   "label": "End-of-Day Shutdown"}
+      ]
+    }
+  },
+  "dspy": {
+    "use_optimized_prompts": {},
+    "optimized_prompts_dir": "data/dspy_optimized",
+    "min_examples_per_agent": 30,
+    "min_examples_for_suggest": 100
   },
   "final_column_order": [
     "date",
@@ -553,5 +571,19 @@
     "shipping_proxy",
     "volatility_index",
     "dgs10_yield"
-  ]
+  ],
+  "error_reporter": {
+    "enabled": true,
+    "github_owner": "rozavala",
+    "github_repo": "real_options",
+    "github_token_env": "GITHUB_ERROR_REPORTER_TOKEN",
+    "log_directory": "logs",
+    "dedup_cooldown_hours": 24,
+    "max_issues_per_day": 3,
+    "max_critical_issues_per_day": 5,
+    "daily_summary_threshold": 5,
+    "default_labels": ["automated", "error-report"],
+    "notify_on_issue_created": true,
+    "triage_model": "claude-sonnet-4-5-20250929"
+  }
 }

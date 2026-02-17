@@ -414,7 +414,7 @@ async def check_compliance_volume(config: dict) -> CheckResult:
         bag.symbol = ticker_sym
         bag.exchange = ibkr_exchange
         bag.currency = 'USD'
-        bag.comboLegs = [ComboLeg(conId=valid_option.conId, ratio=1, action='BUY', exchange='NYBOT')]
+        bag.comboLegs = [ComboLeg(conId=valid_option.conId, ratio=1, action='BUY', exchange=ibkr_exchange)]
 
         guardian = ComplianceGuardian({'compliance': config.get('compliance', {'max_volume_pct': 0.10})})
 

@@ -24,9 +24,10 @@ DEV_CLIENT_ID_BASE = {
     "equity_logger": 60,
     "reconciliation": 65,
     "cleanup": 70,
+    "drawdown_check": 75,
 }
 DEV_CLIENT_ID_JITTER = 4   # random(0, 4) for dev; prod uses random(0, 9)
-DEV_CLIENT_ID_DEFAULT = 75  # Unknown purposes in dev: 75-79
+DEV_CLIENT_ID_DEFAULT = 80  # Unknown purposes in dev: 80-84
 
 
 def _is_remote_gateway(config: dict) -> bool:
@@ -57,12 +58,13 @@ class IBConnectionPool:
         "microstructure": 200,    # Range: 200-209
         "test_utilities": 220,    # Range: 220-229 (Dashboard IB test button)
         "audit": 230,             # Range: 230-239 (Position audit cycle)
+        "drawdown_check": 240,    # Range: 240-249
         "equity_logger": 250,     # Range: 250-259
         "reconciliation": 260,    # Range: 260-269
         "cleanup": 270,           # Range: 270-279
         # Note: position_monitor.py uses 300-399
         # Note: reconciliation uses random 5000-9999
-        # DEFAULT for unknown purposes: 200-209 (avoid adding new purposes without explicit ID)
+        # DEFAULT for unknown purposes: 280-289 (avoid adding new purposes without explicit ID)
     }
 
     MAX_RECONNECT_BACKOFF = 600  # 10 minutes
@@ -160,7 +162,7 @@ class IBConnectionPool:
                 base_id = DEV_CLIENT_ID_BASE.get(purpose, DEV_CLIENT_ID_DEFAULT)
                 client_id = base_id + random.randint(0, DEV_CLIENT_ID_JITTER)
             else:
-                base_id = cls.CLIENT_ID_BASE.get(purpose, 200)
+                base_id = cls.CLIENT_ID_BASE.get(purpose, 280)
                 client_id = base_id + random.randint(0, 9)
 
             is_paper = config.get('connection', {}).get('paper', False)

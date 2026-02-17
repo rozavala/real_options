@@ -105,6 +105,43 @@ def test_build_schedule_unknown_function_skipped():
     assert result[0].id == 'good'
 
 
+def test_build_schedule_session_mode():
+    """Session mode builds schedule from commodity profile trading hours."""
+    config = {
+        'symbol': 'KC',
+        'schedule': {
+            'mode': 'session',
+            'session_template': {
+                'signal_count': 4,
+                'signal_start_pct': 0.05,
+                'signal_end_pct': 0.80,
+                'cutoff_before_close_minutes': 78,
+                'pre_open_tasks': [
+                    {'id': 'start_monitoring', 'offset_minutes': -45, 'function': 'start_monitoring', 'label': 'Start'},
+                ],
+                'intra_session_tasks': [],
+                'pre_close_tasks': [
+                    {'id': 'emergency_hard_close', 'offset_minutes': -5, 'function': 'emergency_hard_close', 'label': 'EHC'},
+                ],
+                'post_close_tasks': [
+                    {'id': 'eod_shutdown', 'offset_minutes': 17, 'function': 'cancel_and_stop_monitoring', 'label': 'EOD'},
+                ],
+            }
+        }
+    }
+    result = build_schedule(config)
+    assert len(result) == 7  # 1 pre-open + 4 signals + 1 pre-close + 1 post-close
+    ids = [t.id for t in result]
+    assert 'start_monitoring' in ids
+    assert 'signal_open' in ids
+    assert 'signal_late' in ids
+    assert 'emergency_hard_close' in ids
+    assert 'eod_shutdown' in ids
+    # All times should be within a reasonable day range
+    for t in result:
+        assert t.time_et.hour >= 3  # earliest is ~45 min before 04:15 open
+
+
 # === _build_default_schedule ===
 
 def test_default_schedule_structure():
@@ -122,15 +159,35 @@ def test_default_schedule_structure():
 
 
 def test_default_schedule_matches_config():
-    """Default schedule IDs match the config.json tasks array."""
+    """Config.json schedule mode and structure are valid."""
     # Load config
     config_path = os.path.join(os.path.dirname(__file__), '..', 'config.json')
     with open(config_path) as f:
         config = json.load(f)
 
-    config_ids = [t['id'] for t in config['schedule']['tasks']]
-    default_ids = [t.id for t in _build_default_schedule()]
-    assert config_ids == default_ids, "config.json task IDs must match built-in defaults"
+    schedule_cfg = config['schedule']
+    mode = schedule_cfg.get('mode', 'absolute')
+
+    if mode == 'session':
+        # Session mode: validate session_template structure
+        tmpl = schedule_cfg['session_template']
+        assert tmpl['signal_count'] >= 1
+        assert 0 <= tmpl['signal_start_pct'] < tmpl['signal_end_pct'] <= 1.0
+        assert tmpl['cutoff_before_close_minutes'] > 0
+
+        # All task groups must have valid function names
+        from orchestrator import FUNCTION_REGISTRY
+        for group in ('pre_open_tasks', 'intra_session_tasks', 'pre_close_tasks', 'post_close_tasks'):
+            for entry in tmpl.get(group, []):
+                assert entry['function'] in FUNCTION_REGISTRY, (
+                    f"Unknown function '{entry['function']}' in {group}"
+                )
+                assert entry['id']  # non-empty ID
+    else:
+        # Absolute mode: IDs must match defaults
+        config_ids = [t['id'] for t in schedule_cfg['tasks']]
+        default_ids = [t.id for t in _build_default_schedule()]
+        assert config_ids == default_ids, "config.json task IDs must match built-in defaults"
 
 
 # === Backward-compat module-level schedule dict ===
