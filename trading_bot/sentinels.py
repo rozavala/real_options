@@ -4,7 +4,6 @@ import os
 import hashlib
 from pathlib import Path
 import feedparser
-import requests
 import statistics
 from openai import AsyncOpenAI
 from email.utils import parsedate_to_datetime
@@ -17,7 +16,6 @@ import pytz
 import aiohttp
 import json
 import re
-import functools
 from functools import wraps
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager
@@ -120,11 +118,24 @@ class Sentinel:
         self.enabled = True
         self.last_triggered = 0 # Timestamp of last trigger
         self.last_payload_hash = None
+        self._session: Optional[aiohttp.ClientSession] = None
 
         # Persistent seen cache
         self._cache_file = Path(self.CACHE_DIR) / f"{self.__class__.__name__}_seen.json"
         self._seen_timestamps = {}  # link -> first_seen_timestamp
         self._seen_links = self._load_seen_cache()
+
+    async def _get_session(self) -> aiohttp.ClientSession:
+        """Return a shared aiohttp session, creating one lazily."""
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30))
+        return self._session
+
+    async def close(self):
+        """Close the shared aiohttp session."""
+        if self._session and not self._session.closed:
+            await self._session.close()
+            self._session = None
 
     def _validate_ai_response(self, data: Any, context: str = "") -> Optional[dict]:
         """
@@ -220,21 +231,21 @@ class Sentinel:
         cutoff_time = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
 
         try:
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
-                async with session.get(url) as response:
-                    if response.status != 200:
-                        logger.warning(f"RSS {url} returned {response.status}")
+            session = await self._get_session()
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=timeout)) as response:
+                if response.status != 200:
+                    logger.warning(f"RSS {url} returned {response.status}")
+                    return []
+                # Size limit to prevent DoS via memory exhaustion from large/malicious feeds
+                MAX_RSS_SIZE = 5 * 1024 * 1024  # 5MB
+                content_bytes = bytearray()
+                async for chunk in response.content.iter_chunked(8192):
+                    if len(content_bytes) + len(chunk) > MAX_RSS_SIZE:
+                        logger.warning(f"RSS {url} exceeded size limit ({MAX_RSS_SIZE} bytes)")
                         return []
-                    # Size limit to prevent DoS via memory exhaustion from large/malicious feeds
-                    MAX_RSS_SIZE = 5 * 1024 * 1024  # 5MB
-                    content_bytes = bytearray()
-                    async for chunk in response.content.iter_chunked(8192):
-                        if len(content_bytes) + len(chunk) > MAX_RSS_SIZE:
-                            logger.warning(f"RSS {url} exceeded size limit ({MAX_RSS_SIZE} bytes)")
-                            return []
-                        content_bytes.extend(chunk)
+                    content_bytes.extend(chunk)
 
-                    content = bytes(content_bytes)
+                content = bytes(content_bytes)
 
             loop = asyncio.get_running_loop()
             feed = await loop.run_in_executor(None, feedparser.parse, content)
@@ -287,6 +298,9 @@ class Sentinel:
 
         except asyncio.TimeoutError:
             logger.error(f"RSS timeout for {url}")
+        except (aiohttp.ClientError, OSError) as e:
+            logger.error(f"RSS fetch failed for {url}: {e}")
+            self._session = None
         except Exception as e:
             logger.error(f"RSS fetch failed for {url}: {e}")
 
@@ -509,11 +523,9 @@ class WeatherSentinel(Sentinel):
         try:
             url = f"{self.api_url}?latitude={region.latitude}&longitude={region.longitude}&{self.params}"
 
-            loop = asyncio.get_running_loop()
-            response = await loop.run_in_executor(
-                None, functools.partial(requests.get, url, timeout=15)
-            )
-            data = response.json()
+            session = await self._get_session()
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                data = await response.json()
 
             if 'daily' not in data:
                 return []
@@ -529,6 +541,10 @@ class WeatherSentinel(Sentinel):
                 })
             return result
 
+        except (aiohttp.ClientError, OSError) as e:
+            logger.error(f"Weather fetch failed for {region.name}: {e}")
+            self._session = None
+            return []
         except Exception as e:
             logger.error(f"Weather fetch failed for {region.name}: {e}")
             return []
@@ -1243,49 +1259,53 @@ class XSentimentSentinel(Sentinel):
             "sort_order": sort_order
         }
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    "https://api.twitter.com/2/tweets/search/recent",
-                    headers=headers,
-                    params=params,
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    _sentinel_diag.info(f"  X API response status: {response.status}")
-                    if response.status == 429:
-                        logger.warning("X API rate limit hit")
-                        _sentinel_diag.warning("  X API rate limit (429)")
-                        return []
-                    if response.status != 200:
-                        error_text = await response.text()
-                        logger.error(f"X API error {response.status}: {error_text}")
-                        _sentinel_diag.error(f"  X API error {response.status}: {error_text[:200]}")
-                        return []
-                    data = await response.json()
-                    raw_count = len(data.get("data", []))
-                    posts = []
-                    users = {}
-                    if "includes" in data and "users" in data["includes"]:
-                        for user in data["includes"]["users"]:
-                            users[user["id"]] = user.get("username", "unknown")
-                    for tweet in data.get("data", []):
-                        metrics = tweet.get("public_metrics", {})
-                        posts.append({
-                            "text": tweet["text"][:400],
-                            "author": users.get(tweet.get("author_id"), "unknown"),
-                            "likes": metrics.get("like_count", 0),
-                            "retweets": metrics.get("retweet_count", 0),
-                            "created_at": tweet.get("created_at", "")
-                        })
-                    likes_threshold = min_likes if min_likes is not None else self.min_engagement
-                    posts = [p for p in posts if p.get('likes', 0) >= likes_threshold]
-                    _sentinel_diag.info(
-                        f"  X API: {raw_count} raw tweets, {len(posts)} after engagement filter (>={likes_threshold} likes)"
-                    )
-                    if posts:
-                        logger.debug(f"Top post: {posts[0]['text'][:50]}...")
-                    return posts
+            session = await self._get_session()
+            async with session.get(
+                "https://api.twitter.com/2/tweets/search/recent",
+                headers=headers,
+                params=params,
+                timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
+                _sentinel_diag.info(f"  X API response status: {response.status}")
+                if response.status == 429:
+                    logger.warning("X API rate limit hit")
+                    _sentinel_diag.warning("  X API rate limit (429)")
+                    return []
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"X API error {response.status}: {error_text}")
+                    _sentinel_diag.error(f"  X API error {response.status}: {error_text[:200]}")
+                    return []
+                data = await response.json()
+                raw_count = len(data.get("data", []))
+                posts = []
+                users = {}
+                if "includes" in data and "users" in data["includes"]:
+                    for user in data["includes"]["users"]:
+                        users[user["id"]] = user.get("username", "unknown")
+                for tweet in data.get("data", []):
+                    metrics = tweet.get("public_metrics", {})
+                    posts.append({
+                        "text": tweet["text"][:400],
+                        "author": users.get(tweet.get("author_id"), "unknown"),
+                        "likes": metrics.get("like_count", 0),
+                        "retweets": metrics.get("retweet_count", 0),
+                        "created_at": tweet.get("created_at", "")
+                    })
+                likes_threshold = min_likes if min_likes is not None else self.min_engagement
+                posts = [p for p in posts if p.get('likes', 0) >= likes_threshold]
+                _sentinel_diag.info(
+                    f"  X API: {raw_count} raw tweets, {len(posts)} after engagement filter (>={likes_threshold} likes)"
+                )
+                if posts:
+                    logger.debug(f"Top post: {posts[0]['text'][:50]}...")
+                return posts
         except asyncio.TimeoutError:
             logger.error("X API request timed out")
+            return []
+        except (aiohttp.ClientError, OSError) as e:
+            logger.error(f"X API request failed: {e}")
+            self._session = None
             return []
         except Exception as e:
             logger.error(f"X API request failed: {e}")
@@ -1812,55 +1832,59 @@ class PredictionMarketSentinel(Sentinel):
         """
         url = f"{self.api_url}?slug={slug}&closed=false&active=true&limit=1"
         try:
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
-                async with session.get(url) as response:
-                    if response.status != 200:
-                        return None
-                    data = await response.json()
-                    if not isinstance(data, list) or not data:
-                        return None
+            session = await self._get_session()
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                if response.status != 200:
+                    return None
+                data = await response.json()
+                if not isinstance(data, list) or not data:
+                    return None
 
-                    event = data[0]
-                    if not isinstance(event, dict):
-                        return None
+                event = data[0]
+                if not isinstance(event, dict):
+                    return None
 
-                    markets = event.get('markets', [])
-                    if not markets:
-                        return None
+                markets = event.get('markets', [])
+                if not markets:
+                    return None
 
-                    # Find best market by liquidity
-                    best_market = None
-                    best_liq = -1
-                    best_vol = 0
-                    for m in markets:
-                        if not isinstance(m, dict):
-                            continue
+                # Find best market by liquidity
+                best_market = None
+                best_liq = -1
+                best_vol = 0
+                for m in markets:
+                    if not isinstance(m, dict):
+                        continue
+                    try:
+                        m_liq = float(m.get('liquidity', 0) or 0)
+                    except (ValueError, TypeError):
+                        continue
+                    if m_liq > best_liq:
+                        best_liq = m_liq
+                        best_market = m
                         try:
-                            m_liq = float(m.get('liquidity', 0) or 0)
+                            best_vol = float(m.get('volume', 0) or 0)
                         except (ValueError, TypeError):
-                            continue
-                        if m_liq > best_liq:
-                            best_liq = m_liq
-                            best_market = m
-                            try:
-                                best_vol = float(m.get('volume', 0) or 0)
-                            except (ValueError, TypeError):
-                                best_vol = 0
+                            best_vol = 0
 
-                    if best_market is None:
-                        return None
-                    if best_liq < self.min_liquidity:
-                        return None
-                    if best_vol < self.min_volume:
-                        return None
+                if best_market is None:
+                    return None
+                if best_liq < self.min_liquidity:
+                    return None
+                if best_vol < self.min_volume:
+                    return None
 
-                    return {
-                        'slug': event.get('slug'),
-                        'title': event.get('title', ''),
-                        'market': best_market,
-                        'liquidity': best_liq,
-                        'volume': best_vol
-                    }
+                return {
+                    'slug': event.get('slug'),
+                    'title': event.get('title', ''),
+                    'market': best_market,
+                    'liquidity': best_liq,
+                    'volume': best_vol
+                }
+        except (aiohttp.ClientError, OSError) as e:
+            logger.debug(f"Slug pin fetch failed for '{slug}': {e}")
+            self._session = None
+            return None
         except Exception as e:
             logger.debug(f"Slug pin fetch failed for '{slug}': {e}")
             return None
@@ -1868,73 +1892,74 @@ class PredictionMarketSentinel(Sentinel):
     async def _resolve_active_market(self, query: str, **kwargs) -> Optional[Dict[str, Any]]:
         params = {"q": query, "closed": "false", "active": "true", "limit": str(self.search_limit)}
         try:
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
-                async with session.get(self.api_url, params=params) as response:
-                    if response.status != 200:
-                        logger.warning(f"Polymarket search failed for '{query}': HTTP {response.status}")
-                        return None
-                    data = await response.json()
-                    if not isinstance(data, list): return None
-                    if not data: return None
-                    candidates = []
-                    for event in data:
-                        if not isinstance(event, dict): continue
-                        markets = event.get('markets', [])
-                        if not markets: continue
-                        best_market = None
-                        best_liq = -1
-                        best_vol = 0
-                        for m in markets:
-                            if not isinstance(m, dict): continue
-                            try:
-                                m_liq = float(m.get('liquidity', 0) or 0)
-                            except (ValueError, TypeError): continue
-                            if m_liq > best_liq:
-                                best_liq = m_liq
-                                best_market = m
-                                try: best_vol = float(m.get('volume', 0) or 0)
-                                except (ValueError, TypeError): best_vol = 0
-                        if best_market is None: continue
-                        market = best_market
-                        liquidity = best_liq
-                        volume = best_vol
-                        if liquidity < self.min_liquidity: continue
-                        if volume < self.min_volume: continue
-                        candidates.append({'slug': event.get('slug'), 'title': event.get('title', ''), 'market': market, 'liquidity': liquidity, 'volume': volume})
-                    if not candidates: return None
+            session = await self._get_session()
+            async with session.get(self.api_url, params=params, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                if response.status != 200:
+                    logger.warning(f"Polymarket search failed for '{query}': HTTP {response.status}")
+                    return None
+                data = await response.json()
+                if not isinstance(data, list): return None
+                if not data: return None
+                candidates = []
+                for event in data:
+                    if not isinstance(event, dict): continue
+                    markets = event.get('markets', [])
+                    if not markets: continue
+                    best_market = None
+                    best_liq = -1
+                    best_vol = 0
+                    for m in markets:
+                        if not isinstance(m, dict): continue
+                        try:
+                            m_liq = float(m.get('liquidity', 0) or 0)
+                        except (ValueError, TypeError): continue
+                        if m_liq > best_liq:
+                            best_liq = m_liq
+                            best_market = m
+                            try: best_vol = float(m.get('volume', 0) or 0)
+                            except (ValueError, TypeError): best_vol = 0
+                    if best_market is None: continue
+                    market = best_market
+                    liquidity = best_liq
+                    volume = best_vol
+                    if liquidity < self.min_liquidity: continue
+                    if volume < self.min_volume: continue
+                    candidates.append({'slug': event.get('slug'), 'title': event.get('title', ''), 'market': market, 'liquidity': liquidity, 'volume': volume})
+                if not candidates: return None
 
-                    # Layer 0: Global exclude filter (reject Bitcoin, sports, etc.)
-                    candidates = [c for c in candidates if self._passes_global_exclude_filter(c.get('title', ''))]
-                    if not candidates: return None
+                # Layer 0: Global exclude filter (reject Bitcoin, sports, etc.)
+                candidates = [c for c in candidates if self._passes_global_exclude_filter(c.get('title', ''))]
+                if not candidates: return None
 
-                    # Layer 1: Domain relevance filter
-                    topic_category = self._infer_topic_category(query)
-                    filtered_candidates = [m for m in candidates if self._passes_domain_filter(m, query, topic_category=topic_category)]
-                    if not filtered_candidates: return None
-                    candidates = filtered_candidates
-                    relevance_keywords = kwargs.get('relevance_keywords', [])
-                    min_relevance = kwargs.get('min_relevance_score', 2)  # Fail-safe: default to strict, not permissive
-                    if relevance_keywords:
-                        for candidate in candidates:
-                            title_lower = candidate['title'].lower()
-                            match_count = 0
-                            for kw in relevance_keywords:
-                                if word_boundary_match(kw, title_lower):
-                                    match_count += 1
-                            candidate['relevance_score'] = match_count
-                        relevant = [c for c in candidates if c.get('relevance_score', 0) >= min_relevance]
-                        if relevant:
-                            relevant.sort(key=lambda x: x['liquidity'], reverse=True)
-                            winner = relevant[0]
-                        else: return None
-                    else:
-                        candidates.sort(key=lambda x: x['liquidity'], reverse=True)
-                        winner = candidates[0]
-                    return winner
+                # Layer 1: Domain relevance filter
+                topic_category = self._infer_topic_category(query)
+                filtered_candidates = [m for m in candidates if self._passes_domain_filter(m, query, topic_category=topic_category)]
+                if not filtered_candidates: return None
+                candidates = filtered_candidates
+                relevance_keywords = kwargs.get('relevance_keywords', [])
+                min_relevance = kwargs.get('min_relevance_score', 2)  # Fail-safe: default to strict, not permissive
+                if relevance_keywords:
+                    for candidate in candidates:
+                        title_lower = candidate['title'].lower()
+                        match_count = 0
+                        for kw in relevance_keywords:
+                            if word_boundary_match(kw, title_lower):
+                                match_count += 1
+                        candidate['relevance_score'] = match_count
+                    relevant = [c for c in candidates if c.get('relevance_score', 0) >= min_relevance]
+                    if relevant:
+                        relevant.sort(key=lambda x: x['liquidity'], reverse=True)
+                        winner = relevant[0]
+                    else: return None
+                else:
+                    candidates.sort(key=lambda x: x['liquidity'], reverse=True)
+                    winner = candidates[0]
+                return winner
         except asyncio.TimeoutError:
             logger.warning(f"Polymarket API timeout for query: '{query}'")
-        except aiohttp.ClientError as e:
+        except (aiohttp.ClientError, OSError) as e:
             logger.warning(f"Polymarket network error for '{query}': {e}")
+            self._session = None
         except Exception as e:
             logger.error(f"Polymarket fetch error for '{query}': {e}")
         return None
