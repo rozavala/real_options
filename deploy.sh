@@ -229,7 +229,9 @@ if ! sudo systemctl is-active --quiet "$SERVICE_NAME"; then
 fi
 
 # Verify orchestrator process is running (use systemd MainPID for reliability)
-ORCH_PID=$(sudo systemctl show -p MainPID --value "$SERVICE_NAME" 2>/dev/null)
+ORCH_PID=$(sudo systemctl show -p MainPID --value "$SERVICE_NAME" 2>/dev/null || true)
+# Strip "MainPID=" prefix if --value flag not supported
+ORCH_PID="${ORCH_PID#MainPID=}"
 if [ -z "$ORCH_PID" ] || [ "$ORCH_PID" = "0" ]; then
     # Fallback to pgrep with specific pattern
     ORCH_PID=$(pgrep -f "python.*orchestrator\.py" | head -1)
