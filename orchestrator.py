@@ -4595,6 +4595,7 @@ async def main(commodity_ticker: str = None):
     from trading_bot.tms import set_data_dir as set_tms_dir
     from trading_bot.brier_bridge import set_data_dir as set_brier_bridge_dir
     from trading_bot.brier_scoring import set_data_dir as set_brier_scoring_dir
+    from trading_bot.weighted_voting import set_data_dir as set_weighted_voting_dir
 
     StateManager.set_data_dir(data_dir)
     set_tracker_dir(data_dir)
@@ -4605,6 +4606,7 @@ async def main(commodity_ticker: str = None):
     set_tms_dir(data_dir)
     set_brier_bridge_dir(data_dir)
     set_brier_scoring_dir(data_dir)
+    set_weighted_voting_dir(data_dir)
 
     global GLOBAL_DEDUPLICATOR
     GLOBAL_DEDUPLICATOR = TriggerDeduplicator(

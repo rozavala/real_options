@@ -21,6 +21,16 @@ from trading_bot.agent_names import DEPRECATED_AGENTS
 
 logger = logging.getLogger(__name__)
 
+# Mutable data directory — set by orchestrator via set_data_dir()
+_data_dir: Optional[str] = None
+
+
+def set_data_dir(data_dir: str):
+    """Configure data directory for weight evolution CSV."""
+    global _data_dir
+    _data_dir = data_dir
+    logger.info(f"WeightedVoting data_dir set to: {data_dir}")
+
 
 class TriggerType(Enum):
     """Classification of decision trigger."""
@@ -629,7 +639,7 @@ async def calculate_weighted_decision(
             import csv
             from datetime import datetime, timezone
 
-            weight_csv = os.path.join('data', 'weight_evolution.csv')
+            weight_csv = os.path.join(_data_dir or 'data/KC', 'weight_evolution.csv')
             file_exists = os.path.exists(weight_csv)
 
             # Ensure directory exists
