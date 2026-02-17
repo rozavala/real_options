@@ -215,22 +215,40 @@ async def get_unrealized_pnl(ib: IB, contract: Contract) -> float:
 async def _group_positions_by_underlying(ib: IB, all_positions: list, closed_ids: set) -> dict:
     """Groups positions by their underlying contract ID."""
     positions_by_underlying = {}
+
+    # 1. Identify candidates first
+    candidates = []
     for p in all_positions:
         if p.position == 0 or p.contract.conId in closed_ids:
             continue
         # Only process Options / FuturesOptions
-        if not isinstance(p.contract, (FuturesOption, Option)):
-            continue
+        if isinstance(p.contract, (FuturesOption, Option)):
+            candidates.append(p)
 
+    if not candidates:
+        return {}
+
+    # 2. Helper for concurrent execution
+    async def process_position(p):
         try:
             details = await asyncio.wait_for(ib.reqContractDetailsAsync(p.contract), timeout=5)
             if details and details[0].underConId:
-                under_con_id = details[0].underConId
-                if under_con_id not in positions_by_underlying:
-                    positions_by_underlying[under_con_id] = []
-                positions_by_underlying[under_con_id].append(p)
+                return (details[0].underConId, p)
         except Exception as e:
             logging.warning(f"Could not get details for conId {p.contract.conId}: {e}")
+        return None
+
+    # 3. Parallel fetch
+    # OPTIMIZATION: Fetch details concurrently to reduce latency
+    results = await asyncio.gather(*[process_position(p) for p in candidates])
+
+    # 4. Aggregate results
+    for res in results:
+        if res:
+            under_con_id, p = res
+            if under_con_id not in positions_by_underlying:
+                positions_by_underlying[under_con_id] = []
+            positions_by_underlying[under_con_id].append(p)
 
     return positions_by_underlying
 
@@ -242,8 +260,10 @@ async def _calculate_combo_risk_metrics(ib: IB, config: dict, combo_legs: list) 
     total_entry_cost = 0.0
     strikes = []
 
-    for leg_pos in combo_legs:
-        pnl = await get_unrealized_pnl(ib, leg_pos.contract)
+    # OPTIMIZATION: Fetch PnL for all legs concurrently
+    pnls = await asyncio.gather(*[get_unrealized_pnl(ib, leg_pos.contract) for leg_pos in combo_legs])
+
+    for leg_pos, pnl in zip(combo_legs, pnls):
         if util.isNan(pnl):
             return None  # Cannot calculate metrics without PnL
 
@@ -626,4 +646,3 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
             account = ib.managedAccounts()[0]
             for pnl in ib.pnlSubscriptions():
                 ib.cancelPnLSingle(account, pnl.modelCode, pnl.conId)
-
