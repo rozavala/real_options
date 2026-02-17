@@ -12,3 +12,8 @@
 **Vulnerability:** `TradingCouncil` agents interpolated `search_instruction` (containing untrusted social media/news content) directly into prompt instructions without sanitization.
 **Learning:** Even "internal" task descriptions become attack vectors if they include data derived from external triggers (e.g. `SentinelTrigger.payload`).
 **Prevention:** Implemented `escape_xml` utility. Prompts now wrap untrusted task context in `<task>...</task>` tags with explicit instructions to treat the block as data/context only.
+
+## 2026-02-27 - Log Injection via Newlines
+**Vulnerability:** Missing `sanitize_log_message` function allowed untrusted inputs (LLM summaries, external API data) to inject newlines into log files, potentially forging log entries.
+**Learning:** Python's `logging` module does not automatically sanitize newlines, leaving applications vulnerable to CWE-117 if untrusted data is logged directly.
+**Prevention:** Implemented `sanitize_log_message` in `trading_bot/utils.py` to escape `\n` and `\r`. This function must be used whenever logging data derived from external sources.

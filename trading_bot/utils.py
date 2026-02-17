@@ -219,6 +219,18 @@ def sanitize_for_csv(value):
     return value
 
 
+def sanitize_log_message(message) -> str:
+    """Sanitizes a log message to prevent Log Injection attacks.
+
+    Replaces newlines with escaped characters to ensure the message remains on a single line.
+    """
+    if message is None:
+        return "None"
+
+    s = str(message)
+    return s.replace("\n", "\\n").replace("\r", "\\r")
+
+
 def escape_xml(text: str) -> str:
     """Escape XML special characters to prevent prompt injection."""
     if not isinstance(text, str):
