@@ -7,7 +7,7 @@ Purpose: "Morning coffee" screen - Is the system running? Is capital safe? Any e
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import pytz
 import sys
 import os
@@ -469,8 +469,9 @@ is_open = is_weekday and is_within_hours and is_trading
 
 status_color = "🟢" if is_open else "🔴"
 status_text = "OPEN" if is_open else "CLOSED"
+countdown_text = None
 
-# Add specific reason for closure if applicable
+# Add specific reason for closure and compute countdown
 if not is_open:
     if not is_weekday:
         status_text += " (Weekend)"
@@ -478,13 +479,23 @@ if not is_open:
         status_text += " (Holiday)"
     elif not is_within_hours:
         status_text += " (After Hours)"
+    # Calculate "opens in" countdown to next trading day open
+    next_open = ny_now.replace(hour=3, minute=30, second=0, microsecond=0)
+    if ny_now >= next_open:
+        next_open += timedelta(days=1)
+    # Advance to next trading day
+    while next_open.weekday() >= 5 or not is_trading_day(next_open.date(), exchange='ICE'):
+        next_open += timedelta(days=1)
+    delta = next_open - ny_now
+    total_mins = int(delta.total_seconds() // 60)
+    h, m = divmod(total_mins, 60)
+    countdown_text = f"Opens in {h}h {m}m"
 else:
     delta = market_close_ny - ny_now
-    # Ensure non-negative duration
     if delta.total_seconds() > 0:
-        minutes = int(delta.total_seconds() // 60)
-        hours, minutes = divmod(minutes, 60)
-        status_text += f" (closes in {hours}h {minutes}m)"
+        total_mins = int(delta.total_seconds() // 60)
+        h, m = divmod(total_mins, 60)
+        countdown_text = f"Closes in {h}h {m}m"
 
 clock_cols = st.columns(3)
 with clock_cols[0]:
@@ -492,7 +503,8 @@ with clock_cols[0]:
 with clock_cols[1]:
     st.metric("New York Time (Market)", ny_now.strftime("%H:%M:%S"))
 with clock_cols[2]:
-    st.metric("Market Status", f"{status_color} {status_text}", help="Trading Hours (ET): 03:30 - 14:00 (Mon-Fri)")
+    st.metric("Market Status", f"{status_color} {status_text}", delta=countdown_text, delta_color="off",
+              help="Trading Hours (ET): 03:30 - 14:00 (Mon-Fri)")
 
 st.markdown("---")
 

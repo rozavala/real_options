@@ -3750,10 +3750,19 @@ async def run_sentinels(config: dict):
             logger.error(f"Error in Sentinel Loop: {e}")
             await asyncio.sleep(60)
 
-    # IBConnectionPool manages disconnects, so explicit disconnect is not strictly needed,
-    # but good practice if task is cancelled.
-    # However, pool is shared (conceptually not shared here but...)
-    # We leave it connected.
+    # Close shared aiohttp sessions on all sentinels
+    for s in [weather_sentinel, logistics_sentinel, news_sentinel,
+              x_sentinel, prediction_market_sentinel, macro_contagion_sentinel,
+              price_sentinel]:
+        try:
+            await s.close()
+        except Exception:
+            pass
+    if micro_sentinel is not None:
+        try:
+            await micro_sentinel.close()
+        except Exception:
+            pass
 
 
 # --- Main Schedule ---
