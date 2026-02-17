@@ -4583,6 +4583,7 @@ async def main(commodity_ticker: str = None):
 
     # Inject data_dir and ticker into config for downstream modules
     config['data_dir'] = data_dir
+    config['symbol'] = ticker
     config.setdefault('commodity', {})['ticker'] = ticker
 
     # --- Initialize all path-dependent modules BEFORE anything else ---
