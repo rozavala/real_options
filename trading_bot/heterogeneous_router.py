@@ -490,8 +490,8 @@ class HeterogeneousRouter:
 
             # --- TIER 3: DECISION MAKERS (Safety & Debate) ---
             AgentRole.PERMABULL: (ModelProvider.XAI, xai_pro),             # Contrarian
-            AgentRole.PERMABEAR: (ModelProvider.ANTHROPIC, anth_pro),      # Safety (Opus)
-            AgentRole.COMPLIANCE_OFFICER: (ModelProvider.ANTHROPIC, anth_pro), # Veto (Opus)
+            AgentRole.PERMABEAR: (ModelProvider.ANTHROPIC, anth_pro),      # Safety (Sonnet)
+            AgentRole.COMPLIANCE_OFFICER: (ModelProvider.ANTHROPIC, anth_pro), # Veto (Sonnet)
 
             AgentRole.MASTER_STRATEGIST: (ModelProvider.OPENAI, oai_pro),  # Synthesis
         }
@@ -560,11 +560,14 @@ class HeterogeneousRouter:
         # TIER 2: DEEP ANALYSTS
         elif role in [AgentRole.AGRONOMIST, AgentRole.MACRO_ANALYST, AgentRole.SUPPLY_CHAIN_ANALYST, AgentRole.GEOPOLITICAL_ANALYST, AgentRole.INVENTORY_ANALYST, AgentRole.VOLATILITY_ANALYST]:
             gem_pro = get_model('gemini', 'pro', 'gemini-3-pro-preview')
+            gem_flash = get_model('gemini', 'flash', 'gemini-3-flash-preview')
             oai_pro = get_model('openai', 'pro', 'gpt-5.2')
             anth_pro = get_model('anthropic', 'pro', 'claude-opus-4-6')
 
             if primary_provider == ModelProvider.GEMINI:
+                # Gemini Pro exhausted → try Flash (same provider, free tier) → then OpenAI
                 return [
+                    (ModelProvider.GEMINI, gem_flash),
                     (ModelProvider.OPENAI, oai_pro),
                     (ModelProvider.ANTHROPIC, anth_pro)
                 ]

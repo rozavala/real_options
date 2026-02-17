@@ -263,10 +263,11 @@ else
 fi
 
 # =========================================================================
-# STEP 11: Error reporter cron (every 15 min) — user crontab (no root needed)
+# STEP 11: Error reporter cron (hourly) — user crontab (no root needed)
+# Hourly gives time to investigate and fix issues before auto-triage triggers.
 # =========================================================================
 echo "--- 11. Setting up error reporter cron... ---"
-CRON_LINE="*/15 * * * * cd $REPO_ROOT && $REPO_ROOT/venv/bin/python scripts/error_reporter.py >> logs/error_reporter.log 2>&1"
+CRON_LINE="0 * * * * cd $REPO_ROOT && $REPO_ROOT/venv/bin/python scripts/error_reporter.py >> logs/error_reporter.log 2>&1"
 # Add to user crontab if not already present (idempotent)
 ( crontab -l 2>/dev/null | grep -v 'error_reporter\.py'; echo "$CRON_LINE" ) | crontab -
 echo "  ✅ Error reporter cron installed"

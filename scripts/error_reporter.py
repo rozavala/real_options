@@ -4,7 +4,7 @@
 Scans log files for ERROR/CRITICAL entries, classifies and deduplicates them,
 sanitizes sensitive data, and creates GitHub issues for tracking.
 
-Runs as a standalone cron job (every 15 minutes). Completely decoupled from
+Runs as a standalone cron job (every hour). Completely decoupled from
 the trading orchestrator — never imports or affects trading-path code.
 
 Usage:
@@ -124,6 +124,18 @@ TRANSIENT_PATTERNS: list[re.Pattern] = [
     re.compile(r"weather.*fetch.*retry", re.IGNORECASE),
     re.compile(r"Retrying in \d+ seconds", re.IGNORECASE),
     re.compile(r"Temporary failure.*name resolution", re.IGNORECASE),
+    # IB Gateway transient connectivity (restarts, brief disconnects)
+    re.compile(r"Not connected", re.IGNORECASE),
+    re.compile(r"DISCONNECTED.*reconnect", re.IGNORECASE),
+    re.compile(r"Connect call failed", re.IGNORECASE),
+    re.compile(r"Connection refused", re.IGNORECASE),
+    # LLM provider transient errors (429 quota, 529 overloaded)
+    re.compile(r"RESOURCE_EXHAUSTED", re.IGNORECASE),
+    re.compile(r"429.*quota exceeded", re.IGNORECASE),
+    re.compile(r"overloaded_error", re.IGNORECASE),
+    re.compile(r"Error code: 529", re.IGNORECASE),
+    # Fallback successes (system recovered, not an issue)
+    re.compile(r"FALLBACK SUCCESS", re.IGNORECASE),
 ]
 
 
