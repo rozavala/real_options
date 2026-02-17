@@ -128,7 +128,9 @@ def get_commodity_profile(config: dict = None) -> dict:
 def load_trade_data():
     """Loads and caches the consolidated trade ledger."""
     try:
-        df = get_trade_ledger_df()
+        ticker = os.environ.get("COMMODITY_TICKER", "KC")
+        data_dir = os.path.join("data", ticker)
+        df = get_trade_ledger_df(data_dir)
         if not df.empty:
             df['timestamp'] = parse_ts_column(df['timestamp'])
         return df
