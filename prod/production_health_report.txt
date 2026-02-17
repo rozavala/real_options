@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Tue Feb 17 15:00:03 UTC 2026
+Timestamp: Tue Feb 17 15:30:03 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  15:00:03 up 36 days, 21:23,  2 users,  load average: 0.04, 0.05, 0.03
+Uptime:  15:30:03 up 36 days, 21:53,  2 users,  load average: 0.50, 0.56, 0.40
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.6Gi       322Mi        34Mi       1.1Gi       1.2Gi
-Swap:          4.0Gi       320Mi       3.7Gi
+Mem:           3.8Gi       2.7Gi       125Mi        39Mi       1.2Gi       1.1Gi
+Swap:          4.0Gi       313Mi       3.7Gi
 
 === LOAD AVERAGE ===
-0.04 0.05 0.03 1/831 1178462
+0.50 0.56 0.40 1/848 1179662
 
 === PROCESS STATUS ===
 Trading processes:
-console  1167111  0.4 10.9 1912936 439472 ?      Ssl  01:51   3:31 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1167111  0.4 10.9 1912820 440052 ?      Ssl  01:51   3:35 /home/console/real_options/venv/bin/python -u orchestrator.py
 console  1173186  0.0  7.1 1348676 287112 ?      Sl   09:15   0:07 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1167130  0.2  1.9 606120 77560 ?        Sl   01:51   2:08 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1167130  0.2  7.1 2712768 285432 ?      Sl   01:51   2:19 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,13 +36,13 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-02-17 14:33:30,564 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> openai. Reason: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDofXsAo6xCCsHVzAqkE'}
-2026-02-17 14:33:30,564 - trading_bot.signal_generator - WARNING - COMPLIANCE BLOCKED KCU6 (202609): Hallucination / unsupported specifics and a key data mismatch. (1) The decision says the market is in a “range-bound regime” and references a “framework’s liquidation threshold” and “buy-the-dip is disallowed unless…,” but no report or market-context evidence defines a range-bound regime, a liquidation threshold, or those framework rules (unsupported). (2) It claims ICE certified stocks ‘have recovered from extremes’; evidence only gives a single point (428,631 bags on Feb 13) with no prior ‘extremes’ series, so ‘recovered from extremes’ is not evidenced. (3) It characterizes the bull as claiming ‘export contraction equals supply shortage’; the Supply_Chain report explicitly framed exports down due to Santos bottlenecks (origin constraint), not a production shortfall—decision’s paraphrase is a strawman risk. (4) It states the contract is below the 200-day SMA—supported—but its ‘market reality check’ logic cites a sharp 24h drop; the provided market context price (277.15) conflicts with other evidence showing ~284.69 on Feb 17, creating an unaddressed data consistency gap. Critical risks: it does acknowledge short-covering/bounce risk and Santos bottlenecks, so no major omitted explicit risk. Direction is not contradictory to reports (many bearish), but approval fails due to the unsupported framework claims and the inventory ‘recovered’ assertion.
-2026-02-17 14:37:28,028 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDoyWMtJSBY3swFsTqwU'}
-2026-02-17 14:37:55,558 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDp1RaTKfWNACQvWgUuw'}
-2026-02-17 14:38:26,876 - trading_bot.compliance - ERROR - Compliance Audit failed: Expecting value: line 1 column 1 (char 0)
-2026-02-17 14:38:26,876 - trading_bot.signal_generator - WARNING - COMPLIANCE BLOCKED KCH7 (202703): Audit Error: Expecting value: line 1 column 1 (char 0)
-2026-02-17 14:38:28,008 - ib_insync.wrapper - ERROR - Error 354, reqId 30: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
-2026-02-17 14:38:28,108 - ib_insync.wrapper - ERROR - Error 354, reqId 31: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC JUL'26 (KCN6) /TOP/ALL, contract: Contract(secType='FUT', conId=646040490, symbol='KC', lastTradeDateOrContractMonth='20260721', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCN6', tradingClass='KC')
-2026-02-17 14:38:28,176 - ib_insync.wrapper - ERROR - Error 354, reqId 32: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC SEP'26 (KCU6) /TOP/ALL, contract: Contract(secType='FUT', conId=657732419, symbol='KC', lastTradeDateOrContractMonth='20260918', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCU6', tradingClass='KC')
-2026-02-17 14:38:28,176 - ib_insync.wrapper - ERROR - Error 354, reqId 33: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC DEC'26 (KCZ6) /TOP/ALL, contract: Contract(secType='FUT', conId=675565688, symbol='KC', lastTradeDateOrContractMonth='20261218', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCZ6', tradingClass='KC')
+2026-02-17 15:20:56,320 - ib_insync.client - ERROR - Peer closed connection.
+2026-02-17 15:20:56,320 - ib_insync.client - ERROR - Peer closed connection.
+2026-02-17 15:20:56,321 - Orchestrator - INFO - 2026-02-17 15:20:56,320 - ib_insync.client - ERROR - Peer closed connection.
+2026-02-17 15:21:28,145 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('127.0.0.1', 4001)")
+2026-02-17 15:21:28,148 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
+2026-02-17 15:21:28,678 - trading_bot.connection_pool - ERROR - IB (sentinel) connection failed: [Errno 111] Connect call failed ('127.0.0.1', 4001). Next retry backoff: 10.0s
+2026-02-17 15:28:14,196 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDsquwTmyPfLwanvfN9g'}
+2026-02-17 15:28:48,441 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDstRoNZDVTDmG7aarAL'}
+2026-02-17 15:29:23,845 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-6 failed for permabear: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDsw4dVFARMfx6yjWP7n'}
+2026-02-17 15:29:45,018 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYDsw4dVFARMfx6yjWP7n'}
