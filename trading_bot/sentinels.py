@@ -305,6 +305,9 @@ class Sentinel:
             logger.error(f"RSS timeout for {url}")
         except Exception as e:
             logger.error(f"RSS fetch failed for {url}: {e}")
+            # Ensure fresh session on next attempt if connection likely broken
+            if isinstance(e, (aiohttp.ClientError, OSError)):
+                self._session = None
 
         return headlines
 
@@ -545,6 +548,9 @@ class WeatherSentinel(Sentinel):
 
         except Exception as e:
             logger.error(f"Weather fetch failed for {region.name}: {e}")
+            # Ensure fresh session on next attempt if connection likely broken
+            if isinstance(e, (aiohttp.ClientError, OSError)):
+                self._session = None
             return []
 
     def check_region_weather(self, region: GrowingRegion) -> Optional[Dict]:
@@ -1303,6 +1309,9 @@ class XSentimentSentinel(Sentinel):
             return []
         except Exception as e:
             logger.error(f"X API request failed: {e}")
+            # Ensure fresh session on next attempt if connection likely broken
+            if isinstance(e, (aiohttp.ClientError, OSError)):
+                self._session = None
             return []
 
     def _update_volume_stats(self, new_volume: int):
@@ -1877,6 +1886,9 @@ class PredictionMarketSentinel(Sentinel):
                 }
         except Exception as e:
             logger.debug(f"Slug pin fetch failed for '{slug}': {e}")
+            # Ensure fresh session on next attempt if connection likely broken
+            if isinstance(e, (aiohttp.ClientError, OSError)):
+                self._session = None
             return None
 
     async def _resolve_active_market(self, query: str, **kwargs) -> Optional[Dict[str, Any]]:
@@ -1949,8 +1961,12 @@ class PredictionMarketSentinel(Sentinel):
             logger.warning(f"Polymarket API timeout for query: '{query}'")
         except aiohttp.ClientError as e:
             logger.warning(f"Polymarket network error for '{query}': {e}")
+            self._session = None
         except Exception as e:
             logger.error(f"Polymarket fetch error for '{query}': {e}")
+            # Ensure fresh session on next attempt if connection likely broken
+            if isinstance(e, OSError):
+                self._session = None
         return None
 
     async def check(self) -> Optional[SentinelTrigger]:
