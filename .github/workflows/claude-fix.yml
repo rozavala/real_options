@@ -49,6 +49,15 @@ jobs:
             - This is a PRODUCTION TRADING SYSTEM that trades real money
             - All components must fail closed — if unsure, block rather than allow
             - Keep changes minimal and focused on the issue
+
+            ENVIRONMENT-AWARE:
+            - If the issue has an "env:prod" label, it came from the PRODUCTION environment
+              which may run an older version than the main branch (DEV).
+            - Before making any fix, run `git log --oneline -20` and check if a recent
+              commit on main already addresses this error.
+            - If the error is already fixed in main, do NOT create a PR. Instead, close
+              the issue with a comment: "This error is already fixed in main (commit <hash>).
+              Deploying main to production will resolve it."
           claude_args: '--max-turns 30 --allowedTools "Bash(*)" "Edit(*)" "Write(*)" --disallowedTools "Bash(git push * main*)" "Bash(git push origin main*)"'
 
       - name: Mark as attempted

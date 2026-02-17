@@ -409,7 +409,7 @@ _IMPACT_NOTES = {
 }
 
 
-def format_critical_issue(sig: ErrorSignature) -> tuple[str, str, list[str]]:
+def format_critical_issue(sig: ErrorSignature, env_name: str = "DEV", env_label: str = "env:dev") -> tuple[str, str, list[str]]:
     """Format a CRITICAL-level issue. Returns (title, body, labels)."""
     title = f"[CRITICAL] {sig.category}: {_truncate(sig.sample_message, 80)}"
     impact = _IMPACT_NOTES.get(sig.category, _IMPACT_NOTES["uncategorized"])
@@ -420,6 +420,7 @@ def format_critical_issue(sig: ErrorSignature) -> tuple[str, str, list[str]]:
 |-------|-------|
 | **Category** | `{sig.category}` |
 | **Severity** | {sig.level} |
+| **Environment** | {env_name} |
 | **First seen** | {sig.first_seen} |
 | **Last seen** | {sig.last_seen} |
 | **Occurrences** | {sig.count} |
@@ -439,7 +440,7 @@ def format_critical_issue(sig: ErrorSignature) -> tuple[str, str, list[str]]:
 ---
 *Automated report by `scripts/error_reporter.py` — fingerprint: `{sig.fingerprint[:12]}`*
 """
-    labels = ["automated", "error-report", "priority:critical"]
+    labels = ["automated", "error-report", "priority:critical", env_label]
     return title, body, labels
 
 
@@ -447,10 +448,12 @@ def format_summary_issue(
     date_str: str,
     signatures: list[ErrorSignature],
     total_count: int,
+    env_name: str = "DEV",
+    env_label: str = "env:dev",
 ) -> tuple[str, str, list[str]]:
     """Format a daily summary issue. Returns (title, body, labels)."""
     categories = sorted(set(s.category for s in signatures))
-    title = f"[Daily Summary] {date_str}: {total_count} errors across {len(categories)} categories"
+    title = f"[Daily Summary] [{env_name}] {date_str}: {total_count} errors across {len(categories)} categories"
 
     # Build per-category breakdown
     sections = []
@@ -464,6 +467,7 @@ def format_summary_issue(
 
     body = f"""## Daily Error Summary — {date_str}
 
+**Environment:** {env_name}
 **Total errors:** {total_count}
 **Categories:** {', '.join(f'`{c}`' for c in categories)}
 
@@ -474,7 +478,7 @@ def format_summary_issue(
 ---
 *Automated report by `scripts/error_reporter.py`*
 """
-    labels = ["automated", "error-report", "daily-summary"]
+    labels = ["automated", "error-report", "daily-summary", env_label]
     return title, body, labels
 
 
@@ -538,6 +542,8 @@ class GitHubIssueCreator:
             "error-report": "f9d0c4",
             "priority:critical": "B60205",
             "daily-summary": "0075ca",
+            "env:dev": "1D76DB",
+            "env:prod": "D93F0B",
         }
         for label in labels:
             url = f"{self.API_BASE}/repos/{self.owner}/{self.repo}/labels"
@@ -629,6 +635,10 @@ def run_pipeline(config: dict, dry_run: bool = False) -> int:
     summary_threshold = er_config.get("daily_summary_threshold", 5)
     default_labels = er_config.get("default_labels", ["automated", "error-report"])
 
+    # Environment detection (set in .env on each droplet)
+    env_name = os.getenv("ENV_NAME", "DEV").upper()
+    env_label = f"env:{env_name.lower()}"
+
     # GitHub setup
     github_owner = er_config.get("github_owner", "")
     github_repo = er_config.get("github_repo", "")
@@ -719,7 +729,7 @@ def run_pipeline(config: dict, dry_run: bool = False) -> int:
                 logger.warning("Critical issue rate limit reached")
                 continue
 
-            title, body, labels = format_critical_issue(sig)
+            title, body, labels = format_critical_issue(sig, env_name=env_name, env_label=env_label)
             if dry_run:
                 logger.info(f"[DRY RUN] Would create issue: {title}")
                 logger.info(f"[DRY RUN] Labels: {labels}")
@@ -750,7 +760,7 @@ def run_pipeline(config: dict, dry_run: bool = False) -> int:
             # Check dedup for summary (use a special fingerprint)
             summary_fp = compute_fingerprint("daily_summary", today)
             if not is_deduped(summary_fp, state, cooldown_hours):
-                title, body, labels = format_summary_issue(today, accumulated_for_summary, total_count)
+                title, body, labels = format_summary_issue(today, accumulated_for_summary, total_count, env_name=env_name, env_label=env_label)
                 if dry_run:
                     logger.info(f"[DRY RUN] Would create summary issue: {title}")
                 else:
