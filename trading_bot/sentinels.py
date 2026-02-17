@@ -525,6 +525,9 @@ class WeatherSentinel(Sentinel):
 
             session = await self._get_session()
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                if response.status != 200:
+                    logger.warning(f"Weather API returned {response.status} for {region.name}")
+                    return []
                 data = await response.json()
 
             if 'daily' not in data:

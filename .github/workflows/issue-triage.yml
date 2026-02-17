@@ -130,14 +130,20 @@ jobs:
             "summary": "1-2 sentence assessment",
             "suggested_labels": ["label1", "label2"],
             "requires_immediate_attention": true/false,
-            "recommended_action": "Brief recommendation for next steps"
+            "recommended_action": "Brief recommendation for next steps",
+            "already_fixed_in_main": false
           }}
 
           Priority guide:
           - critical: Production trading at risk, data loss, security vulnerability
           - high: Affects trading decisions, model accuracy, or system reliability
           - medium: Non-urgent improvements, non-critical bugs
-          - low: Documentation, cosmetic, nice-to-have"""
+          - low: Documentation, cosmetic, nice-to-have
+
+          Environment-aware triage:
+          - Issues labeled "env:prod" come from the PRODUCTION environment, which may run an older version than main (DEV).
+          - Check the "Recent changes" in the project context above. If a recent commit on main clearly fixes the error described in this issue, set "already_fixed_in_main" to true and note this in "recommended_action" (e.g., "Already fixed in main by commit <hash>. Deploy to production to resolve.").
+          - If "already_fixed_in_main" is true, set priority to "low"."""
 
           payload = json.dumps({
               "model": triage_model,
@@ -181,6 +187,8 @@ jobs:
                       f.write(f"triage={triage_json}\n")
                       f.write(f"priority={triage.get('priority', 'medium')}\n")
                       f.write(f"category={triage.get('category', 'question')}\n")
+                      fixed = str(triage.get('already_fixed_in_main', False)).lower()
+                      f.write(f"already_fixed={fixed}\n")
 
           except urllib.error.HTTPError as e:
               print(f"API error: {e.code} {e.read().decode()}")
@@ -230,13 +238,18 @@ jobs:
             if (p.requires_immediate_attention) {
               body += `**⚠️ Requires immediate attention**\n`;
             }
+            if (p.already_fixed_in_main) {
+              body += `**✅ Already fixed in main** — deploy to production to resolve.\n`;
+            }
             body += `\n### Assessment\n${p.summary}\n`;
             if (p.affected_components && p.affected_components.length > 0) {
               body += `\n### Affected Components\n`;
               p.affected_components.forEach(c => { body += `- \`${c}\`\n`; });
             }
             body += `\n### Recommended Action\n${p.recommended_action}\n`;
-            body += `\n> The \`claude-fix\` label has been added — Claude will automatically attempt a fix and create a PR.\n`;
+            if (!p.already_fixed_in_main) {
+              body += `\n> The \`claude-fix\` label has been added — Claude will automatically attempt a fix and create a PR.\n`;
+            }
             body += `\n---\n*🤖 Triaged by Claude Sonnet*`;
 
             await github.rest.issues.createComment({
@@ -291,10 +304,25 @@ jobs:
               labels: labelsToAdd,
             });
 
+      # Close issue if already fixed in main (prod-only error, deploy will resolve)
+      - name: Close if already fixed in main
+        if: steps.triage.outputs.already_fixed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = parseInt('${{ steps.issue.outputs.number }}');
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              state: 'closed',
+              state_reason: 'not_planned',
+            });
+
       # Add claude-fix label using PAT so the labeled event triggers claude-fix.yml
       # (events from GITHUB_TOKEN don't trigger other workflows)
       - name: Add claude-fix label
-        if: steps.triage.outputs.triage != ''
+        if: steps.triage.outputs.triage != '' && steps.triage.outputs.already_fixed != 'true'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
