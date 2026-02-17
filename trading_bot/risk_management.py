@@ -228,22 +228,29 @@ async def _group_positions_by_underlying(ib: IB, all_positions: list, closed_ids
     if not candidates:
         return {}
 
-    # 2. Helper for concurrent execution
+    # 2. Semaphore to prevent IB Pacing Violations (50 msg/sec limit shared)
+    sem = asyncio.Semaphore(5)
+
+    # 3. Helper for concurrent execution with rate limiting
     async def process_position(p):
-        try:
-            details = await asyncio.wait_for(ib.reqContractDetailsAsync(p.contract), timeout=5)
-            if details and details[0].underConId:
-                return (details[0].underConId, p)
-        except Exception as e:
-            logging.warning(f"Could not get details for conId {p.contract.conId}: {e}")
-        return None
+        async with sem:
+            try:
+                details = await asyncio.wait_for(ib.reqContractDetailsAsync(p.contract), timeout=5)
+                if details and details[0].underConId:
+                    return (details[0].underConId, p)
+            except Exception as e:
+                logging.warning(f"Could not get details for conId {p.contract.conId}: {e}")
+            return None
 
-    # 3. Parallel fetch
-    # OPTIMIZATION: Fetch details concurrently to reduce latency
-    results = await asyncio.gather(*[process_position(p) for p in candidates])
+    # 4. Parallel fetch with exception safety
+    # OPTIMIZATION: Fetch details concurrently but throttled
+    results = await asyncio.gather(*[process_position(p) for p in candidates], return_exceptions=True)
 
-    # 4. Aggregate results
+    # 5. Aggregate results
     for res in results:
+        if isinstance(res, Exception):
+            logging.error(f"Error processing position: {res}")
+            continue
         if res:
             under_con_id, p = res
             if under_con_id not in positions_by_underlying:
