@@ -86,12 +86,6 @@ async def test_emergency_cycle_queues_when_closed():
 
 @pytest.mark.asyncio
 async def test_emergency_cycle_runs_when_open():
-     # Initialize GLOBAL_DEDUPLICATOR (now None at module level until main() runs)
-    import orchestrator
-    from orchestrator import TriggerDeduplicator
-    if orchestrator.GLOBAL_DEDUPLICATOR is None:
-        orchestrator.GLOBAL_DEDUPLICATOR = TriggerDeduplicator()
-
      # Mock Market Open
     with patch('orchestrator.is_market_open', return_value=True):
          with patch('orchestrator.StateManager') as mock_sm:

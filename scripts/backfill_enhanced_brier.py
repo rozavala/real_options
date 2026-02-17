@@ -19,18 +19,8 @@ from trading_bot.enhanced_brier import EnhancedBrierTracker, MarketRegime
 from trading_bot.brier_bridge import _confidence_to_probs
 from trading_bot.cycle_id import is_valid_cycle_id
 
-import argparse
-
-parser = argparse.ArgumentParser(description="Backfill enhanced Brier scores from structured CSV")
-parser.add_argument('--commodity', type=str,
-                    default=os.environ.get("COMMODITY_TICKER", "KC"),
-                    help="Commodity ticker (e.g. KC, CC)")
-_args = parser.parse_args()
-_ticker = _args.commodity.upper()
-_data_dir = f"data/{_ticker}"
-
-STRUCTURED_FILE = os.path.join(_data_dir, "agent_accuracy_structured.csv")
-ENHANCED_FILE = os.path.join(_data_dir, "enhanced_brier.json")
+STRUCTURED_FILE = "data/agent_accuracy_structured.csv"
+ENHANCED_FILE = "data/enhanced_brier.json"
 
 
 def backfill():

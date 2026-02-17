@@ -141,8 +141,7 @@ class HallucinationDetector:
     def __init__(
         self,
         profile,  # 'CommodityProfile' - type hint omitted to avoid circular import if needed
-        quarantine_threshold: int = 5,
-        data_dir: str = None
+        quarantine_threshold: int = 5
     ):
         """
         Initialize detector with commodity profile.
@@ -150,14 +149,12 @@ class HallucinationDetector:
         Args:
             profile: CommodityProfile instance for commodity-specific facts
             quarantine_threshold: Number of flags before quarantine
-            data_dir: Commodity-specific data directory (e.g. data/KC)
         """
         self.profile = profile
         self.quarantine_threshold = quarantine_threshold
         self.agent_flags: Dict[str, List[HallucinationFlag]] = {}
         self.quarantined_agents: Set[str] = set()
-        import os as _os
-        self._state_file = _os.path.join(data_dir, "quarantine_state.json") if data_dir else "data/quarantine_state.json"
+        self._state_file = "data/quarantine_state.json"
         self._load_state()
 
         # DYNAMICALLY build known facts from the profile
@@ -533,17 +530,16 @@ class ObservabilityHub:
     commodity-agnostic hallucination detection.
     """
 
-    def __init__(self, profile, data_dir: str = None):
+    def __init__(self, profile):
         """
         Initialize hub with commodity profile.
 
         Args:
             profile: CommodityProfile for commodity-specific fact checking
-            data_dir: Commodity-specific data directory (e.g. data/KC)
         """
         self.profile = profile
         self.traces: List[AgentTrace] = []
-        self.hallucination_detector = HallucinationDetector(profile, data_dir=data_dir)
+        self.hallucination_detector = HallucinationDetector(profile)
         self.cost_tracker: Dict[str, float] = {}
 
         logger.info(f"ObservabilityHub initialized for {profile.name}")

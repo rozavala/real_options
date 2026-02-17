@@ -120,11 +120,6 @@ class Sentinel:
         self.last_payload_hash = None
         self._session: Optional[aiohttp.ClientSession] = None
 
-        # Derive cache dir from config data_dir for multi-commodity isolation
-        data_dir = config.get('data_dir')
-        if data_dir:
-            self.CACHE_DIR = os.path.join(data_dir, "sentinel_caches")
-
         # Persistent seen cache
         self._cache_file = Path(self.CACHE_DIR) / f"{self.__class__.__name__}_seen.json"
         self._seen_timestamps = {}  # link -> first_seen_timestamp
@@ -455,10 +450,6 @@ class WeatherSentinel(Sentinel):
 
     def __init__(self, config: dict):
         super().__init__(config)
-        # Derive alert state file from config data_dir for multi-commodity isolation
-        data_dir = config.get('data_dir')
-        if data_dir:
-            self.ALERT_STATE_FILE = os.path.join(data_dir, "weather_sentinel_alerts.json")
         self.sentinel_config = config.get('sentinels', {}).get('weather', {})
         self.api_url = self.sentinel_config.get('api_url', "https://api.open-meteo.com/v1/forecast")
         self.params = self.sentinel_config.get('params', "daily=temperature_2m_min,precipitation_sum&timezone=auto&forecast_days=10")

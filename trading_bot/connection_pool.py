@@ -30,12 +30,6 @@ DEV_CLIENT_ID_JITTER = 4   # random(0, 4) for dev; prod uses random(0, 9)
 DEV_CLIENT_ID_DEFAULT = 80  # Unknown purposes in dev: 80-84
 
 
-# Multi-commodity client ID offsets.
-# KC uses base 100-279, position_monitor uses 300-399.
-# CC starts at 400 to give range 500-679.
-COMMODITY_ID_OFFSET = {"KC": 0, "CC": 400, "SB": 800}
-
-
 def _is_remote_gateway(config: dict) -> bool:
     """Check if the configured IB Gateway host is remote (not localhost)."""
     host = config.get('connection', {}).get('host', '127.0.0.1')
@@ -164,16 +158,12 @@ class IBConnectionPool:
 
             # === CONNECT WITH RANDOMIZED CLIENT ID ===
             ib = IB()
-            # Multi-commodity offset: each commodity gets its own client ID range
-            ticker = config.get('commodity', {}).get('ticker', 'KC')
-            commodity_offset = COMMODITY_ID_OFFSET.get(ticker, 0)
-
             if _is_remote_gateway(config):
                 base_id = DEV_CLIENT_ID_BASE.get(purpose, DEV_CLIENT_ID_DEFAULT)
-                client_id = base_id + random.randint(0, DEV_CLIENT_ID_JITTER) + commodity_offset
+                client_id = base_id + random.randint(0, DEV_CLIENT_ID_JITTER)
             else:
                 base_id = cls.CLIENT_ID_BASE.get(purpose, 280)
-                client_id = base_id + random.randint(0, 9) + commodity_offset
+                client_id = base_id + random.randint(0, 9)
 
             is_paper = config.get('connection', {}).get('paper', False)
             remote_tag = (" [REMOTE/PAPER]" if is_paper else " [REMOTE]") if _is_remote_gateway(config) else ""

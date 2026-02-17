@@ -66,8 +66,7 @@ class BudgetGuard:
         self.warning_pct = cost_config.get('warning_threshold_pct', 0.75)
         self.sentinel_only_on_hit = cost_config.get('sentinel_only_mode_on_budget_hit', True)
 
-        data_dir = config.get('data_dir', 'data')
-        self.state_file = Path(os.path.join(data_dir, "budget_state.json"))
+        self.state_file = Path("data/budget_state.json")
         self._daily_spend = 0.0
         self._last_reset_date: Optional[str] = None
         self._budget_hit = False

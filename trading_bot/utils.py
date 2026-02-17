@@ -22,19 +22,6 @@ from scipy.stats import norm
 from trading_bot.logging_config import setup_logging
 from trading_bot.timestamps import format_ts
 
-# --- MULTI-COMMODITY PATH ISOLATION ---
-# Mutable global — overridden by set_data_dir() so all CSV/JSON writers
-# use commodity-specific directories. When None, falls back to legacy paths.
-_data_dir = None
-
-
-def set_data_dir(data_dir: str):
-    """Configure all utils write paths for a commodity-specific data directory."""
-    global _data_dir
-    _data_dir = data_dir
-    logging.getLogger(__name__).info(f"Utils data_dir set to: {data_dir}")
-
-
 # --- TRADING MODE HELPERS ---
 _TRADING_MODE = None
 
@@ -239,13 +226,9 @@ def log_order_event(trade: Trade, status: str, message: str = ""):
         status (str): The new status of the order (e.g., 'Submitted', 'Filled').
         message (str, optional): Any additional message, like an error reason.
     """
-    # Use commodity-specific data_dir if set, else legacy project root
-    if _data_dir:
-        os.makedirs(_data_dir, exist_ok=True)
-        ledger_path = os.path.join(_data_dir, 'order_events.csv')
-    else:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        ledger_path = os.path.join(base_dir, 'order_events.csv')
+    # Use absolute path to ensure ledger is in the project root
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ledger_path = os.path.join(base_dir, 'order_events.csv')
     file_exists = os.path.isfile(ledger_path)
 
     fieldnames = [
@@ -456,13 +439,9 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
         combo_id (int, optional): The permanent ID of the parent combo order.
         position_id (str, optional): The stable identifier for the position.
     """
-    # Use commodity-specific data_dir if set, else legacy project root
-    if _data_dir:
-        os.makedirs(_data_dir, exist_ok=True)
-        ledger_path = os.path.join(_data_dir, 'trade_ledger.csv')
-    else:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
+    # Use absolute path to ensure ledger is in the project root
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
 
     fieldnames = [
         'timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity',
@@ -598,17 +577,14 @@ def archive_trade_ledger():
     with a timestamp appended to its name.
     """
     ledger_filename = 'trade_ledger.csv'
-    if _data_dir:
-        ledger_path = os.path.join(_data_dir, ledger_filename)
-        archive_dir = os.path.join(_data_dir, 'archive_ledger')
-    else:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        ledger_path = os.path.join(base_dir, ledger_filename)
-        archive_dir = os.path.join(base_dir, 'archive_ledger')
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ledger_path = os.path.join(base_dir, ledger_filename)
 
     if not os.path.exists(ledger_path):
         logging.info(f"'{ledger_filename}' not found, no action taken.")
         return
+
+    archive_dir = os.path.join(base_dir, 'archive_ledger')
     if not os.path.exists(archive_dir):
         os.makedirs(archive_dir)
         logging.info(f"Created archive directory at: {archive_dir}")
@@ -632,14 +608,12 @@ def log_council_decision(decision_data):
     """
     import pandas as pd
 
-    if _data_dir:
-        council_data_dir = _data_dir
-    else:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        council_data_dir = os.path.join(base_dir, 'data')
-    os.makedirs(council_data_dir, exist_ok=True)
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    data_dir = os.path.join(base_dir, 'data')
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
 
-    file_path = os.path.join(council_data_dir, "council_history.csv")
+    file_path = os.path.join(data_dir, "council_history.csv")
 
     # UPDATED SCHEMA v2: Added weighted voting fields
     fieldnames = [

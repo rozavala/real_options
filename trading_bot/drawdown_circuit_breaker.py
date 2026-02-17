@@ -30,8 +30,7 @@ class DrawdownGuard:
         self.warning_pct = self.config.get('warning_pct', 1.5)
         self.halt_pct = self.config.get('halt_pct', 2.5)
         self.panic_pct = self.config.get('panic_pct', 4.0)
-        data_dir = config.get('data_dir', 'data')
-        self.state_file = self.config.get('state_file', os.path.join(data_dir, 'drawdown_state.json'))
+        self.state_file = self.config.get('state_file', 'data/drawdown_state.json')
 
         self.state = {
             "status": "NORMAL", # NORMAL, WARNING, HALT, PANIC

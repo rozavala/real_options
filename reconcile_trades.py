@@ -183,7 +183,7 @@ async def reconcile_active_positions(config: dict):
         logger.info("Active Position Reconciliation complete. No discrepancies found.")
 
 
-def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame, data_dir: str = None):
+def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
     """
     Writes the DataFrame of missing trades to a `missing_trades.csv` file
     inside the `archive_ledger` directory.
@@ -192,11 +192,8 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame, data_dir: str =
     if missing_trades_df.empty:
         return
 
-    if data_dir:
-        archive_dir = os.path.join(data_dir, 'archive_ledger')
-    else:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        archive_dir = os.path.join(base_dir, 'archive_ledger')
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    archive_dir = os.path.join(base_dir, 'archive_ledger')
     output_path = os.path.join(archive_dir, 'trade_ledger_missing_trades.csv')
 
     # Create the archive directory if it doesn't exist
@@ -236,7 +233,7 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame, data_dir: str =
         logger.error(f"An unexpected error occurred in write_missing_trades_to_csv: {e}")
 
 
-def write_superfluous_trades_to_csv(superfluous_trades_df: pd.DataFrame, data_dir: str = None):
+def write_superfluous_trades_to_csv(superfluous_trades_df: pd.DataFrame):
     """
     Writes the DataFrame of superfluous local trades to a CSV file
     inside the `archive_ledger` directory.
@@ -244,11 +241,8 @@ def write_superfluous_trades_to_csv(superfluous_trades_df: pd.DataFrame, data_di
     if superfluous_trades_df.empty:
         return
 
-    if data_dir:
-        archive_dir = os.path.join(data_dir, 'archive_ledger')
-    else:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        archive_dir = os.path.join(base_dir, 'archive_ledger')
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    archive_dir = os.path.join(base_dir, 'archive_ledger')
     output_path = os.path.join(archive_dir, 'superfluous_local_trades.csv')
 
     # Create the archive directory if it doesn't exist
@@ -346,19 +340,16 @@ def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) 
     return pd.DataFrame(missing_from_local), local_trades_unmatched
 
 
-def get_trade_ledger_df(data_dir: str = None) -> pd.DataFrame:
+def get_trade_ledger_df() -> pd.DataFrame:
     """
     Reads and consolidates the main and archived trade ledgers into a single
     DataFrame for analysis.
+    (This function is unchanged from your original script)
     """
-    if data_dir:
-        ledger_path = os.path.join(data_dir, 'trade_ledger.csv')
-        archive_dir = os.path.join(data_dir, 'archive_ledger')
-    else:
-        # Legacy: define paths relative to the script's location (project root)
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-        archive_dir = os.path.join(base_dir, 'archive_ledger')
+    # Define paths relative to the script's location, which is the project root.
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
+    archive_dir = os.path.join(base_dir, 'archive_ledger')
 
     dataframes = []
 
@@ -683,11 +674,6 @@ async def main(lookback_days: int = None):
 
     # --- 1. Load Configuration ---
     config = load_config()
-    # Inject data_dir for commodity isolation if not already set
-    if 'data_dir' not in config:
-        ticker = os.environ.get("COMMODITY_TICKER", "KC").upper()
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        config['data_dir'] = os.path.join(base_dir, 'data', ticker)
     try:
         token = config['flex_query']['token']
         query_ids = config['flex_query']['query_ids']
@@ -721,7 +707,7 @@ async def main(lookback_days: int = None):
     logger.info(f"Consolidated to {len(ib_trades_df)} unique trades from all reports.")
 
     # --- 4. Load Local Trade Ledger ---
-    local_trades_df = get_trade_ledger_df(config.get('data_dir'))
+    local_trades_df = get_trade_ledger_df()
     if local_trades_df.empty:
         logger.warning("Local trade ledger is empty. All fetched IB trades will be considered missing.")
 
@@ -752,8 +738,8 @@ async def main(lookback_days: int = None):
     else:
         # --- 7. Output Discrepancy Reports ---
         logger.info("Discrepancies found. Writing to output files.")
-        write_missing_trades_to_csv(missing_trades_df, config.get('data_dir'))
-        write_superfluous_trades_to_csv(superfluous_trades_df, config.get('data_dir'))
+        write_missing_trades_to_csv(missing_trades_df)
+        write_superfluous_trades_to_csv(superfluous_trades_df)
 
     # --- 6. Return the dataframes for the orchestrator ---
     return missing_trades_df, superfluous_trades_df

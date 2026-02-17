@@ -208,17 +208,16 @@ class EnhancedBrierTracker:
 
         # Load existing data and sync with CSV
         self._load()
-        # Auto-backfill from structured CSV in same directory as data_path
-        try:
-            csv_dir = os.path.dirname(self.data_path) or '.'
-            structured_csv = os.path.join(csv_dir, "agent_accuracy_structured.csv")
-            self.backfill_from_resolved_csv(structured_csv_path=structured_csv)
-        except Exception as e:
-            logger.warning(f"Auto-backfill on init failed (non-fatal): {e}")
-        try:
-            self.auto_orphan_stale_predictions()
-        except Exception as e:
-            logger.warning(f"Auto-orphan on init failed (non-fatal): {e}")
+        # Auto-backfill only for the default production data path
+        if os.path.abspath(data_path) == os.path.abspath("./data/enhanced_brier.json"):
+            try:
+                self.backfill_from_resolved_csv()
+            except Exception as e:
+                logger.warning(f"Auto-backfill on init failed (non-fatal): {e}")
+            try:
+                self.auto_orphan_stale_predictions()
+            except Exception as e:
+                logger.warning(f"Auto-orphan on init failed (non-fatal): {e}")
 
     def record_prediction(
         self,

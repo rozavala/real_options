@@ -27,8 +27,7 @@ st.caption("Agent prediction quality, calibration curves, and learning feedback"
 @st.cache_data(ttl=120)
 def load_enhanced_brier():
     """Load enhanced Brier data from JSON."""
-    from dashboard_utils import _resolve_data_path
-    path = _resolve_data_path("enhanced_brier.json")
+    path = "data/enhanced_brier.json"
     if not os.path.exists(path):
         return None
     try:
@@ -41,8 +40,7 @@ def load_enhanced_brier():
 @st.cache_data(ttl=120)
 def load_structured_predictions():
     """Load structured prediction CSV."""
-    from dashboard_utils import _resolve_data_path
-    path = _resolve_data_path("agent_accuracy_structured.csv")
+    path = "data/agent_accuracy_structured.csv"
     if not os.path.exists(path):
         return pd.DataFrame()
     try:
@@ -57,8 +55,7 @@ def load_structured_predictions():
 @st.cache_data(ttl=120)
 def load_legacy_accuracy():
     """Load legacy accuracy CSV."""
-    from dashboard_utils import _resolve_data_path
-    path = _resolve_data_path("agent_accuracy.csv")
+    path = "data/agent_accuracy.csv"
     if not os.path.exists(path):
         return pd.DataFrame()
     try:

@@ -31,17 +31,6 @@ TRACKER_FILE = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), 'data', 'task_completions.json'
 )
 
-# Mutable global — overridden by set_data_dir() for multi-commodity isolation
-_tracker_file = None
-
-
-def set_data_dir(data_dir: str):
-    """Configure task tracker path for a commodity-specific data directory."""
-    global _tracker_file, TRACKER_FILE
-    _tracker_file = os.path.join(data_dir, 'task_completions.json')
-    TRACKER_FILE = _tracker_file
-    logger.info(f"TaskTracker data_dir set to: {data_dir}")
-
 
 def _get_trading_date() -> str:
     """Current trading date in NY timezone as YYYY-MM-DD string."""

@@ -16,9 +16,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Default paths — overridden by set_data_dir() for multi-commodity isolation
-_BASE_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
-STATE_FILE = os.path.join(_BASE_DATA_DIR, 'state.json')
+STATE_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'state.json')
 
 def _validate_confidence(value: Any) -> float:
     """
@@ -52,30 +50,6 @@ class StateManager:
     _async_lock = asyncio.Lock()
     REPORT_TTL_SECONDS = 3600  # 1 hour staleness threshold
     DEFERRED_TRIGGERS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'deferred_triggers.json')
-
-    # Class-level path variables — overridden by set_data_dir() for multi-commodity
-    _state_file = None  # When None, falls back to module-level STATE_FILE
-    _deferred_triggers_file = None
-    _state_lock_file = None
-    _deferred_lock_file = None
-
-    @classmethod
-    def set_data_dir(cls, data_dir: str):
-        """Configure all StateManager paths for a commodity-specific data directory.
-
-        Must be called before any state operations when running multi-commodity.
-        """
-        global STATE_FILE
-        os.makedirs(data_dir, exist_ok=True)
-        STATE_FILE = os.path.join(data_dir, 'state.json')
-        cls._state_file = STATE_FILE
-        cls.DEFERRED_TRIGGERS_FILE = os.path.join(data_dir, 'deferred_triggers.json')
-        cls._deferred_triggers_file = cls.DEFERRED_TRIGGERS_FILE
-        cls._STATE_LOCK_FILE = os.path.join(data_dir, '.state_global.lock')
-        cls._state_lock_file = cls._STATE_LOCK_FILE
-        cls._DEFERRED_LOCK_FILE = os.path.join(data_dir, '.deferred_triggers.lock')
-        cls._deferred_lock_file = cls._DEFERRED_LOCK_FILE
-        logger.info(f"StateManager data_dir set to: {data_dir}")
 
     @classmethod
     def _save_raw_sync(cls, data: dict):

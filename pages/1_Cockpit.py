@@ -36,8 +36,7 @@ from trading_bot.calendars import is_trading_day
 def load_deduplicator_metrics() -> dict:
     """Load trigger deduplication metrics."""
     try:
-        from dashboard_utils import _resolve_data_path
-        with open(_resolve_data_path('deduplicator_state.json'), 'r') as f:
+        with open('data/deduplicator_state.json', 'r') as f:
             data = json.load(f)
             metrics = data.get('metrics', {})
             total = metrics.get('total_triggers', 0)

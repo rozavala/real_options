@@ -21,10 +21,6 @@ fi
 
 cd "$REPO_ROOT"
 
-# Commodity ticker for per-commodity log/data paths
-TICKER="${COMMODITY_TICKER:-KC}"
-TICKER_LOWER=$(echo "$TICKER" | tr '[:upper:]' '[:lower:]')
-
 # Prevent collect_logs.sh from switching branches during deploy
 DEPLOY_LOCK="/tmp/trading-bot-deploy.lock"
 echo "$$" > "$DEPLOY_LOCK"
@@ -57,8 +53,8 @@ rollback_and_restart() {
         # Ensure log directory exists and is writable before restarting
         mkdir -p logs
         chmod 755 logs 2>/dev/null || true
-        touch "logs/orchestrator_${TICKER_LOWER}.log" "logs/dashboard_${TICKER_LOWER}.log" logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
-        chmod 664 "logs/orchestrator_${TICKER_LOWER}.log" "logs/dashboard_${TICKER_LOWER}.log" logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
+        touch logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
+        chmod 664 logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
 
         # Kill any orphaned processes before restarting
         pkill -9 -f "orchestrator.py" 2>/dev/null || true
@@ -78,14 +74,14 @@ rollback_and_restart() {
             echo "  ⚠️  Rollback: systemd start failed, falling back to nohup"
             if [ -f "scripts/start_orchestrator.sh" ]; then
                 chmod +x scripts/start_orchestrator.sh
-                nohup ./scripts/start_orchestrator.sh >> "logs/orchestrator_${TICKER_LOWER}.log" 2>&1 &
+                nohup ./scripts/start_orchestrator.sh >> logs/orchestrator.log 2>&1 &
             else
-                nohup python -u orchestrator.py --commodity "$TICKER" >> "logs/orchestrator_${TICKER_LOWER}.log" 2>&1 &
+                nohup python -u orchestrator.py >> logs/orchestrator.log 2>&1 &
             fi
         fi
 
         # Restart dashboard (not managed by systemd — manual start is correct here)
-        nohup streamlit run dashboard.py --server.address 0.0.0.0 > "logs/dashboard_${TICKER_LOWER}.log" 2>&1 &
+        nohup streamlit run dashboard.py --server.address 0.0.0.0 > logs/dashboard.log 2>&1 &
 
         echo "--- Rollback complete. Old version restarted. ---"
         echo "--- MANUAL INVESTIGATION REQUIRED ---"
@@ -146,8 +142,8 @@ echo "  ✅ All processes stopped and verified"
 # =========================================================================
 echo "--- 2. Rotating logs... ---"
 mkdir -p logs
-[ -f "logs/orchestrator_${TICKER_LOWER}.log" ] && mv "logs/orchestrator_${TICKER_LOWER}.log" "logs/orchestrator_${TICKER_LOWER}-$(date --iso=s).log" || true
-[ -f "logs/dashboard_${TICKER_LOWER}.log" ] && mv "logs/dashboard_${TICKER_LOWER}.log" "logs/dashboard_${TICKER_LOWER}-$(date --iso=s).log" || true
+[ -f logs/orchestrator.log ] && mv logs/orchestrator.log logs/orchestrator-$(date --iso=s).log || true
+[ -f logs/dashboard.log ] && mv logs/dashboard.log logs/dashboard-$(date --iso=s).log || true
 [ -f logs/equity_logger.log ] && mv logs/equity_logger.log logs/equity_logger-$(date --iso=s).log || true
 [ -f logs/sentinels.log ] && mv logs/sentinels.log logs/sentinels-$(date --iso=s).log || true
 
@@ -156,9 +152,9 @@ find logs/ -name "*-20*.log" -mtime +7 -delete 2>/dev/null || true
 
 # Ensure logs directory exists with correct permissions
 chmod 755 logs
-touch "logs/orchestrator_${TICKER_LOWER}.log" "logs/dashboard_${TICKER_LOWER}.log" logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log
-chmod 664 "logs/orchestrator_${TICKER_LOWER}.log" "logs/dashboard_${TICKER_LOWER}.log" logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log
-chown rodrigo:rodrigo "logs/orchestrator_${TICKER_LOWER}.log" "logs/dashboard_${TICKER_LOWER}.log" logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
+touch logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log
+chmod 664 logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log
+chown rodrigo:rodrigo logs/orchestrator.log logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
 
 # =========================================================================
 # STEP 3: Activate venv + install deps
@@ -179,14 +175,13 @@ mkdir -p config/profiles          # Custom JSON commodity profiles
 mkdir -p trading_bot/prompts      # Templatized agent prompts
 mkdir -p backtesting              # Backtesting framework
 mkdir -p data/surrogate_models    # Surrogate model cache (runtime)
-mkdir -p "data/$TICKER"           # Per-commodity data directory
 echo "  ✅ Directories OK"
 
 # =========================================================================
 # STEP 7: Sync equity data
 # =========================================================================
 echo "--- 7. Syncing Equity Data... ---"
-python equity_logger.py --sync --commodity "$TICKER" || true
+python equity_logger.py --sync || true
 
 # =========================================================================
 # STEP 8: Post-deploy verification gate
@@ -224,7 +219,7 @@ if ! sudo systemctl is-active --quiet "$SERVICE_NAME"; then
     sudo systemctl status "$SERVICE_NAME" --no-pager
     echo ""
     echo "  📋 Recent logs:"
-    tail -50 "logs/orchestrator_${TICKER_LOWER}.log"
+    tail -50 logs/orchestrator.log
     rollback_and_restart
 fi
 
@@ -242,7 +237,7 @@ echo "  ✅ $SERVICE_NAME service started (PID: $ORCH_PID)"
 
 # Start dashboard (not managed by systemd)
 echo "  🚀 Starting dashboard..."
-nohup streamlit run dashboard.py --server.address 0.0.0.0 > "logs/dashboard_${TICKER_LOWER}.log" 2>&1 &
+nohup streamlit run dashboard.py --server.address 0.0.0.0 > logs/dashboard.log 2>&1 &
 DASH_PID=$!
 echo "  ✅ Dashboard started (PID: $DASH_PID)"
 

@@ -44,33 +44,12 @@ from config_loader import load_config
 from trading_bot.utils import configure_market_data_type
 from trading_bot.timestamps import parse_ts_column
 
-# === MULTI-COMMODITY PATH RESOLUTION ===
-def _resolve_data_path(filename: str) -> str:
-    """Resolve a data file path with multi-commodity fallback.
-
-    3-tier fallback:
-    1. data/{COMMODITY_TICKER}/{filename} — per-commodity isolated path
-    2. data/{filename} — legacy pre-migration path
-    3. Returns data/{COMMODITY_TICKER}/{filename} — targeted path for file creation
-    """
-    ticker = os.environ.get("COMMODITY_TICKER", "KC")
-    commodity_path = os.path.join("data", ticker, filename)
-    legacy_path = os.path.join("data", filename)
-
-    if os.path.exists(commodity_path):
-        return commodity_path
-    if os.path.exists(legacy_path):
-        return legacy_path
-    return commodity_path  # Default to commodity path for creation
-
-
 # === CONFIGURATION ===
 # E4 FIX: Dynamic starting capital handled in get_starting_capital function
-STATE_FILE_PATH = _resolve_data_path('state.json')
-_ticker_for_log = os.environ.get("COMMODITY_TICKER", "KC").lower()
-ORCHESTRATOR_LOG_PATH = f'logs/orchestrator_{_ticker_for_log}.log'
-COUNCIL_HISTORY_PATH = _resolve_data_path('council_history.csv')
-DAILY_EQUITY_PATH = _resolve_data_path('daily_equity.csv')
+STATE_FILE_PATH = 'data/state.json'
+ORCHESTRATOR_LOG_PATH = 'logs/orchestrator.log'
+COUNCIL_HISTORY_PATH = 'data/council_history.csv'
+DAILY_EQUITY_PATH = 'data/daily_equity.csv'
 
 
 # === DATA LOADING FUNCTIONS ===
@@ -128,9 +107,7 @@ def get_commodity_profile(config: dict = None) -> dict:
 def load_trade_data():
     """Loads and caches the consolidated trade ledger."""
     try:
-        ticker = os.environ.get("COMMODITY_TICKER", "KC")
-        data_dir = os.path.join("data", ticker)
-        df = get_trade_ledger_df(data_dir)
+        df = get_trade_ledger_df()
         if not df.empty:
             df['timestamp'] = parse_ts_column(df['timestamp'])
         return df
@@ -277,8 +254,7 @@ def load_log_data():
         logs_content = {}
         for log_path in list_of_logs:
             filename = os.path.basename(log_path)
-            # Only skip RotatingFileHandler backups (e.g., orchestrator.log.1, .log.2)
-            if re.match(r'.*\.log\.\d+$', filename):
+            if any(char.isdigit() for char in filename):
                 continue
             name = filename.split('.')[0].capitalize()
             logs_content[name] = tail_file(log_path, n_lines=50)
@@ -334,8 +310,14 @@ def get_system_heartbeat():
 
 # === TASK SCHEDULE TRACKER ===
 
-ACTIVE_SCHEDULE_PATH = _resolve_data_path('active_schedule.json')
-TASK_COMPLETIONS_PATH = _resolve_data_path('task_completions.json')
+ACTIVE_SCHEDULE_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    'data', 'active_schedule.json'
+)
+TASK_COMPLETIONS_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    'data', 'task_completions.json'
+)
 
 # Legacy labels: fallback for old active_schedule.json files without 'label' field.
 # New schedules include per-instance labels (e.g., "Signal: Early Session (04:00 ET)")

@@ -49,13 +49,6 @@ import json
 
 CAPITAL_STATE_FILE = Path("data/capital_state.json")
 
-
-def set_capital_state_dir(data_dir: str):
-    """Configure capital state path for a commodity-specific data directory."""
-    global CAPITAL_STATE_FILE
-    CAPITAL_STATE_FILE = Path(os.path.join(data_dir, "capital_state.json"))
-    logger.info(f"OrderManager capital state dir set to: {data_dir}")
-
 def _load_committed_capital() -> float:
     """Load persisted committed capital or 0.0 if none."""
     if CAPITAL_STATE_FILE.exists():
@@ -1622,21 +1615,15 @@ import pandas as pd
 from datetime import datetime, date, timedelta
 import os
 
-def get_trade_ledger_df(data_dir: str = None):
+def get_trade_ledger_df():
     """
     Reads and consolidates the main and archived trade ledgers for analysis.
     This function is now robust to historical ledgers that may be missing
     the 'position_id' column, using 'combo_id' as a fallback.
     """
-    from trading_bot.utils import _data_dir as utils_data_dir
-    effective_dir = data_dir or utils_data_dir
-    if effective_dir:
-        ledger_path = os.path.join(effective_dir, 'trade_ledger.csv')
-        archive_dir = os.path.join(effective_dir, 'archive_ledger')
-    else:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-        archive_dir = os.path.join(base_dir, 'archive_ledger')
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
+    archive_dir = os.path.join(base_dir, 'archive_ledger')
 
     dataframes = []
 

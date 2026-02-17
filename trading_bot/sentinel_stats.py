@@ -15,18 +15,6 @@ logger = logging.getLogger(__name__)
 STATS_FILE = Path("data/sentinel_stats.json")
 
 
-def set_data_dir(data_dir: str):
-    """Configure sentinel stats path for a commodity-specific data directory.
-
-    Also reloads in-memory stats from the new path.
-    """
-    global STATS_FILE
-    STATS_FILE = Path(data_dir) / "sentinel_stats.json"
-    # Reload stats from new path into the module-level singleton
-    SENTINEL_STATS.stats = SENTINEL_STATS._load_stats()
-    logger.info(f"SentinelStats data_dir set to: {data_dir}")
-
-
 class SentinelStats:
     """Collect and expose sentinel performance statistics."""
 

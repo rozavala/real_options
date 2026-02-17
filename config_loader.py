@@ -186,17 +186,3 @@ def load_config() -> dict | None:
     logger.info(f"Config loaded successfully. Mode: {trading_mode}. Providers: {', '.join(loaded_providers)}")
 
     return config
-
-
-def deep_merge(base: dict, override: dict) -> dict:
-    """Recursively merge override into base dict. Override values win.
-
-    Used for per-commodity config overrides (e.g. commodity_overrides.CC).
-    """
-    result = base.copy()
-    for key, value in override.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = deep_merge(result[key], value)
-        else:
-            result[key] = value
-    return result
