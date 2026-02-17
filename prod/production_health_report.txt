@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Tue Feb 17 16:30:02 UTC 2026
+Timestamp: Tue Feb 17 17:00:03 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  16:30:02 up 36 days, 22:53,  2 users,  load average: 0.61, 0.69, 0.71
+Uptime:  17:00:03 up 36 days, 23:23,  2 users,  load average: 0.74, 0.60, 0.53
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   56K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.4Gi       492Mi        33Mi       1.1Gi       1.4Gi
+Mem:           3.8Gi       2.5Gi       336Mi        33Mi       1.1Gi       1.3Gi
 Swap:          4.0Gi       372Mi       3.6Gi
 
 === LOAD AVERAGE ===
-0.61 0.69 0.71 2/811 1182182
+0.74 0.60 0.53 1/821 1183225
 
 === PROCESS STATUS ===
 Trading processes:
-console  1181992  8.2  9.3 1577008 374100 ?      Ssl  16:28   0:08 /home/console/real_options/venv/bin/python -u orchestrator.py
-console  1182006  4.3  6.4 744144 258768 ?       Sl   16:28   0:04 /home/console/real_options/venv/bin/python position_monitor.py
+console  1181992  3.9 11.2 1901604 451804 ?      Ssl  16:28   1:14 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1182006  0.2  6.4 744144 258896 ?       Sl   16:28   0:04 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1182004  1.4  1.8 452636 72544 ?        Sl   16:28   0:01 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1182004  0.3  1.8 452796 72672 ?        Sl   16:28   0:06 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,3 +36,13 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
+2026-02-17 16:46:36,114 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYDyqEYaA5bqKsUFHeCk5'}
+2026-02-17 16:46:37,250 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYDyqKMnhP4tGt3Evr9eL'}
+2026-02-17 16:46:39,381 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-6 failed for compliance: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYDyqUWTVYGxBhxTSCbXe'}
+2026-02-17 16:46:45,949 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> openai. Reason: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYDyqUWTVYGxBhxTSCbXe'}
+2026-02-17 16:46:45,949 - trading_bot.signal_generator - WARNING - COMPLIANCE BLOCKED KCZ6 (202612): (1) Hallucination/unsupported claims: The decision says price is 'well below the 200-day average in a range-bound regime'—no 200-day MA value, regime classification, or any moving-average data appears anywhere in the evidence or market context. It also asserts the framework’s 'first rule' that a ~-5% 24h move 'flags technical liquidation risk' and sets a bar for buy-the-dip; that rule is not stated in the provided reports (it’s a method claim without evidence here). (2) Evidence support otherwise: The cited -4.98% 24h move and -3.24% 5-day trend are in Market Context; Conab record harvest (66.2m bags), Minas rainfall 72.6mm (113% of avg), and supportive humidity are in Agronomist; São Paulo drought alert is explicitly labeled NEUTRAL at vegetative stage in Sentiment/Inventory/Technical; export down 30.8% and ~55% vessel delays are in Geopolitical/Supply_chain; inventory/volatility packets explicitly lack core indicators. (3) Critical risks ignored: No explicit 'CRITICAL RISK' is stated as such in reports; wet-pattern disease/drying-delay risk is mentioned as a watch-point and not ignored (decision emphasizes no confirmed yield loss). (4) Direction vs reports: Most agent sentiment tags are NEUTRAL; one is BULLISH (Technical). A BEARISH decision is not contradicted by 'overwhelming' report sentiment, but it is more directional than the evidence supports without the invented 200-day MA/technical-regime claims.
+2026-02-17 16:46:50,564 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYDyrJM3qpyeiPKdYsdsc'}
+2026-02-17 16:46:51,671 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYDyrP8H81vqdm1NfCDMH'}
+2026-02-17 16:46:53,793 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-opus-4-6 failed for compliance: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYDyrY9GKmvB8fUQE3pzQ'}
+2026-02-17 16:46:59,719 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> openai. Reason: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYDyrY9GKmvB8fUQE3pzQ'}
+(3) No clear ignored critical risk: The reasoning does acknowledge the São Paulo drought risk flag and the heavy-rain forecast risk; it does not omit an explicitly stated critical risk.
