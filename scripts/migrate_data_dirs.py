@@ -47,6 +47,9 @@ DATA_FILES = [
     'sentinel_stats.json',
     'quarantine_state.json',
     'weather_sentinel_alerts.json',
+    'trade_journal.json',
+    'discovered_topics.json',
+    'fundamental_regime.json',
 ]
 
 # Directories to move from data/ to data/KC/
@@ -54,6 +57,7 @@ DATA_DIRS = [
     'sentinel_caches',
     'tms',
     'dspy_optimized',
+    'surrogate_models',
 ]
 
 # Files to move from project root to data/KC/
