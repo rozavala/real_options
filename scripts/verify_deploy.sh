@@ -44,6 +44,10 @@ REQUIRED_DIRS=(
     "data/KC/surrogate_models"
     # "logs" # logs might not exist in fresh clone? but good to check
 )
+# Add CC directories if CC service is installed
+if [ -f "/etc/systemd/system/trading-bot-cc.service" ]; then
+    REQUIRED_DIRS+=("data/CC")
+fi
 for dir in "${REQUIRED_DIRS[@]}"; do
     if [ ! -d "$dir" ]; then
         echo "    ❌ Missing directory: $dir"
