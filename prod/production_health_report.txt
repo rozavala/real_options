@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Tue Feb 17 03:00:03 UTC 2026
+Timestamp: Tue Feb 17 13:00:03 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  03:00:03 up 36 days,  9:23,  2 users,  load average: 0.28, 0.08, 0.02
+Uptime:  13:00:03 up 36 days, 19:23,  2 users,  load average: 0.03, 0.04, 0.00
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,18 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.4Gi       256Mi        34Mi       1.4Gi       1.4Gi
-Swap:          4.0Gi       204Mi       3.8Gi
+Mem:           3.8Gi       2.7Gi       223Mi        34Mi       1.1Gi       1.1Gi
+Swap:          4.0Gi       321Mi       3.7Gi
 
 === LOAD AVERAGE ===
-0.28 0.08 0.02 1/760 1167843
+0.03 0.04 0.00 3/819 1176245
 
 === PROCESS STATUS ===
 Trading processes:
-console  1167111  0.2  9.1 1644472 367204 ?      Ssl  01:51   0:08 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1167111  0.3 10.6 1903712 425896 ?      Ssl  01:51   2:25 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1173186  0.0  7.1 1348676 286984 ?      Sl   09:15   0:05 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1167130  0.2  1.9 606120 78968 ?        Sl   01:51   0:11 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1167130  0.2  1.9 606120 77816 ?        Sl   01:51   1:48 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -35,3 +36,13 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
+2026-02-17 12:16:44,627 - ib_insync.wrapper - ERROR - Error 354, reqId 30: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
+2026-02-17 12:16:44,728 - ib_insync.wrapper - ERROR - Error 354, reqId 31: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC JUL'26 (KCN6) /TOP/ALL, contract: Contract(secType='FUT', conId=646040490, symbol='KC', lastTradeDateOrContractMonth='20260721', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCN6', tradingClass='KC')
+2026-02-17 12:16:44,795 - ib_insync.wrapper - ERROR - Error 354, reqId 32: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC SEP'26 (KCU6) /TOP/ALL, contract: Contract(secType='FUT', conId=657732419, symbol='KC', lastTradeDateOrContractMonth='20260918', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCU6', tradingClass='KC')
+2026-02-17 12:16:44,798 - ib_insync.wrapper - ERROR - Error 354, reqId 33: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC DEC'26 (KCZ6) /TOP/ALL, contract: Contract(secType='FUT', conId=675565688, symbol='KC', lastTradeDateOrContractMonth='20261218', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCZ6', tradingClass='KC')
+2026-02-17 12:23:58,111 - ib_insync.wrapper - ERROR - Error 354, reqId 28: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
+2026-02-17 12:23:59,511 - ib_insync.wrapper - ERROR - Error 354, reqId 30: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
+2026-02-17 12:24:01,409 - ib_insync.wrapper - ERROR - Error 300, reqId 30: Can't find EId with tickerId:30
+2026-02-17 12:24:01,649 - ib_insync.wrapper - ERROR - Error 354, reqId 31: Requested market data is not subscribed. Check API status by selecting the Account menu then under Management choose Market Data Subscription Manager and/or availability of delayed data.Delayed market data is available.KC MAY'26 (KCK6) /TOP/ALL, contract: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
+2026-02-17 12:24:06,428 - ib_insync.wrapper - ERROR - Error 300, reqId 31: Can't find EId with tickerId:31
+2026-02-17 12:28:04,565 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. The trade suffers from three critical vulnerabilities: (1) CROWDED TRADE BIAS — bearish consensus is already reflected in extreme speculative short positioning and prices near multi-month lows, meaning the asymmetry is actually against us (limited downside reward near 277 support vs explosive upside risk on a squeeze); (2) CONFIRMATION BIAS — we are anchoring on a forward-looking crop forecast (harvest months away) while dismissing concrete, present-tense tightness signals (certified stock drawdowns, backwardation, 30.8% export collapse) as 'tactical' without evidence they will resolve in our 5-day window; (3) TIME HORIZON MISMATCH — the strongest bearish evidence (record crop) is a medium-term factor that plays out over Q2-Q3 2026, while the strongest bullish evidence (physical tightness, positioning extremes, vol regime) operates on precisely the 1-5 day horizon of this trade. Additionally, the volatility environment (absolute IV still historically elevated, front-month ~52%) means option-based entry is expensive and directional futures carry massive whipsaw risk. The NaN price and N/A IV rank for KCK6 also signal data quality issues that should pause any execution. If bearish, wait for (a) a bounce toward 290-295 resistance to improve risk/reward, (b) evidence that certified stocks have stabilized or begun rebuilding, and (c) CFTC data showing spec shorts have partially covered, reducing squeeze risk.
