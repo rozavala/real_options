@@ -16,6 +16,7 @@ import json
 import re
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from trading_bot.calendars import is_trading_day
 from dashboard_utils import (
     get_config,
     get_system_heartbeat,
@@ -477,12 +478,18 @@ else:
     # Calculate time until open
     next_open = market_open_ny
 
-    # If currently past open time or it's a weekend, move to next weekday
-    if ny_now >= market_open_ny or ny_now.weekday() >= 5:
+    # Get exchange from config for holiday awareness
+    exchange_code = config.get('exchange', 'ICE') if config else 'ICE'
+
+    # Check if today is a trading day
+    today_is_trading = is_trading_day(ny_now.date(), exchange=exchange_code)
+
+    # If currently past open time OR today is not a trading day (weekend/holiday)
+    if (today_is_trading and ny_now >= market_open_ny) or (not today_is_trading):
         # Start with tomorrow
         next_open = next_open + timedelta(days=1)
-        # Skip weekends (5=Sat, 6=Sun)
-        while next_open.weekday() >= 5:
+        # Skip non-trading days (holidays/weekends)
+        while not is_trading_day(next_open.date(), exchange=exchange_code):
             next_open += timedelta(days=1)
 
     # Reset time to the standard open time (using market_open_ny's components)
