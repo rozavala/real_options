@@ -126,6 +126,14 @@ async def reconcile_active_positions(config: dict):
 
     ib_positions = parse_position_flex_csv_to_df(csv_data)
 
+    # 1b. Filter to active commodity symbol
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    if not ib_positions.empty:
+        pre_count = len(ib_positions)
+        ib_positions = ib_positions[ib_positions['Symbol'].str.startswith(ticker)]
+        if len(ib_positions) < pre_count:
+            logger.info(f"Filtered IB positions by commodity {ticker}: {pre_count} -> {len(ib_positions)}")
+
     # 2. Get Local Active Positions
     # Load full ledger first to check for recent trades
     full_ledger = get_trade_ledger_df()
@@ -719,6 +727,15 @@ async def main(lookback_days: int = None):
     ib_trades_df.drop_duplicates(subset=cols_to_check, keep='first', inplace=True)
 
     logger.info(f"Consolidated to {len(ib_trades_df)} unique trades from all reports.")
+
+    # --- 3b. Filter to active commodity symbol ---
+    # The IBKR Flex Query returns ALL account trades. Filter to only trades
+    # matching the active commodity (e.g., KC options start with "KC", CC with "CC").
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    pre_filter_count = len(ib_trades_df)
+    ib_trades_df = ib_trades_df[ib_trades_df['local_symbol'].str.startswith(ticker)]
+    if len(ib_trades_df) < pre_filter_count:
+        logger.info(f"Filtered IB trades by commodity {ticker}: {pre_filter_count} -> {len(ib_trades_df)}")
 
     # --- 4. Load Local Trade Ledger ---
     local_trades_df = get_trade_ledger_df(config.get('data_dir'))
