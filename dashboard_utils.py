@@ -39,10 +39,15 @@ from ib_insync import IB
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 from performance_analyzer import get_trade_ledger_df
 # Decision signals: lightweight summary of Council decisions
-from trading_bot.decision_signals import get_decision_signals_df
+from trading_bot.decision_signals import get_decision_signals_df, set_data_dir as set_signals_dir
 from config_loader import load_config
 from trading_bot.utils import configure_market_data_type
 from trading_bot.timestamps import parse_ts_column
+
+# Set decision_signals path for the active commodity (dashboard doesn't go through orchestrator init)
+_dashboard_ticker = os.environ.get("COMMODITY_TICKER", "KC")
+_dashboard_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', _dashboard_ticker)
+set_signals_dir(_dashboard_data_dir)
 
 # === MULTI-COMMODITY PATH RESOLUTION ===
 def _resolve_data_path(filename: str) -> str:
@@ -97,15 +102,18 @@ def get_config():
     if config is None:
         st.error("Fatal: Could not load config.json.")
         return {}
+    # Inject active commodity ticker (matches orchestrator's main() override)
+    ticker = os.environ.get("COMMODITY_TICKER", "KC")
+    config['symbol'] = ticker
+    config.setdefault('commodity', {})['ticker'] = ticker
+    config['data_dir'] = os.path.join('data', ticker)
     return config
 
 
 def get_commodity_profile(config: dict = None) -> dict:
     """
     Returns the commodity profile for the active symbol.
-    Falls back to Coffee (KC) defaults if not configured.
-
-    EXTENSIBILITY: Add new commodities to config.json when needed.
+    Derives defaults from the CommodityProfile dataclass.
     """
     if config is None:
         config = get_config()
@@ -113,15 +121,27 @@ def get_commodity_profile(config: dict = None) -> dict:
     symbol = config.get('symbol', 'KC')
     profiles = config.get('commodity_profile', {})
 
-    # KC defaults — the only commodity we need right now
-    default_profile = {
-        'name': 'Coffee C Arabica',
-        'price_unit': 'cents/lb',
-        'stop_parse_range': [80, 800],
-        'typical_price_range': [100, 600]
-    }
+    # If config.json has a commodity_profile section, use it
+    if symbol in profiles:
+        return profiles[symbol]
 
-    return profiles.get(symbol, default_profile)
+    # Derive defaults from the CommodityProfile dataclass
+    from config import get_commodity_profile as get_cp
+    try:
+        cp = get_cp(symbol)
+        return {
+            'name': cp.name,
+            'price_unit': cp.price_unit if hasattr(cp, 'price_unit') else ('cents/lb' if symbol == 'KC' else 'USD/MT'),
+            'stop_parse_range': [80, 800] if symbol == 'KC' else [3000, 15000],
+            'typical_price_range': [100, 600] if symbol == 'KC' else [4000, 12000],
+        }
+    except Exception:
+        return {
+            'name': symbol,
+            'price_unit': 'USD',
+            'stop_parse_range': [0, 100000],
+            'typical_price_range': [0, 100000],
+        }
 
 
 @st.cache_data(ttl=60)

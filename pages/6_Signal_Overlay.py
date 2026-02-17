@@ -316,20 +316,22 @@ def get_contract_display_name(contract: str) -> str:
     Examples:
         'FRONT_MONTH' -> '📊 Front Month (Continuous)'
         'KCH26' -> 'KCH26 (Mar 2026)'
-        'KCH6 (202603)' -> 'KCH26 (Mar 2026)'
+        'CCK26' -> 'CCK26 (May 2026)'
     """
+    _tk_len = len(profile.contract.symbol)  # 2 for KC/CC
+    _expected_len = _tk_len + 3  # ticker + month_code + 2-digit year
+
     if contract == 'FRONT_MONTH':
         _, resolved_symbol = resolve_front_month_ticker()
         if resolved_symbol and resolved_symbol != 'FRONT_MONTH':
-            # Show which contract is actually being used
             month_names = {
                 'F': 'Jan', 'G': 'Feb', 'H': 'Mar', 'J': 'Apr',
                 'K': 'May', 'M': 'Jun', 'N': 'Jul', 'Q': 'Aug',
                 'U': 'Sep', 'V': 'Oct', 'X': 'Nov', 'Z': 'Dec'
             }
-            if len(resolved_symbol) == 5:
-                mc = resolved_symbol[2]
-                yr = resolved_symbol[3:5]
+            if len(resolved_symbol) == _expected_len:
+                mc = resolved_symbol[_tk_len]
+                yr = resolved_symbol[_tk_len + 1:_tk_len + 3]
                 mn = month_names.get(mc, '???')
                 return f'📊 Front Month ({resolved_symbol} · {mn} 20{yr})'
         return '📊 Front Month (Continuous)'
@@ -341,9 +343,9 @@ def get_contract_display_name(contract: str) -> str:
     }
 
     clean_symbol = clean_contract_symbol(contract)
-    if clean_symbol and len(clean_symbol) == 5:
-        month_code = clean_symbol[2]
-        year = clean_symbol[3:5]
+    if clean_symbol and len(clean_symbol) == _expected_len:
+        month_code = clean_symbol[_tk_len]
+        year = clean_symbol[_tk_len + 1:_tk_len + 3]
         month_name = month_names.get(month_code, '???')
         return f"{clean_symbol} ({month_name} 20{year})"
 
@@ -1112,12 +1114,12 @@ if price_df is not None and not price_df.empty:
         # Add 5% buffer on each side, with minimum buffer to prevent zero-range issues
         y_buffer = max(y_range * 0.05, 0.5)
         fig.update_yaxes(
-            title_text="Price (¢/lb)",
+            title_text=f"Price ({profile.name})",
             range=[y_min - y_buffer, y_max + y_buffer],
             row=1, col=1
         )
     else:
-        fig.update_yaxes(title_text="Price (¢/lb)", row=1, col=1)
+        fig.update_yaxes(title_text=f"Price ({profile.name})", row=1, col=1)
 
     # Row 2 Y-axis (Volume)
     fig.update_yaxes(
