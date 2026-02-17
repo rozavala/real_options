@@ -1729,7 +1729,8 @@ class PredictionMarketSentinel(Sentinel):
                     self.state_cache.pop(topic_key)
 
     def _merge_discovered_topics(self, static_topics: List[Dict]) -> List[Dict]:
-        discovered_file = "data/discovered_topics.json"
+        data_dir = self.config.get('data_dir', 'data')
+        discovered_file = os.path.join(data_dir, "discovered_topics.json")
 
         # Filter out disabled static topics BEFORE merging.
         # Disabled topics should not inflate the active count or occupy
@@ -2326,7 +2327,8 @@ class FundamentalRegimeSentinel(Sentinel):
         ticker = config.get('commodity', {}).get('ticker', 'KC')
         self.profile = get_commodity_profile(ticker)
         self.check_interval = 604800  # 1 week
-        self.regime_file = Path("data/fundamental_regime.json")
+        data_dir = config.get('data_dir', 'data')
+        self.regime_file = Path(os.path.join(data_dir, "fundamental_regime.json"))
         self.current_regime = self._load_regime()
         self.last_check = 0
 

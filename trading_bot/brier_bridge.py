@@ -256,6 +256,14 @@ _enhanced_tracker = None
 _enhanced_tracker_data_dir = None
 
 
+def set_data_dir(data_dir: str):
+    """Set data directory and force tracker recreation on next access."""
+    global _enhanced_tracker_data_dir, _enhanced_tracker
+    _enhanced_tracker_data_dir = data_dir
+    _enhanced_tracker = None  # Force recreation with new path
+    logger.info(f"BrierBridge data_dir set to: {data_dir}")
+
+
 def _get_enhanced_tracker(data_dir: str = None):
     """Lazy singleton for EnhancedBrierTracker. Recreates if data_dir changes."""
     global _enhanced_tracker, _enhanced_tracker_data_dir

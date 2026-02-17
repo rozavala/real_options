@@ -368,12 +368,23 @@ class BrierScoreTracker:
 
 # Singleton
 _tracker: Optional[BrierScoreTracker] = None
+_data_dir: Optional[str] = None
+
+
+def set_data_dir(data_dir: str):
+    """Set data directory for the Brier tracker singleton."""
+    global _data_dir, _tracker
+    _data_dir = data_dir
+    _tracker = None  # Force recreation with new path
+    logger.info(f"BrierScoring data_dir set to: {data_dir}")
+
 
 def get_brier_tracker(data_dir: str = None) -> BrierScoreTracker:
     global _tracker
     if _tracker is None:
-        if data_dir:
-            _tracker = BrierScoreTracker(history_file=os.path.join(data_dir, "agent_accuracy.csv"))
+        effective_dir = data_dir or _data_dir
+        if effective_dir:
+            _tracker = BrierScoreTracker(history_file=os.path.join(effective_dir, "agent_accuracy.csv"))
         else:
             _tracker = BrierScoreTracker()
     return _tracker

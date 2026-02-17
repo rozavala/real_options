@@ -615,7 +615,7 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                 # Removed inner import pandas as pd to fix scoping issue
 
                 # Read the just-resolved structured predictions to find what was resolved
-                structured_file = "data/agent_accuracy_structured.csv"
+                structured_file = os.path.join(config.get('data_dir', 'data'), "agent_accuracy_structured.csv")
                 if os.path.exists(structured_file):
                     struct_df = pd.read_csv(structured_file)
 

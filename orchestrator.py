@@ -2108,7 +2108,7 @@ async def reconcile_and_analyze(config: dict):
 
     # Check equity staleness
     try:
-        equity_file = "data/daily_equity.csv"
+        equity_file = os.path.join(config.get('data_dir', 'data'), "daily_equity.csv")
         if os.path.exists(equity_file):
             import pandas as pd
             eq_df = pd.read_csv(equity_file)
@@ -2166,7 +2166,7 @@ async def _check_feedback_loop_health(config: dict):
     logger.info("Running feedback loop health check...")
 
     try:
-        structured_file = "data/agent_accuracy_structured.csv"
+        structured_file = os.path.join(config.get('data_dir', 'data'), "agent_accuracy_structured.csv")
         if not os.path.exists(structured_file):
             logger.info("Feedback Loop Health: No structured predictions file yet (expected for new deployments)")
             return
@@ -2398,7 +2398,7 @@ async def process_deferred_triggers(config: dict):
 
 # --- SENTINEL LOGIC ---
 
-def load_regime_context() -> str:
+def load_regime_context(config: dict = None) -> str:
     """
     Load current fundamental regime from FundamentalRegimeSentinel.
 
@@ -2407,7 +2407,8 @@ def load_regime_context() -> str:
     from pathlib import Path
     import json
 
-    regime_file = Path("data/fundamental_regime.json")
+    data_dir = config.get('data_dir', 'data') if config else 'data'
+    regime_file = Path(os.path.join(data_dir, "fundamental_regime.json"))
     if regime_file.exists():
         try:
             with open(regime_file, 'r') as f:
@@ -2800,7 +2801,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 logger.info(f"Emergency market context: price={market_data.get('price')}, regime={market_data.get('regime')}")
 
                 # Load Regime Context
-                regime_context = load_regime_context()
+                regime_context = load_regime_context(config)
 
                 # 5. Semantic Cache — sentinel fire invalidates other sources' cached decisions
                 semantic_cache = get_semantic_cache(config)
@@ -4592,6 +4593,8 @@ async def main(commodity_ticker: str = None):
     from trading_bot.sentinel_stats import set_data_dir as set_stats_dir
     from trading_bot.utils import set_data_dir as set_utils_data_dir
     from trading_bot.tms import set_data_dir as set_tms_dir
+    from trading_bot.brier_bridge import set_data_dir as set_brier_bridge_dir
+    from trading_bot.brier_scoring import set_data_dir as set_brier_scoring_dir
 
     StateManager.set_data_dir(data_dir)
     set_tracker_dir(data_dir)
@@ -4600,6 +4603,8 @@ async def main(commodity_ticker: str = None):
     set_stats_dir(data_dir)
     set_utils_data_dir(data_dir)
     set_tms_dir(data_dir)
+    set_brier_bridge_dir(data_dir)
+    set_brier_scoring_dir(data_dir)
 
     global GLOBAL_DEDUPLICATOR
     GLOBAL_DEDUPLICATOR = TriggerDeduplicator(

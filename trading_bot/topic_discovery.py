@@ -30,10 +30,10 @@ class TopicDiscoveryAgent:
     - Persistence of discovered topics
     """
 
-    DISCOVERED_TOPICS_FILE = "data/discovered_topics.json"
-
     def __init__(self, config: dict, budget_guard=None):
         self.config = config
+        data_dir = config.get('data_dir', 'data')
+        self.DISCOVERED_TOPICS_FILE = os.path.join(data_dir, "discovered_topics.json")
         self.sentinel_config = config.get('sentinels', {}).get('prediction_markets', {})
         self.discovery_config = self.sentinel_config.get('discovery_agent', {})
         self.interest_areas = self.sentinel_config.get('interest_areas', [])
