@@ -44,10 +44,13 @@ from config_loader import load_config
 from trading_bot.utils import configure_market_data_type
 from trading_bot.timestamps import parse_ts_column
 
-# Set decision_signals path for the active commodity (dashboard doesn't go through orchestrator init)
+# Set module-level data paths for the active commodity (dashboard doesn't go through orchestrator init)
 _dashboard_ticker = os.environ.get("COMMODITY_TICKER", "KC")
 _dashboard_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', _dashboard_ticker)
 set_signals_dir(_dashboard_data_dir)
+
+from trading_bot.brier_bridge import set_data_dir as set_brier_bridge_dir
+set_brier_bridge_dir(_dashboard_data_dir)
 
 # === MULTI-COMMODITY PATH RESOLUTION ===
 def _resolve_data_path(filename: str) -> str:

@@ -45,13 +45,13 @@ def _load_archive_file(filepath: str, mtime: float) -> pd.DataFrame:
 
 def get_trade_ledger_df(data_dir: str = None):
     """Reads and consolidates the main and archived trade ledgers for analysis."""
-    if data_dir:
-        ledger_path = os.path.join(data_dir, 'trade_ledger.csv')
-        archive_dir = os.path.join(data_dir, 'archive_ledger')
-    else:
+    if not data_dir:
+        # Derive from COMMODITY_TICKER env var (avoids loading legacy KC data for CC)
+        ticker = os.environ.get("COMMODITY_TICKER", "KC")
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-        archive_dir = os.path.join(base_dir, 'archive_ledger')
+        data_dir = os.path.join(base_dir, 'data', ticker)
+    ledger_path = os.path.join(data_dir, 'trade_ledger.csv')
+    archive_dir = os.path.join(data_dir, 'archive_ledger')
 
     dataframes = []
     logger.info("--- Consolidating Trade Ledgers ---")
