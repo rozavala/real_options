@@ -127,12 +127,16 @@ async def reconcile_active_positions(config: dict):
     ib_positions = parse_position_flex_csv_to_df(csv_data)
 
     # 1b. Filter to active commodity symbol
+    # IBKR uses different symbol prefixes for futures vs options:
+    # KC futures = "KC*", KC options = "KO*"; CC futures = "CC*", CC options = "DC*"
     ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    _IBKR_SYMBOL_PREFIXES = {"KC": ("KC", "KO"), "CC": ("CC", "DC"), "SB": ("SB", "SO")}
+    prefixes = _IBKR_SYMBOL_PREFIXES.get(ticker, (ticker,))
     if not ib_positions.empty:
         pre_count = len(ib_positions)
-        ib_positions = ib_positions[ib_positions['Symbol'].str.startswith(ticker)]
+        ib_positions = ib_positions[ib_positions['Symbol'].apply(lambda s: any(s.startswith(p) for p in prefixes))]
         if len(ib_positions) < pre_count:
-            logger.info(f"Filtered IB positions by commodity {ticker}: {pre_count} -> {len(ib_positions)}")
+            logger.info(f"Filtered IB positions by commodity {ticker} (prefixes {prefixes}): {pre_count} -> {len(ib_positions)}")
 
     # 2. Get Local Active Positions
     # Load full ledger first to check for recent trades
@@ -730,12 +734,15 @@ async def main(lookback_days: int = None):
 
     # --- 3b. Filter to active commodity symbol ---
     # The IBKR Flex Query returns ALL account trades. Filter to only trades
-    # matching the active commodity (e.g., KC options start with "KC", CC with "CC").
+    # matching the active commodity. IBKR uses different prefixes for futures
+    # vs options: KC futures = "KC*", KC options = "KO*"; CC/"DC*"; SB/"SO*"
     ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    _IBKR_SYMBOL_PREFIXES = {"KC": ("KC", "KO"), "CC": ("CC", "DC"), "SB": ("SB", "SO")}
+    prefixes = _IBKR_SYMBOL_PREFIXES.get(ticker, (ticker,))
     pre_filter_count = len(ib_trades_df)
-    ib_trades_df = ib_trades_df[ib_trades_df['local_symbol'].str.startswith(ticker)]
+    ib_trades_df = ib_trades_df[ib_trades_df['local_symbol'].apply(lambda s: any(s.startswith(p) for p in prefixes))]
     if len(ib_trades_df) < pre_filter_count:
-        logger.info(f"Filtered IB trades by commodity {ticker}: {pre_filter_count} -> {len(ib_trades_df)}")
+        logger.info(f"Filtered IB trades by commodity {ticker} (prefixes {prefixes}): {pre_filter_count} -> {len(ib_trades_df)}")
 
     # --- 4. Load Local Trade Ledger ---
     local_trades_df = get_trade_ledger_df(config.get('data_dir'))
