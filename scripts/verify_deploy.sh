@@ -11,7 +11,8 @@ set -e
 #   2. Required files exist (new __init__.py, config files)
 #   3. Critical Python imports succeed
 #   4. Config files are valid JSON
-#   5. verify_system_readiness.py passes (quick mode, skip IBKR)
+#   5. Per-commodity data sanity (data dir writable, config loads, key paths resolve)
+#   6. verify_system_readiness.py passes (quick mode, skip IBKR)
 # =============================================================================
 
 # Determine Repo Root
@@ -33,7 +34,7 @@ fi
 
 ERRORS=0
 
-echo "  [1/5] Checking required directories..."
+echo "  [1/6] Checking required directories..."
 REQUIRED_DIRS=(
     "config"
     "config/profiles"
@@ -42,12 +43,16 @@ REQUIRED_DIRS=(
     "data"
     "data/KC"              # Primary commodity data directory
     "data/KC/surrogate_models"
-    # "logs" # logs might not exist in fresh clone? but good to check
 )
-# Add CC directories if CC service is installed
-if [ -f "/etc/systemd/system/trading-bot-cc.service" ]; then
-    REQUIRED_DIRS+=("data/CC")
-fi
+# Auto-add directories for any installed commodity services
+for _svc_file in /etc/systemd/system/trading-bot-*.service; do
+    [ -f "$_svc_file" ] || continue
+    _bn=$(basename "$_svc_file" .service)
+    _sf="${_bn#trading-bot-}"
+    _tk=$(echo "$_sf" | tr '[:lower:]' '[:upper:]')
+    [ "$_tk" = "$(echo trading-bot | tr '[:lower:]' '[:upper:]')" ] && continue
+    REQUIRED_DIRS+=("data/$_tk")
+done
 for dir in "${REQUIRED_DIRS[@]}"; do
     if [ ! -d "$dir" ]; then
         echo "    ❌ Missing directory: $dir"
@@ -55,7 +60,7 @@ for dir in "${REQUIRED_DIRS[@]}"; do
     fi
 done
 
-echo "  [2/5] Checking required files..."
+echo "  [2/6] Checking required files..."
 REQUIRED_FILES=(
     # New packages (__init__.py)
     "config/__init__.py"
@@ -85,7 +90,7 @@ for file in "${REQUIRED_FILES[@]}"; do
     fi
 done
 
-echo "  [3/5] Checking Python imports..."
+echo "  [3/6] Checking Python imports..."
 # Each import block tests one phase of the HRO guide.
 # We test them individually so failures are pinpointed.
 
@@ -148,7 +153,7 @@ if [ $? -ne 0 ]; then
     ERRORS=$((ERRORS + 1))
 fi
 
-echo "  [4/5] Validating config files..."
+echo "  [4/6] Validating config files..."
 python -c "
 import json, sys
 configs = ['config.json']
@@ -179,7 +184,85 @@ if [ $? -ne 0 ]; then
     ERRORS=$((ERRORS + 1))
 fi
 
-echo "  [5/5] Running system readiness check..."
+echo "  [5/6] Per-commodity data sanity..."
+# Auto-detect all commodity tickers from installed systemd services.
+# To add a new commodity: install its service file (trading-bot-{ticker}.service)
+# and create data/{TICKER}/ — this loop picks it up automatically.
+ALL_TICKERS=("KC")
+for svc_file in /etc/systemd/system/trading-bot-*.service; do
+    [ -f "$svc_file" ] || continue
+    # Extract ticker: trading-bot-cc.service → CC
+    _basename=$(basename "$svc_file" .service)          # trading-bot-cc
+    _suffix="${_basename#trading-bot-}"                  # cc
+    _ticker=$(echo "$_suffix" | tr '[:lower:]' '[:upper:]')  # CC
+    # Skip if it's the base service (no suffix) or already in list
+    [ "$_ticker" = "$(echo trading-bot | tr '[:lower:]' '[:upper:]')" ] && continue
+    [[ " ${ALL_TICKERS[*]} " == *" $_ticker "* ]] && continue
+    ALL_TICKERS+=("$_ticker")
+done
+
+COMMODITY_WARNINGS=0
+for _ticker in "${ALL_TICKERS[@]}"; do
+    _data_dir="data/$_ticker"
+
+    # 1. Data directory must exist (created by deploy.sh step 5)
+    if [ ! -d "$_data_dir" ]; then
+        echo "    ❌ [$_ticker] Missing data directory: $_data_dir"
+        ERRORS=$((ERRORS + 1))
+        continue  # Skip remaining checks for this ticker
+    fi
+
+    # 2. Data directory must be writable (orchestrator needs to create state files)
+    if [ ! -w "$_data_dir" ]; then
+        echo "    ❌ [$_ticker] Data directory not writable: $_data_dir"
+        ERRORS=$((ERRORS + 1))
+        continue
+    fi
+
+    # 3. Config loads correctly with this commodity's ticker
+    if ! COMMODITY_TICKER="$_ticker" python -c "
+from config_loader import load_config
+config = load_config()
+import os, sys
+expected_dir = os.path.join(os.path.dirname(os.path.abspath('config_loader.py')), 'data', '$_ticker')
+actual = config.get('data_dir', '')
+# Normalize for comparison
+if os.path.abspath(actual) != os.path.abspath(expected_dir):
+    print(f'    data_dir mismatch: expected {expected_dir}, got {actual}')
+    sys.exit(1)
+" 2>/dev/null; then
+        echo "    ❌ [$_ticker] Config fails to load or data_dir mismatch"
+        ERRORS=$((ERRORS + 1))
+        continue
+    fi
+
+    # 4. Commodity profile exists
+    if ! python -c "
+from config.commodity_profiles import get_commodity_profile
+p = get_commodity_profile('$_ticker')
+assert p is not None, 'No profile for $_ticker'
+" 2>/dev/null; then
+        echo "    ❌ [$_ticker] No commodity profile registered"
+        ERRORS=$((ERRORS + 1))
+        continue
+    fi
+
+    # 5. Key runtime files (warnings only — may not exist for new commodities)
+    for _file in "state.json" "council_history.csv" "enhanced_brier.json"; do
+        if [ ! -f "$_data_dir/$_file" ]; then
+            echo "    ⚠️  [$_ticker] Missing $_file (expected after first trading session)"
+            COMMODITY_WARNINGS=$((COMMODITY_WARNINGS + 1))
+        fi
+    done
+
+    echo "    ✅ [$_ticker] Data sanity OK"
+done
+
+if [ $COMMODITY_WARNINGS -gt 0 ]; then
+    echo "    ($COMMODITY_WARNINGS warnings — normal for new commodities)"
+fi
+
+echo "  [6/6] Running system readiness check..."
 if [ -f "verify_system_readiness.py" ]; then
     # Quick mode, skip IBKR (Gateway may not be ready during deploy)
     # CRITICAL: Use `if !` pattern so set -e doesn't abort on non-zero exit.
