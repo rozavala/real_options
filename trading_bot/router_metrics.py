@@ -11,18 +11,26 @@ import json
 import os
 import logging
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from collections import defaultdict
 from typing import Optional
 from threading import Lock
 
 logger = logging.getLogger(__name__)
 
-METRICS_FILE = os.path.join(
+_data_dir = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    'data',
-    'router_metrics.json'
+    'data'
 )
+
+def set_data_dir(data_dir: str):
+    """Set the data directory for router metrics (called by orchestrator)."""
+    global _data_dir
+    _data_dir = data_dir
+    logger.info(f"RouterMetrics data_dir set to: {data_dir}")
+
+def _get_metrics_file():
+    return os.path.join(_data_dir, 'router_metrics.json')
 
 
 class RouterMetrics:
@@ -50,8 +58,9 @@ class RouterMetrics:
     def _load_metrics(self) -> dict:
         """Load metrics from disk."""
         try:
-            if os.path.exists(METRICS_FILE):
-                with open(METRICS_FILE, 'r') as f:
+            metrics_file = _get_metrics_file()
+            if os.path.exists(metrics_file):
+                with open(metrics_file, 'r') as f:
                     return json.load(f)
         except Exception as e:
             logger.warning(f"Failed to load router metrics: {e}")
@@ -67,8 +76,9 @@ class RouterMetrics:
         """Worker function to save metrics to disk."""
         with self._save_lock:
             try:
-                os.makedirs(os.path.dirname(METRICS_FILE), exist_ok=True)
-                with open(METRICS_FILE, 'w') as f:
+                metrics_file = _get_metrics_file()
+                os.makedirs(os.path.dirname(metrics_file), exist_ok=True)
+                with open(metrics_file, 'w') as f:
                     json.dump(data, f, indent=2, default=str)
             except Exception as e:
                 logger.error(f"Failed to save router metrics: {e}")

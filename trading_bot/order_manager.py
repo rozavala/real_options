@@ -2589,17 +2589,28 @@ async def cancel_all_open_orders(config: dict, connection_purpose: str = "orches
             logger.info("No open orders found to cancel.")
             return
 
-        logger.info(f"Found {len(open_trades)} open orders to cancel.")
-        for trade in list(open_trades): # Iterate over a copy
+        # Filter to only THIS bot's orders (prevent cross-commodity cancellation)
+        my_client_id = ib.client.clientId
+        my_orders = [t for t in open_trades if t.order.clientId == my_client_id]
+        skipped = len(open_trades) - len(my_orders)
+        if skipped:
+            logger.info(f"Skipped {skipped} orders belonging to other client IDs.")
+
+        if not my_orders:
+            logger.info("No open orders belonging to this instance found to cancel.")
+            return
+
+        logger.info(f"Found {len(my_orders)} open orders to cancel (clientId={my_client_id}).")
+        for trade in list(my_orders):
             ib.cancelOrder(trade.order)
             logger.info(f"Cancelled order ID {trade.order.orderId}.")
             await asyncio.sleep(0.2)
 
-        logger.info(f"--- Finished canceling {len(open_trades)} orders ---")
+        logger.info(f"--- Finished canceling {len(my_orders)} orders ---")
         # Create a detailed notification message
-        if open_trades:
-            summary_items = [f"  - {trade.contract.localSymbol} ({trade.order.action} {trade.order.totalQuantity}) ID: {trade.order.orderId}" for trade in open_trades]
-            message = f"<b>Canceled {len(open_trades)} unfilled DAY orders:</b>\n" + "\n".join(summary_items)
+        if my_orders:
+            summary_items = [f"  - {trade.contract.localSymbol} ({trade.order.action} {trade.order.totalQuantity}) ID: {trade.order.orderId}" for trade in my_orders]
+            message = f"<b>Canceled {len(my_orders)} unfilled DAY orders:</b>\n" + "\n".join(summary_items)
         else:
             message = "No open orders were found to cancel."
 
