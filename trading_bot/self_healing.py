@@ -126,30 +126,33 @@ class SelfHealingMonitor:
             return
 
         try:
-            # Check if the root logger has any file handlers for orchestrator.log
+            # Derive per-commodity log filename
+            ticker = os.environ.get("COMMODITY_TICKER", "KC").lower()
+            log_name = f"orchestrator_{ticker}.log"
+
+            # Check if the root logger has any file handlers for this commodity's log
             root_logger = logging.getLogger()
             has_file_handler = False
 
             for handler in root_logger.handlers:
                 if isinstance(handler, logging.FileHandler):
-                    # Check if this handler's filename matches our log file
                     if hasattr(handler, 'baseFilename'):
-                        if 'orchestrator.log' in handler.baseFilename:
+                        if log_name in handler.baseFilename:
                             has_file_handler = True
                             break
 
             if not has_file_handler:
                 # Only warn if we're past initialization and the file exists
-                log_file = Path("logs/orchestrator.log")
+                log_file = Path(f"logs/{log_name}")
                 if log_file.exists():
                     logger.warning(
-                        "SELF-HEAL: orchestrator.log exists but no file handler attached. "
+                        f"SELF-HEAL: {log_name} exists but no file handler attached. "
                         "Logs may only be going to stdout. "
                         "Check logging_config.py for permission issues."
                     )
                 else:
                     logger.debug(
-                        "SELF-HEAL: orchestrator.log not found and no file handler. "
+                        f"SELF-HEAL: {log_name} not found and no file handler. "
                         "This may be expected in certain deployment modes."
                     )
         except Exception as e:

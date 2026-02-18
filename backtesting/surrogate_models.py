@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, accuracy_score
 import joblib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 import logging
@@ -26,7 +26,13 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SurrogateConfig:
     """Configuration for surrogate model training."""
-    model_dir: str = "./data/KC/surrogate_models"
+    model_dir: str = field(default=None)
+
+    def __post_init__(self):
+        if self.model_dir is None:
+            import os
+            ticker = os.environ.get("COMMODITY_TICKER", "KC")
+            self.model_dir = f"./data/{ticker}/surrogate_models"
     min_training_samples: int = 100
     test_size: float = 0.2
     random_state: int = 42

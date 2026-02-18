@@ -14,11 +14,24 @@ from trading_bot.timestamps import parse_ts_column
 
 logger = logging.getLogger(__name__)
 
-# Paths
-DATA_DIR = "data"
-STRUCTURED_FILE = os.path.join(DATA_DIR, "agent_accuracy_structured.csv")
-COUNCIL_FILE = os.path.join(DATA_DIR, "council_history.csv")
-ACCURACY_FILE = os.path.join(DATA_DIR, "agent_accuracy.csv")
+# Paths — set via set_data_dir() from orchestrator init
+_data_dir = None
+
+
+def set_data_dir(data_dir: str):
+    """Set commodity-specific data directory for reconciliation paths."""
+    global _data_dir
+    _data_dir = data_dir
+
+
+def _get_paths():
+    """Return (structured_file, council_file, accuracy_file) for active commodity."""
+    base = _data_dir or os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"))
+    return (
+        os.path.join(base, "agent_accuracy_structured.csv"),
+        os.path.join(base, "council_history.csv"),
+        os.path.join(base, "agent_accuracy.csv"),
+    )
 
 
 def resolve_with_cycle_aware_match(dry_run: bool = False):
@@ -35,6 +48,8 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
     2. Check if that cycle's council decision has been reconciled
     3. Only resolve if reconciled; otherwise classify as "awaiting reconciliation"
     """
+    STRUCTURED_FILE, COUNCIL_FILE, ACCURACY_FILE = _get_paths()
+
     if not os.path.exists(STRUCTURED_FILE) or not os.path.exists(COUNCIL_FILE):
         logger.info("Missing required files for resolution")
         return 0

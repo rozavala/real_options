@@ -639,7 +639,10 @@ async def calculate_weighted_decision(
             import csv
             from datetime import datetime, timezone
 
-            weight_csv = os.path.join(_data_dir or 'data/KC', 'weight_evolution.csv')
+            weight_csv = os.path.join(
+                _data_dir or os.path.join('data', os.environ.get('COMMODITY_TICKER', 'KC')),
+                'weight_evolution.csv'
+            )
             file_exists = os.path.exists(weight_csv)
 
             # Ensure directory exists

@@ -47,7 +47,7 @@ _CAPITAL_LOCK = asyncio.Lock()
 from pathlib import Path
 import json
 
-CAPITAL_STATE_FILE = Path("data/KC/capital_state.json")
+CAPITAL_STATE_FILE = Path(os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"), "capital_state.json"))
 
 
 def set_capital_state_dir(data_dir: str):
