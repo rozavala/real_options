@@ -296,7 +296,8 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     ib=ib,
                     contract=contract,
                     regime=regime_for_voting,
-                    min_quorum=min_quorum
+                    min_quorum=min_quorum,
+                    config=config
                 )
 
                 if weighted_result.get('quorum_failure'):
@@ -328,6 +329,12 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     f"Your job is to evaluate the QUALITY of arguments, not count votes.\n"
                     f"A strong thesis with weak consensus is still a valid trade.\n"
                 )
+                if weighted_result.get('var_dampener', 1.0) < 1.0:
+                    weighted_context += (
+                        f"VaR Dampener Active: Raw consensus {weighted_result['raw_confidence']:.2f} "
+                        f"-> dampened to {weighted_result['confidence']:.2f} "
+                        f"(portfolio at {weighted_result['var_utilization']:.0%} VaR capacity)\n"
+                    )
 
                 # D. Master Decision
                 # --- NEW: GET MARKET CONTEXT (The "Reality Check") ---
@@ -398,6 +405,47 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
 
                 # Append weighted voting result to context
                 market_context_str += weighted_context
+
+                # === INJECT PORTFOLIO VaR BRIEFING ===
+                risk_briefing_injected = False
+                var_utilization = 0.0
+                try:
+                    from trading_bot.var_calculator import get_var_calculator
+                    cached_var = get_var_calculator(config).get_cached_var()
+                    var_limit = config.get('compliance', {}).get('var_limit_pct', 0.03)
+                    var_warning = config.get('compliance', {}).get('var_warning_pct', 0.02)
+
+                    if cached_var:
+                        util = cached_var.var_95_pct / var_limit if var_limit else 0
+                        var_utilization = util
+
+                        # Tier 1: Always-on portfolio awareness
+                        market_context_str += (
+                            f"\n--- PORTFOLIO STATE ---\n"
+                            f"Positions: {cached_var.position_count} across "
+                            f"{', '.join(cached_var.commodities)}\n"
+                            f"VaR utilization: {util:.0%} of limit\n"
+                            f"--- END PORTFOLIO STATE ---\n"
+                        )
+
+                        # Tier 2: Risk directive only when elevated
+                        if cached_var.var_95_pct > var_warning:
+                            risk_briefing_injected = True
+                            directive = (
+                                f"\n--- PORTFOLIO RISK ALERT ---\n"
+                                f"VaR: {cached_var.var_95_pct:.1%} (limit: {var_limit:.0%})\n"
+                            )
+                            if cached_var.narrative:
+                                directive += f"Risk: {cached_var.narrative.get('dominant_risk', 'N/A')}\n"
+                                directive += f"Correlation: {cached_var.narrative.get('correlation_warning', 'N/A')}\n"
+                            directive += (
+                                f"INSTRUCTION: PREFER strategies that REDUCE correlation "
+                                f"with existing positions. AVOID adding to dominant risk.\n"
+                                f"--- END RISK ALERT ---\n"
+                            )
+                            market_context_str += directive
+                except Exception:
+                    pass  # Non-fatal
 
                 # === INJECT SENSOR STATUS ===
                 # Check X Sentiment status from StateManager
@@ -662,6 +710,11 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                         "dominant_agent": weighted_result.get('dominant_agent', 'Unknown'),
                         "weighted_score": weighted_result.get('weighted_score', 0.0),
                         "trigger_type": weighted_result.get('trigger_type', 'scheduled'),
+
+                        # [E.1] VaR observability
+                        "var_utilization": round(var_utilization, 3) if var_utilization else None,
+                        "var_dampener": weighted_result.get('var_dampener', 1.0),
+                        "risk_briefing_injected": risk_briefing_injected,
                     }
                     log_council_decision(council_log_entry)
 
