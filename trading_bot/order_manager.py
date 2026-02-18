@@ -558,6 +558,14 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                             # Calculate and track committed capital
                             estimated_risk = await calculate_spread_max_risk(ib, contract, order, config)
 
+                            # Guard: skip riskless combos (IB rejects with Error 201)
+                            if estimated_risk <= 0:
+                                logger.warning(
+                                    f"Skipping {future.localSymbol}: estimated risk ${estimated_risk:,.2f} "
+                                    f"(riskless combo — IB would reject)."
+                                )
+                                continue
+
                             # Already inside outer _CAPITAL_LOCK (line 451); no nested acquire
                             committed_capital += estimated_risk
                             _save_committed_capital(committed_capital)
@@ -1136,8 +1144,14 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 except asyncio.TimeoutError:
                     logger.error(f"whatIfOrderAsync timed out (30s) for {display_name}. Skipping.")
                     continue
-                if what_if is None or what_if.initMarginChange == '':
-                    logger.error(f"whatIfOrderAsync returned empty result for {display_name}. Skipping.")
+                if what_if is None:
+                    logger.error(f"whatIfOrderAsync returned None for {display_name}. Skipping.")
+                    continue
+                if isinstance(what_if, list):
+                    logger.error(f"whatIfOrderAsync returned list for {display_name} (IB rejected combo). Skipping.")
+                    continue
+                if not hasattr(what_if, 'initMarginChange') or what_if.initMarginChange == '':
+                    logger.error(f"whatIfOrderAsync returned empty/invalid result for {display_name}. Skipping.")
                     continue
                 margin_impact = float(what_if.initMarginChange)
 
