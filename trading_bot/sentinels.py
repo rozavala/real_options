@@ -2353,21 +2353,38 @@ class FundamentalRegimeSentinel(Sentinel):
         # Placeholder logic
         return "BALANCED" # Assume balanced if no data
 
-    def check_news_sentiment(self) -> str:
+    async def _fetch_rss_count(self, url: str) -> tuple[int, bool]:
+        """Async fetch and parse of RSS feed to get entry count."""
+        try:
+            session = await self._get_session()
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                if response.status != 200:
+                    logger.warning(f"Fundamental RSS fetch failed: {response.status} for {url}")
+                    return 0, True  # Treat as error (bozo=True)
+                content = await response.read()
+
+            loop = asyncio.get_running_loop()
+            feed = await loop.run_in_executor(None, feedparser.parse, content)
+            return len(feed.entries), feed.bozo
+        except Exception as e:
+            logger.error(f"Fundamental RSS error for {url}: {e}")
+            return 0, True
+
+    async def check_news_sentiment(self) -> str:
         try:
             commodity_q = self.profile.name.lower().replace(' ', '+')
             surplus_url = f"https://news.google.com/rss/search?q={commodity_q}+market+surplus"
             deficit_url = f"https://news.google.com/rss/search?q={commodity_q}+market+deficit"
 
-            surplus_feed = feedparser.parse(surplus_url)
-            deficit_feed = feedparser.parse(deficit_url)
+            # Parallel fetch
+            (surplus_count, surplus_bozo), (deficit_count, deficit_bozo) = await asyncio.gather(
+                self._fetch_rss_count(surplus_url),
+                self._fetch_rss_count(deficit_url)
+            )
 
-            if surplus_feed.bozo or deficit_feed.bozo:
-                logger.warning("RSS feed error detected, preserving previous regime")
+            if surplus_bozo or deficit_bozo:
+                logger.warning("RSS feed error detected (async), preserving previous regime")
                 return self.current_regime.get('regime', 'UNKNOWN')
-
-            surplus_count = len(surplus_feed.entries)
-            deficit_count = len(deficit_feed.entries)
 
             if surplus_count > deficit_count * 2:
                 return "SURPLUS"
@@ -2387,10 +2404,8 @@ class FundamentalRegimeSentinel(Sentinel):
             return None
         self.last_check = now
 
-        loop = asyncio.get_running_loop()
-
-        # Run blocking news check in executor
-        news_regime = await loop.run_in_executor(None, self.check_news_sentiment)
+        # Async news check
+        news_regime = await self.check_news_sentiment()
         stocks_regime = self.check_ice_stocks_trend() # Placeholder is fast
 
         from collections import Counter
