@@ -67,5 +67,72 @@ class TestCockpitUX(unittest.TestCase):
         self.assertTrue(found_progressive_enhancement,
                         "Did not find progressive enhancement pattern for error display")
 
+    def test_utilities_safety_interlocks(self):
+        """
+        Verify that high-impact buttons in pages/5_Utilities.py have safety interlocks.
+        """
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '5_Utilities.py')
+
+        with open(file_path, 'r') as f:
+            content = f.read()
+            tree = ast.parse(content)
+
+        button_configs = [
+            {"label": "🚀 Collect Logs", "interlock": "confirm_logs"},
+            {"label": "🚀 Run System Validation", "interlock": "confirm_validation"},
+            {"label": "💰 Force Equity Sync", "interlock": "confirm_sync"}
+        ]
+
+        for config in button_configs:
+            label = config["label"]
+            interlock = config["interlock"]
+
+            found_button = False
+            found_interlock_check = False
+
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                    if node.func.attr == 'button':
+                        # Check label
+                        has_label = False
+                        if node.args and isinstance(node.args[0], ast.Constant) and node.args[0].value == label:
+                            has_label = True
+                        for kw in node.keywords:
+                            if kw.arg == 'label' and isinstance(kw.value, ast.Constant) and kw.value.value == label:
+                                has_label = True
+
+                        if has_label:
+                            found_button = True
+                            # Check for disabled=not interlock
+                            has_disabled = False
+                            for kw in node.keywords:
+                                if kw.arg == 'disabled':
+                                    if isinstance(kw.value, ast.UnaryOp) and isinstance(kw.value.op, ast.Not):
+                                        if isinstance(kw.value.operand, ast.Name) and kw.value.operand.id == interlock:
+                                            has_disabled = True
+                            self.assertTrue(has_disabled, f"Button '{label}' missing 'disabled=not {interlock}'")
+
+                    if node.func.attr == 'checkbox':
+                        # Check for key=interlock
+                        for kw in node.keywords:
+                            if kw.arg == 'key' and isinstance(kw.value, ast.Constant) and kw.value.value == interlock:
+                                found_interlock_check = True
+
+            self.assertTrue(found_button, f"Button '{label}' not found")
+            self.assertTrue(found_interlock_check, f"Interlock checkbox with key='{interlock}' not found")
+
+    def test_utilities_visual_consistency(self):
+        """
+        Verify visual consistency and data freshness enhancements in pages/5_Utilities.py.
+        """
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '5_Utilities.py')
+
+        with open(file_path, 'r') as f:
+            content = f.read()
+
+        # Simple string checks for these ones as they are more about specific lines
+        self.assertIn('st.caption(f"🕒 Last modified: **{last_updated}**")', content)
+        self.assertIn('st.dataframe(pd.DataFrame(log_files), hide_index=True, width="stretch")', content)
+
 if __name__ == '__main__':
     unittest.main()

@@ -21,3 +21,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-12 - Progressive Enhancement for Copy Functionality
 **Learning:** `st.popover` (Streamlit v1.33+) provides a cleaner UX for secondary actions like "Copy ID" compared to `st.expander`.
 **Action:** Use `if hasattr(st, "popover"):` to conditionally render the modern UI, falling back to `st.expander` to ensure accessibility and functionality across different deployments.
+
+## 2026-02-18 - AST-based UI Pattern Verification
+**Learning:** For Streamlit applications, traditional browser-based tests are slow and resource-heavy. Using Python's `ast` module to programmatically verify UI code patterns (e.g., ensuring action buttons are correctly disabled by corresponding Safety Interlock variables) is an extremely fast and reliable way to prevent UX regressions.
+**Action:** Implement AST-based tests in `tests/test_ui_ux.py` for critical UI safety patterns and progressive enhancement logic.

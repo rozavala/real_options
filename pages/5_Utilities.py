@@ -50,9 +50,11 @@ Collect and archive logs to the centralized logs branch for analysis and debuggi
 This captures orchestrator logs, dashboard logs, state files, and trading data.
 """)
 
+confirm_logs = st.checkbox("I confirm I want to collect logs (this may take 2-3 minutes)", key="confirm_logs")
 if st.button(
     "🚀 Collect Logs",
     type="primary",
+    disabled=not confirm_logs,
     help="Triggers the log collection script to archive system logs, state files, and trading data for analysis."
 ):
     with st.spinner(f"Collecting {current_env} logs..."):
@@ -362,8 +364,10 @@ with manual_cols2[1]:
     st.info("ℹ️ **Sync Equity Data**")
     st.caption("Forces fresh equity sync from IB Flex Query")
 
+    confirm_sync = st.checkbox("I confirm I want to sync equity data", key="confirm_sync")
     if st.button(
         "💰 Force Equity Sync",
+        disabled=not confirm_sync,
         help="Manually triggers a fresh equity data pull from Interactive Brokers Flex Query reports."
     ):
         if not config:
@@ -504,6 +508,11 @@ with state_cols[0]:
         try:
             state_path = _resolve_data_path("state.json")
             if os.path.exists(state_path):
+                # UX Improvement: Show last modified timestamp for temporal context
+                mtime = os.path.getmtime(state_path)
+                last_updated = datetime.fromtimestamp(mtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                st.caption(f"🕒 Last modified: **{last_updated}**")
+
                 with open(state_path, 'r') as f:
                     state_data = json.load(f)
                     st.json(state_data)
@@ -556,12 +565,19 @@ This validates the entire architecture from sentinels to council to order execut
 
 validation_cols = st.columns([2, 1])
 
-with validation_cols[0]:
-    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch', help="Run preflight checks on all system components (~30s in quick mode, ~2min full).")
-
 with validation_cols[1]:
+    confirm_validation = st.checkbox("I confirm I want to run system validation", key="confirm_validation")
     json_output = st.checkbox("JSON Output", value=False)
     quick_mode = st.checkbox("Quick Mode (Skip slow tests)", value=True)
+
+with validation_cols[0]:
+    run_validation = st.button(
+        "🚀 Run System Validation",
+        type="primary",
+        width='stretch',
+        disabled=not confirm_validation,
+        help="Run preflight checks on all system components (~30s in quick mode, ~2min full)."
+    )
 
 if run_validation:
     with st.spinner("Running comprehensive system validation..."):
@@ -975,7 +991,7 @@ if os.path.exists(logs_dir):
 
     if log_files:
         import pandas as pd
-        st.dataframe(pd.DataFrame(log_files), hide_index=True)
+        st.dataframe(pd.DataFrame(log_files), hide_index=True, width="stretch")
     else:
         st.info("No log files found.")
 else:
