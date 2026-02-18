@@ -37,6 +37,12 @@ st.set_page_config(layout="wide", page_title="Signal Analysis | Real Options")
 config = get_config()
 profile = get_active_profile(config)
 
+# Derive price display decimals from tick size (KC=0.05 → 2dp, CC=1.0 → 0dp)
+import math
+_tick = profile.contract.tick_size
+_price_decimals = max(0, -math.floor(math.log10(_tick))) if _tick < 1 else 0
+_price_fmt = f",.{_price_decimals}f"
+
 st.title("🎯 Signal Overlay Analysis")
 st.caption("Forensic analysis of Council decisions against futures price action")
 
@@ -906,11 +912,11 @@ if price_df is not None and not price_df.empty:
         with summary_cols[0]:
             st.metric("Period Change", f"{pct_change:+.2f}%")
         with summary_cols[1]:
-            st.metric("High", f"${high:.2f}")
+            st.metric("High", f"${high:{_price_fmt}}")
         with summary_cols[2]:
-            st.metric("Low", f"${low:.2f}")
+            st.metric("Low", f"${low:{_price_fmt}}")
         with summary_cols[3]:
-            st.metric("Range", f"${high - low:.2f}")
+            st.metric("Range", f"${high - low:{_price_fmt}}")
 
     # === DRAW CHARTS ===
     # CRITICAL: Plotly go.Candlestick fails to render in make_subplots when

@@ -196,7 +196,10 @@ class EnhancedBrierTracker:
     - Dynamic weight multipliers
     """
 
-    def __init__(self, data_path: str = "./data/KC/enhanced_brier.json"):
+    def __init__(self, data_path: str = None):
+        if data_path is None:
+            ticker = os.environ.get("COMMODITY_TICKER", "KC")
+            data_path = f"./data/{ticker}/enhanced_brier.json"
         self.data_path = data_path
         self.predictions: List[ProbabilisticPrediction] = []
 
