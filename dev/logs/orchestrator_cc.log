@@ -2005,3 +2005,143 @@
 2026-02-18 12:45:31,055 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=345, market_open=True, trading_day=True
 2026-02-18 12:50:32,266 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=350, market_open=True, trading_day=True
 2026-02-18 12:55:32,922 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=355, market_open=True, trading_day=True
+2026-02-18 13:00:34,399 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=360, market_open=True, trading_day=True
+2026-02-18 13:01:40,672 - Orchestrator - INFO - LogisticsSentinel: trigger detected (source=LogisticsSentinel, severity=5)
+2026-02-18 13:01:40,687 - trading_bot.state_manager - INFO - Logged sentinel event from LogisticsSentinel to history.
+2026-02-18 13:01:40,751 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by LogisticsSentinel: Supply Chain Disruption (Score: 5/10): A reported cocoa bottleneck in Ivory Coast, the world's largest producer, signals logistical challenges and supply risks for global chocolate manufacturers, indicating a moderate disruption to the export supply chain. (Cycle: CC-29faa281)
+2026-02-18 13:01:41,042 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-18 13:01:41,142 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-18 13:01:41,142 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'anthropic', 'xai']
+2026-02-18 13:01:41,142 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'anthropic', 'xai'], 'diversity_score': 1.0}
+2026-02-18 13:01:41,149 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-18 13:01:41,151 - trading_bot.enhanced_brier - INFO - Loaded 88 predictions from /home/rodrigo/real_options/data/CC/enhanced_brier.json
+2026-02-18 13:01:41,172 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 2 created from CSV, 0 resolved from council_history
+2026-02-18 13:01:41,173 - trading_bot.agents - INFO - Loaded commodity profile: Cocoa
+2026-02-18 13:01:41,173 - trading_bot.observability - INFO - HallucinationDetector initialized for Cocoa: 4 port tokens, 6 producer tokens
+2026-02-18 13:01:41,173 - trading_bot.observability - INFO - ObservabilityHub initialized for Cocoa
+2026-02-18 13:01:41,173 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-18 13:01:41,173 - trading_bot.agents - INFO - Trading Council initialized for Cocoa. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-18 13:01:41,173 - root - INFO - Fetching 2 active futures contracts for CC on NYBOT...
+2026-02-18 13:01:41,175 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 13:01:41,321 - root - INFO - Skipping contract CCH6 (Exp: 20260316): Expires < 45 days.
+2026-02-18 13:01:41,321 - root - INFO - Found 9 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-18 13:01:41,322 - Orchestrator - INFO - Targeting contract: CCK6 (202605)
+2026-02-18 13:01:45,841 - trading_bot.market_data_provider - INFO - Building market context for CCK6 (202605)...
+2026-02-18 13:01:46,423 - trading_bot.market_data_provider - INFO - Market context for CCK6 (202605): price=3267.00, sma_200=6546.975, regime=HIGH_VOLATILITY, vol_5d=0.0398
+2026-02-18 13:01:46,423 - Orchestrator - INFO - Emergency market context: price=3267.0, regime=HIGH_VOLATILITY
+2026-02-18 13:01:46,423 - trading_bot.agents - INFO - Running Specialized Cycle triggered by LogisticsSentinel...
+2026-02-18 13:01:46,424 - trading_bot.agents - INFO - Routing to supply_chain (Reason: Matched: LogisticsSentinel/port)
+2026-02-18 13:01:46,424 - trading_bot.agents - INFO - Waking up supply_chain...
+2026-02-18 13:01:46,733 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-18 13:01:46,733 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-18 13:02:58,609 - trading_bot.agents - WARNING - [supply_chain] Output validation issues: ["Possible hallucination: 5 numbers not in grounded data: ['429', '700', '200']"]
+2026-02-18 13:02:58,609 - trading_bot.agents - WARNING - [supply_chain] Validation issues: ["Possible hallucination: 5 numbers not in grounded data: ['429', '700', '200']"]
+2026-02-18 13:02:58,610 - trading_bot.observability - WARNING - Hallucination detected [MEDIUM]: supply_chain - 3/3 significant numbers not grounded
+2026-02-18 13:03:51,034 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-18 13:03:51,035 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=0.8 \u00d7 reliability=1.0 = 0.75", "macro": "domain=1.5 \u00d7 reliability=1.0 = 1.50", "geopolitical": "domain=3.0 \u00d7 reliability=1.0 = 3.00", "supply_chain": "domain=3.0 \u00d7 reliability=1.0 = 3.00", "inventory": "domain=2.5 \u00d7 reliability=1.0 = 2.50", "sentiment": "domain=1.0 \u00d7 reliability=1.0 = 1.00", "technical": "domain=0.7 \u00d7 reliability=1.0 = 0.70", "volatility": "domain=2.2 \u00d7 reliability=1.0 = 1.80"}
+2026-02-18 13:03:51,035 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.599, dominant=supply_chain)
+2026-02-18 13:03:51,036 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 0.75,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 0.75,
+    "contribution": -0.488
+  },
+  {
+    "agent": "macro",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.5,
+    "contribution": -0.975
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 3.0,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 3.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 3.0,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 3.0,
+    "contribution": -2.4
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 2.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 2.5,
+    "contribution": -2.25
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.0,
+    "contribution": -0.8
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 0.7,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 0.7,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.9,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.8,
+    "contribution": -1.62
+  }
+]
+2026-02-18 13:05:15,004 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Commercial standoff in Ivory Coast creating a large, strande
+2026-02-18 13:05:47,684 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=365, market_open=True, trading_day=True
+2026-02-18 13:06:05,281 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED with this trade as currently structured. The bearish fundamental case is real but consensus, crowded, and already priced in. The risk/reward is deeply unfavorable: (1) the options market demands exceptional premium to express the view directionally, (2) speculative positioning is at maximum short, meaning the fuel for a counter-move is enormous, (3) two agents independently flagged NEUTRAL with legitimate technical and geopolitical reasoning that was overridden by majority vote weighting. If conviction exists, the ONLY acceptable expression is a defined-risk bear call spread with maximum loss capped at 1% of portfolio, initiated only after a failed rally attempt to 3,500-3,600 confirms the downtrend. Entering at current prices with RSI at 27 and maximum short positioning is chasing a crowded trade at its most dangerous point. Wait for confirmation or stand aside.
+2026-02-18 13:06:05,281 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-18 13:06:05,282 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=HIGH_VOLATILITY
+2026-02-18 13:06:05,283 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=HIGH_VOLATILITY
+2026-02-18 13:06:05,283 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-18 13:06:05,285 - root - INFO - Logged council decision for CCK6 (202605)
+2026-02-18 13:06:05,290 - trading_bot.decision_signals - INFO - Decision signal logged: CCK6 (202605) → NEUTRAL (DIRECTIONAL/NONE)
+2026-02-18 13:06:05,421 - Orchestrator - INFO - Emergency Cycle concluded with no action: BEARISH (DIRECTIONAL)
+2026-02-18 13:06:05,424 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-18 13:10:48,601 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=370, market_open=True, trading_day=True
+2026-02-18 13:15:49,286 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=375, market_open=True, trading_day=True
+2026-02-18 13:20:50,220 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=380, market_open=True, trading_day=True
+2026-02-18 13:25:51,173 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=385, market_open=True, trading_day=True
