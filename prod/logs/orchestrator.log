@@ -3792,3 +3792,864 @@ Running reconciliation could unlock up to 199 more predictions
 2026-02-18 16:17:51,271 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=565, market_open=True, trading_day=True
 2026-02-18 16:22:52,018 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=570, market_open=True, trading_day=True
 2026-02-18 16:27:52,778 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=575, market_open=True, trading_day=True
+2026-02-18 16:32:53,532 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=580, market_open=True, trading_day=True
+2026-02-18 16:35:36,821 - Orchestrator - INFO - 2026-02-18 16:35:36,820 - root - INFO - Running Iron Condor thesis validation check...
+2026-02-18 16:35:36,831 - Orchestrator - INFO - 2026-02-18 16:35:36,831 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-18 16:37:54,274 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=585, market_open=True, trading_day=True
+2026-02-18 16:39:00,003 - Orchestrator - INFO - --- Running scheduled task: signal_late [guarded_generate_orders] ---
+2026-02-18 16:39:00,145 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-18 16:39:00,145 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-18 16:39:00,145 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-18 16:39:00,152 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-18 16:39:00,161 - trading_bot.enhanced_brier - INFO - Loaded 760 predictions from ./data/enhanced_brier.json
+2026-02-18 16:39:00,280 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 1 created from CSV, 0 resolved from council_history
+2026-02-18 16:39:00,282 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-18 16:39:00,283 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-18 16:39:00,283 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-18 16:39:00,283 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-18 16:39:00,283 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-18 16:39:00,284 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 244...
+2026-02-18 16:39:15,290 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-02-18 16:39:15,799 - trading_bot.connection_pool - ERROR - IB (drawdown_check) connection failed: . Next retry backoff: 10.0s
+2026-02-18 16:39:15,799 - Orchestrator - WARNING - Failed to check drawdown guard before orders: 
+2026-02-18 16:39:15,824 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-02-18 16:39:15,824 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-02-18 16:39:15,826 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 142...
+2026-02-18 16:39:16,332 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 142
+2026-02-18 16:39:16,340 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-18 16:39:16,341 - OrderManager - INFO - Connected to IB for signal generation (purpose: orchestrator_orders).
+2026-02-18 16:39:16,341 - OrderManager - INFO - Step 1: Generating structured signals via Council...
+2026-02-18 16:39:16,341 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
+2026-02-18 16:39:16,446 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-18 16:39:16,447 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-18 16:39:16,447 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-18 16:39:16,454 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-18 16:39:16,461 - trading_bot.enhanced_brier - INFO - Loaded 761 predictions from ./data/enhanced_brier.json
+2026-02-18 16:39:16,542 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-18 16:39:16,543 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-18 16:39:16,543 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-18 16:39:16,543 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-18 16:39:16,543 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-18 16:39:16,543 - trading_bot.agents - INFO - Grounded data cache invalidated (0 entries cleared). Next cycle will perform fresh searches.
+2026-02-18 16:39:16,543 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-18 16:39:16,544 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-18 16:39:16,544 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-18 16:39:16,546 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-18 16:39:16,546 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-18 16:39:16,648 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-18 16:39:16,648 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-18 16:39:16,648 - trading_bot.market_data_provider - INFO - Building market context for 5 contracts...
+2026-02-18 16:39:16,648 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-18 16:39:16,650 - trading_bot.market_data_provider - INFO - Building market context for KCN6 (202607)...
+2026-02-18 16:39:16,650 - trading_bot.market_data_provider - INFO - Building market context for KCU6 (202609)...
+2026-02-18 16:39:17,471 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=285.50, sma_200=332.38975, regime=RANGE_BOUND, vol_5d=0.0244
+2026-02-18 16:39:17,471 - trading_bot.market_data_provider - INFO - Building market context for KCZ6 (202612)...
+2026-02-18 16:39:17,762 - trading_bot.market_data_provider - INFO - Market context for KCN6 (202607): price=281.70, sma_200=322.5105, regime=RANGE_BOUND, vol_5d=0.0245
+2026-02-18 16:39:17,762 - trading_bot.market_data_provider - INFO - Building market context for KCH7 (202703)...
+2026-02-18 16:39:17,962 - trading_bot.market_data_provider - INFO - Market context for KCU6 (202609): price=277.95, sma_200=312.35900000000004, regime=RANGE_BOUND, vol_5d=0.0244
+2026-02-18 16:39:18,453 - trading_bot.market_data_provider - INFO - Market context for KCZ6 (202612): price=274.25, sma_200=304.50825000000003, regime=RANGE_BOUND, vol_5d=0.0240
+2026-02-18 16:39:18,759 - trading_bot.market_data_provider - INFO - Market context for KCH7 (202703): price=271.65, sma_200=299.18975, regime=RANGE_BOUND, vol_5d=0.0237
+2026-02-18 16:39:18,759 - trading_bot.market_data_provider - INFO - Market context complete: 5/5 contracts successful
+2026-02-18 16:39:18,759 - trading_bot.signal_generator - INFO - Market context built for 5 contracts
+2026-02-18 16:39:18,760 - trading_bot.signal_generator - INFO - Convening Council for KCK6 (202605) (Cycle: KC-c04e3c17)...
+2026-02-18 16:39:18,760 - trading_bot.signal_generator - INFO - Convening Council for KCN6 (202607) (Cycle: KC-54bc34ec)...
+2026-02-18 16:39:18,760 - trading_bot.signal_generator - INFO - Convening Council for KCU6 (202609) (Cycle: KC-6cebef6c)...
+2026-02-18 16:39:19,682 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-18 16:39:19,682 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-18 16:39:20,071 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-18 16:39:20,071 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-18 16:39:20,442 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-18 16:39:20,443 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-18 16:39:20,830 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-18 16:39:20,830 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-18 16:39:21,181 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-18 16:39:21,181 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-18 16:39:21,534 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-18 16:39:21,534 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-18 16:39:21,874 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-18 16:39:21,875 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-18 16:39:22,235 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-18 16:39:22,236 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-18 16:39:22,592 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-18 16:39:22,592 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-18 16:39:22,969 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-18 16:39:22,969 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-18 16:39:23,365 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-18 16:39:23,366 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-18 16:39:23,730 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-18 16:39:23,731 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-18 16:39:24,087 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-18 16:39:24,087 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-18 16:39:24,464 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-18 16:39:24,464 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-18 16:39:24,861 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-18 16:39:24,861 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-18 16:39:25,277 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-18 16:39:25,278 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-18 16:39:25,633 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-18 16:39:25,633 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-18 16:39:25,997 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-18 16:39:25,997 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-18 16:39:26,358 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-18 16:39:26,358 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-18 16:39:26,752 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-18 16:39:26,752 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-18 16:39:27,120 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-18 16:39:27,120 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-18 16:39:27,475 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-18 16:39:27,475 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-18 16:39:27,853 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-18 16:39:27,853 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-18 16:39:28,205 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-18 16:39:28,205 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-18 16:39:54,469 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-18 16:39:54,736 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 45% of average (Sev: 5)
+2026-02-18 16:39:54,740 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-18 16:40:17,823 - trading_bot.agents - WARNING - [sentiment] Output validation issues: ["Possible hallucination: 6 numbers not in grounded data: ['260', '301', '329']"]
+2026-02-18 16:40:17,823 - trading_bot.agents - WARNING - [sentiment] Validation issues: ["Possible hallucination: 6 numbers not in grounded data: ['260', '301', '329']"]
+2026-02-18 16:40:25,242 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:40:36,091 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:40:37,832 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:40:38,875 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-18 16:40:50,928 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:41:02,334 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-18 16:41:03,314 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:41:05,777 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for supply_chain: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:41:17,566 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for supply_chain after primary failure.
+2026-02-18 16:41:17,566 - trading_bot.router_metrics - WARNING - Fallback event: supply_chain gemini -> gemini. Reason: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:41:22,129 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:41:30,484 - trading_bot.agents - WARNING - [inventory] Output validation issues: ["Possible hallucination: 4 numbers not in grounded data: ['198', '436', '081']"]
+2026-02-18 16:41:30,484 - trading_bot.agents - WARNING - [inventory] Validation issues: ["Possible hallucination: 4 numbers not in grounded data: ['198', '436', '081']"]
+2026-02-18 16:41:31,747 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:41:33,433 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:41:36,848 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-18 16:41:39,281 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:41:46,202 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-18 16:41:47,880 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for agronomist after primary failure.
+2026-02-18 16:41:47,880 - trading_bot.router_metrics - WARNING - Fallback event: agronomist gemini -> gemini. Reason: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:41:47,881 - trading_bot.agents - WARNING - [agronomist] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 2 bearish evidence words']
+2026-02-18 16:41:47,881 - trading_bot.agents - WARNING - [agronomist] Validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 2 bearish evidence words']
+2026-02-18 16:41:47,881 - trading_bot.agents - INFO - [agronomist] Confidence clamped: 0.95 → 0.30 (adjustment: 0.30)
+2026-02-18 16:41:49,229 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:41:50,668 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:41:50,726 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:41:51,932 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:42:18,007 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:42:23,134 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:42:30,982 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:42:35,962 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:42:44,935 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-18 16:42:46,621 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:42:48,341 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:42:51,671 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:42:54,100 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for inventory: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:42:54,260 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:42:55,023 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=590, market_open=True, trading_day=True
+2026-02-18 16:42:56,173 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:43:05,081 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for inventory after primary failure.
+2026-02-18 16:43:05,082 - trading_bot.router_metrics - WARNING - Fallback event: inventory gemini -> gemini. Reason: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:43:31,985 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:43:34,476 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for inventory: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:43:36,482 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:43:36,968 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:43:37,937 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:43:38,751 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:43:40,977 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for inventory after primary failure.
+2026-02-18 16:43:40,977 - trading_bot.router_metrics - WARNING - Fallback event: inventory gemini -> gemini. Reason: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:43:41,219 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:43:43,184 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:43:44,818 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:43:47,625 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:43:47,773 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for agronomist after primary failure.
+2026-02-18 16:43:47,774 - trading_bot.router_metrics - WARNING - Fallback event: agronomist gemini -> gemini. Reason: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:43:48,066 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:43:52,732 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:43:58,177 - trading_bot.agents - WARNING - Router failed for agronomist, falling back to Gemini: Gemini timed out after 60.0s
+2026-02-18 16:44:05,231 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:44:05,631 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:44:25,143 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:44:39,940 - trading_bot.agents - WARNING - Router failed for supply_chain, falling back to Gemini: Gemini timed out after 60.0s
+2026-02-18 16:44:40,462 - trading_bot.agents - ERROR - Model call failed: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:44:49,069 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:45:06,634 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:45:07,233 - trading_bot.agents - WARNING - Router failed for supply_chain, falling back to Gemini: Gemini timed out after 60.0s
+2026-02-18 16:45:09,139 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for inventory: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:45:17,332 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for inventory after primary failure.
+2026-02-18 16:45:17,333 - trading_bot.router_metrics - WARNING - Fallback event: inventory gemini -> gemini. Reason: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:45:22,739 - trading_bot.agents - ERROR - Model call failed: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:45:26,149 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:45:49,632 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:45:51,073 - trading_bot.agents - WARNING - Router failed for inventory, falling back to Gemini: Gemini timed out after 60.0s
+2026-02-18 16:45:51,158 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:46:23,670 - trading_bot.signal_generator - ERROR - Agent supply_chain failed for KCU6 (202609): 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:46:23,671 - trading_bot.signal_generator - INFO - Agent research complete for KCU6 (202609): 7/8 returned non-default results
+2026-02-18 16:46:23,672 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-18 16:46:23,673 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.1 = 0.23", "macro": "domain=1.5 \u00d7 reliability=0.4 = 0.62", "geopolitical": "domain=1.5 \u00d7 reliability=1.1 = 1.64", "inventory": "domain=1.5 \u00d7 reliability=0.8 = 1.28", "sentiment": "domain=1.5 \u00d7 reliability=0.3 = 0.43", "technical": "domain=1.0 \u00d7 reliability=0.5 = 0.53", "volatility": "domain=2.2 \u00d7 reliability=0.1 = 0.29"}
+2026-02-18 16:46:23,673 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.341, dominant=inventory)
+2026-02-18 16:46:23,673 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "NEUTRAL",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.23,
+    "contribution": 0.0
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.41,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.62,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.64,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.28,
+    "contribution": -1.022
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.28,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.43,
+    "contribution": -0.34
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.5,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.53,
+    "contribution": -0.344
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.13,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.29,
+    "contribution": 0.0
+  }
+]
+2026-02-18 16:46:28,156 - trading_bot.agents - WARNING - Router failed for volatility, falling back to Gemini: Gemini timed out after 60.0s
+2026-02-18 16:46:53,165 - trading_bot.agents - WARNING - Router failed for volatility, falling back to Gemini: Gemini timed out after 60.0s
+2026-02-18 16:47:28,688 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Fundamental supply loosening: Conab’s record Brazil 2026 cro
+2026-02-18 16:47:28,688 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-18 16:47:28,688 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-18 16:47:32,113 - trading_bot.signal_generator - INFO - Council Decision KCU6 (202609): BEARISH (0.7)
+2026-02-18 16:47:32,117 - root - INFO - Logged council decision for KCU6 (202609)
+2026-02-18 16:47:32,123 - trading_bot.decision_signals - INFO - Decision signal logged: KCU6 (202609) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-18 16:47:32,200 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=NEUTRAL)
+2026-02-18 16:47:32,200 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=NEUTRAL)
+2026-02-18 16:47:32,200 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCU6
+2026-02-18 16:47:32,200 - trading_bot.signal_generator - INFO - Convening Council for KCZ6 (202612) (Cycle: KC-74092779)...
+2026-02-18 16:47:33,134 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-18 16:47:33,135 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-18 16:47:33,135 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-02-18 16:47:33,895 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-18 16:47:33,895 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-18 16:47:33,896 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-02-18 16:47:34,746 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-18 16:47:35,143 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-18 16:47:35,143 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-18 16:47:35,144 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-02-18 16:47:35,858 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-18 16:47:35,858 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-18 16:47:35,858 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-02-18 16:47:37,012 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-18 16:47:37,012 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-18 16:47:37,012 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-02-18 16:47:37,766 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-18 16:47:37,767 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-18 16:47:37,767 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-02-18 16:47:38,914 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-18 16:47:38,914 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-18 16:47:39,279 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-18 16:47:39,279 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-18 16:47:39,880 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:47:41,238 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:47:55,727 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=595, market_open=True, trading_day=True
+2026-02-18 16:48:04,672 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-18 16:48:31,994 - trading_bot.signal_generator - INFO - Agent research complete for KCN6 (202607): 8/8 returned non-default results
+2026-02-18 16:48:31,995 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-18 16:48:31,996 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.1 = 0.23", "macro": "domain=1.5 \u00d7 reliability=0.4 = 0.62", "geopolitical": "domain=1.5 \u00d7 reliability=1.1 = 1.64", "supply_chain": "domain=1.5 \u00d7 reliability=1.7 = 2.51", "inventory": "domain=1.5 \u00d7 reliability=0.8 = 1.28", "sentiment": "domain=1.5 \u00d7 reliability=0.3 = 0.43", "technical": "domain=1.0 \u00d7 reliability=0.5 = 0.53", "volatility": "domain=2.2 \u00d7 reliability=0.1 = 0.29"}
+2026-02-18 16:48:31,997 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.246, dominant=inventory)
+2026-02-18 16:48:31,997 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.23,
+    "contribution": -0.146
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.41,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.62,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.64,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.68,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.51,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.28,
+    "contribution": -1.022
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.28,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.43,
+    "contribution": -0.34
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.5,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.53,
+    "contribution": -0.344
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.13,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.29,
+    "contribution": 0.0
+  }
+]
+2026-02-18 16:48:33,499 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:48:36,633 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:49:25,822 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Supply surplus narrative is being validated by rising ICE ce
+2026-02-18 16:49:25,823 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-18 16:49:25,823 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-18 16:49:27,846 - trading_bot.signal_generator - INFO - Council Decision KCN6 (202607): BEARISH (0.7)
+2026-02-18 16:49:27,849 - root - INFO - Logged council decision for KCN6 (202607)
+2026-02-18 16:49:27,853 - trading_bot.decision_signals - INFO - Decision signal logged: KCN6 (202607) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-18 16:49:27,901 - trading_bot.brier_bridge - WARNING - DEPRECATION: Legacy Brier system used 200 times. Will be removed after 2026-03-01 00:00:00+00:00
+2026-02-18 16:49:27,905 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=NEUTRAL)
+2026-02-18 16:49:27,905 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=NEUTRAL)
+2026-02-18 16:49:27,905 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCN6
+2026-02-18 16:49:27,905 - trading_bot.signal_generator - INFO - Convening Council for KCH7 (202703) (Cycle: KC-f3066ad7)...
+2026-02-18 16:49:28,800 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-18 16:49:28,800 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-18 16:49:29,159 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-18 16:49:29,159 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-18 16:49:29,521 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-18 16:49:29,521 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-18 16:49:29,876 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-18 16:49:29,876 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-18 16:49:30,241 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-18 16:49:30,241 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-18 16:49:30,602 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-18 16:49:30,603 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-18 16:49:30,971 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-18 16:49:30,971 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-18 16:49:31,319 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-18 16:49:31,320 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-18 16:49:34,505 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:49:37,330 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:49:40,528 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:49:42,011 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:49:43,247 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:49:47,752 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for agronomist after primary failure.
+2026-02-18 16:49:47,752 - trading_bot.router_metrics - WARNING - Fallback event: agronomist gemini -> gemini. Reason: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:49:48,701 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:49:55,002 - trading_bot.agents - WARNING - [macro] Output validation issues: ['Direction-evidence mismatch: BULLISH call but 4 bearish vs 1 bullish evidence words']
+2026-02-18 16:49:55,003 - trading_bot.agents - WARNING - [macro] Validation issues: ['Direction-evidence mismatch: BULLISH call but 4 bearish vs 1 bullish evidence words']
+2026-02-18 16:49:55,003 - trading_bot.agents - INFO - [macro] Confidence clamped: 0.76 → 0.30 (adjustment: 0.30)
+2026-02-18 16:49:55,511 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'sentiment', 'technical', 'geopolitical']
+2026-02-18 16:50:08,850 - trading_bot.agents - ERROR - Model call failed: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:50:08,850 - trading_bot.signal_generator - ERROR - Agent agronomist failed for KCK6 (202605): 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:50:08,851 - trading_bot.signal_generator - ERROR - Agent volatility failed for KCK6 (202605): 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:50:08,851 - trading_bot.signal_generator - INFO - Agent research complete for KCK6 (202605): 6/8 returned non-default results
+2026-02-18 16:50:08,851 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-18 16:50:08,852 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"macro": "domain=1.5 \u00d7 reliability=0.7 = 1.00", "geopolitical": "domain=1.5 \u00d7 reliability=0.9 = 1.39", "supply_chain": "domain=1.5 \u00d7 reliability=1.2 = 1.86", "inventory": "domain=1.5 \u00d7 reliability=0.9 = 1.39", "sentiment": "domain=1.5 \u00d7 reliability=0.4 = 0.60", "technical": "domain=2.2 \u00d7 reliability=0.7 = 1.49"}
+2026-02-18 16:50:08,853 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.138, dominant=supply_chain)
+2026-02-18 16:50:08,853 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.66,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.93,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.39,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.24,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.86,
+    "contribution": 1.488
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.93,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.39,
+    "contribution": -1.113
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.4,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.6,
+    "contribution": -0.477
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.66,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.49,
+    "contribution": -0.966
+  }
+]
+2026-02-18 16:50:44,013 - trading_bot.agents - WARNING - Router failed for volatility, falling back to Gemini: Gemini timed out after 60.0s
+2026-02-18 16:50:44,249 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:50:46,510 - trading_bot.agents - WARNING - [supply_chain] Output validation issues: ['Direction-evidence mismatch: BULLISH call but 8 bearish vs 3 bullish evidence words']
+2026-02-18 16:50:46,510 - trading_bot.agents - WARNING - [supply_chain] Validation issues: ['Direction-evidence mismatch: BULLISH call but 8 bearish vs 3 bullish evidence words']
+2026-02-18 16:50:46,510 - trading_bot.agents - INFO - [supply_chain] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-18 16:50:46,959 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 11 bullish vs 4 bearish evidence words']
+2026-02-18 16:50:46,960 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 11 bullish vs 4 bearish evidence words']
+2026-02-18 16:50:46,960 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-18 16:50:48,721 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:50:49,796 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:51:10,719 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Fundamental regime shift toward surplus signaled by record B
+2026-02-18 16:51:10,720 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-18 16:51:10,721 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-18 16:51:12,732 - trading_bot.signal_generator - INFO - Council Decision KCK6 (202605): BEARISH (0.7)
+2026-02-18 16:51:12,733 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-18 16:51:12,738 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-18 16:51:12,785 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=N/A)
+2026-02-18 16:51:12,785 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BEARISH)
+2026-02-18 16:51:12,785 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCK6
+2026-02-18 16:51:38,586 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:51:46,254 - trading_bot.agents - WARNING - Router failed for inventory, falling back to Gemini: Gemini timed out after 60.0s
+2026-02-18 16:51:47,372 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:51:49,724 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:51:50,903 - trading_bot.agents - ERROR - Model call failed: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:51:51,801 - trading_bot.agents - WARNING - Router failed for agronomist, falling back to Gemini: Gemini timed out after 60.0s
+2026-02-18 16:51:53,212 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 16:52:39,595 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:52:48,376 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:52:51,728 - trading_bot.agents - WARNING - Router failed for supply_chain, falling back to Gemini: Gemini timed out after 60.0s
+2026-02-18 16:52:51,790 - trading_bot.agents - WARNING - Rate limit hit. Retrying in 5s...
+2026-02-18 16:52:54,216 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-02-18 16:52:56,307 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 16:52:56,479 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=600, market_open=True, trading_day=True
+2026-02-18 16:52:56,864 - trading_bot.agents - WARNING - Rate limit hit. Retrying in 10s...
+2026-02-18 16:53:03,365 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for agronomist after primary failure.
+2026-02-18 16:53:03,365 - trading_bot.router_metrics - WARNING - Fallback event: agronomist gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 16:53:06,936 - trading_bot.agents - ERROR - Model call failed: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 16:53:41,252 - trading_bot.signal_generator - ERROR - Agent inventory failed for KCZ6 (202612): 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-18 16:53:41,253 - trading_bot.signal_generator - INFO - Agent research complete for KCZ6 (202612): 7/8 returned non-default results
+2026-02-18 16:53:41,253 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-18 16:53:41,254 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.1 = 0.23", "macro": "domain=1.5 \u00d7 reliability=0.4 = 0.62", "geopolitical": "domain=1.5 \u00d7 reliability=1.1 = 1.64", "supply_chain": "domain=1.5 \u00d7 reliability=1.7 = 2.51", "sentiment": "domain=1.5 \u00d7 reliability=0.3 = 0.43", "technical": "domain=1.0 \u00d7 reliability=0.5 = 0.53", "volatility": "domain=2.2 \u00d7 reliability=0.1 = 0.29"}
+2026-02-18 16:53:41,254 - trading_bot.weighted_voting - INFO - Weighted Vote: BULLISH (score=0.146, dominant=supply_chain)
+2026-02-18 16:53:41,255 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.23,
+    "contribution": -0.18
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.41,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.62,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.64,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.68,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.51,
+    "contribution": 2.01
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.28,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.43,
+    "contribution": -0.34
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.5,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.53,
+    "contribution": -0.344
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.13,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.29,
+    "contribution": -0.233
+  }
+]
+2026-02-18 16:53:50,381 - trading_bot.agents - WARNING - Router failed for inventory, falling back to Gemini: Gemini timed out after 60.0s
+2026-02-18 16:53:50,496 - trading_bot.agents - WARNING - Rate limit hit. Retrying in 5s...
+2026-02-18 16:53:55,575 - trading_bot.agents - WARNING - Rate limit hit. Retrying in 10s...
+2026-02-18 16:54:05,647 - trading_bot.agents - ERROR - Model call failed: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 16:54:05,647 - trading_bot.signal_generator - ERROR - Agent supply_chain failed for KCH7 (202703): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 16:54:05,648 - trading_bot.signal_generator - ERROR - Agent inventory failed for KCH7 (202703): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 16:54:05,649 - trading_bot.signal_generator - INFO - Agent research complete for KCH7 (202703): 6/8 returned non-default results
+2026-02-18 16:54:05,649 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-18 16:54:05,649 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.1 = 0.23", "macro": "domain=1.5 \u00d7 reliability=0.4 = 0.62", "geopolitical": "domain=1.5 \u00d7 reliability=1.1 = 1.64", "sentiment": "domain=1.5 \u00d7 reliability=0.3 = 0.43", "technical": "domain=1.0 \u00d7 reliability=0.5 = 0.53", "volatility": "domain=2.2 \u00d7 reliability=0.1 = 0.29"}
+2026-02-18 16:54:05,649 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.232, dominant=technical)
+2026-02-18 16:54:05,651 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.23,
+    "contribution": -0.18
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.55,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.41,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.62,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.64,
+    "contribution": 0.0
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.28,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.43,
+    "contribution": -0.34
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.5,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.53,
+    "contribution": -0.344
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.13,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.29,
+    "contribution": 0.0
+  }
+]
+2026-02-18 16:54:44,076 - trading_bot.agents - INFO - Master Decision: NEUTRAL | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Structural Brazil supply overhang (record Conab harvest outl
+2026-02-18 16:54:44,077 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=NEUTRAL, Vote=BULLISH → multiplier=0.75, adj_confidence=0.52
+2026-02-18 16:54:44,077 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-18 16:54:44,077 - trading_bot.signal_generator - INFO - Council Decision KCZ6 (202612): NEUTRAL (0.52)
+2026-02-18 16:54:44,078 - root - INFO - Logged council decision for KCZ6 (202612)
+2026-02-18 16:54:44,083 - trading_bot.decision_signals - INFO - Decision signal logged: KCZ6 (202612) → NEUTRAL (DIRECTIONAL/NONE)
+2026-02-18 16:54:44,132 - trading_bot.signal_generator - INFO - NO TRADE: vol=BEARISH, regime=HIGH_VOLATILITY, catalyst=None
+2026-02-18 16:54:44,132 - trading_bot.strategy_router - INFO - NO TRADE (scheduled): vol=BEARISH, regime=HIGH_VOLATILITY
+2026-02-18 16:54:44,132 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCZ6
+2026-02-18 16:54:56,010 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil supply outlook remains expansionary (record Conab har
+2026-02-18 16:54:56,011 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-18 16:54:56,011 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-18 16:55:01,624 - trading_bot.signal_generator - INFO - Council Decision KCH7 (202703): BEARISH (0.7)
+2026-02-18 16:55:01,626 - root - INFO - Logged council decision for KCH7 (202703)
+2026-02-18 16:55:01,631 - trading_bot.decision_signals - INFO - Decision signal logged: KCH7 (202703) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-18 16:55:01,713 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=NEUTRAL)
+2026-02-18 16:55:01,714 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=NEUTRAL)
+2026-02-18 16:55:01,714 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCH7
+2026-02-18 16:55:01,720 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-02-18 16:55:01,720 - OrderManager - INFO - Generated 5 signals: [{'contract_month': '202605', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/price-action context: 24h change is only mildly positive, while the 5-day trend is meaningfully negative and price is well below the 200-day SMA. That aligns with a broader downtrend/range-break lower rather than a clean reversal; there is no “new weather shock” in the packet to justify aggressively fading that.\n\nOn the debate, the Permabear is more grounded in the highest-quality, coffee-specific data. Multiple independent reports converge on a bearish medium-term fundamental setup: (1) Inventory analyst cites Conab’s record crop projection and Vietnam’s export acceleration; (2) inventory/structure evidence shows the forward curve shifting toward contango, consistent with erosion of scarcity premium; (3) technical analyst highlights price below the long-term trend and failed short-term reversal attempts; (4) sentiment/positioning shows reduced net length and falling open interest, which supports the bear’s point that recent bounces are more consistent with short covering than durable new demand.\n\nThe Permabull’s strongest evidence is real but narrower: the Supply Chain report confirms a sharp January export drop and persistent port delays, supporting a near-term flow bottleneck. However, the bear correctly characterizes this as “inventory trapped” rather than production lost. That makes the bullish catalyst time-limited and potentially self-negating (clearing congestion can release deferred supply). The bull also leans on BRL/withholding dynamics, but the Macro report itself flags that the FX-to-selling linkage is evidenced in soy, not coffee, making that line of argument conditional rather than decisive.\n\nEvidence counting: the bearish case has more independent pillars (crop outlook + Vietnam exports + curve structure + technical trend + positioning/open interest). The bullish case relies mainly on one pillar (Brazil logistics) with a secondary, weaker/less coffee-specific FX extrapolation. Therefore, the bear’s argument is better supported by the current dataset.\n\nVolatility cost awareness: volatility report is unavailable, so no mandatory downgrade applies. [Consensus ALIGNED (Vote=BEARISH)] [VOL WARNING: Options expensive. Spread costs elevated. Thesis: PLAUSIBLE]', 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'N/A', 'confidence': 0.7, 'price': 285.5, 'sma_200': 332.38975, 'expected_price': 285.5, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202607', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': "Market reality does not trigger the “technical liquidation” no-dip-buy rule (24h is slightly positive), but the broader tape still leans bearish: a negative 5-day trend and price materially below the 200-day SMA in a range-bound regime signals a market that is still repricing lower rather than snapping back into a new uptrend.\n\nOn the debate, the Permabear is more grounded in the current data because it ties together multiple independent, coffee-specific supply indicators that point the same way: (1) Conab’s record crop projection, (2) ICE certified stocks rising over multiple sessions plus very large pending grading stocks (a credible mechanism for further certified builds), and (3) strong Vietnam export flow. This is corroborated by (4) price action at multi-month lows and (5) negative momentum indicators (MACD negative), which supports the notion that fundamentals are dominating and rallies are likely counter-trend.\n\nThe Permabull’s case relies heavily on mean-reversion/oversold framing and “short-covering potential.” However, the technical evidence is only borderline oversold (RSI not deeply washed out), and extreme bearish positioning is not, by itself, a catalyst—it's a conditional accelerant that requires a concrete bullish shock. The bull’s proposed shocks are not “overwhelming” in the packet: logistics constraints are real but explicitly characterized by the specialist as timing/friction risk rather than confirmed sustained supply reduction, and the BRL argument is admitted (by the Macro specialist) to lack coffee-specific validation and is offset by an easing/FX-weakening medium-term setup. Weather is currently mostly beneficial with only localized risk flagged, and the market has been prioritizing the bumper-crop narrative.\n\nEvidence counting favors the bear: agronomy, inventory, sentiment/positioning, and technicals all independently lean bearish for different reasons (fundamental supply, stock replenishment, speculative liquidation, trend/momentum). The bull’s strongest points (logistics + backwardation + positioning) are either explicitly uncertain/one-month timing effects or already being challenged by the pending-grading build that could erode the tightness signal.\n\nVolatility desk is not coffee-specific and does not provide an “options are expensive” constraint here; still, the mixed near-term squeeze risk keeps this from “PROVEN.” Net: bearish bias remains, with heightened probability of short-lived bounces, but the better-evidenced direction is still down. [Consensus ALIGNED (Vote=BEARISH)]", 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.7, 'price': 281.7, 'sma_200': 322.5105, 'expected_price': 281.7, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202609', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/resilience check: The 24h change is only mildly positive (+0.34%), so there is no “rip higher” that would force a priced-in conclusion, and no acute liquidation signal (< -1.5%) that would demand an automatic contrarian stance. However, the 5-day trend is meaningfully negative (-4.44%) and price sits well below the 200-day SMA, consistent with a market that has shifted to a weaker regime rather than a one-off dip.\n\nEvidence counting and catalyst quality: The Bear’s case is more grounded in coffee-specific, current balance indicators that point the same direction for different reasons: (1) Conab’s record Brazil crop projection with a large Arabica increase (direct supply), (2) ICO global export growth (flow evidence, not just forecasts), and (3) ICE certified stocks described as recovering (inventory/availability improving) plus spread “selloff” reducing scarcity signaling. These are independent lines that all support “tightness easing,” which is a durable catalyst.\n\nBull’s arguments are directionally coherent but weaker on proof of a near-term supply shock: Tight certified stocks and backwardation are real, but both are explicitly described as improving/transitioning rather than tightening further; they support “less bearish than it could be,” not a strong bullish catalyst by themselves. The oversold/positioning argument (low RSI, extreme COT) is primarily a timing/setup claim for a bounce, not evidence that fundamentals have turned. The BRL/logistics claims are also conditional: the Macro and Geopolitical reports themselves flag proxy risk and lack of coffee-specific shipment/selling data, so the “producer selling stall + logistics friction” mechanism is plausible but not demonstrated with coffee flow numbers.\n\nHegelian synthesis: Bear acknowledges oversold/short-covering risk and still argues fundamentals dominate—this matches the data better than the Bull’s attempt to turn low stocks/positioning into a durable bullish thesis. The strongest bullish element (deliverable supply still relatively low + backwardation) is outweighed by the breadth of supply/flow indicators pointing toward a loosening balance.\n\nVolatility-cost awareness: The volatility report is not coffee-specific and does not credibly establish options as expensive for this market, so no mandatory downgrade is applied.\n\nNet: Bear wins on data quality and coffee-specific fundamentals. The appropriate stance is bearish but not “proven,” because the market is already down meaningfully and the Bull’s oversold/stock tightness points to non-trivial countertrend bounce risk. [Consensus ALIGNED (Vote=BEARISH)]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.7, 'price': 277.95, 'sma_200': 312.35900000000004, 'expected_price': 277.95, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202612', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': 'NO TRADE: Direction neutral, no positive-EV vol trade. (vol=BEARISH, regime=HIGH_VOLATILITY, conflict=0.24)', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.52, 'price': 274.25, 'sma_200': 304.50825000000003, 'expected_price': 274.25, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 0.75}, {'contract_month': '202703', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/resilience check: The 24h change is only slightly positive, so there is no forced “don’t buy” liquidation signal, but the 5-day move is meaningfully negative and the market is still well below the 200-day SMA—consistent with a downtrend inside a range-bound regime rather than a confirmed reversal.\n\nFundamentals vs “weather shock”: The Agronomist report is directionally bearish—rain during grain filling tends to support bean weight, and the major hard datum is Conab’s record harvest forecast. The bull’s attempt to convert “thunderstorms/cloud cover/fungal risk” into a decisive supply shock is not supported by concrete evidence of realized damage; it is a plausible risk, but not yet a demonstrated catalyst strong enough to override the larger, explicit supply projection.\n\nPositioning/backwardation: The bull is correct that speculative positioning is extremely depressed and that backwardation can signal nearby tightness; those are legitimate independent bullish *setups*. However, they are not, on their own, a supply-shock proof. The bear’s framing is more grounded: washed-out specs can produce a bounce, but without a new confirmed tightening impulse, it’s hard to argue for a sustained upside regime change against a large Brazil crop narrative.\n\nMacro/BRL and logistics: The bull leans on BRL strength discouraging selling and on shipping friction. The Macro specialist explicitly warns this is theoretical (no coffee-specific flow/hedging data) and potentially short-horizon/reversible (conditional March easing). The Geopolitical report is explicitly mixed/uncertain and does not evidence Brazil-coffee-specific bottlenecks (Santos has traffic, but no delay metrics). On evidence quality, the bear is more disciplined in downgrading these from “drivers” to “risks to monitor.”\n\nEvidence counting / synthesis: Multiple independent reports (Agronomist + Technical + the bearish interpretation of sentiment/liquidation) align on a supply-expansion + bearish-trend backdrop. The bullish case is mostly a mean-reversion/positioning argument plus conditional risks (weather, FX, logistics) that are not yet confirmed to be tightening supply. That makes the bear’s argument more grounded in the current data.\n\nVolatility-cost rule: The volatility report is not coffee-specific and does not establish that options are expensive for this market, so no mandated downgrade is applied from that rule—but conviction is still capped because oversold/washed-out positioning can generate sharp countertrend rallies. [Consensus ALIGNED (Vote=BEARISH)]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.7, 'price': 271.65, 'sma_200': 299.18975, 'expected_price': 271.65, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}]
+2026-02-18 16:55:01,721 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-18 16:55:01,725 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-18 16:55:01,725 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-18 16:55:01,835 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-18 16:55:01,836 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-18 16:55:01,836 - OrderManager - INFO - Skipping KCH7: Too deferred (392 days > 365 max)
+2026-02-18 16:55:01,837 - OrderManager - INFO - Date filter passed: 4/5 contracts within 365 days.
+2026-02-18 16:55:01,837 - OrderManager - INFO - Checking liquidity for 4 contracts (parallel)...
+2026-02-18 16:55:04,341 - OrderManager - INFO - Liquidity check cleanup complete.
+2026-02-18 16:55:04,341 - OrderManager - INFO - Volume filter passed: 4 liquid candidates proceeding to signal generation.
+2026-02-18 16:55:04,424 - OrderManager - INFO - Account Value for Sizing: $32,489.53
+2026-02-18 16:55:04,426 - OrderManager - INFO - L1 RECONCILED: Reset committed capital from $768.75 to $0.00
+2026-02-18 16:55:04,427 - OrderManager - INFO - Requesting snapshot market price for KCK6...
+2026-02-18 16:55:04,469 - OrderManager - INFO - Using bid/ask midpoint for KCK6: 285.175
+2026-02-18 16:55:04,470 - root - INFO - Fetching option chain for future KCK6...
+2026-02-18 16:55:04,474 - root - INFO - --- Defining BEARISH Spread for KCK6 ---
+2026-02-18 16:55:04,475 - root - WARNING - No strikes near 285.175 meet min OI threshold (10). Using closest strike 285.0 anyway.
+2026-02-18 16:55:04,476 - root - INFO - Identified ATM strike: 285.0 for underlying price 285.175
+2026-02-18 16:55:04,477 - root - WARNING - No strikes near 280.93625625 meet min OI threshold (10). Using closest strike 280.0 anyway.
+2026-02-18 16:55:04,477 - root - INFO - Defined Bear Put Spread legs: BUY 285.0P, SELL 280.0P
+2026-02-18 16:55:04,479 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.0) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.850)
+2026-02-18 16:55:04,480 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-18 16:55:04,797 - root - INFO - Fetching market data for option: KOK6 P2.85
+2026-02-18 16:55:06,805 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-18 16:55:06,805 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-18 16:55:06,805 - root - WARNING - IV data missing for KOK6 P2.85, using profile fallback IV: 35%
+2026-02-18 16:55:06,807 - root - INFO - Theoretical price calculated for P @ 285.0: {'price': np.float64(13.9626), 'delta': np.float64(-0.4551), 'gamma': np.float64(0.0106), 'vega': np.float64(42.2567), 'theta': np.float64(-0.1608)}
+2026-02-18 16:55:06,807 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 P2.85 @ 13.96
+2026-02-18 16:55:06,807 - root - INFO - Fetching market data for option: KOK6 P2.8
+2026-02-18 16:55:08,810 - root - INFO - Using IBKR Model Greeks IV: 38.82%
+2026-02-18 16:55:08,814 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-18 16:55:08,814 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-18 16:55:08,817 - root - INFO - Theoretical price calculated for P @ 280.0: {'price': np.float64(13.1537), 'delta': np.float64(-0.4062), 'gamma': np.float64(0.0094), 'vega': np.float64(41.3462), 'theta': np.float64(-0.1715)}
+2026-02-18 16:55:08,817 - root - INFO -   -> Leg Theoretical Price (SELL): KOK6 P2.8 @ 13.15
+2026-02-18 16:55:08,817 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (0.75) is 92.7% of theoretical price (0.81), which exceeds the max of 45.0%. Aborting order.
+2026-02-18 16:55:08,817 - OrderManager - INFO - Requesting snapshot market price for KCN6...
+2026-02-18 16:55:09,007 - OrderManager - INFO - Using bid/ask midpoint for KCN6: 281.4
+2026-02-18 16:55:09,008 - root - INFO - Fetching option chain for future KCN6...
+2026-02-18 16:55:09,011 - root - INFO - --- Defining BEARISH Spread for KCN6 ---
+2026-02-18 16:55:09,011 - root - WARNING - No strikes near 281.4 meet min OI threshold (10). Using closest strike 282.5 anyway.
+2026-02-18 16:55:09,012 - root - INFO - Identified ATM strike: 282.5 for underlying price 281.4
+2026-02-18 16:55:09,012 - root - WARNING - No strikes near 278.49005 meet min OI threshold (10). Using closest strike 277.5 anyway.
+2026-02-18 16:55:09,012 - root - INFO - Defined Bear Put Spread legs: BUY 282.5P, SELL 277.5P
+2026-02-18 16:55:09,014 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.0) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.850)
+2026-02-18 16:55:09,014 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-18 16:55:09,244 - root - INFO - Fetching market data for option: KON6 P2.825
+2026-02-18 16:55:11,246 - root - INFO - Using IBKR Model Greeks IV: 38.29%
+2026-02-18 16:55:11,251 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-18 16:55:11,251 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-18 16:55:11,253 - root - INFO - Theoretical price calculated for P @ 282.5: {'price': np.float64(22.6924), 'delta': np.float64(-0.4415), 'gamma': np.float64(0.0066), 'vega': np.float64(62.0638), 'theta': np.float64(-0.1203)}
+2026-02-18 16:55:11,253 - root - INFO -   -> Leg Theoretical Price (BUY): KON6 P2.825 @ 22.69
+2026-02-18 16:55:11,253 - root - INFO - Fetching market data for option: KON6 P2.775
+2026-02-18 16:55:13,257 - root - INFO - Using IBKR Model Greeks IV: 38.30%
+2026-02-18 16:55:13,262 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-18 16:55:13,262 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-18 16:55:13,263 - root - INFO - Theoretical price calculated for P @ 277.5: {'price': np.float64(20.1775), 'delta': np.float64(-0.4088), 'gamma': np.float64(0.0064), 'vega': np.float64(61.0933), 'theta': np.float64(-0.1174)}
+2026-02-18 16:55:13,263 - root - INFO -   -> Leg Theoretical Price (SELL): KON6 P2.775 @ 20.18
+2026-02-18 16:55:13,264 - root - INFO - BUY Cap Calc: Theoretical=3.00, MarketAggressive=3.00 (aggression=0.75), Mid=2.64, Ask=3.17, Final Cap=3.00
+2026-02-18 16:55:13,264 - root - INFO - Net Theoretical: 2.51, Market Spread: 1.05
+2026-02-18 16:55:13,264 - root - INFO - Adaptive Strategy: Start @ 2.15, Cap/Floor @ 3.00
+2026-02-18 16:55:13,264 - root - INFO - Creating Limit Order for BUY 1 @ 2.15 (Adaptive Cap: 3.00).
+2026-02-18 16:55:13,264 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-02-18 16:55:13,264 - root - INFO - Assigned OrderRef: 009dc9a3-86af-451b-815e-de906cc5e22f
+2026-02-18 16:55:13,368 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $806.25 (premium paid)
+2026-02-18 16:55:13,370 - OrderManager - INFO - Capital tracking: Committed $806.25 | Remaining $31,683.28 | This order: $806.25
+2026-02-18 16:55:13,370 - OrderManager - INFO - Successfully queued order for KCN6.
+2026-02-18 16:55:13,370 - OrderManager - INFO - Requesting snapshot market price for KCU6...
+2026-02-18 16:55:13,586 - OrderManager - INFO - Using bid/ask midpoint for KCU6: 277.675
+2026-02-18 16:55:13,586 - root - INFO - Fetching option chain for future KCU6...
+2026-02-18 16:55:13,588 - root - INFO - --- Defining BEARISH Spread for KCU6 ---
+2026-02-18 16:55:13,589 - root - WARNING - No strikes near 277.675 meet min OI threshold (10). Using closest strike 277.5 anyway.
+2026-02-18 16:55:13,589 - root - INFO - Identified ATM strike: 277.5 for underlying price 277.675
+2026-02-18 16:55:13,589 - root - WARNING - No strikes near 273.54313125 meet min OI threshold (10). Using closest strike 272.5 anyway.
+2026-02-18 16:55:13,589 - root - INFO - Defined Bear Put Spread legs: BUY 277.5P, SELL 272.5P
+2026-02-18 16:55:13,591 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.0) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.850)
+2026-02-18 16:55:13,591 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-18 16:55:13,862 - root - INFO - Fetching market data for option: KOU6 P2.775
+2026-02-18 16:55:15,864 - root - INFO - Using IBKR Model Greeks IV: 37.82%
+2026-02-18 16:55:15,869 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-18 16:55:15,869 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-18 16:55:15,871 - root - INFO - Theoretical price calculated for P @ 277.5: {'price': np.float64(26.1287), 'delta': np.float64(-0.4177), 'gamma': np.float64(0.0053), 'vega': np.float64(75.4949), 'theta': np.float64(-0.0962)}
+2026-02-18 16:55:15,871 - root - INFO -   -> Leg Theoretical Price (BUY): KOU6 P2.775 @ 26.13
+2026-02-18 16:55:15,871 - root - INFO - Fetching market data for option: KOU6 P2.725
+2026-02-18 16:55:17,875 - root - INFO - Using IBKR Model Greeks IV: 37.77%
+2026-02-18 16:55:17,878 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-18 16:55:17,878 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-18 16:55:17,881 - root - INFO - Theoretical price calculated for P @ 272.5: {'price': np.float64(23.6003), 'delta': np.float64(-0.391), 'gamma': np.float64(0.0053), 'vega': np.float64(74.2423), 'theta': np.float64(-0.0937)}
+2026-02-18 16:55:17,881 - root - INFO -   -> Leg Theoretical Price (SELL): KOU6 P2.725 @ 23.60
+2026-02-18 16:55:17,881 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (4.04) is 159.8% of theoretical price (2.53), which exceeds the max of 45.0%. Aborting order.
+2026-02-18 16:55:17,882 - OrderManager - INFO - BLOCKED BY CONFIDENCE: 202612 — confidence 0.52 < threshold 0.60. Direction=NEUTRAL
+2026-02-18 16:55:17,882 - OrderManager - WARNING - No active future for signal month 202703.
+2026-02-18 16:55:17,882 - OrderManager - INFO - --- Order generation complete. 1 orders queued. ---
+2026-02-18 16:55:18,105 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-18 16:55:18,107 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-18 16:55:21,109 - OrderManager - INFO - --- Placing and monitoring 1 orders ---
+2026-02-18 16:55:21,109 - OrderManager - INFO - Processing 1 orders SEQUENTIALLY
+2026-02-18 16:55:21,110 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-18 16:55:21,110 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-18 16:55:21,112 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
+2026-02-18 16:55:21,113 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 147...
+2026-02-18 16:55:21,464 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 147
+2026-02-18 16:55:21,471 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-18 16:55:21,471 - OrderManager - INFO - Using pooled IB connection for order placement.
+2026-02-18 16:55:21,471 - OrderManager - INFO - Sorted orders by expiration proximity.
+2026-02-18 16:55:21,666 - OrderManager - INFO - Current Available Funds: $32,480.06 | Equity: $32,489.53
+2026-02-18 16:55:21,667 - OrderManager - INFO - Processing order 1/1: 
+2026-02-18 16:55:23,725 - ib_insync.wrapper - ERROR - Error 162, reqId 33: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=743223913, symbol='KC', lastTradeDateOrContractMonth='20260612', strike=282.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KON6 P2.825', tradingClass='KO')
+2026-02-18 16:55:23,730 - trading_bot.compliance - INFO - Resolved underlying future: KCN6 (conId: 646040490)
+2026-02-18 16:55:23,839 - trading_bot.compliance - INFO - Volume from IB (KCN6): 86.0
+2026-02-18 16:55:23,840 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $806.25 (premium paid)
+2026-02-18 16:55:27,658 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
+2026-02-18 16:55:27,789 - OrderManager - INFO - Approved KC-P282.5+P277.5: Margin $598.34 | Remaining: $31,881.72
+2026-02-18 16:55:27,789 - OrderManager - INFO - [OFF] WOULD PLACE BUY 1 KC-P282.5+P277.5 @ 2.15
+2026-02-18 16:55:27,981 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-18 16:55:27,983 - OrderManager - INFO - Order placement complete. Releasing event handlers.
+2026-02-18 16:55:27,984 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-18 16:55:30,986 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-02-18 16:55:30,986 - trading_bot.semantic_cache - INFO - CACHE INVALIDATED BY TICKER (KC): 1 entries removed
+2026-02-18 16:55:31,012 - Orchestrator - INFO - Next task 'audit_pre_close' (Audit: Pre-Close) scheduled for 2026-02-18 17:55:00 UTC. Waiting for 0.99 hours.
+2026-02-18 16:58:00,707 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=605, market_open=True, trading_day=True
