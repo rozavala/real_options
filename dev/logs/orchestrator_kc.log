@@ -2469,3 +2469,935 @@ Running reconciliation could unlock up to 214 more predictions
 2026-02-18 13:52:00,477 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
 2026-02-18 13:52:03,486 - Orchestrator - INFO - Next task 'signal_mid' (Signal: Mid) scheduled for 2026-02-18 14:20:00 UTC. Waiting for 0.47 hours.
 2026-02-18 13:56:15,886 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=415, market_open=True, trading_day=True
+2026-02-18 14:01:16,623 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=420, market_open=True, trading_day=True
+2026-02-18 14:06:17,890 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=425, market_open=True, trading_day=True
+2026-02-18 14:11:19,220 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=430, market_open=True, trading_day=True
+2026-02-18 14:16:20,514 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=435, market_open=True, trading_day=True
+2026-02-18 14:17:21,194 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 41% of average (Sev: 5)
+2026-02-18 14:17:21,198 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-18 14:20:00,001 - Orchestrator - INFO - --- Running scheduled task: signal_mid [guarded_generate_orders] ---
+2026-02-18 14:20:00,105 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-18 14:20:00,105 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'openai', 'gemini']
+2026-02-18 14:20:00,105 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'anthropic', 'openai', 'gemini'], 'diversity_score': 1.0}
+2026-02-18 14:20:00,113 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-18 14:20:00,122 - trading_bot.enhanced_brier - INFO - Loaded 952 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-02-18 14:20:00,245 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 3 created from CSV, 0 resolved from council_history
+2026-02-18 14:20:00,246 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-18 14:20:00,246 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-18 14:20:00,246 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-18 14:20:00,247 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-18 14:20:00,247 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-18 14:20:00,247 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 77 [REMOTE/PAPER]...
+2026-02-18 14:20:00,416 - trading_bot.connection_pool - INFO - IB (drawdown_check) connected successfully with ID 77
+2026-02-18 14:20:00,496 - trading_bot.connection_pool - INFO - Disconnecting IB (drawdown_check)...
+2026-02-18 14:20:03,521 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-02-18 14:20:03,521 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-02-18 14:20:03,521 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 31 [REMOTE/PAPER]...
+2026-02-18 14:20:03,879 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 31
+2026-02-18 14:20:03,883 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-18 14:20:03,883 - OrderManager - INFO - Connected to IB for signal generation (purpose: orchestrator_orders).
+2026-02-18 14:20:03,883 - OrderManager - INFO - Step 1: Generating structured signals via Council...
+2026-02-18 14:20:03,884 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
+2026-02-18 14:20:03,984 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-18 14:20:03,984 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'openai', 'gemini']
+2026-02-18 14:20:03,984 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'anthropic', 'openai', 'gemini'], 'diversity_score': 1.0}
+2026-02-18 14:20:03,990 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-18 14:20:03,998 - trading_bot.enhanced_brier - INFO - Loaded 955 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-02-18 14:20:04,103 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-18 14:20:04,103 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-18 14:20:04,104 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-18 14:20:04,104 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-18 14:20:04,104 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-18 14:20:04,104 - trading_bot.agents - INFO - Grounded data cache invalidated (0 entries cleared). Next cycle will perform fresh searches.
+2026-02-18 14:20:04,104 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-18 14:20:04,104 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'openai', 'gemini']
+2026-02-18 14:20:04,104 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-18 14:20:04,106 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 14:20:04,234 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-18 14:20:04,234 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-18 14:20:04,234 - trading_bot.market_data_provider - INFO - Building market context for 5 contracts...
+2026-02-18 14:20:04,235 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-18 14:20:04,235 - trading_bot.market_data_provider - INFO - Building market context for KCN6 (202607)...
+2026-02-18 14:20:04,236 - trading_bot.market_data_provider - INFO - Building market context for KCU6 (202609)...
+2026-02-18 14:20:04,766 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=284.40, sma_200=332.38425, regime=RANGE_BOUND, vol_5d=0.0242
+2026-02-18 14:20:04,766 - trading_bot.market_data_provider - INFO - Building market context for KCZ6 (202612)...
+2026-02-18 14:20:05,189 - trading_bot.market_data_provider - INFO - Market context for KCN6 (202607): price=280.90, sma_200=322.5065, regime=RANGE_BOUND, vol_5d=0.0244
+2026-02-18 14:20:05,189 - trading_bot.market_data_provider - INFO - Building market context for KCH7 (202703)...
+2026-02-18 14:20:05,374 - trading_bot.market_data_provider - INFO - Market context for KCU6 (202609): price=277.30, sma_200=312.35575, regime=RANGE_BOUND, vol_5d=0.0242
+2026-02-18 14:20:06,052 - trading_bot.market_data_provider - INFO - Market context for KCZ6 (202612): price=272.85, sma_200=304.50125, regime=RANGE_BOUND, vol_5d=0.0238
+2026-02-18 14:20:06,105 - trading_bot.market_data_provider - INFO - Market context for KCH7 (202703): price=271.25, sma_200=299.18775, regime=RANGE_BOUND, vol_5d=0.0236
+2026-02-18 14:20:06,105 - trading_bot.market_data_provider - INFO - Market context complete: 5/5 contracts successful
+2026-02-18 14:20:06,106 - trading_bot.signal_generator - INFO - Market context built for 5 contracts
+2026-02-18 14:20:06,106 - trading_bot.signal_generator - INFO - Convening Council for KCK6 (202605) (Cycle: KC-859a241a)...
+2026-02-18 14:20:06,106 - trading_bot.signal_generator - INFO - Convening Council for KCN6 (202607) (Cycle: KC-db4676a1)...
+2026-02-18 14:20:06,106 - trading_bot.signal_generator - INFO - Convening Council for KCU6 (202609) (Cycle: KC-b31cb058)...
+2026-02-18 14:20:06,892 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-18 14:20:06,892 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-18 14:20:07,171 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-18 14:20:07,171 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-18 14:20:07,445 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-18 14:20:07,446 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-18 14:20:07,720 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-18 14:20:07,720 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-18 14:20:08,010 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-18 14:20:08,010 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-18 14:20:08,285 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-18 14:20:08,285 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-18 14:20:08,567 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-18 14:20:08,567 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-18 14:20:08,857 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-18 14:20:08,858 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-18 14:20:09,140 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-18 14:20:09,140 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-18 14:20:09,417 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-18 14:20:09,417 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-18 14:20:09,694 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-18 14:20:09,694 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-18 14:20:09,989 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-18 14:20:09,989 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-18 14:20:10,263 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-18 14:20:10,263 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-18 14:20:10,549 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-18 14:20:10,549 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-18 14:20:10,847 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-18 14:20:10,847 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-18 14:20:11,132 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-18 14:20:11,132 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-18 14:20:11,412 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-18 14:20:11,412 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-18 14:20:11,704 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-18 14:20:11,705 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-18 14:20:11,989 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-18 14:20:11,989 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-18 14:20:12,261 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-18 14:20:12,261 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-18 14:20:12,531 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-18 14:20:12,531 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-18 14:20:12,805 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-18 14:20:12,805 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-18 14:20:13,081 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-18 14:20:13,081 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-18 14:20:13,378 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-18 14:20:13,379 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-18 14:20:38,159 - trading_bot.tms - INFO - TMS: macro insight cues -> ['geopolitical', 'fundamentalist']
+2026-02-18 14:21:12,036 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-18 14:21:21,956 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=440, market_open=True, trading_day=True
+2026-02-18 14:21:32,469 - trading_bot.tms - INFO - TMS: macro insight cues -> ['geopolitical', 'fundamentalist']
+2026-02-18 14:21:44,037 - trading_bot.agents - WARNING - [volatility] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 4 bullish vs 1 bearish evidence words']
+2026-02-18 14:21:44,038 - trading_bot.agents - WARNING - [volatility] Validation issues: ['Direction-evidence mismatch: BEARISH call but 4 bullish vs 1 bearish evidence words']
+2026-02-18 14:21:44,038 - trading_bot.agents - INFO - [volatility] Confidence clamped: 0.85 → 0.30 (adjustment: 0.30)
+2026-02-18 14:22:22,824 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-18 14:22:28,667 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 7 bullish vs 3 bearish evidence words']
+2026-02-18 14:22:28,667 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 7 bullish vs 3 bearish evidence words']
+2026-02-18 14:22:28,667 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.95 → 0.30 (adjustment: 0.30)
+2026-02-18 14:22:34,965 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:22:38,280 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 14:22:39,540 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:22:39,552 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:22:42,335 - trading_bot.tms - INFO - TMS: macro insight cues -> ['geopolitical', 'fundamentalist']
+2026-02-18 14:22:45,039 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:22:49,907 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:22:49,911 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:22:54,729 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:22:59,599 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for inventory: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:22:59,985 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:04,859 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:05,101 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for volatility: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:08,481 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for inventory after primary failure.
+2026-02-18 14:23:08,481 - trading_bot.router_metrics - WARNING - Fallback event: inventory gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:08,481 - trading_bot.signal_generator - INFO - Agent research complete for KCK6 (202605): 8/8 returned non-default results
+2026-02-18 14:23:08,481 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-18 14:23:08,482 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=1.1 = 2.57", "macro": "domain=1.5 \u00d7 reliability=0.7 = 1.00", "geopolitical": "domain=1.5 \u00d7 reliability=0.9 = 1.32", "supply_chain": "domain=1.5 \u00d7 reliability=1.4 = 2.05", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.01", "sentiment": "domain=1.5 \u00d7 reliability=1.0 = 1.54", "technical": "domain=1.0 \u00d7 reliability=0.9 = 0.94", "volatility": "domain=2.2 \u00d7 reliability=0.9 = 2.13"}
+2026-02-18 14:23:08,482 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.380, dominant=agronomist)
+2026-02-18 14:23:08,483 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.14,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.57,
+    "contribution": -2.056
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.66,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.88,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.32,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.37,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.05,
+    "contribution": 1.644
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.67,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.01,
+    "contribution": -0.808
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.03,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.54,
+    "contribution": -1.235
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.9,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.94,
+    "contribution": -0.614
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.95,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.13,
+    "contribution": -1.704
+  }
+]
+2026-02-18 14:23:09,994 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for supply_chain: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:11,797 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-18 14:23:16,479 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for volatility after primary failure.
+2026-02-18 14:23:16,482 - trading_bot.router_metrics - WARNING - Fallback event: volatility gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:19,078 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for supply_chain after primary failure.
+2026-02-18 14:23:19,079 - trading_bot.router_metrics - WARNING - Fallback event: supply_chain gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:19,489 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:20,064 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for inventory: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:24,928 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for agronomist: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:29,570 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:33,363 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for agronomist after primary failure.
+2026-02-18 14:23:33,363 - trading_bot.router_metrics - WARNING - Fallback event: agronomist gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:34,571 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-18 14:23:35,650 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:36,087 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for inventory after primary failure.
+2026-02-18 14:23:36,087 - trading_bot.router_metrics - WARNING - Fallback event: inventory gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:36,089 - trading_bot.agents - WARNING - [inventory] Output validation issues: ["Possible hallucination: 5 numbers not in grounded data: ['081', '198', '436']"]
+2026-02-18 14:23:36,089 - trading_bot.agents - WARNING - [inventory] Validation issues: ["Possible hallucination: 5 numbers not in grounded data: ['081', '198', '436']"]
+2026-02-18 14:23:36,485 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:46,559 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:48,713 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:49,639 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for supply_chain: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:58,626 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for supply_chain after primary failure.
+2026-02-18 14:23:58,627 - trading_bot.router_metrics - WARNING - Fallback event: supply_chain gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:23:58,784 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:24:06,633 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for inventory: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:24:16,151 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for inventory after primary failure.
+2026-02-18 14:24:16,151 - trading_bot.router_metrics - WARNING - Fallback event: inventory gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:24:18,848 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for volatility: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:24:21,007 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Conab’s unchanged record Brazil crop projection (surplus reg
+2026-02-18 14:24:21,008 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-18 14:24:21,008 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-18 14:24:26,777 - trading_bot.signal_generator - INFO - Council Decision KCK6 (202605): BEARISH (0.7)
+2026-02-18 14:24:26,778 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-18 14:24:26,782 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-18 14:24:26,833 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread with expensive vol (thesis=PLAUSIBLE)
+2026-02-18 14:24:26,833 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BEARISH)
+2026-02-18 14:24:26,833 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCK6
+2026-02-18 14:24:26,833 - trading_bot.signal_generator - INFO - Convening Council for KCZ6 (202612) (Cycle: KC-07971a97)...
+2026-02-18 14:24:27,209 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for volatility after primary failure.
+2026-02-18 14:24:27,210 - trading_bot.router_metrics - WARNING - Fallback event: volatility gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:24:27,210 - trading_bot.signal_generator - INFO - Agent research complete for KCU6 (202609): 8/8 returned non-default results
+2026-02-18 14:24:27,210 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-18 14:24:27,211 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=1.1 = 2.57", "macro": "domain=1.5 \u00d7 reliability=0.7 = 1.00", "geopolitical": "domain=1.5 \u00d7 reliability=0.9 = 1.32", "supply_chain": "domain=1.5 \u00d7 reliability=1.4 = 2.05", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.01", "sentiment": "domain=1.5 \u00d7 reliability=1.0 = 1.54", "technical": "domain=1.0 \u00d7 reliability=0.9 = 0.94", "volatility": "domain=2.2 \u00d7 reliability=0.9 = 2.13"}
+2026-02-18 14:24:27,211 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.379, dominant=agronomist)
+2026-02-18 14:24:27,211 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.14,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.57,
+    "contribution": -2.056
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.66,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.88,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.32,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.37,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.05,
+    "contribution": 1.335
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.67,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.01,
+    "contribution": -0.808
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.03,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.54,
+    "contribution": -1.235
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.9,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.94,
+    "contribution": -0.614
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.95,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.13,
+    "contribution": -1.385
+  }
+]
+2026-02-18 14:24:27,689 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-18 14:24:27,689 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-18 14:24:27,689 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-02-18 14:24:28,558 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-18 14:24:28,558 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-18 14:24:28,558 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-02-18 14:24:29,177 - trading_bot.tms - INFO - TMS: macro insight cues -> ['geopolitical', 'fundamentalist']
+2026-02-18 14:24:29,465 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-18 14:24:29,465 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-18 14:24:29,466 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-02-18 14:24:30,043 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-18 14:24:30,043 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-18 14:24:30,043 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-02-18 14:24:30,608 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-18 14:24:30,608 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-18 14:24:30,608 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-02-18 14:24:31,169 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-18 14:24:31,170 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-18 14:24:31,170 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-02-18 14:24:31,738 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-18 14:24:31,739 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-18 14:24:32,031 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-18 14:24:32,031 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-18 14:24:32,103 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:24:32,124 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:24:32,465 - trading_bot.signal_generator - INFO - Agent research complete for KCN6 (202607): 8/8 returned non-default results
+2026-02-18 14:24:32,465 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-18 14:24:32,466 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=1.1 = 2.57", "macro": "domain=1.5 \u00d7 reliability=0.7 = 1.00", "geopolitical": "domain=1.5 \u00d7 reliability=0.9 = 1.32", "supply_chain": "domain=1.5 \u00d7 reliability=1.4 = 2.05", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.01", "sentiment": "domain=1.5 \u00d7 reliability=1.0 = 1.54", "technical": "domain=1.0 \u00d7 reliability=0.9 = 0.94", "volatility": "domain=2.2 \u00d7 reliability=0.9 = 2.13"}
+2026-02-18 14:24:32,466 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=-0.090, dominant=agronomist)
+2026-02-18 14:24:32,467 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.14,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.57,
+    "contribution": -2.056
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.66,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.88,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.32,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.37,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.05,
+    "contribution": 1.644
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.67,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.01,
+    "contribution": -0.808
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.03,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.54,
+    "contribution": -1.003
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.9,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.94,
+    "contribution": -0.614
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.95,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.13,
+    "contribution": 1.704
+  }
+]
+2026-02-18 14:24:42,186 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:24:42,202 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:25:02,294 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for inventory: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:25:03,035 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:25:12,984 - trading_bot.agents - WARNING - [technical] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 1 bearish evidence words', "Possible hallucination: 5 numbers not in grounded data: ['282', '246', '348']"]
+2026-02-18 14:25:12,984 - trading_bot.agents - WARNING - [technical] Validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 1 bearish evidence words', "Possible hallucination: 5 numbers not in grounded data: ['282', '246', '348']"]
+2026-02-18 14:25:12,984 - trading_bot.agents - INFO - [technical] Confidence clamped: 0.80 → 0.30 (adjustment: 0.30)
+2026-02-18 14:25:13,360 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-18 14:25:13,460 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:25:23,836 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:25:24,174 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for inventory after primary failure.
+2026-02-18 14:25:24,174 - trading_bot.router_metrics - WARNING - Fallback event: inventory gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:25:24,175 - trading_bot.agents - WARNING - [inventory] Output validation issues: ["Possible hallucination: 5 numbers not in grounded data: ['081', '198', '436']"]
+2026-02-18 14:25:24,175 - trading_bot.agents - WARNING - [inventory] Validation issues: ["Possible hallucination: 5 numbers not in grounded data: ['081', '198', '436']"]
+2026-02-18 14:25:33,531 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for volatility: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:25:33,907 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:25:42,157 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for volatility after primary failure.
+2026-02-18 14:25:42,157 - trading_bot.router_metrics - WARNING - Fallback event: volatility gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:25:42,561 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:25:49,863 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Fundamental regime shift being priced by the futures market:
+2026-02-18 14:25:49,863 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-18 14:25:49,863 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-18 14:25:52,633 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:25:53,234 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil supply outlook has decisively improved (exceptional F
+2026-02-18 14:25:53,234 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=NEUTRAL → multiplier=1.0, adj_confidence=0.7
+2026-02-18 14:25:53,235 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-18 14:25:58,047 - trading_bot.signal_generator - INFO - Council Decision KCU6 (202609): BEARISH (0.7)
+2026-02-18 14:25:58,048 - root - INFO - Logged council decision for KCU6 (202609)
+2026-02-18 14:25:58,051 - trading_bot.decision_signals - INFO - Decision signal logged: KCU6 (202609) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-18 14:25:58,129 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread with expensive vol (thesis=PLAUSIBLE)
+2026-02-18 14:25:58,129 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BEARISH)
+2026-02-18 14:25:58,129 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCU6
+2026-02-18 14:25:58,130 - trading_bot.signal_generator - INFO - Convening Council for KCH7 (202703) (Cycle: KC-89631a2c)...
+2026-02-18 14:25:58,956 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-18 14:25:58,957 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-18 14:25:58,957 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-02-18 14:25:59,921 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-18 14:25:59,922 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-18 14:25:59,922 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-02-18 14:26:00,556 - trading_bot.tms - INFO - TMS: macro insight cues -> ['geopolitical', 'fundamentalist']
+2026-02-18 14:26:00,840 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-18 14:26:00,841 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-18 14:26:00,841 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-02-18 14:26:01,506 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-18 14:26:01,507 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-18 14:26:01,507 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-02-18 14:26:02,749 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-18 14:26:02,749 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-18 14:26:02,750 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-02-18 14:26:03,403 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-18 14:26:03,404 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-18 14:26:03,404 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-02-18 14:26:04,334 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-18 14:26:04,335 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-18 14:26:04,651 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-18 14:26:04,651 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-18 14:26:04,659 - trading_bot.signal_generator - INFO - Council Decision KCN6 (202607): BEARISH (0.7)
+2026-02-18 14:26:04,660 - root - INFO - Logged council decision for KCN6 (202607)
+2026-02-18 14:26:04,664 - trading_bot.decision_signals - INFO - Decision signal logged: KCN6 (202607) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-18 14:26:04,713 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-18 14:26:04,713 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-18 14:26:04,713 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCN6
+2026-02-18 14:26:04,728 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:26:04,791 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:26:12,695 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for volatility: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:26:14,804 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:26:14,860 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:26:19,452 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for volatility after primary failure.
+2026-02-18 14:26:19,452 - trading_bot.router_metrics - WARNING - Fallback event: volatility gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:26:23,895 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=445, market_open=True, trading_day=True
+2026-02-18 14:26:29,879 - trading_bot.signal_generator - INFO - Agent research complete for KCZ6 (202612): 8/8 returned non-default results
+2026-02-18 14:26:29,879 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-18 14:26:29,880 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=1.1 = 2.57", "macro": "domain=1.5 \u00d7 reliability=0.7 = 1.00", "geopolitical": "domain=1.5 \u00d7 reliability=0.9 = 1.32", "supply_chain": "domain=1.5 \u00d7 reliability=1.4 = 2.05", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.01", "sentiment": "domain=1.5 \u00d7 reliability=1.0 = 1.54", "technical": "domain=1.0 \u00d7 reliability=0.9 = 0.94", "volatility": "domain=2.2 \u00d7 reliability=0.9 = 2.13"}
+2026-02-18 14:26:29,881 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.354, dominant=agronomist)
+2026-02-18 14:26:29,881 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.14,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.57,
+    "contribution": -2.056
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.66,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.88,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.32,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.37,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.05,
+    "contribution": 1.644
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.67,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.01,
+    "contribution": -0.808
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.03,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.54,
+    "contribution": -1.235
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.9,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.94,
+    "contribution": -0.614
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.95,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.13,
+    "contribution": -1.385
+  }
+]
+2026-02-18 14:26:34,892 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for inventory: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:26:34,943 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for supply_chain: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:26:37,543 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:26:43,890 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for supply_chain after primary failure.
+2026-02-18 14:26:43,890 - trading_bot.router_metrics - WARNING - Fallback event: supply_chain gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:26:44,937 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for inventory after primary failure.
+2026-02-18 14:26:44,938 - trading_bot.router_metrics - WARNING - Fallback event: inventory gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:26:44,939 - trading_bot.agents - WARNING - [inventory] Output validation issues: ["Possible hallucination: 5 numbers not in grounded data: ['081', '198', '436']"]
+2026-02-18 14:26:44,939 - trading_bot.agents - WARNING - [inventory] Validation issues: ["Possible hallucination: 5 numbers not in grounded data: ['081', '198', '436']"]
+2026-02-18 14:26:45,339 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:26:47,631 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:26:54,003 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-18 14:26:55,403 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:27:07,704 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for volatility: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:27:15,478 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for inventory: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:27:21,877 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for volatility after primary failure.
+2026-02-18 14:27:21,877 - trading_bot.router_metrics - WARNING - Fallback event: volatility gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:27:22,272 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:27:24,973 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for inventory after primary failure.
+2026-02-18 14:27:24,973 - trading_bot.router_metrics - WARNING - Fallback event: inventory gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:27:32,344 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:27:52,440 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for volatility: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:27:53,143 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil record-crop narrative and weather-risk-premium remova
+2026-02-18 14:27:53,143 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-18 14:27:53,143 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-18 14:28:01,313 - trading_bot.signal_generator - INFO - Council Decision KCZ6 (202612): BEARISH (0.7)
+2026-02-18 14:28:01,315 - root - INFO - Logged council decision for KCZ6 (202612)
+2026-02-18 14:28:01,319 - trading_bot.decision_signals - INFO - Decision signal logged: KCZ6 (202612) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-18 14:28:01,378 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread with expensive vol (thesis=PLAUSIBLE)
+2026-02-18 14:28:01,378 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BEARISH)
+2026-02-18 14:28:01,379 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCZ6
+2026-02-18 14:28:01,639 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-flash-preview for volatility after primary failure.
+2026-02-18 14:28:01,639 - trading_bot.router_metrics - WARNING - Fallback event: volatility gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
+2026-02-18 14:28:01,640 - trading_bot.signal_generator - INFO - Agent research complete for KCH7 (202703): 7/8 returned non-default results
+2026-02-18 14:28:01,640 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-18 14:28:01,640 - trading_bot.weighted_voting - INFO - Agent volatility: Fresh NEUTRAL vote (not abstention)
+2026-02-18 14:28:01,642 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.5 \u00d7 reliability=1.1 = 1.58", "macro": "domain=1.5 \u00d7 reliability=0.7 = 0.98", "geopolitical": "domain=1.5 \u00d7 reliability=1.1 = 1.58", "supply_chain": "domain=1.5 \u00d7 reliability=0.7 = 0.99", "inventory": "domain=1.5 \u00d7 reliability=0.6 = 0.94", "sentiment": "domain=1.5 \u00d7 reliability=1.0 = 1.44", "technical": "domain=2.2 \u00d7 reliability=1.0 = 2.29", "volatility": "domain=1.0 \u00d7 reliability=0.9 = 0.96"}
+2026-02-18 14:28:01,642 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.373, dominant=technical)
+2026-02-18 14:28:01,643 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.05,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.58,
+    "contribution": -1.261
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.65,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.98,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.05,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.58,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.66,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.99,
+    "contribution": 0.644
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.62,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.94,
+    "contribution": -0.75
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.96,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.44,
+    "contribution": -1.153
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.02,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.29,
+    "contribution": -1.488
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.91,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.96,
+    "contribution": 0.0
+  }
+]
+2026-02-18 14:28:24,655 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 45% of average (Sev: 5)
+2026-02-18 14:28:24,659 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-18 14:29:22,970 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Conab’s record Brazil crop projection (+material Arabica inc
+2026-02-18 14:29:22,970 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-18 14:29:22,970 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-18 14:29:30,429 - trading_bot.signal_generator - INFO - Council Decision KCH7 (202703): BEARISH (0.7)
+2026-02-18 14:29:30,430 - root - INFO - Logged council decision for KCH7 (202703)
+2026-02-18 14:29:30,435 - trading_bot.decision_signals - INFO - Decision signal logged: KCH7 (202703) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-18 14:29:30,508 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=NEUTRAL)
+2026-02-18 14:29:30,508 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=NEUTRAL)
+2026-02-18 14:29:30,508 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCH7
+2026-02-18 14:29:30,512 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-02-18 14:29:30,512 - OrderManager - INFO - Generated 5 signals: [{'contract_month': '202605', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/price action does not force a liquidation-driven contrarian call: 24h change is only mildly positive, while the 5-day trend is meaningfully negative and price remains well below the 200-day SMA—consistent with a market that has been repricing toward surplus rather than capitulating in a single flush. On fundamentals, the Bear is more grounded in the highest-quality, most directly price-relevant evidence: (1) Conab maintaining a record harvest estimate anchors a surplus narrative; (2) inventory/structure corroborates it via rising ICE-certified stocks and normalization toward contango; (3) sentiment/positioning is not a clean bullish reversal signal—extremely low spec length can reduce incremental selling, but it does not by itself create a durable bid without a catalyst.\n\nThe Bull’s strongest point is real and independently supported: Brazil coffee exports are sharply lower YoY and port delays are quantified, indicating coffee-specific flow disruption rather than global freight tightness. However, the Bull extends this into a durable bullish thesis without proving persistence or net supply loss: declining global freight indices and policy/management steps at Santos are consistent with bottlenecks that can unwind, turning “trapped supply” into deferred supply (bearish later). On the weather/disease leg, the agronomy evidence credibly introduces downside-limiting quality risk, but it remains conditional until it translates into revised production estimates or verified yield losses; the Bear is correct that, as presented, it’s more clearly a quality/next-season risk than a confirmed current-volume shock.\n\nEvidence counting favors the Bear on independent, coffee-direct indicators of surplus (production estimate + stocks + curve + broader downtrend). The Bull has one strong independent line (export/logistics) plus two weaker/conditional ones (FX extrapolation without coffee-specific confirmation; disease risk not yet reflected in official volume estimates). Finally, the Volatility Analyst frames front-end options as expensive and aligns with a bearish fundamental repricing; per the framework this forces caution and prevents upgrading conviction beyond PLAUSIBLE. [Consensus ALIGNED (Vote=BEARISH)] [VOL WARNING: Options expensive. Spread costs elevated. Thesis: PLAUSIBLE]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.7, 'price': 284.4, 'sma_200': 332.38425, 'expected_price': 284.4, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202607', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/price action does not force a contrarian call: 24h change is only mildly positive (+0.39%), while the 5‑day trend is meaningfully negative and price remains well below the 200‑day SMA—consistent with a market still digesting a bearish fundamental reset rather than a clean reversal.\n\nOn fundamentals, the Bear is more grounded in the packet. Multiple independent reports converge on a supply-improvement narrative: agronomy/weather evidence (Minas Gerais rainfall above normal during grain-fill) and the official production forecast (Conab record crop) both point the same way. The Inventory report adds a second, distinct line of evidence that physical supply is moving into the exchange ecosystem (certified stocks ticking up and a large rise in pending grading), which directly challenges the Bull’s “origin depletion” framing.\n\nThe Bull’s strongest pillar is the Supply Chain report (Jan exports down sharply; Santos delays/rollovers). But that evidence is directionally ambiguous: weak exports can be logistics friction, producer withholding, or weaker demand/merchant activity. The Bull then makes a large inferential leap—calling the unexplained portion of the export shortfall “genuine origin depletion”—without direct stock-at-origin, differential, or farm selling data to prove scarcity. Meanwhile, ICE stock/pending-grading inflows are direct, observable measures that at least some supply is available and being delivered.\n\nMacro/FX is not decisive. The Macro report itself flags the coffee linkage as inferential and not coffee-specific; so it cannot outweigh coffee-specific agronomy and inventory evidence.\n\nTechnicals favor the Bear’s medium-term direction (below long-term average; negative momentum), while also supporting the Bear’s own caution that the market is near oversold and vulnerable to bounces. That supports “bearish but not proven,” not a clean bullish reversal thesis.\n\nEvidence counting: (1) agronomy/weather, (2) record crop forecast, (3) exchange inventory/pending grading, (4) bearish trend structure all independently lean bearish. The bullish case relies primarily on (a) export/logistics disruptions and (b) a conditional FX argument—both less directly tied to coffee price formation in the provided evidence set.\n\nVolatility report is not usable for coffee (it discusses equities/macro and contains no coffee options-expensiveness signal), so no downgrade is applied under the volatility-cost rule. [Consensus ALIGNED (Vote=NEUTRAL)]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 280.9, 'sma_200': 322.5065, 'expected_price': 280.9, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202609', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/price action is not supportive of the bull case: the 24h change is only mildly positive (no forced-liquidation dip to fade), while the 5-day trend remains meaningfully negative and price is well below the long-term moving average—consistent with an ongoing bearish repricing rather than a one-off dislocation. On fundamentals, multiple independent reports converge on the same driver: Conab’s record Brazil harvest projection and an ICO-described surplus backdrop, reinforced by Vietnam’s export surge and commentary that weather risk premiums have been removed. This is the core of the Permabear case and it is the best-grounded in the current dataset because it explains (a) why futures can fall despite backwardation/low certified stocks and (b) why the market continues to accept lower prices.\n\nThe Permabull’s strongest evidence is real but more timing-specific: low ICE certified stocks, backwardation, and a very large YoY drop in Brazil exports alongside port delays indicate near-term deliverability stress. However, the supporting logistics evidence is mixed (global freight indices falling; Santos congestion described as pressure but not extreme; Red Sea evidence not coffee-specific; EUDR delayed), making it weaker as a durable “new weather shock / supply shock” thesis. The bull also leans heavily on contrarian positioning (oversold/low net longs/crowded shorts), which is a setup for a bounce but not, by itself, proof of a sustained bullish catalyst—especially when the downtrend is still confirming with lower lows and negative momentum.\n\nEvidence counting favors the bear: agronomy (rainfall supportive + record crop), inventory/curve framing (spot tight but futures pricing surplus), sentiment/positioning (bearish liquidation consistent with surplus expectations), and technicals (trend and momentum) are distinct lines pointing to the same intermediate-term bias lower. The bull’s case is essentially one theme (near-term tightness/flow bottlenecks) plus a mean-reversion argument.\n\nVolatility-cost awareness reduces conviction: the volatility report flags elevated implied volatility and front-end skew (options expensive), which makes outright directional bullish expressions less attractive and also argues for downgrading certainty overall. Net: bearish direction remains more grounded, but with moderated strength because the market is oversold/crowded-short and physical tightness can still trigger sharp counter-trend rallies. [Consensus ALIGNED (Vote=BEARISH)] [VOL WARNING: Options expensive. Spread costs elevated. Thesis: PLAUSIBLE]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.7, 'price': 277.3, 'sma_200': 312.35575, 'expected_price': 277.3, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202612', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/respect-the-tape: The market is down materially over 5 days and trades well below the 200-day SMA, consistent with a sustained bearish trend; the 24h change is only marginally positive, so there is no evidence of a decisive reversal or a fresh bullish repricing impulse. Fundamentals: Multiple independent reports (Agronomist, Inventory, Sentiment, Technical, Volatility) converge on the same core driver: Conab’s high/record Brazil crop expectations and the explicit removal of weather risk premium have been the dominant narrative as prices fell to multi-month lows. That is a stronger, broader fundamental than the bull’s largely near-term flow argument. \n\nDebate quality: The Permabear’s critique is more grounded in the provided data. (1) On supply chain, the bull treats January’s export drop and “stranded bags” as proof of a binding, persistent supply shock. The bear more correctly attacks the leap from one-month export weakness + delay anecdotes to a durable futures-supportive shortage, pointing out that Santos utilization data is moderate (not clearly maxed-out) and that broad freight indices are falling—suggesting the macro logistics environment is not tightening in a way that reliably sustains higher prices. Even if Santos frictions are real, the evidence supports “timing variability,” not a confirmed structural supply destruction. (2) On “oversold/positioning,” the bull leans on extreme bearish positioning and near-oversold RSI to argue for reversal. The bear correctly notes that the technical report explicitly says there is no bullish divergence/reversal structure yet; oversold can persist in downtrends, particularly when a major forward-supply narrative is active. (3) On FX, the bull’s BRL/withholding claim is explicitly undercut by the Macro report itself (neutral stance; lack of coffee-specific selling evidence) and by the plausible near-term policy pivot (potential Selic easing) that could weaken BRL and increase selling—making it an unreliable bullish pillar.\n\nEvidence counting: Bearish case has more independent lines pointing the same way for different reasons (crop expectation + risk-premium removal; trend/price below long-term average; liquidation/declining open interest; sentiment/positioning still bearish; vol market showing expensive downside protection consistent with bearish demand). Bullish case rests heavily on one domain (export/port friction) plus contrarian mean-reversion (positioning/RSI), both of which are acknowledged as insufficiently decisive by other specialist reports (Geopolitical and Technical frame them as mild upside risk/neutral, not a proven shock).\n\nVolatility-cost awareness: Options are described as expensive with downside protection already bid; that argues against treating the bearish thesis as “PROVEN” because the market is already paying up for protection and squeeze risk is non-trivial. Netting everything, the bearish side wins on evidentiary grounding, but conviction is moderated by oversold/physical tightness signals and expensive options. [Consensus ALIGNED (Vote=BEARISH)] [VOL WARNING: Options expensive. Spread costs elevated. Thesis: PLAUSIBLE]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.7, 'price': 272.85, 'sma_200': 304.50125, 'expected_price': 272.85, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202703', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/respect-the-tape: The 24h change is only slightly positive, so there is no forced “technical liquidation” trigger to fade, but the 5‑day trend is meaningfully negative and price remains well below the long-term moving average. That aligns with the technical and sentiment reports describing a breakdown/continuation bias (below 200-day SMA, no bullish divergence despite near-oversold RSI) and with the inventory/sentiment evidence that the market is front-running a large 2026 supply increase.\n\nBear vs Bull—who is more grounded in current data:\n- The Bear’s core case is directly supported by multiple independent, coffee-specific lines: (1) Conab’s record crop estimate and Arabica growth (Agronomist + Inventory + Technical), (2) Vietnam export strength (Inventory), (3) price action making multi-month lows and remaining below the 200-day SMA (Inventory + Technical + market reality check), and (4) COT/open interest data showing liquidation and bearish positioning consistent with a risk-premium removal regime (Sentiment). These are all separate mechanisms (fundamental supply, competing origin flow, technical structure, and positioning/participation) pointing in the same direction.\n- The Bull’s strongest evidence is near-term tightness: (1) lower ICE certified stocks (Inventory) and (2) Brazil export under-shipment plus port delays (Supply Chain). However, the Bear successfully attacks the leap from “exports down” to “bullish demand/supply shock,” because the supply-chain report itself concedes logistics explain only a fraction of the YoY export drop, and falling freight indices undermine the claim of generalized shipping tightness. The geopolitical/logistics desk also flags that the broader shipping headlines are not clearly coffee-lane-specific and Santos congestion looks moderate on average.\n- On the “priced-in” check: the market is not up >3% today, so we’re not forced to say bullish news is priced in. Instead, the more relevant point is that the biggest bullish claim (a durable supply-chain shock) is not proven to be large enough versus the dominant, already-evidenced supply expansion narrative.\n- Hegelian synthesis: The Bear does NOT win by claiming “overbought” (market is closer to oversold), but the Bear wins on “oversold is not a thesis.” The Bull does not prove an overwhelming new weather shock; the agronomist explicitly says the near-term effect has been removal of weather premium and remains bearish, with rain-risk only a conditional floor/monitor item.\n\nEvidence counting: There are more independent, direct coffee-market signals on the bearish side (crop projection + competing exports + downtrend/breakdown + positioning/liquidation). The bullish side is mainly a near-term tightness/flow argument that is partially supported (ICE stocks, exports) but not cleanly attributed to a persistent, market-moving bottleneck.\n\nVolatility-cost rule: The volatility analyst provides no evidence and does not flag options as expensive, so no forced downgrade applies. Still, oversold/positioning extremes argue for tactical rebound risk, which keeps the bearish call at PLAUSIBLE rather than PROVEN. [Consensus ALIGNED (Vote=BEARISH)]', 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.7, 'price': 271.25, 'sma_200': 299.18775, 'expected_price': 271.25, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}]
+2026-02-18 14:29:30,513 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-18 14:29:30,515 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 14:29:30,581 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-18 14:29:30,582 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-18 14:29:30,582 - OrderManager - INFO - Skipping KCH7: Too deferred (392 days > 365 max)
+2026-02-18 14:29:30,582 - OrderManager - INFO - Date filter passed: 4/5 contracts within 365 days.
+2026-02-18 14:29:30,583 - OrderManager - INFO - Checking liquidity for 4 contracts (parallel)...
+2026-02-18 14:29:33,087 - OrderManager - INFO - Liquidity check cleanup complete.
+2026-02-18 14:29:33,087 - OrderManager - INFO - Volume filter passed: 4 liquid candidates proceeding to signal generation.
+2026-02-18 14:29:33,148 - OrderManager - INFO - Account Value for Sizing: $39,720.53
+2026-02-18 14:29:33,152 - OrderManager - INFO - L1: Filtered 1 foreign orders (client_id != 31, ref != MISSION_CTRL*)
+2026-02-18 14:29:33,153 - OrderManager - INFO - L1 RECONCILED: Reset committed capital from $806.25 to $0.00
+2026-02-18 14:29:33,153 - OrderManager - INFO - Requesting snapshot market price for KCK6...
+2026-02-18 14:29:33,198 - OrderManager - INFO - Using bid/ask midpoint for KCK6: 283.3
+2026-02-18 14:29:33,198 - root - INFO - Fetching option chain for future KCK6...
+2026-02-18 14:29:33,202 - root - INFO - --- Defining BEARISH Spread for KCK6 ---
+2026-02-18 14:29:33,203 - root - WARNING - No strikes near 283.3 meet min OI threshold (10). Using closest strike 282.5 anyway.
+2026-02-18 14:29:33,203 - root - INFO - Identified ATM strike: 282.5 for underlying price 283.3
+2026-02-18 14:29:33,203 - root - WARNING - No strikes near 278.46297500000003 meet min OI threshold (10). Using closest strike 277.5 anyway.
+2026-02-18 14:29:33,203 - root - INFO - Defined Bear Put Spread legs: BUY 282.5P, SELL 277.5P
+2026-02-18 14:29:33,205 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(0.6) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.510)
+2026-02-18 14:29:33,205 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-18 14:29:33,438 - root - INFO - Fetching market data for option: KOK6 P2.825
+2026-02-18 14:29:35,439 - root - INFO - Using IBKR Model Greeks IV: 39.16%
+2026-02-18 14:29:35,442 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 14:29:35,443 - root - INFO - Theoretical price calculated for P @ 282.5: {'price': np.float64(15.3012), 'delta': np.float64(-0.448), 'gamma': np.float64(0.0095), 'vega': np.float64(41.8877), 'theta': np.float64(-0.1764)}
+2026-02-18 14:29:35,443 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 P2.825 @ 15.30
+2026-02-18 14:29:35,444 - root - INFO - Fetching market data for option: KOK6 P2.775
+2026-02-18 14:29:37,445 - root - INFO - Using IBKR Model Greeks IV: 39.26%
+2026-02-18 14:29:37,449 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 14:29:37,450 - root - INFO - Theoretical price calculated for P @ 277.5: {'price': np.float64(12.9449), 'delta': np.float64(-0.4004), 'gamma': np.float64(0.0093), 'vega': np.float64(40.9224), 'theta': np.float64(-0.1714)}
+2026-02-18 14:29:37,450 - root - INFO -   -> Leg Theoretical Price (SELL): KOK6 P2.775 @ 12.94
+2026-02-18 14:29:37,450 - root - INFO - BUY Cap Calc: Theoretical=2.85, MarketAggressive=2.70 (aggression=0.75), Mid=2.44, Ask=2.81, Final Cap=2.80
+2026-02-18 14:29:37,450 - root - INFO - Net Theoretical: 2.36, Market Spread: 0.73
+2026-02-18 14:29:37,450 - root - INFO - Adaptive Strategy: Start @ 2.10, Cap/Floor @ 2.80
+2026-02-18 14:29:37,451 - root - INFO - Creating Limit Order for BUY 1 @ 2.10 (Adaptive Cap: 2.80).
+2026-02-18 14:29:37,451 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-02-18 14:29:37,451 - root - INFO - Assigned OrderRef: 33b87862-3f35-42ac-baaf-c5f6deda7238
+2026-02-18 14:29:37,556 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $787.50 (premium paid)
+2026-02-18 14:29:37,557 - OrderManager - INFO - Capital tracking: Committed $787.50 | Remaining $38,933.03 | This order: $787.50
+2026-02-18 14:29:37,558 - OrderManager - INFO - Successfully queued order for KCK6.
+2026-02-18 14:29:37,558 - OrderManager - INFO - Requesting snapshot market price for KCN6...
+2026-02-18 14:29:37,990 - OrderManager - INFO - Using bid/ask midpoint for KCN6: 280.0
+2026-02-18 14:29:37,990 - root - INFO - Fetching option chain for future KCN6...
+2026-02-18 14:29:37,995 - root - INFO - --- Defining BEARISH Spread for KCN6 ---
+2026-02-18 14:29:37,996 - root - WARNING - No strikes near 280.0 meet min OI threshold (10). Using closest strike 280.0 anyway.
+2026-02-18 14:29:37,996 - root - INFO - Identified ATM strike: 280.0 for underlying price 280.0
+2026-02-18 14:29:37,996 - root - WARNING - No strikes near 276.01 meet min OI threshold (10). Using closest strike 275.0 anyway.
+2026-02-18 14:29:37,997 - root - INFO - Defined Bear Put Spread legs: BUY 280.0P, SELL 275.0P
+2026-02-18 14:29:37,999 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.2) * Heat(1.0) * Conviction(1.0) = 2 (raw: 1.020)
+2026-02-18 14:29:37,999 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-18 14:29:38,228 - root - INFO - Fetching market data for option: KON6 P2.8
+2026-02-18 14:29:40,229 - root - INFO - Using IBKR Model Greeks IV: 37.90%
+2026-02-18 14:29:40,231 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 14:29:40,233 - root - INFO - Theoretical price calculated for P @ 280.0: {'price': np.float64(21.771), 'delta': np.float64(-0.4345), 'gamma': np.float64(0.0066), 'vega': np.float64(61.5844), 'theta': np.float64(-0.1181)}
+2026-02-18 14:29:40,233 - root - INFO -   -> Leg Theoretical Price (BUY): KON6 P2.8 @ 21.77
+2026-02-18 14:29:40,233 - root - INFO - Fetching market data for option: KON6 P2.75
+2026-02-18 14:29:42,234 - root - INFO - Using IBKR Model Greeks IV: 37.92%
+2026-02-18 14:29:42,237 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 14:29:42,238 - root - INFO - Theoretical price calculated for P @ 275.0: {'price': np.float64(19.3037), 'delta': np.float64(-0.4013), 'gamma': np.float64(0.0065), 'vega': np.float64(60.5074), 'theta': np.float64(-0.1151)}
+2026-02-18 14:29:42,238 - root - INFO -   -> Leg Theoretical Price (SELL): KON6 P2.75 @ 19.30
+2026-02-18 14:29:42,238 - root - INFO - BUY Cap Calc: Theoretical=2.95, MarketAggressive=2.95 (aggression=0.75), Mid=2.61, Ask=3.10, Final Cap=2.95
+2026-02-18 14:29:42,238 - root - INFO - Net Theoretical: 2.47, Market Spread: 0.98
+2026-02-18 14:29:42,238 - root - INFO - Adaptive Strategy: Start @ 2.15, Cap/Floor @ 2.95
+2026-02-18 14:29:42,238 - root - INFO - Creating Limit Order for BUY 2 @ 2.15 (Adaptive Cap: 2.95).
+2026-02-18 14:29:42,238 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-02-18 14:29:42,238 - root - INFO - Assigned OrderRef: 8a72e7c7-e6a3-49e7-a863-3878b2f04d49
+2026-02-18 14:29:42,342 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $1,612.50 (premium paid)
+2026-02-18 14:29:42,342 - OrderManager - INFO - Capital tracking: Committed $2,400.00 | Remaining $37,320.53 | This order: $1,612.50
+2026-02-18 14:29:42,342 - OrderManager - INFO - Successfully queued order for KCN6.
+2026-02-18 14:29:42,343 - OrderManager - INFO - Requesting snapshot market price for KCU6...
+2026-02-18 14:29:42,848 - OrderManager - INFO - Using bid/ask midpoint for KCU6: 276.375
+2026-02-18 14:29:42,848 - root - INFO - Fetching option chain for future KCU6...
+2026-02-18 14:29:42,851 - root - INFO - --- Defining BEARISH Spread for KCU6 ---
+2026-02-18 14:29:42,851 - root - WARNING - No strikes near 276.375 meet min OI threshold (10). Using closest strike 277.5 anyway.
+2026-02-18 14:29:42,851 - root - INFO - Identified ATM strike: 277.5 for underlying price 276.375
+2026-02-18 14:29:42,852 - root - WARNING - No strikes near 273.56165625 meet min OI threshold (10). Using closest strike 272.5 anyway.
+2026-02-18 14:29:42,852 - root - INFO - Defined Bear Put Spread legs: BUY 277.5P, SELL 272.5P
+2026-02-18 14:29:42,854 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(0.6) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.510)
+2026-02-18 14:29:42,854 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-18 14:29:43,085 - root - INFO - Fetching market data for option: KOU6 P2.775
+2026-02-18 14:29:45,086 - root - INFO - Using IBKR Model Greeks IV: 37.70%
+2026-02-18 14:29:45,090 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 14:29:45,091 - root - INFO - Theoretical price calculated for P @ 277.5: {'price': np.float64(26.5875), 'delta': np.float64(-0.4248), 'gamma': np.float64(0.0054), 'vega': np.float64(75.4114), 'theta': np.float64(-0.0961)}
+2026-02-18 14:29:45,091 - root - INFO -   -> Leg Theoretical Price (BUY): KOU6 P2.775 @ 26.59
+2026-02-18 14:29:45,091 - root - INFO - Fetching market data for option: KOU6 P2.725
+2026-02-18 14:29:47,096 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 14:29:47,096 - root - WARNING - IV data missing for KOU6 P2.725, using profile fallback IV: 35%
+2026-02-18 14:29:47,097 - root - INFO - Theoretical price calculated for P @ 272.5: {'price': np.float64(22.0576), 'delta': np.float64(-0.3977), 'gamma': np.float64(0.0057), 'vega': np.float64(74.2403), 'theta': np.float64(-0.0879)}
+2026-02-18 14:29:47,097 - root - INFO -   -> Leg Theoretical Price (SELL): KOU6 P2.725 @ 22.06
+2026-02-18 14:29:47,097 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (3.94) is 87.0% of theoretical price (4.53), which exceeds the max of 45.0%. Aborting order.
+2026-02-18 14:29:47,097 - OrderManager - INFO - Requesting snapshot market price for KCZ6...
+2026-02-18 14:29:47,718 - OrderManager - INFO - Using bid/ask midpoint for KCZ6: 275.0
+2026-02-18 14:29:47,718 - root - INFO - Fetching option chain for future KCZ6...
+2026-02-18 14:29:47,720 - root - INFO - --- Defining BEARISH Spread for KCZ6 ---
+2026-02-18 14:29:47,721 - root - WARNING - No strikes near 275.0 meet min OI threshold (10). Using closest strike 275.0 anyway.
+2026-02-18 14:29:47,721 - root - INFO - Identified ATM strike: 275.0 for underlying price 275.0
+2026-02-18 14:29:47,721 - root - WARNING - No strikes near 271.08125 meet min OI threshold (10). Using closest strike 270.0 anyway.
+2026-02-18 14:29:47,721 - root - INFO - Defined Bear Put Spread legs: BUY 275.0P, SELL 270.0P
+2026-02-18 14:29:47,723 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(0.6) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.510)
+2026-02-18 14:29:47,723 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-18 14:29:47,995 - root - INFO - Fetching market data for option: KOZ6 P2.75
+2026-02-18 14:29:49,996 - root - INFO - Using IBKR Model Greeks IV: 36.58%
+2026-02-18 14:29:49,999 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 14:29:50,001 - root - INFO - Theoretical price calculated for P @ 275.0: {'price': np.float64(29.8719), 'delta': np.float64(-0.4013), 'gamma': np.float64(0.0045), 'vega': np.float64(90.9463), 'theta': np.float64(-0.0777)}
+2026-02-18 14:29:50,001 - root - INFO -   -> Leg Theoretical Price (BUY): KOZ6 P2.75 @ 29.87
+2026-02-18 14:29:50,001 - root - INFO - Fetching market data for option: KOZ6 P2.7
+2026-02-18 14:29:52,006 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 14:29:52,007 - root - WARNING - IV data missing for KOZ6 P2.7, using profile fallback IV: 35%
+2026-02-18 14:29:52,008 - root - INFO - Theoretical price calculated for P @ 270.0: {'price': np.float64(25.9658), 'delta': np.float64(-0.3788), 'gamma': np.float64(0.0046), 'vega': np.float64(89.4657), 'theta': np.float64(-0.0729)}
+2026-02-18 14:29:52,008 - root - INFO -   -> Leg Theoretical Price (SELL): KOZ6 P2.7 @ 25.97
+2026-02-18 14:29:52,008 - root - INFO - BUY Cap Calc: Theoretical=4.40, MarketAggressive=0.00 (aggression=0.75), Mid=0.00, Ask=0.00, Final Cap=0.00
+2026-02-18 14:29:52,008 - root - INFO - Net Theoretical: 3.91, Market Spread: 0.00
+2026-02-18 14:29:52,008 - root - INFO - Adaptive Strategy: Start @ 0.00, Cap/Floor @ 0.00
+2026-02-18 14:29:52,008 - root - INFO - Creating Limit Order for BUY 1 @ 0.00 (Adaptive Cap: 0.00).
+2026-02-18 14:29:52,009 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-02-18 14:29:52,009 - root - INFO - Assigned OrderRef: 3cc341ec-bceb-4a91-bc8d-543c8b7f450b
+2026-02-18 14:29:52,112 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $0.00 (premium paid)
+2026-02-18 14:29:52,113 - OrderManager - INFO - Capital tracking: Committed $2,400.00 | Remaining $37,320.53 | This order: $0.00
+2026-02-18 14:29:52,113 - OrderManager - INFO - Successfully queued order for KCZ6.
+2026-02-18 14:29:52,113 - OrderManager - WARNING - No active future for signal month 202703.
+2026-02-18 14:29:52,113 - OrderManager - INFO - --- Order generation complete. 3 orders queued. ---
+2026-02-18 14:29:52,395 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-18 14:29:52,397 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-18 14:29:55,399 - OrderManager - INFO - --- Placing and monitoring 3 orders ---
+2026-02-18 14:29:55,399 - OrderManager - INFO - Processing 3 orders SEQUENTIALLY
+2026-02-18 14:29:55,400 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-18 14:29:55,400 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'openai', 'gemini']
+2026-02-18 14:29:55,400 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
+2026-02-18 14:29:55,401 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 30 [REMOTE/PAPER]...
+2026-02-18 14:29:55,719 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 30
+2026-02-18 14:29:55,726 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-18 14:29:55,727 - OrderManager - INFO - Using pooled IB connection for order placement.
+2026-02-18 14:29:55,727 - OrderManager - INFO - Sorted orders by expiration proximity.
+2026-02-18 14:29:55,792 - OrderManager - INFO - Current Available Funds: $39,720.53 | Equity: $39,720.53
+2026-02-18 14:29:55,795 - OrderManager - INFO - Processing order 1/3: 
+2026-02-18 14:29:57,858 - ib_insync.wrapper - ERROR - Error 162, reqId 37: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=742750192, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=282.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P2.825', tradingClass='KO')
+2026-02-18 14:29:57,866 - trading_bot.compliance - INFO - Resolved underlying future: KCK6 (conId: 634760204)
+2026-02-18 14:29:57,977 - trading_bot.compliance - INFO - Volume from IB (KCK6): 353.0
+2026-02-18 14:29:57,978 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $787.50 (premium paid)
+2026-02-18 14:30:02,122 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
+2026-02-18 14:30:02,440 - OrderManager - INFO - Approved KC-P282.5+P277.5: Margin $786.17 | Remaining: $38,934.36
+2026-02-18 14:30:02,441 - OrderManager - INFO - Processing order 2/3: 
