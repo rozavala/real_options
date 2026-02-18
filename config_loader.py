@@ -189,7 +189,10 @@ def load_config() -> dict | None:
     if commodity_ticker:
         config['symbol'] = commodity_ticker
         config.setdefault('commodity', {})['ticker'] = commodity_ticker
-        config['data_dir'] = os.path.join(base_dir, 'data', commodity_ticker)
+
+    # Always set data_dir based on the active symbol (env override or config default)
+    ticker = commodity_ticker or config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    config['data_dir'] = os.path.join(base_dir, 'data', ticker)
 
     # Log successful load
     loaded_providers = [p for p in ['gemini', 'anthropic', 'openai', 'xai'] if config.get(p, {}).get('api_key')]
