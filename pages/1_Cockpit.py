@@ -260,19 +260,34 @@ def render_portfolio_risk_summary(live_data: dict):
 
     with cols[2]:
         import math
+        pnl_help = "Real-time Profit & Loss for the current trading session (reset daily)."
         if daily_pnl is None or (isinstance(daily_pnl, float) and math.isnan(daily_pnl)):
-            st.metric("Daily P&L", "$0", delta="No data", delta_color="off")
+            st.metric("Daily P&L", "$0", delta="No data", delta_color="off", help=pnl_help)
         else:
             st.metric(
                 "Daily P&L",
                 f"${daily_pnl:+,.0f}",
                 delta=f"${daily_pnl:+,.0f}",
                 delta_color="normal",
+                help=pnl_help
             )
 
     with cols[3]:
-        pos_count = len([p for p in live_data.get('open_positions', []) if p.position != 0])
-        st.metric("Open Positions", pos_count)
+        open_positions = [p for p in live_data.get('open_positions', []) if p.position != 0]
+        pos_count = len(open_positions)
+
+        # Generate detailed tooltip for active positions
+        if open_positions:
+            details = ["**Active Positions:**"]
+            for p in open_positions:
+                symbol = p.contract.localSymbol if p.contract else "Unknown"
+                qty = p.position
+                details.append(f"• **{symbol}**: {qty}")
+            pos_help = "\n".join(details)
+        else:
+            pos_help = "No active positions currently held."
+
+        st.metric("Open Positions", pos_count, help=pos_help)
 
 
 def render_prediction_markets():
