@@ -34,6 +34,17 @@ async def main(dry_run: bool = False):
         logger.critical("Failed to load config.")
         return
 
+    # Initialize module-level data paths (same as orchestrator startup)
+    data_dir = config.get('data_dir')
+    if data_dir:
+        from trading_bot.brier_reconciliation import set_data_dir as set_brier_recon_dir
+        from trading_bot.brier_bridge import set_data_dir as set_brier_bridge_dir
+        from trading_bot.brier_scoring import set_data_dir as set_brier_scoring_dir
+        set_brier_recon_dir(data_dir)
+        set_brier_bridge_dir(data_dir)
+        set_brier_scoring_dir(data_dir)
+        logger.info(f"Data directory: {data_dir}")
+
     # --- Step 1: Council History Reconciliation (needs IB) ---
     logger.info("=" * 60)
     logger.info("STEP 1: Council History Reconciliation")
