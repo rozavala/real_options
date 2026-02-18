@@ -6,13 +6,14 @@ v3.1: Tracks sentinel performance for dashboard display.
 
 import json
 import logging
+import os
 from pathlib import Path
 from datetime import datetime, timezone
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
-STATS_FILE = Path("data/KC/sentinel_stats.json")
+STATS_FILE = Path(os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"), "sentinel_stats.json"))
 
 
 def set_data_dir(data_dir: str):

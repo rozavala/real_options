@@ -107,7 +107,9 @@ def _record_sentinel_health(name: str, status: str, interval_seconds: int, error
         logger.warning(f"Failed to record sentinel health for {name}: {e}")
 
 class TriggerDeduplicator:
-    def __init__(self, window_seconds: int = 7200, state_file="data/KC/deduplicator_state.json", critical_severity_threshold: int = 9):
+    def __init__(self, window_seconds: int = 7200, state_file=None, critical_severity_threshold: int = 9):
+        if state_file is None:
+            state_file = os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"), "deduplicator_state.json")
         self.state_file = state_file
         self.window = window_seconds
         self.critical_severity_threshold = critical_severity_threshold
@@ -3962,7 +3964,7 @@ async def run_brier_reconciliation(config: dict):
         global _brier_zero_resolution_streak
         try:
             import json
-            brier_path = os.path.join(os.path.dirname(__file__), 'data', 'enhanced_brier.json')
+            brier_path = os.path.join(config.get('data_dir', 'data'), 'enhanced_brier.json')
             if os.path.exists(brier_path):
                 with open(brier_path, 'r') as f:
                     brier_data = json.load(f)
@@ -4600,6 +4602,7 @@ async def main(commodity_ticker: str = None):
     from trading_bot.brier_bridge import set_data_dir as set_brier_bridge_dir
     from trading_bot.brier_scoring import set_data_dir as set_brier_scoring_dir
     from trading_bot.weighted_voting import set_data_dir as set_weighted_voting_dir
+    from trading_bot.brier_reconciliation import set_data_dir as set_brier_recon_dir
 
     StateManager.set_data_dir(data_dir)
     set_tracker_dir(data_dir)
@@ -4611,6 +4614,7 @@ async def main(commodity_ticker: str = None):
     set_brier_bridge_dir(data_dir)
     set_brier_scoring_dir(data_dir)
     set_weighted_voting_dir(data_dir)
+    set_brier_recon_dir(data_dir)
 
     global GLOBAL_DEDUPLICATOR
     GLOBAL_DEDUPLICATOR = TriggerDeduplicator(

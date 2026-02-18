@@ -157,7 +157,10 @@ class HallucinationDetector:
         self.agent_flags: Dict[str, List[HallucinationFlag]] = {}
         self.quarantined_agents: Set[str] = set()
         import os as _os
-        self._state_file = _os.path.join(data_dir, "quarantine_state.json") if data_dir else "data/KC/quarantine_state.json"
+        if not data_dir:
+            _ticker = _os.environ.get("COMMODITY_TICKER", "KC")
+            data_dir = f"data/{_ticker}"
+        self._state_file = _os.path.join(data_dir, "quarantine_state.json")
         self._load_state()
 
         # DYNAMICALLY build known facts from the profile

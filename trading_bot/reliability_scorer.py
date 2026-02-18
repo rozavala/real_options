@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import logging
 
@@ -7,7 +8,10 @@ logger = logging.getLogger(__name__)
 class ReliabilityScorer:
     """Tracks and scores agent prediction accuracy using Brier scores."""
 
-    def __init__(self, scores_file: str = "./data/KC/agent_scores.json"):
+    def __init__(self, scores_file: str = None):
+        if scores_file is None:
+            ticker = os.environ.get("COMMODITY_TICKER", "KC")
+            scores_file = f"./data/{ticker}/agent_scores.json"
         self.scores_file = Path(scores_file)
         self.scores = self._load_scores()
 

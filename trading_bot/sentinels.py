@@ -111,7 +111,7 @@ class SentinelTrigger:
 
 class Sentinel:
     """Base class for all sentinels."""
-    CACHE_DIR = "data/KC/sentinel_caches"
+    CACHE_DIR = os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"), "sentinel_caches")
 
     def __init__(self, config: dict):
         self.config = config
@@ -451,7 +451,7 @@ class WeatherSentinel(Sentinel):
     Monitors specific coffee-growing regions for frost or drought risks.
     Frequency: Every 4 Hours (24/7).
     """
-    ALERT_STATE_FILE = "data/KC/weather_sentinel_alerts.json"
+    ALERT_STATE_FILE = os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"), "weather_sentinel_alerts.json")
 
     def __init__(self, config: dict):
         super().__init__(config)

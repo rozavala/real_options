@@ -43,7 +43,7 @@ CROSS_CUE_RULES = {
 
 
 # Default TMS path — overridden by set_data_dir() for multi-commodity
-_default_tms_path = "./data/KC/tms"
+_default_tms_path = os.path.join("./data", os.environ.get("COMMODITY_TICKER", "KC"), "tms")
 
 
 def set_data_dir(data_dir: str):
