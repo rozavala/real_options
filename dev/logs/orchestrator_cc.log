@@ -1,0 +1,90 @@
+2026-02-18 00:23:03,883 - Orchestrator - INFO - =============================================
+2026-02-18 00:23:03,883 - Orchestrator - INFO - === Starting Trading Bot Orchestrator [CC] ===
+2026-02-18 00:23:03,884 - Orchestrator - INFO - =============================================
+2026-02-18 00:23:03,884 - Orchestrator - INFO - Data directory: /home/rodrigo/real_options/data/CC
+2026-02-18 00:23:03,886 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 00:23:03,887 - Orchestrator - INFO - Applied commodity overrides for CC: ['commodity', 'strategy', 'risk_management']
+2026-02-18 00:23:03,887 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-18 00:23:03,887 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-18 00:23:03,887 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-18 00:23:03,887 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/CC
+2026-02-18 00:23:03,887 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-18 00:23:03,887 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-18 00:23:03,888 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/CC/tms
+2026-02-18 00:23:03,888 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-18 00:23:03,888 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-18 00:23:03,888 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-18 00:23:03,888 - Orchestrator - WARNING - ============================================================
+2026-02-18 00:23:03,888 - Orchestrator - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
+2026-02-18 00:23:03,888 - Orchestrator - WARNING -   Client IDs: DEV range (10-79)
+2026-02-18 00:23:03,888 - Orchestrator - WARNING -   Trading Mode: LIVE
+2026-02-18 00:23:03,888 - Orchestrator - WARNING - ============================================================
+2026-02-18 00:23:03,890 - trading_bot.budget_guard - INFO - Budget guard reset for 2026-02-18. Limit: $15.00
+2026-02-18 00:23:03,890 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-18 00:23:03,890 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-18 00:23:03,890 - Orchestrator - INFO - Expiry filter window: 45-365 DTE
+2026-02-18 00:23:04,086 - Orchestrator - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-18 00:23:04,086 - Orchestrator - INFO - Built session schedule: 17 tasks for CC (04:45-13:30 ET)
+2026-02-18 00:23:04,086 - Orchestrator - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
+2026-02-18 00:23:04,092 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 17 scheduled tasks already passed:
+  - 04:00 ET: start_monitoring
+  - 04:01 ET: process_deferred_triggers
+  - 04:30 ET: cleanup_orphaned_theses
+  - 05:11 ET: signal_open
+  - 07:22 ET: signal_early
+  - 09:07 ET: audit_mid_session
+  - 09:33 ET: signal_mid
+  - 11:45 ET: signal_late
+  - 12:55 ET: audit_pre_close
+  - 13:05 ET: close_stale_primary
+  - 13:15 ET: close_stale_fallback
+  - 13:25 ET: emergency_hard_close
+  - 13:35 ET: log_equity_snapshot
+  - 13:38 ET: reconcile_and_analyze
+  - 13:41 ET: brier_reconciliation
+  - 13:44 ET: sentinel_effectiveness
+  - 13:47 ET: eod_shutdown
+2026-02-18 00:23:04,096 - Orchestrator - INFO - --- Recovery: Evaluating 17 missed tasks ---
+2026-02-18 00:23:04,096 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
+2026-02-18 00:23:04,097 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
+2026-02-18 00:23:04,097 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 04:30 ET)
+2026-02-18 00:23:04,097 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-18 00:23:04,097 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 471 [REMOTE/PAPER]...
+2026-02-18 00:23:04,456 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 471
+2026-02-18 00:23:04,496 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-18 00:23:04,678 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-18 00:23:04,691 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-18 00:23:04,691 - trading_bot.connection_pool - INFO - Disconnecting IB (cleanup)...
+2026-02-18 00:23:07,696 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-18 00:23:07,696 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: signal_open — market closed
+2026-02-18 00:23:07,697 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: signal_early — market closed
+2026-02-18 00:23:07,697 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_mid_session — market closed
+2026-02-18 00:23:07,697 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: signal_mid — market closed
+2026-02-18 00:23:07,697 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: signal_late — market closed
+2026-02-18 00:23:07,697 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_pre_close — market closed
+2026-02-18 00:23:07,697 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_primary — market closed
+2026-02-18 00:23:07,697 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_fallback — market closed
+2026-02-18 00:23:07,697 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
+2026-02-18 00:23:07,697 - Orchestrator - INFO - ✅ ALREADY RAN: log_equity_snapshot completed earlier today (before restart). Skipping re-execution.
+2026-02-18 00:23:07,698 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
+2026-02-18 00:23:07,698 - Orchestrator - INFO - 🔄 RECOVERY: Running missed brier_reconciliation [run_brier_reconciliation] (was scheduled 13:41 ET)
+2026-02-18 00:23:07,698 - trading_bot.brier_reconciliation - INFO - Missing required files for resolution
+2026-02-18 00:23:07,698 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-02-18 00:23:07,700 - Orchestrator - INFO - ✅ RECOVERY: brier_reconciliation completed
+2026-02-18 00:23:07,700 - Orchestrator - INFO - ✅ ALREADY RAN: sentinel_effectiveness completed earlier today (before restart). Skipping re-execution.
+2026-02-18 00:23:07,701 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: eod_shutdown — policy=NEVER (shutdown task)
+2026-02-18 00:23:07,701 - Orchestrator - INFO - System restarted with 17 missed tasks.
+✅ 2 recovered | ⏭️ 12 skipped | ✔️ 3 already ran
+2026-02-18 00:23:08,036 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-18 00:23:08,301 - Orchestrator - INFO - Running TopicDiscoveryAgent on startup...
+2026-02-18 00:23:08,354 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-18 00:23:12,836 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-18 00:23:12,838 - Orchestrator - INFO - Startup TopicDiscovery: 3 topics, No changes
+2026-02-18 00:23:12,839 - Orchestrator - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-18 09:00:00 UTC. Waiting for 8.61 hours.
+2026-02-18 00:23:12,840 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-18 00:23:13,174 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-18 00:23:16,436 - Orchestrator - INFO - MacroContagionSentinel: trigger detected (source=MacroContagionSentinel, severity=7)
+2026-02-18 00:23:16,440 - trading_bot.state_manager - INFO - Queued deferred trigger from MacroContagionSentinel
+2026-02-18 00:23:16,440 - Orchestrator - INFO - Deferred MacroContagionSentinel trigger for market open
+2026-02-18 00:27:16,651 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=False, trading_day=True
+2026-02-18 00:28:13,225 - trading_bot.self_healing - WARNING - SELF-HEAL: orchestrator.log exists but no file handler attached. Logs may only be going to stdout. Check logging_config.py for permission issues.
