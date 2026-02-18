@@ -6,9 +6,9 @@ Moves data from flat data/ and project root into data/KC/ for
 multi-commodity path isolation. Creates data/CC/ for cocoa.
 
 Safety:
-- Aborts if orchestrator.py is running
-- Idempotent: skips files that already exist at destination
-- Preserves originals until confirmed (copy + verify, then remove)
+- Aborts if orchestrator.py is running from THIS directory
+- Idempotent: for files, keeps the larger version (historical > fresh)
+- For directories, merges contents (copies missing files into destination)
 
 Usage:
     python scripts/migrate_data_dirs.py [--dry-run]
@@ -30,6 +30,7 @@ CC_DIR = os.path.join(DATA_DIR, 'CC')
 DATA_FILES = [
     'state.json',
     'deferred_triggers.json',
+    'deferred_triggers.json.tmp',
     '.state_global.lock',
     '.deferred_triggers.lock',
     'task_completions.json',
@@ -51,14 +52,17 @@ DATA_FILES = [
     'discovered_topics.json',
     'fundamental_regime.json',
     'weight_evolution.csv',
+    'compliance_decisions.csv',
+    'router_metrics.json',
+    'error_reporter_state.json',
+    'research_provenance.log',
 ]
 
-# Directories to move from data/ to data/KC/
+# Directories to move from data/ to data/KC/ (merge contents)
 DATA_DIRS = [
     'sentinel_caches',
     'tms',
     'dspy_optimized',
-    'surrogate_models',
 ]
 
 # Files to move from project root to data/KC/
@@ -68,32 +72,59 @@ ROOT_FILES = [
     'order_events.csv',
 ]
 
-# Directories to move from project root to data/KC/
+# Directories to move from project root to data/KC/ (merge contents)
 ROOT_DIRS = [
     'archive_ledger',
 ]
 
+# Stale CC files to remove (KC data that leaked before commodity filter)
+CC_STALE_FILES = [
+    'archive_ledger/trade_ledger_missing_trades.csv',
+]
+
 
 def is_orchestrator_running() -> bool:
-    """Check if orchestrator.py is currently running."""
+    """Check if orchestrator.py is running from THIS project directory."""
     try:
         result = subprocess.run(
-            ['pgrep', '-f', 'python.*orchestrator.py'],
+            ['pgrep', '-af', 'python.*orchestrator.py'],
             capture_output=True, text=True, timeout=5
         )
-        return result.returncode == 0
+        if result.returncode != 0:
+            return False
+        # Only flag if the orchestrator is running from our BASE_DIR
+        for line in result.stdout.strip().split('\n'):
+            if BASE_DIR in line or os.path.basename(BASE_DIR) in line:
+                return True
+        return False
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
 
 def migrate_file(src: str, dst: str, dry_run: bool) -> bool:
-    """Move a single file. Returns True if moved, False if skipped."""
+    """Move a single file. If both exist, keeps the larger one. Returns True if action taken."""
     if not os.path.exists(src):
         return False
 
     if os.path.exists(dst):
-        print(f"  SKIP (exists): {dst}")
-        return False
+        src_size = os.path.getsize(src)
+        dst_size = os.path.getsize(dst)
+        if src_size > dst_size:
+            # Source has more historical data — replace destination
+            if dry_run:
+                print(f"  WOULD REPLACE (src {src_size}B > dst {dst_size}B): {dst}")
+                return True
+            shutil.move(src, dst)
+            print(f"  REPLACED (src {src_size}B > dst {dst_size}B): {dst}")
+            return True
+        else:
+            # Destination already has equal or more data — remove source
+            if dry_run:
+                print(f"  SKIP (dst {dst_size}B >= src {src_size}B): {os.path.basename(dst)}")
+            else:
+                os.remove(src)
+                print(f"  REMOVED stale source (dst {dst_size}B >= src {src_size}B): {src}")
+            return False
 
     if dry_run:
         print(f"  WOULD MOVE: {src} -> {dst}")
@@ -106,27 +137,71 @@ def migrate_file(src: str, dst: str, dry_run: bool) -> bool:
 
 
 def migrate_directory(src: str, dst: str, dry_run: bool) -> bool:
-    """Move a directory. Returns True if moved, False if skipped."""
+    """Merge source directory into destination. Returns True if any files moved."""
     if not os.path.exists(src):
         return False
 
-    if os.path.exists(dst):
-        print(f"  SKIP (exists): {dst}")
+    # If src is a symlink, remove it (e.g., data/tms -> old prod symlink)
+    if os.path.islink(src):
+        if dry_run:
+            print(f"  WOULD REMOVE symlink: {src} -> {os.readlink(src)}")
+        else:
+            os.remove(src)
+            print(f"  REMOVED symlink: {src}")
         return False
 
-    if dry_run:
-        print(f"  WOULD MOVE DIR: {src} -> {dst}")
+    if not os.path.exists(dst):
+        if dry_run:
+            print(f"  WOULD MOVE DIR: {src} -> {dst}")
+            return True
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.move(src, dst)
+        print(f"  MOVED DIR: {src} -> {dst}")
         return True
 
-    os.makedirs(os.path.dirname(dst), exist_ok=True)
-    shutil.move(src, dst)
-    print(f"  MOVED DIR: {src} -> {dst}")
-    return True
+    # Both exist — merge: copy files from src that don't exist in dst
+    moved_any = False
+    for item in os.listdir(src):
+        src_item = os.path.join(src, item)
+        dst_item = os.path.join(dst, item)
+        if os.path.isfile(src_item) and not os.path.exists(dst_item):
+            if dry_run:
+                print(f"  WOULD MERGE: {src_item} -> {dst_item}")
+            else:
+                shutil.copy2(src_item, dst_item)
+                print(f"  MERGED: {src_item} -> {dst_item}")
+            moved_any = True
+
+    # Clean up source if we merged everything
+    if not dry_run and moved_any:
+        remaining = os.listdir(src)
+        dst_files = set(os.listdir(dst))
+        if all(f in dst_files for f in remaining):
+            shutil.rmtree(src)
+            print(f"  CLEANED: removed empty source {src}")
+
+    return moved_any
+
+
+def clean_cc_stale(dry_run: bool) -> int:
+    """Remove stale KC data that leaked into CC directory before commodity filter."""
+    cleaned = 0
+    for rel_path in CC_STALE_FILES:
+        full_path = os.path.join(CC_DIR, rel_path)
+        if os.path.exists(full_path):
+            if dry_run:
+                print(f"  WOULD REMOVE stale CC file: {full_path}")
+            else:
+                os.remove(full_path)
+                print(f"  REMOVED stale CC file: {full_path}")
+            cleaned += 1
+    return cleaned
 
 
 def main():
     parser = argparse.ArgumentParser(description="Migrate data to per-commodity directories")
     parser.add_argument('--dry-run', action='store_true', help="Show what would be done without making changes")
+    parser.add_argument('--force', action='store_true', help="Skip orchestrator running check")
     args = parser.parse_args()
 
     print("=== Multi-Commodity Data Migration ===")
@@ -135,9 +210,10 @@ def main():
     print()
 
     # Safety check
-    if is_orchestrator_running():
-        print("ERROR: orchestrator.py is running! Stop it before migrating.")
-        print("  systemctl stop trading-bot")
+    if not args.force and is_orchestrator_running():
+        print("ERROR: orchestrator.py is running from this directory! Stop it before migrating.")
+        print("  sudo systemctl stop trading-bot")
+        print("  (Use --force to skip this check if the orchestrator is from a different deployment)")
         sys.exit(1)
 
     if args.dry_run:
@@ -162,7 +238,7 @@ def main():
         if migrate_file(src, dst, args.dry_run):
             moved += 1
 
-    # Move directories from data/ to data/KC/
+    # Move/merge directories from data/ to data/KC/
     print("\n--- Moving data/ directories to data/KC/ ---")
     for dirname in DATA_DIRS:
         src = os.path.join(DATA_DIR, dirname)
@@ -178,7 +254,7 @@ def main():
         if migrate_file(src, dst, args.dry_run):
             moved += 1
 
-    # Move directories from project root to data/KC/
+    # Move/merge directories from project root to data/KC/
     print("\n--- Moving project root directories to data/KC/ ---")
     for dirname in ROOT_DIRS:
         src = os.path.join(BASE_DIR, dirname)
@@ -186,10 +262,15 @@ def main():
         if migrate_directory(src, dst, args.dry_run):
             moved += 1
 
-    print(f"\n{'Would move' if args.dry_run else 'Moved'}: {moved} items")
-    if not args.dry_run and moved > 0:
+    # Clean stale CC data
+    print("\n--- Cleaning stale CC data (pre-commodity-filter leaks) ---")
+    cleaned = clean_cc_stale(args.dry_run)
+
+    print(f"\n{'Would process' if args.dry_run else 'Processed'}: {moved} items moved, {cleaned} stale CC files removed")
+    if not args.dry_run:
         print("\nMigration complete. You can now start the orchestrator with:")
         print("  python orchestrator.py --commodity KC")
+        print("  python orchestrator.py --commodity CC")
 
 
 if __name__ == '__main__':
