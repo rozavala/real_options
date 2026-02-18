@@ -1072,19 +1072,32 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 # Fetch Trend (Fix Trend Blindness)
                 trend_pct = 0.0
                 try:
-                    # Identify underlying contract
+                    # Identify underlying FUTURES contract for daily bars
+                    # (IB has no EODChart data for FOP/BAG — must resolve to future)
                     target_contract = None
+                    query_contract = None
                     if isinstance(contract, Bag):
-                        # Extract first leg
+                        # Extract first leg's conId
                         if contract.comboLegs:
-                            first_leg_conid = contract.comboLegs[0].conId
-                            details = await asyncio.wait_for(
-                                ib.reqContractDetailsAsync(Contract(conId=first_leg_conid)), timeout=10
-                            )
-                            if details:
-                                target_contract = details[0].contract
+                            query_contract = Contract(conId=contract.comboLegs[0].conId)
+                    elif contract.secType == 'FOP':
+                        query_contract = Contract(conId=contract.conId) if contract.conId else contract
                     else:
-                        target_contract = contract
+                        target_contract = contract  # Already a future
+
+                    if query_contract and not target_contract:
+                        details = await asyncio.wait_for(
+                            ib.reqContractDetailsAsync(query_contract), timeout=10
+                        )
+                        if details:
+                            under_id = getattr(details[0], 'underConId', 0)
+                            if under_id:
+                                fut = Contract(conId=under_id)
+                                qualified = await asyncio.wait_for(
+                                    ib.qualifyContractsAsync(fut), timeout=8
+                                )
+                                if qualified:
+                                    target_contract = qualified[0]
 
                     if target_contract:
                         # Fetch 2 days of daily bars
