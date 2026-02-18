@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Wed Feb 18 14:00:03 UTC 2026
+Timestamp: Wed Feb 18 14:30:03 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  14:00:03 up 37 days, 20:23,  2 users,  load average: 0.02, 0.04, 0.00
+Uptime:  14:30:03 up 37 days, 20:53,  2 users,  load average: 0.11, 0.10, 0.05
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.9Gi       340Mi        34Mi       874Mi       948Mi
+Mem:           3.8Gi       2.9Gi       318Mi        34Mi       883Mi       934Mi
 Swap:          4.0Gi       426Mi       3.6Gi
 
 === LOAD AVERAGE ===
-0.02 0.04 0.00 1/841 1210812
+0.11 0.10 0.05 1/858 1211879
 
 === PROCESS STATUS ===
 Trading processes:
-console  1203374  0.5 11.6 1911632 469096 ?      Ssl  06:49   2:27 /home/console/real_options/venv/bin/python -u orchestrator.py
-console  1205390  0.0  7.1 1348708 288236 ?      Sl   09:15   0:06 /home/console/real_options/venv/bin/python position_monitor.py
+console  1203374  0.7 11.9 1919488 478012 ?      Ssl  06:49   3:28 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1205390  0.0  7.1 1348708 288492 ?      Sl   09:15   0:07 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1185121  0.3  9.6 2876372 388296 ?      Sl   Feb17   3:52 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1185121  0.3  9.6 2876372 388296 ?      Sl   Feb17   3:58 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,8 +36,6 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-02-18 12:01:26,537 - trading_bot.market_data_provider - ERROR - Error computing indicators for KCK6: 
-2026-02-18 12:01:26,834 - trading_bot.market_data_provider - ERROR - Error computing indicators for KCN6: 
 2026-02-18 12:01:26,934 - trading_bot.market_data_provider - ERROR - Error computing indicators for KCU6: 
 2026-02-18 12:01:36,540 - trading_bot.weighted_voting - ERROR - Regime detection failed: 
 2026-02-18 12:01:36,834 - trading_bot.weighted_voting - ERROR - Regime detection failed: 
@@ -46,3 +44,5 @@ Recent orchestrator errors:
 2026-02-18 12:01:47,238 - trading_bot.market_data_provider - ERROR - Error computing indicators for KCH7: 
 2026-02-18 12:13:34,572 - ib_insync.wrapper - ERROR - Error 162, reqId 16: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=742750192, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=282.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P2.825', tradingClass='KO')
 2026-02-18 12:13:40,893 - ib_insync.wrapper - ERROR - Error 162, reqId 23: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=673626481, symbol='KC', lastTradeDateOrContractMonth='20260612', strike=280.0, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KON6 P2.8', tradingClass='KO')
+2026-02-18 14:23:01,125 - trading_bot.agents - ERROR - Model call failed: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}
+2026-02-18 14:23:01,126 - trading_bot.agents - ERROR - Grounded data gathering failed: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}
