@@ -1029,6 +1029,15 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             return
         current_position_count = sum(1 for p in positions if p.position != 0)
 
+        # --- VaR Refresh: Update portfolio VaR before compliance checks ---
+        try:
+            from trading_bot.var_calculator import get_var_calculator
+            var_calc = get_var_calculator(config)
+            await var_calc.compute_portfolio_var(ib, config)
+            logger.info("Pre-batch VaR refresh complete")
+        except Exception as e:
+            logger.warning(f"Pre-batch VaR refresh failed (non-fatal): {e}")
+
         # Filter Queue based on Margin Impact AND Compliance Review
         orders_to_place = []
         orders_checked_count = 0

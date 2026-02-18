@@ -764,6 +764,92 @@ if config:
     # Render Portfolio Risk
     render_portfolio_risk_summary(live_data)
 
+    # === E.1: Portfolio VaR Display ===
+    try:
+        var_state_path = os.path.join('data', 'var_state.json')
+        if os.path.exists(var_state_path):
+            with open(var_state_path, 'r') as f:
+                var_data = json.load(f)
+
+            var_limit = config.get('compliance', {}).get('var_limit_pct', 0.03)
+            var_95_pct = var_data.get('var_95_pct', 0)
+            var_99_pct = var_data.get('var_99_pct', 0)
+            var_95_usd = var_data.get('var_95', 0)
+            var_99_usd = var_data.get('var_99', 0)
+            computed_epoch = var_data.get('computed_epoch', 0)
+            pos_count = var_data.get('position_count', 0)
+            commodities = var_data.get('commodities', [])
+            status = var_data.get('last_attempt_status', 'OK')
+
+            # Staleness indicator
+            import time as _t
+            age_hours = (_t.time() - computed_epoch) / 3600 if computed_epoch else 999
+            if age_hours < 1:
+                stale_color = "green"
+                stale_label = f"{age_hours*60:.0f}m ago"
+            elif age_hours < 2:
+                stale_color = "orange"
+                stale_label = f"{age_hours:.1f}h ago"
+            else:
+                stale_color = "red"
+                stale_label = f"{age_hours:.1f}h ago"
+
+            # Utilization color
+            if var_limit > 0:
+                util = var_95_pct / var_limit
+                if util < 0.67:
+                    util_color = "green"
+                elif util <= 1.0:
+                    util_color = "orange"
+                else:
+                    util_color = "red"
+            else:
+                util = 0
+                util_color = "green"
+
+            st.caption(f"Portfolio VaR (:{stale_color}[{stale_label}])")
+            var_cols = st.columns(4)
+            with var_cols[0]:
+                st.metric("VaR(95%)", f"{var_95_pct:.1%}", f"${var_95_usd:,.0f}")
+            with var_cols[1]:
+                st.metric("VaR(99%)", f"{var_99_pct:.1%}", f"${var_99_usd:,.0f}")
+            with var_cols[2]:
+                st.metric("Utilization", f":{util_color}[{util:.0%}]")
+            with var_cols[3]:
+                st.metric("Positions", f"{pos_count} ({', '.join(commodities)})")
+
+            # Failure indicator
+            if status == "FAILED":
+                st.warning(f"Last VaR computation failed: {var_data.get('last_attempt_error', 'Unknown')}")
+
+            # Risk Narrative expander
+            narrative = var_data.get('narrative', {})
+            if narrative:
+                with st.expander("Risk Narrative (L1 Interpreter)"):
+                    st.markdown(f"**Dominant Risk:** {narrative.get('dominant_risk', 'N/A')}")
+                    st.markdown(f"**Correlation Warning:** {narrative.get('correlation_warning', 'N/A')}")
+                    st.markdown(f"**Trend:** {narrative.get('trend', 'N/A')}")
+                    st.markdown(f"**Urgency:** {narrative.get('urgency', 'N/A')}")
+                    if narrative.get('recommendation'):
+                        st.markdown(f"**Recommendation:** {narrative['recommendation']}")
+
+            # Stress Scenarios expander
+            scenarios = var_data.get('scenarios', [])
+            if scenarios:
+                with st.expander("Stress Scenarios (L2 Scenario Architect)"):
+                    for s in scenarios:
+                        pnl = s.get('pnl', 0)
+                        pnl_color = "red" if pnl < 0 else "green"
+                        st.markdown(
+                            f"**{s.get('name', 'Unnamed')}** "
+                            f"({s.get('probability', 'N/A')}) — "
+                            f":{pnl_color}[P&L: ${pnl:+,.0f}]"
+                        )
+                        if s.get('description'):
+                            st.caption(s['description'])
+    except Exception:
+        pass  # VaR display is non-critical
+
     # Render Benchmarks
     st.caption("Market Benchmarks")
     bench_cols = st.columns(6)

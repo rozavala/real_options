@@ -3,7 +3,7 @@ import json
 import os
 import asyncio
 import re
-import time
+import time as _time
 from dataclasses import dataclass
 from typing import Optional
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole
@@ -11,6 +11,24 @@ from trading_bot.utils import get_dollar_multiplier, get_active_ticker
 from config.commodity_profiles import get_active_profile
 
 logger = logging.getLogger(__name__)
+
+# --- VaR startup grace period ---
+# Set explicitly by orchestrator main(), NOT at import time.
+# Tests and verify scripts get no grace period (correct behavior).
+_ORCHESTRATOR_BOOT_TIME = None
+
+
+def set_boot_time():
+    """Called by orchestrator in main() to enable startup grace period."""
+    global _ORCHESTRATOR_BOOT_TIME
+    _ORCHESTRATOR_BOOT_TIME = _time.time()
+
+
+def _in_startup_grace_period() -> bool:
+    """Check if we're within the 15-minute startup grace period."""
+    if _ORCHESTRATOR_BOOT_TIME is None:
+        return False  # Not under orchestrator — no grace
+    return (_time.time() - _ORCHESTRATOR_BOOT_TIME) < 900
 
 @dataclass
 class ComplianceDecision:
@@ -121,7 +139,7 @@ class ComplianceDecision:
 
 # Module-level cache for ContractDetails (prevents redundant API calls during multi-signal bursts)
 # TTL: 1 hour, Max entries: 500 (FIFO eviction)
-_CONTRACT_DETAILS_CACHE: dict = {}  # {conId: {'data': ..., 'ts': time.time()}}
+_CONTRACT_DETAILS_CACHE: dict = {}  # {conId: {'data': ..., 'ts': _time.time()}}
 _CACHE_TTL_SECONDS = 3600
 _CACHE_MAX_SIZE = 500
 
@@ -166,7 +184,7 @@ async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
             """Fetch leg details with TTL-bounded caching."""
             cache_key = leg.conId
             cached = _CONTRACT_DETAILS_CACHE.get(cache_key)
-            if cached and (time.time() - cached['ts']) < _CACHE_TTL_SECONDS:
+            if cached and (_time.time() - cached['ts']) < _CACHE_TTL_SECONDS:
                 logger.debug(f"Cache hit for conId {cache_key}")
                 return cached['data']
 
@@ -183,7 +201,7 @@ async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
                 if len(_CONTRACT_DETAILS_CACHE) >= _CACHE_MAX_SIZE:
                     oldest_key = min(_CONTRACT_DETAILS_CACHE, key=lambda k: _CONTRACT_DETAILS_CACHE[k]['ts'])
                     del _CONTRACT_DETAILS_CACHE[oldest_key]
-                _CONTRACT_DETAILS_CACHE[cache_key] = {'data': result, 'ts': time.time()}
+                _CONTRACT_DETAILS_CACHE[cache_key] = {'data': result, 'ts': _time.time()}
                 return result
             return None
 
@@ -558,6 +576,59 @@ class ComplianceGuardian:
                 f"exceeds {limit_pct:.0%} of equity (${max_allowed:,.2f})."
             )
             return False, reason
+
+        # === Article V: Portfolio VaR Gate ===
+        enforcement_mode = self.config.get('compliance', {}).get('var_enforcement_mode', 'log_only')
+        try:
+            from trading_bot.var_calculator import get_var_calculator
+            var_limit = self.limits.get('var_limit_pct', 0.03)
+            stale_block = self.limits.get('var_stale_seconds', 3600) * 2
+
+            if enforcement_mode == 'log_only':
+                cached = get_var_calculator(self.config).get_cached_var()
+                if cached:
+                    logger.info(f"Article V [LOG_ONLY]: VaR {cached.var_95_pct:.1%}")
+
+            elif enforcement_mode == 'warn':
+                cached = get_var_calculator(self.config).get_cached_var()
+                if cached and cached.var_95_pct > self.limits.get('var_warning_pct', 0.02):
+                    logger.warning(f"Article V [WARN]: VaR {cached.var_95_pct:.1%} > warning threshold")
+
+            elif enforcement_mode == 'enforce':
+                # Emergency cycle bypass (log only)
+                if order_context.get('cycle_type') == 'EMERGENCY':
+                    cached = get_var_calculator(self.config).get_cached_var()
+                    if cached:
+                        logger.info(f"Article V: Emergency — VaR {cached.var_95_pct:.1%} (info only)")
+                else:
+                    cached = get_var_calculator(self.config).get_cached_var()
+                    if cached is None:
+                        if _in_startup_grace_period():
+                            logger.warning("Article V: No VaR data but startup grace active — allowing")
+                        else:
+                            return False, "REJECTED - Article V: VaR not computed (fail-closed)."
+
+                    elif cached:
+                        # Graduated staleness + startup grace
+                        age = _time.time() - cached.computed_epoch
+                        if age > stale_block:
+                            if _in_startup_grace_period():
+                                logger.warning("Article V: Stale VaR but startup grace active")
+                            else:
+                                return False, f"REJECTED - Article V: VaR {age/3600:.1f}h stale"
+
+                        if cached.var_95_pct > var_limit:
+                            return False, (
+                                f"REJECTED - Article V: Portfolio VaR ({cached.var_95_pct:.1%}) "
+                                f"> limit ({var_limit:.1%})"
+                            )
+
+        except ImportError:
+            logger.debug("var_calculator not available — Article V skipped")
+        except Exception as e:
+            logger.error(f"Article V error: {e}")
+            if enforcement_mode == 'enforce' and order_context.get('cycle_type') != 'EMERGENCY':
+                return False, f"REJECTED - Article V error (fail-closed): {e}"
 
         # === FIX-003: Align LLM instructions with deterministic code logic ===
         # The limit_pct variable already contains the correct limit (40% standard or 55% for straddles)

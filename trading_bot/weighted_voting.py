@@ -367,7 +367,8 @@ async def calculate_weighted_decision(
     ib: Optional[Any] = None,
     contract: Optional[Any] = None,
     regime: str = "UNKNOWN",
-    min_quorum: int = 3
+    min_quorum: int = 3,
+    config: dict = None
 ) -> dict:
     """
     Calculate weighted decision from all agent reports.
@@ -616,6 +617,30 @@ async def calculate_weighted_decision(
     avg_conf = sum(v.confidence for v in votes) / len(votes)
     final_confidence = (unanimity * 0.4) + (avg_conf * 0.6)
 
+    # VaR-aware confidence dampener
+    var_dampener = 1.0
+    var_utilization = 0.0
+    raw_confidence = None
+    try:
+        if config:
+            from trading_bot.var_calculator import get_var_calculator
+            var_calc = get_var_calculator(config)
+            cached_var = var_calc.get_cached_var() if var_calc else None
+            if cached_var:
+                var_limit_pct = config.get('compliance', {}).get('var_limit_pct', 0.03)
+                var_utilization = cached_var.var_95_pct / var_limit_pct if var_limit_pct > 0 else 0
+                if var_utilization > 0.8:
+                    # Smooth dampening: 80% util -> 1.0, 100% util -> 0.5
+                    var_dampener = max(0.5, 1.0 - (var_utilization - 0.8) * 2.5)
+                    raw_confidence = final_confidence
+                    final_confidence *= var_dampener
+                    logger.info(
+                        f"VaR dampener: {var_dampener:.2f} (util: {var_utilization:.0%}), "
+                        f"confidence: {raw_confidence:.2f} -> {final_confidence:.2f}"
+                    )
+    except Exception:
+        pass  # Non-fatal
+
     weight_summary = {
         v['agent']: (
             f"domain={v.get('domain_weight', 1.0):.1f} × "
@@ -697,7 +722,10 @@ async def calculate_weighted_decision(
         'weighted_score': round(normalized_score, 4),
         'vote_breakdown': vote_breakdown,
         'dominant_agent': dominant_agent,
-        'trigger_type': trigger_type.value
+        'trigger_type': trigger_type.value,
+        'var_dampener': round(var_dampener, 3),
+        'var_utilization': round(var_utilization, 3),
+        'raw_confidence': round(raw_confidence, 3) if raw_confidence is not None else None,
     }
 
 

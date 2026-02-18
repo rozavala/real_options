@@ -165,6 +165,9 @@ class CommodityProfile:
     concentration_proxies: List[str] = field(default_factory=list)  # e.g., ['KC', 'SB', 'EWZ', 'BRL']
     concentration_label: str = ""  # e.g., "Brazil", "West Africa"
 
+    # yfinance ticker for VaR historical data (e.g., "KC=F", "CC=F")
+    yfinance_ticker: str = ""
+
     # Cross-commodity correlation basket for MacroContagionSentinel
     cross_commodity_basket: Dict[str, str] = field(default_factory=dict)  # e.g., {'gold': 'GC=F', ...}
 
@@ -473,6 +476,7 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
         "technical": "Search for 'Coffee futures technical analysis {contract}' and '{contract} support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'.",
         "volatility": "Search for 'Coffee Futures Implied Volatility Rank current' and '{contract} option volatility skew'. Determine if option premiums are cheap or expensive relative to historical volatility.",
     },
+    yfinance_ticker="KC=F",
     concentration_proxies=['KC', 'SB', 'EWZ', 'BRL'],
     concentration_label="Brazil",
     cross_commodity_basket={
@@ -626,6 +630,7 @@ COCOA_PROFILE = CommodityProfile(
         "technical": "Search for 'Cocoa futures technical analysis {contract}' and '{contract} support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find the current '200-day SMA'.",
         "volatility": "Search for 'Cocoa Futures Implied Volatility Rank current' and '{contract} option volatility skew'. Determine if premiums are cheap or expensive.",
     },
+    yfinance_ticker="CC=F",
     concentration_proxies=['CC', 'SB', 'EWZ', 'NGN=X'],
     concentration_label="West Africa",
     cross_commodity_basket={
@@ -790,6 +795,7 @@ def _load_profile_from_json(path: str) -> CommodityProfile:
             'default': 0.05
         }),
         # Commodity-agnostic fields
+        yfinance_ticker=data.get('yfinance_ticker', ''),
         research_prompts=data.get('research_prompts', {}),
         concentration_proxies=data.get('concentration_proxies', []),
         concentration_label=data.get('concentration_label', ''),
