@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Wed Feb 18 15:30:03 UTC 2026
+Timestamp: Wed Feb 18 16:00:03 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  15:30:03 up 37 days, 21:53,  2 users,  load average: 0.17, 0.07, 0.01
+Uptime:  16:00:03 up 37 days, 22:23,  2 users,  load average: 0.28, 0.21, 0.10
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       3.0Gi       268Mi        34Mi       891Mi       893Mi
-Swap:          4.0Gi       425Mi       3.6Gi
+Mem:           3.8Gi       3.0Gi       238Mi        41Mi       851Mi       816Mi
+Swap:          4.0Gi       436Mi       3.6Gi
 
 === LOAD AVERAGE ===
-0.17 0.07 0.01 1/848 1213063
+0.28 0.21 0.10 3/853 1213686
 
 === PROCESS STATUS ===
 Trading processes:
-console  1203374  0.6 11.9 1919488 479096 ?      Ssl  06:49   3:33 /home/console/real_options/venv/bin/python -u orchestrator.py
-console  1205390  0.0  7.1 1348708 288492 ?      Sl   09:15   0:08 /home/console/real_options/venv/bin/python position_monitor.py
+console  1203374  0.6 11.0 1922176 443652 ?      Ssl  06:49   3:36 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1205390  0.0  6.4 1348708 259436 ?      Sl   09:15   0:08 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1185121  0.3  9.6 2876372 388296 ?      Sl   Feb17   4:09 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1185121  0.3  8.9 2876372 357960 ?      Sl   Feb17   4:15 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,7 +36,6 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-02-18 12:01:47,238 - trading_bot.market_data_provider - ERROR - Error computing indicators for KCH7: 
 2026-02-18 12:13:34,572 - ib_insync.wrapper - ERROR - Error 162, reqId 16: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=742750192, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=282.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P2.825', tradingClass='KO')
 2026-02-18 12:13:40,893 - ib_insync.wrapper - ERROR - Error 162, reqId 23: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=673626481, symbol='KC', lastTradeDateOrContractMonth='20260612', strike=280.0, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KON6 P2.8', tradingClass='KO')
 2026-02-18 14:23:01,125 - trading_bot.agents - ERROR - Model call failed: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}
@@ -46,3 +45,4 @@ Recent orchestrator errors:
 2026-02-18 14:31:11,076 - ib_insync.wrapper - ERROR - Error 162, reqId 13: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=743223944, symbol='KC', lastTradeDateOrContractMonth='20261112', strike=272.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOZ6 P2.725', tradingClass='KO')
 2026-02-18 14:31:15,372 - ib_insync.wrapper - ERROR - Error 201, reqId 17: Order rejected - reason:Riskless combination orders are not allowed., contract: Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=743223944, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=732415586, ratio=1, action='SELL', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)])
 2026-02-18 14:31:15,373 - OrderManager - ERROR - Pre-trade check failed for KC-P272.5+P267.5: 'list' object has no attribute 'initMarginChange'. Skipping safely.
+2026-02-18 15:56:32,432 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. This trade exhibits dangerous recency bias (anchoring on the 20% monthly selloff as 'the trend' rather than potential capitulation), confirmation bias (cherry-picking the agronomist's bullish crop outlook while discounting 4 months of remaining weather risk), and crowded-trade risk (X-sentiment at 4x baseline with 78% bearish themes suggests we're late to a consensus short). The 'majority of independent evidence streams' cited in the reasoning is misleading: Agronomist (0.8 bearish) is forward-looking with execution risk; Sentiment (0.8 bearish) is derived, not independent; Technical (0.65 bearish) is momentum-following and vulnerable to mean reversion at the 200-day MA. Meanwhile, we systematically discounted three critical bull risks: (1) ICE certified stocks at multi-year lows (Inventory) create a physical squeeze that can decouple from forward fundamentals, (2) the 30% export collapse (Supply_chain) is an actual, current supply disruption vs. a forecasted crop 4-6 months away, and (3) BRL strength (Macro, dismissed as 'neutral') directly reduces farmer selling incentives NOW, tightening near-term flow. The asymmetry is unfavorable: our max gain is another 10-15% downside to $2.40-2.50 support, but our max loss is a 25-40% short squeeze back to $3.50-3.80 if any of the three bull catalysts materializes. At 0.9 confidence on a bearish trade near 7-month lows with record speculative shorts, we are picking up pennies in front of a steamroller. WAIT for either: (a) a relief rally to $3.10-3.20 to re-enter shorts from better risk/reward, or (b) confirmation that April weather remains benign and Santos exports recover, validating the oversupply thesis with reduced squeeze risk.
