@@ -121,7 +121,7 @@ send_pushover_notification({}, 'DEPLOY ROLLBACK', 'Deploy of $CURR_COMMIT failed
 # =========================================================================
 echo "--- 1. Stopping old processes... ---"
 
-# Stop ALL commodity services (passwordless sudo configured in /etc/sudoers.d/coffee-bot)
+# Stop ALL commodity services (passwordless sudo configured in /etc/sudoers.d/trading-bot)
 for _t in "${ALL_TICKERS[@]}"; do
     _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
     if [ "$_t" = "KC" ]; then _svc="$SERVICE_NAME"; else _svc="trading-bot-${_tl}"; fi
@@ -214,6 +214,16 @@ for _t in "${ALL_TICKERS[@]}"; do
     mkdir -p "data/$_t"           # Per-commodity data directory
 done
 echo "  Directories OK"
+
+# =========================================================================
+# STEP 6: Data migration (idempotent — moves legacy flat paths to data/KC/)
+# =========================================================================
+echo "--- 6. Running data migration... ---"
+if [ -f "scripts/migrate_data_dirs.py" ]; then
+    python scripts/migrate_data_dirs.py --force || echo "  Migration encountered an issue (non-blocking)"
+else
+    echo "  No migration script found, skipping"
+fi
 
 # =========================================================================
 # STEP 7: Sync equity data (only for primary commodity — is_primary handles this)
