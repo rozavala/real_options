@@ -3401,3 +3401,202 @@ Running reconciliation could unlock up to 214 more predictions
 2026-02-18 14:30:02,122 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
 2026-02-18 14:30:02,440 - OrderManager - INFO - Approved KC-P282.5+P277.5: Margin $786.17 | Remaining: $38,934.36
 2026-02-18 14:30:02,441 - OrderManager - INFO - Processing order 2/3: 
+2026-02-18 14:30:04,505 - ib_insync.wrapper - ERROR - Error 162, reqId 44: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=673626481, symbol='KC', lastTradeDateOrContractMonth='20260612', strike=280.0, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KON6 P2.8', tradingClass='KO')
+2026-02-18 14:30:04,513 - trading_bot.compliance - INFO - Resolved underlying future: KCN6 (conId: 646040490)
+2026-02-18 14:30:04,626 - trading_bot.compliance - INFO - Volume from IB (KCN6): 152.0
+2026-02-18 14:30:04,627 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $1,612.50 (premium paid)
+2026-02-18 14:30:09,280 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
+2026-02-18 14:30:10,165 - OrderManager - INFO - Approved KC-P280.0+P275.0: Margin $1,204.92 | Remaining: $37,729.44
+2026-02-18 14:30:10,166 - OrderManager - INFO - Processing order 3/3: 
+2026-02-18 14:30:10,166 - OrderManager - INFO - Refreshing account summary for margin safety...
+2026-02-18 14:30:10,166 - OrderManager - INFO - Refreshed Available Funds: $39,720.53
+2026-02-18 14:30:12,227 - ib_insync.wrapper - ERROR - Error 162, reqId 51: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=698168768, symbol='KC', lastTradeDateOrContractMonth='20261112', strike=275.0, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOZ6 P2.75', tradingClass='KO')
+2026-02-18 14:30:12,318 - trading_bot.compliance - INFO - Resolved underlying future: KCZ6 (conId: 675565688)
+2026-02-18 14:30:12,428 - trading_bot.compliance - INFO - Volume from IB (KCZ6): 14.0
+2026-02-18 14:30:12,429 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $0.00 (premium paid)
+2026-02-18 14:30:15,327 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
+2026-02-18 14:30:15,443 - ib_insync.wrapper - ERROR - Error 201, reqId 55: Order rejected - reason:Riskless combination orders are not allowed., contract: Bag(symbol='KC', exchange='NYBOT', currency='USD', comboLegs=[ComboLeg(conId=698168768, ratio=1, action='BUY', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1), ComboLeg(conId=675726686, ratio=1, action='SELL', exchange='NYBOT', openClose=0, shortSaleSlot=0, designatedLocation='', exemptCode=-1)])
+2026-02-18 14:30:15,443 - OrderManager - ERROR - Pre-trade check failed for KC-P275.0+P270.0: 'list' object has no attribute 'initMarginChange'. Skipping safely.
+2026-02-18 14:30:19,650 - OrderManager - INFO - Placing Order for KC-P282.5+P277.5. Limit: 2.10. BAG: 2.03x2.8, V:0.0, L:N/A@14:30:17. LEGs: Leg KOK6 P2.825: 15.74x16.13, V:0.0, L:N/A, Leg KOK6 P2.775: 13.33x13.71, V:0.0, L:N/A
+2026-02-18 14:30:19,650 - OrderManager - INFO - Catastrophe stop: Resolved underlying future from strategy_def: Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
+2026-02-18 14:30:19,651 - root - INFO - Placing protected spread order for ...
+2026-02-18 14:30:19,652 - root - INFO - Catastrophe protection placed: BUY KCK6 @ 292.90 (stop) for spread order 61
+2026-02-18 14:30:24,360 - OrderManager - INFO - Placing Order for KC-P280.0+P275.0. Limit: 2.15. BAG: 2.13x3.11, V:0.0, L:N/A@14:30:20. LEGs: Leg KON6 P2.8: 23.13x23.63, V:101.0, L:N/A, Leg KON6 P2.75: 20.52x21.0, V:0.0, L:N/A
+2026-02-18 14:30:24,360 - OrderManager - INFO - Catastrophe stop: Resolved underlying future from strategy_def: Contract(secType='FUT', conId=646040490, symbol='KC', lastTradeDateOrContractMonth='20260721', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCN6', tradingClass='KC')
+2026-02-18 14:30:24,360 - root - INFO - Placing protected spread order for ...
+2026-02-18 14:30:24,361 - root - INFO - Catastrophe protection placed: BUY KCN6 @ 289.30 (stop) for spread order 68
+2026-02-18 14:30:25,096 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-18 14:30:25,099 - OrderManager - INFO - Monitoring orders for up to 30.0 minutes...
+2026-02-18 14:30:35,111 - OrderManager - INFO - Adaptive Update for Order 61 (KC-P282.5+P277.5): 2.1 -> 2.2 (Cap/Floor: 2.8)
+2026-02-18 14:30:40,118 - OrderManager - INFO - Adaptive Update for Order 68 (KC-P280.0+P275.0): 2.15 -> 2.25 (Cap/Floor: 2.95)
+2026-02-18 14:30:43,701 - OrderManager - INFO - Order 68 status update: Submitted
+2026-02-18 14:30:49,191 - OrderManager - INFO - Order 61 status update: Submitted
+2026-02-18 14:30:50,133 - OrderManager - INFO - Adaptive Update for Order 61 (KC-P282.5+P277.5): 2.1999999999999997 -> 2.25 (Cap/Floor: 2.8)
+2026-02-18 14:30:55,140 - OrderManager - INFO - Adaptive Update for Order 68 (KC-P280.0+P275.0): 2.25 -> 2.35 (Cap/Floor: 2.95)
+2026-02-18 14:31:05,152 - OrderManager - INFO - Adaptive Update for Order 61 (KC-P282.5+P277.5): 2.25 -> 2.3 (Cap/Floor: 2.8)
+2026-02-18 14:31:10,160 - OrderManager - INFO - Adaptive Update for Order 68 (KC-P280.0+P275.0): 2.35 -> 2.45 (Cap/Floor: 2.95)
+2026-02-18 14:31:20,174 - OrderManager - INFO - Adaptive Update for Order 61 (KC-P282.5+P277.5): 2.3 -> 2.35 (Cap/Floor: 2.8)
+2026-02-18 14:31:25,182 - OrderManager - INFO - Adaptive Update for Order 68 (KC-P280.0+P275.0): 2.45 -> 2.5 (Cap/Floor: 2.95)
+2026-02-18 14:31:25,332 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=450, market_open=True, trading_day=True
+2026-02-18 14:31:35,198 - OrderManager - INFO - Adaptive Update for Order 61 (KC-P282.5+P277.5): 2.35 -> 2.4 (Cap/Floor: 2.8)
+2026-02-18 14:31:40,206 - OrderManager - INFO - Adaptive Update for Order 68 (KC-P280.0+P275.0): 2.5 -> 2.55 (Cap/Floor: 2.95)
+2026-02-18 14:31:50,220 - OrderManager - INFO - Adaptive Update for Order 61 (KC-P282.5+P277.5): 2.4 -> 2.45 (Cap/Floor: 2.8)
+2026-02-18 14:31:55,229 - OrderManager - INFO - Adaptive Update for Order 68 (KC-P280.0+P275.0): 2.55 -> 2.6 (Cap/Floor: 2.95)
+2026-02-18 14:32:05,243 - OrderManager - INFO - Adaptive Update for Order 61 (KC-P282.5+P277.5): 2.45 -> 2.5 (Cap/Floor: 2.8)
+2026-02-18 14:32:10,250 - OrderManager - INFO - Adaptive Update for Order 68 (KC-P280.0+P275.0): 2.6 -> 2.65 (Cap/Floor: 2.95)
+2026-02-18 14:32:20,268 - OrderManager - INFO - Order 61 (KC-P282.5+P277.5): Reached cap/floor at 2.80. Waiting for fill or timeout.
+2026-02-18 14:32:20,268 - OrderManager - INFO - Order 61 (KC-P282.5+P277.5): Still at cap 2.80 for 0 minutes. Current market: Submitted
+2026-02-18 14:32:25,274 - OrderManager - INFO - Adaptive Update for Order 68 (KC-P280.0+P275.0): 2.65 -> 2.7 (Cap/Floor: 2.95)
+2026-02-18 14:32:40,299 - OrderManager - INFO - Adaptive Update for Order 68 (KC-P280.0+P275.0): 2.7 -> 2.75 (Cap/Floor: 2.95)
+2026-02-18 14:32:55,321 - OrderManager - INFO - Order 68 (KC-P280.0+P275.0): Reached cap/floor at 2.95. Waiting for fill or timeout.
+2026-02-18 14:32:55,321 - OrderManager - INFO - Order 68 (KC-P280.0+P275.0): Still at cap 2.95 for 0 minutes. Current market: Submitted
+2026-02-18 14:36:59,230 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=455, market_open=True, trading_day=True
+2026-02-18 14:37:20,673 - OrderManager - INFO - Order 61 (KC-P282.5+P277.5): Still at cap 2.80 for 5 minutes. Current market: Submitted
+2026-02-18 14:37:55,715 - OrderManager - INFO - Order 68 (KC-P280.0+P275.0): Still at cap 2.95 for 5 minutes. Current market: Submitted
+2026-02-18 14:41:00,547 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 32% of average (Sev: 6)
+2026-02-18 14:41:00,553 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-18 14:42:00,561 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=460, market_open=True, trading_day=True
+2026-02-18 14:42:21,072 - OrderManager - INFO - Order 61 (KC-P282.5+P277.5): Still at cap 2.80 for 10 minutes. Current market: Submitted
+2026-02-18 14:42:56,122 - OrderManager - INFO - Order 68 (KC-P280.0+P275.0): Still at cap 2.95 for 10 minutes. Current market: Submitted
+2026-02-18 14:47:01,846 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=465, market_open=True, trading_day=True
+2026-02-18 14:47:20,462 - OrderManager - INFO - Order 61 (KC-P282.5+P277.5): Still at cap 2.80 for 15 minutes. Current market: Submitted
+2026-02-18 14:47:55,508 - OrderManager - INFO - Order 68 (KC-P280.0+P275.0): Still at cap 2.95 for 15 minutes. Current market: Submitted
+2026-02-18 14:52:03,117 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=470, market_open=True, trading_day=True
+2026-02-18 14:52:20,845 - OrderManager - INFO - Order 61 (KC-P282.5+P277.5): Still at cap 2.80 for 20 minutes. Current market: Submitted
+2026-02-18 14:52:55,882 - OrderManager - INFO - Order 68 (KC-P280.0+P275.0): Still at cap 2.95 for 20 minutes. Current market: Submitted
+2026-02-18 14:54:04,022 - trading_bot.state_manager - INFO - Logged sentinel event from PriceSentinel to history.
+2026-02-18 14:54:04,023 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by PriceSentinel: Cumulative -5.0% move over 3 days (BEARISH) (Cycle: KC-67e83de8)
+2026-02-18 14:54:04,384 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-18 14:54:04,396 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-18 14:54:04,512 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-18 14:54:04,512 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'openai', 'gemini']
+2026-02-18 14:54:04,512 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'anthropic', 'openai', 'gemini'], 'diversity_score': 1.0}
+2026-02-18 14:54:04,518 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-18 14:54:04,528 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-02-18 14:54:04,645 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-18 14:54:04,646 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-18 14:54:04,646 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-18 14:54:04,646 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-18 14:54:04,647 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-18 14:54:04,647 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-18 14:54:04,649 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 14:54:04,717 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-18 14:54:04,717 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-18 14:54:04,718 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-18 14:54:08,833 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-18 14:54:09,308 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=282.70, sma_200=332.375, regime=RANGE_BOUND, vol_5d=0.0241
+2026-02-18 14:54:09,308 - Orchestrator - INFO - Emergency market context: price=282.7, regime=RANGE_BOUND
+2026-02-18 14:54:09,309 - trading_bot.semantic_cache - INFO - CACHE CROSS-SOURCE INVALIDATION: 1 entries removed for KCK6 (202605) (kept PriceSentinel)
+2026-02-18 14:54:09,309 - trading_bot.agents - INFO - Running Specialized Cycle triggered by PriceSentinel...
+2026-02-18 14:54:09,310 - trading_bot.agents - INFO - Routing to technical (Reason: Default routing)
+2026-02-18 14:54:09,311 - trading_bot.agents - INFO - Waking up technical...
+2026-02-18 14:54:09,678 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-18 14:54:09,679 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-18 14:55:14,059 - trading_bot.agents - INFO - Cross-Cue Triggered: technical -> ['fundamentalist']
+2026-02-18 14:55:14,169 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-18 14:55:14,169 - trading_bot.weighted_voting - INFO - Agent volatility: Fresh NEUTRAL vote (not abstention)
+2026-02-18 14:55:14,170 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.0 \u00d7 reliability=1.1 = 1.05", "macro": "domain=1.5 \u00d7 reliability=0.7 = 0.98", "geopolitical": "domain=1.0 \u00d7 reliability=1.1 = 1.05", "supply_chain": "domain=1.0 \u00d7 reliability=0.7 = 0.66", "inventory": "domain=1.0 \u00d7 reliability=0.6 = 0.62", "sentiment": "domain=2.0 \u00d7 reliability=1.0 = 1.92", "technical": "domain=4.5 \u00d7 reliability=1.0 = 4.58", "volatility": "domain=1.8 \u00d7 reliability=0.9 = 1.60"}
+2026-02-18 14:55:14,170 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.435, dominant=technical)
+2026-02-18 14:55:14,171 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.05,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.05,
+    "contribution": -0.841
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.65,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 0.98,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.05,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.05,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.66,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 0.66,
+    "contribution": 0.43
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.62,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 0.62,
+    "contribution": -0.5
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.0,
+    "reliability_mult": 0.96,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.92,
+    "contribution": -1.537
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 4.5,
+    "reliability_mult": 1.02,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 4.58,
+    "contribution": -2.977
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.5,
+    "domain_weight": 1.75,
+    "reliability_mult": 0.91,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.6,
+    "contribution": 0.0
+  }
+]
+2026-02-18 14:56:41,214 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Risk-premium unwind and liquidation aligned with a record Br
+2026-02-18 14:57:04,267 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=475, market_open=True, trading_day=True
+2026-02-18 14:57:20,297 - OrderManager - INFO - Order 61 (KC-P282.5+P277.5): Still at cap 2.80 for 25 minutes. Current market: Submitted
+2026-02-18 14:57:20,374 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED WITH THIS TRADE AS STRUCTURED. The bearish thesis is intellectually coherent for a 3-6 month horizon but is operationally dangerous over a 5-day window due to: (1) historically extreme short positioning that makes the trade a consensus crowded short, (2) a live weather risk catalyst that could re-insert risk premium overnight, (3) a physical market in backwardation that contradicts the 'oversupply is priced' narrative, and (4) a January export collapse that may reflect producer retention rather than logistical noise. If the bearish view is maintained, the correct posture is to WAIT for either a short-covering rally to fade (re-entry at higher prices with less crowded positioning) or for February export data to confirm improving physical flows. Entering a maximum-crowded short in a backwardated, weather-sensitive market 5 days before potential catalysts is a risk/reward failure regardless of the directional correctness of the thesis. Confidence of 0.7 on a trade with this positioning profile is not a 0.7 trade — it is a 0.5 trade with 0.7 narrative confidence, which are very different things.
+2026-02-18 14:57:20,375 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-18 14:57:20,377 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-18 14:57:20,379 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-18 14:57:20,379 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-18 14:57:20,380 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-18 14:57:20,386 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-18 14:57:20,562 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (VOLATILITY)
+2026-02-18 14:57:20,566 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-18 14:57:55,342 - OrderManager - INFO - Order 68 (KC-P280.0+P275.0): Still at cap 2.95 for 25 minutes. Current market: Submitted
