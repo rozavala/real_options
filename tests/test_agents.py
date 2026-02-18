@@ -2,7 +2,14 @@
 import os
 import pytest
 import asyncio
+import sys
 from unittest.mock import MagicMock, AsyncMock, patch
+
+# Mock dependencies before importing agents
+sys.modules['chromadb'] = MagicMock()
+sys.modules['pysqlite3'] = MagicMock()
+# sys.modules['google.genai'] = MagicMock() # Do not mock this, tests rely on patching Client specifically
+
 from trading_bot.agents import CoffeeCouncil
 
 # --- Mocks for Google GenAI SDK ---

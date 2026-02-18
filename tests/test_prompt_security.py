@@ -1,7 +1,14 @@
 import pytest
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 import json
 import logging
+
+# Mock dependencies before importing agents
+sys.modules['chromadb'] = MagicMock()
+sys.modules['pysqlite3'] = MagicMock()
+# sys.modules['google.genai'] = MagicMock()
+
 from trading_bot.sentinels import LogisticsSentinel, NewsSentinel, SentinelTrigger
 from trading_bot.agents import TradingCouncil
 
