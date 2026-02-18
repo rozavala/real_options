@@ -3268,8 +3268,14 @@ async def _run_periodic_sentinel(
                     )
                     GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, cooldown_seconds)
             else:
-                StateManager.queue_deferred_trigger(trigger)
-                logger.info(f"Deferred {trigger.source} trigger for market open")
+                # Record hash in deduplicator BEFORE deferring — prevents
+                # duplicate notifications on restart (sentinel re-fires same
+                # trigger, but deduplicator now recognizes it)
+                if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                    StateManager.queue_deferred_trigger(trigger)
+                    logger.info(f"Deferred {trigger.source} trigger for market open")
+                else:
+                    logger.info(f"Skipped duplicate deferred trigger: {trigger.source}")
     except asyncio.TimeoutError:
         logger.error(f"{sentinel_name} TIMED OUT after {timeout}s")
         _health_error = f"TIMEOUT after {timeout}s"
