@@ -3420,3 +3420,178 @@
 2026-02-18 15:16:25,326 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=495, market_open=True, trading_day=True
 2026-02-18 15:21:26,286 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=500, market_open=True, trading_day=True
 2026-02-18 15:26:27,662 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=505, market_open=True, trading_day=True
+2026-02-18 15:30:29,140 - Orchestrator - INFO - PriceSentinel detected 1.6% move - triggering position audit
+2026-02-18 15:30:29,153 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (PriceSentinel trigger (1.6% move)) ---
+2026-02-18 15:30:29,154 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 459 [REMOTE/PAPER]...
+2026-02-18 15:30:29,159 - trading_bot.state_manager - INFO - Logged sentinel event from PriceSentinel to history.
+2026-02-18 15:30:29,159 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by PriceSentinel: Price moved 1.56% in last hour (Threshold: 1.5%) (Cycle: CC-1c46322e)
+2026-02-18 15:30:29,452 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-18 15:30:29,546 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-18 15:30:29,546 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'anthropic', 'xai']
+2026-02-18 15:30:29,546 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'anthropic', 'xai'], 'diversity_score': 1.0}
+2026-02-18 15:30:29,553 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-18 15:30:29,555 - trading_bot.enhanced_brier - INFO - Loaded 152 predictions from /home/rodrigo/real_options/data/CC/enhanced_brier.json
+2026-02-18 15:30:29,587 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 7 created from CSV, 0 resolved from council_history
+2026-02-18 15:30:29,588 - trading_bot.agents - INFO - Loaded commodity profile: Cocoa
+2026-02-18 15:30:29,588 - trading_bot.observability - INFO - HallucinationDetector initialized for Cocoa: 4 port tokens, 6 producer tokens
+2026-02-18 15:30:29,588 - trading_bot.observability - INFO - ObservabilityHub initialized for Cocoa
+2026-02-18 15:30:29,588 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-18 15:30:29,588 - trading_bot.agents - INFO - Trading Council initialized for Cocoa. Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-18 15:30:29,588 - root - INFO - Fetching 2 active futures contracts for CC on NYBOT...
+2026-02-18 15:30:29,590 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-18 15:30:29,660 - root - INFO - Skipping contract CCH6 (Exp: 20260316): Expires < 45 days.
+2026-02-18 15:30:29,660 - root - INFO - Found 9 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-18 15:30:29,660 - Orchestrator - INFO - Targeting contract: CCK6 (202605)
+2026-02-18 15:30:30,142 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 459
+2026-02-18 15:30:30,147 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-18 15:30:30,154 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-18 15:30:30,158 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
+2026-02-18 15:30:30,357 - Orchestrator - INFO - No open positions to audit.
+2026-02-18 15:30:30,358 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
+2026-02-18 15:30:34,166 - trading_bot.market_data_provider - INFO - Building market context for CCK6 (202605)...
+2026-02-18 15:30:34,643 - trading_bot.market_data_provider - INFO - Market context for CCK6 (202605): price=3257.00, sma_200=6546.925, regime=HIGH_VOLATILITY, vol_5d=0.0406
+2026-02-18 15:30:34,644 - Orchestrator - INFO - Emergency market context: price=3257.0, regime=HIGH_VOLATILITY
+2026-02-18 15:30:34,644 - trading_bot.agents - INFO - Running Specialized Cycle triggered by PriceSentinel...
+2026-02-18 15:30:34,644 - trading_bot.agents - INFO - Routing to technical (Reason: Default routing)
+2026-02-18 15:30:34,645 - trading_bot.agents - INFO - Waking up technical...
+2026-02-18 15:30:34,929 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-18 15:30:34,929 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-18 15:31:14,747 - trading_bot.agents - INFO - Cross-Cue Triggered: technical -> ['fundamentalist']
+2026-02-18 15:31:14,857 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-18 15:31:14,857 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.5 \u00d7 reliability=1.0 = 1.50", "macro": "domain=1.5 \u00d7 reliability=1.0 = 1.50", "geopolitical": "domain=1.0 \u00d7 reliability=1.0 = 1.00", "supply_chain": "domain=1.0 \u00d7 reliability=1.0 = 1.00", "inventory": "domain=1.0 \u00d7 reliability=1.0 = 1.00", "sentiment": "domain=2.0 \u00d7 reliability=1.0 = 2.00", "technical": "domain=2.1 \u00d7 reliability=1.0 = 2.10", "volatility": "domain=3.8 \u00d7 reliability=1.0 = 3.75"}
+2026-02-18 15:31:14,857 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.636, dominant=volatility)
+2026-02-18 15:31:14,858 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.8,
+    "final_weight": 1.5,
+    "contribution": -0.975
+  },
+  {
+    "agent": "macro",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.8,
+    "final_weight": 1.5,
+    "contribution": -0.975
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.8,
+    "final_weight": 1.0,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.8,
+    "final_weight": 1.0,
+    "contribution": -0.65
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.8,
+    "final_weight": 1.0,
+    "contribution": -0.8
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.0,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.8,
+    "final_weight": 2.0,
+    "contribution": -1.6
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.0999999999999996,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.1,
+    "contribution": -1.365
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 3.75,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.8,
+    "final_weight": 3.75,
+    "contribution": -2.438
+  }
+]
+2026-02-18 15:31:15,147 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 500 - {'type': 'error', 'error': {'type': 'api_error', 'message': 'Internal server error'}, 'request_id': 'req_011CYFmttDfwJHDcTe4SeWKN'}
+2026-02-18 15:31:16,570 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 500 - {'type': 'error', 'error': {'type': 'api_error', 'message': 'Internal server error'}, 'request_id': 'req_011CYFmtyZPMzsyyLF1nkDr7'}
+2026-02-18 15:31:18,879 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-sonnet-4-6 failed for permabear: Error code: 500 - {'type': 'error', 'error': {'type': 'api_error', 'message': 'Internal server error'}, 'request_id': 'req_011CYFmu9vyT99LZsfRr2CfL'}
+2026-02-18 15:31:29,156 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=510, market_open=True, trading_day=True
+2026-02-18 15:31:34,579 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-5.2 for permabear after primary failure.
+2026-02-18 15:31:34,580 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: Error code: 500 - {'type': 'error', 'error': {'type': 'api_error', 'message': 'Internal server error'}, 'request_id': 'req_011CYFmu9vyT99LZsfRr2CfL'}
+2026-02-18 15:32:13,042 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Evidence of loosening availability (rising ICE inventories/c
+2026-02-18 15:32:13,409 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 500 - {'type': 'error', 'error': {'type': 'api_error', 'message': 'Internal server error'}, 'request_id': 'req_011CYFmyAquXYzJ6kdbpxz1L'}
+2026-02-18 15:32:14,657 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 500 - {'type': 'error', 'error': {'type': 'api_error', 'message': 'Internal server error'}, 'request_id': 'req_011CYFmyGeQnrsKfQmLHCxmj'}
+2026-02-18 15:32:17,001 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-sonnet-4-6 failed for permabear: Error code: 500 - {'type': 'error', 'error': {'type': 'api_error', 'message': 'Internal server error'}, 'request_id': 'req_011CYFmySGqsXFizG68fb6ad'}
+2026-02-18 15:32:37,898 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-5.2 for permabear after primary failure.
+2026-02-18 15:32:37,898 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: Error code: 500 - {'type': 'error', 'error': {'type': 'api_error', 'message': 'Internal server error'}, 'request_id': 'req_011CYFmySGqsXFizG68fb6ad'}
+2026-02-18 15:32:37,898 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: PRE-MORTEM FINDINGS (Devil’s Advocate)
+
+1) What went wrong (why it failed catastrophically)
+- We shorted into a crowded, oversold, high-vol regime where the path dependency matters more than the eventual balance-sheet outcome. The market didn’t need bullish fundamentals—only a small catalyst to force short covering.
+- We assumed inventory/surplus headlines would translate into immediate sell pressure, but near-term deliverability, policy friction, and positioning created an asymmetric upside risk.
+
+2) What bias did we succumb to?
+- Confirmation bias: overweighted surplus projections + rising ICE stocks as decisive, underweighted that these are exactly the facts that can be ‘known/consensus’ and already priced after a 30–35% monthly crash.
+- Crowded-trade neglect: acknowledged extreme put/call skew and net shorts, but treated them as secondary ‘rally risk’ instead of the primary risk driver over a 5-day horizon.
+- Time-horizon mismatch / recency bias: used recent down-session and multi-year lows to justify ‘trend continuation’ even though sharp trend moves frequently mean-revert violently in HIGH_VOL regimes.
+
+3) What data did we ignore or misinterpret?
+- Put/Call Premium Ratio (~25.74): we framed it as bearish confirmation, but at that extreme it is more of a warning that downside is expensive/over-owned and upside is under-hedged—classic squeeze setup.
+- Warehouse accumulation headlines: we interpreted them as surplus/availability, but they can also mean supply is temporarily non-clearing/non-exportable due to administered pricing—bullish in the very short run.
+- Regional tightness note (Europe tighter vs US): dismissed as ‘localized,’ but in a deliverable futures market, regional/grade constraints can dominate short-term price formation.
+- Arrivals down ~4.4% YoY: we treated this as noise vs the surplus story; over a 5-day window, even modest supply-flow tightness can matter more than full-season surplus forecasts.
+
+4) VERDICT
+NO — do not proceed as structured. The 5-day failure mode is dominated by positioning + policy headline risk in a HIGH_VOL regime near multi-year lows. If you insist on bearish exposure, it should be via strictly defined-risk structures (and sized smaller), with explicit protection against gap-up/short-squeeze dynamics and clear invalidation levels.
+2026-02-18 15:32:37,902 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-18 15:32:37,903 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=HIGH_VOLATILITY
+2026-02-18 15:32:37,905 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=HIGH_VOLATILITY
+2026-02-18 15:32:37,905 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-18 15:32:37,906 - root - INFO - Logged council decision for CCK6 (202605)
+2026-02-18 15:32:37,909 - trading_bot.decision_signals - INFO - Decision signal logged: CCK6 (202605) → NEUTRAL (DIRECTIONAL/NONE)
+2026-02-18 15:32:38,040 - Orchestrator - INFO - Emergency Cycle concluded with no action: BEARISH (DIRECTIONAL)
+2026-02-18 15:32:38,043 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-18 15:36:29,898 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=515, market_open=True, trading_day=True
+2026-02-18 15:41:31,140 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=520, market_open=True, trading_day=True
+2026-02-18 15:43:32,052 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 35% of average (Sev: 6)
+2026-02-18 15:43:32,057 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-18 15:46:32,085 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=525, market_open=True, trading_day=True
+2026-02-18 15:51:33,028 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=530, market_open=True, trading_day=True
