@@ -1,6 +1,6 @@
 # Real Options — Engineering Roadmap
 
-**Last updated:** 2026-02-17
+**Last updated:** 2026-02-18
 **Reviewed by:** Rodrigo + Claude
 
 ---
@@ -37,34 +37,37 @@
 | E.5 Market Impact Modeling | Position sizes 1-5 contracts on $50K, impact negligible. Revisit at $500K+ |
 | G.7 Automated Incident Post-Mortems | Trade journal (A.5) + self-healing (G.4) cover 80% |
 | B.4 Cross-Agent Knowledge Graph | TMS handles knowledge sharing; active cross-cueing unproven need |
+| G.5 Multi-Commodity | **Done.** Cocoa (CC) launched Feb 17. Full path isolation across 34 modules, per-commodity systemd services, staggered boot, auto-detect deploy pipeline. PRs #879-#949. KC + CC running simultaneously on DEV. Key infra: `set_data_dir()` pattern across all stateful modules, `COMMODITY_ID_OFFSET` for IB client IDs, `_resolve_data_path()` for dashboard, `migrate_data_dirs.py` for migration, per-commodity deploy verification |
 
 ---
 
 ## Prioritized Backlog (optimized for return on capital)
 
-### #1 — G.5 Multi-Commodity (1st new market)
-**Type:** Growth | **Effort:** 1-2 weeks | **Status:** Partial (architecture done, profiles missing)
-
-Commodity-agnostic profile system is built (`config/commodity_profiles.py`, `CommodityProfile` dataclass, `get_commodity_profile()`). PR #879 replaced most hardcoded coffee constants with profile-driven logic. **Remaining work:** create actual profiles for Sugar (SB), Cocoa (CC), or Cotton (CT); audit ~80 remaining "KC"/coffee references in config and orchestrator; run end-to-end validation on paper trading.
-
-**Why #1:** Doubles the trading opportunity set with minimal code work. Architecture is 80% done — this is mostly data entry (contract specs, growing regions, weather thresholds, logistics hubs) plus testing. Each additional commodity is a multiplicative revenue lever, not additive. Also validates the commodity-agnostic architecture claim.
-
-**Revenue impact:** High — new revenue stream on existing infrastructure.
-
----
-
-### #2 — C.4 Surrogate Model Activation → C.2 Regime-Switching Inference
+### #1 — C.4 Surrogate Model Activation → C.2 Regime-Switching Inference
 **Type:** Cost → P&L | **Effort:** 3-4 weeks (both) | **Status:** Partial (surrogate exists, not wired)
 
-**C.4 (2 weeks):** `backtesting/surrogate_models.py` has a complete GradientBoosting pipeline. Need: wire to live `council_history.csv` for training data, automated weekly retraining, model versioning in `data/surrogate_models/`, accuracy tracking via Brier-like metric.
+**C.4 (2 weeks):** `backtesting/surrogate_models.py` has a complete GradientBoosting pipeline. Need: wire to live `council_history.csv` for training data, automated weekly retraining, model versioning in `data/{ticker}/surrogate_models/`, accuracy tracking via Brier-like metric. Now multi-commodity: train separate models per commodity.
 
 **C.2 (2 weeks, after C.4):** Route inference by market regime: quiet/range-bound days use surrogate model (~$0 per decision), news-driven days use lightweight 2-agent panel, crises use full Council. ~70% of trading days are quiet.
 
-**Why #2:** Direct bottom-line impact. If LLM costs are $500-1000/month, regime routing saves 60-80% ($300-800/month). The surrogate also provides a fast "second opinion" that can flag when the Council is hallucinating — decisions that diverge sharply from the surrogate's prediction warrant extra scrutiny.
+**Why #1:** Direct bottom-line impact. With two commodities running, LLM costs doubled. If LLM costs are $500-1000/month per commodity, regime routing saves 60-80% ($600-1600/month across KC+CC). The surrogate also provides a fast "second opinion" that can flag when the Council is hallucinating.
 
-**Revenue impact:** High — cost savings drop straight to profit. Surrogate also serves as sanity check on Council quality.
+**Revenue impact:** High — cost savings drop straight to profit. Impact multiplied by number of commodities.
 
 **Prerequisites:** C.4 before C.2.
+
+---
+
+### #2 — E.1 Portfolio-Level VaR
+**Type:** Survival | **Effort:** 3-4 weeks | **Status:** Not started
+
+Historical simulation VaR at 95%/99% confidence. Currently only per-trade risk exists in `risk_management.py`. Need portfolio-level aggregation with correlation between positions (including cross-commodity), stress testing against known scenarios (2014 frost, 2020 COVID crash, 2022 Brazil drought), integration with compliance to block new trades on VaR breach.
+
+**Why #2:** Now urgent — G.5 shipped and KC+CC run simultaneously. Coffee and cocoa are correlated (same growing regions, overlapping weather risk, shared logistics). Without portfolio-level VaR, the system can't detect that "long coffee calls + long cocoa calls" doubles exposure to a Brazil weather event. Per-trade checks pass individually but the portfolio is concentrated.
+
+**Revenue impact:** Low direct (prevents losses, not generates returns), but unlocks confidence to size up positions and add more commodities (Sugar, Cotton).
+
+**Prerequisites:** None. Urgency increased now that G.5 is live.
 
 ---
 
@@ -73,11 +76,11 @@ Commodity-agnostic profile system is built (`config/commodity_profiles.py`, `Com
 
 Real-time portfolio Greeks (Delta, Gamma, Theta, Vega). Options spreads have non-linear risk — a "delta-neutral" straddle becomes directional after a price move. Currently the system only uses delta for strike selection (`strategy.py:find_strike_by_delta`), with no monitoring after entry.
 
-Need: per-position and portfolio-level Greeks via IB's model, threshold alerts (e.g., portfolio delta exceeds ±50), theta-burn warnings, integration with position audit exit cycle.
+Need: per-position and portfolio-level Greeks via IB's model, threshold alerts (e.g., portfolio delta exceeds ±50), theta-burn warnings, integration with position audit exit cycle. Now multi-commodity: aggregate Greeks across KC+CC positions.
 
-**Why #3:** Prevents invisible loss accumulation. Without Greeks monitoring, the exit cycle can't distinguish between "position is slightly down but structurally fine" and "position has become a naked directional bet due to gamma." Critical for spreads where one leg may have decayed to near-zero.
+**Why #3:** Prevents invisible loss accumulation. Without Greeks monitoring, the exit cycle can't distinguish between "position is slightly down but structurally fine" and "position has become a naked directional bet due to gamma." Critical with two commodities — more concurrent positions mean more gamma risk.
 
-**Revenue impact:** Medium-high — loss prevention on existing positions. Becomes critical with multi-commodity (more concurrent positions).
+**Revenue impact:** Medium-high — loss prevention on existing positions.
 
 ---
 
@@ -86,7 +89,7 @@ Need: per-position and portfolio-level Greeks via IB's model, threshold alerts (
 
 Textual backpropagation — when a trade loses, a Judge LLM generates specific critique ("the analysis failed to account for X") and suggests prompt edits. Completes the self-learning loop: DSPy (done) optimizes structure, TextGrad optimizes reasoning.
 
-**Why #4:** Now that DSPy is live, TextGrad is the next compounding investment. Every losing trade becomes a training signal. The trade journal (A.5, done) provides the raw material — TextGrad adds the "what should we do differently" layer.
+**Why #4:** Now that DSPy is live, TextGrad is the next compounding investment. Every losing trade becomes a training signal. The trade journal (A.5, done) provides the raw material — TextGrad adds the "what should we do differently" layer. With two commodities, the training signal doubles.
 
 **Revenue impact:** Medium — improves win rate over time. Effect compounds.
 
@@ -94,16 +97,16 @@ Textual backpropagation — when a trade loses, a Judge LLM generates specific c
 
 ---
 
-### #5 — E.1 Portfolio-Level VaR
-**Type:** Survival | **Effort:** 3-4 weeks | **Status:** Not started
+### #5 — G.6 3rd Commodity (Sugar SB or Cotton CT)
+**Type:** Growth | **Effort:** 1 week | **Status:** Not started
 
-Historical simulation VaR at 95%/99% confidence. Currently only per-trade risk exists in `risk_management.py`. Need portfolio-level aggregation with correlation between positions, stress testing against known scenarios (2014 frost, 2020 COVID crash, 2022 Brazil drought), integration with compliance to block new trades on VaR breach.
+With G.5 infrastructure complete, adding a 3rd commodity is now trivial: create `CommodityProfile`, install systemd service, `mkdir data/SB`. The deploy pipeline auto-detects it. Main work is profile data (growing regions, weather thresholds, logistics hubs, research prompts).
 
-**Why #5:** Critical for capital preservation. Lower urgency on single-commodity $50K with 1-3 positions, but becomes a hard requirement once G.5 (multi-commodity) ships — correlated commodity positions can compound losses in ways per-trade checks miss.
+**Why #5:** Marginal cost near zero — all infra exists. Each commodity is a multiplicative revenue lever.
 
-**Revenue impact:** Low direct (prevents losses, not generates returns), but unlocks confidence to size up positions and add commodities.
+**Revenue impact:** High — new revenue stream for ~1 week of work.
 
-**Prerequisites:** None, but becomes urgent after G.5.
+**Prerequisites:** G.5 (done). IBKR market data subscription for the new commodity.
 
 ---
 
@@ -112,7 +115,7 @@ Historical simulation VaR at 95%/99% confidence. Currently only per-trade risk e
 
 When DSPy/TextGrad propose prompt changes, run them as A/B tests. 50% of cycles use old prompt, 50% new. Statistical significance test determines winner. Auto-promote at p<0.05, auto-reject at p>0.95 (null).
 
-**Why #6:** DSPy is live and generating optimized prompts. Without A/B testing, there's no safe way to validate them on live markets. Currently `dspy.use_optimized_prompts` is a binary config toggle — no gradual rollout, no statistical validation.
+**Why #6:** DSPy is live and generating optimized prompts. Without A/B testing, there's no safe way to validate them on live markets. Currently `dspy.use_optimized_prompts` is a binary config toggle — no gradual rollout, no statistical validation. Multi-commodity doubles the sample size for faster convergence.
 
 **Revenue impact:** Medium — safety gate for the optimization pipeline. Prevents bad prompts from going live.
 
@@ -221,7 +224,9 @@ C.4 Surrogate ──→ C.2 Regime Switching
 
 ✅ E.2 Exit Enhancements (done)
 
-G.5 Multi-Commodity (independent, unlocks G.6 later)
+✅ G.5 Multi-Commodity (done) ──→ G.6 3rd Commodity
+                                      │
+                                      └──→ E.1 VaR (urgency ↑)
 ```
 
 ## Recommended Execution Plan
@@ -231,9 +236,10 @@ G.5 Multi-Commodity (independent, unlocks G.6 later)
 | ~~Phase 1~~ | ~~A.3, C.1, C.5~~ | ~~3-5 weeks~~ | **Done** |
 | ~~Phase 2~~ | ~~F.4, E.2~~ | ~~4-6 weeks~~ | **Done** |
 | ~~Phase 3~~ | ~~A.1 DSPy~~ | ~~3-4 weeks~~ | **Done** |
-| **Phase 4** | **#1 G.5 Multi-Commodity + #2 C.4/C.2 Surrogate+Regime** | **4-6 weeks** | **Revenue growth + cost reduction** |
-| Phase 5 | #3 E.4 Greeks + #4 A.2 TextGrad | 5-7 weeks | Risk visibility + decision quality |
-| Phase 6 | #5 E.1 VaR + #6 G.2 A/B Testing | 5-7 weeks | Capital preservation + optimization safety |
-| Phase 7 | #7-#15 (depth + validation) | 20-30 weeks | Foundation for scale |
+| ~~Phase 4a~~ | ~~G.5 Multi-Commodity~~ | ~~2 weeks~~ | **Done** (CC launched Feb 17) |
+| **Phase 4b** | **#1 C.4/C.2 Surrogate+Regime + #2 E.1 VaR** | **4-6 weeks** | **Cost reduction + risk management** |
+| Phase 5 | #3 E.4 Greeks + #4 A.2 TextGrad + #5 G.6 3rd Commodity | 4-6 weeks | Risk visibility + growth + decision quality |
+| Phase 6 | #6 G.2 A/B Testing + #7 D.5 Reasoning Metrics | 4-6 weeks | Optimization safety + diagnostics |
+| Phase 7 | #8-#15 (depth + validation) | 20-30 weeks | Foundation for scale |
 
-**Phase 4 rationale:** Multi-commodity and surrogate/regime-switching are independent of each other and can run in parallel. Together they attack both sides of the P&L equation: more revenue opportunities (new commodities) and lower costs (regime routing). Both have the highest return-per-engineering-hour in the backlog.
+**Phase 4b rationale:** Surrogate/regime-switching is the highest-ROI item — LLM costs doubled with CC launch, so savings are amplified. VaR moved up because two correlated commodities (coffee + cocoa share growing regions) create portfolio risk that per-trade checks can't detect. Both are independent and can run in parallel.
