@@ -444,6 +444,20 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         f"Cap/Floor @ {ceiling_price if action == 'BUY' else floor_price:.2f}"
     )
 
+    # 5b. Riskless combo guard: skip zero-debit spreads that IB will reject
+    if action == 'BUY' and ceiling_price <= 0:
+        logging.warning(
+            f"RISKLESS COMBO FILTER: BUY spread has zero/negative ceiling price "
+            f"({ceiling_price:.2f}). IB would reject as riskless. Skipping."
+        )
+        return None
+    if action == 'SELL' and floor_price <= 0:
+        logging.warning(
+            f"RISKLESS COMBO FILTER: SELL spread has zero/negative floor price "
+            f"({floor_price:.2f}). IB would reject as riskless. Skipping."
+        )
+        return None
+
     # 6. Build the Bag contract using qualified leg conIds
     combo = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')
     for i, q_leg in enumerate(qualified_legs):
