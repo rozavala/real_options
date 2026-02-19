@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Thu Feb 19 14:00:02 UTC 2026
+Timestamp: Thu Feb 19 14:30:03 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  14:00:02 up 38 days, 20:23,  2 users,  load average: 0.00, 0.00, 0.00
+Uptime:  14:30:03 up 38 days, 20:53,  2 users,  load average: 0.08, 0.14, 0.08
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.8Gi       302Mi        34Mi       1.0Gi       1.0Gi
+Mem:           3.8Gi       2.8Gi       305Mi        34Mi       1.0Gi       1.0Gi
 Swap:          4.0Gi       536Mi       3.5Gi
 
 === LOAD AVERAGE ===
-0.00 0.00 0.00 2/840 1236439
+0.08 0.14 0.08 1/867 1237220
 
 === PROCESS STATUS ===
 Trading processes:
-console  1203374  0.4 10.6 1942132 427940 ?      Ssl  Feb18   7:53 /home/console/real_options/venv/bin/python -u orchestrator.py
-console  1231126  0.0  7.1 1348696 284724 ?      Sl   09:15   0:07 /home/console/real_options/venv/bin/python position_monitor.py
+console  1203374  0.4 10.7 1943640 429900 ?      Ssl  Feb18   8:50 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1231126  0.0  7.1 1348696 284980 ?      Sl   09:15   0:07 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1185121  0.3  8.6 2879480 345468 ?      Sl   Feb17   8:08 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1185121  0.3  8.6 2879480 345468 ?      Sl   Feb17   8:14 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,13 +36,13 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-02-19 12:04:39,725 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
-2026-02-19 12:20:18,132 - ib_insync.wrapper - ERROR - Error 162, reqId 26: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=742750192, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=282.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P2.825', tradingClass='KO')
-2026-02-19 12:20:25,019 - ib_insync.wrapper - ERROR - Error 162, reqId 33: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=732945272, symbol='KC', lastTradeDateOrContractMonth='20260612', strike=277.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KON6 P2.775', tradingClass='KO')
-2026-02-19 12:20:32,135 - ib_insync.wrapper - ERROR - Error 162, reqId 40: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=675726686, symbol='KC', lastTradeDateOrContractMonth='20261112', strike=270.0, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOZ6 P2.7', tradingClass='KO')
-2026-02-19 12:32:32,324 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
-2026-02-19 12:36:06,062 - Orchestrator - ERROR - EMERGENCY_LOCK acquisition timed out (300s) for MacroContagionSentinel. Skipping cycle.
-2026-02-19 12:39:04,798 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHSaK2Bg4kJfpYNCpsk9'}
-2026-02-19 12:39:05,910 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHSaPoB3ecmEBF3irjpB'}
-2026-02-19 12:39:08,024 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-sonnet-4-5-20250929 failed for permabear: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHSaYpuBBJYzjXhdvg5b'}
-2026-02-19 12:39:23,182 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHSaYpuBBJYzjXhdvg5b'}
+2026-02-19 14:27:40,499 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHarcCg3pSR4nYKG4upc'}
+2026-02-19 14:27:42,694 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-sonnet-4-5-20250929 failed for compliance: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHarmW1yq28qkJCzo4vm'}
+2026-02-19 14:27:45,734 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> openai. Reason: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHarY1ur1uEQMLug22HR'}
+3) Critical risk handling: While the Decision mentions backwardation and Santos bottleneck, it downplays them without reconciling with Supply_chain’s quantified constraint (55% vessels delayed; ~602,000 bags/month prevented from shipping) and Cecafé’s -30.74% YoY January exports—these are material near-term tightness risks that could contradict a near-term bearish timing.
+2026-02-19 14:27:47,244 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> openai. Reason: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHarmW1yq28qkJCzo4vm'}
+2026-02-19 14:27:47,244 - trading_bot.signal_generator - WARNING - COMPLIANCE BLOCKED KCU6 (202609): Hallucination/unsupported specificity: Decision says price is 'well below the long-term average'—no long-term average level is provided in Market Context or any report. Also states 'volatility is expensive...raises the cost of being long optionality; this…reduces conviction tier per the framework'—the IV being expensive is evidenced (~48.09%), but the 'framework/conviction tier' rule is not in the evidence packet (unsupported internal rule reference). Other core claims (rainfall/moisture surplus in cherry expansion; Conab 66.2M bags +17.2%; ICE stocks 435,494 with 143,758 pending; Vietnam exports +38.3%; downtrend/negative MACD; BRL impact conditional; Santos waiting ~2 days and logistics unquantified) are supported. No critical explicit risk is ignored, and BEARISH direction matches majority reports.
+2026-02-19 14:29:27,523 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHazVgytHgvTuBQ3xoYK'}
+2026-02-19 14:29:28,661 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHazao4x7oNPTNd14GYw'}
+2026-02-19 14:29:30,797 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-sonnet-4-5-20250929 failed for permabear: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHazjxiyhrVaBCmBWCQc'}
+2026-02-19 14:29:45,961 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHazjxiyhrVaBCmBWCQc'}
