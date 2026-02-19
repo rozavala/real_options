@@ -66,6 +66,9 @@ class AgentRole(Enum):
     MASTER_STRATEGIST = "master"
     COMPLIANCE_OFFICER = "compliance"
 
+    # Utilities
+    TRADE_ANALYST = "trade_analyst"
+
 
 @dataclass
 class ModelConfig:
@@ -95,6 +98,7 @@ class ResponseCache:
         AgentRole.PERMABULL.value: 300,
         AgentRole.MASTER_STRATEGIST.value: 300,
         AgentRole.COMPLIANCE_OFFICER.value: 300,
+        AgentRole.TRADE_ANALYST.value: 3600,  # Post-mortems are stable, cache 1h
     }
 
     DEFAULT_TTL = 300  # 5 minutes fallback
@@ -477,16 +481,20 @@ class HeterogeneousRouter:
             AgentRole.MICROSTRUCTURE_SENTINEL: (ModelProvider.GEMINI, gem_flash),
 
             # --- TIER 2: ANALYSTS (Depth & Data are Priority) ---
+            # Grounded data (Google Search) runs on Gemini Flash in Phase 1,
+            # so analyst model only does reasoning over pre-gathered context.
+            # Gemini Pro reserved for Agronomist (deep domain reasoning);
+            # others spread across providers for diversity + quota headroom.
             AgentRole.AGRONOMIST: (ModelProvider.GEMINI, gem_pro),
-            AgentRole.INVENTORY_ANALYST: (ModelProvider.GEMINI, gem_pro),
-            AgentRole.VOLATILITY_ANALYST: (ModelProvider.GEMINI, gem_pro),
-            AgentRole.SUPPLY_CHAIN_ANALYST: (ModelProvider.GEMINI, gem_pro), # NEW ROLE
+            AgentRole.INVENTORY_ANALYST: (ModelProvider.ANTHROPIC, anth_pro),
+            AgentRole.VOLATILITY_ANALYST: (ModelProvider.XAI, xai_pro),
+            AgentRole.SUPPLY_CHAIN_ANALYST: (ModelProvider.XAI, xai_pro),
 
             AgentRole.MACRO_ANALYST: (ModelProvider.OPENAI, oai_pro),
             AgentRole.GEOPOLITICAL_ANALYST: (ModelProvider.OPENAI, oai_pro),
 
             AgentRole.TECHNICAL_ANALYST: (ModelProvider.OPENAI, oai_reasoning), # Math/Logic
-            AgentRole.SENTIMENT_ANALYST: (ModelProvider.XAI, xai_flash),
+            AgentRole.SENTIMENT_ANALYST: (ModelProvider.XAI, xai_pro),  # COT/crowd analysis needs reasoning
 
             # --- TIER 3: DECISION MAKERS (Safety & Debate) ---
             AgentRole.PERMABULL: (ModelProvider.XAI, xai_pro),             # Contrarian
@@ -494,6 +502,9 @@ class HeterogeneousRouter:
             AgentRole.COMPLIANCE_OFFICER: (ModelProvider.ANTHROPIC, anth_pro), # Veto (Sonnet)
 
             AgentRole.MASTER_STRATEGIST: (ModelProvider.OPENAI, oai_pro),  # Synthesis
+
+            # --- UTILITIES ---
+            AgentRole.TRADE_ANALYST: (ModelProvider.OPENAI, oai_pro),  # Post-mortem narrative
         }
 
         logger.info(f"HeterogeneousRouter initialized. Available: {[p.value for p in self.available_providers]}")
@@ -557,24 +568,39 @@ class HeterogeneousRouter:
 
             return fallbacks
 
-        # TIER 2: DEEP ANALYSTS
-        elif role in [AgentRole.AGRONOMIST, AgentRole.MACRO_ANALYST, AgentRole.SUPPLY_CHAIN_ANALYST, AgentRole.GEOPOLITICAL_ANALYST, AgentRole.INVENTORY_ANALYST, AgentRole.VOLATILITY_ANALYST]:
+        # TIER 2: DEEP ANALYSTS + UTILITIES
+        elif role in [AgentRole.AGRONOMIST, AgentRole.MACRO_ANALYST, AgentRole.SUPPLY_CHAIN_ANALYST, AgentRole.GEOPOLITICAL_ANALYST, AgentRole.INVENTORY_ANALYST, AgentRole.VOLATILITY_ANALYST, AgentRole.TRADE_ANALYST]:
             gem_pro = get_model('gemini', 'pro', 'gemini-3-pro-preview')
             gem_flash = get_model('gemini', 'flash', 'gemini-3-flash-preview')
             oai_pro = get_model('openai', 'pro', 'gpt-5.2')
             anth_pro = get_model('anthropic', 'pro', 'claude-sonnet-4-6')
+            xai_pro = get_model('xai', 'pro', 'grok-4-1-fast-reasoning')
 
             if primary_provider == ModelProvider.GEMINI:
-                # Gemini Pro exhausted → try Flash (same provider, free tier) → then OpenAI
+                # Gemini Pro exhausted → try Flash (same provider) → then cross-provider
                 return [
                     (ModelProvider.GEMINI, gem_flash),
                     (ModelProvider.OPENAI, oai_pro),
                     (ModelProvider.ANTHROPIC, anth_pro)
                 ]
-            else:
+            elif primary_provider == ModelProvider.ANTHROPIC:
                 return [
                     (ModelProvider.GEMINI, gem_pro),
-                    (ModelProvider.ANTHROPIC, anth_pro)
+                    (ModelProvider.OPENAI, oai_pro),
+                    (ModelProvider.XAI, xai_pro)
+                ]
+            elif primary_provider == ModelProvider.XAI:
+                return [
+                    (ModelProvider.GEMINI, gem_pro),
+                    (ModelProvider.ANTHROPIC, anth_pro),
+                    (ModelProvider.OPENAI, oai_pro)
+                ]
+            else:
+                # OpenAI primary (Macro, Geo)
+                return [
+                    (ModelProvider.GEMINI, gem_pro),
+                    (ModelProvider.ANTHROPIC, anth_pro),
+                    (ModelProvider.XAI, xai_pro)
                 ]
 
         # TIER 1: SENTINELS (Speed Required)

@@ -54,6 +54,7 @@ ROLE_PRIORITY = {
     'news_sentinel': CallPriority.LOW,
     'price_sentinel': CallPriority.LOW,
     'microstructure_sentinel': CallPriority.LOW,
+    'trade_analyst': CallPriority.LOW,  # Post-mortem utility, non-critical
 }
 
 

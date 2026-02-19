@@ -139,7 +139,7 @@ Generate a JSON object with:
 """
 
         response = await self.router.route(
-            AgentRole.PERMABEAR, prompt, response_json=True
+            AgentRole.TRADE_ANALYST, prompt, response_json=True
         )
 
         # Parse JSON response (using robust regex extraction)
