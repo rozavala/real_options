@@ -39,7 +39,7 @@ from ib_insync import IB
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 from performance_analyzer import get_trade_ledger_df
 # Decision signals: lightweight summary of Council decisions
-from trading_bot.decision_signals import get_decision_signals_df, set_data_dir as set_signals_dir
+from trading_bot.decision_signals import set_data_dir as set_signals_dir
 from config_loader import load_config
 from trading_bot.utils import configure_market_data_type
 from trading_bot.timestamps import parse_ts_column
@@ -303,7 +303,7 @@ def load_log_data():
             logs_content[name] = tail_file(log_path, n_lines=50)
 
         return logs_content
-    except Exception as e:
+    except Exception:
         return {}
 
 
@@ -317,6 +317,28 @@ def _ensure_event_loop():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     return loop
+
+
+# === SHARED STATE CACHING ===
+
+@st.cache_data(ttl=2)
+def _load_shared_state() -> dict:
+    """
+    Cached access to state.json to prevent multiple disk reads per rerun.
+    Short TTL (2s) ensures freshness while batching reads within a single script run.
+    """
+    try:
+        from trading_bot.state_manager import StateManager
+        return StateManager._load_raw_sync()
+    except Exception:
+        # Fallback if import fails or StateManager errors
+        if os.path.exists(STATE_FILE_PATH):
+            try:
+                with open(STATE_FILE_PATH, 'r') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
 
 
 # === SYSTEM HEALTH FUNCTIONS ===
@@ -557,8 +579,7 @@ def get_ib_connection_health() -> dict:
     Returns IB connection health metrics from state.
     """
     try:
-        from trading_bot.state_manager import StateManager
-        state = StateManager._load_raw_sync()
+        state = _load_shared_state()
 
         # Check for recent heartbeats or connection events
         sensors = state.get("sensors", {})
@@ -631,8 +652,6 @@ def get_sentinel_status():
     Returns a dict of sentinel names -> status info with staleness detection.
     Commodity-agnostic: sentinel list is derived from state data, not hardcoded.
     """
-    import json
-    from datetime import datetime, timezone
 
     # Complete sentinel registry with display metadata
     # 'availability' helps the dashboard group sentinels logically
@@ -650,13 +669,10 @@ def get_sentinel_status():
     result = {}
 
     try:
-        if os.path.exists(STATE_FILE_PATH):
-            with open(STATE_FILE_PATH, 'r') as f:
-                state = json.load(f)
+        state = _load_shared_state()
+        health_ns = state.get('sentinel_health', {})
 
-            health_ns = state.get('sentinel_health', {})
-
-            for name, meta in SENTINEL_REGISTRY.items():
+        for name, meta in SENTINEL_REGISTRY.items():
                 entry = health_ns.get(name, {})
                 data = entry.get('data', {}) if isinstance(entry, dict) else {}
                 timestamp = entry.get('timestamp', 0) if isinstance(entry, dict) else 0
@@ -705,6 +721,26 @@ def get_sentinel_status():
             }
 
     return result
+
+
+@st.cache_data(ttl=10)
+def load_deduplicator_metrics() -> dict:
+    """Load trigger deduplication metrics with caching."""
+    try:
+        with open(_resolve_data_path('deduplicator_state.json'), 'r') as f:
+            data = json.load(f)
+            metrics = data.get('metrics', {})
+            total = metrics.get('total_triggers', 0)
+            processed = metrics.get('processed', 0)
+
+            return {
+                'total_triggers': total,
+                'processed': processed,
+                'filtered': total - processed,
+                'efficiency': processed / total if total > 0 else 1.0,
+            }
+    except Exception:
+        return {'total_triggers': 0, 'processed': 0, 'efficiency': 1.0}
 
 
 # === LIVE DATA FUNCTIONS (IB Connection) ===
@@ -757,7 +793,7 @@ def fetch_live_dashboard_data(_config):
                 if data["NetLiquidation"] > 0:
                     data["DailyPnLPct"] = (data["DailyPnL"] / data["NetLiquidation"]) * 100
 
-    except Exception as e:
+    except Exception:
         # st.warning(f"Could not connect to IB: {e}")
         pass
     finally:
@@ -919,7 +955,7 @@ def fetch_benchmark_data(start_date, end_date):
             return pd.DataFrame()
         normalized = data.apply(lambda x: (x / x.dropna().iloc[0]) - 1) * 100
         return normalized
-    except Exception as e:
+    except Exception:
         return pd.DataFrame()
 
 
@@ -1364,7 +1400,7 @@ def fetch_portfolio_data(_config, trade_df: pd.DataFrame) -> pd.DataFrame:
                 'Days Held': (datetime.now() - matching_trade['timestamp']).days if matching_trade is not None else 0
             })
 
-    except Exception as e:
+    except Exception:
         # st.error(f"Error fetching portfolio: {e}")
         pass
     finally:

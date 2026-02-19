@@ -16,3 +16,6 @@
 ## 2025-02-24 - Async Mocking of Context Managers
 **Learning:** When unit testing `aiohttp` client interactions, `session.get()` returns an async context manager, not a direct coroutine. Mocking it as a simple `AsyncMock` fails because `async with` expects an object with `__aenter__` and `__aexit__`. Correct approach is to use `MagicMock` that returns an object with `AsyncMock` for `__aenter__`.
 **Action:** Use proper context manager mocking patterns for `aiohttp` tests to avoid `RuntimeWarning: coroutine was never awaited`.
+## 2025-02-27 - Streamlit State Caching
+**Learning:** Streamlit reruns the entire script on every interaction, leading to redundant disk I/O if files are read directly in widgets. Reading `state.json` multiple times per render (for different components) multiplies latency. Caching the file read with a short TTL (e.g. 2s) batches these reads within a single render cycle while maintaining near-real-time freshness.
+**Action:** Centralize state loading in `dashboard_utils.py` with `@st.cache_data(ttl=2)` instead of direct file access in individual components.
