@@ -8119,3 +8119,410 @@ Running reconciliation could unlock up to 199 more predictions
 2026-02-19 14:29:30,797 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-sonnet-4-5-20250929 failed for permabear: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHazjxiyhrVaBCmBWCQc'}
 2026-02-19 14:29:45,961 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-5.2 for permabear after primary failure.
 2026-02-19 14:29:45,961 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHazjxiyhrVaBCmBWCQc'}
+2026-02-19 14:30:12,643 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Convergence of improving 2026 supply outlook (record Brazil 
+2026-02-19 14:30:12,643 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-19 14:30:12,643 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-19 14:30:12,787 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHb3qVC36R6hPHdckDmo'}
+2026-02-19 14:30:13,912 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHb3vKu8wjEm7M1Fquwg'}
+2026-02-19 14:30:16,024 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-sonnet-4-5-20250929 failed for compliance: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHb45R6MoHCDNHy4zjaU'}
+2026-02-19 14:30:24,910 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-5.2 for compliance after primary failure.
+2026-02-19 14:30:24,910 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> openai. Reason: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHb45R6MoHCDNHy4zjaU'}
+2026-02-19 14:30:24,911 - trading_bot.signal_generator - WARNING - COMPLIANCE BLOCKED KCH7 (202703): Data integrity issues and one likely hallucination. The decision reasoning states 'RSI is only marginally near oversold', citing RSI as support, but the only RSI in evidence is RSI-14 = 35.3 on 2026-02-19 (Technical), which is indeed only marginally oversold—so that part is supported. However, the decision repeatedly relies on 'trend and liquidation rules dominate' and a 'TRENDING regime' and mentions 'liquidation rules' without any evidence packet defining such rules/regime; this is a DATA GAP (framework claim not evidenced). More importantly, the decision says there is no 'overwhelming new weather shock' and that rainfall is net supportive, which is consistent with Agronomist evidence (+21.8% vs LTA; 72.6mm; 90% rain chance) and the bearish sentiment from that agent. The major problem is in the Technical agent report: the decision claims the prior technical analysis 'ignored a 3% y/y increase in U.S. green-coffee imports reported by USDA for Q4-2025 and tightening certified stocks at ICE'. Those facts (US import +3% and ICE stocks tightening) are NOT present anywhere in the provided evidence and are also directionally inconsistent with Inventory evidence (ICE certified stocks rising to 435,494). That constitutes a hallucination (unattributed external data) embedded in the supporting material referenced by the decision. Critical risks: the reasoning does acknowledge expensive vol/IV rank and logistics bottleneck risk; it does not ignore them. Direction is not contradictory to overall evidence: most agents are BEARISH/NEUTRAL, with only supply_chain BULLISH. Nonetheless, because of the unsupported/hallucinated USDA import and 'tightening ICE stocks' claims, the decision cannot be fully approved without correction.
+2026-02-19 14:30:25,242 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-19 14:30:25,455 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-19 14:30:25,456 - trading_bot.signal_generator - INFO - Council Decision KCH7 (202703): NEUTRAL (0.0)
+2026-02-19 14:30:25,458 - root - INFO - Logged council decision for KCH7 (202703)
+2026-02-19 14:30:25,463 - trading_bot.decision_signals - INFO - Decision signal logged: KCH7 (202703) → NEUTRAL (DIRECTIONAL/NONE)
+2026-02-19 14:30:25,535 - trading_bot.signal_generator - INFO - NO TRADE: vol=BEARISH, regime=HIGH_VOLATILITY, catalyst=None
+2026-02-19 14:30:25,536 - trading_bot.strategy_router - INFO - NO TRADE (scheduled): vol=BEARISH, regime=HIGH_VOLATILITY
+2026-02-19 14:30:25,536 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCH7
+2026-02-19 14:30:25,542 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-02-19 14:30:25,543 - OrderManager - INFO - Generated 5 signals: [{'contract_month': '202605', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'The Permabear case is more grounded in the current data because it aligns with (a) the dominant price regime and (b) multiple independent fundamental/market-structure indicators that directly measure availability.\n\n1) RESPECT THE TREND (critical): The market is actively selling off (24h change materially negative and 5-day trend sharply down) in a TRENDING regime, with price well below the 200-day SMA. That is consistent with liquidation/trend-following pressure, not a stable bottom. The bull’s “support held” framing is weak versus the tape: the market is still making/near fresh multi-month lows and has not confirmed a reversal.\n\n2) “Priced in” / catalyst quality: The bull’s main bullish catalyst is an origin logistics mismatch (Santos delays; lower YoY exports). That is real, but the market is simultaneously signaling reduced nearby tightness via rising ICE certified stocks plus a large pending grading queue and a sharply less inverted front spread. Those are closer-to-deliverability measures than export headlines. This directly supports the bear’s point that origin delays are increasingly being treated as timing shifts rather than net scarcity.\n\n3) Hegelian synthesis (overbought/oversold vs supply shock): The bull correctly identifies oversold/positioning exhaustion (RSI low-30s, very low non-commercial positioning) and the possibility of short-covering. However, that is a trading condition, not a durable fundamental catalyst. On fundamentals, the agronomy evidence is particularly strong and time-specific: weather is beneficial during bean-filling (not flowering), and official production projections are for a record crop. That materially undermines the bull’s attempt to dismiss “oversupply impulse.”\n\n4) Evidence counting (independent lines): Bearish evidence comes from multiple, different channels: agronomy/weather + official crop projection (supply), ICE stocks and spreads (deliverability/structure), and technical trend/regime (market behavior). The bullish case relies heavily on one mechanism (logistics delays) plus secondary/indirect supports (FX inference from non-coffee commercialization; generalized Red Sea risk) that are not shown here to be causing net volume loss.\n\n5) Volatility cost awareness: Volatility is described as relatively cheaper than 2025 and trending down; this does not force a downgrade under the framework (it is not “options are expensive” bearishness). Still, skew prefers downside protection, which reinforces that the options market is not confident a durable bottom is in.\n\nNet: The bear’s argument better fits the full stack of evidence: improving supply prospects and easing nearby tightness signals, with the tape confirming downside dominance. The thesis is PLAUSIBLE (not PROVEN) because logistics/flow disruptions and oversold positioning can still create sharp counter-trend rallies even inside a bearish fundamental backdrop. [Consensus ALIGNED (Vote=BEARISH)] [VOL WARNING: Options expensive. Spread costs elevated. Thesis: PLAUSIBLE]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.7, 'price': 277.7, 'sma_200': 332.00199999999995, 'expected_price': 277.7, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202607', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': 'NO TRADE: Direction neutral, no positive-EV vol trade. (vol=NEUTRAL, regime=HIGH_VOLATILITY, conflict=0.24)', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.0, 'price': 273.55, 'sma_200': 322.16425, 'expected_price': 273.55, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202609', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': 'NO TRADE: Direction neutral, no positive-EV vol trade. (vol=BEARISH, regime=HIGH_VOLATILITY, conflict=0.24)', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.0, 'price': 269.6, 'sma_200': 312.0755, 'expected_price': 269.6, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202612', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': 'NO TRADE: Direction neutral, no positive-EV vol trade. (vol=BEARISH, regime=HIGH_VOLATILITY, conflict=0.24)', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.0, 'price': 265.8, 'sma_200': 304.2735, 'expected_price': 265.8, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202703', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': 'NO TRADE: Direction neutral, no positive-EV vol trade. (vol=BEARISH, regime=HIGH_VOLATILITY, conflict=0.24)', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.0, 'price': 263.25, 'sma_200': 298.99424999999997, 'expected_price': 263.25, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}]
+2026-02-19 14:30:25,543 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-19 14:30:25,545 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-19 14:30:25,545 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-19 14:30:25,635 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-19 14:30:25,635 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-19 14:30:25,635 - OrderManager - INFO - Skipping KCH7: Too deferred (391 days > 365 max)
+2026-02-19 14:30:25,635 - OrderManager - INFO - Date filter passed: 4/5 contracts within 365 days.
+2026-02-19 14:30:25,637 - OrderManager - INFO - Checking liquidity for 4 contracts (parallel)...
+2026-02-19 14:30:28,140 - OrderManager - INFO - Liquidity check cleanup complete.
+2026-02-19 14:30:28,140 - OrderManager - INFO - Volume filter passed: 4 liquid candidates proceeding to signal generation.
+2026-02-19 14:30:28,200 - OrderManager - INFO - Account Value for Sizing: $32,489.53
+2026-02-19 14:30:28,202 - OrderManager - INFO - L1 RECONCILED: Reset committed capital from $1,612.50 to $0.00
+2026-02-19 14:30:28,202 - OrderManager - INFO - Requesting snapshot market price for KCK6...
+2026-02-19 14:30:28,244 - OrderManager - INFO - Using bid/ask midpoint for KCK6: 277.325
+2026-02-19 14:30:28,245 - root - INFO - Fetching option chain for future KCK6...
+2026-02-19 14:30:28,248 - root - INFO - --- Defining BEARISH Spread for KCK6 ---
+2026-02-19 14:30:28,248 - root - WARNING - No strikes near 277.325 meet min OI threshold (10). Using closest strike 277.5 anyway.
+2026-02-19 14:30:28,249 - root - INFO - Identified ATM strike: 277.5 for underlying price 277.325
+2026-02-19 14:30:28,249 - root - WARNING - No strikes near 273.54811875 meet min OI threshold (10). Using closest strike 272.5 anyway.
+2026-02-19 14:30:28,249 - root - INFO - Defined Bear Put Spread legs: BUY 277.5P, SELL 272.5P
+2026-02-19 14:30:28,250 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(0.6) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.510)
+2026-02-19 14:30:28,251 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-19 14:30:28,842 - root - INFO - Fetching market data for option: KOK6 P2.775
+2026-02-19 14:30:30,844 - root - INFO - Using IBKR Model Greeks IV: 39.07%
+2026-02-19 14:30:30,847 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-19 14:30:30,848 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-19 14:30:30,850 - root - INFO - Theoretical price calculated for P @ 277.5: {'price': np.float64(15.2844), 'delta': np.float64(-0.4579), 'gamma': np.float64(0.0099), 'vega': np.float64(40.7198), 'theta': np.float64(-0.1747)}
+2026-02-19 14:30:30,850 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 P2.775 @ 15.28
+2026-02-19 14:30:30,851 - root - INFO - Fetching market data for option: KOK6 P2.725
+2026-02-19 14:30:32,852 - root - INFO - Using IBKR Model Greeks IV: 39.14%
+2026-02-19 14:30:32,857 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-19 14:30:32,857 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-19 14:30:32,859 - root - INFO - Theoretical price calculated for P @ 272.5: {'price': np.float64(12.8736), 'delta': np.float64(-0.4085), 'gamma': np.float64(0.0097), 'vega': np.float64(39.8666), 'theta': np.float64(-0.1699)}
+2026-02-19 14:30:32,860 - root - INFO -   -> Leg Theoretical Price (SELL): KOK6 P2.725 @ 12.87
+2026-02-19 14:30:32,860 - root - INFO - BUY Cap Calc: Theoretical=2.90, MarketAggressive=2.70 (aggression=0.75), Mid=2.47, Ask=2.81, Final Cap=2.80
+2026-02-19 14:30:32,860 - root - INFO - Net Theoretical: 2.41, Market Spread: 0.69
+2026-02-19 14:30:32,860 - root - INFO - Adaptive Strategy: Start @ 2.15, Cap/Floor @ 2.80
+2026-02-19 14:30:32,860 - root - INFO - Creating Limit Order for BUY 1 @ 2.15 (Adaptive Cap: 2.80).
+2026-02-19 14:30:32,860 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-02-19 14:30:32,860 - root - INFO - Assigned OrderRef: d4a381d4-4592-422f-907f-616d057c247f
+2026-02-19 14:30:32,962 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $806.25 (premium paid)
+2026-02-19 14:30:32,964 - OrderManager - INFO - Capital tracking: Committed $806.25 | Remaining $31,683.28 | This order: $806.25
+2026-02-19 14:30:32,964 - OrderManager - INFO - Successfully queued order for KCK6.
+2026-02-19 14:30:32,964 - OrderManager - INFO - BLOCKED BY CONFIDENCE: 202607 — confidence 0.00 < threshold 0.60. Direction=NEUTRAL
+2026-02-19 14:30:32,964 - OrderManager - INFO - BLOCKED BY CONFIDENCE: 202609 — confidence 0.00 < threshold 0.60. Direction=NEUTRAL
+2026-02-19 14:30:32,964 - OrderManager - INFO - BLOCKED BY CONFIDENCE: 202612 — confidence 0.00 < threshold 0.60. Direction=NEUTRAL
+2026-02-19 14:30:32,964 - OrderManager - INFO - BLOCKED BY CONFIDENCE: 202703 — confidence 0.00 < threshold 0.60. Direction=NEUTRAL
+2026-02-19 14:30:32,964 - OrderManager - INFO - --- Order generation complete. 1 orders queued. ---
+2026-02-19 14:30:33,296 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-19 14:30:33,298 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-19 14:30:36,302 - OrderManager - INFO - --- Placing and monitoring 1 orders ---
+2026-02-19 14:30:36,302 - OrderManager - INFO - Processing 1 orders SEQUENTIALLY
+2026-02-19 14:30:36,303 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-19 14:30:36,303 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-19 14:30:36,303 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
+2026-02-19 14:30:36,304 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 149...
+2026-02-19 14:30:36,619 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 149
+2026-02-19 14:30:36,630 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-19 14:30:36,631 - OrderManager - INFO - Using pooled IB connection for order placement.
+2026-02-19 14:30:36,631 - OrderManager - INFO - Sorted orders by expiration proximity.
+2026-02-19 14:30:36,725 - OrderManager - INFO - Current Available Funds: $32,480.06 | Equity: $32,489.53
+2026-02-19 14:30:36,727 - OrderManager - INFO - Processing order 1/1: 
+2026-02-19 14:30:38,787 - ib_insync.wrapper - ERROR - Error 162, reqId 6: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=731667767, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=277.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P2.775', tradingClass='KO')
+2026-02-19 14:30:38,793 - trading_bot.compliance - INFO - Resolved underlying future: KCK6 (conId: 634760204)
+2026-02-19 14:30:38,901 - trading_bot.compliance - INFO - Volume from IB (KCK6): 542.0
+2026-02-19 14:30:38,901 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $806.25 (premium paid)
+2026-02-19 14:30:39,163 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHb5mwfuX5i88fMFMi5A'}
+2026-02-19 14:30:40,283 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHb5s6UzhroGSaVsRQYz'}
+2026-02-19 14:30:42,410 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-sonnet-4-5-20250929 failed for compliance: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHb629wh7AFws3WCGQV5'}
+2026-02-19 14:30:44,884 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-5.2 for compliance after primary failure.
+2026-02-19 14:30:44,885 - trading_bot.router_metrics - WARNING - Fallback event: compliance anthropic -> openai. Reason: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHb629wh7AFws3WCGQV5'}
+2026-02-19 14:30:44,885 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
+2026-02-19 14:30:45,030 - OrderManager - INFO - Approved KC-P277.5+P272.5: Margin $797.55 | Remaining: $31,682.51
+2026-02-19 14:30:45,030 - OrderManager - INFO - [OFF] WOULD PLACE BUY 1 KC-P277.5+P272.5 @ 2.15
+2026-02-19 14:30:45,360 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-19 14:30:45,362 - OrderManager - INFO - Order placement complete. Releasing event handlers.
+2026-02-19 14:30:45,362 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-19 14:30:48,365 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-02-19 14:30:48,365 - trading_bot.semantic_cache - INFO - CACHE INVALIDATED BY TICKER (KC): 1 entries removed
+2026-02-19 14:30:48,374 - Orchestrator - INFO - Next task 'signal_late' (Signal: Late) scheduled for 2026-02-19 16:39:00 UTC. Waiting for 2.14 hours.
+2026-02-19 14:31:47,233 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1895, market_open=True, trading_day=True
+2026-02-19 14:33:22,009 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=6)
+2026-02-19 14:33:22,030 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
+2026-02-19 14:33:22,031 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by XSentimentSentinel: UNUSUAL X ACTIVITY SPIKE (21 posts) (Cycle: KC-28dbe437)
+2026-02-19 14:33:22,250 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-19 14:33:22,259 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 14:33:22,391 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-19 14:33:22,391 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-19 14:33:22,391 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-19 14:33:22,396 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 14:33:22,405 - trading_bot.enhanced_brier - INFO - Loaded 952 predictions from ./data/enhanced_brier.json
+2026-02-19 14:33:22,546 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 2 created from CSV, 0 resolved from council_history
+2026-02-19 14:33:22,547 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-19 14:33:22,548 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-19 14:33:22,548 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-19 14:33:22,548 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-19 14:33:22,548 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-19 14:33:22,548 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-19 14:33:22,550 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-19 14:33:22,551 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-19 14:33:22,628 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-19 14:33:22,628 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-19 14:33:22,628 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-19 14:33:26,741 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-19 14:33:27,215 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=277.40, sma_200=332.00050000000005, regime=TRENDING, vol_5d=0.0270
+2026-02-19 14:33:27,215 - Orchestrator - INFO - Emergency market context: price=277.4, regime=TRENDING
+2026-02-19 14:33:27,215 - trading_bot.agents - INFO - Running Specialized Cycle triggered by XSentimentSentinel...
+2026-02-19 14:33:27,216 - trading_bot.agents - INFO - Routing to sentiment (Reason: Matched: XSentimentSentinel/spike)
+2026-02-19 14:33:27,216 - trading_bot.agents - INFO - Waking up sentiment...
+2026-02-19 14:33:27,620 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-19 14:33:27,620 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-19 14:34:04,072 - trading_bot.weighted_voting - INFO - Market Regime Detected: TRENDING
+2026-02-19 14:34:04,073 - trading_bot.brier_bridge - INFO - Agent inventory: No Brier data for regime=TRENDING, using NORMAL fallback (multiplier=0.61)
+2026-02-19 14:34:04,074 - trading_bot.brier_bridge - INFO - Agent sentiment: No Brier data for regime=TRENDING, using NORMAL fallback (multiplier=0.37)
+2026-02-19 14:34:04,074 - trading_bot.brier_bridge - INFO - Agent technical: No Brier data for regime=TRENDING, using NORMAL fallback (multiplier=0.49)
+2026-02-19 14:34:04,076 - trading_bot.brier_bridge - INFO - Agent volatility: No Brier data for regime=TRENDING, using NORMAL fallback (multiplier=0.19)
+2026-02-19 14:34:04,076 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.5 \u00d7 reliability=1.0 = 1.50", "macro": "domain=2.2 \u00d7 reliability=1.0 = 2.25", "geopolitical": "domain=2.2 \u00d7 reliability=1.0 = 2.25", "supply_chain": "domain=1.5 \u00d7 reliability=1.0 = 1.50", "inventory": "domain=1.5 \u00d7 reliability=0.6 = 0.92", "sentiment": "domain=1.5 \u00d7 reliability=0.4 = 0.55", "technical": "domain=1.5 \u00d7 reliability=0.5 = 0.73", "volatility": "domain=1.5 \u00d7 reliability=0.2 = 0.28"}
+2026-02-19 14:34:04,077 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.180, dominant=agronomist)
+2026-02-19 14:34:04,077 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.1,
+    "final_weight": 1.5,
+    "contribution": -1.2
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.1,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.1,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.1,
+    "final_weight": 1.5,
+    "contribution": 1.2
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.61,
+    "staleness_weight": 1.0,
+    "age_hours": 0.1,
+    "final_weight": 0.92,
+    "contribution": -0.735
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.37,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.55,
+    "contribution": -0.359
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.49,
+    "staleness_weight": 1.0,
+    "age_hours": 0.1,
+    "final_weight": 0.73,
+    "contribution": -0.476
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.19,
+    "staleness_weight": 1.0,
+    "age_hours": 0.1,
+    "final_weight": 0.28,
+    "contribution": -0.226
+  }
+]
+2026-02-19 14:34:04,257 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHbLuARVmuPBhuHySYLW'}
+2026-02-19 14:34:05,394 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHbLz2NcJej9zZSKj3nk'}
+2026-02-19 14:34:07,519 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-sonnet-4-5-20250929 failed for permabear: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHbM96a8xD17dLAw4PDu'}
+2026-02-19 14:34:27,899 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-5.2 for permabear after primary failure.
+2026-02-19 14:34:27,900 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHbM96a8xD17dLAw4PDu'}
+2026-02-19 14:35:04,075 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Improving Brazil 2026 supply outlook (favorable Minas Gerais
+2026-02-19 14:35:04,229 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHbRKUGXu7MdcbxQcDYa'}
+2026-02-19 14:35:05,348 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHbRQNCajDpZke8SfgQ8'}
+2026-02-19 14:35:07,460 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-sonnet-4-5-20250929 failed for permabear: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHbRZQfuAGwqxf64QbUA'}
+2026-02-19 14:35:29,091 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-5.2 for permabear after primary failure.
+2026-02-19 14:35:29,091 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHbRZQfuAGwqxf64QbUA'}
+2026-02-19 14:35:29,092 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: VERDICT: NO. Do not proceed with a naked/linear bearish position given the 5-day horizon, extreme IV, oversold conditions, and credible near-term flow/logistics + backwardation signals that can overwhelm medium-term ‘record crop’ narratives. If you must express a bearish view, restructure into defined-risk (e.g., wide bear call spread above ~292) and require confirmation triggers (Santos normalization + continued stock conversions + curve de-backwardation) before sizing.
+2026-02-19 14:35:29,093 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-19 14:35:29,096 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=TRENDING
+2026-02-19 14:35:29,098 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=TRENDING
+2026-02-19 14:35:29,098 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-19 14:35:29,100 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-19 14:35:29,104 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (DIRECTIONAL/NONE)
+2026-02-19 14:35:29,278 - Orchestrator - INFO - Emergency Cycle concluded with no action: BEARISH (DIRECTIONAL)
+2026-02-19 14:35:29,283 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-19 14:37:23,381 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1900, market_open=True, trading_day=True
+2026-02-19 14:42:24,102 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1905, market_open=True, trading_day=True
+2026-02-19 14:47:24,828 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1910, market_open=True, trading_day=True
+2026-02-19 14:49:25,310 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 40% of average (Sev: 6)
+2026-02-19 14:49:25,320 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-19 14:52:25,661 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1915, market_open=True, trading_day=True
+2026-02-19 14:54:26,271 - trading_bot.state_manager - INFO - Logged sentinel event from PriceSentinel to history.
+2026-02-19 14:54:26,272 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by PriceSentinel: Cumulative -6.7% move over 3 days (BEARISH) (Cycle: KC-7208d269)
+2026-02-19 14:54:26,514 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-19 14:54:26,525 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 14:54:26,642 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-19 14:54:26,642 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-19 14:54:26,642 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-19 14:54:26,647 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 14:54:26,656 - trading_bot.enhanced_brier - INFO - Loaded 960 predictions from ./data/enhanced_brier.json
+2026-02-19 14:54:26,828 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 3 created from CSV, 0 resolved from council_history
+2026-02-19 14:54:26,830 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-19 14:54:26,830 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-19 14:54:26,830 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-19 14:54:26,831 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-19 14:54:26,831 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-19 14:54:26,831 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-19 14:54:26,833 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-19 14:54:26,833 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-19 14:54:26,942 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-19 14:54:26,942 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-19 14:54:26,942 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-19 14:54:31,055 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-19 14:54:31,527 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=278.25, sma_200=332.00475, regime=TRENDING, vol_5d=0.0264
+2026-02-19 14:54:31,527 - Orchestrator - INFO - Emergency market context: price=278.25, regime=TRENDING
+2026-02-19 14:54:31,527 - trading_bot.semantic_cache - INFO - CACHE CROSS-SOURCE INVALIDATION: 1 entries removed for KCK6 (202605) (kept PriceSentinel)
+2026-02-19 14:54:31,527 - trading_bot.agents - INFO - Running Specialized Cycle triggered by PriceSentinel...
+2026-02-19 14:54:31,528 - trading_bot.agents - INFO - Routing to technical (Reason: Default routing)
+2026-02-19 14:54:31,528 - trading_bot.agents - INFO - Waking up technical...
+2026-02-19 14:54:31,953 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-19 14:54:31,953 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-19 14:54:56,022 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-19 14:55:06,231 - trading_bot.agents - INFO - Cross-Cue Triggered: technical -> ['fundamentalist']
+2026-02-19 14:55:06,340 - trading_bot.weighted_voting - INFO - Market Regime Detected: TRENDING
+2026-02-19 14:55:06,340 - trading_bot.brier_bridge - INFO - Agent inventory: No Brier data for regime=TRENDING, using NORMAL fallback (multiplier=0.61)
+2026-02-19 14:55:06,341 - trading_bot.brier_bridge - INFO - Agent sentiment: No Brier data for regime=TRENDING, using NORMAL fallback (multiplier=0.37)
+2026-02-19 14:55:06,341 - trading_bot.brier_bridge - INFO - Agent technical: No Brier data for regime=TRENDING, using NORMAL fallback (multiplier=0.49)
+2026-02-19 14:55:06,341 - trading_bot.brier_bridge - INFO - Agent volatility: No Brier data for regime=TRENDING, using NORMAL fallback (multiplier=0.19)
+2026-02-19 14:55:06,341 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.0 \u00d7 reliability=1.0 = 1.00", "macro": "domain=2.2 \u00d7 reliability=1.0 = 2.25", "geopolitical": "domain=1.5 \u00d7 reliability=1.0 = 1.50", "supply_chain": "domain=1.0 \u00d7 reliability=1.0 = 1.00", "inventory": "domain=1.0 \u00d7 reliability=0.6 = 0.61", "sentiment": "domain=2.0 \u00d7 reliability=0.4 = 0.74", "technical": "domain=3.0 \u00d7 reliability=0.5 = 1.46", "volatility": "domain=2.5 \u00d7 reliability=0.2 = 0.47"}
+2026-02-19 14:55:06,341 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.254, dominant=technical)
+2026-02-19 14:55:06,342 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.0,
+    "contribution": -0.8
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 2.25,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.5,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.0,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.0,
+    "contribution": 0.8
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.61,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 0.61,
+    "contribution": -0.49
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.0,
+    "reliability_mult": 0.37,
+    "staleness_weight": 1.0,
+    "age_hours": 0.3,
+    "final_weight": 0.74,
+    "contribution": -0.479
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 3.0,
+    "reliability_mult": 0.49,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.46,
+    "contribution": -0.952
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.5,
+    "reliability_mult": 0.19,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 0.47,
+    "contribution": -0.377
+  }
+]
+2026-02-19 14:55:06,518 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHcwwrF67syD8VvxogCw'}
+2026-02-19 14:55:07,672 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHcx2kfz8gE9jJTYVdpB'}
+2026-02-19 14:55:09,800 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-sonnet-4-5-20250929 failed for permabear: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHcxBt6XC8jLUWna6QvV'}
+2026-02-19 14:55:23,595 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-5.2 for permabear after primary failure.
+2026-02-19 14:55:23,595 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHcxBt6XC8jLUWna6QvV'}
+2026-02-19 14:55:59,811 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: A multi-day downside break (-6.7% over 3 days) occurring alo
+2026-02-19 14:55:59,988 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHd1tHHspGXNtAjneghw'}
+2026-02-19 14:56:01,144 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHd1yKQWutgMu8eQbnH1'}
+2026-02-19 14:56:03,247 - trading_bot.heterogeneous_router - WARNING - anthropic/claude-sonnet-4-5-20250929 failed for permabear: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHd28V4xWwJYGA3PZk5F'}
+2026-02-19 14:56:23,124 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used openai/gpt-5.2 for permabear after primary failure.
+2026-02-19 14:56:23,125 - trading_bot.router_metrics - WARNING - Fallback event: permabear anthropic -> openai. Reason: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-03-01 at 00:00 UTC.'}, 'request_id': 'req_011CYHd28V4xWwJYGA3PZk5F'}
+2026-02-19 14:56:23,125 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: Bias diagnosis: (1) Recency bias—overweighted the last 3-day, -6.7% liquidation move as a reliable continuation signal in a contract known for snapback rallies; (2) Confirmation bias—stacked multiple supply-bearish items (Conab, Vietnam exports, rainfall) while discounting the only truly time-critical constraint (export/port flow + backwardation); (3) Crowded-trade/positioning risk—when technicals are ‘deeply oversold’ and IV is extreme, incremental sellers may be exhausted, making shorts vulnerable to reflexive squeezes.
+
+Ignored/misread data: (a) Backwardation was treated as a secondary detail, but it is often the market’s loudest signal of front-end scarcity; (b) ICE ‘pending grading’ was assumed to translate into effective deliverable supply—without checking rejection rates, timing, or concentration/ownership; (c) We relied on Conab’s record projection as if it were immediately priceable, underestimating timing (harvest months away) versus the next 5 trading days; (d) We implicitly assumed logistics tightness was ‘flow noise,’ despite specific claims of ~602k bags/month blocked and persistent Santos access constraints.
+
+VERDICT: NO—do not proceed with a naked/linear bearish expression into an oversold, high-IV, backwardated market where front-end tightness + small weather/logistics headlines can produce a fast, catastrophic short squeeze. If bearish exposure is still desired, it should be restructured to defined-risk (e.g., bear call spread or tight risk limits) and contingent on verifying ICE grading conversion and near-term export flow normalization.
+2026-02-19 14:56:23,126 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-19 14:56:23,128 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=TRENDING
+2026-02-19 14:56:23,131 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=TRENDING
+2026-02-19 14:56:23,131 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-19 14:56:23,133 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-19 14:56:23,137 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (DIRECTIONAL/NONE)
+2026-02-19 14:56:23,332 - Orchestrator - INFO - Emergency Cycle concluded with no action: BEARISH (DIRECTIONAL)
+2026-02-19 14:56:23,338 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-19 14:57:26,517 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1920, market_open=True, trading_day=True
