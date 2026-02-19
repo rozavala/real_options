@@ -13,3 +13,6 @@
 ## 2025-02-13 - Efficient DataFrame Copying
 **Learning:** Calling `df.copy()` on a large DataFrame copies all columns, including large text fields not needed for downstream processing. This introduces significant memory and CPU overhead. Subsetting to only necessary columns *before* copying reduced execution time by ~11% on large datasets (10k rows) and significantly lowered peak memory usage.
 **Action:** Always filter DataFrames to the minimal required columns before creating a copy for isolated processing.
+## 2025-02-24 - Async Mocking of Context Managers
+**Learning:** When unit testing `aiohttp` client interactions, `session.get()` returns an async context manager, not a direct coroutine. Mocking it as a simple `AsyncMock` fails because `async with` expects an object with `__aenter__` and `__aexit__`. Correct approach is to use `MagicMock` that returns an object with `AsyncMock` for `__aenter__`.
+**Action:** Use proper context manager mocking patterns for `aiohttp` tests to avoid `RuntimeWarning: coroutine was never awaited`.
