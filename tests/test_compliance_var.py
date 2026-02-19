@@ -71,10 +71,12 @@ def mock_order_context():
 
 @pytest.fixture(autouse=True)
 def reset_boot_time():
-    """Reset boot time after each test."""
+    """Reset boot time and VaR-ready flag after each test."""
     compliance_module._ORCHESTRATOR_BOOT_TIME = None
+    compliance_module._VAR_READY = False
     yield
     compliance_module._ORCHESTRATOR_BOOT_TIME = None
+    compliance_module._VAR_READY = False
 
 
 def _make_cached_var(var_95_pct=0.02, computed_epoch=None):
@@ -336,7 +338,22 @@ def test_startup_grace_active_after_set():
     assert _in_startup_grace_period() is True
 
 
-def test_startup_grace_expires():
-    """Grace period expires after 15 minutes."""
+def test_startup_grace_extends_when_var_not_ready():
+    """Grace period extends to 30 min if VaR hasn't computed."""
     compliance_module._ORCHESTRATOR_BOOT_TIME = time.time() - 1000  # 16+ min ago
+    compliance_module._VAR_READY = False
+    assert _in_startup_grace_period() is True  # Extended grace
+
+
+def test_startup_grace_expires_when_var_ready():
+    """Grace period expires after 15 min once VaR has computed."""
+    compliance_module._ORCHESTRATOR_BOOT_TIME = time.time() - 1000  # 16+ min ago
+    compliance_module._VAR_READY = True
+    assert _in_startup_grace_period() is False
+
+
+def test_startup_grace_hard_expires_at_30_min():
+    """Grace period hard-expires at 30 min regardless of VaR status."""
+    compliance_module._ORCHESTRATOR_BOOT_TIME = time.time() - 2000  # 33+ min ago
+    compliance_module._VAR_READY = False
     assert _in_startup_grace_period() is False

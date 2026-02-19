@@ -89,6 +89,7 @@ class VaRResult:
     scenarios: list = field(default_factory=list)          # L2 Scenario Architect output
     last_attempt_status: str = "OK"   # "OK" or "FAILED"
     last_attempt_error: str = ""      # Error message on failure
+    computed_by: str = ""             # Commodity instance that computed (e.g. "KC")
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -111,6 +112,7 @@ class VaRResult:
             scenarios=d.get("scenarios", []),
             last_attempt_status=d.get("last_attempt_status", "OK"),
             last_attempt_error=d.get("last_attempt_error", ""),
+            computed_by=d.get("computed_by", ""),
         )
 
 
@@ -132,6 +134,7 @@ class PortfolioVaRCalculator:
     async def compute_portfolio_var(self, ib, config: dict) -> VaRResult:
         """Full VaR computation pipeline. Saves result to state file."""
         now = _time.time()
+        commodity = config.get('commodity_ticker', '')
         try:
             # 1. Snapshot current positions
             positions = await self._snapshot_portfolio(ib, config)
@@ -140,6 +143,7 @@ class PortfolioVaRCalculator:
                     computed_epoch=now,
                     timestamp=datetime.now(timezone.utc).isoformat(),
                     last_attempt_status="OK",
+                    computed_by=commodity,
                 )
                 self._cached_result = result
                 self._save_state(result)
@@ -188,9 +192,15 @@ class PortfolioVaRCalculator:
                     for p in positions
                 ],
                 last_attempt_status="OK",
+                computed_by=commodity,
             )
             self._cached_result = result
             self._save_state(result)
+            try:
+                from trading_bot.compliance import notify_var_ready
+                notify_var_ready()
+            except ImportError:
+                pass
             return result
 
         except Exception as e:
@@ -201,6 +211,7 @@ class PortfolioVaRCalculator:
                 timestamp=datetime.now(timezone.utc).isoformat(),
                 last_attempt_status="FAILED",
                 last_attempt_error=str(e),
+                computed_by=commodity,
             )
             # Preserve previous good result in cache if available
             if self._cached_result and self._cached_result.last_attempt_status == "OK":
@@ -246,15 +257,25 @@ class PortfolioVaRCalculator:
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
 
-    def get_cached_var(self) -> Optional[VaRResult]:
-        """Return cached result if fresh, else try loading from state file."""
+    def get_cached_var(self, max_stale_seconds: float = 7200) -> Optional[VaRResult]:
+        """Return cached result if OK, else try loading from state file.
+
+        Marks result as stale if older than max_stale_seconds (default 2h).
+        """
+        result = None
         if self._cached_result and self._cached_result.last_attempt_status == "OK":
-            return self._cached_result
-        loaded = self._load_state()
-        if loaded and loaded.last_attempt_status == "OK":
-            self._cached_result = loaded
-            return loaded
-        return None
+            result = self._cached_result
+        else:
+            loaded = self._load_state()
+            if loaded and loaded.last_attempt_status == "OK":
+                self._cached_result = loaded
+                result = loaded
+
+        if result and result.computed_epoch > 0:
+            age = _time.time() - result.computed_epoch
+            result.is_stale = age > max_stale_seconds
+
+        return result
 
     async def compute_stress_scenario(
         self, ib, config: dict, scenario: dict
@@ -432,9 +453,27 @@ class PortfolioVaRCalculator:
                 logger.warning(f"reqMktData failed for {c.localSymbol}: {e}")
                 iv_map[c.conId] = None
 
-        # Single wait for all tickers
+        # Poll until all tickers have modelGreeks or timeout
         if tickers:
-            await asyncio.sleep(3)
+            timeout = config.get('compliance', {}).get('iv_fetch_timeout', 5.0)
+            poll_interval = 0.3
+            elapsed = 0.0
+            while elapsed < timeout:
+                await asyncio.sleep(poll_interval)
+                elapsed += poll_interval
+                if all(
+                    hasattr(t, 'modelGreeks') and t.modelGreeks
+                    for _, t in tickers
+                ):
+                    break
+            else:
+                pending = [cid for cid, t in tickers
+                           if not (hasattr(t, 'modelGreeks') and t.modelGreeks)]
+                if pending:
+                    logger.warning(
+                        f"IV fetch timed out after {timeout}s — "
+                        f"{len(pending)}/{len(tickers)} tickers still pending"
+                    )
 
         for con_id, t in tickers:
             try:
@@ -716,26 +755,36 @@ class PortfolioVaRCalculator:
 
     # --- State persistence ---
 
-    def _save_state(self, result: VaRResult):
-        """Atomic save with file locking."""
+    def _save_state(self, result: VaRResult, _retries: int = 2):
+        """Atomic save with file locking and retry."""
         state_path = os.path.join(_var_data_dir, "var_state.json")
         tmp_path = state_path + ".tmp"
-        try:
-            os.makedirs(os.path.dirname(state_path), exist_ok=True)
-            data = result.to_dict()
-            with open(tmp_path, "w") as f:
-                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-                try:
-                    json.dump(data, f, indent=2, default=str)
-                finally:
-                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
-            os.replace(tmp_path, state_path)
-        except Exception as e:
-            logger.error(f"Failed to save VaR state: {e}")
+        for attempt in range(_retries + 1):
             try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
+                os.makedirs(os.path.dirname(state_path), exist_ok=True)
+                data = result.to_dict()
+                with open(tmp_path, "w") as f:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                    try:
+                        json.dump(data, f, indent=2, default=str)
+                    finally:
+                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                os.replace(tmp_path, state_path)
+                return  # Success
+            except Exception as e:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+                if attempt < _retries:
+                    logger.warning(
+                        f"VaR state save failed (attempt {attempt + 1}/{_retries + 1}): {e}"
+                    )
+                    _time.sleep(0.1 * (attempt + 1))  # Brief backoff
+                else:
+                    logger.error(
+                        f"Failed to save VaR state after {_retries + 1} attempts: {e}"
+                    )
 
     def _load_state(self) -> Optional[VaRResult]:
         """Load VaR state from JSON file."""
