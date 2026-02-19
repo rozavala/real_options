@@ -2121,7 +2121,7 @@ class MacroContagionSentinel(Sentinel):
         # Fed policy shock detection (severity=9) needs Pro-tier reasoning;
         # runs once/day so negligible quota impact on the 250 RPD limit.
         registry = config.get('model_registry', {}).get('gemini', {})
-        self.model = self.sentinel_config.get('model', registry.get('pro', 'gemini-3-pro-preview'))
+        self.model = self.sentinel_config.get('model', registry.get('pro', 'gemini-3.1-pro-preview'))
 
         _sentinel_diag.info(f"MacroContagionSentinel initialized with model: {self.model} | "
                      f"DXY thresholds: 1d={self.dxy_threshold_1d:.0%}, 2d={self.dxy_threshold_2d:.0%} | "

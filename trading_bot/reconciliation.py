@@ -598,63 +598,11 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             os.replace(temp_path, file_path)
             logger.info("Successfully updated council_history.csv with reconciliation results.")
 
-            # === RESOLVE INDIVIDUAL AGENT PREDICTIONS ===
-            # PHASE 1: Legacy CSV resolution (backward compat)
-            newly_resolved_indices = []
-            try:
-                from trading_bot.brier_scoring import resolve_pending_predictions
-                newly_resolved_indices = resolve_pending_predictions(file_path)
-                if newly_resolved_indices:
-                    logger.info(f"Feedback Loop (Legacy): Resolved {len(newly_resolved_indices)} agent predictions")
-            except Exception as resolve_e:
-                logger.error(f"Failed to resolve legacy agent predictions: {resolve_e}")
-
-            # PHASE 2: Enhanced probabilistic resolution
-            try:
-                from trading_bot.brier_bridge import resolve_agent_prediction, reset_enhanced_tracker
-                # Removed inner import pandas as pd to fix scoping issue
-
-                # Read the just-resolved structured predictions to find what was resolved
-                structured_file = os.path.join(config.get('data_dir', 'data'), "agent_accuracy_structured.csv")
-                if os.path.exists(structured_file):
-                    struct_df = pd.read_csv(structured_file)
-
-                    # FIX: Only process predictions that Phase 1 JUST resolved (this run).
-                    # Previously iterated ALL resolved predictions, which:
-                    # 1. Wasted CPU trying to match 200+ old predictions
-                    # 2. Generated hundreds of "No matching prediction found" warnings
-                    # 3. Masked whether any NEW resolutions actually occurred
-                    if newly_resolved_indices:
-                        newly_resolved_df = struct_df.loc[
-                            struct_df.index.isin(newly_resolved_indices)
-                        ]
-                    else:
-                        newly_resolved_df = pd.DataFrame()
-
-                    enhanced_resolved = 0
-                    for _, row in newly_resolved_df.iterrows():
-                        cycle_id = str(row.get('cycle_id', ''))
-                        agent = str(row.get('agent', ''))
-                        actual = str(row.get('actual', ''))
-
-                        if not agent or not actual or actual in ('PENDING', 'ORPHANED'):
-                            continue
-
-                        brier = resolve_agent_prediction(
-                            agent=agent,
-                            actual_outcome=actual,
-                            cycle_id=cycle_id,
-                        )
-                        if brier is not None:
-                            enhanced_resolved += 1
-
-                    if enhanced_resolved > 0:
-                        logger.info(f"Feedback Loop (Enhanced): Scored {enhanced_resolved} predictions with Brier scores")
-                        reset_enhanced_tracker()  # Reset singleton so voting picks up new scores
-
-            except Exception as enhanced_e:
-                # Enhanced resolution failure MUST NOT block reconciliation
-                logger.warning(f"Enhanced Brier resolution failed (non-critical): {enhanced_e}")
+            # NOTE: Structured CSV prediction resolution (agent_accuracy_structured.csv)
+            # is handled by run_brier_reconciliation → resolve_with_cycle_aware_match(),
+            # which runs as a separate scheduled task after reconciliation completes.
+            # Enhanced Brier JSON resolution is handled by the tracker's council_history
+            # backfill (Pass 3) during that same task.
 
         except Exception as e:
             logger.error(f"Failed to save updated CSV: {e}")
