@@ -74,6 +74,7 @@ ERROR_PATTERNS: dict[str, list[re.Pattern]] = {
     "ib_connection": [
         re.compile(r"IB.*connection failed", re.IGNORECASE),
         re.compile(r"reqPositionsAsync timed out", re.IGNORECASE),
+        re.compile(r"completed orders request timed out", re.IGNORECASE),
         re.compile(r"DISCONNECTED", re.IGNORECASE),
         re.compile(r"Connection pool.*exhaust", re.IGNORECASE),
         re.compile(r"IB Gateway.*not reachable", re.IGNORECASE),

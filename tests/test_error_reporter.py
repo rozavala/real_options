@@ -44,6 +44,7 @@ class TestClassifyError:
         assert classify_error("IB Gateway connection failed after 3 retries") == "ib_connection"
         assert classify_error("reqPositionsAsync timed out after 10s") == "ib_connection"
         assert classify_error("Client state: DISCONNECTED") == "ib_connection"
+        assert classify_error("completed orders request timed out") == "ib_connection"
 
     def test_llm_api_patterns(self):
         assert classify_error("CriticalRPCError: Gemini returned 503") == "llm_api"
