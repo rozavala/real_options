@@ -501,9 +501,9 @@ else:
 
 clock_cols = st.columns(3)
 with clock_cols[0]:
-    st.metric("UTC Time", utc_now.strftime("%H:%M:%S"))
+    st.metric("UTC Time", utc_now.strftime("%H:%M:%S"), help=utc_now.strftime("%A, %Y-%m-%d"))
 with clock_cols[1]:
-    st.metric("New York Time (Market)", ny_now.strftime("%H:%M:%S"))
+    st.metric("New York Time (Market)", ny_now.strftime("%H:%M:%S"), help=ny_now.strftime("%A, %Y-%m-%d"))
 with clock_cols[2]:
     st.metric("Market Status", f"{status_color} {status_text}", delta=countdown_text, delta_color="off",
               help="Trading Hours (ET): 03:30 - 14:00 (Mon-Fri)")
