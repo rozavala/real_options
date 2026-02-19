@@ -163,47 +163,70 @@ class IBConnectionPool:
                     logger.warning(f"Disconnect error for {purpose}: {e}")
 
             # === CONNECT WITH RANDOMIZED CLIENT ID ===
-            ib = IB()
             # Multi-commodity offset: each commodity gets its own client ID range
             ticker = config.get('commodity', {}).get('ticker', 'KC')
             commodity_offset = COMMODITY_ID_OFFSET.get(ticker, 0)
-
-            if _is_remote_gateway(config):
-                base_id = DEV_CLIENT_ID_BASE.get(purpose, DEV_CLIENT_ID_DEFAULT)
-                client_id = base_id + random.randint(0, DEV_CLIENT_ID_JITTER) + commodity_offset
-            else:
-                base_id = cls.CLIENT_ID_BASE.get(purpose, 280)
-                client_id = base_id + random.randint(0, 9) + commodity_offset
-
             is_paper = config.get('connection', {}).get('paper', False)
             remote_tag = (" [REMOTE/PAPER]" if is_paper else " [REMOTE]") if _is_remote_gateway(config) else ""
-            logger.info(f"Connecting IB ({purpose}) ID: {client_id}{remote_tag}...")
 
-            try:
-                await ib.connectAsync(
-                    host=host,
-                    port=port,
-                    clientId=client_id,
-                    timeout=15  # Increased from 10 to match verify_system_readiness
-                )
-                cls._instances[purpose] = ib
-                cls._reconnect_backoff[purpose] = 5.0
-                cls._consecutive_failures[purpose] = 0  # Reset on success
-                logger.info(f"IB ({purpose}) connected successfully with ID {client_id}")
+            # Retry with different client IDs on collision (Error 326)
+            max_id_retries = 3
+            last_connect_error = None
+            for id_attempt in range(max_id_retries):
+                ib = IB()
+                if _is_remote_gateway(config):
+                    base_id = DEV_CLIENT_ID_BASE.get(purpose, DEV_CLIENT_ID_DEFAULT)
+                    client_id = base_id + random.randint(0, DEV_CLIENT_ID_JITTER) + commodity_offset
+                else:
+                    base_id = cls.CLIENT_ID_BASE.get(purpose, 280)
+                    client_id = base_id + random.randint(0, 9) + commodity_offset
 
-                # Log to state
+                logger.info(f"Connecting IB ({purpose}) ID: {client_id}{remote_tag}...")
+
                 try:
-                    from trading_bot.state_manager import StateManager
-                    StateManager.save_state({
-                        f"{purpose}_ib_status": "CONNECTED",
-                        "last_ib_success": datetime.now(timezone.utc).isoformat()
-                    }, namespace="sensors")
-                except Exception:
-                    pass
+                    await ib.connectAsync(
+                        host=host,
+                        port=port,
+                        clientId=client_id,
+                        timeout=15  # Increased from 10 to match verify_system_readiness
+                    )
+                    cls._instances[purpose] = ib
+                    cls._reconnect_backoff[purpose] = 5.0
+                    cls._consecutive_failures[purpose] = 0  # Reset on success
+                    logger.info(f"IB ({purpose}) connected successfully with ID {client_id}")
 
-                return ib
+                    # Log to state
+                    try:
+                        from trading_bot.state_manager import StateManager
+                        StateManager.save_state({
+                            f"{purpose}_ib_status": "CONNECTED",
+                            "last_ib_success": datetime.now(timezone.utc).isoformat()
+                        }, namespace="sensors")
+                    except Exception:
+                        pass
 
-            except Exception as e:
+                    return ib
+
+                except Exception as e:
+                    last_connect_error = e
+                    error_str = str(e).lower()
+                    # Client ID collision — retry with a different ID
+                    if "already in use" in error_str or "client id" in error_str:
+                        logger.warning(
+                            f"IB ({purpose}) client ID {client_id} collision "
+                            f"(attempt {id_attempt + 1}/{max_id_retries})"
+                        )
+                        try:
+                            ib.disconnect()
+                            await asyncio.sleep(1.0)
+                        except Exception:
+                            pass
+                        continue
+                    # Non-collision error — don't retry IDs
+                    break
+
+            e = last_connect_error
+            if e is not None:
                 # === FIX: Clean up failed connection to prevent CLOSE-WAIT accumulation ===
                 # The IB() instance may have opened a TCP socket even if the API handshake
                 # failed (TimeoutError). Without explicit disconnect(), the socket enters
@@ -253,7 +276,7 @@ class IBConnectionPool:
 
                 logger.error(f"IB ({purpose}) connection failed: {e}. "
                            f"Next retry backoff: {cls._reconnect_backoff[purpose]}s")
-                raise
+                raise e
 
     @classmethod
     async def release_connection(cls, purpose: str):

@@ -600,6 +600,17 @@ COCOA_PROFILE = CommodityProfile(
         "@CocoaBarometer", "@ICCOorg"
     ],
 
+    sentiment_search_queries=[
+        "cocoa futures",
+        "cocoa prices",
+        "CC futures",
+        "chocolate demand",
+        "ivory coast cocoa",
+        "ghana cocoa",
+        "cocoa supply chain",
+        "ICCO cocoa",
+    ],
+
     volatility_high_iv_rank=0.65,
     volatility_low_iv_rank=0.25,
     price_move_alert_pct=3.0,

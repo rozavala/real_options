@@ -948,8 +948,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
     def on_error(reqId: int, errorCode: int, errorString: str, contract):
         """
-        Handle IB API errors, specifically Error 201 (Invalid Price).
+        Handle IB API errors, specifically Error 201 (order rejection / invalid price).
         When a modification is rejected, revert to the last known good price.
+        For margin-related rejections, send notification.
         """
         if errorCode == 201 and reqId in live_orders:
             details = live_orders[reqId]
@@ -973,6 +974,24 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     f"Disabling adaptive walking - order will sit at {last_good:.2f} until fill or timeout."
                 )
                 details['adaptive_ceiling_price'] = last_good
+
+        # Catch margin-related rejections for ANY order (including catastrophe stops)
+        if errorCode == 201 and reqId not in live_orders:
+            error_lower = errorString.lower()
+            if "margin" in error_lower or "insufficient" in error_lower:
+                symbol = getattr(contract, 'localSymbol', 'unknown') if contract else 'unknown'
+                logger.error(
+                    f"ORDER REJECTED (margin): Order {reqId} for {symbol}: {errorString}"
+                )
+                try:
+                    send_pushover_notification(
+                        config.get('notifications', {}),
+                        "ORDER REJECTED - MARGIN",
+                        f"Order {reqId} for {symbol} rejected:\n{errorString[:200]}",
+                        priority=1
+                    )
+                except Exception:
+                    pass
 
     try:
         # Note: Connection already established above via Pool
