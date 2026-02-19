@@ -106,7 +106,8 @@ class SelfHealingMonitor:
     def _check_stale_deferred_triggers(self):
         try:
             from trading_bot.state_manager import StateManager
-            deferred = StateManager.get_deferred_triggers()
+            # Use non-destructive read — get_deferred_triggers() clears the file!
+            deferred = StateManager._load_deferred_triggers()
             if len(deferred) > 10:
                 logger.warning(
                     f"SELF-HEAL: {len(deferred)} deferred triggers accumulated. "
