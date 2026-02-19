@@ -2103,11 +2103,46 @@ async def sentinel_effectiveness_check(config: dict):
 
         if abs(weekly_change_pct) > significance_threshold and total_sentinel_trades == 0:
             severity = "🔴" if abs(weekly_change_pct) > 10.0 else "🟡"
-            diagnosis = (
-                "No alerts fired — check sentinel thresholds and connectivity"
-                if total_alerts == 0
-                else "Alerts fired but no trades — check council pipeline (Fix 1) and debounce (Fix 2)"
-            )
+
+            if total_alerts == 0:
+                diagnosis = "No alerts fired — check sentinel thresholds and connectivity"
+            else:
+                # Check if council decisions were made but DA vetoed them
+                da_veto_count = 0
+                council_decisions_today = 0
+                try:
+                    import pandas as pd
+                    ch_path = os.path.join(config.get('data_dir', 'data'), 'council_history.csv')
+                    if os.path.exists(ch_path):
+                        ch_df = pd.read_csv(ch_path)
+                        if not ch_df.empty and 'timestamp' in ch_df.columns:
+                            ch_df['timestamp'] = pd.to_datetime(ch_df['timestamp'], utc=True, errors='coerce')
+                            today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+                            today_mask = ch_df['timestamp'].dt.strftime('%Y-%m-%d') == today_str
+                            council_decisions_today = today_mask.sum()
+                            if 'master_reasoning' in ch_df.columns:
+                                da_veto_count = (
+                                    today_mask & ch_df['master_reasoning'].str.contains(
+                                        r'\[DA VETO:', na=False, case=False
+                                    )
+                                ).sum()
+                except Exception:
+                    pass  # Fall through to generic diagnosis
+
+                if da_veto_count > 0:
+                    diagnosis = (
+                        f"Pipeline working — DA vetoed {da_veto_count}/{council_decisions_today} "
+                        f"council decisions today (risk management working as intended)"
+                    )
+                    severity = "🟡"  # Downgrade: DA vetoes are intentional, not a failure
+                elif council_decisions_today > 0:
+                    diagnosis = (
+                        f"Council ran {council_decisions_today} decisions but no trades placed — "
+                        f"check compliance/order generation"
+                    )
+                else:
+                    diagnosis = "Alerts fired but no council decisions — check council pipeline and debounce"
+
             msg = (
                 f"{severity} SENTINEL EFFECTIVENESS ALERT\n"
                 f"{profile.name} weekly change: {weekly_change_pct:+.1f}%\n"
@@ -2117,7 +2152,7 @@ async def sentinel_effectiveness_check(config: dict):
             logger.warning(msg)
             send_pushover_notification(
                 config.get('notifications', {}),
-                f"{severity} Sentinel Blind Spot Detected",
+                f"{severity} Sentinel Effectiveness",
                 msg
             )
         else:
@@ -2173,8 +2208,8 @@ async def reconcile_and_analyze(config: dict):
 
     await analyze_and_archive(config)
 
-    # Feedback loop health check — report reconciliation status too
-    await _check_feedback_loop_health(config)
+    # NOTE: Feedback loop health check moved to run_brier_reconciliation (close+20min)
+    # so it reports accurate counts AFTER CSV predictions are resolved.
 
     logger.info("--- End-of-day reconciliation and analysis process complete ---")
 
@@ -4049,6 +4084,10 @@ async def run_brier_reconciliation(config: dict):
 
     except Exception as e:
         logger.error(f"Brier reconciliation failed (non-fatal): {e}")
+
+    # Feedback loop health check — runs here (after CSV + Enhanced Brier resolution)
+    # so it reports accurate post-resolution counts.
+    await _check_feedback_loop_health(config)
 
 async def guarded_generate_orders(config: dict):
     """Generate orders with budget and cutoff guards."""
