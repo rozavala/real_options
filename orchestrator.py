@@ -1850,7 +1850,9 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
             from trading_bot.var_calculator import get_var_calculator, run_risk_agent
             var_calc = get_var_calculator(config)
             prev_var = var_calc.get_cached_var()
-            var_result = await var_calc.compute_portfolio_var(ib, config)
+            var_result = await asyncio.wait_for(
+                var_calc.compute_portfolio_var(ib, config), timeout=30.0
+            )
             logger.info(
                 f"Post-audit VaR: 95%={var_result.var_95_pct:.2%} "
                 f"(${var_result.var_95:,.0f}), positions={var_result.position_count}"
@@ -1858,12 +1860,16 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
 
             # Run AI Risk Agent (L1 + L2)
             try:
-                agent_output = await run_risk_agent(var_result, config, ib, prev_var)
+                agent_output = await asyncio.wait_for(
+                    run_risk_agent(var_result, config, ib, prev_var), timeout=30.0
+                )
                 if agent_output.get('interpretation'):
                     var_result.narrative = agent_output['interpretation']
                 if agent_output.get('scenarios'):
                     var_result.scenarios = agent_output['scenarios']
                 var_calc._save_state(var_result)
+            except asyncio.TimeoutError:
+                logger.warning("Risk Agent timed out after 30s (non-fatal, VaR saved)")
             except Exception as agent_e:
                 logger.warning(f"Risk Agent failed (non-fatal, VaR saved): {agent_e}")
 
@@ -1878,6 +1884,8 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
                     f"(${var_result.var_95:,.0f}) — limit is "
                     f"{config.get('compliance', {}).get('var_limit_pct', 0.03):.0%}"
                 )
+        except asyncio.TimeoutError:
+            logger.warning("Post-audit VaR computation timed out after 30s (non-fatal)")
         except Exception as var_e:
             logger.warning(f"Post-audit VaR computation failed (non-fatal): {var_e}")
 
@@ -2923,19 +2931,19 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     if cached_var:
                         util = cached_var.var_95_pct / var_limit if var_limit else 0
                         market_context_str += (
-                            f"\\n--- PORTFOLIO STATE ---\\n"
+                            f"\n--- PORTFOLIO STATE ---\n"
                             f"Positions: {cached_var.position_count} across "
-                            f"{', '.join(cached_var.commodities)}\\n"
-                            f"VaR utilization: {util:.0%} of limit\\n"
-                            f"--- END PORTFOLIO STATE ---\\n"
+                            f"{', '.join(cached_var.commodities)}\n"
+                            f"VaR utilization: {util:.0%} of limit\n"
+                            f"--- END PORTFOLIO STATE ---\n"
                         )
                         if cached_var.var_95_pct > var_warning:
                             market_context_str += (
-                                f"\\n--- PORTFOLIO RISK ALERT ---\\n"
-                                f"VaR: {cached_var.var_95_pct:.1%} (limit: {var_limit:.0%})\\n"
+                                f"\n--- PORTFOLIO RISK ALERT ---\n"
+                                f"VaR: {cached_var.var_95_pct:.1%} (limit: {var_limit:.0%})\n"
                                 f"INSTRUCTION: PREFER strategies that REDUCE correlation "
-                                f"with existing positions.\\n"
-                                f"--- END RISK ALERT ---\\n"
+                                f"with existing positions.\n"
+                                f"--- END RISK ALERT ---\n"
                             )
                 except Exception:
                     pass  # Non-fatal
