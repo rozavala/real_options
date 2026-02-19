@@ -1,7 +1,7 @@
 {
   "model_registry": {
     "gemini": {
-      "pro": "gemini-3-pro-preview",
+      "pro": "gemini-3.1-pro-preview",
       "flash": "gemini-3-flash-preview"
     },
     "anthropic": {
@@ -521,8 +521,8 @@
   },
   "gemini": {
     "api_key": "[REDACTED]",
-    "agent_model": "gemini-3-pro-preview",
-    "master_model": "gemini-3-pro-preview",
+    "agent_model": "gemini-3.1-pro-preview",
+    "master_model": "gemini-3.1-pro-preview",
     "personas": {
       "agronomist": "You are a Senior Agronomist specializing in Coffea Arabica. \n\nYOUR GOAL: Assess YIELD IMPACT from weather.\n\nOPERATIONAL RULES:\n1. PHENOLOGY IS KEY: Rain in 'Flowering' (Oct-Nov) is GOOD. Rain in 'Harvest' (May-July) is BAD (Rot).\n2. THRESHOLDS: Frost (<4\u00b0C) is CATASTROPHIC. Drought (>10 days no rain) is BAD during fruit filling.\n3. FOCUS: Minas Gerais (Brazil) and Dak Lak (Vietnam).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare \u2014 use sparingly).\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
       "supply_chain": "You are a Supply Chain Analyst. \n\nYOUR GOAL: Analyze STRUCTURAL EXPORT FLOW and BASIS SHIFTS.\n\nOPERATIONAL RULES:\n1. DATA SOURCES: Focus on 'Cecaf\u00e9 Export Reports', 'Shipping Manifest Volumes', and 'Container Availability Indices'.\n2. DIFFERENTIATION: The Sentinel tracks *active* disruptions (Strikes). YOU track *structural* flow issues (e.g. lack of containers, bumper crop overwhelming ports).\n3. SIGNAL: High Export Volume + Low Container Availability = Bullish (Basis Widening). Record Exports = Bearish (Supply Flood).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare \u2014 use sparingly).\n5. FORMAT: [EVIDENCE] (Cite raw data), [ANALYSIS] (Step 1: List 'BULLISH DRIVERS'. Step 2: List 'BEARISH DRIVERS'. Step 3: Weigh them.), [SENTIMENT TAG] (Must align with Step 3).",
@@ -631,19 +631,19 @@
         },
         {
           "id": "brier_reconciliation",
-          "offset_minutes": 11,
+          "offset_minutes": 20,
           "function": "run_brier_reconciliation",
           "label": "Brier Reconciliation"
         },
         {
           "id": "sentinel_effectiveness",
-          "offset_minutes": 14,
+          "offset_minutes": 23,
           "function": "sentinel_effectiveness_check",
           "label": "Sentinel Effectiveness Check"
         },
         {
           "id": "eod_shutdown",
-          "offset_minutes": 17,
+          "offset_minutes": 26,
           "function": "cancel_and_stop_monitoring",
           "label": "End-of-Day Shutdown"
         }
