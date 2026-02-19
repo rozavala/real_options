@@ -159,28 +159,48 @@ def migrate_directory(src: str, dst: str, dry_run: bool) -> bool:
         print(f"  MOVED DIR: {src} -> {dst}")
         return True
 
-    # Both exist — merge: copy files from src that don't exist in dst
-    moved_any = False
+    # Both exist — merge each file using same keep-larger logic as migrate_file
+    changed = False
     for item in os.listdir(src):
         src_item = os.path.join(src, item)
         dst_item = os.path.join(dst, item)
-        if os.path.isfile(src_item) and not os.path.exists(dst_item):
+        if not os.path.isfile(src_item):
+            continue
+        if not os.path.exists(dst_item):
+            # Missing from dst — copy it in
             if dry_run:
                 print(f"  WOULD MERGE: {src_item} -> {dst_item}")
             else:
                 shutil.copy2(src_item, dst_item)
                 print(f"  MERGED: {src_item} -> {dst_item}")
-            moved_any = True
+            changed = True
+        else:
+            # Exists in both — keep larger (matches migrate_file behavior)
+            src_size = os.path.getsize(src_item)
+            dst_size = os.path.getsize(dst_item)
+            if src_size > dst_size:
+                if dry_run:
+                    print(f"  WOULD REPLACE (src {src_size}B > dst {dst_size}B): {dst_item}")
+                else:
+                    shutil.copy2(src_item, dst_item)
+                    print(f"  REPLACED (src {src_size}B > dst {dst_size}B): {dst_item}")
+                changed = True
+            else:
+                if dry_run:
+                    print(f"  SKIP (dst {dst_size}B >= src {src_size}B): {os.path.basename(dst_item)}")
 
-    # Clean up source if we merged everything
-    if not dry_run and moved_any:
-        remaining = os.listdir(src)
-        dst_files = set(os.listdir(dst))
-        if all(f in dst_files for f in remaining):
+    # Clean up source dir if all its files are accounted for in dst
+    remaining = os.listdir(src) if os.path.exists(src) else []
+    dst_files = set(os.listdir(dst))
+    if remaining and all(f in dst_files for f in remaining):
+        if dry_run:
+            print(f"  WOULD CLEAN: remove source {src} ({len(remaining)} files all present in dst)")
+        else:
             shutil.rmtree(src)
-            print(f"  CLEANED: removed empty source {src}")
+            print(f"  CLEANED: removed source {src} ({len(remaining)} files all present in dst)")
+        changed = True
 
-    return moved_any
+    return changed
 
 
 def clean_cc_stale(dry_run: bool) -> int:
