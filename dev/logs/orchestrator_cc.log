@@ -176,3 +176,387 @@
 2026-02-19 18:25:22,054 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 24% of average
 2026-02-19 18:25:22,054 - Orchestrator - INFO - MicrostructureSentinel cooldown active until 2026-02-19 18:43:20.339910. Skipping.
 2026-02-19 18:28:22,306 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=45, market_open=True, trading_day=True
+2026-02-19 18:30:22,645 - Orchestrator - INFO - Market Closed: Releasing Sentinel IB connection to pool.
+2026-02-19 18:30:22,646 - trading_bot.connection_pool - INFO - Disconnecting IB (sentinel)...
+2026-02-19 18:30:28,658 - Orchestrator - INFO - Market Closed: Disengaging Microstructure Sentinel
+2026-02-19 18:30:28,658 - trading_bot.connection_pool - INFO - Disconnecting IB (microstructure)...
+2026-02-19 18:33:31,818 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=50, market_open=False, trading_day=True
+2026-02-19 18:35:00,013 - Orchestrator - INFO - --- Running scheduled task: log_equity_snapshot [log_equity_snapshot] ---
+2026-02-19 18:35:00,018 - EquityLogger - INFO - Skipping equity snapshot — non-primary commodity (account equity tracked by primary)
+2026-02-19 18:35:00,023 - Orchestrator - INFO - Next task 'reconcile_and_analyze' (Reconcile & Analyze) scheduled for 2026-02-19 18:38:00 UTC. Waiting for 0.05 hours.
+2026-02-19 18:38:00,004 - Orchestrator - INFO - --- Running scheduled task: reconcile_and_analyze [reconcile_and_analyze] ---
+2026-02-19 18:38:00,008 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-02-19 18:38:00,009 - EquityLogger - INFO - Skipping equity sync — non-primary commodity (account equity tracked by primary)
+2026-02-19 18:38:00,017 - Orchestrator - WARNING - ⚠️ Equity data is 25.6 hours stale.
+2026-02-19 18:38:00,336 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-19 18:38:00,338 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-02-19 18:38:00,339 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-02-19 18:38:00,343 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-19 18:38:00,343 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-02-19 18:38:00,508 - TradeReconciler - WARNING - Flex Query transient error (attempt 1/3): Code 1018 — Too many requests have been made from this token. Please try again shortly.. Retrying in 30s...
+2026-02-19 18:38:30,695 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 2)
+2026-02-19 18:38:32,019 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=55, market_open=False, trading_day=True
+2026-02-19 18:38:40,706 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-19 18:38:40,853 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-19 18:38:40,856 - TradeReconciler - INFO - Parsed 46 executions from the Flex Query report.
+2026-02-19 18:38:40,872 - TradeReconciler - INFO - Successfully processed 46 trades into the reconciliation DataFrame.
+2026-02-19 18:38:40,873 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-02-19 18:38:41,044 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-19 18:38:51,055 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-19 18:38:51,178 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-19 18:38:51,181 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-02-19 18:38:51,182 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-02-19 18:38:51,184 - TradeReconciler - INFO - Consolidated to 46 unique trades from all reports.
+2026-02-19 18:38:51,185 - TradeReconciler - INFO - Filtered IB trades by commodity CC (prefixes ('CC', 'DC')): 46 -> 0
+2026-02-19 18:38:51,185 - TradeReconciler - INFO - Found 0 archived ledger files.
+2026-02-19 18:38:51,185 - TradeReconciler - WARNING - No trade ledger data found.
+2026-02-19 18:38:51,186 - TradeReconciler - WARNING - Local trade ledger is empty. All fetched IB trades will be considered missing.
+2026-02-19 18:38:51,188 - TradeReconciler - INFO - Filtered IB trades from 0 to 0 records within the last 90 days.
+2026-02-19 18:38:51,188 - TradeReconciler - WARNING - IB trades report is empty. All local trades will be marked as superfluous.
+2026-02-19 18:38:51,188 - TradeReconciler - INFO - No discrepancies found. The local ledger is perfectly in sync with the IB report.
+2026-02-19 18:38:51,188 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
+2026-02-19 18:38:51,188 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-02-19 18:38:51,380 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-19 18:39:01,390 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-19 18:39:01,516 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-19 18:39:01,522 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
+2026-02-19 18:39:01,523 - TradeReconciler - WARNING - No trade ledger data found.
+2026-02-19 18:39:01,530 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-02-19 18:39:01,531 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-02-19 18:39:05,570 - ib_insync.ib - ERROR - completed orders request timed out
+2026-02-19 18:39:05,589 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-19 18:39:05,589 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-19 18:39:05,590 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
+2026-02-19 18:39:05,591 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 10:14:38.187359+00:00: CCK6 (202605) (BEARISH)
+2026-02-19 18:39:05,615 - trading_bot.reconciliation - INFO - Exit time adjusted for CCK6 (202605): default Thu 13:14 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:39:06,154 - trading_bot.reconciliation - INFO - Reconciled CCK6 (202605): Entry 3350.00 -> Exit 3079.00 (8.09% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 271.0000
+2026-02-19 18:39:18,123 - trading_bot.trade_journal - INFO - Trade journal entry created: CCK6 (202605) WIN ($271.00)
+2026-02-19 18:39:18,124 - trading_bot.brier_scoring - INFO - No accuracy history file found
+2026-02-19 18:39:18,125 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:39:18,230 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 10:16:05.429155+00:00: CCN6 (202607) (BEARISH)
+2026-02-19 18:39:18,351 - trading_bot.reconciliation - INFO - Exit time adjusted for CCN6 (202607): default Thu 13:16 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:39:18,522 - trading_bot.reconciliation - INFO - Reconciled CCN6 (202607): Entry 3414.00 -> Exit 3140.00 (8.03% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 274.0000
+2026-02-19 18:39:28,657 - trading_bot.trade_journal - INFO - Trade journal entry created: CCN6 (202607) WIN ($274.00)
+2026-02-19 18:39:28,657 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:39:28,760 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 10:17:52.100616+00:00: CCU6 (202609) (BEARISH)
+2026-02-19 18:39:28,869 - trading_bot.reconciliation - INFO - Exit time adjusted for CCU6 (202609): default Thu 13:17 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:39:29,042 - trading_bot.reconciliation - INFO - Reconciled CCU6 (202609): Entry 3472.00 -> Exit 3187.00 (8.21% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 285.0000
+2026-02-19 18:39:40,128 - trading_bot.trade_journal - INFO - Trade journal entry created: CCU6 (202609) WIN ($285.00)
+2026-02-19 18:39:40,128 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:39:40,229 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 10:19:19.446919+00:00: CCZ6 (202612) (BEARISH)
+2026-02-19 18:39:40,269 - trading_bot.reconciliation - INFO - Exit time adjusted for CCZ6 (202612): default Thu 13:19 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:39:40,448 - trading_bot.reconciliation - INFO - Reconciled CCZ6 (202612): Entry 3569.00 -> Exit 3257.00 (8.74% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 312.0000
+2026-02-19 18:39:49,543 - trading_bot.trade_journal - INFO - Trade journal entry created: CCZ6 (202612) WIN ($312.00)
+2026-02-19 18:39:49,543 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:39:49,644 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 10:22:05.583902+00:00: CCH7 (202703) (BEARISH)
+2026-02-19 18:39:49,671 - trading_bot.reconciliation - INFO - Exit time adjusted for CCH7 (202703): default Thu 13:22 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:39:49,840 - trading_bot.reconciliation - INFO - Reconciled CCH7 (202703): Entry 3651.00 -> Exit 3310.00 (9.34% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 341.0000
+2026-02-19 18:40:01,160 - trading_bot.trade_journal - INFO - Trade journal entry created: CCH7 (202703) WIN ($341.00)
+2026-02-19 18:40:01,161 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:40:01,262 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 12:29:27.759927+00:00: CCU6 (202609) (BEARISH)
+2026-02-19 18:40:01,468 - trading_bot.reconciliation - INFO - Reconciled CCU6 (202609): Entry 3422.00 -> Exit 3187.00 (6.87% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 235.0000
+2026-02-19 18:40:13,772 - trading_bot.trade_journal - INFO - Trade journal entry created: CCU6 (202609) WIN ($235.00)
+2026-02-19 18:40:13,772 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:40:13,873 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 12:29:32.315002+00:00: CCK6 (202605) (BEARISH)
+2026-02-19 18:40:14,109 - trading_bot.reconciliation - INFO - Reconciled CCK6 (202605): Entry 3301.00 -> Exit 3079.00 (6.73% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 222.0000
+2026-02-19 18:40:23,035 - trading_bot.trade_journal - INFO - Trade journal entry created: CCK6 (202605) WIN ($222.00)
+2026-02-19 18:40:23,035 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:40:23,136 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 12:29:58.977964+00:00: CCN6 (202607) (BEARISH)
+2026-02-19 18:40:23,341 - trading_bot.reconciliation - INFO - Reconciled CCN6 (202607): Entry 3361.00 -> Exit 3140.00 (6.58% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 221.0000
+2026-02-19 18:40:32,936 - trading_bot.trade_journal - INFO - Trade journal entry created: CCN6 (202607) WIN ($221.00)
+2026-02-19 18:40:32,937 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:40:33,038 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 12:35:22.037316+00:00: CCH7 (202703) (BEARISH)
+2026-02-19 18:40:33,255 - trading_bot.reconciliation - INFO - Reconciled CCH7 (202703): Entry 3595.00 -> Exit 3310.00 (7.93% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 285.0000
+2026-02-19 18:40:43,629 - trading_bot.trade_journal - INFO - Trade journal entry created: CCH7 (202703) WIN ($285.00)
+2026-02-19 18:40:43,630 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:40:43,732 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 12:37:20.944957+00:00: CCZ6 (202612) (BEARISH)
+2026-02-19 18:40:43,922 - trading_bot.reconciliation - INFO - Reconciled CCZ6 (202612): Entry 3518.00 -> Exit 3257.00 (7.42% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 261.0000
+2026-02-19 18:40:53,100 - trading_bot.trade_journal - INFO - Trade journal entry created: CCZ6 (202612) WIN ($261.00)
+2026-02-19 18:40:53,101 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:40:53,204 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 13:06:05.284374+00:00: CCK6 (202605) (NEUTRAL)
+2026-02-19 18:40:53,439 - trading_bot.reconciliation - INFO - Reconciled CCK6 (202605): Entry 3267.00 -> Exit 3079.00 (5.75% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
+2026-02-19 18:41:04,770 - trading_bot.trade_journal - INFO - Trade journal entry created: CCK6 (202605) FLAT ($0.00)
+2026-02-19 18:41:04,773 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
+2026-02-19 18:41:04,874 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 14:07:01.922226+00:00: CCK6 (202605) (NEUTRAL)
+2026-02-19 18:41:04,951 - trading_bot.reconciliation - INFO - Exit time adjusted for CCK6 (202605): default Thu 17:07 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:41:05,115 - trading_bot.reconciliation - INFO - Reconciled CCK6 (202605): Entry 3283.00 -> Exit 3079.00 (6.21% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
+2026-02-19 18:41:17,720 - trading_bot.trade_journal - INFO - Trade journal entry created: CCK6 (202605) FLAT ($0.00)
+2026-02-19 18:41:17,721 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
+2026-02-19 18:41:17,821 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 14:25:12.073154+00:00: CCK6 (202605) (NEUTRAL)
+2026-02-19 18:41:17,848 - trading_bot.reconciliation - INFO - Exit time adjusted for CCK6 (202605): default Thu 17:25 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:41:18,010 - trading_bot.reconciliation - INFO - Reconciled CCK6 (202605): Entry 3210.00 -> Exit 3079.00 (4.08% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
+2026-02-19 18:41:18,531 - trading_bot.trade_journal - INFO - Trade journal entry created: CCK6 (202605) FLAT ($0.00)
+2026-02-19 18:41:18,531 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
+2026-02-19 18:41:18,632 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 14:37:46.369686+00:00: CCK6 (202605) (BEARISH)
+2026-02-19 18:41:18,659 - trading_bot.reconciliation - INFO - Exit time adjusted for CCK6 (202605): default Thu 17:37 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:41:18,821 - trading_bot.reconciliation - INFO - Reconciled CCK6 (202605): Entry 3225.00 -> Exit 3079.00 (4.53% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 146.0000
+2026-02-19 18:41:29,312 - trading_bot.trade_journal - INFO - Trade journal entry created: CCK6 (202605) WIN ($146.00)
+2026-02-19 18:41:29,313 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:41:29,414 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 14:38:34.436975+00:00: CCN6 (202607) (BEARISH)
+2026-02-19 18:41:29,443 - trading_bot.reconciliation - INFO - Exit time adjusted for CCN6 (202607): default Thu 17:38 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:41:29,606 - trading_bot.reconciliation - INFO - Reconciled CCN6 (202607): Entry 3283.00 -> Exit 3140.00 (4.36% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 143.0000
+2026-02-19 18:41:38,678 - trading_bot.trade_journal - INFO - Trade journal entry created: CCN6 (202607) WIN ($143.00)
+2026-02-19 18:41:38,679 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:41:38,780 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 14:39:56.918457+00:00: CCU6 (202609) (BEARISH)
+2026-02-19 18:41:38,847 - trading_bot.reconciliation - INFO - Exit time adjusted for CCU6 (202609): default Thu 17:39 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:41:39,022 - trading_bot.reconciliation - INFO - Reconciled CCU6 (202609): Entry 3345.00 -> Exit 3187.00 (4.72% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 158.0000
+2026-02-19 18:41:49,182 - trading_bot.trade_journal - INFO - Trade journal entry created: CCU6 (202609) WIN ($158.00)
+2026-02-19 18:41:49,182 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:41:49,283 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 14:41:03.774285+00:00: CCZ6 (202612) (BEARISH)
+2026-02-19 18:41:49,320 - trading_bot.reconciliation - INFO - Exit time adjusted for CCZ6 (202612): default Thu 17:41 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:41:49,487 - trading_bot.reconciliation - INFO - Reconciled CCZ6 (202612): Entry 3439.00 -> Exit 3257.00 (5.29% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 182.0000
+2026-02-19 18:41:58,288 - trading_bot.trade_journal - INFO - Trade journal entry created: CCZ6 (202612) WIN ($182.00)
+2026-02-19 18:41:58,289 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:41:58,391 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 14:41:55.463650+00:00: CCH7 (202703) (BEARISH)
+2026-02-19 18:41:58,430 - trading_bot.reconciliation - INFO - Exit time adjusted for CCH7 (202703): default Thu 17:41 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:41:58,593 - trading_bot.reconciliation - INFO - Reconciled CCH7 (202703): Entry 3502.00 -> Exit 3310.00 (5.48% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 192.0000
+2026-02-19 18:42:08,026 - trading_bot.trade_journal - INFO - Trade journal entry created: CCH7 (202703) WIN ($192.00)
+2026-02-19 18:42:08,027 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:42:08,127 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 15:32:37.905757+00:00: CCK6 (202605) (NEUTRAL)
+2026-02-19 18:42:08,150 - trading_bot.reconciliation - INFO - Exit time adjusted for CCK6 (202605): default Thu 18:32 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:42:08,313 - trading_bot.reconciliation - INFO - Reconciled CCK6 (202605): Entry 3257.00 -> Exit 3079.00 (5.47% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
+2026-02-19 18:42:18,555 - trading_bot.trade_journal - INFO - Trade journal entry created: CCK6 (202605) FLAT ($0.00)
+2026-02-19 18:42:18,556 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
+2026-02-19 18:42:18,661 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 16:47:02.574836+00:00: CCK6 (202605) (NEUTRAL)
+2026-02-19 18:42:18,754 - trading_bot.reconciliation - INFO - Exit time adjusted for CCK6 (202605): default Thu 19:47 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:42:18,927 - trading_bot.reconciliation - INFO - Reconciled CCK6 (202605): Entry 3331.00 -> Exit 3079.00 (7.57% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
+2026-02-19 18:42:27,321 - trading_bot.trade_journal - INFO - Trade journal entry created: CCK6 (202605) FLAT ($0.00)
+2026-02-19 18:42:27,321 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
+2026-02-19 18:42:27,423 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 17:00:26.160749+00:00: CCK6 (202605) (NEUTRAL)
+2026-02-19 18:42:27,461 - trading_bot.reconciliation - INFO - Exit time adjusted for CCK6 (202605): default Thu 20:00 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:42:27,627 - trading_bot.reconciliation - INFO - Reconciled CCK6 (202605): Entry 3332.00 -> Exit 3079.00 (7.59% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
+2026-02-19 18:42:37,896 - trading_bot.trade_journal - INFO - Trade journal entry created: CCK6 (202605) FLAT ($0.00)
+2026-02-19 18:42:37,896 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
+2026-02-19 18:42:38,023 - trading_bot.reconciliation - INFO - Successfully updated council_history.csv with reconciliation results.
+2026-02-19 18:42:38,023 - trading_bot.brier_scoring - INFO - No structured predictions file found — nothing to resolve
+2026-02-19 18:42:41,030 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-02-19 18:42:41,032 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-02-19 18:42:41,033 - PerformanceAnalyzer - INFO - No archived trade ledgers found.
+2026-02-19 18:42:41,033 - PerformanceAnalyzer - WARNING - No trade ledger data found to consolidate.
+2026-02-19 18:42:41,044 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-02-19 18:42:56,056 - ib_insync.ib - ERROR - completed orders request timed out
+2026-02-19 18:42:56,126 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $39,720.53
+2026-02-19 18:42:58,131 - PerformanceAnalyzer - INFO - Successfully fetched 0 execution(s) for today from IB.
+2026-02-19 18:43:01,142 - PerformanceAnalyzer - WARNING - Trade ledger is empty, skipping chart generation.
+2026-02-19 18:43:01,143 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-02-19 18:43:01,448 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-19 18:43:01,878 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-19 18:43:01,882 - root - INFO - 'trade_ledger.csv' not found, no action taken.
+2026-02-19 18:43:01,893 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-19 18:43:01,896 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=268
+2026-02-19 18:43:01,896 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-02-19 18:43:01,897 - Orchestrator - INFO - Running feedback loop health check...
+2026-02-19 18:43:01,905 - Orchestrator - INFO - Feedback Loop Health: 303/303 PENDING (0 orphans excluded, resolution rate: 0%)
+2026-02-19 18:43:01,911 - trading_bot.enhanced_brier - INFO - Loaded 360 predictions from /home/rodrigo/real_options/data/CC/enhanced_brier.json
+2026-02-19 18:43:01,965 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-201b968b) → BEARISH
+2026-02-19 18:43:01,966 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-201b968b) → BEARISH
+2026-02-19 18:43:01,966 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-201b968b) → BEARISH
+2026-02-19 18:43:01,966 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-201b968b) → BEARISH
+2026-02-19 18:43:01,966 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-201b968b) → BEARISH
+2026-02-19 18:43:01,966 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-201b968b) → BEARISH
+2026-02-19 18:43:01,966 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-201b968b) → BEARISH
+2026-02-19 18:43:01,966 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-201b968b) → BEARISH
+2026-02-19 18:43:01,968 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-201b968b) → BEARISH
+2026-02-19 18:43:01,969 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-aafd8001) → BEARISH
+2026-02-19 18:43:01,969 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-aafd8001) → BEARISH
+2026-02-19 18:43:01,969 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-aafd8001) → BEARISH
+2026-02-19 18:43:01,969 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-aafd8001) → BEARISH
+2026-02-19 18:43:01,969 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-aafd8001) → BEARISH
+2026-02-19 18:43:01,969 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-aafd8001) → BEARISH
+2026-02-19 18:43:01,969 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-aafd8001) → BEARISH
+2026-02-19 18:43:01,969 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-aafd8001) → BEARISH
+2026-02-19 18:43:01,969 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-aafd8001) → BEARISH
+2026-02-19 18:43:01,969 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-7e123bf6) → BEARISH
+2026-02-19 18:43:01,969 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-7e123bf6) → BEARISH
+2026-02-19 18:43:01,969 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-7e123bf6) → BEARISH
+2026-02-19 18:43:01,969 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-7e123bf6) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-7e123bf6) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-7e123bf6) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-7e123bf6) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-7e123bf6) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-7e123bf6) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-bf37cd69) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-bf37cd69) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-bf37cd69) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-bf37cd69) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-bf37cd69) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-bf37cd69) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-bf37cd69) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-bf37cd69) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-bf37cd69) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-f1f9df3c) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-f1f9df3c) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-f1f9df3c) → BEARISH
+2026-02-19 18:43:01,970 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-f1f9df3c) → BEARISH
+2026-02-19 18:43:01,971 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-f1f9df3c) → BEARISH
+2026-02-19 18:43:01,971 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-f1f9df3c) → BEARISH
+2026-02-19 18:43:01,971 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-f1f9df3c) → BEARISH
+2026-02-19 18:43:01,971 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-f1f9df3c) → BEARISH
+2026-02-19 18:43:01,971 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-f1f9df3c) → BEARISH
+2026-02-19 18:43:01,971 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-ba7e018b) → BEARISH
+2026-02-19 18:43:01,971 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-ba7e018b) → BEARISH
+2026-02-19 18:43:01,971 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-ba7e018b) → BEARISH
+2026-02-19 18:43:01,971 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-ba7e018b) → BEARISH
+2026-02-19 18:43:01,971 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-ba7e018b) → BEARISH
+2026-02-19 18:43:01,971 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-ba7e018b) → BEARISH
+2026-02-19 18:43:01,971 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-ba7e018b) → BEARISH
+2026-02-19 18:43:01,972 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-ba7e018b) → BEARISH
+2026-02-19 18:43:01,972 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-ba7e018b) → BEARISH
+2026-02-19 18:43:01,972 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-b3649e2e) → BEARISH
+2026-02-19 18:43:01,972 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-b3649e2e) → BEARISH
+2026-02-19 18:43:01,972 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-b3649e2e) → BEARISH
+2026-02-19 18:43:01,972 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-b3649e2e) → BEARISH
+2026-02-19 18:43:01,972 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-b3649e2e) → BEARISH
+2026-02-19 18:43:01,972 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-b3649e2e) → BEARISH
+2026-02-19 18:43:01,972 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-b3649e2e) → BEARISH
+2026-02-19 18:43:01,972 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-b3649e2e) → BEARISH
+2026-02-19 18:43:01,972 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-b3649e2e) → BEARISH
+2026-02-19 18:43:01,972 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-71e8c44b) → BEARISH
+2026-02-19 18:43:01,972 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-71e8c44b) → BEARISH
+2026-02-19 18:43:01,973 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-71e8c44b) → BEARISH
+2026-02-19 18:43:01,973 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-71e8c44b) → BEARISH
+2026-02-19 18:43:01,973 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-71e8c44b) → BEARISH
+2026-02-19 18:43:01,973 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-71e8c44b) → BEARISH
+2026-02-19 18:43:01,973 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-71e8c44b) → BEARISH
+2026-02-19 18:43:01,973 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-71e8c44b) → BEARISH
+2026-02-19 18:43:01,973 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-71e8c44b) → BEARISH
+2026-02-19 18:43:01,973 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-019dbe60) → BEARISH
+2026-02-19 18:43:01,974 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-019dbe60) → BEARISH
+2026-02-19 18:43:01,974 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-019dbe60) → BEARISH
+2026-02-19 18:43:01,974 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-019dbe60) → BEARISH
+2026-02-19 18:43:01,974 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-019dbe60) → BEARISH
+2026-02-19 18:43:01,974 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-019dbe60) → BEARISH
+2026-02-19 18:43:01,974 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-019dbe60) → BEARISH
+2026-02-19 18:43:01,974 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-019dbe60) → BEARISH
+2026-02-19 18:43:01,974 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-019dbe60) → BEARISH
+2026-02-19 18:43:01,974 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-2ad3db19) → BEARISH
+2026-02-19 18:43:01,974 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-2ad3db19) → BEARISH
+2026-02-19 18:43:01,974 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-2ad3db19) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-2ad3db19) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-2ad3db19) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-2ad3db19) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-2ad3db19) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-2ad3db19) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-2ad3db19) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-29faa281) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-29faa281) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-29faa281) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-29faa281) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-29faa281) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-29faa281) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-29faa281) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-29faa281) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-c5ef0d1f) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-c5ef0d1f) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-c5ef0d1f) → BEARISH
+2026-02-19 18:43:01,975 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-c5ef0d1f) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-c5ef0d1f) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-c5ef0d1f) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-c5ef0d1f) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-c5ef0d1f) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-1a666c45) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-1a666c45) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-1a666c45) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-1a666c45) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-1a666c45) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-1a666c45) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-1a666c45) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-1a666c45) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-32fd96f2) → BEARISH
+2026-02-19 18:43:01,976 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-32fd96f2) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-32fd96f2) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-32fd96f2) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-32fd96f2) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-32fd96f2) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-32fd96f2) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-32fd96f2) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-32fd96f2) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-685ff002) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-685ff002) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-685ff002) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-685ff002) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-685ff002) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-685ff002) → BEARISH
+2026-02-19 18:43:01,977 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-685ff002) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-685ff002) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-685ff002) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-6fc7cf5d) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-6fc7cf5d) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-6fc7cf5d) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-6fc7cf5d) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-6fc7cf5d) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-6fc7cf5d) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-6fc7cf5d) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-6fc7cf5d) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-6fc7cf5d) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-b14fdec5) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-b14fdec5) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-b14fdec5) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-b14fdec5) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-b14fdec5) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-b14fdec5) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-b14fdec5) → BEARISH
+2026-02-19 18:43:01,978 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-b14fdec5) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-b14fdec5) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-d83f26fd) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-d83f26fd) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-d83f26fd) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-d83f26fd) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-d83f26fd) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-d83f26fd) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-d83f26fd) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-d83f26fd) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=CC-d83f26fd) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-1c46322e) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-1c46322e) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-1c46322e) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-1c46322e) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-1c46322e) → BEARISH
+2026-02-19 18:43:01,979 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-1c46322e) → BEARISH
+2026-02-19 18:43:01,980 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-1c46322e) → BEARISH
+2026-02-19 18:43:01,980 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-1c46322e) → BEARISH
+2026-02-19 18:43:01,980 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-fdbc3fcc) → BEARISH
+2026-02-19 18:43:01,980 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-fdbc3fcc) → BEARISH
+2026-02-19 18:43:01,980 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=CC-22dad5d7) → BEARISH
+2026-02-19 18:43:01,980 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=CC-22dad5d7) → BEARISH
+2026-02-19 18:43:01,980 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=CC-22dad5d7) → BEARISH
+2026-02-19 18:43:01,980 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=CC-22dad5d7) → BEARISH
+2026-02-19 18:43:01,980 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=CC-22dad5d7) → BEARISH
+2026-02-19 18:43:01,980 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=CC-22dad5d7) → BEARISH
+2026-02-19 18:43:01,980 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=CC-22dad5d7) → BEARISH
+2026-02-19 18:43:01,981 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=CC-22dad5d7) → BEARISH
+2026-02-19 18:43:01,993 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 0 created from CSV, 177 resolved from council_history
+2026-02-19 18:43:01,994 - Orchestrator - INFO - Enhanced Brier Health: 9 agents tracked, 177 total resolved predictions
+2026-02-19 18:43:01,994 - Orchestrator - INFO - Feedback loop health check complete.
+2026-02-19 18:43:01,994 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-02-19 18:43:02,001 - Orchestrator - INFO - Next task 'sentinel_effectiveness' (Sentinel Effectiveness Check) scheduled for 2026-02-19 18:44:00 UTC. Waiting for 0.02 hours.
+2026-02-19 18:43:32,087 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=60, market_open=False, trading_day=True
+2026-02-19 18:44:00,029 - Orchestrator - INFO - --- Running scheduled task: sentinel_effectiveness [sentinel_effectiveness_check] ---
+2026-02-19 18:44:00,034 - Orchestrator - INFO - --- Sentinel Effectiveness Check ---
+2026-02-19 18:44:00,126 - Orchestrator - WARNING - 🔴 SENTINEL EFFECTIVENESS ALERT
+Cocoa weekly change: -14.0%
+Sentinel alerts: 15, Trades from sentinels: 0
+Diagnosis: Alerts fired but no trades — check council pipeline (Fix 1) and debounce (Fix 2)
+2026-02-19 18:44:00,381 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-19 18:44:00,390 - Orchestrator - INFO - Next task 'eod_shutdown' (End-of-Day Shutdown) scheduled for 2026-02-19 18:47:00 UTC. Waiting for 0.05 hours.
+2026-02-19 18:47:00,002 - Orchestrator - INFO - --- Running scheduled task: eod_shutdown [cancel_and_stop_monitoring] ---
+2026-02-19 18:47:00,010 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
+2026-02-19 18:47:00,011 - Orchestrator - INFO - System shutdown flag SET — no new trades or emergency cycles will be processed
+2026-02-19 18:47:00,011 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
+2026-02-19 18:47:00,012 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 430 [REMOTE/PAPER]...
+2026-02-19 18:47:15,083 - ib_insync.ib - ERROR - completed orders request timed out
+2026-02-19 18:47:15,089 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 430
+2026-02-19 18:47:15,097 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-19 18:47:15,098 - OrderManager - INFO - Connected to IB for canceling open orders (purpose: orchestrator_orders).
+2026-02-19 18:47:15,109 - OrderManager - INFO - Skipped 4 orders belonging to other client IDs.
+2026-02-19 18:47:15,110 - OrderManager - INFO - No open orders belonging to this instance found to cancel.
+2026-02-19 18:47:15,110 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-19 18:47:18,114 - Orchestrator - INFO - --- Stopping position monitoring process (PID: 2145988) ---
+2026-02-19 18:47:18,115 - Orchestrator - INFO - 2026-02-19 18:47:18,115 - __main__ - INFO - Received shutdown signal: SIGTERM. Disconnecting from IB...
+2026-02-19 18:47:21,117 - Orchestrator - INFO - 2026-02-19 18:47:21,117 - root - INFO - P&L monitoring task was cancelled.
+2026-02-19 18:47:21,118 - Orchestrator - INFO - 2026-02-19 18:47:21,117 - root - INFO - Shutting down monitor. Unregistering event handlers and cancelling PnL subscriptions.
+2026-02-19 18:47:21,118 - Orchestrator - INFO - 2026-02-19 18:47:21,117 - __main__ - INFO - Position monitor has shut down.
+2026-02-19 18:47:22,346 - Orchestrator - INFO - Position monitoring process has been successfully terminated.
+2026-02-19 18:47:22,941 - Orchestrator - INFO - Connection pool released — no stale connections for Gateway restart
+2026-02-19 18:47:22,941 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
+2026-02-19 18:47:22,963 - Orchestrator - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-20 09:00:00 UTC. Waiting for 14.21 hours.
