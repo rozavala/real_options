@@ -85,6 +85,25 @@ class TestClassifyError:
         assert classify_error("weather fetch retry #2 of 3") is None
         assert classify_error("Retrying in 5 seconds") is None
 
+    def test_transient_ib_noise(self):
+        """IB operational noise should be skipped entirely."""
+        assert classify_error("completed orders request timed out") is None
+        assert classify_error("API connection failed: TimeoutError()") is None
+        assert classify_error("client id 28 already in use? Retry") is None
+
+    def test_transient_llm_noise(self):
+        """LLM provider transient errors should be skipped."""
+        assert classify_error("503 UNAVAILABLE. This model is currently experiencing high demand") is None
+        assert classify_error("currently experiencing high demand. Please try again") is None
+        assert classify_error("Gemini timed out after 60.0s") is None
+        assert classify_error("usage limits reached for this billing period") is None
+
+    def test_transient_operational_noise(self):
+        """Operational errors handled by circuit breakers should be skipped."""
+        assert classify_error("EMERGENCY_LOCK acquisition timed out (300s) for MacroContagionSentinel") is None
+        assert classify_error("Drawdown guard check failed (fail-closed): timeout") is None
+        assert classify_error("CIRCUIT BREAKER: gemini tripped for 1.0h") is None
+
     def test_case_insensitivity(self):
         assert classify_error("ib gateway CONNECTION FAILED") == "ib_connection"
         assert classify_error("jsondecodeError in output") == "parse_error"
