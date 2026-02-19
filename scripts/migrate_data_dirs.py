@@ -52,9 +52,7 @@ DATA_FILES = [
     'discovered_topics.json',
     'fundamental_regime.json',
     'weight_evolution.csv',
-    'compliance_decisions.csv',
     'router_metrics.json',
-    'error_reporter_state.json',
     'research_provenance.log',
 ]
 
