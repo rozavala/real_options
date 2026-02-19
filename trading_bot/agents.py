@@ -897,6 +897,10 @@ OUTPUT FORMAT (JSON):
             )
             if not is_valid:
                 logger.warning(f"[{persona_key}] Validation issues: {issues}")
+                # Invalidate cached response to prevent hallucination propagation
+                if any("hallucination" in i.lower() for i in issues):
+                    if self.use_heterogeneous and hasattr(self.heterogeneous_router, 'cache'):
+                        self.heterogeneous_router.cache.invalidate_by_role(persona_key)
 
             # Parse JSON
             try:
@@ -1291,7 +1295,11 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
             f"2. If agent consensus confidence > 0.85 -> Strong signal, consider action\n"
             f"3. If agent conflict score is high -> Consider volatility play\n\n"
             f"TASK: Synthesize the evidence. Judge the debate. Render a verdict.\n"
-            f"CRITICAL: DO NOT output price targets, stop-losses, or precise numerical confidence. Focus on reasoning quality.\n"
+            f"CRITICAL RULES:\n"
+            f"- DO NOT output price targets, stop-losses, or precise numerical confidence. Focus on reasoning quality.\n"
+            f"- ONLY cite facts, thresholds, and rules that appear explicitly in the reports above.\n"
+            f"- DO NOT invent framework rules, liquidation thresholds, or priority systems that are not in the evidence.\n"
+            f"- If a number or rule is not in the desk reports or market data, do not reference it.\n"
             f"OUTPUT FORMAT: Valid JSON object ONLY with these exact keys:\n"
             f"- 'direction': (string) 'BULLISH', 'BEARISH', or 'NEUTRAL'.\n"
             f"- 'thesis_strength': (string) 'SPECULATIVE', 'PLAUSIBLE', or 'PROVEN'.\n"

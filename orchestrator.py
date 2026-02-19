@@ -1083,16 +1083,44 @@ async def check_and_recover_equity_data(config: dict) -> bool:
     Check equity data freshness and trigger Flex query if stale.
 
     v3.1: Auto-recovery instead of just alerting.
+    v7.2: Non-primary commodities copy equity from primary (account-wide metric).
 
     Returns:
         True if data is fresh or recovery succeeded
     """
     from equity_logger import sync_equity_from_flex
     from pathlib import Path
+    import shutil
 
     data_dir = config.get('data_dir', 'data')
     equity_file = Path(os.path.join(data_dir, "daily_equity.csv"))
     max_staleness_hours = config.get('monitoring', {}).get('equity_max_staleness_hours', 24)
+    is_primary = config.get('commodity', {}).get('is_primary', True)
+
+    # Non-primary: equity is account-wide, copy from primary's data dir
+    if not is_primary:
+        primary_equity = Path("data/KC/daily_equity.csv")
+        if primary_equity.exists():
+            age_hours = (
+                datetime.now() - datetime.fromtimestamp(primary_equity.stat().st_mtime)
+            ).total_seconds() / 3600
+            if age_hours <= max_staleness_hours:
+                shutil.copy2(str(primary_equity), str(equity_file))
+                logger.info(
+                    f"Copied equity data from primary ({age_hours:.1f}h old)"
+                )
+                return True
+            else:
+                logger.warning(
+                    f"Primary equity data is stale ({age_hours:.1f}h) — "
+                    f"primary instance should refresh it"
+                )
+                # Still copy the stale data so we have something
+                shutil.copy2(str(primary_equity), str(equity_file))
+                return False
+        else:
+            logger.warning("Primary equity file not found")
+            return False
 
     # Check staleness
     if equity_file.exists():
@@ -2567,8 +2595,22 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
     try:
         await asyncio.wait_for(EMERGENCY_LOCK.acquire(), timeout=300)
     except asyncio.TimeoutError:
-        logger.error(f"EMERGENCY_LOCK acquisition timed out (300s) for {trigger.source}. Skipping cycle.")
-        _sentinel_diag.error(f"OUTCOME {trigger.source}: BLOCKED (lock timeout)")
+        severity = getattr(trigger, 'severity', 'N/A')
+        logger.error(
+            f"EMERGENCY_LOCK acquisition timed out (300s) for {trigger.source} "
+            f"(severity={severity}). Deferring trigger instead of dropping."
+        )
+        _sentinel_diag.error(f"OUTCOME {trigger.source}: DEFERRED (lock timeout, severity={severity})")
+        StateManager.queue_deferred_trigger(trigger)
+        send_pushover_notification(
+            config.get('notifications', {}),
+            f"Lock Timeout: {trigger.source}",
+            f"Emergency cycle blocked for 300s — trigger deferred.\n"
+            f"Severity: {severity}/10\n"
+            f"Reason: {trigger.reason[:200]}\n"
+            f"Will retry at next deferred processing window.",
+            priority=1 if severity != 'N/A' and int(severity) >= 8 else 0,
+        )
         return
     try:
         cycle_actually_ran = False  # Did we reach the council decision?
@@ -4096,7 +4138,13 @@ async def guarded_generate_orders(config: dict):
                  logger.warning("Order generation BLOCKED: Drawdown Guard Active")
                  return
         except Exception as e:
-             logger.warning(f"Failed to check drawdown guard before orders: {e}")
+             logger.error(f"Drawdown guard check failed (fail-closed): {e}")
+             send_pushover_notification(
+                 config.get('notifications', {}),
+                 "⚠️ Drawdown Check Failed",
+                 f"Order generation blocked — drawdown guard unreachable: {e}"
+             )
+             return
         finally:
              if ib is not None:
                  try:

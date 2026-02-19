@@ -161,6 +161,17 @@ class ResponseCache:
         }
         logger.debug(f"Cache SET for {role} (TTL: {self._get_ttl(role)}s)")
 
+    def invalidate_by_role(self, role: str):
+        """Invalidate all cached entries for a specific role (e.g., on hallucination detection)."""
+        to_delete = [
+            key for key, entry in self.cache.items()
+            if entry.get('role') == role
+        ]
+        for key in to_delete:
+            del self.cache[key]
+        if to_delete:
+            logger.info(f"Cache INVALIDATED {len(to_delete)} entries for {role}")
+
     def get_stats(self) -> dict:
         """Return cache statistics for monitoring."""
         now = datetime.now()
@@ -203,6 +214,10 @@ def with_retry(max_retries=3, backoff_factor=2):
                 except Exception as e:
                     last_exception = e
                     error_str = str(e)
+
+                    # Don't retry hard quota errors — they won't resolve
+                    if _is_quota_error(e):
+                        break
 
                     if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
                         retry_match = re.search(r'retry in (\d+\.?\d*)s', error_str, re.IGNORECASE)
@@ -430,9 +445,98 @@ def _classify_error(e: Exception) -> str:
         return "timeout"
     if "429" in error_str or "rate" in error_str or "resource_exhausted" in error_str:
         return "rate_limit"
+    if "503" in error_str or "unavailable" in error_str:
+        return "service_unavailable"
     if "json" in error_str or "parse" in error_str or "decode" in error_str:
         return "parse_error"
+    if _is_quota_error(e):
+        return "quota_exhausted"
     return "api_error"
+
+
+# --- Provider Circuit Breaker ---
+# Maps provider name → epoch when it can be retried.
+# Prevents hammering a provider that has returned a hard quota/billing error.
+_PROVIDER_COOLDOWNS: dict[str, float] = {}
+
+
+def _is_quota_error(e: Exception) -> bool:
+    """Detect hard quota/billing errors that won't resolve with retries."""
+    error_str = str(e).lower()
+    return (
+        "usage limits" in error_str
+        or "billing" in error_str
+        or ("quota" in error_str and "exceeded" in error_str)
+    )
+
+
+def _trip_provider(provider_name: str, error: Exception):
+    """Mark a provider as unavailable until its quota resets."""
+    import re
+    error_str = str(error)
+    # Try to parse reset time: "regain access on 2026-03-01 at 00:00 UTC"
+    match = re.search(r'regain access on (\d{4}-\d{2}-\d{2})', error_str)
+    if match:
+        from datetime import datetime as _dt, timezone as _tz
+        try:
+            reset_date = _dt.strptime(match.group(1), "%Y-%m-%d").replace(tzinfo=_tz.utc)
+            resume_epoch = reset_date.timestamp()
+        except ValueError:
+            resume_epoch = time.time() + 3600  # 1h fallback
+    else:
+        resume_epoch = time.time() + 3600  # 1h default cooldown
+
+    _PROVIDER_COOLDOWNS[provider_name] = resume_epoch
+    remaining_h = (resume_epoch - time.time()) / 3600
+    logger.error(
+        f"CIRCUIT BREAKER: {provider_name} tripped for {remaining_h:.1f}h — {error_str[:200]}"
+    )
+
+
+def _is_provider_tripped(provider_name: str) -> bool:
+    """Check if a provider is in cooldown."""
+    resume_epoch = _PROVIDER_COOLDOWNS.get(provider_name)
+    if resume_epoch is None:
+        return False
+    if time.time() >= resume_epoch:
+        del _PROVIDER_COOLDOWNS[provider_name]
+        logger.info(f"CIRCUIT BREAKER: {provider_name} cooldown expired, re-enabling")
+        return False
+    return True
+
+
+# --- Transient Failure Tracker (timeouts, 503s) ---
+# Tracks consecutive transient failures per provider.
+# After TRANSIENT_TRIP_THRESHOLD consecutive failures, imposes a short cooldown.
+_TRANSIENT_FAILURES: dict[str, list[float]] = {}  # provider → list of failure timestamps
+TRANSIENT_TRIP_THRESHOLD = 5  # consecutive failures to trigger
+TRANSIENT_COOLDOWN_SECONDS = 300  # 5 min cooldown
+TRANSIENT_WINDOW_SECONDS = 600  # failures within this window count
+
+
+def _record_transient_failure(provider_name: str, error: Exception):
+    """Record a timeout or 503 failure. Trip provider after N consecutive failures."""
+    now = time.time()
+    failures = _TRANSIENT_FAILURES.setdefault(provider_name, [])
+    # Prune old failures outside the window
+    cutoff = now - TRANSIENT_WINDOW_SECONDS
+    failures[:] = [t for t in failures if t > cutoff]
+    failures.append(now)
+
+    if len(failures) >= TRANSIENT_TRIP_THRESHOLD:
+        if not _is_provider_tripped(provider_name):
+            _PROVIDER_COOLDOWNS[provider_name] = now + TRANSIENT_COOLDOWN_SECONDS
+            logger.warning(
+                f"CIRCUIT BREAKER (transient): {provider_name} tripped for "
+                f"{TRANSIENT_COOLDOWN_SECONDS}s after {len(failures)} failures "
+                f"in {TRANSIENT_WINDOW_SECONDS}s — {str(error)[:100]}"
+            )
+        failures.clear()
+
+
+def _clear_transient_failures(provider_name: str):
+    """Clear transient failure history on success."""
+    _TRANSIENT_FAILURES.pop(provider_name, None)
 
 
 class HeterogeneousRouter:
@@ -675,10 +779,14 @@ class HeterogeneousRouter:
         if primary_provider is not None:
             provider_name = primary_provider.value.lower()
 
-            # Acquire rate limit slot (blocks if at limit)
-            slot_acquired = await acquire_api_slot(provider_name, timeout=30.0)
+            # Circuit breaker: skip provider if tripped (quota exhausted)
+            if _is_provider_tripped(provider_name):
+                logger.debug(
+                    f"Skipping tripped provider {provider_name} for {role.value}"
+                )
+                last_exception = RuntimeError(f"{provider_name} quota exhausted (circuit breaker)")
 
-            if slot_acquired:
+            elif (slot_acquired := await acquire_api_slot(provider_name, timeout=30.0)):
                 start_time = time.time()
                 try:
                     client = self._get_client(primary_provider, primary_model)
@@ -698,6 +806,7 @@ class HeterogeneousRouter:
                         budget.record_cost(cost, source=f"router/{role.value}")
 
                     # Success - cache and return
+                    _clear_transient_failures(provider_name)
                     if use_cache:
                         self.cache.set(full_key_prompt, role.value, text)
 
@@ -728,6 +837,13 @@ class HeterogeneousRouter:
                 except Exception as e:
                     latency_ms = (time.time() - start_time) * 1000
                     last_exception = e
+                    # Trip circuit breaker on quota exhaustion
+                    if _is_quota_error(e):
+                        _trip_provider(provider_name, e)
+                    # Track transient failures (timeouts, 503s)
+                    err_type = _classify_error(e)
+                    if err_type in ("timeout", "rate_limit", "service_unavailable"):
+                        _record_transient_failure(provider_name, e)
                     logger.warning(
                         f"{primary_provider.value}/{primary_model} failed for {role.value}: {e}"
                     )
@@ -738,7 +854,7 @@ class HeterogeneousRouter:
                         success=False,
                         latency_ms=latency_ms,
                         was_fallback=False,
-                        error_type=_classify_error(e)
+                        error_type=err_type
                     )
             else:
                 # Rate limit timeout - treat as failure, move to fallback
@@ -757,6 +873,11 @@ class HeterogeneousRouter:
                 continue
 
             fallback_name = fallback_provider.value.lower()
+
+            # Circuit breaker: skip tripped providers in fallback chain too
+            if _is_provider_tripped(fallback_name):
+                logger.debug(f"Skipping tripped fallback {fallback_name} for {role.value}")
+                continue
 
             # Acquire rate limit slot for fallback provider
             slot_acquired = await acquire_api_slot(fallback_name, timeout=30.0)
@@ -783,7 +904,8 @@ class HeterogeneousRouter:
                     cost = calculate_api_cost(fallback_model, in_tok, out_tok)
                     budget.record_cost(cost, source=f"router/{role.value}(fallback)")
 
-                # Fallback succeeded
+                # Fallback succeeded — clear transient failures
+                _clear_transient_failures(fallback_name)
                 logger.warning(
                     f"FALLBACK SUCCESS: Used {fallback_provider.value}/{fallback_model} "
                     f"for {role.value} after primary failure."
@@ -829,6 +951,11 @@ class HeterogeneousRouter:
             except Exception as e:
                 latency_ms = (time.time() - start_time) * 1000
                 last_exception = e
+                if _is_quota_error(e):
+                    _trip_provider(fallback_name, e)
+                fb_err_type = _classify_error(e)
+                if fb_err_type in ("timeout", "rate_limit", "service_unavailable"):
+                    _record_transient_failure(fallback_name, e)
                 logger.warning(
                     f"Fallback {fallback_provider.value}/{fallback_model} "
                     f"also failed for {role.value}: {e}"
@@ -841,7 +968,7 @@ class HeterogeneousRouter:
                     latency_ms=latency_ms,
                     was_fallback=True,
                     primary_provider=primary_provider.value if primary_provider else None,
-                    error_type=_classify_error(e)
+                    error_type=fb_err_type
                 )
                 continue
 
