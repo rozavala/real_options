@@ -89,8 +89,6 @@ class TestCockpitUX(unittest.TestCase):
                 label = None
                 if isinstance(node.args[0], ast.Constant):
                     label = node.args[0].value
-                elif isinstance(node.args[0], ast.Str): # Python < 3.8
-                    label = node.args[0].s
 
                 if label == "UTC Time":
                     found_utc = True
