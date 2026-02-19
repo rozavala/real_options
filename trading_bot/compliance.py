@@ -16,19 +16,39 @@ logger = logging.getLogger(__name__)
 # Set explicitly by orchestrator main(), NOT at import time.
 # Tests and verify scripts get no grace period (correct behavior).
 _ORCHESTRATOR_BOOT_TIME = None
+_VAR_READY = False  # Set True after first successful VaR computation
 
 
 def set_boot_time():
     """Called by orchestrator in main() to enable startup grace period."""
-    global _ORCHESTRATOR_BOOT_TIME
+    global _ORCHESTRATOR_BOOT_TIME, _VAR_READY
     _ORCHESTRATOR_BOOT_TIME = _time.time()
+    _VAR_READY = False
+
+
+def notify_var_ready():
+    """Called by var_calculator after first successful VaR computation."""
+    global _VAR_READY
+    _VAR_READY = True
 
 
 def _in_startup_grace_period() -> bool:
-    """Check if we're within the 15-minute startup grace period."""
+    """Check if we're within the startup grace period.
+
+    Standard 15-min grace always applies. If VaR hasn't computed yet,
+    extends to 30 min to avoid blocking trades on slow first computation.
+    """
     if _ORCHESTRATOR_BOOT_TIME is None:
         return False  # Not under orchestrator — no grace
-    return (_time.time() - _ORCHESTRATOR_BOOT_TIME) < 900
+    elapsed = _time.time() - _ORCHESTRATOR_BOOT_TIME
+    if elapsed < 900:  # 15 min standard grace
+        return True
+    if not _VAR_READY and elapsed < 1800:  # Extended to 30 min if VaR not ready
+        logger.warning(
+            f"Extended startup grace: {elapsed/60:.0f}min elapsed, VaR not yet computed"
+        )
+        return True
+    return False
 
 @dataclass
 class ComplianceDecision:

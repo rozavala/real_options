@@ -300,6 +300,47 @@ async def test_batched_iv_fetch(calculator, sample_config):
     assert mock_ib.reqMktData.call_count == 2
 
 
+# --- Test 8b: IV polling exits early when data arrives ---
+
+async def test_iv_polling_exits_early(calculator, sample_config):
+    """Polling loop should exit as soon as modelGreeks are available."""
+    mock_ib = MagicMock()
+    mock_greeks = MagicMock()
+    mock_greeks.impliedVol = 0.28
+
+    mock_ticker = MagicMock()
+    mock_ticker.modelGreeks = mock_greeks  # Already available
+    mock_ticker.contract = MagicMock()
+    mock_ib.reqMktData.return_value = mock_ticker
+
+    item = MagicMock()
+    item.contract = MagicMock(conId=42, localSymbol="KC 380C", secType="FOP")
+
+    config = {**sample_config, 'compliance': {'iv_fetch_timeout': 0.5}}
+    iv_map = await calculator._batch_fetch_iv(mock_ib, [item], config)
+
+    assert iv_map[42] == 0.28
+
+
+# --- Test 8c: IV polling timeout logs warning ---
+
+async def test_iv_polling_timeout(calculator, sample_config):
+    """When IV never arrives, polling times out and logs warning."""
+    mock_ib = MagicMock()
+    mock_ticker = MagicMock()
+    mock_ticker.modelGreeks = None  # Never arrives
+    mock_ticker.contract = MagicMock()
+    mock_ib.reqMktData.return_value = mock_ticker
+
+    item = MagicMock()
+    item.contract = MagicMock(conId=99, localSymbol="KC 400P", secType="FOP")
+
+    config = {**sample_config, 'compliance': {'iv_fetch_timeout': 0.3}}
+    iv_map = await calculator._batch_fetch_iv(mock_ib, [item], config)
+
+    assert iv_map[99] is None  # No IV available
+
+
 # --- Test 9: yfinance failure → None ---
 
 def test_yfinance_failure_returns_none(calculator):
@@ -590,3 +631,49 @@ async def test_risk_agent_failure_var_still_saves(sample_config, tmp_data_dir):
     assert isinstance(output, dict)
     # VaR result itself is unchanged
     assert var_result.var_95 == 1500.0
+
+
+# --- Test 19: computed_by field round-trip ---
+
+def test_computed_by_round_trip(calculator, tmp_data_dir):
+    """computed_by field should survive save → load round-trip."""
+    original = VaRResult(
+        var_95=1500.0,
+        computed_epoch=time.time(),
+        computed_by="KC",
+    )
+    calculator._save_state(original)
+    loaded = calculator._load_state()
+
+    assert loaded is not None
+    assert loaded.computed_by == "KC"
+
+
+# --- Test 20: get_cached_var marks staleness ---
+
+def test_get_cached_var_marks_stale(calculator):
+    """get_cached_var should set is_stale when result is older than threshold."""
+    old_result = VaRResult(
+        var_95=1000.0,
+        computed_epoch=time.time() - 8000,  # ~2.2h ago
+        last_attempt_status="OK",
+    )
+    calculator._cached_result = old_result
+
+    cached = calculator.get_cached_var(max_stale_seconds=7200)
+    assert cached is not None
+    assert cached.is_stale is True
+
+
+def test_get_cached_var_fresh_not_stale(calculator):
+    """get_cached_var should not mark a fresh result as stale."""
+    fresh_result = VaRResult(
+        var_95=1000.0,
+        computed_epoch=time.time() - 60,  # 1 min ago
+        last_attempt_status="OK",
+    )
+    calculator._cached_result = fresh_result
+
+    cached = calculator.get_cached_var(max_stale_seconds=7200)
+    assert cached is not None
+    assert cached.is_stale is False
