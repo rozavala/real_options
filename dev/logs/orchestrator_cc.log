@@ -130,3 +130,49 @@
 2026-02-19 17:55:15,105 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
 2026-02-19 17:55:18,112 - Orchestrator - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-02-19 18:05:00 UTC. Waiting for 0.16 hours.
 2026-02-19 17:58:17,744 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_open=True, trading_day=True
+2026-02-19 18:02:18,459 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 43% of average (Sev: 5)
+2026-02-19 18:02:18,466 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-19 18:03:18,488 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_open=True, trading_day=True
+2026-02-19 18:05:00,008 - Orchestrator - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-02-19 18:05:00,015 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-19 18:05:00,031 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 432 [REMOTE/PAPER]...
+2026-02-19 18:05:15,044 - ib_insync.ib - ERROR - completed orders request timed out
+2026-02-19 18:05:15,048 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 432
+2026-02-19 18:05:15,053 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-19 18:05:15,053 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-19 18:05:15,156 - OrderManager - INFO - No open positions found in the IB account. Nothing to close.
+2026-02-19 18:05:15,156 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-19 18:05:18,164 - Orchestrator - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-02-19 18:15:00 UTC. Waiting for 0.16 hours.
+2026-02-19 18:08:19,214 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=25, market_open=True, trading_day=True
+2026-02-19 18:13:19,903 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=30, market_open=True, trading_day=True
+2026-02-19 18:13:20,018 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 29% of average
+2026-02-19 18:13:20,024 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-19 18:13:20,338 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-19 18:15:00,001 - Orchestrator - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-02-19 18:15:00,008 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-02-19 18:15:00,008 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-02-19 18:15:00,008 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-19 18:15:00,022 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 431 [REMOTE/PAPER]...
+2026-02-19 18:15:15,076 - ib_insync.ib - ERROR - completed orders request timed out
+2026-02-19 18:15:15,079 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 431
+2026-02-19 18:15:15,085 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-19 18:15:15,085 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-19 18:15:15,188 - OrderManager - INFO - No open positions found in the IB account. Nothing to close.
+2026-02-19 18:15:15,188 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-19 18:15:18,196 - Orchestrator - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-02-19 18:25:00 UTC. Waiting for 0.16 hours.
+2026-02-19 18:18:20,925 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=35, market_open=True, trading_day=True
+2026-02-19 18:20:21,364 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 40% of average (Sev: 6)
+2026-02-19 18:20:21,369 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-19 18:23:21,621 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=40, market_open=True, trading_day=True
+2026-02-19 18:25:00,003 - Orchestrator - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-02-19 18:25:00,007 - Orchestrator - INFO - --- Emergency Hard Close Check (T-45 min) ---
+2026-02-19 18:25:00,009 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 430 [REMOTE/PAPER]...
+2026-02-19 18:25:15,161 - ib_insync.ib - ERROR - completed orders request timed out
+2026-02-19 18:25:15,277 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 430
+2026-02-19 18:25:15,281 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-19 18:25:15,383 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
+2026-02-19 18:25:15,384 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-19 18:25:18,390 - Orchestrator - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-02-19 18:35:00 UTC. Waiting for 0.16 hours.
+2026-02-19 18:25:22,054 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 24% of average
+2026-02-19 18:25:22,054 - Orchestrator - INFO - MicrostructureSentinel cooldown active until 2026-02-19 18:43:20.339910. Skipping.
+2026-02-19 18:28:22,306 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=45, market_open=True, trading_day=True
