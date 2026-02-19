@@ -565,11 +565,11 @@ class HeterogeneousRouter:
         self.cache = ResponseCache(config)  # Now uses role-based TTL internally
         # 1. LOAD MODEL KEYS (With Defaults)
         gem_flash = self.registry.get('gemini', {}).get('flash', 'gemini-3-flash-preview')
-        gem_pro = self.registry.get('gemini', {}).get('pro', 'gemini-3-pro-preview')
+        gem_pro = self.registry.get('gemini', {}).get('pro', 'gemini-3.1-pro-preview')
 
         anth_pro = self.registry.get('anthropic', {}).get('pro', 'claude-sonnet-4-6')
 
-        oai_pro = self.registry.get('openai', {}).get('pro', 'gpt-4o')
+        oai_pro = self.registry.get('openai', {}).get('pro', 'gpt-5.2')
         oai_reasoning = self.registry.get('openai', {}).get('reasoning', 'o3-2025-04-16')
 
         xai_pro = self.registry.get('xai', {}).get('pro', 'grok-4-1-fast-reasoning')
@@ -654,7 +654,7 @@ class HeterogeneousRouter:
             # Note: We hardcode the Pro models here to ensure quality
             anth_pro = get_model('anthropic', 'pro', 'claude-sonnet-4-6')
             oai_pro = get_model('openai', 'pro', 'gpt-5.2')
-            gem_pro = get_model('gemini', 'pro', 'gemini-3-pro-preview')
+            gem_pro = get_model('gemini', 'pro', 'gemini-3.1-pro-preview')
 
             # CRITICAL: NEVER fallback to Flash models for Tier 3
             if primary_provider == ModelProvider.OPENAI:
@@ -674,7 +674,7 @@ class HeterogeneousRouter:
 
         # TIER 2: DEEP ANALYSTS + UTILITIES
         elif role in [AgentRole.AGRONOMIST, AgentRole.MACRO_ANALYST, AgentRole.SUPPLY_CHAIN_ANALYST, AgentRole.GEOPOLITICAL_ANALYST, AgentRole.INVENTORY_ANALYST, AgentRole.VOLATILITY_ANALYST, AgentRole.TRADE_ANALYST]:
-            gem_pro = get_model('gemini', 'pro', 'gemini-3-pro-preview')
+            gem_pro = get_model('gemini', 'pro', 'gemini-3.1-pro-preview')
             gem_flash = get_model('gemini', 'flash', 'gemini-3-flash-preview')
             oai_pro = get_model('openai', 'pro', 'gpt-5.2')
             anth_pro = get_model('anthropic', 'pro', 'claude-sonnet-4-6')
