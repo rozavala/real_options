@@ -117,7 +117,9 @@ ERROR_PATTERNS: dict[str, list[re.Pattern]] = {
     ],
 }
 
-# Patterns for transient errors that should be skipped entirely
+# Patterns for transient errors that should be skipped entirely.
+# These are operational noise — the system handles them with retries,
+# fallbacks, or circuit breakers. They should NOT create GitHub issues.
 TRANSIENT_PATTERNS: list[re.Pattern] = [
     re.compile(r"RSS.*timed?\s*out", re.IGNORECASE),
     re.compile(r"rate limit.*fallback", re.IGNORECASE),
@@ -129,11 +131,22 @@ TRANSIENT_PATTERNS: list[re.Pattern] = [
     re.compile(r"DISCONNECTED.*reconnect", re.IGNORECASE),
     re.compile(r"Connect call failed", re.IGNORECASE),
     re.compile(r"Connection refused", re.IGNORECASE),
-    # LLM provider transient errors (429 quota, 529 overloaded)
+    re.compile(r"completed orders request timed out", re.IGNORECASE),
+    re.compile(r"API connection failed.*TimeoutError", re.IGNORECASE),
+    re.compile(r"client id.*already in use", re.IGNORECASE),
+    # LLM provider transient errors (429 quota, 503 overloaded, 529)
     re.compile(r"RESOURCE_EXHAUSTED", re.IGNORECASE),
     re.compile(r"429.*quota exceeded", re.IGNORECASE),
     re.compile(r"overloaded_error", re.IGNORECASE),
     re.compile(r"Error code: 529", re.IGNORECASE),
+    re.compile(r"503 UNAVAILABLE", re.IGNORECASE),
+    re.compile(r"currently experiencing high demand", re.IGNORECASE),
+    re.compile(r"Gemini timed out after", re.IGNORECASE),
+    re.compile(r"usage limits", re.IGNORECASE),
+    # Operational: handled by circuit breakers / deferral, not code bugs
+    re.compile(r"EMERGENCY_LOCK acquisition timed out", re.IGNORECASE),
+    re.compile(r"Drawdown guard check failed \(fail-closed\)", re.IGNORECASE),
+    re.compile(r"CIRCUIT BREAKER", re.IGNORECASE),
     # Fallback successes (system recovered, not an issue)
     re.compile(r"FALLBACK SUCCESS", re.IGNORECASE),
 ]
