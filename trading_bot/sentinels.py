@@ -2118,7 +2118,10 @@ class MacroContagionSentinel(Sentinel):
 
         api_key = config.get('gemini', {}).get('api_key')
         self.client = genai.Client(api_key=api_key)
-        self.model = self.sentinel_config.get('model', "gemini-3-flash-preview")
+        # Fed policy shock detection (severity=9) needs Pro-tier reasoning;
+        # runs once/day so negligible quota impact on the 250 RPD limit.
+        registry = config.get('model_registry', {}).get('gemini', {})
+        self.model = self.sentinel_config.get('model', registry.get('pro', 'gemini-3-pro-preview'))
 
         _sentinel_diag.info(f"MacroContagionSentinel initialized with model: {self.model} | "
                      f"DXY thresholds: 1d={self.dxy_threshold_1d:.0%}, 2d={self.dxy_threshold_2d:.0%} | "
@@ -2252,7 +2255,11 @@ class MacroContagionSentinel(Sentinel):
 
             response = await self.client.aio.models.generate_content(
                 model=self.model,
-                contents=prompt
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    tools=[types.Tool(google_search=types.GoogleSearch())],
+                    response_mime_type="application/json",
+                )
             )
 
             # Clean JSON
