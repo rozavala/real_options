@@ -12,7 +12,6 @@ import pytz
 import sys
 import os
 import asyncio
-import json
 import re
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,28 +28,10 @@ from dashboard_utils import (
     get_active_theses,
     get_current_market_regime,
     get_commodity_profile,
-    load_task_schedule_status
+    load_task_schedule_status,
+    load_deduplicator_metrics
 )
 from trading_bot.calendars import is_trading_day
-
-def load_deduplicator_metrics() -> dict:
-    """Load trigger deduplication metrics."""
-    try:
-        from dashboard_utils import _resolve_data_path
-        with open(_resolve_data_path('deduplicator_state.json'), 'r') as f:
-            data = json.load(f)
-            metrics = data.get('metrics', {})
-            total = metrics.get('total_triggers', 0)
-            processed = metrics.get('processed', 0)
-
-            return {
-                'total_triggers': total,
-                'processed': processed,
-                'filtered': total - processed,
-                'efficiency': processed / total if total > 0 else 1.0,
-            }
-    except Exception:
-        return {'total_triggers': 0, 'processed': 0, 'efficiency': 1.0}
 
 
 def _parse_price_from_text(text: str, entry_price: float, min_price: float, max_price: float) -> float | None:
