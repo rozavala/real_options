@@ -1,43 +1,95 @@
 {
   "version": 1,
-  "last_run": "2026-02-19T03:00:01.564983+00:00",
+  "last_run": "2026-02-19T13:00:01.703673+00:00",
   "log_offsets": {
     "/home/rodrigo/real_options/logs/dashboard.log": 99,
     "/home/rodrigo/real_options/logs/dashboard_cc.log": 85,
     "/home/rodrigo/real_options/logs/dashboard_kc.log": 85,
-    "/home/rodrigo/real_options/logs/equity_logger.log": 762,
-    "/home/rodrigo/real_options/logs/error_reporter.log": 39990,
+    "/home/rodrigo/real_options/logs/equity_logger.log": 653,
+    "/home/rodrigo/real_options/logs/error_reporter.log": 43017,
     "/home/rodrigo/real_options/logs/manual_test.log": 0,
-    "/home/rodrigo/real_options/logs/orchestrator.log": 33174,
-    "/home/rodrigo/real_options/logs/orchestrator_cc.log": 20765,
-    "/home/rodrigo/real_options/logs/orchestrator_cc_service.log": 1184,
-    "/home/rodrigo/real_options/logs/orchestrator_kc.log": 21864,
+    "/home/rodrigo/real_options/logs/orchestrator.log": 33470,
+    "/home/rodrigo/real_options/logs/orchestrator_cc.log": 186092,
+    "/home/rodrigo/real_options/logs/orchestrator_cc_service.log": 1480,
+    "/home/rodrigo/real_options/logs/orchestrator_kc.log": 171266,
     "/home/rodrigo/real_options/logs/performance_analyzer.log": 0,
-    "/home/rodrigo/real_options/logs/sentinels.log": 133739
+    "/home/rodrigo/real_options/logs/sentinels.log": 190183
   },
-  "reported_signatures": {},
+  "reported_signatures": {
+    "615e68d761b3545c117a547f9da0a715": {
+      "category": "daily_summary",
+      "reported_at": "2026-02-19T10:00:03.867391+00:00",
+      "issue_number": 963,
+      "cooldown_until": "2026-02-20T10:00:03.867391+00:00"
+    }
+  },
   "daily_counters": {
-    "date": "",
-    "issues_created": 0,
+    "date": "2026-02-19",
+    "issues_created": 1,
     "critical_issues_created": 0
   },
   "accumulated_errors": {
-    "4d69badb5dfb916f4593f82127681af2": {
+    "126fab8a58e913228608a453eb646705": {
       "category": "uncategorized",
-      "fingerprint": "4d69badb5dfb916f4593f82127681af2",
-      "sample_message": "Position Audit Cycle failed: Connection audit in backoff period",
-      "count": 1,
-      "first_seen": "2026-02-17 17:59:40,163",
-      "last_seen": "2026-02-17 17:59:40,163",
+      "fingerprint": "126fab8a58e913228608a453eb646705",
+      "sample_message": "completed orders request timed out",
+      "count": 4,
+      "first_seen": "2026-02-19 12:22:30,736",
+      "last_seen": "2026-02-19 12:11:40,452",
       "level": "ERROR"
     },
-    "d98e3842fb6444d5aa88d03073341278": {
+    "6f29ac7158f2ede832edb1c17d5bcf74": {
       "category": "uncategorized",
-      "fingerprint": "d98e3842fb6444d5aa88d03073341278",
-      "sample_message": "Error 162, reqId 4: Historical Market Data Service error message:HMDS query returned no data: KCZ5@NYBOT Trades, contract: Contract(secType='FUT', conId=606234331, symbol='KC', lastTradeDateOrContractMonth='20251218', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCZ5', tradingClass='KC', includeExpired=True)",
+      "fingerprint": "6f29ac7158f2ede832edb1c17d5bcf74",
+      "sample_message": "EMERGENCY_LOCK acquisition timed out (300s) for MacroContagionSentinel. Skipping cycle.",
       "count": 1,
-      "first_seen": "2026-02-17 18:38:43,792",
-      "last_seen": "2026-02-17 18:38:43,792",
+      "first_seen": "2026-02-19 10:39:18,737",
+      "last_seen": "2026-02-19 10:39:18,737",
+      "level": "ERROR"
+    },
+    "9469d7ea47e436666079fb1d82701ea0": {
+      "category": "uncategorized",
+      "fingerprint": "9469d7ea47e436666079fb1d82701ea0",
+      "sample_message": "OUTCOME MacroContagionSentinel: BLOCKED (lock timeout)",
+      "count": 1,
+      "first_seen": "2026-02-19 10:39:18,737",
+      "last_seen": "2026-02-19 10:39:18,737",
+      "level": "ERROR"
+    },
+    "902aa58202407632b0b40bb1ac0e4798": {
+      "category": "uncategorized",
+      "fingerprint": "902aa58202407632b0b40bb1ac0e4798",
+      "sample_message": "API connection failed: TimeoutError()",
+      "count": 1,
+      "first_seen": "2026-02-19 12:22:15,192",
+      "last_seen": "2026-02-19 12:22:15,192",
+      "level": "ERROR"
+    },
+    "a13450b47ab713d43750564eeaea925e": {
+      "category": "ib_connection",
+      "fingerprint": "a13450b47ab713d43750564eeaea925e",
+      "sample_message": "IB (drawdown_check) connection failed: . Next retry backoff: 10.0s",
+      "count": 1,
+      "first_seen": "2026-02-19 12:22:15,699",
+      "last_seen": "2026-02-19 12:22:15,699",
+      "level": "ERROR"
+    },
+    "5883bb9ffebdecbb3c948428f84ec6a7": {
+      "category": "uncategorized",
+      "fingerprint": "5883bb9ffebdecbb3c948428f84ec6a7",
+      "sample_message": "Model call failed: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+      "count": 1,
+      "first_seen": "2026-02-19 12:27:40,545",
+      "last_seen": "2026-02-19 12:27:40,545",
+      "level": "ERROR"
+    },
+    "52e35a51ae64cff3f9ed9d930a0efeb3": {
+      "category": "uncategorized",
+      "fingerprint": "52e35a51ae64cff3f9ed9d930a0efeb3",
+      "sample_message": "Agent agronomist failed for CCK6 (202605): 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+      "count": 1,
+      "first_seen": "2026-02-19 12:29:56,562",
+      "last_seen": "2026-02-19 12:29:56,562",
       "level": "ERROR"
     }
   }
