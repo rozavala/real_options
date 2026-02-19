@@ -20,4 +20,12 @@ This journal records CRITICAL UX/accessibility learnings.
 
 ## 2026-02-12 - Progressive Enhancement for Copy Functionality
 **Learning:** `st.popover` (Streamlit v1.33+) provides a cleaner UX for secondary actions like "Copy ID" compared to `st.expander`.
-**Action:** Use `if hasattr(st, "popover"):` to conditionally render the modern UI, falling back to `st.expander` to ensure accessibility and functionality across different deployments.
+**Action:** Use `if hasattr(st, "popover"):` to conditionally render the modern UI, falling back to `st.expander` to ensure accessibility and functionality towards different deployments.
+
+## 2025-02-19 - Standardizing Safety Interlocks for Operational Tools
+**Learning:** Operational utilities like log collection and equity syncing can be slow or disruptive. Expanding the Safety Interlock pattern (confirmation checkbox + disabled button) to all such tools improves system predictability and user confidence.
+**Action:** Apply the Safety Interlock pattern to all long-running or impactful manual triggers in the Utilities page. Ensure buttons use `width="stretch"` for visual consistency across the dashboard.
+
+## 2025-02-19 - Temporal Context for System State
+**Learning:** When displaying the internal system state (`state.json`), users often need to know how fresh the data is to interpret it correctly.
+**Action:** Always include the file's last modified timestamp (`os.path.getmtime`) when rendering state contents to provide immediate temporal context.

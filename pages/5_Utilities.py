@@ -50,9 +50,12 @@ Collect and archive logs to the centralized logs branch for analysis and debuggi
 This captures orchestrator logs, dashboard logs, state files, and trading data.
 """)
 
+confirm_log_collect = st.checkbox("I confirm I want to collect and archive system logs", key="confirm_log_collect")
 if st.button(
     "🚀 Collect Logs",
     type="primary",
+    disabled=not confirm_log_collect,
+    width="stretch",
     help="Triggers the log collection script to archive system logs, state files, and trading data for analysis."
 ):
     with st.spinner(f"Collecting {current_env} logs..."):
@@ -216,7 +219,7 @@ with manual_cols[0]:
 
     is_authorized = confirm_exec and confirm_text == "EXECUTE"
 
-    if st.button("🚀 Force Generate & Execute Orders", type="primary", disabled=not is_authorized):
+    if st.button("🚀 Force Generate & Execute Orders", type="primary", disabled=not is_authorized, width="stretch"):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -301,7 +304,7 @@ with manual_cols[1]:
     st.caption("Immediately cancels all unfilled DAY orders in IB")
 
     confirm_cancel_all = st.checkbox("I confirm I want to CANCEL all open orders", key="confirm_cancel_all")
-    if st.button("🛑 Cancel All Open Orders", disabled=not confirm_cancel_all):
+    if st.button("🛑 Cancel All Open Orders", disabled=not confirm_cancel_all, width="stretch"):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -333,7 +336,7 @@ with manual_cols2[0]:
     st.caption("Closes positions held longer than max_holding_days")
 
     confirm_close_stale = st.checkbox("I confirm I want to CLOSE stale positions", key="confirm_close_stale")
-    if st.button("🔄 Force Close Stale Positions", disabled=not confirm_close_stale):
+    if st.button("🔄 Force Close Stale Positions", disabled=not confirm_close_stale, width="stretch"):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -362,8 +365,11 @@ with manual_cols2[1]:
     st.info("ℹ️ **Sync Equity Data**")
     st.caption("Forces fresh equity sync from IB Flex Query")
 
+    confirm_equity_sync = st.checkbox("I confirm I want to force a fresh equity sync", key="confirm_equity_sync")
     if st.button(
         "💰 Force Equity Sync",
+        disabled=not confirm_equity_sync,
+        width="stretch",
         help="Manually triggers a fresh equity data pull from Interactive Brokers Flex Query reports."
     ):
         if not config:
@@ -401,7 +407,7 @@ diag_cols = st.columns(3)
 
 with diag_cols[0]:
     st.info("**IB Connection Test**")
-    if st.button("🔌 Test IB Gateway Connection", help="Open a test connection to IB Gateway and verify connectivity."):
+    if st.button("🔌 Test IB Gateway Connection", width="stretch", help="Open a test connection to IB Gateway and verify connectivity."):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -442,7 +448,7 @@ with diag_cols[0]:
 
 with diag_cols[1]:
     st.info("**Test Notifications**")
-    if st.button("📱 Send Test Notification", help="Send a test push notification via Pushover to verify alerting works."):
+    if st.button("📱 Send Test Notification", width="stretch", help="Send a test push notification via Pushover to verify alerting works."):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -463,7 +469,7 @@ with diag_cols[1]:
 
 with diag_cols[2]:
     st.info("**Market Status**")
-    if st.button("🕐 Check Market Status", help="Show current time in UTC/NY, trading day status, and market open/close."):
+    if st.button("🕐 Check Market Status", width="stretch", help="Show current time in UTC/NY, trading day status, and market open/close."):
         try:
             import sys
             import os
@@ -500,10 +506,15 @@ state_cols = st.columns(2)
 
 with state_cols[0]:
     st.info("**View System State**")
-    if st.button("👁️ Show state.json Contents", help="Display the current orchestrator state file (sentinels, triggers, flags)."):
+    if st.button("👁️ Show state.json Contents", width="stretch", help="Display the current orchestrator state file (sentinels, triggers, flags)."):
         try:
             state_path = _resolve_data_path("state.json")
             if os.path.exists(state_path):
+                # UX Enhancement: Add timestamp
+                mtime = os.path.getmtime(state_path)
+                last_mod = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+                st.caption(f"📅 Last Modified: {last_mod} UTC")
+
                 with open(state_path, 'r') as f:
                     state_data = json.load(f)
                     st.json(state_data)
@@ -557,7 +568,14 @@ This validates the entire architecture from sentinels to council to order execut
 validation_cols = st.columns([2, 1])
 
 with validation_cols[0]:
-    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch', help="Run preflight checks on all system components (~30s in quick mode, ~2min full).")
+    confirm_validation = st.checkbox("I confirm I want to run full system validation", key="confirm_validation")
+    run_validation = st.button(
+        "🚀 Run System Validation",
+        type="primary",
+        width='stretch',
+        disabled=not confirm_validation,
+        help="Run preflight checks on all system components (~30s in quick mode, ~2min full)."
+    )
 
 with validation_cols[1]:
     json_output = st.checkbox("JSON Output", value=False)

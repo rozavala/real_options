@@ -67,5 +67,52 @@ class TestCockpitUX(unittest.TestCase):
         self.assertTrue(found_progressive_enhancement,
                         "Did not find progressive enhancement pattern for error display")
 
+class TestUtilitiesUX(unittest.TestCase):
+    def test_safety_interlocks_in_utilities(self):
+        """
+        Verify that high-impact buttons in pages/5_Utilities.py
+        implement the Safety Interlock pattern (disabled until confirmed).
+        """
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '5_Utilities.py')
+
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        buttons_to_check = [
+            "🚀 Collect Logs",
+            "💰 Force Equity Sync",
+            "🚀 Run System Validation",
+            "🚀 Force Generate & Execute Orders",
+            "🛑 Cancel All Open Orders",
+            "🔄 Force Close Stale Positions"
+        ]
+
+        found_buttons = {label: False for label in buttons_to_check}
+
+        for node in ast.walk(tree):
+            # Look for st.button calls
+            if (isinstance(node, ast.Call) and
+                isinstance(node.func, ast.Attribute) and
+                node.func.attr == 'button'):
+
+                # Check if the first argument (label) is one we're interested in
+                label = None
+                if node.args and isinstance(node.args[0], ast.Constant):
+                    label = node.args[0].value
+                else:
+                    # Check keywords if label is passed as keyword
+                    for kw in node.keywords:
+                        if kw.arg == 'label' and isinstance(kw.value, ast.Constant):
+                            label = kw.value.value
+
+                if label in buttons_to_check:
+                    # Verify it has a 'disabled' keyword argument
+                    has_disabled = any(kw.arg == 'disabled' for kw in node.keywords)
+                    if has_disabled:
+                        found_buttons[label] = True
+
+        for label, found in found_buttons.items():
+            self.assertTrue(found, f"Safety interlock (disabled attribute) missing for button: '{label}' in Utilities page")
+
 if __name__ == '__main__':
     unittest.main()
