@@ -9799,3 +9799,591 @@ VERDICT: NO—do not proceed with a naked/linear bearish expression into an over
 2026-02-19 18:25:59,608 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 42% of average (Sev: 5)
 2026-02-19 18:25:59,615 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
 2026-02-19 18:28:59,959 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2130, market_open=True, trading_day=True
+2026-02-19 18:31:00,103 - Orchestrator - INFO - Market Closed: Releasing Sentinel IB connection to pool.
+2026-02-19 18:31:00,104 - trading_bot.connection_pool - INFO - Disconnecting IB (sentinel)...
+2026-02-19 18:31:06,120 - Orchestrator - INFO - Market Closed: Disengaging Microstructure Sentinel
+2026-02-19 18:31:06,121 - trading_bot.connection_pool - INFO - Disconnecting IB (microstructure)...
+2026-02-19 18:34:09,308 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2135, market_open=False, trading_day=True
+2026-02-19 18:35:00,020 - Orchestrator - INFO - --- Running scheduled task: log_equity_snapshot [log_equity_snapshot] ---
+2026-02-19 18:35:00,032 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
+2026-02-19 18:35:00,033 - EquityLogger - INFO - Connecting to IB at 127.0.0.1:4001 with clientId 6965...
+2026-02-19 18:35:00,346 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-19 18:35:00,544 - EquityLogger - INFO - Fetched NetLiquidation: $32,489.53
+2026-02-19 18:35:00,551 - EquityLogger - INFO - Updated data/daily_equity.csv with value $32,489.53
+2026-02-19 18:35:03,555 - EquityLogger - INFO - Disconnected from IB.
+2026-02-19 18:35:03,575 - Orchestrator - INFO - Next task 'reconcile_and_analyze' (Reconcile & Analyze) scheduled for 2026-02-19 18:38:00 UTC. Waiting for 0.05 hours.
+2026-02-19 18:38:00,050 - Orchestrator - INFO - --- Running scheduled task: reconcile_and_analyze [reconcile_and_analyze] ---
+2026-02-19 18:38:00,058 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-02-19 18:38:00,059 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
+2026-02-19 18:38:00,358 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-19 18:38:10,358 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-19 18:38:10,516 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-19 18:38:10,525 - EquityLogger - INFO - Preserving 9 local equity records not present in Flex Query.
+2026-02-19 18:38:10,527 - EquityLogger - INFO - Successfully synced 12 equity records to data/daily_equity.csv.
+2026-02-19 18:38:10,530 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-02-19 18:38:10,530 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-02-19 18:38:10,532 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-19 18:38:10,532 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-19 18:38:10,532 - TradeReconciler - INFO - Fetching report for Query ID: 1370939
+2026-02-19 18:38:10,750 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-19 18:38:20,757 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-19 18:38:20,951 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-19 18:38:20,954 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-02-19 18:38:20,954 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-02-19 18:38:20,955 - TradeReconciler - INFO - Fetching report for Query ID: 1370908
+2026-02-19 18:38:21,245 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-19 18:38:31,255 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-19 18:38:31,379 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-19 18:38:31,381 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-02-19 18:38:31,381 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-02-19 18:38:31,381 - TradeReconciler - WARNING - No trade data was fetched from any IB Flex Query. Exiting.
+2026-02-19 18:38:31,382 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
+2026-02-19 18:38:31,382 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-02-19 18:38:31,599 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-19 18:38:41,609 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-19 18:38:41,735 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-19 18:38:41,739 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
+2026-02-19 18:38:41,739 - TradeReconciler - INFO - Found 0 archived ledger files.
+2026-02-19 18:38:41,739 - TradeReconciler - WARNING - No trade ledger data found.
+2026-02-19 18:38:41,746 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-02-19 18:38:41,746 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-02-19 18:38:42,204 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:38:42,213 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 09:47:24.272927+00:00: KCK6 (202605) (BEARISH)
+2026-02-19 18:38:42,232 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Thu 12:47 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:38:42,768 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:38:43,205 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
+2026-02-19 18:38:43,208 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCK6 (202605)
+2026-02-19 18:38:43,217 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:38:43,652 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on KCK6 (202605)
+2026-02-19 18:38:43,657 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:38:44,085 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCK6 (202605)
+2026-02-19 18:38:44,093 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:38:44,504 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCK6 (202605)
+2026-02-19 18:38:44,509 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:38:45,001 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCK6 (202605)
+2026-02-19 18:38:45,001 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 283.20 -> Exit 285.85 (0.94% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -2.6500
+2026-02-19 18:38:57,233 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) LOSS ($-2.65)
+2026-02-19 18:38:57,234 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-19 18:38:57,335 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 09:48:36.496036+00:00: KCN6 (202607) (BEARISH)
+2026-02-19 18:38:57,362 - trading_bot.reconciliation - INFO - Exit time adjusted for KCN6 (202607): default Thu 12:48 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:38:57,531 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:38:57,898 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
+2026-02-19 18:38:57,898 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCN6 (202607)
+2026-02-19 18:38:57,905 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:38:58,291 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCN6 (202607)
+2026-02-19 18:38:58,296 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:38:58,681 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCN6 (202607)
+2026-02-19 18:38:58,686 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:38:59,161 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCN6 (202607)
+2026-02-19 18:38:59,161 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 280.30 -> Exit 281.35 (0.37% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -1.0500
+2026-02-19 18:39:10,344 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2140, market_open=False, trading_day=True
+2026-02-19 18:39:11,071 - trading_bot.trade_journal - INFO - Trade journal entry created: KCN6 (202607) LOSS ($-1.05)
+2026-02-19 18:39:11,072 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-19 18:39:11,172 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 09:49:37.070439+00:00: KCU6 (202609) (BEARISH)
+2026-02-19 18:39:11,199 - trading_bot.reconciliation - INFO - Exit time adjusted for KCU6 (202609): default Thu 12:49 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:39:11,368 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:39:11,799 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCU6 (202609)
+2026-02-19 18:39:11,809 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:39:12,290 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on KCU6 (202609)
+2026-02-19 18:39:12,299 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:39:12,733 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCU6 (202609)
+2026-02-19 18:39:12,738 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:39:13,179 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCU6 (202609)
+2026-02-19 18:39:13,187 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:39:13,640 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCU6 (202609)
+2026-02-19 18:39:13,641 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 276.70 -> Exit 277.10 (0.14% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.4000
+2026-02-19 18:39:28,067 - trading_bot.trade_journal - INFO - Trade journal entry created: KCU6 (202609) LOSS ($-0.40)
+2026-02-19 18:39:28,067 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-19 18:39:28,168 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 09:50:44.468966+00:00: KCZ6 (202612) (BEARISH)
+2026-02-19 18:39:28,193 - trading_bot.reconciliation - INFO - Exit time adjusted for KCZ6 (202612): default Thu 12:50 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:39:28,358 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 273.00 -> Exit 272.55 (0.16% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.4500
+2026-02-19 18:39:40,242 - trading_bot.trade_journal - INFO - Trade journal entry created: KCZ6 (202612) WIN ($0.45)
+2026-02-19 18:39:40,242 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:39:40,343 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 09:54:38.757535+00:00: KCH7 (202703) (BEARISH)
+2026-02-19 18:39:40,363 - trading_bot.reconciliation - INFO - Exit time adjusted for KCH7 (202703): default Thu 12:54 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:39:40,523 - trading_bot.reconciliation - INFO - Reconciled KCH7 (202703): Entry 270.80 -> Exit 269.30 (0.55% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 1.5000
+2026-02-19 18:39:55,467 - trading_bot.trade_journal - INFO - Trade journal entry created: KCH7 (202703) WIN ($1.50)
+2026-02-19 18:39:55,467 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:39:55,568 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 10:53:57.123165+00:00: KCK6 (202605) (NEUTRAL)
+2026-02-19 18:39:55,592 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Thu 13:53 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:39:55,752 - trading_bot.reconciliation - INFO - CONDOR WIN: 0.63% move within 1.50% threshold. P&L: 2.84
+2026-02-19 18:39:55,759 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:39:56,184 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on KCK6 (202605)
+2026-02-19 18:39:56,190 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:39:56,616 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCK6 (202605)
+2026-02-19 18:39:56,623 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:39:57,033 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCK6 (202605)
+2026-02-19 18:39:57,039 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:39:57,463 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCK6 (202605)
+2026-02-19 18:39:57,463 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 284.05 -> Exit 285.85 (0.63% move) | Strategy: IRON_CONDOR | Outcome: STAYED_FLAT | P&L: 2.8405
+2026-02-19 18:40:12,470 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) WIN ($2.84)
+2026-02-19 18:40:12,471 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual STAYED_FLAT -> CORRECT
+2026-02-19 18:40:12,572 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 10:58:36.507060+00:00: KCK6 (202605) (NEUTRAL)
+2026-02-19 18:40:12,601 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Thu 13:58 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:40:12,760 - trading_bot.reconciliation - INFO - CONDOR WIN: 0.72% move within 1.50% threshold. P&L: 2.84
+2026-02-19 18:40:12,767 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:40:13,208 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on KCK6 (202605)
+2026-02-19 18:40:13,214 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:40:13,691 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on KCK6 (202605)
+2026-02-19 18:40:13,699 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:40:14,147 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCK6 (202605)
+2026-02-19 18:40:14,154 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:40:14,554 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCK6 (202605)
+2026-02-19 18:40:14,555 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 283.80 -> Exit 285.85 (0.72% move) | Strategy: IRON_CONDOR | Outcome: STAYED_FLAT | P&L: 2.8380
+2026-02-19 18:40:33,342 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) WIN ($2.84)
+2026-02-19 18:40:33,342 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual STAYED_FLAT -> CORRECT
+2026-02-19 18:40:33,443 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 11:24:14.396565+00:00: KCK6 (202605) (NEUTRAL)
+2026-02-19 18:40:33,469 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Thu 14:24 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:40:33,628 - trading_bot.reconciliation - INFO - CONDOR WIN: 0.63% move within 1.50% threshold. P&L: 2.84
+2026-02-19 18:40:33,636 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:40:34,083 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on KCK6 (202605)
+2026-02-19 18:40:34,088 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:40:34,523 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on KCK6 (202605)
+2026-02-19 18:40:34,529 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:40:34,926 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCK6 (202605)
+2026-02-19 18:40:34,935 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:40:35,362 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCK6 (202605)
+2026-02-19 18:40:35,363 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 284.05 -> Exit 285.85 (0.63% move) | Strategy: IRON_CONDOR | Outcome: STAYED_FLAT | P&L: 2.8405
+2026-02-19 18:40:50,042 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) WIN ($2.84)
+2026-02-19 18:40:50,043 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual STAYED_FLAT -> CORRECT
+2026-02-19 18:40:50,145 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 12:06:12.444482+00:00: KCK6 (202605) (BEARISH)
+2026-02-19 18:40:50,332 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:40:50,759 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
+2026-02-19 18:40:50,759 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCK6 (202605)
+2026-02-19 18:40:50,766 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:40:51,182 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on KCK6 (202605)
+2026-02-19 18:40:51,187 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:40:51,568 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCK6 (202605)
+2026-02-19 18:40:51,575 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:40:51,979 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCK6 (202605)
+2026-02-19 18:40:51,979 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 284.15 -> Exit 285.85 (0.60% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -1.7000
+2026-02-19 18:41:07,040 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) LOSS ($-1.70)
+2026-02-19 18:41:07,041 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-19 18:41:07,142 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 12:06:50.183596+00:00: KCN6 (202607) (BEARISH)
+2026-02-19 18:41:07,328 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:41:07,736 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
+2026-02-19 18:41:07,737 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCN6 (202607)
+2026-02-19 18:41:07,742 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:41:08,122 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on KCN6 (202607)
+2026-02-19 18:41:08,128 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:41:08,559 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCN6 (202607)
+2026-02-19 18:41:08,564 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:41:08,970 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCN6 (202607)
+2026-02-19 18:41:08,978 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:41:09,393 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCN6 (202607)
+2026-02-19 18:41:09,394 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 280.55 -> Exit 281.35 (0.29% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.8000
+2026-02-19 18:41:24,428 - trading_bot.trade_journal - INFO - Trade journal entry created: KCN6 (202607) LOSS ($-0.80)
+2026-02-19 18:41:24,429 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-19 18:41:24,530 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 12:09:41.533837+00:00: KCZ6 (202612) (NEUTRAL)
+2026-02-19 18:41:24,712 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 273.30 -> Exit 272.55 (0.27% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
+2026-02-19 18:41:37,430 - trading_bot.trade_journal - INFO - Trade journal entry created: KCZ6 (202612) FLAT ($0.00)
+2026-02-19 18:41:37,430 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
+2026-02-19 18:41:37,531 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 12:12:35.418494+00:00: KCU6 (202609) (BEARISH)
+2026-02-19 18:41:37,727 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:41:38,140 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
+2026-02-19 18:41:38,140 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCU6 (202609)
+2026-02-19 18:41:38,148 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:41:38,589 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCU6 (202609)
+2026-02-19 18:41:38,596 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:41:39,010 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCU6 (202609)
+2026-02-19 18:41:39,017 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:41:39,433 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCU6 (202609)
+2026-02-19 18:41:39,434 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 276.95 -> Exit 277.10 (0.05% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.1500
+2026-02-19 18:41:49,988 - trading_bot.trade_journal - INFO - Trade journal entry created: KCU6 (202609) LOSS ($-0.15)
+2026-02-19 18:41:49,989 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-19 18:41:50,090 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 12:13:16.896061+00:00: KCH7 (202703) (NEUTRAL)
+2026-02-19 18:41:50,279 - trading_bot.reconciliation - INFO - Reconciled KCH7 (202703): Entry 270.55 -> Exit 269.30 (0.46% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
+2026-02-19 18:42:03,672 - trading_bot.trade_journal - INFO - Trade journal entry created: KCH7 (202703) FLAT ($0.00)
+2026-02-19 18:42:03,672 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
+2026-02-19 18:42:03,773 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 12:54:56.973740+00:00: KCK6 (202605) (NEUTRAL)
+2026-02-19 18:42:03,966 - trading_bot.reconciliation - INFO - CONDOR WIN: 1.35% move within 1.50% threshold. P&L: 2.82
+2026-02-19 18:42:03,974 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:42:04,390 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
+2026-02-19 18:42:04,390 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCK6 (202605)
+2026-02-19 18:42:04,399 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:42:04,816 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCK6 (202605)
+2026-02-19 18:42:04,824 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:42:05,242 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCK6 (202605)
+2026-02-19 18:42:05,242 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 282.05 -> Exit 285.85 (1.35% move) | Strategy: IRON_CONDOR | Outcome: STAYED_FLAT | P&L: 2.8205
+2026-02-19 18:42:21,758 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) WIN ($2.82)
+2026-02-19 18:42:21,759 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual STAYED_FLAT -> CORRECT
+2026-02-19 18:42:21,860 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 14:25:30.596911+00:00: KCU6 (202609) (NEUTRAL)
+2026-02-19 18:42:21,888 - trading_bot.reconciliation - INFO - Exit time adjusted for KCU6 (202609): default Thu 17:25 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:42:22,047 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 277.30 -> Exit 277.10 (0.07% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
+2026-02-19 18:42:33,114 - trading_bot.trade_journal - INFO - Trade journal entry created: KCU6 (202609) FLAT ($0.00)
+2026-02-19 18:42:33,115 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
+2026-02-19 18:42:33,215 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 14:25:49.621389+00:00: KCN6 (202607) (BEARISH)
+2026-02-19 18:42:33,240 - trading_bot.reconciliation - INFO - Exit time adjusted for KCN6 (202607): default Thu 17:25 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:42:33,411 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:42:33,831 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
+2026-02-19 18:42:33,831 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCN6 (202607)
+2026-02-19 18:42:33,838 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:42:34,259 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on KCN6 (202607)
+2026-02-19 18:42:34,264 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:42:34,686 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCN6 (202607)
+2026-02-19 18:42:34,692 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:42:35,111 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCN6 (202607)
+2026-02-19 18:42:35,116 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:42:35,525 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCN6 (202607)
+2026-02-19 18:42:35,526 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 280.90 -> Exit 281.35 (0.16% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.4500
+2026-02-19 18:42:48,310 - trading_bot.trade_journal - INFO - Trade journal entry created: KCN6 (202607) LOSS ($-0.45)
+2026-02-19 18:42:48,311 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-19 18:42:48,412 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 14:25:59.344612+00:00: KCK6 (202605) (BEARISH)
+2026-02-19 18:42:48,432 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Thu 17:25 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:42:48,604 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:42:49,025 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
+2026-02-19 18:42:49,026 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCK6 (202605)
+2026-02-19 18:42:49,031 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:42:49,434 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on KCK6 (202605)
+2026-02-19 18:42:49,440 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:42:49,818 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCK6 (202605)
+2026-02-19 18:42:49,826 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:42:50,228 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCK6 (202605)
+2026-02-19 18:42:50,235 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:42:50,628 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCK6 (202605)
+2026-02-19 18:42:50,628 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 284.40 -> Exit 285.85 (0.51% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -1.4500
+2026-02-19 18:43:03,273 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) LOSS ($-1.45)
+2026-02-19 18:43:03,273 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-19 18:43:03,374 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 14:28:36.361690+00:00: KCZ6 (202612) (BEARISH)
+2026-02-19 18:43:03,399 - trading_bot.reconciliation - INFO - Exit time adjusted for KCZ6 (202612): default Thu 17:28 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:43:03,566 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 272.85 -> Exit 272.55 (0.11% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.3000
+2026-02-19 18:43:18,471 - trading_bot.trade_journal - INFO - Trade journal entry created: KCZ6 (202612) WIN ($0.30)
+2026-02-19 18:43:18,471 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:43:18,573 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 14:30:41.275955+00:00: KCH7 (202703) (BEARISH)
+2026-02-19 18:43:18,591 - trading_bot.reconciliation - INFO - Exit time adjusted for KCH7 (202703): default Thu 17:30 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:43:18,756 - trading_bot.reconciliation - INFO - Reconciled KCH7 (202703): Entry 271.25 -> Exit 269.30 (0.72% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 1.9500
+2026-02-19 18:43:31,411 - trading_bot.trade_journal - INFO - Trade journal entry created: KCH7 (202703) WIN ($1.95)
+2026-02-19 18:43:31,413 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:43:31,514 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 14:56:51.605846+00:00: KCK6 (202605) (NEUTRAL)
+2026-02-19 18:43:31,536 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Thu 17:56 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:43:31,699 - trading_bot.reconciliation - INFO - CONDOR WIN: 1.13% move within 1.50% threshold. P&L: 2.83
+2026-02-19 18:43:31,707 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:43:32,155 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
+2026-02-19 18:43:32,156 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCK6 (202605)
+2026-02-19 18:43:32,164 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:43:32,568 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCK6 (202605)
+2026-02-19 18:43:32,573 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:43:32,959 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCK6 (202605)
+2026-02-19 18:43:32,964 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:43:33,386 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCK6 (202605)
+2026-02-19 18:43:33,386 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 282.65 -> Exit 285.85 (1.13% move) | Strategy: IRON_CONDOR | Outcome: STAYED_FLAT | P&L: 2.8265
+2026-02-19 18:43:46,539 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) WIN ($2.83)
+2026-02-19 18:43:46,542 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual STAYED_FLAT -> CORRECT
+2026-02-19 18:43:46,643 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 15:56:32.471911+00:00: KCK6 (202605) (NEUTRAL)
+2026-02-19 18:43:46,664 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Thu 18:56 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:43:46,824 - trading_bot.reconciliation - INFO - CONDOR WIN: 1.11% move within 1.50% threshold. P&L: 2.83
+2026-02-19 18:43:46,833 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:43:47,307 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCK6 (202605)
+2026-02-19 18:43:47,307 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 282.70 -> Exit 285.85 (1.11% move) | Strategy: IRON_CONDOR | Outcome: STAYED_FLAT | P&L: 2.8270
+2026-02-19 18:43:59,623 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) WIN ($2.83)
+2026-02-19 18:43:59,624 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual STAYED_FLAT -> CORRECT
+2026-02-19 18:43:59,725 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 16:47:32.114532+00:00: KCU6 (202609) (BEARISH)
+2026-02-19 18:43:59,744 - trading_bot.reconciliation - INFO - Exit time adjusted for KCU6 (202609): default Thu 19:47 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:43:59,903 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 277.95 -> Exit 277.10 (0.31% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.8500
+2026-02-19 18:44:10,403 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2145, market_open=False, trading_day=True
+2026-02-19 18:44:12,755 - trading_bot.trade_journal - INFO - Trade journal entry created: KCU6 (202609) WIN ($0.85)
+2026-02-19 18:44:12,755 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:44:12,856 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 16:49:27.846388+00:00: KCN6 (202607) (BEARISH)
+2026-02-19 18:44:12,877 - trading_bot.reconciliation - INFO - Exit time adjusted for KCN6 (202607): default Thu 19:49 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:44:13,038 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 281.70 -> Exit 281.35 (0.12% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.3500
+2026-02-19 18:44:25,528 - trading_bot.trade_journal - INFO - Trade journal entry created: KCN6 (202607) WIN ($0.35)
+2026-02-19 18:44:25,528 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:44:25,629 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 16:51:12.732592+00:00: KCK6 (202605) (BEARISH)
+2026-02-19 18:44:25,651 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Thu 19:51 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:44:25,822 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:44:26,281 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on KCK6 (202605)
+2026-02-19 18:44:26,287 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:44:26,670 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on KCK6 (202605)
+2026-02-19 18:44:26,675 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:44:27,070 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-19 18:44:27,070 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on KCK6 (202605)
+2026-02-19 18:44:27,070 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 285.50 -> Exit 285.85 (0.12% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.3500
+2026-02-19 18:44:39,412 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) LOSS ($-0.35)
+2026-02-19 18:44:39,412 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-19 18:44:39,513 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 16:54:44.077588+00:00: KCZ6 (202612) (NEUTRAL)
+2026-02-19 18:44:39,539 - trading_bot.reconciliation - INFO - Exit time adjusted for KCZ6 (202612): default Thu 19:54 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:44:39,702 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 274.25 -> Exit 272.55 (0.62% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
+2026-02-19 18:44:50,838 - trading_bot.trade_journal - INFO - Trade journal entry created: KCZ6 (202612) FLAT ($0.00)
+2026-02-19 18:44:50,838 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
+2026-02-19 18:44:50,941 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-18 16:55:01.624620+00:00: KCH7 (202703) (BEARISH)
+2026-02-19 18:44:50,968 - trading_bot.reconciliation - INFO - Exit time adjusted for KCH7 (202703): default Thu 19:55 UTC → actual Thu 16:00 UTC (weekly close policy)
+2026-02-19 18:44:51,134 - trading_bot.reconciliation - INFO - Reconciled KCH7 (202703): Entry 271.65 -> Exit 269.30 (0.87% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 2.3500
+2026-02-19 18:45:03,997 - trading_bot.trade_journal - INFO - Trade journal entry created: KCH7 (202703) WIN ($2.35)
+2026-02-19 18:45:03,998 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-19 18:45:04,168 - trading_bot.reconciliation - INFO - Successfully updated council_history.csv with reconciliation results.
+2026-02-19 18:45:04,207 - trading_bot.brier_scoring - INFO - Found 408 pending predictions to check
+2026-02-19 18:45:04,209 - trading_bot.brier_scoring - INFO - Council decisions: 120 total, 96 reconciled
+2026-02-19 18:45:04,215 - trading_bot.brier_scoring - INFO - Built cycle_id lookup with 96 entries
+2026-02-19 18:45:08,905 - trading_bot.brier_scoring - INFO - Brier Resolution stats: cycle_id=209, nearest=0, orphaned=0, no_council_window=0
+2026-02-19 18:45:08,915 - trading_bot.brier_scoring - INFO - Resolved 209 predictions (cycle_id: 209, nearest: 0, orphans: 0)
+2026-02-19 18:45:08,930 - trading_bot.brier_scoring - INFO - Appended 209 resolved predictions to data/agent_accuracy.csv
+2026-02-19 18:45:08,930 - trading_bot.brier_scoring - INFO - Reset BrierScoreTracker singleton — will reload on next access
+2026-02-19 18:45:08,930 - trading_bot.reconciliation - INFO - Feedback Loop (Legacy): Resolved 209 agent predictions
+2026-02-19 18:45:08,956 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:08,980 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:09,002 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:09,025 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:09,060 - trading_bot.enhanced_brier - INFO - Resolved inventory: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:09,085 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:09,111 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:09,135 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:09,160 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BULLISH, Brier=0.4117
+2026-02-19 18:45:09,186 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:09,215 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:09,246 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:09,274 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:09,303 - trading_bot.enhanced_brier - INFO - Resolved inventory: BULLISH vs BULLISH, Brier=0.0612
+2026-02-19 18:45:09,326 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:09,350 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:09,372 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:09,394 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BULLISH, Brier=0.2279
+2026-02-19 18:45:09,416 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:09,439 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:09,462 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BULLISH, Brier=0.3179
+2026-02-19 18:45:09,486 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:09,510 - trading_bot.enhanced_brier - INFO - Resolved inventory: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:09,539 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:09,562 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:09,585 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:09,608 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BULLISH, Brier=0.4117
+2026-02-19 18:45:09,633 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:09,656 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:09,679 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-19 18:45:09,702 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BEARISH, Brier=0.4867
+2026-02-19 18:45:09,725 - trading_bot.enhanced_brier - INFO - Resolved inventory: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:09,748 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:09,770 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BEARISH, Brier=0.0612
+2026-02-19 18:45:09,793 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:09,828 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BEARISH, Brier=0.0450
+2026-02-19 18:45:09,852 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:09,876 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:09,899 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:09,922 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BEARISH, Brier=0.4867
+2026-02-19 18:45:09,944 - trading_bot.enhanced_brier - INFO - Resolved inventory: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:09,967 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:09,991 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BEARISH, Brier=0.0612
+2026-02-19 18:45:10,022 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:10,044 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BEARISH, Brier=0.0450
+2026-02-19 18:45:10,067 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:10,090 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,114 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,138 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:10,160 - trading_bot.enhanced_brier - INFO - Resolved inventory: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:10,184 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:10,207 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,230 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:10,252 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:10,275 - trading_bot.enhanced_brier - INFO - Resolved macro: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,299 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,323 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,348 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:10,370 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:10,393 - trading_bot.enhanced_brier - INFO - Resolved macro: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,415 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,439 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,461 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:10,485 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:10,510 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,537 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,560 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:10,584 - trading_bot.enhanced_brier - INFO - Resolved inventory: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:10,608 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:10,632 - trading_bot.enhanced_brier - INFO - Resolved technical: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,655 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:10,677 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BULLISH, Brier=0.4117
+2026-02-19 18:45:10,700 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:10,723 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,745 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,768 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:10,790 - trading_bot.enhanced_brier - INFO - Resolved inventory: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:10,812 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:10,835 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:10,857 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:10,880 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BULLISH, Brier=0.4117
+2026-02-19 18:45:10,902 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:10,926 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:10,950 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:10,973 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BEARISH, Brier=0.4867
+2026-02-19 18:45:10,998 - trading_bot.enhanced_brier - INFO - Resolved inventory: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:11,021 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:11,061 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BEARISH, Brier=0.0612
+2026-02-19 18:45:11,105 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:11,146 - trading_bot.enhanced_brier - INFO - Resolved master_decision: NEUTRAL vs BEARISH, Brier=0.3019
+2026-02-19 18:45:11,179 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:11,203 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:11,226 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:11,249 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:11,272 - trading_bot.enhanced_brier - INFO - Resolved inventory: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:11,299 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:11,324 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:11,347 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:11,370 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BULLISH, Brier=0.2279
+2026-02-19 18:45:11,395 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:11,425 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:11,448 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:11,482 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BEARISH, Brier=0.4867
+2026-02-19 18:45:11,509 - trading_bot.enhanced_brier - INFO - Resolved inventory: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:11,541 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:11,565 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BEARISH, Brier=0.0612
+2026-02-19 18:45:11,587 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:11,611 - trading_bot.enhanced_brier - INFO - Resolved master_decision: NEUTRAL vs BEARISH, Brier=0.3019
+2026-02-19 18:45:11,634 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:11,660 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:11,689 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:11,713 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:11,738 - trading_bot.enhanced_brier - INFO - Resolved inventory: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:11,761 - trading_bot.enhanced_brier - INFO - Resolved sentiment: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:11,785 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:11,809 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:11,832 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:11,855 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:11,880 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:11,905 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BEARISH, Brier=0.4867
+2026-02-19 18:45:11,944 - trading_bot.enhanced_brier - INFO - Resolved inventory: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:11,968 - trading_bot.enhanced_brier - INFO - Resolved sentiment: NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-19 18:45:11,993 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BEARISH, Brier=0.0612
+2026-02-19 18:45:12,021 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:12,053 - trading_bot.enhanced_brier - INFO - Resolved master_decision: NEUTRAL vs BEARISH, Brier=0.3019
+2026-02-19 18:45:12,097 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:12,136 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:12,162 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:12,192 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:12,234 - trading_bot.enhanced_brier - INFO - Resolved inventory: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:12,272 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:12,296 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:12,319 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:12,344 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BULLISH, Brier=0.4117
+2026-02-19 18:45:12,367 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:12,389 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:12,414 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:12,441 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:12,464 - trading_bot.enhanced_brier - INFO - Resolved inventory: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:12,492 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:12,523 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:12,556 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:12,581 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BULLISH, Brier=0.5717
+2026-02-19 18:45:12,606 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:12,630 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:12,653 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:12,675 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BEARISH, Brier=0.4867
+2026-02-19 18:45:12,698 - trading_bot.enhanced_brier - INFO - Resolved inventory: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:12,720 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:12,758 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BEARISH, Brier=0.0612
+2026-02-19 18:45:12,801 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:12,838 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BEARISH, Brier=0.0450
+2026-02-19 18:45:12,879 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:12,902 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:12,926 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:12,948 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BEARISH, Brier=0.4867
+2026-02-19 18:45:12,994 - trading_bot.enhanced_brier - INFO - Resolved inventory: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:13,048 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:13,091 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BEARISH, Brier=0.0612
+2026-02-19 18:45:13,126 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:13,157 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BEARISH, Brier=0.2113
+2026-02-19 18:45:13,185 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:13,208 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:13,231 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:13,254 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:13,277 - trading_bot.enhanced_brier - INFO - Resolved inventory: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:13,301 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:13,334 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:13,369 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:13,402 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:13,425 - trading_bot.enhanced_brier - INFO - Resolved agronomist: NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-19 18:45:13,453 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:13,480 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:13,517 - trading_bot.enhanced_brier - INFO - Resolved inventory: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:13,556 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:13,590 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BEARISH, Brier=0.0612
+2026-02-19 18:45:13,623 - trading_bot.enhanced_brier - INFO - Resolved volatility: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:13,664 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BEARISH, Brier=0.0450
+2026-02-19 18:45:13,698 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BEARISH, Brier=0.0612
+2026-02-19 18:45:13,725 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:13,754 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:13,785 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:13,810 - trading_bot.enhanced_brier - INFO - Resolved inventory: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:13,844 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:13,873 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BEARISH, Brier=0.0612
+2026-02-19 18:45:13,919 - trading_bot.enhanced_brier - INFO - Resolved volatility: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:13,956 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BEARISH, Brier=0.0450
+2026-02-19 18:45:13,981 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:14,012 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-19 18:45:14,036 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BULLISH, Brier=0.0200
+2026-02-19 18:45:14,065 - trading_bot.enhanced_brier - INFO - Resolved inventory: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:14,088 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BULLISH, Brier=0.4867
+2026-02-19 18:45:14,110 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BULLISH, Brier=0.3779
+2026-02-19 18:45:14,133 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BULLISH, Brier=0.4117
+2026-02-19 18:45:14,156 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:14,179 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:14,206 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:14,232 - trading_bot.enhanced_brier - INFO - Resolved supply_chain: BULLISH vs BEARISH, Brier=0.4867
+2026-02-19 18:45:14,264 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:14,290 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BEARISH, Brier=0.0612
+2026-02-19 18:45:14,325 - trading_bot.enhanced_brier - INFO - Resolved volatility: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:14,359 - trading_bot.enhanced_brier - INFO - Resolved master_decision: NEUTRAL vs BEARISH, Brier=0.3019
+2026-02-19 18:45:14,387 - trading_bot.enhanced_brier - INFO - Resolved agronomist: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:14,410 - trading_bot.enhanced_brier - INFO - Resolved macro: NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-19 18:45:14,433 - trading_bot.enhanced_brier - INFO - Resolved geopolitical: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:14,456 - trading_bot.enhanced_brier - INFO - Resolved sentiment: BEARISH vs BEARISH, Brier=0.0200
+2026-02-19 18:45:14,479 - trading_bot.enhanced_brier - INFO - Resolved technical: BEARISH vs BEARISH, Brier=0.0612
+2026-02-19 18:45:14,502 - trading_bot.enhanced_brier - INFO - Resolved volatility: NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-19 18:45:14,525 - trading_bot.enhanced_brier - INFO - Resolved master_decision: BEARISH vs BEARISH, Brier=0.0450
+2026-02-19 18:45:14,525 - trading_bot.reconciliation - INFO - Feedback Loop (Enhanced): Scored 209 predictions with Brier scores
+2026-02-19 18:45:17,532 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-02-19 18:45:17,532 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-02-19 18:45:17,534 - PerformanceAnalyzer - INFO - No archived trade ledgers found.
+2026-02-19 18:45:17,534 - PerformanceAnalyzer - WARNING - No trade ledger data found to consolidate.
+2026-02-19 18:45:17,542 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-02-19 18:45:17,749 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $32,489.53
+2026-02-19 18:45:19,752 - PerformanceAnalyzer - INFO - Successfully fetched 0 execution(s) for today from IB.
+2026-02-19 18:45:22,758 - PerformanceAnalyzer - INFO - Loading daily_equity.csv for equity curve.
+2026-02-19 18:45:22,766 - PerformanceAnalyzer - INFO - Dynamic Starting Capital from History: $32,481.26
+2026-02-19 18:45:22,770 - PerformanceAnalyzer - INFO - Calculated LTD Total P&L (Equity): $8.27
+2026-02-19 18:45:22,772 - PerformanceAnalyzer - WARNING - Trade ledger is empty, skipping chart generation.
+2026-02-19 18:45:22,773 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-02-19 18:45:22,972 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-19 18:45:23,198 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-19 18:45:23,200 - root - INFO - 'trade_ledger.csv' not found, no action taken.
+2026-02-19 18:45:23,207 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-19 18:45:23,211 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=1174
+2026-02-19 18:45:23,211 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-02-19 18:45:23,211 - Orchestrator - INFO - Running feedback loop health check...
+2026-02-19 18:45:23,220 - Orchestrator - INFO - Feedback Loop Health: 199/895 PENDING (0 orphans excluded, resolution rate: 78%)
+2026-02-19 18:45:23,233 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-19 18:45:23,388 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-2ae34995) → BULLISH
+2026-02-19 18:45:23,388 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-2ae34995) → BULLISH
+2026-02-19 18:45:23,388 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-2ae34995) → BULLISH
+2026-02-19 18:45:23,388 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-9de34379) → BULLISH
+2026-02-19 18:45:23,388 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-9de34379) → BULLISH
+2026-02-19 18:45:23,388 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-9de34379) → BULLISH
+2026-02-19 18:45:23,388 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-52d5698e) → BULLISH
+2026-02-19 18:45:23,389 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-52d5698e) → BULLISH
+2026-02-19 18:45:23,389 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-52d5698e) → BULLISH
+2026-02-19 18:45:23,389 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-52d5698e) → BULLISH
+2026-02-19 18:45:23,389 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-52d5698e) → BULLISH
+2026-02-19 18:45:23,389 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-52d5698e) → BULLISH
+2026-02-19 18:45:23,389 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-52d5698e) → BULLISH
+2026-02-19 18:45:23,389 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-6cebef6c) → BEARISH
+2026-02-19 18:45:23,389 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-c04e3c17) → BULLISH
+2026-02-19 18:45:23,389 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-c04e3c17) → BULLISH
+2026-02-19 18:45:23,389 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-74092779) → BEARISH
+2026-02-19 18:45:23,389 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-f3066ad7) → BEARISH
+2026-02-19 18:45:23,389 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-f3066ad7) → BEARISH
+2026-02-19 18:45:23,418 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 23 created from CSV, 19 resolved from council_history
+2026-02-19 18:45:23,421 - Orchestrator - INFO - Enhanced Brier Health: 9 agents tracked, 811 total resolved predictions
+2026-02-19 18:45:23,421 - Orchestrator - INFO - Feedback loop health check complete.
+2026-02-19 18:45:23,421 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-02-19 18:45:23,429 - Orchestrator - INFO - Next task 'eod_shutdown' (End-of-Day Shutdown) scheduled for 2026-02-19 18:47:00 UTC. Waiting for 0.03 hours.
+2026-02-19 18:47:00,045 - Orchestrator - INFO - --- Running scheduled task: eod_shutdown [cancel_and_stop_monitoring] ---
+2026-02-19 18:47:00,051 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
+2026-02-19 18:47:00,051 - Orchestrator - INFO - System shutdown flag SET — no new trades or emergency cycles will be processed
+2026-02-19 18:47:00,051 - OrderManager - INFO - [OFF] cancel_all_open_orders skipped — no real orders exist in OFF mode
+2026-02-19 18:47:00,051 - Orchestrator - INFO - --- Stopping position monitoring process (PID: 1231126) ---
+2026-02-19 18:47:00,055 - Orchestrator - INFO - 2026-02-19 18:47:00,053 - __main__ - INFO - Received shutdown signal: SIGTERM. Disconnecting from IB...
+2026-02-19 18:47:03,061 - Orchestrator - INFO - 2026-02-19 18:47:03,060 - root - INFO - P&L monitoring task was cancelled.
+2026-02-19 18:47:03,061 - Orchestrator - INFO - 2026-02-19 18:47:03,061 - root - INFO - Shutting down monitor. Unregistering event handlers and cancelling PnL subscriptions.
+2026-02-19 18:47:03,061 - Orchestrator - INFO - 2026-02-19 18:47:03,061 - __main__ - INFO - Position monitor has shut down.
+2026-02-19 18:47:04,216 - Orchestrator - INFO - Position monitoring process has been successfully terminated.
+2026-02-19 18:47:04,635 - Orchestrator - INFO - Connection pool released — no stale connections for Gateway restart
+2026-02-19 18:47:04,637 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
+2026-02-19 18:47:04,650 - Orchestrator - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-20 08:30:00 UTC. Waiting for 13.72 hours.
