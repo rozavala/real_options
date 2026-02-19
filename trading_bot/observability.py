@@ -624,11 +624,18 @@ class ObservabilityHub:
         DEFAULT_COSTS = {
             'gemini-2.0-flash': {'input': 0.00010, 'output': 0.00040},
             'gemini-2.0-pro': {'input': 0.00125, 'output': 0.00500},
+            'gemini-3-flash-preview': {'input': 0.00010, 'output': 0.00040},
+            'gemini-3-pro-preview': {'input': 0.00125, 'output': 0.00500},
+            'gemini-3.1-pro-preview': {'input': 0.00125, 'output': 0.00500},
             'gpt-4o': {'input': 0.00250, 'output': 0.01000},
             'gpt-4o-mini': {'input': 0.00015, 'output': 0.00060},
+            'gpt-5.2': {'input': 0.00175, 'output': 0.01400},
             'claude-sonnet': {'input': 0.00300, 'output': 0.01500},
             'claude-opus': {'input': 0.01500, 'output': 0.07500},
-            'grok': {'input': 0.00500, 'output': 0.01000},
+            'grok-2': {'input': 0.00500, 'output': 0.01000},
+            'grok-4-1-fast-reasoning': {'input': 0.00300, 'output': 0.01500},
+            'grok-4-fast-non-reasoning': {'input': 0.00050, 'output': 0.00200},
+            'o3': {'input': 0.01000, 'output': 0.04000},
             'default': {'input': 0.00100, 'output': 0.00200},
         }
 
