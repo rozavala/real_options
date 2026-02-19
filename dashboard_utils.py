@@ -673,37 +673,37 @@ def get_sentinel_status():
         health_ns = state.get('sentinel_health', {})
 
         for name, meta in SENTINEL_REGISTRY.items():
-                entry = health_ns.get(name, {})
-                data = entry.get('data', {}) if isinstance(entry, dict) else {}
-                timestamp = entry.get('timestamp', 0) if isinstance(entry, dict) else 0
+            entry = health_ns.get(name, {})
+            data = entry.get('data', {}) if isinstance(entry, dict) else {}
+            timestamp = entry.get('timestamp', 0) if isinstance(entry, dict) else 0
 
-                status = data.get('status', 'Unknown')
-                interval = data.get('interval_seconds', 0)
-                error = data.get('error')
-                last_check = data.get('last_check_utc')
+            status = data.get('status', 'Unknown')
+            interval = data.get('interval_seconds', 0)
+            error = data.get('error')
+            last_check = data.get('last_check_utc')
 
-                # Staleness detection: stale if no check within 2x expected interval
-                is_stale = False
-                minutes_since = None
-                if timestamp > 0:
-                    import time
-                    seconds_since = time.time() - timestamp
-                    minutes_since = round(seconds_since / 60)
-                    # Stale if more than 2x the check interval has elapsed
-                    if interval > 0 and seconds_since > (interval * 2):
-                        is_stale = True
+            # Staleness detection: stale if no check within 2x expected interval
+            is_stale = False
+            minutes_since = None
+            if timestamp > 0:
+                import time
+                seconds_since = time.time() - timestamp
+                minutes_since = round(seconds_since / 60)
+                # Stale if more than 2x the check interval has elapsed
+                if interval > 0 and seconds_since > (interval * 2):
+                    is_stale = True
 
-                result[name] = {
-                    'status': status,
-                    'display_name': meta['display'],
-                    'availability': meta['availability'],
-                    'icon': meta['icon'],
-                    'last_check_utc': last_check,
-                    'minutes_since_check': minutes_since,
-                    'is_stale': is_stale,
-                    'interval_seconds': interval,
-                    'error': error,
-                }
+            result[name] = {
+                'status': status,
+                'display_name': meta['display'],
+                'availability': meta['availability'],
+                'icon': meta['icon'],
+                'last_check_utc': last_check,
+                'minutes_since_check': minutes_since,
+                'is_stale': is_stale,
+                'interval_seconds': interval,
+                'error': error,
+            }
 
     except Exception:
         # Fallback: return registry with Unknown status
