@@ -324,6 +324,9 @@ class PortfolioVaRCalculator:
         snapshots = []
         # Collect option positions that need IV
         option_items = []
+        # Build underlying price map from FUT positions (symbol → marketPrice)
+        # so options can look up the underlying future price for B-S repricing
+        underlying_price_map: dict[str, float] = {}
         for item in portfolio_items:
             if item.position == 0:
                 continue
@@ -336,6 +339,8 @@ class PortfolioVaRCalculator:
                     multiplier = float(c.multiplier) if c.multiplier else get_dollar_multiplier(config)
                 except (ValueError, TypeError):
                     multiplier = get_dollar_multiplier(config)
+
+                underlying_price_map[ticker_sym] = item.marketPrice
 
                 snapshots.append(PositionSnapshot(
                     symbol=ticker_sym,
@@ -359,10 +364,17 @@ class PortfolioVaRCalculator:
                 con_id = c.conId
                 iv_val = iv_map.get(con_id)
 
-                # Skip positions where IV is unavailable
+                # Use fallback IV from commodity profile if market IV unavailable
                 if iv_val is None or iv_val <= 0:
-                    logger.warning(f"IV unavailable for {c.localSymbol} (conId={con_id}) — excluded from VaR")
-                    continue
+                    try:
+                        profile = get_commodity_profile(c.symbol)
+                        iv_val = profile.fallback_iv
+                    except (ValueError, KeyError):
+                        iv_val = 0.35
+                    logger.warning(
+                        f"IV unavailable for {c.localSymbol} (conId={con_id}) "
+                        f"— using fallback IV={iv_val:.2f}"
+                    )
 
                 ticker_sym = c.symbol
                 try:
@@ -377,6 +389,15 @@ class PortfolioVaRCalculator:
                     logger.warning(f"Expired or invalid expiry for {c.localSymbol} — excluded from VaR")
                     continue
 
+                # Resolve underlying future price from FUT positions in portfolio
+                und_price = underlying_price_map.get(ticker_sym)
+                if und_price is None or und_price <= 0:
+                    logger.warning(
+                        f"No underlying future price for {c.localSymbol} "
+                        f"(symbol={ticker_sym}) — excluded from VaR"
+                    )
+                    continue
+
                 snapshots.append(PositionSnapshot(
                     symbol=ticker_sym,
                     sec_type=c.secType,
@@ -385,8 +406,8 @@ class PortfolioVaRCalculator:
                     right=c.right,
                     expiry_years=expiry_years,
                     iv=iv_val,
-                    underlying_price=item.marketPrice,  # portfolio item has underlying price
-                    current_price=abs(item.averageCost / multiplier) if multiplier else 0.0,
+                    underlying_price=und_price,
+                    current_price=item.marketPrice,  # option's current market price
                     dollar_multiplier=multiplier,
                 ))
 

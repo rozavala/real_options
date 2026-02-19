@@ -310,30 +310,111 @@ def test_yfinance_failure_returns_none(calculator):
             assert result is None
 
 
-# --- Test 10: IV unavailable → position excluded ---
+# --- Test 10: IV unavailable → uses fallback IV from commodity profile ---
 
-async def test_iv_unavailable_excludes_position(calculator, sample_config):
-    """Positions without IV should be excluded from snapshot."""
+async def test_iv_unavailable_uses_fallback(calculator, sample_config):
+    """Positions without market IV should use fallback IV from commodity profile."""
     mock_ib = MagicMock()
 
+    # Underlying future (provides underlying price for the option)
+    mock_fut = MagicMock()
+    mock_fut.position = 1
+    mock_fut.contract = MagicMock(
+        secType="FUT", symbol="KC", conId=100,
+        localSymbol="KCN6", multiplier="37500",
+    )
+    mock_fut.marketPrice = 380.0
+
     # One option position
-    mock_item = MagicMock()
-    mock_item.position = 1
-    mock_item.contract = MagicMock(
+    mock_opt = MagicMock()
+    mock_opt.position = 1
+    mock_opt.contract = MagicMock(
         secType="FOP", symbol="KC", conId=123,
         localSymbol="KC 400C", strike=400.0, right="C",
         lastTradeDateOrContractMonth="20260601",
         multiplier="37500",
     )
-    mock_item.marketPrice = 380.0
-    mock_item.averageCost = 1875.0
-    mock_ib.portfolio.return_value = [mock_item]
+    mock_opt.marketPrice = 5.0
+    mock_opt.averageCost = 1875.0
+    mock_ib.portfolio.return_value = [mock_fut, mock_opt]
 
     # Mock IV fetch returns None (unavailable)
     with patch.object(calculator, '_batch_fetch_iv', return_value={123: None}):
         snapshots = await calculator._snapshot_portfolio(mock_ib, sample_config)
 
-    assert len(snapshots) == 0, "Position with unavailable IV should be excluded"
+    # Should include both: 1 future + 1 option with fallback IV
+    assert len(snapshots) == 2
+    option_snap = [s for s in snapshots if s.sec_type == "FOP"][0]
+    assert option_snap.iv == 0.35, "Should use fallback IV from profile"
+    assert option_snap.underlying_price == 380.0, "Should use FUT price as underlying"
+    assert option_snap.current_price == 5.0, "Should use option market price"
+
+
+# --- Test 10b: Option without matching FUT in portfolio → excluded ---
+
+async def test_option_without_underlying_excluded(calculator, sample_config):
+    """Options with no matching FUT in portfolio should be excluded."""
+    mock_ib = MagicMock()
+
+    # Option only, no matching future
+    mock_opt = MagicMock()
+    mock_opt.position = 1
+    mock_opt.contract = MagicMock(
+        secType="FOP", symbol="KC", conId=123,
+        localSymbol="KC 400C", strike=400.0, right="C",
+        lastTradeDateOrContractMonth="20260601",
+        multiplier="37500",
+    )
+    mock_opt.marketPrice = 5.0
+    mock_opt.averageCost = 1875.0
+    mock_ib.portfolio.return_value = [mock_opt]
+
+    with patch.object(calculator, '_batch_fetch_iv', return_value={123: 0.35}):
+        snapshots = await calculator._snapshot_portfolio(mock_ib, sample_config)
+
+    assert len(snapshots) == 0, "Option without underlying FUT should be excluded"
+
+
+# --- Test 10c: Option uses underlying future price, not option premium ---
+
+async def test_option_underlying_price_from_future(calculator, sample_config):
+    """Option underlying_price should come from matching FUT, not option's marketPrice."""
+    mock_ib = MagicMock()
+
+    # Underlying future at $380
+    mock_fut = MagicMock()
+    mock_fut.position = 1
+    mock_fut.contract = MagicMock(
+        secType="FUT", symbol="KC", conId=100,
+        localSymbol="KCN6", multiplier="37500",
+    )
+    mock_fut.marketPrice = 380.0
+
+    # Option with marketPrice = $5 (option premium, NOT underlying)
+    mock_opt = MagicMock()
+    mock_opt.position = 1
+    mock_opt.contract = MagicMock(
+        secType="FOP", symbol="KC", conId=123,
+        localSymbol="KC 400C", strike=400.0, right="C",
+        lastTradeDateOrContractMonth="20260601",
+        multiplier="37500",
+    )
+    mock_opt.marketPrice = 5.0
+    mock_opt.averageCost = 1875.0
+    mock_ib.portfolio.return_value = [mock_fut, mock_opt]
+
+    with patch.object(calculator, '_batch_fetch_iv', return_value={123: 0.35}):
+        snapshots = await calculator._snapshot_portfolio(mock_ib, sample_config)
+
+    option_snap = [s for s in snapshots if s.sec_type == "FOP"][0]
+    assert option_snap.underlying_price == 380.0, (
+        f"underlying_price should be FUT price (380.0), not option premium. "
+        f"Got {option_snap.underlying_price}"
+    )
+    assert option_snap.current_price == 5.0, (
+        f"current_price should be option market price (5.0). "
+        f"Got {option_snap.current_price}"
+    )
 
 
 # --- Test 11: fillna(0) preserves scenarios ---
