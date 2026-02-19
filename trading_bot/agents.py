@@ -53,20 +53,36 @@ if not _HAS_COMMODITY_PROFILES:
     logger.info(f"Profile system disabled. Reason: {_PROFILE_IMPORT_ERROR or 'Unknown'}")
 
 # Setup Provenance Logger
+from logging.handlers import RotatingFileHandler
 provenance_logger = logging.getLogger("provenance")
 provenance_logger.setLevel(logging.INFO)
 provenance_logger.propagate = False
+_provenance_data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
 if not provenance_logger.handlers:
-    from logging.handlers import RotatingFileHandler
-    log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
-    os.makedirs(log_dir, exist_ok=True)
+    os.makedirs(_provenance_data_dir, exist_ok=True)
     fh = RotatingFileHandler(
-        os.path.join(log_dir, 'research_provenance.log'),
+        os.path.join(_provenance_data_dir, 'research_provenance.log'),
         maxBytes=10 * 1024 * 1024,
         backupCount=3
     )
     fh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     provenance_logger.addHandler(fh)
+
+
+def set_data_dir(data_dir: str):
+    """Reconfigure provenance logger for a commodity-specific data directory."""
+    global _provenance_data_dir
+    _provenance_data_dir = data_dir
+    os.makedirs(data_dir, exist_ok=True)
+    new_path = os.path.join(data_dir, 'research_provenance.log')
+    for h in provenance_logger.handlers[:]:
+        if isinstance(h, RotatingFileHandler):
+            h.close()
+            provenance_logger.removeHandler(h)
+    new_fh = RotatingFileHandler(new_path, maxBytes=10 * 1024 * 1024, backupCount=3)
+    new_fh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    provenance_logger.addHandler(new_fh)
+    logger.info(f"Agents provenance log set to: {new_path}")
 
 @dataclass
 class GroundedDataPacket:
