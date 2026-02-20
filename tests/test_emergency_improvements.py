@@ -108,7 +108,8 @@ async def test_emergency_cycle_runs_when_open():
                  }
 
                  # Mock get_active_futures to return empty so it exits early safely
-                 with patch('orchestrator.get_active_futures', return_value=[]):
+                 with patch('orchestrator.get_active_futures', return_value=[]), \
+                      patch('orchestrator.hours_until_weekly_close', return_value=float('inf')):
                      await run_emergency_cycle(trigger, config, mock_ib)
 
                  # Verify deferred trigger NOT queued
