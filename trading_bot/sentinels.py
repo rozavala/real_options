@@ -2114,6 +2114,10 @@ class MacroContagionSentinel(Sentinel):
         self.last_dxy_value = None
         self.last_dxy_timestamp = None
         self.policy_check_interval = 86400  # Check policy news once per day
+        # Fed policy shock is commodity-agnostic — share state across all instances
+        # so only one commodity's sentinel calls the LLM per interval.
+        data_dir = config.get('data_dir', 'data')
+        self._shared_policy_file = Path(data_dir).parent / "macro_contagion_state.json"
         self.last_policy_check = self._load_last_policy_check()
 
         api_key = config.get('gemini', {}).get('api_key')
@@ -2128,11 +2132,10 @@ class MacroContagionSentinel(Sentinel):
                      f"Commodity: {self.profile.name}")
 
     def _load_last_policy_check(self):
-        """Load last_policy_check from persistent cache to survive restarts."""
-        cache_file = Path(self.CACHE_DIR) / "macro_contagion_state.json"
-        if cache_file.exists():
+        """Load last_policy_check from shared cross-commodity cache."""
+        if self._shared_policy_file.exists():
             try:
-                with open(cache_file, 'r') as f:
+                with open(self._shared_policy_file, 'r') as f:
                     data = json.load(f)
                 ts = data.get('last_policy_check')
                 if ts:
@@ -2144,11 +2147,10 @@ class MacroContagionSentinel(Sentinel):
         return None
 
     def _save_last_policy_check(self):
-        """Persist last_policy_check so it survives restarts."""
-        cache_file = Path(self.CACHE_DIR) / "macro_contagion_state.json"
+        """Persist last_policy_check to shared cross-commodity cache."""
         try:
-            os.makedirs(self.CACHE_DIR, exist_ok=True)
-            with open(cache_file, 'w') as f:
+            self._shared_policy_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._shared_policy_file, 'w') as f:
                 json.dump({'last_policy_check': self.last_policy_check.isoformat()}, f)
         except Exception as e:
             logger.warning(f"Failed to save macro contagion state: {e}")
@@ -2343,7 +2345,8 @@ class MacroContagionSentinel(Sentinel):
             _sentinel_diag.info(f"MacroContagionSentinel: Fed policy shock! {policy_shock['policy_type']}")
             return SentinelTrigger(
                 source="MacroContagionSentinel",
-                reason=f"Fed Policy Shock: {policy_shock['policy_type']} - {policy_shock['summary']}",
+                # Stable reason (no LLM summary) so dedup hash is deterministic
+                reason=f"Fed Policy Shock: {policy_shock['policy_type']}",
                 payload=policy_shock,
                 severity=9
             )
