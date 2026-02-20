@@ -1421,17 +1421,23 @@ def calculate_learning_metrics(graded_df: pd.DataFrame, windows: list[int] = Non
         good_process = resolved['process_score_norm'] >= median_ps
         good_outcome = resolved['is_win'] == 1
 
-        # Rolling SKILL % over the primary window
-        w0 = windows[0]
+        # Rolling SKILL % over the balanced (middle) window
+        w_mid = windows[len(windows) // 2] if len(windows) > 1 else windows[0]
         resolved['is_skill'] = (good_process & good_outcome).astype(int)
         resolved['skill_pct'] = (
-            resolved['is_skill'].rolling(window=w0, min_periods=max(3, w0 // 4)).mean() * 100
+            resolved['is_skill'].rolling(window=w_mid, min_periods=max(3, w_mid // 4)).mean() * 100
+        )
+
+        # Rolling process score (outcome-independent signal strength)
+        resolved['rolling_process'] = (
+            resolved['process_score_norm'].rolling(window=w_mid, min_periods=max(3, w_mid // 4)).mean() * 100
         )
     else:
         resolved['process_score_norm'] = 0.5
         resolved['skill_pct'] = np.nan
+        resolved['rolling_process'] = np.nan
 
-    keep_cols = ['trade_num', 'timestamp', 'cum_pnl', 'process_score_norm', 'skill_pct']
+    keep_cols = ['trade_num', 'timestamp', 'cum_pnl', 'process_score_norm', 'skill_pct', 'rolling_process']
     keep_cols += [f'win_rate_{w}' for w in windows]
 
     result['trade_series'] = resolved[keep_cols]

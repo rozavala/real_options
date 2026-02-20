@@ -279,24 +279,49 @@ if learning['has_data']:
 
     st.plotly_chart(fig_lr, use_container_width=True)
 
-    # --- Chart 2: Process Quality Trend (SKILL %) ---
-    if 'skill_pct' in ts.columns and ts['skill_pct'].notna().any():
+    # --- Chart 2: Process Quality Trend ---
+    has_process = 'rolling_process' in ts.columns and ts['rolling_process'].notna().any()
+    has_skill = 'skill_pct' in ts.columns and ts['skill_pct'].notna().any()
+
+    if has_process or has_skill:
         fig_skill = go.Figure()
-        fig_skill.add_trace(
-            go.Scatter(x=ts['trade_num'], y=ts['skill_pct'], name='SKILL %',
-                       fill='tozeroy', fillcolor='rgba(0,204,150,0.15)',
-                       line=dict(color='#00CC96', width=2))
-        )
-        fig_skill.add_hline(y=25, line_dash="dot", line_color="gray",
-                            annotation_text="25% (random)", annotation_position="bottom right")
+
+        if has_process:
+            fig_skill.add_trace(
+                go.Scatter(x=ts['trade_num'], y=ts['rolling_process'],
+                           name='Process Score (outcome-independent)',
+                           line=dict(color='#636EFA', width=2.5))
+            )
+        if has_skill:
+            fig_skill.add_trace(
+                go.Scatter(x=ts['trade_num'], y=ts['skill_pct'],
+                           name='SKILL % (good process + win)',
+                           line=dict(color='#00CC96', width=1.5, dash='dash'))
+            )
+
+        fig_skill.add_hline(y=50, line_dash="dot", line_color="gray",
+                            annotation_text="50% (median)", annotation_position="bottom right")
         fig_skill.update_layout(
-            title='Process Quality Trend (SKILL = Good Process + Win)',
+            title='Decision Quality Trend (solid = signal strength, dashed = SKILL %)',
             height=300,
-            yaxis=dict(title='SKILL %', range=[0, 100]),
+            yaxis=dict(title='Score %', range=[0, 100]),
             xaxis=dict(title='Trade #'),
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
             margin=dict(l=0, r=0, t=60, b=0)
         )
         st.plotly_chart(fig_skill, use_container_width=True)
+
+    # --- Trend summary indicator ---
+    wr_col = 'win_rate_20'
+    if wr_col in ts.columns:
+        wr_valid = ts[wr_col].dropna()
+        if len(wr_valid) >= 20:
+            first_val = wr_valid.iloc[len(wr_valid) // 4]
+            last_val = wr_valid.iloc[-1]
+            delta = last_val - first_val
+            arrow = "trending UP" if delta > 2 else ("trending DOWN" if delta < -2 else "flat")
+            icon = {"trending UP": "📈", "trending DOWN": "📉", "flat": "➡️"}[arrow]
+            st.caption(f"{icon} Win rate {arrow}: {first_val:.0f}% → {last_val:.0f}% ({delta:+.0f}pp)")
 
     # --- Chart 3: Agent Accuracy Over Time (in expander) ---
     with st.expander("Agent Accuracy Over Time", expanded=False):
