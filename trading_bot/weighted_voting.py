@@ -368,7 +368,7 @@ async def calculate_weighted_decision(
     contract: Optional[Any] = None,
     regime: str = "UNKNOWN",
     min_quorum: int = 3,
-    config: dict = None
+    config: Optional[dict] = None
 ) -> dict:
     """
     Calculate weighted decision from all agent reports.

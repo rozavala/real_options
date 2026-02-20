@@ -54,6 +54,12 @@ def get_var_calculator(config: dict) -> "PortfolioVaRCalculator":
     return _calculator_instance
 
 
+def _reset_calculator():
+    """Reset singleton for test isolation."""
+    global _calculator_instance
+    _calculator_instance = None
+
+
 # --- Dataclasses ---
 
 @dataclass
@@ -152,7 +158,7 @@ class PortfolioVaRCalculator:
             # 2. Fetch aligned historical returns
             symbols = list({p.symbol for p in positions})
             lookback = config.get("compliance", {}).get("var_lookback_days", 252)
-            returns_df = self._fetch_aligned_returns(symbols, lookback)
+            returns_df = await self._fetch_aligned_returns(symbols, lookback)
             if returns_df is None:
                 raise ValueError("Failed to fetch aligned returns — data quality guard triggered")
 
@@ -234,7 +240,7 @@ class PortfolioVaRCalculator:
 
         symbols = list({p.symbol for p in positions})
         lookback = config.get("compliance", {}).get("var_lookback_days", 252)
-        returns_df = self._fetch_aligned_returns(symbols, lookback)
+        returns_df = await self._fetch_aligned_returns(symbols, lookback)
         if returns_df is None:
             raise ValueError("Failed to fetch aligned returns for pre-trade VaR")
 
@@ -356,6 +362,13 @@ class PortfolioVaRCalculator:
                 option_items.append(item)
             elif c.secType == "FUT":
                 ticker_sym = c.symbol
+                if item.marketPrice is None or item.marketPrice <= 0:
+                    logger.warning(
+                        f"Invalid market price for {c.localSymbol}: "
+                        f"{item.marketPrice} — excluded from VaR"
+                    )
+                    continue
+
                 try:
                     multiplier = float(c.multiplier) if c.multiplier else get_dollar_multiplier(config)
                 except (ValueError, TypeError):
@@ -496,7 +509,7 @@ class PortfolioVaRCalculator:
 
         return iv_map
 
-    def _fetch_aligned_returns(
+    async def _fetch_aligned_returns(
         self, symbols: list[str], lookback_days: int = 252
     ) -> Optional["pd.DataFrame"]:
         """
@@ -525,11 +538,12 @@ class PortfolioVaRCalculator:
                     continue
 
             try:
-                data = yf.download(
-                    yf_ticker,
-                    period=f"{lookback_days + 30}d",  # Extra buffer for alignment
-                    progress=False,
-                    auto_adjust=True,
+                loop = asyncio.get_event_loop()
+                data = await loop.run_in_executor(
+                    None,
+                    lambda t=yf_ticker, lb=lookback_days: yf.download(
+                        t, period=f"{lb + 30}d", progress=False, auto_adjust=True,
+                    ),
                 )
                 if data is None or data.empty or len(data) < 20:
                     logger.warning(f"Insufficient yfinance data for {yf_ticker}: {len(data) if data is not None else 0} rows")
@@ -594,7 +608,7 @@ class PortfolioVaRCalculator:
             if pos.sec_type in ("FOP", "OPT"):
                 # Full B-S revaluation for options
                 for i, ret in enumerate(sym_returns):
-                    shocked_S = pos.underlying_price * (1.0 + ret)
+                    shocked_S = max(pos.underlying_price * (1.0 + ret), 0.01)
                     new_price = self._bs_price(
                         shocked_S, pos.strike, pos.expiry_years,
                         risk_free_rate, pos.iv, pos.right
@@ -756,20 +770,23 @@ class PortfolioVaRCalculator:
     # --- State persistence ---
 
     def _save_state(self, result: VaRResult, _retries: int = 2):
-        """Atomic save with file locking and retry."""
+        """Atomic save with dedicated lock file and PID-specific tmp."""
         state_path = os.path.join(_var_data_dir, "var_state.json")
-        tmp_path = state_path + ".tmp"
+        lock_path = os.path.join(_var_data_dir, "var_state.lock")
+        tmp_path = f"{state_path}.tmp.{os.getpid()}"
         for attempt in range(_retries + 1):
             try:
                 os.makedirs(os.path.dirname(state_path), exist_ok=True)
                 data = result.to_dict()
-                with open(tmp_path, "w") as f:
-                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                # Hold lock through write + rename to prevent cross-process races
+                with open(lock_path, "w") as lock_f:
+                    fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX)
                     try:
-                        json.dump(data, f, indent=2, default=str)
+                        with open(tmp_path, "w") as f:
+                            json.dump(data, f, indent=2, default=str)
+                        os.replace(tmp_path, state_path)
                     finally:
-                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
-                os.replace(tmp_path, state_path)
+                        fcntl.flock(lock_f.fileno(), fcntl.LOCK_UN)
                 return  # Success
             except Exception as e:
                 try:
@@ -780,7 +797,7 @@ class PortfolioVaRCalculator:
                     logger.warning(
                         f"VaR state save failed (attempt {attempt + 1}/{_retries + 1}): {e}"
                     )
-                    _time.sleep(0.1 * (attempt + 1))  # Brief backoff
+                    _time.sleep(0.1 * (attempt + 1))
                 else:
                     logger.error(
                         f"Failed to save VaR state after {_retries + 1} attempts: {e}"

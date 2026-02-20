@@ -1033,7 +1033,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         try:
             from trading_bot.var_calculator import get_var_calculator
             var_calc = get_var_calculator(config)
-            await var_calc.compute_portfolio_var(ib, config)
+            await asyncio.wait_for(var_calc.compute_portfolio_var(ib, config), timeout=30.0)
             logger.info("Pre-batch VaR refresh complete")
         except Exception as e:
             logger.warning(f"Pre-batch VaR refresh failed (non-fatal): {e}")

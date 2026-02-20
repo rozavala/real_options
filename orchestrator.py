@@ -4782,8 +4782,7 @@ async def main(commodity_ticker: str = None):
     # E.1: Portfolio VaR — shared data dir (NOT per-commodity)
     from trading_bot.var_calculator import set_var_data_dir
     from trading_bot.compliance import set_boot_time
-    base_dir = os.path.dirname(data_dir)  # Parent of data/{ticker}/ → project root
-    set_var_data_dir(os.path.join(base_dir, 'data'))
+    set_var_data_dir(os.path.dirname(data_dir))  # data/{ticker}/ → data/
     set_boot_time()
 
     global GLOBAL_DEDUPLICATOR

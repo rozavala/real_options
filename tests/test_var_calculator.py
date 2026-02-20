@@ -23,6 +23,7 @@ from trading_bot.var_calculator import (
     PositionSnapshot,
     VaRResult,
     get_var_calculator,
+    _reset_calculator,
     set_var_data_dir,
     run_risk_agent,
     _max_consecutive_zeros,
@@ -233,7 +234,7 @@ async def test_pre_trade_var_increases(calculator, sample_config, tmp_data_dir):
         underlying_price=380.0, current_price=10.0, dollar_multiplier=375.0,
     )]
 
-    with patch.object(calculator, '_fetch_aligned_returns') as mock_returns:
+    with patch.object(calculator, '_fetch_aligned_returns', new_callable=AsyncMock) as mock_returns:
         mock_returns.return_value = _make_returns_df(["KC"])
 
         result = await calculator.compute_var_with_proposed_trade(
@@ -343,11 +344,11 @@ async def test_iv_polling_timeout(calculator, sample_config):
 
 # --- Test 9: yfinance failure → None ---
 
-def test_yfinance_failure_returns_none(calculator):
+async def test_yfinance_failure_returns_none(calculator):
     """When yfinance fails, _fetch_aligned_returns returns None."""
     with patch("trading_bot.var_calculator._yf_cache", {}):
         with patch("yfinance.download", side_effect=Exception("Network error")):
-            result = calculator._fetch_aligned_returns(["KC"])
+            result = await calculator._fetch_aligned_returns(["KC"])
             assert result is None
 
 
@@ -485,7 +486,7 @@ def test_consecutive_zeros_detected():
     assert _max_consecutive_zeros(arr2) == 3
 
 
-def test_fetch_returns_rejects_consecutive_zeros(calculator):
+async def test_fetch_returns_rejects_consecutive_zeros(calculator):
     """5+ consecutive zeros should trigger data quality rejection."""
     bad_returns = pd.Series(np.zeros(252))
     bad_returns[0:5] = 0.01  # First 5 are fine
@@ -495,21 +496,21 @@ def test_fetch_returns_rejects_consecutive_zeros(calculator):
         with patch("yfinance.download") as mock_dl:
             mock_data = pd.DataFrame({"Close": np.cumsum(bad_returns) + 100})
             mock_dl.return_value = mock_data
-            result = calculator._fetch_aligned_returns(["KC"])
+            result = await calculator._fetch_aligned_returns(["KC"])
             # Should return None due to consecutive zeros or near-zero variance
             assert result is None
 
 
 # --- Test 13: Zero-variance → None ---
 
-def test_zero_variance_returns_none(calculator):
+async def test_zero_variance_returns_none(calculator):
     """Returns with zero variance should trigger data quality rejection."""
     with patch("trading_bot.var_calculator._yf_cache", {}):
         with patch("yfinance.download") as mock_dl:
             # Constant price → zero returns
             mock_data = pd.DataFrame({"Close": [100.0] * 260})
             mock_dl.return_value = mock_data
-            result = calculator._fetch_aligned_returns(["KC"])
+            result = await calculator._fetch_aligned_returns(["KC"])
             assert result is None
 
 
@@ -677,3 +678,98 @@ def test_get_cached_var_fresh_not_stale(calculator):
     cached = calculator.get_cached_var(max_stale_seconds=7200)
     assert cached is not None
     assert cached.is_stale is False
+
+
+# --- Test 21: FUT with invalid marketPrice excluded from VaR ---
+
+async def test_fut_invalid_market_price_excluded(calculator, sample_config):
+    """Futures with marketPrice <= 0 (e.g., -1 from IB) should be excluded."""
+    mock_ib = MagicMock()
+
+    mock_fut = MagicMock()
+    mock_fut.position = 1
+    mock_fut.contract = MagicMock(
+        secType="FUT", symbol="KC", conId=100,
+        localSymbol="KCN6", multiplier="37500",
+    )
+    mock_fut.marketPrice = -1.0  # IB returns -1 when no market data
+
+    mock_ib.portfolio.return_value = [mock_fut]
+
+    snapshots = await calculator._snapshot_portfolio(mock_ib, sample_config)
+    assert len(snapshots) == 0, "FUT with marketPrice=-1 should be excluded"
+
+
+# --- Test 22: Negative shocked_S clamped in B-S revaluation ---
+
+def test_negative_shocked_price_clamped(calculator):
+    """Extreme negative returns should clamp shocked_S to 0.01, not go negative."""
+    call = _make_option_snapshot(
+        qty=1.0, strike=400.0, right="C", underlying_price=380.0,
+        current_price=5.0, dollar_multiplier=375.0,
+    )
+    # Returns with extreme -110% move (bad data)
+    extreme_returns = pd.DataFrame({"KC": [-1.1, -0.5, 0.0, 0.5]})
+
+    scenarios = calculator._compute_scenarios([call], extreme_returns, 0.04)
+
+    # Should not contain NaN (would happen if log(negative) were computed)
+    assert not np.any(np.isnan(scenarios)), "NaN in scenarios from extreme negative return"
+    assert len(scenarios) == 4
+
+
+# --- Test 23: _calc_expiry_years edge cases ---
+
+def test_calc_expiry_years_valid(calculator):
+    """Valid YYYYMMDD expiry should return positive years."""
+    from datetime import datetime, timedelta
+    future_date = (datetime.now() + timedelta(days=90)).strftime("%Y%m%d")
+    years = calculator._calc_expiry_years(future_date)
+    assert 0.2 < years < 0.3  # ~90 days ≈ 0.25 years
+
+
+def test_calc_expiry_years_expired(calculator):
+    """Past expiry should return 0.0 (clamped)."""
+    years = calculator._calc_expiry_years("20200101")
+    assert years == 0.0
+
+
+def test_calc_expiry_years_malformed(calculator):
+    """Malformed string should return 0.0 without raising."""
+    assert calculator._calc_expiry_years("not-a-date") == 0.0
+    assert calculator._calc_expiry_years("") == 0.0
+    assert calculator._calc_expiry_years(None) == 0.0
+
+
+# --- Test 24: Singleton reset for test isolation ---
+
+def test_singleton_reset():
+    """_reset_calculator clears the singleton."""
+    from trading_bot.var_calculator import get_var_calculator, _reset_calculator
+    import trading_bot.var_calculator as vc
+
+    calc = get_var_calculator({})
+    assert vc._calculator_instance is not None
+
+    _reset_calculator()
+    assert vc._calculator_instance is None
+
+
+# --- Test 25: PID-specific tmp file used in _save_state ---
+
+def test_save_state_uses_pid_tmp(calculator, tmp_data_dir):
+    """_save_state should use PID-specific tmp file for cross-process safety."""
+    result = VaRResult(var_95=100.0, computed_epoch=time.time())
+    calculator._save_state(result)
+
+    # State file should exist
+    state_path = os.path.join(tmp_data_dir, "var_state.json")
+    assert os.path.exists(state_path)
+
+    # Lock file should exist
+    lock_path = os.path.join(tmp_data_dir, "var_state.lock")
+    assert os.path.exists(lock_path)
+
+    # PID-specific tmp should NOT exist (cleaned up after replace)
+    tmp_path = f"{state_path}.tmp.{os.getpid()}"
+    assert not os.path.exists(tmp_path)
