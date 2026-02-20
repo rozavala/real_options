@@ -2113,8 +2113,8 @@ class MacroContagionSentinel(Sentinel):
         self.dxy_threshold_2d = 0.02  # 2% two-day move
         self.last_dxy_value = None
         self.last_dxy_timestamp = None
-        self.last_policy_check = None
         self.policy_check_interval = 86400  # Check policy news once per day
+        self.last_policy_check = self._load_last_policy_check()
 
         api_key = config.get('gemini', {}).get('api_key')
         self.client = genai.Client(api_key=api_key)
@@ -2126,6 +2126,32 @@ class MacroContagionSentinel(Sentinel):
         _sentinel_diag.info(f"MacroContagionSentinel initialized with model: {self.model} | "
                      f"DXY thresholds: 1d={self.dxy_threshold_1d:.0%}, 2d={self.dxy_threshold_2d:.0%} | "
                      f"Commodity: {self.profile.name}")
+
+    def _load_last_policy_check(self):
+        """Load last_policy_check from persistent cache to survive restarts."""
+        cache_file = Path(self.CACHE_DIR) / "macro_contagion_state.json"
+        if cache_file.exists():
+            try:
+                with open(cache_file, 'r') as f:
+                    data = json.load(f)
+                ts = data.get('last_policy_check')
+                if ts:
+                    loaded = datetime.fromisoformat(ts)
+                    _sentinel_diag.info(f"MacroContagionSentinel: restored last_policy_check={loaded}")
+                    return loaded
+            except Exception as e:
+                logger.warning(f"Failed to load macro contagion state: {e}")
+        return None
+
+    def _save_last_policy_check(self):
+        """Persist last_policy_check so it survives restarts."""
+        cache_file = Path(self.CACHE_DIR) / "macro_contagion_state.json"
+        try:
+            os.makedirs(self.CACHE_DIR, exist_ok=True)
+            with open(cache_file, 'w') as f:
+                json.dump({'last_policy_check': self.last_policy_check.isoformat()}, f)
+        except Exception as e:
+            logger.warning(f"Failed to save macro contagion state: {e}")
 
     async def _get_history(self, ticker_symbol, period="5d", interval="1h"):
         import yfinance as yf
@@ -2234,6 +2260,7 @@ class MacroContagionSentinel(Sentinel):
             return None
 
         self.last_policy_check = now
+        self._save_last_policy_check()
 
         try:
             prompt = """
