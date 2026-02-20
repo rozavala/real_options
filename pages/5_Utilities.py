@@ -695,11 +695,11 @@ with recon_row1[0]:
                     # Clear cache to show updated data
                     st.cache_data.clear()
                     with st.expander("View Details"):
-                        st.code(result.stdout)
+                        st.code((result.stdout + result.stderr).strip() or "No output")
                 else:
                     st.error("❌ Council history reconciliation failed")
                     with st.expander("View Error"):
-                        st.code(result.stderr or result.stdout)
+                        st.code((result.stderr + result.stdout).strip() or "No output")
 
             except subprocess.TimeoutExpired:
                 st.error("⏱️ Reconciliation timed out (180s)")
@@ -726,18 +726,18 @@ with recon_row1[1]:
 
                 if result.returncode == 0:
                     # Check if discrepancies were found
-                    output = result.stdout
+                    output = (result.stdout + result.stderr).strip()
                     if "No discrepancies found" in output:
                         st.success("✅ Trade ledger is perfectly in sync!")
                     else:
                         st.warning("⚠️ Discrepancies found - check archive_ledger/ directory")
 
                     with st.expander("View Details"):
-                        st.code(output)
+                        st.code(output or "No output")
                 else:
                     st.error("❌ Trade reconciliation failed")
                     with st.expander("View Error"):
-                        st.code(result.stderr or result.stdout)
+                        st.code((result.stderr + result.stdout).strip() or "No output")
 
             except subprocess.TimeoutExpired:
                 st.error("⏱️ Reconciliation timed out (120s)")
@@ -777,18 +777,18 @@ asyncio.run(main())
                 )
 
                 if result.returncode == 0:
-                    output = result.stdout
+                    output = (result.stdout + result.stderr).strip()
                     if "No discrepancies found" in output:
                         st.success("✅ Positions are in sync!")
                     else:
                         st.warning("⚠️ Position discrepancies detected")
 
                     with st.expander("View Details"):
-                        st.code(output)
+                        st.code(output or "No output")
                 else:
                     st.error("❌ Position reconciliation failed")
                     with st.expander("View Error"):
-                        st.code(result.stderr or result.stdout)
+                        st.code((result.stderr + result.stdout).strip() or "No output")
 
             except subprocess.TimeoutExpired:
                 st.error("⏱️ Reconciliation timed out (60s)")
@@ -815,11 +815,11 @@ with recon_row2[1]:
                     st.success("✅ Equity data synced successfully!")
                     st.cache_data.clear()
                     with st.expander("View Output"):
-                        st.code(result.stdout)
+                        st.code((result.stdout + result.stderr).strip() or "No output")
                 else:
                     st.error("❌ Sync failed")
                     with st.expander("View Error"):
-                        st.code(result.stderr or result.stdout)
+                        st.code((result.stderr + result.stdout).strip() or "No output")
 
             except subprocess.TimeoutExpired:
                 st.error("⏱️ Sync timed out (60s)")
@@ -862,11 +862,11 @@ with recon_row3[0]:
                     st.success("✅ Brier reconciliation complete!")
                     st.cache_data.clear()
                     with st.expander("View Details"):
-                        st.code(result.stdout)
+                        st.code((result.stdout + result.stderr).strip() or "No output")
                 else:
                     st.error("❌ Brier reconciliation failed")
                     with st.expander("View Error"):
-                        st.code(result.stderr or result.stdout)
+                        st.code((result.stderr + result.stdout).strip() or "No output")
 
             except subprocess.TimeoutExpired:
                 st.error("⏱️ Reconciliation timed out (300s)")
@@ -896,7 +896,7 @@ with st.expander("ℹ️ About Reconciliation Processes"):
     **Brier Scores**: Three-step process: (1) backfills `actual_trend_direction` in council history
     via IB historical prices, (2) resolves pending predictions in `agent_accuracy_structured.csv`
     by matching to reconciled council decisions, (3) syncs resolutions to `enhanced_brier.json`.
-    Only grades predictions older than 20 hours.
+    Grades predictions once their calculated exit time has passed (same-day on Fridays).
 
     ### When to Use
 
