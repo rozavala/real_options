@@ -1365,7 +1365,7 @@ def calculate_learning_metrics(graded_df: pd.DataFrame, windows: list[int] = Non
 
     Args:
         graded_df: Output of grade_decision_quality() with 'outcome' column.
-        windows: Rolling window sizes for win rate. Defaults to [20, 50].
+        windows: Rolling window sizes for win rate. Defaults to [10, 20, 30].
 
     Returns:
         dict with keys:
@@ -1375,7 +1375,7 @@ def calculate_learning_metrics(graded_df: pd.DataFrame, windows: list[int] = Non
         - 'total_resolved': int — number of resolved trades
     """
     if windows is None:
-        windows = [20, 50]
+        windows = [10, 20, 30]
 
     result = {'trade_series': pd.DataFrame(), 'has_data': False, 'total_resolved': 0}
 
@@ -1600,7 +1600,12 @@ def calculate_confidence_calibration(graded_df: pd.DataFrame, n_bins: int = 5) -
     calibration['bin_center'] = calibration['avg_confidence'] * 100
     calibration['bin_label'] = calibration['bin'].astype(str)
 
-    return calibration[['bin_center', 'actual_win_rate', 'count', 'bin_label']]
+    # Expected win rate = bin midpoint (what a perfectly calibrated system would achieve)
+    calibration['expected_win_rate'] = calibration['bin'].apply(
+        lambda b: (b.left + b.right) / 2 * 100 if hasattr(b, 'left') else 50
+    )
+
+    return calibration[['bin_center', 'actual_win_rate', 'expected_win_rate', 'count', 'bin_label']]
 
 
 # === PORTFOLIO FUNCTIONS ===

@@ -222,7 +222,7 @@ st.markdown("---")
 st.subheader("📈 Learning Curve")
 st.caption("Is the system improving over time? Trade-sequence axis (not calendar) — each tick is one resolved trade.")
 
-learning = calculate_learning_metrics(graded_df, windows=[20, 50])
+learning = calculate_learning_metrics(graded_df, windows=[10, 20, 30])
 
 if learning['has_data']:
     ts = learning['trade_series']
@@ -230,19 +230,25 @@ if learning['has_data']:
     # --- Chart 1: Rolling Win Rate + Cumulative P&L ---
     fig_lr = make_subplots(specs=[[{"secondary_y": True}]])
 
-    # Win rate lines
-    if 'win_rate_20' in ts.columns:
-        fig_lr.add_trace(
-            go.Scatter(x=ts['trade_num'], y=ts['win_rate_20'], name='Win Rate (20)',
-                       line=dict(color='#636EFA', width=2)),
-            secondary_y=False
-        )
-    if 'win_rate_50' in ts.columns:
-        fig_lr.add_trace(
-            go.Scatter(x=ts['trade_num'], y=ts['win_rate_50'], name='Win Rate (50)',
-                       line=dict(color='#00CC96', width=2, dash='dash')),
-            secondary_y=False
-        )
+    # Timestamp hover for trade-sequence x-axis
+    hover_dates = ts['timestamp'].dt.strftime('%Y-%m-%d %H:%M') if hasattr(ts['timestamp'].dtype, 'tz') or pd.api.types.is_datetime64_any_dtype(ts['timestamp']) else ts['timestamp'].astype(str)
+
+    win_rate_styles = [
+        ('win_rate_10', 'Win Rate (10)', '#FFA15A', 1.5, 'dot'),
+        ('win_rate_20', 'Win Rate (20)', '#636EFA', 2, 'solid'),
+        ('win_rate_30', 'Win Rate (30)', '#00CC96', 2, 'dash'),
+    ]
+    for col, name, color, width, dash in win_rate_styles:
+        if col in ts.columns:
+            fig_lr.add_trace(
+                go.Scatter(
+                    x=ts['trade_num'], y=ts[col], name=name,
+                    line=dict(color=color, width=width, dash=dash),
+                    customdata=hover_dates,
+                    hovertemplate='Trade #%{x}<br>%{fullData.name}: %{y:.1f}%<br>%{customdata}<extra></extra>'
+                ),
+                secondary_y=False
+            )
 
     # 50% reference line
     fig_lr.add_hline(y=50, line_dash="dot", line_color="gray",
@@ -251,9 +257,13 @@ if learning['has_data']:
 
     # Cumulative P&L area
     fig_lr.add_trace(
-        go.Scatter(x=ts['trade_num'], y=ts['cum_pnl'], name='Cumulative P&L',
-                   fill='tozeroy', fillcolor='rgba(99,110,250,0.1)',
-                   line=dict(color='#AB63FA', width=1)),
+        go.Scatter(
+            x=ts['trade_num'], y=ts['cum_pnl'], name='Cumulative P&L',
+            fill='tozeroy', fillcolor='rgba(99,110,250,0.1)',
+            line=dict(color='#AB63FA', width=1),
+            customdata=hover_dates,
+            hovertemplate='Trade #%{x}<br>P&L: $%{y:,.0f}<br>%{customdata}<extra></extra>'
+        ),
         secondary_y=True
     )
 
@@ -288,101 +298,118 @@ if learning['has_data']:
         )
         st.plotly_chart(fig_skill, use_container_width=True)
 
-    # --- Chart 3: Agent Accuracy Over Time ---
-    agent_rolling = calculate_rolling_agent_accuracy(council_df, window=30)
+    # --- Chart 3: Agent Accuracy Over Time (in expander) ---
+    with st.expander("Agent Accuracy Over Time", expanded=False):
+        agent_window = st.select_slider(
+            "Rolling window size",
+            options=[10, 15, 20, 25, 30],
+            value=20,
+            key='agent_accuracy_window'
+        )
+        agent_rolling = calculate_rolling_agent_accuracy(council_df, window=agent_window)
 
-    if not agent_rolling.empty:
-        agent_pretty = {
-            'meteorologist_sentiment': 'Meteorologist',
-            'macro_sentiment': 'Macro',
-            'geopolitical_sentiment': 'Geopolitical',
-            'fundamentalist_sentiment': 'Fundamentalist',
-            'sentiment_sentiment': 'Sentiment',
-            'technical_sentiment': 'Technical',
-            'volatility_sentiment': 'Volatility',
-            'master_decision': 'Master'
-        }
-        agent_colors = {
-            'meteorologist_sentiment': '#FFA15A',
-            'macro_sentiment': '#636EFA',
-            'geopolitical_sentiment': '#EF553B',
-            'fundamentalist_sentiment': '#00CC96',
-            'sentiment_sentiment': '#AB63FA',
-            'technical_sentiment': '#19D3F3',
-            'volatility_sentiment': '#FF6692',
-            'master_decision': '#B6E880'
-        }
+        if not agent_rolling.empty:
+            agent_pretty = {
+                'meteorologist_sentiment': 'Meteorologist',
+                'macro_sentiment': 'Macro',
+                'geopolitical_sentiment': 'Geopolitical',
+                'fundamentalist_sentiment': 'Fundamentalist',
+                'sentiment_sentiment': 'Sentiment',
+                'technical_sentiment': 'Technical',
+                'volatility_sentiment': 'Volatility',
+                'master_decision': 'Master'
+            }
+            agent_colors = {
+                'meteorologist_sentiment': '#FFA15A',
+                'macro_sentiment': '#636EFA',
+                'geopolitical_sentiment': '#EF553B',
+                'fundamentalist_sentiment': '#00CC96',
+                'sentiment_sentiment': '#AB63FA',
+                'technical_sentiment': '#19D3F3',
+                'volatility_sentiment': '#FF6692',
+                'master_decision': '#B6E880'
+            }
 
-        fig_agents = go.Figure()
-        for agent_col in agent_pretty:
-            if agent_col in agent_rolling.columns and agent_rolling[agent_col].notna().any():
-                fig_agents.add_trace(
-                    go.Scatter(
-                        x=agent_rolling['trade_num'],
-                        y=agent_rolling[agent_col],
-                        name=agent_pretty[agent_col],
-                        line=dict(color=agent_colors.get(agent_col, '#FFFFFF'), width=1.5),
-                        opacity=0.85
+            fig_agents = go.Figure()
+            for agent_col in agent_pretty:
+                if agent_col in agent_rolling.columns and agent_rolling[agent_col].notna().any():
+                    fig_agents.add_trace(
+                        go.Scatter(
+                            x=agent_rolling['trade_num'],
+                            y=agent_rolling[agent_col],
+                            name=agent_pretty[agent_col],
+                            line=dict(color=agent_colors.get(agent_col, '#FFFFFF'), width=1.5),
+                            opacity=0.85
+                        )
                     )
-                )
 
-        fig_agents.add_hline(y=50, line_dash="dot", line_color="gray")
-        fig_agents.update_layout(
-            title='Agent Accuracy Over Time (Rolling 30)',
-            height=400,
-            yaxis=dict(title='Accuracy %', range=[0, 100]),
-            xaxis=dict(title='Trade #'),
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
-            margin=dict(l=0, r=0, t=60, b=0)
-        )
-        st.plotly_chart(fig_agents, use_container_width=True)
-
-    # --- Chart 4: Confidence Calibration ---
-    calibration = calculate_confidence_calibration(graded_df, n_bins=5)
-
-    if not calibration.empty:
-        fig_cal = go.Figure()
-
-        # Perfect calibration line
-        fig_cal.add_trace(
-            go.Scatter(x=[0, 100], y=[0, 100], name='Perfect Calibration',
-                       line=dict(color='gray', dash='dash', width=1),
-                       showlegend=True)
-        )
-
-        # Actual calibration points
-        fig_cal.add_trace(
-            go.Scatter(
-                x=calibration['bin_center'],
-                y=calibration['actual_win_rate'],
-                mode='markers+lines',
-                name='Actual Win Rate',
-                marker=dict(size=calibration['count'].clip(upper=30) + 5, color='#636EFA'),
-                text=[f"n={c}" for c in calibration['count']],
-                textposition='top center',
-                line=dict(color='#636EFA', width=2)
+            fig_agents.add_hline(y=50, line_dash="dot", line_color="gray")
+            fig_agents.update_layout(
+                title=f'Agent Accuracy Over Time (Rolling {agent_window})',
+                height=400,
+                yaxis=dict(title='Accuracy %', range=[0, 100]),
+                xaxis=dict(title='Trade #'),
+                legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+                margin=dict(l=0, r=0, t=60, b=0)
             )
-        )
+            st.plotly_chart(fig_agents, use_container_width=True)
+        else:
+            st.info("Not enough resolved trades with actual outcomes for agent accuracy tracking.")
 
-        fig_cal.update_layout(
-            title='Confidence Calibration (dot size = sample count)',
-            height=350,
-            xaxis=dict(title='Predicted Confidence %', range=[40, 100]),
-            yaxis=dict(title='Actual Win Rate %', range=[0, 100]),
-            margin=dict(l=0, r=0, t=60, b=0)
-        )
-        st.plotly_chart(fig_cal, use_container_width=True)
+    # --- Chart 4: Confidence Calibration (in expander) ---
+    with st.expander("Confidence Calibration", expanded=False):
+        calibration = calculate_confidence_calibration(graded_df, n_bins=5)
 
-        # Calibration summary
-        if len(calibration) >= 2:
-            avg_gap = abs(calibration['bin_center'] - calibration['actual_win_rate']).mean()
-            if avg_gap < 5:
-                st.success(f"Well calibrated — avg gap {avg_gap:.1f}pp")
-            elif avg_gap < 15:
-                st.info(f"Moderately calibrated — avg gap {avg_gap:.1f}pp")
-            else:
-                direction = "overconfident" if (calibration['bin_center'] > calibration['actual_win_rate']).mean() > 0.5 else "underconfident"
-                st.warning(f"Poorly calibrated ({direction}) — avg gap {avg_gap:.1f}pp")
+        if not calibration.empty:
+            fig_cal = go.Figure()
+
+            # Expected vs Actual as grouped bars with color coding
+            gap = calibration['actual_win_rate'] - calibration['expected_win_rate']
+            bar_colors = ['#00CC96' if g >= 0 else '#EF553B' for g in gap]
+
+            fig_cal.add_trace(
+                go.Bar(
+                    x=calibration['bin_label'],
+                    y=calibration['expected_win_rate'],
+                    name='Expected (Perfect Calibration)',
+                    marker_color='rgba(150,150,150,0.4)',
+                    hovertemplate='%{x}<br>Expected: %{y:.1f}%<extra></extra>'
+                )
+            )
+            fig_cal.add_trace(
+                go.Bar(
+                    x=calibration['bin_label'],
+                    y=calibration['actual_win_rate'],
+                    name='Actual Win Rate',
+                    marker_color=bar_colors,
+                    text=[f"n={c}" for c in calibration['count']],
+                    textposition='outside',
+                    hovertemplate='%{x}<br>Actual: %{y:.1f}% (n=%{text})<extra></extra>'
+                )
+            )
+
+            fig_cal.update_layout(
+                title='Confidence Calibration (green = under-confident, red = over-confident)',
+                height=350,
+                barmode='group',
+                yaxis=dict(title='Win Rate %', range=[0, 110]),
+                xaxis=dict(title='Confidence Bin'),
+                margin=dict(l=0, r=0, t=60, b=0)
+            )
+            st.plotly_chart(fig_cal, use_container_width=True)
+
+            # Calibration summary
+            if len(calibration) >= 2:
+                avg_gap = abs(calibration['expected_win_rate'] - calibration['actual_win_rate']).mean()
+                if avg_gap < 5:
+                    st.success(f"Well calibrated — avg gap {avg_gap:.1f}pp")
+                elif avg_gap < 15:
+                    st.info(f"Moderately calibrated — avg gap {avg_gap:.1f}pp")
+                else:
+                    direction = "overconfident" if (calibration['expected_win_rate'] > calibration['actual_win_rate']).mean() > 0.5 else "underconfident"
+                    st.warning(f"Poorly calibrated ({direction}) — avg gap {avg_gap:.1f}pp")
+        else:
+            st.info("Not enough resolved trades with confidence data for calibration analysis.")
 
     st.caption(f"Based on {learning['total_resolved']} resolved trades")
 else:
