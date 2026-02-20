@@ -699,3 +699,34 @@ TimeoutError
 2026-02-20 14:28:56,848 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=370, market_open=True, trading_day=True
 2026-02-20 14:29:57,170 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 35% of average (Sev: 6)
 2026-02-20 14:29:57,176 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-20 14:33:00,003 - Orchestrator - INFO - --- Running scheduled task: signal_mid [guarded_generate_orders] ---
+2026-02-20 14:33:00,010 - Orchestrator - INFO - Copied equity data from primary (6.3h old)
+2026-02-20 14:33:00,192 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-20 14:33:00,193 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'xai', 'anthropic', 'gemini']
+2026-02-20 14:33:00,193 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'xai', 'anthropic', 'gemini'], 'diversity_score': 1.0}
+2026-02-20 14:33:00,205 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-20 14:33:00,213 - trading_bot.enhanced_brier - INFO - Loaded 405 predictions from /home/rodrigo/real_options/data/CC/enhanced_brier.json
+2026-02-20 14:33:00,294 - trading_bot.agents - INFO - Loaded commodity profile: Cocoa
+2026-02-20 14:33:00,294 - trading_bot.observability - INFO - HallucinationDetector initialized for Cocoa: 4 port tokens, 6 producer tokens
+2026-02-20 14:33:00,294 - trading_bot.observability - INFO - ObservabilityHub initialized for Cocoa
+2026-02-20 14:33:00,295 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-20 14:33:00,295 - trading_bot.agents - INFO - Trading Council initialized for Cocoa. Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-20 14:33:00,296 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 478 [REMOTE/PAPER]...
+2026-02-20 14:33:15,300 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-02-20 14:33:15,808 - trading_bot.connection_pool - ERROR - IB (drawdown_check) connection failed: . Next retry backoff: 20.0s
+2026-02-20 14:33:15,809 - Orchestrator - ERROR - Drawdown guard check failed (fail-closed): 
+2026-02-20 14:33:16,142 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-20 14:33:16,150 - Orchestrator - INFO - Next task 'signal_late' (Signal: Late) scheduled for 2026-02-20 16:45:00 UTC. Waiting for 2.20 hours.
+2026-02-20 14:33:57,560 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=375, market_open=True, trading_day=True
+2026-02-20 14:35:18,623 - Orchestrator - INFO - 2026-02-20 14:35:18,621 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-20 14:35:18,623 - Orchestrator - INFO - 2026-02-20 14:35:18,622 - root - INFO - Running Iron Condor thesis validation check...
+2026-02-20 14:35:18,636 - Orchestrator - INFO - 2026-02-20 14:35:18,635 - trading_bot.tms - INFO - TMS initialized at ./data/CC/tms
+2026-02-20 14:38:58,266 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=380, market_open=True, trading_day=True
+2026-02-20 14:43:58,983 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=385, market_open=True, trading_day=True
+2026-02-20 14:45:18,647 - Orchestrator - INFO - 2026-02-20 14:45:18,647 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-20 14:48:59,717 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=390, market_open=True, trading_day=True
+2026-02-20 14:54:00,442 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=395, market_open=True, trading_day=True
+2026-02-20 14:55:18,716 - Orchestrator - INFO - 2026-02-20 14:55:18,716 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-20 14:59:01,198 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=400, market_open=True, trading_day=True
+2026-02-20 14:59:01,316 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 37% of average (Sev: 6)
+2026-02-20 14:59:01,323 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.

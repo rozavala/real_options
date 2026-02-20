@@ -97,11 +97,11 @@
     "PredictionMarketSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-20T14:29:10.685860+00:00",
+        "last_check_utc": "2026-02-20T14:59:18.486026+00:00",
         "interval_seconds": 300,
         "error": null
       },
-      "timestamp": 1771597750.686457
+      "timestamp": 1771599558.4867682
     },
     "MacroContagionSentinel": {
       "data": {
@@ -115,20 +115,20 @@
     "PriceSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-20T14:29:10.592221+00:00",
+        "last_check_utc": "2026-02-20T14:59:18.391827+00:00",
         "interval_seconds": 60,
         "error": null
       },
-      "timestamp": 1771597750.5933204
+      "timestamp": 1771599558.393127
     },
     "MicrostructureSentinel": {
       "data": {
         "status": "OK",
-        "last_check_utc": "2026-02-20T14:29:10.691739+00:00",
+        "last_check_utc": "2026-02-20T14:59:18.492591+00:00",
         "interval_seconds": 60,
         "error": null
       },
-      "timestamp": 1771597750.6923666
+      "timestamp": 1771599558.4932616
     }
   },
   "prediction_market_state": {
@@ -138,10 +138,10 @@
         "hwm_timestamp": null,
         "slug": "next-three-fed-decisions-847",
         "title": "Fed decisions (Dec-Mar)",
-        "price": 0.93,
-        "timestamp": "2026-02-20T14:29:10.639948+00:00"
+        "price": 0.935,
+        "timestamp": "2026-02-20T14:59:18.435170+00:00"
       },
-      "timestamp": 1771597750.6820855
+      "timestamp": 1771599558.4810808
     },
     "Will tariffs generate >$250b in 2025?": {
       "data": {
@@ -150,9 +150,9 @@
         "slug": "will-tariffs-generate-250b-in-2025",
         "title": "Will tariffs generate >$250b in 2025?",
         "price": 0.0185,
-        "timestamp": "2026-02-20T14:29:10.661805+00:00"
+        "timestamp": "2026-02-20T14:59:18.457846+00:00"
       },
-      "timestamp": 1771597750.6820886
+      "timestamp": 1771599558.4810867
     },
     "How many Fed rate cuts in 2026?": {
       "data": {
@@ -161,9 +161,9 @@
         "slug": "how-many-fed-rate-cuts-in-2026",
         "title": "How many Fed rate cuts in 2026?",
         "price": 0.055,
-        "timestamp": "2026-02-20T14:29:10.681581+00:00"
+        "timestamp": "2026-02-20T14:59:18.479970+00:00"
       },
-      "timestamp": 1771597750.6820898
+      "timestamp": 1771599558.4810884
     }
   },
   "test": {
@@ -242,60 +242,6 @@
     "events": {
       "data": [
         {
-          "source": "MacroContagionSentinel",
-          "reason": "Cross-Commodity Contagion: Coffee (Arabica) correlating with Gold/Silver (0.78)",
-          "payload": {
-            "type": "CROSS_COMMODITY_CONTAGION",
-            "correlation_precious": 0.7766998189344154,
-            "correlation_grains": -0.8596109102224205,
-            "interpretation": "Coffee (Arabica) trading as RISK ASSET (like Gold/Silver), not AG COMMODITY",
-            "severity": "HIGH"
-          },
-          "timestamp": "2026-02-20T12:17:39.791568+00:00"
-        },
-        {
-          "source": "XSentimentSentinel",
-          "reason": "UNUSUAL X ACTIVITY SPIKE (10 posts)",
-          "payload": {
-            "sentiment_score": 4.6,
-            "confidence": 0.19,
-            "top_themes": [
-              "Lowest futures prices since July",
-              "Bearish crop forecast impact",
-              "Potential retail price declines",
-              "Supply chain improvements in Uganda and Ethiopia",
-              "Weather events and droughts impacting prices"
-            ],
-            "post_volume": 10,
-            "volume_baseline": 2.9,
-            "volume_spike": true,
-            "query_results": [
-              {
-                "query": "coffee futures",
-                "score": 5.0,
-                "volume": 0,
-                "confidence": 0.1,
-                "top_post": null
-              },
-              {
-                "query": "arabica prices",
-                "score": 2.0,
-                "volume": 1,
-                "confidence": 0.2,
-                "top_post": "Will retail coffee prices be coming down soon?  Arabica bean futures are trading at the lowest since last July on the latest crop forecast\u2026. #coffee https://t.co/hoq0zIsfjw (eppman)"
-              },
-              {
-                "query": "KC futures",
-                "score": 5.0,
-                "volume": 0,
-                "confidence": 0.2,
-                "top_post": null
-              }
-            ]
-          },
-          "timestamp": "2026-02-20T12:48:12.253847+00:00"
-        },
-        {
           "source": "MicrostructureSentinel",
           "reason": "Liquidity Depletion: 41% of average",
           "payload": {
@@ -356,9 +302,29 @@
             "depth_ratio": 0.40707964601769914
           },
           "timestamp": "2026-02-20T14:28:10.358794+00:00"
+        },
+        {
+          "source": "MicrostructureSentinel",
+          "reason": "Liquidity Depletion: 40% of average",
+          "payload": {
+            "type": "LIQUIDITY_DEPLETION",
+            "contract": "KCK6",
+            "depth_ratio": 0.3972602739726028
+          },
+          "timestamp": "2026-02-20T14:39:13.246929+00:00"
+        },
+        {
+          "source": "MicrostructureSentinel",
+          "reason": "Liquidity Depletion: 41% of average",
+          "payload": {
+            "type": "LIQUIDITY_DEPLETION",
+            "contract": "KCK6",
+            "depth_ratio": 0.4113475177304965
+          },
+          "timestamp": "2026-02-20T14:47:15.239209+00:00"
         }
       ],
-      "timestamp": 1771597690.3592212
+      "timestamp": 1771598835.2403326
     }
   }
 }
