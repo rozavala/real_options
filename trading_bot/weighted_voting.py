@@ -615,7 +615,8 @@ async def calculate_weighted_decision(
     avg_dir = sum(direction_values) / len(direction_values)
     unanimity = 1.0 - (sum(abs(d - avg_dir) for d in direction_values) / len(direction_values))
     avg_conf = sum(v.confidence for v in votes) / len(votes)
-    final_confidence = (unanimity * 0.4) + (avg_conf * 0.6)
+    # v8.0: Reduce unanimity weight (0.4→0.25) to prevent agent-count inflation
+    final_confidence = (unanimity * 0.25) + (avg_conf * 0.75)
 
     # VaR-aware confidence dampener
     var_dampener = 1.0
