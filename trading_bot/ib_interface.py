@@ -352,6 +352,17 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
     # NEW: Configurable ceiling aggression (0.0 = mid, 1.0 = full ask/bid)
     ceiling_aggression = tuning_params.get('ceiling_aggression_factor', 0.75)
 
+    # Inverted spread guard: BUY spread should be a debit (positive theoretical),
+    # SELL spread should be a credit (negative theoretical). When the sign is wrong,
+    # it typically means IV mismatch between legs (e.g., one leg used fallback IV).
+    # IB will reject these as "riskless combination orders."
+    if action == 'BUY' and net_theoretical_price < 0:
+        logging.warning(
+            f"INVERTED SPREAD FILTER: BUY spread has negative net theoretical "
+            f"({net_theoretical_price:.2f}). Likely IV mismatch between legs. Skipping."
+        )
+        return None
+
     market_spread = combo_ask_price - combo_bid_price
 
     # Liquidity Filter: Check if the market spread is too wide relative to the theoretical price
@@ -403,6 +414,14 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         # Start 1 tick above bid (passive entry)
         initial_price = round_to_tick(combo_bid_price + tick_size, tick_size, 'BUY')
         initial_price = min(initial_price, ceiling_price)
+
+        # Defense in depth: if market bid is negative (credit side), skip
+        if initial_price <= 0:
+            logging.warning(
+                f"RISKLESS COMBO FILTER: BUY spread start price is {initial_price:.2f} "
+                f"(market bid={combo_bid_price:.2f}). Order would start as credit. Skipping."
+            )
+            return None
 
         logging.info(
             f"BUY Cap Calc: Theoretical={theoretical_ceiling:.2f}, "

@@ -163,7 +163,7 @@ class PortfolioVaRCalculator:
                 raise ValueError("Failed to fetch aligned returns — data quality guard triggered")
 
             # 3. Compute account equity
-            equity = self._get_equity(ib)
+            equity = await self._get_equity(ib)
 
             # 4. Full revaluation
             r = config.get("compliance", {}).get("var_risk_free_rate", 0.04)
@@ -242,7 +242,7 @@ class PortfolioVaRCalculator:
         if returns_df is None:
             raise ValueError("Failed to fetch aligned returns for pre-trade VaR")
 
-        equity = self._get_equity(ib)
+        equity = await self._get_equity(ib)
         r = config.get("compliance", {}).get("var_risk_free_rate", 0.04)
         scenarios = self._compute_scenarios(positions, returns_df, r)
 
@@ -647,10 +647,10 @@ class PortfolioVaRCalculator:
             pass
         return f"{symbol}=F"
 
-    def _get_equity(self, ib) -> float:
-        """Get account equity from IB."""
+    async def _get_equity(self, ib) -> float:
+        """Get account equity from IB (async-safe)."""
         try:
-            account_values = ib.accountSummary()
+            account_values = await ib.accountSummaryAsync()
             for av in account_values:
                 if av.tag == "NetLiquidation" and av.currency == "USD":
                     return float(av.value)
@@ -659,9 +659,11 @@ class PortfolioVaRCalculator:
 
         # Fallback: sum portfolio market values
         try:
+            positions = await ib.reqPositionsAsync()
             total = sum(
-                item.marketValue for item in ib.portfolio()
-                if item.position != 0
+                abs(p.position * p.avgCost)
+                for p in positions
+                if p.position != 0
             )
             return max(total, 1.0)
         except Exception:

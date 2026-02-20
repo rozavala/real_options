@@ -407,9 +407,11 @@ class TradingCouncil:
 
         # Check 3: Hallucination flag — numbers not in grounded data
         # v5.2 FIX: Context-aware thresholds and price-level whitelisting
+        # v8.0 FIX: Strip commas before extraction so "3,040" → "3040" (not "040")
         import re as re_mod
-        output_numbers = set(re_mod.findall(r'\b\d{3,}\b', analysis))
-        source_numbers = set(re_mod.findall(r'\b\d{3,}\b', grounded_data))
+        _strip_commas = lambda t: re_mod.sub(r'(\d),(\d)', r'\1\2', t)
+        output_numbers = set(re_mod.findall(r'\b\d{3,}\b', _strip_commas(analysis)))
+        source_numbers = set(re_mod.findall(r'\b\d{3,}\b', _strip_commas(grounded_data)))
         fabricated = output_numbers - source_numbers
 
         # Whitelist price levels near the underlying price for technical/volatility/macro agents

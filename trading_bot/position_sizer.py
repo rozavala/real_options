@@ -75,6 +75,7 @@ class DynamicPositionSizer:
             abs(p.position * p.avgCost)
             for p in positions
             if p.contract.symbol == _active_symbol  # Exact match, not substring
+            and getattr(p.contract, 'secType', '') in ('OPT', 'FOP')  # Options only
         )
 
         heat_ratio = current_exposure / account_value if account_value > 0 else 0
