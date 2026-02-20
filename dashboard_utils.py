@@ -816,6 +816,7 @@ def fetch_all_live_data(_config: dict) -> dict:
     1. Creates FRESH event loop for thread safety
     2. Uses RANDOM ClientID to prevent tab collisions
     3. Proper cleanup with blocking sleep for Gateway
+    4. OPTIMIZED: Uses asyncio.gather for parallel data fetching
     """
     result = {
         'net_liquidation': 0.0,
@@ -835,16 +836,51 @@ def fetch_all_live_data(_config: dict) -> dict:
     loop = _ensure_event_loop()
     ib = IB()
 
-    try:
+    async def _async_fetch_live_data():
         # Random ClientID prevents collision if two browser tabs refresh simultaneously
         client_id = random.randint(1000, 9999)
 
-        loop.run_until_complete(ib.connectAsync(
+        await ib.connectAsync(
             _config.get('connection', {}).get('host', '127.0.0.1'),
             _config.get('connection', {}).get('port', 7497),
             clientId=client_id,
             timeout=15
-        ))
+        )
+
+        if not ib.isConnected():
+            return None
+
+        # Configure market data type (sync method, fast)
+        configure_market_data_type(ib)
+
+        # 1. Trigger PnL subscription immediately
+        accounts = ib.managedAccounts()
+        if accounts:
+            ib.reqPnL(accounts[0])
+
+        # 2. Launch parallel requests
+        # Note: accountSummaryAsync etc return coroutines
+        t_summary = ib.accountSummaryAsync()
+        t_positions = ib.positionsAsync()
+        t_portfolio = ib.portfolioAsync()
+        t_orders = ib.openOrdersAsync()
+
+        # 3. Wait for data, including PnL allowance
+        # We include a 1s sleep task to ensure PnL has time to stream in,
+        # but this sleep runs concurrently with the data fetches.
+        # This replaces the sequential ib.sleep(1) call.
+        results = await asyncio.gather(
+            t_summary,
+            t_positions,
+            t_portfolio,
+            t_orders,
+            asyncio.sleep(1.0)
+        )
+
+        return results  # (summary, positions, portfolio, orders, None)
+
+    try:
+        data = loop.run_until_complete(_async_fetch_live_data())
 
         if not ib.isConnected():
             result['connection_status'] = 'FAILED'
@@ -853,38 +889,32 @@ def fetch_all_live_data(_config: dict) -> dict:
 
         result['connection_status'] = 'CONNECTED'
 
-        # Configure market data type
-        configure_market_data_type(ib)
+        if data:
+            summary_data, positions_data, portfolio_data, orders_data, _ = data
 
-        # Account Summary
-        for av in ib.accountSummary():
-            result['account_summary'][av.tag] = av.value
-            if av.tag == 'NetLiquidation':
-                result['net_liquidation'] = float(av.value)
-            elif av.tag == 'UnrealizedPnL':
-                result['unrealized_pnl'] = float(av.value)
-            elif av.tag == 'RealizedPnL':
-                result['realized_pnl'] = float(av.value)
-            elif av.tag == 'MaintMarginReq':
-                result['maint_margin'] = float(av.value)
+            # Process Account Summary
+            for av in summary_data:
+                result['account_summary'][av.tag] = av.value
+                if av.tag == 'NetLiquidation':
+                    result['net_liquidation'] = float(av.value)
+                elif av.tag == 'UnrealizedPnL':
+                    result['unrealized_pnl'] = float(av.value)
+                elif av.tag == 'RealizedPnL':
+                    result['realized_pnl'] = float(av.value)
+                elif av.tag == 'MaintMarginReq':
+                    result['maint_margin'] = float(av.value)
 
-        # Daily P&L
-        accounts = ib.managedAccounts()
-        if accounts:
-            ib.reqPnL(accounts[0])
-            ib.sleep(1)
+            # Process Daily P&L (should be available in ib.pnl() now)
             pnl_data = ib.pnl()
             if pnl_data:
                 raw_pnl = pnl_data[0].dailyPnL
-                # NaN is truthy in Python, so `or 0.0` doesn't catch it.
-                # Must use explicit math.isnan() check.
                 import math
                 result['daily_pnl'] = 0.0 if (raw_pnl is None or math.isnan(raw_pnl)) else raw_pnl
 
-        # Positions & Portfolio
-        result['open_positions'] = ib.positions()
-        result['portfolio_items'] = ib.portfolio()
-        result['pending_orders'] = ib.openOrders()
+            # Process Positions & Portfolio
+            result['open_positions'] = positions_data
+            result['portfolio_items'] = portfolio_data
+            result['pending_orders'] = orders_data
 
     except Exception as e:
         result['connection_status'] = 'ERROR'
