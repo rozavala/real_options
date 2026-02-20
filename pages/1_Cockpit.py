@@ -241,19 +241,46 @@ def render_portfolio_risk_summary(live_data: dict):
 
     with cols[2]:
         import math
+        pnl_help = "Total change in account equity since prior day close (as reported by IBKR)."
         if daily_pnl is None or (isinstance(daily_pnl, float) and math.isnan(daily_pnl)):
-            st.metric("Daily P&L", "$0", delta="No data", delta_color="off")
+            st.metric("Daily P&L", "$0", delta="No data", delta_color="off", help=pnl_help)
         else:
             st.metric(
                 "Daily P&L",
                 f"${daily_pnl:+,.0f}",
                 delta=f"${daily_pnl:+,.0f}",
                 delta_color="normal",
+                help=pnl_help
             )
 
     with cols[3]:
-        pos_count = len([p for p in live_data.get('open_positions', []) if p.position != 0])
-        st.metric("Open Positions", pos_count)
+        # Filter for active positions (quantity != 0)
+        positions = [p for p in live_data.get('open_positions', []) if p.position != 0]
+        pos_count = len(positions)
+
+        # Build tooltip with breakdown
+        pos_help = "Number of active positions currently held."
+        if positions:
+            # Sort by symbol for consistent ordering
+            # Handle ib_insync Position objects (p.contract.localSymbol or symbol)
+            sorted_pos = sorted(
+                positions,
+                key=lambda p: getattr(p.contract, 'localSymbol', getattr(p.contract, 'symbol', 'Unknown'))
+            )
+
+            details = []
+            for p in sorted_pos[:10]:
+                contract = p.contract
+                symbol = getattr(contract, 'localSymbol', getattr(contract, 'symbol', 'Unknown'))
+                qty = p.position
+                details.append(f"• {symbol}: {qty:g}")
+
+            if len(positions) > 10:
+                details.append(f"...and {len(positions) - 10} more")
+
+            pos_help += "\n\n" + "\n".join(details)
+
+        st.metric("Open Positions", pos_count, help=pos_help)
 
 
 def render_prediction_markets():
@@ -365,10 +392,13 @@ def render_prediction_markets():
                         from datetime import datetime
                         ts = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
                         age_min = (datetime.now(ts.tzinfo) - ts).total_seconds() / 60
+
+                        help_text = f"Last update: {ts.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+
                         if age_min < 60:
-                            st.caption(f"Updated {age_min:.0f}m ago")
+                            st.caption(f"Updated {age_min:.0f}m ago", help=help_text)
                         else:
-                            st.caption(f"Updated {age_min/60:.1f}h ago")
+                            st.caption(f"Updated {age_min/60:.1f}h ago", help=help_text)
                     except (ValueError, TypeError, AttributeError):
                         pass
 
