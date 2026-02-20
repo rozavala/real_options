@@ -1607,9 +1607,10 @@ def calculate_confidence_calibration(graded_df: pd.DataFrame, n_bins: int = 5) -
     calibration['bin_label'] = calibration['bin'].astype(str)
 
     # Expected win rate = bin midpoint (what a perfectly calibrated system would achieve)
+    # .astype(float) needed because pd.cut produces categorical dtype
     calibration['expected_win_rate'] = calibration['bin'].apply(
         lambda b: (b.left + b.right) / 2 * 100 if hasattr(b, 'left') else 50
-    )
+    ).astype(float)
 
     return calibration[['bin_center', 'actual_win_rate', 'expected_win_rate', 'count', 'bin_label']]
 
