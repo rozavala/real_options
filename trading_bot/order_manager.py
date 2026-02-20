@@ -143,6 +143,60 @@ async def _reconcile_working_orders(ib: IB, config: dict) -> float:
         logger.warning(f"Working order query failed: {e}. Assuming no committed capital.")
         return 0.0
 
+
+async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
+    """Cancel any CATASTROPHE_ stop orders whose parent spread is no longer active.
+
+    When a spread order times out, the companion catastrophe stop should be
+    cancelled. If the bot crashed or restarted between the spread cancellation
+    and the stop cleanup, the stop can linger as a GTC order and fill later,
+    creating an untracked naked futures position.
+
+    This function runs at the start of each order batch as a safety net.
+    """
+    try:
+        try:
+            open_orders = await asyncio.wait_for(ib.reqAllOpenOrdersAsync(), timeout=15)
+        except asyncio.TimeoutError:
+            logger.warning("reqAllOpenOrdersAsync timed out in catastrophe stop cleanup")
+            return
+        if not open_orders:
+            return
+
+        my_client_id = ib.client.clientId
+        cancelled = 0
+        for trade in open_orders:
+            ref = trade.order.orderRef or ''
+            if not ref.startswith('CATASTROPHE_'):
+                continue
+            if trade.order.clientId != my_client_id:
+                continue
+            # This is a catastrophe stop belonging to us — check if it's orphaned.
+            # An orphaned stop has no corresponding filled spread in live positions.
+            # Since we're at the START of a new batch, any lingering catastrophe stop
+            # from a previous batch means its spread either timed out or was cancelled.
+            logger.warning(
+                f"Cancelling orphaned catastrophe stop: order {trade.order.orderId} "
+                f"({trade.order.action} {trade.contract.localSymbol} @ "
+                f"{trade.order.auxPrice:.2f}), ref={ref}"
+            )
+            ib.cancelOrder(trade.order)
+            cancelled += 1
+
+        if cancelled > 0:
+            from notifications import send_pushover_notification
+            send_pushover_notification(
+                config.get('notifications', {}),
+                "⚠️ Orphaned Catastrophe Stops Cancelled",
+                f"Cancelled {cancelled} orphaned catastrophe stop order(s) "
+                f"from a previous session. These were left behind when their "
+                f"parent spread orders timed out without filling.",
+                priority=1
+            )
+    except Exception as e:
+        logger.error(f"Catastrophe stop cleanup failed (non-fatal): {e}")
+
+
 # Module-level set for TMS thesis deduplication
 _recorded_thesis_positions = set()
 
@@ -395,6 +449,9 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             # L1 FIX: Reconcile with IBKR before assuming zero committed
             persisted_capital = _load_committed_capital()
             working_capital = await _reconcile_working_orders(ib, config)  # v4.1: now takes config
+
+            # Safety net: Cancel orphaned catastrophe stops from previous timed-out spreads
+            await _cancel_orphaned_catastrophe_stops(ib, config)
 
             # Trust IBKR as source of truth — persisted file may be stale from
             # cancelled/expired orders that were never cleaned up.
@@ -1288,6 +1345,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
             # --- 4. Place the actual order ---
             # Check for Catastrophe Protection Requirement
+            _catastrophe_stop_trade = None  # Track companion stop for cleanup on timeout
             enable_protection = config.get('catastrophe_protection', {}).get('enable_directional_stops', False)
             is_directional = decision_data.get('prediction_type') == 'DIRECTIONAL'
 
@@ -1358,6 +1416,8 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                         stop_distance_pct=config.get('catastrophe_protection', {}).get('stop_distance_pct', 0.03),
                         is_bullish_strategy=is_bullish
                     )
+                    # Store stop_trade so timeout handler can cancel it if spread never fills
+                    _catastrophe_stop_trade = stop_trade
                     log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [Protected]")
                 except Exception as e:
                     logger.error(f"Failed to place protected order, falling back to standard: {e}")
@@ -1388,6 +1448,8 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 'last_known_good_price': order.lmtPrice,
                 'modification_error_count': 0,
                 'max_modification_errors': 3,
+                # Catastrophe stop trade (if any) — must be cancelled if spread times out
+                'catastrophe_stop_trade': _catastrophe_stop_trade,
             }
 
             # --- 5. Build Notification String (ENHANCED FOR ALL DATA) ---
@@ -1612,6 +1674,15 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 log_order_event(trade, "TimedOut", log_message)
 
                 ib.cancelOrder(trade.order)
+
+                # Cancel companion catastrophe stop if spread never filled
+                cat_stop = details.get('catastrophe_stop_trade')
+                if cat_stop and cat_stop.orderStatus.status not in OrderStatus.DoneStates:
+                    logger.warning(
+                        f"Cancelling orphaned catastrophe stop (order {cat_stop.order.orderId}) "
+                        f"for unfilled spread {trade.order.orderId}"
+                    )
+                    ib.cancelOrder(cat_stop.order)
 
                 # --- 4. Update Notification String (ENHANCED FOR ALL DATA) ---
                 price_info_notify = f"LMT: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "MKT"
