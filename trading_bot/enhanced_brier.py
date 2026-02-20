@@ -223,6 +223,23 @@ class EnhancedBrierTracker:
         except Exception as e:
             logger.warning(f"Auto-orphan on init failed (non-fatal): {e}")
 
+        # v8.0: Legacy accuracy cache for accuracy-floor fallback path
+        # Maps agent_name -> weighted_accuracy (0.0-1.0) from brier_scoring.py
+        self._legacy_accuracy_cache: Dict[str, float] = {}
+        try:
+            from trading_bot.brier_scoring import get_brier_tracker
+            tracker = get_brier_tracker()
+            if tracker and hasattr(tracker, 'scores') and tracker.scores:
+                self._legacy_accuracy_cache = {
+                    agent: data.get('weighted_accuracy', 0.5)
+                    for agent, data in tracker.scores.items()
+                    if isinstance(data, dict) and 'weighted_accuracy' in data
+                }
+                if self._legacy_accuracy_cache:
+                    logger.info(f"Loaded legacy accuracy cache for {len(self._legacy_accuracy_cache)} agents")
+        except Exception as e:
+            logger.debug(f"Legacy accuracy cache unavailable (non-fatal): {e}")
+
     def record_prediction(
         self,
         agent: str,
@@ -538,38 +555,59 @@ class EnhancedBrierTracker:
 
         return orphaned
 
+    def _brier_to_multiplier(self, scores: list) -> float:
+        """Convert a list of Brier scores to a reliability multiplier."""
+        recent_scores = scores[-30:]
+        avg_brier = np.mean(recent_scores)
+        # Brier 0.0 -> 2.0x, Brier 0.25 -> 1.0x, Brier 0.5 -> 0.1x
+        multiplier = 2.0 - (avg_brier * 4.0)
+        return max(0.1, min(2.0, multiplier))
+
     def get_agent_reliability(self, agent: str, regime: str = "NORMAL") -> float:
         """
         Get reliability multiplier for an agent in a specific regime.
 
+        4-path fallback:
+          1. Regime-specific (>=5 samples in requested regime)
+          2. Cross-regime blend (sample-weighted mean across all regimes with >=1 score)
+          3. Accuracy floor (legacy Brier accuracy <30% -> 0.5 half-weight penalty)
+          4. Baseline 1.0 (no data at all)
+
         Returns:
             Multiplier in range [0.1, 2.0]
-            - 0.1 = very unreliable (Brier close to 0.5)
-            - 1.0 = baseline reliability (Brier ~0.25)
-            - 2.0 = very reliable (Brier close to 0)
         """
-        # FIX (P1-C, 2026-02-06): Normalize agent name to prevent lookup misses.
         from trading_bot.agent_names import normalize_agent_name
         agent = normalize_agent_name(agent)
 
-        # Normalize regime (P0-REGIME)
         canonical = normalize_regime(regime).value
-        scores = self.agent_scores.get(agent, {}).get(canonical, [])
+        agent_regimes = self.agent_scores.get(agent, {})
+        scores = agent_regimes.get(canonical, [])
 
-        if len(scores) < 5:
-            # Not enough data, return baseline
-            return 1.0
+        # Path 1: Regime-specific (>=5 samples)
+        if len(scores) >= 5:
+            return self._brier_to_multiplier(scores)
 
-        # Use recent scores (last 30)
-        recent_scores = scores[-30:]
-        avg_brier = np.mean(recent_scores)
+        # Path 2: Cross-regime blend (sample-weighted mean across all regimes)
+        all_regime_scores = []
+        for r, r_scores in agent_regimes.items():
+            if len(r_scores) >= 1:
+                mult = self._brier_to_multiplier(r_scores)
+                all_regime_scores.append((mult, len(r_scores)))
 
-        # Convert Brier to multiplier
-        # Brier 0.0 -> 2.0x, Brier 0.25 -> 1.0x, Brier 0.5 -> 0.1x
-        multiplier = 2.0 - (avg_brier * 4.0)
-        multiplier = max(0.1, min(2.0, multiplier))
+        if all_regime_scores:
+            total_samples = sum(n for _, n in all_regime_scores)
+            if total_samples >= 5:
+                blended = sum(m * n for m, n in all_regime_scores) / total_samples
+                return max(0.1, min(2.0, blended))
 
-        return multiplier
+        # Path 3: Accuracy floor from legacy brier_scoring.py
+        legacy_acc = self._legacy_accuracy_cache.get(agent)
+        if legacy_acc is not None and legacy_acc < 0.30:
+            logger.info(f"Agent {agent}: legacy accuracy {legacy_acc:.2f} < 0.30 → half-weight penalty (0.5)")
+            return 0.5
+
+        # Path 4: No data — baseline
+        return 1.0
 
     def get_calibration_curve(self, agent: str) -> List[Tuple[float, float]]:
         """

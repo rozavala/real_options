@@ -3135,12 +3135,22 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     # For now, we reload state which is "close enough" as it was just updated.
                     current_reports = StateManager.load_state()
 
+                    # v8.1: Build compliance context with IBKR market data
+                    from trading_bot.market_data_provider import format_market_context_for_prompt
+                    compliance_context = market_context_str
+                    ibkr_data_str = format_market_context_for_prompt(market_data)
+                    if ibkr_data_str:
+                        compliance_context += f"\n--- IBKR MARKET DATA ---\n{ibkr_data_str}\n"
+                    # Note: Semantic cache hits from pre-v8.1 won't have debate_summary (defaults to "")
+                    debate_summary = decision.get('debate_summary', '')
+
                     audit = await compliance.audit_decision(
                         current_reports,
-                        market_context_str,
+                        compliance_context,
                         decision,
                         council.personas.get('master', ''),
-                        ib=ib
+                        ib=ib,
+                        debate_summary=debate_summary
                     )
 
                     if not audit.get('approved', True):

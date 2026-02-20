@@ -1206,6 +1206,9 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         """
         The Hegelian Loop: Thesis (Reports) -> Antithesis (Bear/Bull) -> Synthesis (Master).
         """
+        # v8.1: Reset debate summary to prevent stale cross-cycle contamination
+        self._last_debate_summary = ""
+
         # 1. Thesis: Format Research Reports
         # Handle dictionary reports with timestamps (from StateManager) vs strings (legacy/fresh)
         reports_text = ""
@@ -1275,6 +1278,9 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         debate_market_context = market_context + sentinel_briefing if sentinel_briefing else market_context
         bear_json, bull_json = await self.run_debate(reports_text, market_data, market_context=debate_market_context)
 
+        # v8.1: Store debate summary for compliance audit pipeline
+        self._last_debate_summary = f"BEAR ATTACK:\n{bear_json}\n\nBULL DEFENSE:\n{bull_json}"
+
         # 3. Synthesis: Master Strategist
         master_persona = self.personas.get('master', "You are the Chief Strategist.")
 
@@ -1339,17 +1345,17 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
             # do not warrant risking capital. They are logged for learning
             # (Brier scoring) but not executed.
             #
-            # Execution threshold:
-            #   PROVEN (0.90)     → Executes ✓
-            #   PLAUSIBLE (0.70)  → Executes ✓ (even with 0.5 conviction = 0.35... see note)
+            # v8.0 Execution threshold (with min_confidence_threshold = 0.50):
+            #   PROVEN (0.90)      → Always executes ✓
+            #   PLAUSIBLE (0.80)   → Executes ✓ (even DIVERGENT: 0.80*0.70=0.56 > 0.50)
             #   SPECULATIVE (0.45) → Blocked ✗
             #
-            # IMPORTANT: PLAUSIBLE + DIVERGENT consensus (0.70 * 0.5 = 0.35)
-            # will ALSO be blocked. This is correct — low conviction + disagreement
-            # should not trade.
+            # PLAUSIBLE+PARTIAL: 0.80*0.75=0.60, PLAUSIBLE+DIVERGENT: 0.80*0.70=0.56
+            # Both pass the 0.50 gate. The gap between PARTIAL/DIVERGENT is now 0.05
+            # (down from 0.25 pre-v8.0). If more separation needed: PARTIAL→0.85.
             THESIS_TO_CONFIDENCE = {
                 'PROVEN': 0.90,
-                'PLAUSIBLE': 0.70,
+                'PLAUSIBLE': 0.80,
                 'SPECULATIVE': 0.45,
             }
             thesis = decision.get('thesis_strength', 'SPECULATIVE').upper()
@@ -1391,7 +1397,12 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         1. Wake up the RELEVANT agent based on Semantic Router.
         2. Load cached state for other agents.
         3. Run the Debate and Master.
+
+        v8.1: Returns 'debate_summary' key for compliance audit pipeline.
         """
+        # v8.1: Early reset to prevent stale cross-cycle contamination
+        self._last_debate_summary = ""
+
         logger.info(f"Running Specialized Cycle triggered by {trigger.source}...")
         
         # Load Cached State with Metadata (Fix #1: Graduated Staleness)
@@ -1535,6 +1546,13 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         # Add to market context
         enriched_context = market_context + weighted_context
 
+        # v8.0 P3: Inject regime transition alert if detected
+        from trading_bot.weighted_voting import detect_regime_transition
+        regime_alert = detect_regime_transition(market_data)
+        if regime_alert:
+            enriched_context += regime_alert
+            logger.info("Regime transition alert injected into emergency cycle context")
+
         # Run Decision Loop with Context Injection
         decision = await self.decide(contract_name, market_data, final_reports, enriched_context, trigger_reason=trigger.reason, cycle_id=cycle_id, trigger=trigger)
 
@@ -1546,9 +1564,10 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         if master_dir == vote_dir or vote_dir == 'NEUTRAL':
             conviction_multiplier = 1.0
         elif vote_dir != master_dir and master_dir != 'NEUTRAL':
-            conviction_multiplier = 0.5
+            # v8.0: 0.5→0.70 to unblock PLAUSIBLE+DIVERGENT (0.80*0.70=0.56 > 0.50 threshold)
+            conviction_multiplier = 0.70
             decision['reasoning'] += f" [DIVERGENT CONSENSUS: Vote={vote_dir}, trading smaller]"
-            logger.info(f"Emergency consensus divergent: Master={master_dir}, Vote={vote_dir} → half size")
+            logger.info(f"Emergency consensus divergent: Master={master_dir}, Vote={vote_dir} → reduced size")
         else:
             conviction_multiplier = 0.75
 
@@ -1614,6 +1633,9 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                     )
             except Exception as e:
                 logger.error(f"Failed to record Brier prediction (non-fatal): {e}")
+
+        # v8.1: Attach debate summary for compliance audit pipeline
+        decision['debate_summary'] = getattr(self, '_last_debate_summary', '')
 
         return decision
 

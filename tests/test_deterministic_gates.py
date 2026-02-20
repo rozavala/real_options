@@ -28,39 +28,43 @@ class TestConfidenceThresholdGate:
     def test_signal_below_threshold_is_blocked(self):
         """A signal with confidence below min_confidence_threshold should be skipped."""
         signal = self._make_signal(confidence=0.40)
-        threshold = 0.60
-        # Gate logic: signal.get('confidence', 0.0) < threshold → blocked
+        threshold = 0.50
         assert signal.get('confidence', 0.0) < threshold
 
     def test_signal_at_threshold_passes(self):
         """A signal exactly at min_confidence_threshold should NOT be blocked."""
-        signal = self._make_signal(confidence=0.60)
-        threshold = 0.60
-        # Gate logic: signal.get('confidence', 0.0) < threshold → not blocked when equal
+        signal = self._make_signal(confidence=0.50)
+        threshold = 0.50
         assert not (signal.get('confidence', 0.0) < threshold)
 
     def test_signal_above_threshold_passes(self):
         """A signal above min_confidence_threshold should NOT be blocked."""
         signal = self._make_signal(confidence=0.85)
-        threshold = 0.60
+        threshold = 0.50
         assert not (signal.get('confidence', 0.0) < threshold)
 
     def test_speculative_thesis_blocked(self):
-        """SPECULATIVE thesis (0.45 confidence) should be blocked at 0.60 threshold."""
+        """SPECULATIVE thesis (0.45 confidence) should be blocked at 0.50 threshold."""
         signal = self._make_signal(confidence=0.45)
-        threshold = 0.60
+        threshold = 0.50
         assert signal.get('confidence', 0.0) < threshold
 
     def test_proven_thesis_passes(self):
-        """PROVEN thesis (0.90 confidence) should pass at 0.60 threshold."""
+        """PROVEN thesis (0.90 confidence) should pass at 0.50 threshold."""
         signal = self._make_signal(confidence=0.90)
-        threshold = 0.60
+        threshold = 0.50
         assert not (signal.get('confidence', 0.0) < threshold)
 
     def test_plausible_aligned_passes(self):
-        """PLAUSIBLE+aligned (0.70 confidence) should pass at 0.60 threshold."""
-        signal = self._make_signal(confidence=0.70)
-        threshold = 0.60
+        """v8.0: PLAUSIBLE+aligned (0.80 confidence) should pass at 0.50 threshold."""
+        signal = self._make_signal(confidence=0.80)
+        threshold = 0.50
+        assert not (signal.get('confidence', 0.0) < threshold)
+
+    def test_plausible_divergent_passes(self):
+        """v8.0: PLAUSIBLE+DIVERGENT (0.80*0.70=0.56) should pass at 0.50 threshold."""
+        signal = self._make_signal(confidence=0.56)  # 0.80 * 0.70
+        threshold = 0.50
         assert not (signal.get('confidence', 0.0) < threshold)
 
     def test_gate_code_exists_in_order_manager(self):
@@ -78,10 +82,8 @@ class TestConfidenceThresholdGate:
             'contract_month': '2026Z',
             'prediction_type': 'DIRECTIONAL',
         }
-        # The gate reads signal.get('confidence', 0.0), so missing = 0.0
         assert signal_no_confidence.get('confidence', 0.0) == 0.0
-        # 0.0 < any positive threshold → blocked
-        assert signal_no_confidence.get('confidence', 0.0) < 0.60
+        assert signal_no_confidence.get('confidence', 0.0) < 0.50
 
     def test_threshold_default_if_config_missing(self):
         """If config has no min_confidence_threshold, default should be 0.60."""

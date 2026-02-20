@@ -459,6 +459,13 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 except Exception as e:
                     logger.warning(f"Failed to check sensor status: {e}")
 
+                # v8.0 P3: Inject regime transition alert if detected
+                from trading_bot.weighted_voting import detect_regime_transition
+                regime_alert = detect_regime_transition(market_ctx)
+                if regime_alert:
+                    market_context_str += regime_alert
+                    logger.info("Regime transition alert injected into scheduled cycle context")
+
                 # Call decided (which now includes the Hegelian Loop)
                 decision = await council.decide(contract_name, market_ctx, reports, market_context_str)
 
@@ -480,8 +487,9 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     conviction_multiplier = 1.0
                     consensus_note = f"Consensus ALIGNED (Vote={vote_dir})"
                 elif vote_dir != master_dir and master_dir != 'NEUTRAL':
-                    conviction_multiplier = 0.5
-                    consensus_note = f"Consensus DIVERGENT (Master={master_dir}, Vote={vote_dir}) → half size"
+                    # v8.0: 0.5→0.70 to unblock PLAUSIBLE+DIVERGENT (0.80*0.70=0.56 > 0.50 threshold)
+                    conviction_multiplier = 0.70
+                    consensus_note = f"Consensus DIVERGENT (Master={master_dir}, Vote={vote_dir}) → reduced size"
                 else:
                     conviction_multiplier = 0.75
                     consensus_note = f"Consensus PARTIAL (Master={master_dir}, Vote={vote_dir})"
@@ -530,11 +538,20 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 compliance_reason = "N/A"
 
                 if decision.get('direction') != 'NEUTRAL' and compliance:
+                    # v8.1: Build compliance context with IBKR market data
+                    from trading_bot.market_data_provider import format_market_context_for_prompt
+                    compliance_context = market_context_str
+                    ibkr_data_str = format_market_context_for_prompt(market_ctx)
+                    if ibkr_data_str:
+                        compliance_context += f"\n--- IBKR MARKET DATA ---\n{ibkr_data_str}\n"
+                    debate_summary = decision.get('debate_summary', '')
+
                     audit = await compliance.audit_decision(
                         reports,
-                        market_context_str,
+                        compliance_context,
                         decision,
-                        council.personas.get('master', '')
+                        council.personas.get('master', ''),
+                        debate_summary=debate_summary
                     )
 
                     if not audit.get('approved', True):
