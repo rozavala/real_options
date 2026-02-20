@@ -249,9 +249,15 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
 
         entry_time = row.get('timestamp')
 
-        # Check age. If it's less than ~20 hours old, it might still be open.
-        # We only want to grade "finished" tests.
-        if (now - entry_time).total_seconds() < 20 * 3600 and not is_broken_volatility:
+        # Determine Target Exit Time early (respects weekly close policy)
+        # so we can use it in the age check below.
+        target_exit_time = _calculate_actual_exit_time(entry_time, config)
+
+        # Skip if position might still be open: younger than 20 hours AND
+        # the calculated exit time hasn't passed yet. On Fridays, the weekly
+        # close policy sets exit to same-day close, so signals are graded
+        # the same evening instead of waiting until Monday.
+        if (now - entry_time).total_seconds() < 20 * 3600 and now < target_exit_time and not is_broken_volatility:
             continue
 
         contract_str = row.get('contract', '')  # e.g., "KC H4 (202403)" or just "KC H4"
@@ -263,9 +269,6 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             continue
 
         logger.info(f"Reconciling trade from {entry_time}: {contract_str} ({decision})")
-
-        # Determine Target Exit Time (respects weekly close policy)
-        target_exit_time = _calculate_actual_exit_time(entry_time, config)
 
         # Log if exit time was adjusted from default
         default_exit = entry_time + timedelta(hours=27)
