@@ -262,8 +262,8 @@ class TestIbInterface(unittest.TestCase):
 
             # BUY leg IV=35% (fallback), SELL leg IV=57% (IBKR) → SELL leg priced higher
             mock_get_market_data.side_effect = [
-                {'bid': 50.0, 'ask': 60.0, 'implied_volatility': 0.35, 'risk_free_rate': 0.05},
-                {'bid': 55.0, 'ask': 65.0, 'implied_volatility': 0.57, 'risk_free_rate': 0.05}
+                {'bid': 50.0, 'ask': 60.0, 'implied_volatility': 0.35, 'iv_source': 'FALLBACK', 'risk_free_rate': 0.05},
+                {'bid': 55.0, 'ask': 65.0, 'implied_volatility': 0.57, 'iv_source': 'IBKR', 'risk_free_rate': 0.05}
             ]
             # BUY leg = 149.67, SELL leg = 225.36 → net = 149.67 - 225.36 = -75.69
             mock_price_bs.side_effect = [{'price': 149.67}, {'price': 225.36}]
