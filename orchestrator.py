@@ -1845,6 +1845,50 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
         else:
             logger.info("Position audit complete. All theses remain valid.")
 
+        # E.1: Post-audit VaR computation + AI Risk Agent
+        try:
+            from trading_bot.var_calculator import get_var_calculator, run_risk_agent
+            var_calc = get_var_calculator(config)
+            prev_var = var_calc.get_cached_var()
+            var_result = await asyncio.wait_for(
+                var_calc.compute_portfolio_var(ib, config), timeout=30.0
+            )
+            logger.info(
+                f"Post-audit VaR: 95%={var_result.var_95_pct:.2%} "
+                f"(${var_result.var_95:,.0f}), positions={var_result.position_count}"
+            )
+
+            # Run AI Risk Agent (L1 + L2)
+            try:
+                agent_output = await asyncio.wait_for(
+                    run_risk_agent(var_result, config, ib, prev_var), timeout=30.0
+                )
+                if agent_output.get('interpretation'):
+                    var_result.narrative = agent_output['interpretation']
+                if agent_output.get('scenarios'):
+                    var_result.scenarios = agent_output['scenarios']
+                var_calc._save_state(var_result)
+            except asyncio.TimeoutError:
+                logger.warning("Risk Agent timed out after 30s (non-fatal, VaR saved)")
+            except Exception as agent_e:
+                logger.warning(f"Risk Agent failed (non-fatal, VaR saved): {agent_e}")
+
+            # Pushover alert if VaR is elevated
+            enforcement_mode = config.get('compliance', {}).get('var_enforcement_mode', 'log_only')
+            var_warning = config.get('compliance', {}).get('var_warning_pct', 0.02)
+            if enforcement_mode != 'log_only' and var_result.var_95_pct > var_warning:
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    "Portfolio VaR Alert",
+                    f"VaR(95%) = {var_result.var_95_pct:.1%} of equity "
+                    f"(${var_result.var_95:,.0f}) — limit is "
+                    f"{config.get('compliance', {}).get('var_limit_pct', 0.03):.0%}"
+                )
+        except asyncio.TimeoutError:
+            logger.warning("Post-audit VaR computation timed out after 30s (non-fatal)")
+        except Exception as var_e:
+            logger.warning(f"Post-audit VaR computation failed (non-fatal): {var_e}")
+
     except Exception as e:
         logger.exception(f"Position Audit Cycle failed: {e}")
     finally:
@@ -2877,6 +2921,32 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     return
                 market_data['reason'] = f"Emergency Cycle triggered by {trigger.source}"
                 logger.info(f"Emergency market context: price={market_data.get('price')}, regime={market_data.get('regime')}")
+
+                # E.1: Inject VaR briefing into emergency context
+                try:
+                    from trading_bot.var_calculator import get_var_calculator
+                    cached_var = get_var_calculator(config).get_cached_var()
+                    var_limit = config.get('compliance', {}).get('var_limit_pct', 0.03)
+                    var_warning = config.get('compliance', {}).get('var_warning_pct', 0.02)
+                    if cached_var:
+                        util = cached_var.var_95_pct / var_limit if var_limit else 0
+                        market_context_str += (
+                            f"\n--- PORTFOLIO STATE ---\n"
+                            f"Positions: {cached_var.position_count} across "
+                            f"{', '.join(cached_var.commodities)}\n"
+                            f"VaR utilization: {util:.0%} of limit\n"
+                            f"--- END PORTFOLIO STATE ---\n"
+                        )
+                        if cached_var.var_95_pct > var_warning:
+                            market_context_str += (
+                                f"\n--- PORTFOLIO RISK ALERT ---\n"
+                                f"VaR: {cached_var.var_95_pct:.1%} (limit: {var_limit:.0%})\n"
+                                f"INSTRUCTION: PREFER strategies that REDUCE correlation "
+                                f"with existing positions.\n"
+                                f"--- END RISK ALERT ---\n"
+                            )
+                except Exception:
+                    pass  # Non-fatal
 
                 # Load Regime Context
                 regime_context = load_regime_context(config)
@@ -4708,6 +4778,12 @@ async def main(commodity_ticker: str = None):
     set_brier_recon_dir(data_dir)
     set_router_metrics_dir(data_dir)
     set_agents_dir(data_dir)
+
+    # E.1: Portfolio VaR — shared data dir (NOT per-commodity)
+    from trading_bot.var_calculator import set_var_data_dir
+    from trading_bot.compliance import set_boot_time
+    set_var_data_dir(os.path.dirname(data_dir))  # data/{ticker}/ → data/
+    set_boot_time()
 
     global GLOBAL_DEDUPLICATOR
     GLOBAL_DEDUPLICATOR = TriggerDeduplicator(
