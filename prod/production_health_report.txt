@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Fri Feb 20 14:30:02 UTC 2026
+Timestamp: Fri Feb 20 15:00:03 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  14:30:02 up 39 days, 20:53,  2 users,  load average: 0.13, 0.07, 0.01
+Uptime:  15:00:03 up 39 days, 21:23,  2 users,  load average: 0.40, 0.09, 0.03
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.9Gi       272Mi        31Mi       902Mi       928Mi
-Swap:          4.0Gi       540Mi       3.5Gi
+Mem:           3.8Gi       2.9Gi       285Mi        31Mi       905Mi       944Mi
+Swap:          4.0Gi       539Mi       3.5Gi
 
 === LOAD AVERAGE ===
-0.13 0.07 0.01 2/862 1263953
+0.40 0.09 0.03 1/851 1264416
 
 === PROCESS STATUS ===
 Trading processes:
-console  1203374  0.4 10.9 1968056 437384 ?      Ssl  Feb18  13:33 /home/console/real_options/venv/bin/python -u orchestrator.py
-console  1258300  0.0  7.1 1352200 288172 ?      Sl   09:15   0:07 /home/console/real_options/venv/bin/python position_monitor.py
+console  1203374  0.4 10.9 1969592 437800 ?      Ssl  Feb18  13:37 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1258300  0.0  7.1 1352200 288172 ?      Sl   09:15   0:08 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1185121  0.3  8.0 2881296 324300 ?      Sl   Feb17  12:40 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1185121  0.3  8.0 2881296 324300 ?      Sl   Feb17  12:46 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,7 +36,6 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-02-19 16:50:21,830 - trading_bot.heterogeneous_router - WARNING - gemini/gemini-3-pro-preview failed for volatility: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
 2026-02-19 16:50:30,428 - trading_bot.router_metrics - WARNING - Fallback event: volatility gemini -> gemini. Reason: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_requests_per_model_per_day, limit: 0', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_requests_per_model_per_day', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel'}]}]}}
 2026-02-19 16:52:05,497 - ib_insync.wrapper - ERROR - Error 162, reqId 23: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=742750192, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=282.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P2.825', tradingClass='KO')
 2026-02-19 16:52:11,946 - ib_insync.wrapper - ERROR - Error 162, reqId 30: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=732945272, symbol='KC', lastTradeDateOrContractMonth='20260612', strike=277.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KON6 P2.775', tradingClass='KO')
@@ -46,3 +45,4 @@ Recent orchestrator errors:
 2026-02-20 12:36:34,209 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
 2026-02-20 12:37:34,265 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
 2026-02-20 13:05:25,661 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED with bearish Coffee trade. While fundamental analysis of Brazil's record crop forecast is directionally sound, the trade setup exhibits fatal flaws: (1) Price has already collapsed 28% YoY to 15-month lows with oversold technicals, demonstrating the bearish thesis is substantially priced in. (2) Backwardation structure + export collapse + port delays + low absolute ICE stock levels (450k bags) create significant near-term squeeze risk that contradicts the 'looser availability ahead' narrative. (3) The Conab forecast is 10+ months forward and highly weather-dependent during critical development months, yet we're trading it as certainty. (4) Bearish consensus + recent short-covering episodes + low sentiment confidence (0.21) = crowded positioning vulnerable to reversal. (5) Critical data gaps on Asian demand, farmer selling behavior, and currency-hedging flows undermine conviction. ALTERNATIVE: Wait for either (a) a technical rally to 300-310¢/lb to establish better risk/reward for shorts, (b) confirmation that April-May Brazil weather remains benign and exports resume, or (c) evidence that backwardation is collapsing (curve flipping to contango), signaling physical tightness is truly resolved. At 15-month lows with mixed physical signals, the asymmetry favors the squeeze over further capitulation.
+2026-02-20 14:36:48,889 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED WITH BEARISH TRADE. This setup exhibits classic 'selling the bottom' characteristics: extreme price weakness (15-month lows, -27% YoY), backwardated curve signaling physical tightness, and modest analyst confidence (0.61) despite bearish consensus. The core thesis conflates a future harvest (months away, weather-dependent) with current market structure (backwardation = tight now). Three failure scenarios: (1) Weather shock in Brazil/Vietnam during critical flowering/development stages triggers panic short-covering from oversold levels; (2) Santos port delays and 30% export decline create near-term squeeze that overwhelms distant supply narrative, forcing backwardation to steepen and nearby contracts to spike; (3) Managed money/specs are already max-short at these lows (technical notes 'uptick in non-commercial net-short positions'), and any bullish catalyst - Fed pivot hint, USD weakness, roaster restocking - ignites a violent reversal. The trade's own evidence contains the seeds of its failure: backwardation, oversold technicals, low conviction, and acknowledged weather risk. Risk/reward is asymmetric to the upside from these levels. If bearish thesis is correct, limited downside remains after a 27% collapse; if wrong, snapback could be 15-25%. WAIT for either: (a) curve to flip to contango confirming supply dominance, (b) price to rally and fail at resistance (285-290 resistance per technical), establishing a lower high, or (c) actual crop delivery data in 60+ days. Do not front-run a harvest that hasn't happened.
