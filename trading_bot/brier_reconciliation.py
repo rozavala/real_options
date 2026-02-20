@@ -169,7 +169,7 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
     resolvable = total - orphaned_total
     effective_rate = (resolved_total / resolvable * 100) if resolvable > 0 else 0
 
-    logger.info(f"\n{'='*50}")
+    logger.info(f"{'='*50}")
     logger.info(f"RESOLUTION BREAKDOWN:")
     logger.info(f"  Total predictions:            {total}")
     logger.info(f"  Resolved:                     {resolved_total} (+{resolved_count} new)")
@@ -185,7 +185,7 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
 
     # Estimate potential from running reconciliation
     if awaiting_reconciliation > 0:
-        logger.info(f"\nRunning reconciliation could unlock "
+        logger.info(f"Running reconciliation could unlock "
                     f"up to {awaiting_reconciliation} more predictions")
 
     # Save changes if any (resolved or orphaned)

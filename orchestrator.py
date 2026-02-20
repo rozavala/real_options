@@ -10,7 +10,6 @@ It now supports an Event-Driven architecture via a Sentinel Loop.
 import asyncio
 import logging
 import sys
-import traceback
 import os
 import json
 import hashlib
@@ -1847,7 +1846,7 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
             logger.info("Position audit complete. All theses remain valid.")
 
     except Exception as e:
-        logger.error(f"Position Audit Cycle failed: {e}\n{traceback.format_exc()}")
+        logger.exception(f"Position Audit Cycle failed: {e}")
     finally:
         if ib is not None:
             try:
@@ -1898,7 +1897,7 @@ async def start_monitoring(config: dict):
 
         logger.info("Started position monitoring service.")
     except Exception as e:
-        logger.critical(f"Failed to start position monitor: {e}\n{traceback.format_exc()}")
+        logger.critical(f"Failed to start position monitor: {e}", exc_info=True)
         send_pushover_notification(config.get('notifications', {}), "Orchestrator CRITICAL", "Failed to start position monitor.")
 
 
@@ -1918,7 +1917,7 @@ async def stop_monitoring(config: dict):
     except ProcessLookupError:
         logger.warning("Process already terminated.")
     except Exception as e:
-        logger.critical(f"An error occurred while stopping the monitor: {e}\n{traceback.format_exc()}")
+        logger.critical(f"An error occurred while stopping the monitor: {e}", exc_info=True)
 
 
 async def cancel_and_stop_monitoring(config: dict):
@@ -2035,7 +2034,7 @@ async def analyze_and_archive(config: dict):
 
         logger.info("--- End-of-day analysis and archiving complete ---")
     except Exception as e:
-        logger.critical(f"An error occurred during the analysis and archiving process: {e}\n{traceback.format_exc()}")
+        logger.critical(f"An error occurred during the analysis and archiving process: {e}", exc_info=True)
 
 
 async def reconcile_and_notify(config: dict):
@@ -2065,7 +2064,7 @@ async def reconcile_and_notify(config: dict):
         await reconcile_council_history(config)
 
     except Exception as e:
-        logger.critical(f"An error occurred during trade reconciliation: {e}\n{traceback.format_exc()}")
+        logger.critical(f"An error occurred during trade reconciliation: {e}", exc_info=True)
 
 
 async def sentinel_effectiveness_check(config: dict):
@@ -2198,7 +2197,7 @@ async def reconcile_and_analyze(config: dict):
         await reconcile_and_notify(config)
         # reconciliation_succeeded = True
     except Exception as e:
-        logger.critical(f"Reconciliation FAILED: {e}\n{traceback.format_exc()}")
+        logger.critical(f"Reconciliation FAILED: {e}", exc_info=True)
         send_pushover_notification(
             config.get('notifications', {}),
             "🚨 Reconciliation Failed",
@@ -2371,9 +2370,9 @@ async def _check_feedback_loop_health(config: dict):
     except Exception as e:
         # === FAIL-SAFE: Log error but NEVER crash the orchestrator ===
         logger.error(
-            f"Feedback loop health check failed (non-fatal): {e}\n"
-            f"The orchestrator will continue operating.\n"
-            f"{traceback.format_exc()}"
+            f"Feedback loop health check failed (non-fatal): {e}. "
+            f"The orchestrator will continue operating.",
+            exc_info=True
         )
         # Optionally notify about the monitoring failure itself
         try:
@@ -3224,7 +3223,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     logger.info(f"Emergency Cycle concluded with no action: {direction} ({pred_type})")
 
             except Exception as e:
-                logger.error(f"Emergency Cycle Failed: {e}\n{traceback.format_exc()}")
+                logger.exception(f"Emergency Cycle Failed: {e}")
 
         finally:
             # Graduated post-cycle debounce based on cycle outcome
@@ -4623,10 +4622,7 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
                 logger.info(f"✅ RECOVERY: {task.id} completed")
                 recovered += 1
             except Exception as e:
-                logger.error(
-                    f"❌ RECOVERY: {task.id} failed: {e}\n"
-                    f"{traceback.format_exc()}"
-                )
+                logger.exception(f"❌ RECOVERY: {task.id} failed: {e}")
         else:
             logger.info(f"⏭️ RECOVERY SKIP: {task.id} — {skip_reason}")
             skipped += 1
@@ -4915,8 +4911,8 @@ async def main(commodity_ticker: str = None):
                 logger.info("Orchestrator main loop cancelled.")
                 break
             except Exception as e:
-                error_msg = f"A critical error occurred in the main orchestrator loop: {e}\n{traceback.format_exc()}"
-                logger.critical(error_msg)
+                error_msg = f"A critical error occurred in the main orchestrator loop: {e}"
+                logger.critical(error_msg, exc_info=True)
                 await asyncio.sleep(60)
     finally:
         logger.info("Orchestrator shutting down. Ensuring monitor is stopped.")

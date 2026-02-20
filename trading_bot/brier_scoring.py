@@ -100,9 +100,7 @@ class BrierScoreTracker:
             return scores
 
         except Exception as e:
-            logger.error(f"Failed to load Brier scores: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
+            logger.exception(f"Failed to load Brier scores: {e}")
             return {}
 
     def record_prediction(self, agent: str, predicted: str, actual: str, timestamp: Optional[datetime] = None):
@@ -571,9 +569,7 @@ def resolve_pending_predictions(council_history_path: str = None, data_dir: str 
         return []
 
     except Exception as e:
-        logger.error(f"Failed to resolve pending predictions: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
+        logger.exception(f"Failed to resolve pending predictions: {e}")
         return []
 
 

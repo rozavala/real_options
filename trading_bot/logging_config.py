@@ -79,7 +79,9 @@ def setup_logging(log_file: str = None):
             # Fallback to stdout only if we can't write to the log file
             sys.stderr.write(f"WARNING: Could not create log file handler at {log_file}: {e}\n")
             sys.stderr.write("Logging will continue to stdout only.\n")
-            handlers.append(logging.StreamHandler(sys.stdout))
+            fallback_handler = logging.StreamHandler(sys.stdout)
+            fallback_handler.setFormatter(formatter)
+            handlers.append(fallback_handler)
 
     # Determine whether to add StreamHandler (Stdout)
     # 1. Always add if no log_file is provided (default behavior)

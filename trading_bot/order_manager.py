@@ -645,9 +645,9 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
         send_pushover_notification(config.get('notifications', {}), "Trading Orders Queued", message)
 
     except Exception as e:
-        msg = f"A critical error occurred during order generation: {e}\n{traceback.format_exc()}"
-        logger.critical(msg)
-        send_pushover_notification(config.get('notifications', {}), "Order Generation CRITICAL", msg)
+        msg = f"A critical error occurred during order generation: {e}"
+        logger.critical(msg, exc_info=True)
+        send_pushover_notification(config.get('notifications', {}), "Order Generation CRITICAL", f"{msg}\n{traceback.format_exc()}")
         # Force-reset pooled connection on critical error so next get_connection() creates fresh
         try:
             await IBConnectionPool._force_reset_connection(connection_purpose)
@@ -809,7 +809,7 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
                 logger.debug(f"TMS: Thesis already recorded for {position_uuid}, skipping duplicate.")
 
     except Exception as e:
-        logger.error(f"Error processing and logging fill for order {trade.order.orderId}: {e}\n{traceback.format_exc()}")
+        logger.exception(f"Error processing and logging fill for order {trade.order.orderId}: {e}")
 
 
 async def check_liquidity_conditions(ib: IB, contract, order_size: int) -> tuple[bool, str]:
@@ -897,9 +897,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         ib = await IBConnectionPool.get_connection(connection_purpose, config)
         configure_market_data_type(ib)
     except Exception as e:
-        msg = f"Failed to establish IB connection for order placement: {e}\n{traceback.format_exc()}"
-        logger.critical(msg)
-        send_pushover_notification(config.get('notifications', {}), "Order Placement Connection Failed", msg)
+        msg = f"Failed to establish IB connection for order placement: {e}"
+        logger.critical(msg, exc_info=True)
+        send_pushover_notification(config.get('notifications', {}), "Order Placement Connection Failed", f"{msg}\n{traceback.format_exc()}")
         return  # Fail closed - cannot place orders without connection
 
     live_orders = {} # Dictionary to track order status by orderId
@@ -1638,9 +1638,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         logger.info("--- Finished monitoring and cleanup. ---")
 
     except Exception as e:
-        msg = f"A critical error occurred during order placement/monitoring: {e}\n{traceback.format_exc()}"
-        logger.critical(msg)
-        send_pushover_notification(config.get('notifications', {}), "Order Placement CRITICAL", msg)
+        msg = f"A critical error occurred during order placement/monitoring: {e}"
+        logger.critical(msg, exc_info=True)
+        send_pushover_notification(config.get('notifications', {}), "Order Placement CRITICAL", f"{msg}\n{traceback.format_exc()}")
         # Force-reset pooled connection on critical error so next get_connection() creates fresh
         try:
             await IBConnectionPool._force_reset_connection(connection_purpose)
@@ -2459,9 +2459,9 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
         send_pushover_notification(config.get('notifications', {}), notification_title, message)
 
     except Exception as e:
-        msg = f"A critical error occurred while closing positions: {e}\n{traceback.format_exc()}"
-        logger.critical(msg)
-        send_pushover_notification(config.get('notifications', {}), "Position Closing CRITICAL", msg)
+        msg = f"A critical error occurred while closing positions: {e}"
+        logger.critical(msg, exc_info=True)
+        send_pushover_notification(config.get('notifications', {}), "Position Closing CRITICAL", f"{msg}\n{traceback.format_exc()}")
         # Force-reset pooled connection on critical error so next get_connection() creates fresh
         try:
             await IBConnectionPool._force_reset_connection(connection_purpose)
@@ -2636,9 +2636,9 @@ async def cancel_all_open_orders(config: dict, connection_purpose: str = "orches
         send_pushover_notification(config.get('notifications', {}), "Open Orders Canceled", message)
 
     except Exception as e:
-        msg = f"A critical error occurred while canceling orders: {e}\n{traceback.format_exc()}"
-        logger.critical(msg)
-        send_pushover_notification(config.get('notifications', {}), "Order Cancellation CRITICAL", msg)
+        msg = f"A critical error occurred while canceling orders: {e}"
+        logger.critical(msg, exc_info=True)
+        send_pushover_notification(config.get('notifications', {}), "Order Cancellation CRITICAL", f"{msg}\n{traceback.format_exc()}")
         # Force-reset pooled connection on critical error so next get_connection() creates fresh
         try:
             await IBConnectionPool._force_reset_connection(connection_purpose)

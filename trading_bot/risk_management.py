@@ -11,7 +11,6 @@ This module contains the core logic for three key risk management functions:
 import asyncio
 import logging
 import time
-import traceback
 from datetime import datetime, timedelta
 import pytz
 import pandas as pd
@@ -172,7 +171,7 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
                 if trade.orderStatus.status == OrderStatus.Filled:
                     log_trade_to_ledger(ib, trade, "Position Misaligned", combo_id=trade.order.permId)
             except Exception as e:
-                logging.error(f"Failed to close position for conId {pos_to_close.contract.conId}: {e}\n{traceback.format_exc()}")
+                logging.exception(f"Failed to close position for conId {pos_to_close.contract.conId}: {e}")
         return True
 
     return not position_is_aligned
