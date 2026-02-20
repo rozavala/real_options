@@ -38,13 +38,16 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
 
         # Priority for IV: Model Option IV > Model Greeks IV
         iv = None
+        iv_source = 'FALLBACK'  # Default; overwritten if IBKR data arrives
         # 1. Try User-specified 'modelOptionImpliedVol' (Generic 106)
         if hasattr(ticker, 'modelOptionImpliedVol') and not util.isNan(ticker.modelOptionImpliedVol):
             iv = ticker.modelOptionImpliedVol
+            iv_source = 'IBKR'
             logging.info(f"Using IBKR Model Option IV: {iv:.2%}")
         # 2. Try standard ib_insync 'modelGreeks.impliedVol' (Generic 106 standard mapping)
         elif ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol):
             iv = ticker.modelGreeks.impliedVol
+            iv_source = 'IBKR'
             logging.info(f"Using IBKR Model Greeks IV: {iv:.2%}")
 
     finally:
@@ -101,6 +104,7 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
         'bid': bid,
         'ask': ask,
         'implied_volatility': iv,
+        'iv_source': iv_source,
         'risk_free_rate': rfr  # M3 FIX: Use profile rate
     }
 
@@ -311,6 +315,7 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
     net_theoretical_price = 0.0
     combo_bid_price = 0.0
     combo_ask_price = 0.0
+    iv_sources = []  # Track IV source per leg for mixed-source detection
     for i, q_leg in enumerate(qualified_legs):
         leg_action = legs_def[i][1]  # 'BUY' or 'SELL'
 
@@ -318,6 +323,7 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         if not market_data:
             logging.error(f"Failed to get market data for {q_leg.localSymbol}. Aborting order.")
             return None
+        iv_sources.append(market_data.get('iv_source', 'UNKNOWN'))
 
         # Calculate theoretical price using Black-Scholes
         pricing_result = price_option_black_scholes(
@@ -351,6 +357,25 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
     fixed_slippage = tuning_params.get('fixed_slippage_cents', 0.5)
     # NEW: Configurable ceiling aggression (0.0 = mid, 1.0 = full ask/bid)
     ceiling_aggression = tuning_params.get('ceiling_aggression_factor', 0.75)
+
+    # Mixed IV source warning: log when some legs use IBKR IV and others use fallback
+    unique_sources = set(iv_sources)
+    if len(unique_sources) > 1:
+        logging.warning(
+            f"IV SOURCE MISMATCH: Legs used mixed IV sources {iv_sources}. "
+            f"Theoretical pricing may be inconsistent."
+        )
+
+    # Inverted spread guard: BUY spread should be a debit (positive theoretical),
+    # SELL spread should be a credit (negative theoretical). When the sign is wrong,
+    # it typically means IV mismatch between legs (e.g., one leg used fallback IV).
+    # IB will reject these as "riskless combination orders."
+    if action == 'BUY' and net_theoretical_price < 0:
+        logging.warning(
+            f"INVERTED SPREAD FILTER: BUY spread has negative net theoretical "
+            f"({net_theoretical_price:.2f}). Likely IV mismatch between legs. Skipping."
+        )
+        return None
 
     market_spread = combo_ask_price - combo_bid_price
 
@@ -403,6 +428,14 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         # Start 1 tick above bid (passive entry)
         initial_price = round_to_tick(combo_bid_price + tick_size, tick_size, 'BUY')
         initial_price = min(initial_price, ceiling_price)
+
+        # Defense in depth: if market bid is negative (credit side), skip
+        if initial_price <= 0:
+            logging.warning(
+                f"RISKLESS COMBO FILTER: BUY spread start price is {initial_price:.2f} "
+                f"(market bid={combo_bid_price:.2f}). Order would start as credit. Skipping."
+            )
+            return None
 
         logging.info(
             f"BUY Cap Calc: Theoretical={theoretical_ceiling:.2f}, "

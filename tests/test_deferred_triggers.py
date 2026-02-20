@@ -93,3 +93,52 @@ def test_queue_after_get_not_lost(temp_triggers_file):
     result = StateManager.get_deferred_triggers()
     assert len(result) == 1
     assert result[0]["source"] == "second"
+
+
+def test_corrupted_file_recovered(temp_triggers_file):
+    """Corrupted JSON should be backed up and reset to empty list."""
+    # Write corrupted JSON
+    with open(temp_triggers_file, "w") as f:
+        f.write('[{"source": ')  # Incomplete JSON
+
+    result = StateManager._load_deferred_triggers()
+    assert result == []
+
+    # File should now be valid (reset to [])
+    with open(temp_triggers_file) as f:
+        assert json.load(f) == []
+
+    # Backup should exist
+    assert os.path.exists(temp_triggers_file + ".corrupt")
+
+
+def test_queue_after_corruption_works(temp_triggers_file):
+    """Queuing a trigger after file corruption should succeed."""
+    with open(temp_triggers_file, "w") as f:
+        f.write("INVALID JSON")
+
+    # This should recover and queue successfully
+    StateManager.queue_deferred_trigger(_make_trigger(source="recovery"))
+
+    result = StateManager.get_deferred_triggers()
+    assert len(result) == 1
+    assert result[0]["source"] == "recovery"
+
+
+def test_non_serializable_payload_rejected(temp_triggers_file):
+    """Trigger with non-JSON-serializable payload should not corrupt the file."""
+    # First queue a valid trigger
+    StateManager.queue_deferred_trigger(_make_trigger(source="valid"))
+
+    # Try to queue one with non-serializable payload
+    bad_trigger = SimpleNamespace(
+        source="bad",
+        reason="test",
+        payload={"obj": object()},  # Not JSON-serializable
+    )
+    StateManager.queue_deferred_trigger(bad_trigger)  # Should log error, not corrupt
+
+    # Original trigger should still be intact
+    result = StateManager.get_deferred_triggers()
+    assert len(result) == 1
+    assert result[0]["source"] == "valid"

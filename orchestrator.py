@@ -4557,7 +4557,7 @@ def apply_schedule_offset(original_schedule, offset_minutes: int):
 #
 RECOVERY_POLICY = {
     'start_monitoring':               {'policy': 'MARKET_OPEN',   'idempotent': True},
-    'process_deferred_triggers':      {'policy': 'MARKET_OPEN',   'idempotent': False},
+    'process_deferred_triggers':      {'policy': 'MARKET_OPEN',   'idempotent': True},
     'cleanup_orphaned_theses':        {'policy': 'ALWAYS',        'idempotent': True},
     'run_position_audit_cycle':       {'policy': 'MARKET_OPEN',   'idempotent': True},
     'guarded_generate_orders':        {'policy': 'BEFORE_CUTOFF', 'idempotent': False},  # 5 daily cycles (09:00-17:00 UTC)

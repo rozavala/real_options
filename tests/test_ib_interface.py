@@ -243,6 +243,53 @@ class TestIbInterface(unittest.TestCase):
         place_order(ib, mock_contract, mock_order)
         ib.placeOrder.assert_called_once_with(mock_contract, mock_order)
 
+    @patch('trading_bot.ib_interface.price_option_black_scholes')
+    @patch('trading_bot.ib_interface.get_option_market_data')
+    def test_inverted_spread_returns_none(self, mock_get_market_data, mock_price_bs):
+        """
+        Tests that a BUY spread with negative net theoretical (SELL leg priced
+        higher than BUY leg due to IV mismatch) is rejected before order creation.
+        Reproduces the CCK6 bug where IB rejected as 'riskless combination'.
+        """
+        async def run_test():
+            ib = AsyncMock()
+            conid_map = {3100.0: 101, 3050.0: 102}
+            async def qualify_side_effect(*contracts):
+                for c in contracts:
+                    c.conId = conid_map.get(c.strike, 0)
+                return list(contracts)
+            ib.qualifyContractsAsync = AsyncMock(side_effect=qualify_side_effect)
+
+            # BUY leg IV=35% (fallback), SELL leg IV=57% (IBKR) → SELL leg priced higher
+            mock_get_market_data.side_effect = [
+                {'bid': 50.0, 'ask': 60.0, 'implied_volatility': 0.35, 'iv_source': 'FALLBACK', 'risk_free_rate': 0.05},
+                {'bid': 55.0, 'ask': 65.0, 'implied_volatility': 0.57, 'iv_source': 'IBKR', 'risk_free_rate': 0.05}
+            ]
+            # BUY leg = 149.67, SELL leg = 225.36 → net = 149.67 - 225.36 = -75.69
+            mock_price_bs.side_effect = [{'price': 149.67}, {'price': 225.36}]
+
+            config = {
+                'symbol': 'CC',
+                'strategy': {'quantity': 1},
+                'strategy_tuning': {
+                    'max_liquidity_spread_percentage': 0.45,
+                    'fixed_slippage_cents': 0.5
+                }
+            }
+            strategy_def = {
+                "action": "BUY",
+                "legs_def": [('P', 'BUY', 3100.0), ('P', 'SELL', 3050.0)],
+                "exp_details": {'exp_date': '20260515', 'days_to_exp': 84},
+                "chain": {'exchange': 'NYBOT', 'tradingClass': 'COK'},
+                "underlying_price": 3100.5,
+                "future_contract": Future(conId=1, symbol='CC')
+            }
+
+            result = await create_combo_order_object(ib, config, strategy_def)
+            self.assertIsNone(result)
+
+        asyncio.run(run_test())
+
     @patch('trading_bot.ib_interface.datetime')
     def test_get_active_futures_filters_45_days(self, mock_datetime):
         """

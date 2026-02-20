@@ -364,12 +364,15 @@ class StateManager:
         """Queue a trigger for processing when market opens (file-locked)."""
         def _do_queue():
             triggers = cls._load_deferred_triggers()
-            triggers.append({
+            entry = {
                 'source': trigger.source,
                 'reason': trigger.reason,
                 'payload': trigger.payload,
                 'timestamp': datetime.now(timezone.utc).isoformat()
-            })
+            }
+            # Validate JSON-serializable before appending (prevents partial writes)
+            json.dumps(entry)
+            triggers.append(entry)
             cls._write_deferred_triggers(triggers)
             logger.info(f"Queued deferred trigger from {trigger.source}")
 
@@ -440,9 +443,21 @@ class StateManager:
             return []
         try:
             with open(cls.DEFERRED_TRIGGERS_FILE, 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+                if not isinstance(data, list):
+                    raise ValueError(f"Expected list, got {type(data).__name__}")
+                return data
         except Exception as e:
-            logger.error(f"Failed to load deferred triggers: {e}")
+            logger.error(f"Failed to load deferred triggers: {e}. Resetting corrupted file.")
+            # Recovery: backup corrupted file and reset to empty list
+            try:
+                backup = cls.DEFERRED_TRIGGERS_FILE + ".corrupt"
+                if os.path.exists(cls.DEFERRED_TRIGGERS_FILE):
+                    os.replace(cls.DEFERRED_TRIGGERS_FILE, backup)
+                    logger.warning(f"Corrupted deferred triggers backed up to {backup}")
+                cls._write_deferred_triggers([])
+            except Exception as recovery_err:
+                logger.error(f"Recovery failed: {recovery_err}")
             return []
 
     @classmethod
