@@ -241,7 +241,7 @@ def render_portfolio_risk_summary(live_data: dict):
 
     with cols[2]:
         import math
-        pnl_help = "Realized + Unrealized P&L for the current trading session."
+        pnl_help = "Total change in account equity since prior day close (as reported by IBKR)."
         if daily_pnl is None or (isinstance(daily_pnl, float) and math.isnan(daily_pnl)):
             st.metric("Daily P&L", "$0", delta="No data", delta_color="off", help=pnl_help)
         else:
@@ -273,7 +273,7 @@ def render_portfolio_risk_summary(live_data: dict):
                 contract = p.contract
                 symbol = getattr(contract, 'localSymbol', getattr(contract, 'symbol', 'Unknown'))
                 qty = p.position
-                details.append(f"• {symbol}: {qty}")
+                details.append(f"• {symbol}: {qty:g}")
 
             if len(positions) > 10:
                 details.append(f"...and {len(positions) - 10} more")
