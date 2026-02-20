@@ -1513,7 +1513,11 @@ async def _reconcile_state_stores(
         except asyncio.TimeoutError:
             logger.error("reqPositionsAsync timed out (30s) in state reconciliation")
             all_positions = ib.positions()  # Fall back to cached if timeout
-        ib_positions = [p for p in all_positions if p.position != 0]
+        symbol = config.get('symbol', 'KC')
+        ib_positions = [
+            p for p in all_positions
+            if p.position != 0 and p.contract.symbol == symbol
+        ]
         results['ibkr_positions'] = len(ib_positions)
 
         # 2. Count open positions in ledger
@@ -1554,8 +1558,8 @@ async def _reconcile_state_stores(
             # Send notification for manual review
             send_pushover_notification(
                 config.get('notifications', {}),
-                "⚠️ State Sync Warning",
-                "Discrepancies found:\n" + "\n".join(results['discrepancies'])
+                f"⚠️ {symbol} State Sync Warning",
+                f"[{symbol}] Discrepancies found:\n" + "\n".join(results['discrepancies'])
             )
         else:
             logger.info(
@@ -1603,13 +1607,15 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
                 f"IBKR positions are source of truth."
             )
 
-        # 1. Get current positions from IB
+        # 1. Get current positions from IB (filtered to this commodity)
+        commodity_symbol = config.get('symbol', 'KC')
         try:
-            live_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
+            all_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
         except asyncio.TimeoutError:
             logger.error("reqPositionsAsync timed out (30s) in position audit, treating as empty")
-            live_positions = []
-        if not live_positions or all(p.position == 0 for p in live_positions):
+            all_positions = []
+        live_positions = [p for p in all_positions if p.position != 0 and p.contract.symbol == commodity_symbol]
+        if not live_positions:
             logger.info("No open positions to audit.")
 
             # Reconcile: If TMS has active theses but IB has no positions,
@@ -3956,12 +3962,16 @@ async def emergency_hard_close(config: dict):
         ib = await IBConnectionPool.get_connection("orchestrator_orders", config)
         configure_market_data_type(ib)
 
+        commodity_symbol = config.get('symbol', 'KC')
         try:
             live_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
         except asyncio.TimeoutError:
             logger.error("reqPositionsAsync timed out (30s) in emergency hard close, aborting")
             return
-        open_positions = [p for p in live_positions if p.position != 0]
+        open_positions = [
+            p for p in live_positions
+            if p.position != 0 and p.contract.symbol == commodity_symbol
+        ]
 
         if not open_positions:
             logger.info("Emergency hard close: No open positions. All clear. ✓")
