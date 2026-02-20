@@ -411,8 +411,8 @@ with master_cols[3]:
     conviction = row.get('conviction_multiplier', 'N/A')
     if conviction != 'N/A' and pd.notna(conviction):
         try:
-            conv_val = float(conviction)
-            conv_label = {1.0: "✅ Aligned", 0.75: "⚠️ Partial", 0.5: "🔻 Divergent"}.get(conv_val, f"{conv_val:.2f}")
+            conv_val = round(float(conviction), 2)
+            conv_label = {1.0: "✅ Aligned", 0.75: "⚠️ Partial", 0.70: "🔻 Divergent", 0.65: "🔻 Divergent", 0.5: "🔻 Divergent"}.get(conv_val, f"{conv_val:.2f}")
             st.metric("Consensus", conv_label)
         except (ValueError, TypeError):
             st.metric("Consensus", "N/A")

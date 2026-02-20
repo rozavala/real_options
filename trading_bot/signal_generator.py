@@ -480,8 +480,9 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     conviction_multiplier = 1.0
                     consensus_note = f"Consensus ALIGNED (Vote={vote_dir})"
                 elif vote_dir != master_dir and master_dir != 'NEUTRAL':
-                    conviction_multiplier = 0.5
-                    consensus_note = f"Consensus DIVERGENT (Master={master_dir}, Vote={vote_dir}) → half size"
+                    # v8.0: 0.5→0.70 to unblock PLAUSIBLE+DIVERGENT (0.80*0.70=0.56 > 0.50 threshold)
+                    conviction_multiplier = 0.70
+                    consensus_note = f"Consensus DIVERGENT (Master={master_dir}, Vote={vote_dir}) → reduced size"
                 else:
                     conviction_multiplier = 0.75
                     consensus_note = f"Consensus PARTIAL (Master={master_dir}, Vote={vote_dir})"

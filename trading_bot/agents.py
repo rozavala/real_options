@@ -1339,17 +1339,17 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
             # do not warrant risking capital. They are logged for learning
             # (Brier scoring) but not executed.
             #
-            # Execution threshold:
-            #   PROVEN (0.90)     → Executes ✓
-            #   PLAUSIBLE (0.70)  → Executes ✓ (even with 0.5 conviction = 0.35... see note)
+            # v8.0 Execution threshold (with min_confidence_threshold = 0.50):
+            #   PROVEN (0.90)      → Always executes ✓
+            #   PLAUSIBLE (0.80)   → Executes ✓ (even DIVERGENT: 0.80*0.70=0.56 > 0.50)
             #   SPECULATIVE (0.45) → Blocked ✗
             #
-            # IMPORTANT: PLAUSIBLE + DIVERGENT consensus (0.70 * 0.5 = 0.35)
-            # will ALSO be blocked. This is correct — low conviction + disagreement
-            # should not trade.
+            # PLAUSIBLE+PARTIAL: 0.80*0.75=0.60, PLAUSIBLE+DIVERGENT: 0.80*0.70=0.56
+            # Both pass the 0.50 gate. The gap between PARTIAL/DIVERGENT is now 0.05
+            # (down from 0.25 pre-v8.0). If more separation needed: PARTIAL→0.85.
             THESIS_TO_CONFIDENCE = {
                 'PROVEN': 0.90,
-                'PLAUSIBLE': 0.70,
+                'PLAUSIBLE': 0.80,
                 'SPECULATIVE': 0.45,
             }
             thesis = decision.get('thesis_strength', 'SPECULATIVE').upper()
@@ -1546,9 +1546,10 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         if master_dir == vote_dir or vote_dir == 'NEUTRAL':
             conviction_multiplier = 1.0
         elif vote_dir != master_dir and master_dir != 'NEUTRAL':
-            conviction_multiplier = 0.5
+            # v8.0: 0.5→0.70 to unblock PLAUSIBLE+DIVERGENT (0.80*0.70=0.56 > 0.50 threshold)
+            conviction_multiplier = 0.70
             decision['reasoning'] += f" [DIVERGENT CONSENSUS: Vote={vote_dir}, trading smaller]"
-            logger.info(f"Emergency consensus divergent: Master={master_dir}, Vote={vote_dir} → half size")
+            logger.info(f"Emergency consensus divergent: Master={master_dir}, Vote={vote_dir} → reduced size")
         else:
             conviction_multiplier = 0.75
 
