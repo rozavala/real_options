@@ -89,9 +89,9 @@ async def main():
     except ConnectionRefusedError:
         logger.critical("Connection to TWS/Gateway was refused. Is it running?")
     except Exception as e:
-        error_msg = f"A critical error occurred in the position monitor: {e}\n{traceback.format_exc()}"
-        logger.critical(error_msg)
-        send_pushover_notification(config.get('notifications', {}), "Monitor CRITICAL ERROR", error_msg)
+        error_msg = f"A critical error occurred in the position monitor: {e}"
+        logger.critical(error_msg, exc_info=True)
+        send_pushover_notification(config.get('notifications', {}), "Monitor CRITICAL ERROR", f"{error_msg}\n{traceback.format_exc()}")
     finally:
         if monitor_task and not monitor_task.done():
             monitor_task.cancel()

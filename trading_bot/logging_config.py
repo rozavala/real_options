@@ -11,6 +11,32 @@ import os
 from logging.handlers import RotatingFileHandler
 
 
+def sanitize_log_message(record_msg: str) -> str:
+    """Escapes newlines in log messages to prevent log injection attacks."""
+    if isinstance(record_msg, str):
+        return record_msg.replace('\n', '\\n').replace('\r', '\\r')
+    return record_msg
+
+
+class SanitizedFormatter(logging.Formatter):
+    """Formatter that sanitizes log messages to prevent injection."""
+
+    def formatMessage(self, record):
+        # Save original message to avoid side effects
+        original_message = record.message
+
+        # Sanitize the message content
+        record.message = sanitize_log_message(record.message)
+
+        # Call parent to format the final string (e.g. "%(asctime)s ...")
+        s = super().formatMessage(record)
+
+        # Restore original message
+        record.message = original_message
+
+        return s
+
+
 def setup_logging(log_file: str = None):
     """Sets up a centralized logging configuration for the application.
 
@@ -26,6 +52,9 @@ def setup_logging(log_file: str = None):
     """
 
     handlers = []
+
+    # Use SanitizedFormatter for security
+    formatter = SanitizedFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     # Add file handler if requested
     if log_file:
@@ -43,7 +72,6 @@ def setup_logging(log_file: str = None):
                 encoding='utf-8',
             )
 
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
             file_handler.setFormatter(formatter)
             handlers.append(file_handler)
 
@@ -51,7 +79,9 @@ def setup_logging(log_file: str = None):
             # Fallback to stdout only if we can't write to the log file
             sys.stderr.write(f"WARNING: Could not create log file handler at {log_file}: {e}\n")
             sys.stderr.write("Logging will continue to stdout only.\n")
-            handlers.append(logging.StreamHandler(sys.stdout))
+            fallback_handler = logging.StreamHandler(sys.stdout)
+            fallback_handler.setFormatter(formatter)
+            handlers.append(fallback_handler)
 
     # Determine whether to add StreamHandler (Stdout)
     # 1. Always add if no log_file is provided (default behavior)
@@ -60,12 +90,13 @@ def setup_logging(log_file: str = None):
     should_add_stream = (log_file is None) or sys.stdout.isatty()
 
     if should_add_stream:
-        handlers.append(logging.StreamHandler(sys.stdout))
+        stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setFormatter(formatter)
+        handlers.append(stream_handler)
 
     # Basic Config with handlers
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=handlers,
         force=True  # Override any existing configuration
     )
