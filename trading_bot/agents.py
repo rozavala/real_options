@@ -1206,6 +1206,9 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         """
         The Hegelian Loop: Thesis (Reports) -> Antithesis (Bear/Bull) -> Synthesis (Master).
         """
+        # v8.1: Reset debate summary to prevent stale cross-cycle contamination
+        self._last_debate_summary = ""
+
         # 1. Thesis: Format Research Reports
         # Handle dictionary reports with timestamps (from StateManager) vs strings (legacy/fresh)
         reports_text = ""
@@ -1274,6 +1277,9 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         # Inject sentinel briefing so debate agents know WHY this cycle exists
         debate_market_context = market_context + sentinel_briefing if sentinel_briefing else market_context
         bear_json, bull_json = await self.run_debate(reports_text, market_data, market_context=debate_market_context)
+
+        # v8.1: Store debate summary for compliance audit pipeline
+        self._last_debate_summary = f"BEAR ATTACK:\n{bear_json}\n\nBULL DEFENSE:\n{bull_json}"
 
         # 3. Synthesis: Master Strategist
         master_persona = self.personas.get('master', "You are the Chief Strategist.")
@@ -1391,7 +1397,12 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         1. Wake up the RELEVANT agent based on Semantic Router.
         2. Load cached state for other agents.
         3. Run the Debate and Master.
+
+        v8.1: Returns 'debate_summary' key for compliance audit pipeline.
         """
+        # v8.1: Early reset to prevent stale cross-cycle contamination
+        self._last_debate_summary = ""
+
         logger.info(f"Running Specialized Cycle triggered by {trigger.source}...")
         
         # Load Cached State with Metadata (Fix #1: Graduated Staleness)
@@ -1622,6 +1633,9 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                     )
             except Exception as e:
                 logger.error(f"Failed to record Brier prediction (non-fatal): {e}")
+
+        # v8.1: Attach debate summary for compliance audit pipeline
+        decision['debate_summary'] = getattr(self, '_last_debate_summary', '')
 
         return decision
 

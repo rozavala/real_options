@@ -700,7 +700,7 @@ class ComplianceGuardian:
             logger.error(f"Compliance review failed: {e}")
             return False, f"Compliance Error: {e}"
 
-    async def audit_decision(self, reports: dict, market_context: str, decision: dict, master_persona: str, ib=None) -> dict:
+    async def audit_decision(self, reports: dict, market_context: str, decision: dict, master_persona: str, ib=None, debate_summary: str = "") -> dict:
         """
         Audits the Master Strategist's decision.
         """
@@ -737,12 +737,23 @@ class ComplianceGuardian:
                 f"may be citing cached context or weighted vote data.\n"
             )
 
+        # v8.1: 3-source evidence framework — give compliance the same data the Master saw
+        debate_section = ""
+        if debate_summary:
+            debate_section = (
+                f"\n--- Source 3: ADVERSARIAL DEBATE ---\n"
+                f"{debate_summary}\n"
+            )
+
         prompt = (
             f"You are the Compliance Officer auditing a trading decision.\n"
             f"Your goal is to detect HALLUCINATIONS or violations of logic.\n\n"
-            f"--- EVIDENCE (REPORTS) ---\n{reports_text}\n\n"
-            f"--- MARKET CONTEXT ---\n{market_context}\n"
-            f"{availability_note}\n"
+            f"The Master Strategist had access to THREE sources of evidence when making this decision. "
+            f"A fact is NOT a hallucination if it appears in ANY of these three sources.\n\n"
+            f"--- Source 1: AGENT REPORTS ---\n{reports_text}\n\n"
+            f"--- Source 2: MARKET DATA (IBKR + Context) ---\n{market_context}\n"
+            f"{availability_note}"
+            f"{debate_section}\n"
             f"--- DECISION PROCESS CONTEXT ---\n"
             f"The Master Strategist receives input from a structured adversarial "
             f"debate between a 'Permabear' (bearish advocate) and 'Permabull' "
@@ -756,9 +767,10 @@ class ComplianceGuardian:
             f"TASK:\n"
             f"Check if the Decision Reasoning is supported by the Evidence.\n"
             f"1. Does the reasoning cite SPECIFIC FACTS (numbers, dates, "
-            f"percentages) NOT found in ANY report or market context? "
+            f"percentages) NOT found in ANY of the three sources above? "
             f"(Hallucination)\n"
             f"   - Permabear/Permabull references are NOT hallucinations.\n"
+            f"   - SMA levels, price data, and IBKR metrics from Source 2 are NOT hallucinations.\n"
             f"   - References to data from unavailable agents should be flagged "
             f"as 'data gap', not 'hallucination'.\n"
             f"2. Does the reasoning ignore a 'CRITICAL RISK' explicitly stated "

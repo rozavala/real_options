@@ -538,11 +538,20 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 compliance_reason = "N/A"
 
                 if decision.get('direction') != 'NEUTRAL' and compliance:
+                    # v8.1: Build compliance context with IBKR market data
+                    from trading_bot.market_data_provider import format_market_context_for_prompt
+                    compliance_context = market_context_str
+                    ibkr_data_str = format_market_context_for_prompt(market_ctx)
+                    if ibkr_data_str:
+                        compliance_context += f"\n--- IBKR MARKET DATA ---\n{ibkr_data_str}\n"
+                    debate_summary = decision.get('debate_summary', '')
+
                     audit = await compliance.audit_decision(
                         reports,
-                        market_context_str,
+                        compliance_context,
                         decision,
-                        council.personas.get('master', '')
+                        council.personas.get('master', ''),
+                        debate_summary=debate_summary
                     )
 
                     if not audit.get('approved', True):
