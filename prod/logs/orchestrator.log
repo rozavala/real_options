@@ -10387,3 +10387,2030 @@ VERDICT: NO—do not proceed with a naked/linear bearish expression into an over
 2026-02-19 18:47:04,635 - Orchestrator - INFO - Connection pool released — no stale connections for Gateway restart
 2026-02-19 18:47:04,637 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
 2026-02-19 18:47:04,650 - Orchestrator - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-20 08:30:00 UTC. Waiting for 13.72 hours.
+2026-02-20 08:30:00,006 - Orchestrator - INFO - --- Running scheduled task: start_monitoring [start_monitoring] ---
+2026-02-20 08:30:00,015 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
+2026-02-20 08:30:00,018 - Orchestrator - INFO - Market is closed (weekend/holiday). Skipping position monitoring startup.
+2026-02-20 08:30:00,024 - Orchestrator - INFO - Next task 'process_deferred_triggers' (Process Deferred Triggers) scheduled for 2026-02-20 08:31:00 UTC. Waiting for 0.02 hours.
+2026-02-20 08:30:54,672 - Orchestrator - INFO - WeatherSentinel: trigger detected (source=WeatherSentinel, severity=7)
+2026-02-20 08:30:54,685 - trading_bot.state_manager - INFO - Queued deferred trigger from WeatherSentinel
+2026-02-20 08:30:54,685 - Orchestrator - INFO - Deferred WeatherSentinel trigger for market open
+2026-02-20 08:31:00,001 - Orchestrator - INFO - --- Running scheduled task: process_deferred_triggers [process_deferred_triggers] ---
+2026-02-20 08:31:00,007 - Orchestrator - INFO - Market is closed. Skipping deferred trigger processing.
+2026-02-20 08:31:00,013 - Orchestrator - INFO - Next task 'cleanup_orphaned_theses' (Daily Thesis Cleanup) scheduled for 2026-02-20 09:00:00 UTC. Waiting for 0.48 hours.
+2026-02-20 08:31:01,364 - Orchestrator - INFO - MacroContagionSentinel: trigger detected (source=MacroContagionSentinel, severity=7)
+2026-02-20 08:31:01,368 - trading_bot.state_manager - INFO - Queued deferred trigger from MacroContagionSentinel
+2026-02-20 08:31:01,368 - Orchestrator - INFO - Deferred MacroContagionSentinel trigger for market open
+2026-02-20 08:31:01,437 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-20 08:31:01,751 - trading_bot.budget_guard - INFO - Budget guard reset for 2026-02-20. Limit: $15.00
+2026-02-20 08:31:12,202 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-20 08:31:12,221 - Orchestrator - INFO - TopicDiscovery: 3 topics, No changes
+2026-02-20 08:35:12,447 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2975, market_open=False, trading_day=True
+2026-02-20 08:40:12,713 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2980, market_open=False, trading_day=True
+2026-02-20 08:45:12,967 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2985, market_open=False, trading_day=True
+2026-02-20 08:50:13,199 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2990, market_open=False, trading_day=True
+2026-02-20 08:55:13,397 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2995, market_open=False, trading_day=True
+2026-02-20 09:00:00,047 - Orchestrator - INFO - --- Running scheduled task: cleanup_orphaned_theses [cleanup_orphaned_theses] ---
+2026-02-20 09:00:00,308 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-20 09:00:00,312 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 271...
+2026-02-20 09:00:00,581 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 271
+2026-02-20 09:00:00,601 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-20 09:00:00,610 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-20 09:00:00,610 - trading_bot.connection_pool - INFO - Disconnecting IB (cleanup)...
+2026-02-20 09:00:03,631 - Orchestrator - INFO - Next task 'signal_open' (Signal: Open) scheduled for 2026-02-20 09:42:00 UTC. Waiting for 0.70 hours.
+2026-02-20 09:00:13,609 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3000, market_open=False, trading_day=True
+2026-02-20 09:05:14,715 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3005, market_open=False, trading_day=True
+2026-02-20 09:10:14,975 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3010, market_open=False, trading_day=True
+2026-02-20 09:15:15,227 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3015, market_open=True, trading_day=True
+2026-02-20 09:15:15,227 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-02-20 09:15:15,228 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 118...
+2026-02-20 09:15:15,648 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 118
+2026-02-20 09:15:15,657 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-20 09:15:15,657 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
+2026-02-20 09:15:15,658 - Orchestrator - INFO - 🔄 SENTINEL SAFETY NET: Market open but position monitor not running — starting it now
+2026-02-20 09:15:15,658 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
+2026-02-20 09:15:15,659 - Orchestrator - INFO - --- Starting position monitoring process ---
+2026-02-20 09:15:15,661 - Orchestrator - INFO - Successfully started position monitor with PID: 1258300
+2026-02-20 09:15:15,661 - Orchestrator - INFO - Started position monitoring service.
+2026-02-20 09:15:15,661 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-20 09:15:15,664 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 09:15:15,665 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 09:15:16,189 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-20 09:15:16,191 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-20 09:15:16,191 - Orchestrator - INFO - Refreshed contract cache: KCK6
+2026-02-20 09:15:16,192 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-02-20 09:15:16,192 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 209...
+2026-02-20 09:15:16,658 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 209
+2026-02-20 09:15:16,667 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-20 09:15:22,404 - Orchestrator - INFO - 2026-02-20 09:15:22,404 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 09:15:22,405 - Orchestrator - INFO - 2026-02-20 09:15:22,404 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 09:15:22,407 - Orchestrator - INFO - 2026-02-20 09:15:22,405 - trading_bot.connection_pool - INFO - Connecting IB (monitor) ID: 134...
+2026-02-20 09:15:22,633 - Orchestrator - INFO - 2026-02-20 09:15:22,631 - trading_bot.connection_pool - INFO - IB (monitor) connected successfully with ID 134
+2026-02-20 09:15:22,647 - Orchestrator - INFO - 2026-02-20 09:15:22,647 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-20 09:15:22,648 - Orchestrator - INFO - 2026-02-20 09:15:22,647 - __main__ - INFO - Position monitor connected and watching open positions.
+2026-02-20 09:15:22,648 - Orchestrator - INFO - 2026-02-20 09:15:22,647 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
+2026-02-20 09:15:22,648 - Orchestrator - INFO - 2026-02-20 09:15:22,647 - root - INFO - Order status and execution event handlers registered.
+2026-02-20 09:20:19,699 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3020, market_open=True, trading_day=True
+2026-02-20 09:25:20,662 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3025, market_open=True, trading_day=True
+2026-02-20 09:30:21,364 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3030, market_open=True, trading_day=True
+2026-02-20 09:35:22,315 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3035, market_open=True, trading_day=True
+2026-02-20 09:40:23,245 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3040, market_open=True, trading_day=True
+2026-02-20 09:42:00,005 - Orchestrator - INFO - --- Running scheduled task: signal_open [guarded_generate_orders] ---
+2026-02-20 09:42:00,146 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-20 09:42:00,146 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-20 09:42:00,146 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-20 09:42:00,154 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-20 09:42:00,173 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-20 09:42:00,378 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 22 created from CSV, 0 resolved from council_history
+2026-02-20 09:42:00,379 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-20 09:42:00,380 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-20 09:42:00,380 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-20 09:42:00,380 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-20 09:42:00,380 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-20 09:42:00,382 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 244...
+2026-02-20 09:42:00,695 - trading_bot.connection_pool - INFO - IB (drawdown_check) connected successfully with ID 244
+2026-02-20 09:42:00,700 - trading_bot.drawdown_circuit_breaker - INFO - Resetting DrawdownGuard for new day.
+2026-02-20 09:42:00,805 - trading_bot.drawdown_circuit_breaker - INFO - DrawdownGuard initialized. Starting Equity: $32,490.71
+2026-02-20 09:42:00,806 - trading_bot.connection_pool - INFO - Disconnecting IB (drawdown_check)...
+2026-02-20 09:42:03,833 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-02-20 09:42:03,834 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-02-20 09:42:03,835 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 145...
+2026-02-20 09:42:04,149 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 145
+2026-02-20 09:42:04,155 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-20 09:42:04,155 - OrderManager - INFO - Connected to IB for signal generation (purpose: orchestrator_orders).
+2026-02-20 09:42:04,155 - OrderManager - INFO - Step 1: Generating structured signals via Council...
+2026-02-20 09:42:04,155 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
+2026-02-20 09:42:04,262 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-20 09:42:04,262 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-20 09:42:04,262 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-20 09:42:04,269 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-20 09:42:04,284 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-20 09:42:04,441 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 20 created from CSV, 0 resolved from council_history
+2026-02-20 09:42:04,443 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-20 09:42:04,444 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-20 09:42:04,444 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-20 09:42:04,444 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-20 09:42:04,444 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-20 09:42:04,444 - trading_bot.agents - INFO - Grounded data cache invalidated (0 entries cleared). Next cycle will perform fresh searches.
+2026-02-20 09:42:04,444 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-20 09:42:04,444 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-20 09:42:04,444 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-20 09:42:04,446 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 09:42:04,446 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 09:42:04,551 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-20 09:42:04,551 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-20 09:42:04,551 - trading_bot.market_data_provider - INFO - Building market context for 5 contracts...
+2026-02-20 09:42:04,551 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-20 09:42:04,552 - trading_bot.market_data_provider - INFO - Building market context for KCN6 (202607)...
+2026-02-20 09:42:04,552 - trading_bot.market_data_provider - INFO - Building market context for KCU6 (202609)...
+2026-02-20 09:42:08,296 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=290.70, sma_200=331.70275000000004, regime=RANGE_BOUND, vol_5d=0.0245
+2026-02-20 09:42:08,297 - trading_bot.market_data_provider - INFO - Building market context for KCZ6 (202612)...
+2026-02-20 09:42:08,344 - trading_bot.market_data_provider - INFO - Market context for KCU6 (202609): price=281.85, sma_200=311.8765, regime=RANGE_BOUND, vol_5d=0.0236
+2026-02-20 09:42:08,345 - trading_bot.market_data_provider - INFO - Building market context for KCH7 (202703)...
+2026-02-20 09:42:08,416 - trading_bot.market_data_provider - INFO - Market context for KCN6 (202607): price=285.95, sma_200=321.9025, regime=RANGE_BOUND, vol_5d=0.0241
+2026-02-20 09:42:09,019 - trading_bot.market_data_provider - INFO - Market context for KCZ6 (202612): price=277.45, sma_200=304.12, regime=RANGE_BOUND, vol_5d=0.0231
+2026-02-20 09:42:09,120 - trading_bot.market_data_provider - INFO - Market context for KCH7 (202703): price=272.75, sma_200=298.867, regime=RANGE_BOUND, vol_5d=0.0220
+2026-02-20 09:42:09,120 - trading_bot.market_data_provider - INFO - Market context complete: 5/5 contracts successful
+2026-02-20 09:42:09,120 - trading_bot.signal_generator - INFO - Market context built for 5 contracts
+2026-02-20 09:42:09,120 - trading_bot.signal_generator - INFO - Convening Council for KCK6 (202605) (Cycle: KC-dd2219ee)...
+2026-02-20 09:42:09,120 - trading_bot.signal_generator - INFO - Convening Council for KCN6 (202607) (Cycle: KC-558d454e)...
+2026-02-20 09:42:09,120 - trading_bot.signal_generator - INFO - Convening Council for KCU6 (202609) (Cycle: KC-9783084a)...
+2026-02-20 09:42:10,309 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-20 09:42:10,310 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-20 09:42:10,769 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-20 09:42:10,769 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-20 09:42:11,202 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-20 09:42:11,202 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-20 09:42:11,562 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-20 09:42:11,563 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-20 09:42:11,884 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-20 09:42:11,884 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-20 09:42:12,222 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-20 09:42:12,222 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-20 09:42:12,559 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-20 09:42:12,559 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-20 09:42:12,928 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-20 09:42:12,928 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-20 09:42:13,332 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-20 09:42:13,332 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-20 09:42:13,669 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-20 09:42:13,669 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-20 09:42:14,104 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-20 09:42:14,104 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-20 09:42:14,439 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-20 09:42:14,439 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-20 09:42:14,930 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-20 09:42:14,931 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-20 09:42:15,272 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-20 09:42:15,272 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-20 09:42:15,616 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-20 09:42:15,616 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-20 09:42:15,995 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-20 09:42:15,995 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-20 09:42:16,311 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-20 09:42:16,312 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-20 09:42:16,658 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-20 09:42:16,658 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-20 09:42:16,998 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-20 09:42:16,998 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-20 09:42:17,367 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-20 09:42:17,367 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-20 09:42:17,890 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-20 09:42:17,891 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-20 09:42:18,227 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-20 09:42:18,227 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-20 09:42:18,558 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-20 09:42:18,558 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-20 09:42:18,905 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-20 09:42:18,905 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-20 09:42:47,463 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-20 09:43:13,863 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 4 bearish evidence words']
+2026-02-20 09:43:13,863 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 4 bearish evidence words']
+2026-02-20 09:43:13,863 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.33 (adjustment: 0.33)
+2026-02-20 09:43:28,282 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-20 09:43:52,587 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-20 09:43:54,485 - trading_bot.agents - WARNING - [agronomist] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 1 bearish evidence words']
+2026-02-20 09:43:54,485 - trading_bot.agents - WARNING - [agronomist] Validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 1 bearish evidence words']
+2026-02-20 09:43:54,486 - trading_bot.agents - INFO - [agronomist] Confidence clamped: 0.95 → 0.30 (adjustment: 0.30)
+2026-02-20 09:44:10,479 - trading_bot.signal_generator - INFO - Agent research complete for KCK6 (202605): 8/8 returned non-default results
+2026-02-20 09:44:10,479 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-20 09:44:10,482 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.7 = 1.67", "macro": "domain=1.5 \u00d7 reliability=0.5 = 0.77", "geopolitical": "domain=1.5 \u00d7 reliability=0.5 = 0.78", "supply_chain": "domain=1.5 \u00d7 reliability=1.1 = 1.68", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.09", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.27", "technical": "domain=1.0 \u00d7 reliability=1.1 = 1.17", "volatility": "domain=2.2 \u00d7 reliability=0.8 = 1.73"}
+2026-02-20 09:44:10,482 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.322, dominant=volatility)
+2026-02-20 09:44:10,483 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.74,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.67,
+    "contribution": -1.339
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.51,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.77,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.52,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.78,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.68,
+    "contribution": 1.342
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.73,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.09,
+    "contribution": -0.87
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.27,
+    "contribution": -1.02
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.17,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.77,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.73,
+    "contribution": -1.385
+  }
+]
+2026-02-20 09:44:12,601 - trading_bot.agents - WARNING - [supply_chain] Output validation issues: ['Direction-evidence mismatch: BULLISH call but 6 bearish vs 2 bullish evidence words']
+2026-02-20 09:44:12,601 - trading_bot.agents - WARNING - [supply_chain] Validation issues: ['Direction-evidence mismatch: BULLISH call but 6 bearish vs 2 bullish evidence words']
+2026-02-20 09:44:12,601 - trading_bot.agents - INFO - [supply_chain] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-20 09:44:24,007 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 2 bearish evidence words']
+2026-02-20 09:44:24,007 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 2 bearish evidence words']
+2026-02-20 09:44:24,007 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-20 09:44:55,661 - trading_bot.agents - WARNING - [technical] Output validation issues: ["Possible hallucination: 8 numbers not in grounded data: ['285', '371', '385']"]
+2026-02-20 09:44:55,662 - trading_bot.agents - WARNING - [technical] Validation issues: ["Possible hallucination: 8 numbers not in grounded data: ['285', '371', '385']"]
+2026-02-20 09:45:05,541 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-20 09:45:16,029 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Fundamental surplus signal from Brazil’s record-crop outlook
+2026-02-20 09:45:16,030 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-20 09:45:16,030 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-20 09:45:18,947 - trading_bot.signal_generator - INFO - Council Decision KCK6 (202605): BEARISH (0.7)
+2026-02-20 09:45:18,950 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-20 09:45:18,958 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-20 09:45:19,009 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.33, geopolitical: 0.15, inventory: 0.31, macro: 0.02, master_decision: 0.17, sentiment: 0.27, supply_chain: 0.62, technical: 0.33, volatility: 0.27}
+2026-02-20 09:45:19,080 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread with expensive vol (thesis=PLAUSIBLE)
+2026-02-20 09:45:19,080 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BEARISH)
+2026-02-20 09:45:19,080 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCK6
+2026-02-20 09:45:19,080 - trading_bot.signal_generator - INFO - Convening Council for KCZ6 (202612) (Cycle: KC-b10c92e2)...
+2026-02-20 09:45:19,930 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-20 09:45:19,930 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-20 09:45:19,931 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-02-20 09:45:20,634 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-20 09:45:20,635 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-20 09:45:20,635 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-02-20 09:45:21,343 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-20 09:45:21,704 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-20 09:45:21,705 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-20 09:45:21,705 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-02-20 09:45:22,399 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-20 09:45:22,400 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-20 09:45:22,400 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-02-20 09:45:22,757 - trading_bot.agents - WARNING - [supply_chain] Output validation issues: ['Direction-evidence mismatch: BULLISH call but 6 bearish vs 2 bullish evidence words']
+2026-02-20 09:45:22,757 - trading_bot.agents - WARNING - [supply_chain] Validation issues: ['Direction-evidence mismatch: BULLISH call but 6 bearish vs 2 bullish evidence words']
+2026-02-20 09:45:22,757 - trading_bot.agents - INFO - [supply_chain] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-20 09:45:23,472 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-20 09:45:23,472 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-20 09:45:23,472 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-02-20 09:45:24,151 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-20 09:45:24,151 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-20 09:45:24,151 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-02-20 09:45:25,313 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-20 09:45:25,313 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-20 09:45:25,653 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-20 09:45:25,653 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-20 09:45:26,418 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3045, market_open=True, trading_day=True
+2026-02-20 09:45:35,120 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 10 bullish vs 1 bearish evidence words']
+2026-02-20 09:45:35,120 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 10 bullish vs 1 bearish evidence words']
+2026-02-20 09:45:35,120 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-20 09:45:43,358 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 10 bullish vs 1 bearish evidence words']
+2026-02-20 09:45:43,359 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 10 bullish vs 1 bearish evidence words']
+2026-02-20 09:45:43,361 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-20 09:45:52,178 - trading_bot.signal_generator - INFO - Agent research complete for KCN6 (202607): 8/8 returned non-default results
+2026-02-20 09:45:52,179 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-20 09:45:52,180 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.7 = 1.67", "macro": "domain=1.5 \u00d7 reliability=0.5 = 0.77", "geopolitical": "domain=1.5 \u00d7 reliability=0.5 = 0.78", "supply_chain": "domain=1.5 \u00d7 reliability=1.1 = 1.68", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.09", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.27", "technical": "domain=1.0 \u00d7 reliability=1.1 = 1.17", "volatility": "domain=2.2 \u00d7 reliability=0.8 = 1.73"}
+2026-02-20 09:45:52,180 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.150, dominant=supply_chain)
+2026-02-20 09:45:52,181 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.74,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.67,
+    "contribution": -1.339
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.51,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.77,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.52,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.78,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.68,
+    "contribution": 1.342
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.73,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.09,
+    "contribution": -0.87
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.27,
+    "contribution": -1.02
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.17,
+    "contribution": -0.762
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.77,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.73,
+    "contribution": 1.125
+  }
+]
+2026-02-20 09:46:04,008 - trading_bot.agents - WARNING - [technical] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 4 bullish vs 1 bearish evidence words']
+2026-02-20 09:46:04,008 - trading_bot.agents - WARNING - [technical] Validation issues: ['Direction-evidence mismatch: BEARISH call but 4 bullish vs 1 bearish evidence words']
+2026-02-20 09:46:04,008 - trading_bot.agents - INFO - [technical] Confidence clamped: 0.74 → 0.30 (adjustment: 0.30)
+2026-02-20 09:46:04,392 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-20 09:46:44,828 - trading_bot.signal_generator - INFO - Agent research complete for KCU6 (202609): 8/8 returned non-default results
+2026-02-20 09:46:44,829 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-20 09:46:44,830 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.7 = 1.67", "macro": "domain=1.5 \u00d7 reliability=0.5 = 0.77", "geopolitical": "domain=1.5 \u00d7 reliability=0.5 = 0.78", "supply_chain": "domain=1.5 \u00d7 reliability=1.1 = 1.68", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.09", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.27", "technical": "domain=1.0 \u00d7 reliability=1.1 = 1.17", "volatility": "domain=2.2 \u00d7 reliability=0.8 = 1.73"}
+2026-02-20 09:46:44,830 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.297, dominant=volatility)
+2026-02-20 09:46:44,830 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.74,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.67,
+    "contribution": -1.339
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.51,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.77,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.52,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.78,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.68,
+    "contribution": 1.342
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.73,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.09,
+    "contribution": -0.87
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.27,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.17,
+    "contribution": -0.762
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.77,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.73,
+    "contribution": -1.385
+  }
+]
+2026-02-20 09:46:49,827 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-20 09:46:54,928 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Improving Brazil supply outlook (record Conab crop supported
+2026-02-20 09:46:54,929 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-20 09:46:54,930 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-20 09:46:57,170 - trading_bot.signal_generator - INFO - Council Decision KCN6 (202607): BEARISH (0.7)
+2026-02-20 09:46:57,181 - root - INFO - Logged council decision for KCN6 (202607)
+2026-02-20 09:46:57,186 - trading_bot.decision_signals - INFO - Decision signal logged: KCN6 (202607) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-20 09:46:57,249 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-20 09:46:57,249 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-20 09:46:57,249 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCN6
+2026-02-20 09:46:57,249 - trading_bot.signal_generator - INFO - Convening Council for KCH7 (202703) (Cycle: KC-dceb9f5d)...
+2026-02-20 09:46:58,105 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-20 09:46:58,105 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-20 09:46:58,106 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-02-20 09:46:59,178 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-20 09:46:59,178 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-20 09:46:59,179 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-02-20 09:46:59,889 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-20 09:47:00,242 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-20 09:47:00,242 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-20 09:47:00,243 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-02-20 09:47:01,310 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-20 09:47:01,310 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-20 09:47:01,310 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-02-20 09:47:02,569 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-20 09:47:02,569 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-20 09:47:02,569 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-02-20 09:47:02,953 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 10 bullish vs 1 bearish evidence words']
+2026-02-20 09:47:02,953 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 10 bullish vs 1 bearish evidence words']
+2026-02-20 09:47:02,953 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-20 09:47:03,709 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-20 09:47:03,710 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-20 09:47:03,710 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-02-20 09:47:04,776 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-20 09:47:04,777 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-20 09:47:05,140 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-20 09:47:05,140 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-20 09:47:05,148 - trading_bot.agents - WARNING - [volatility] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 4 bullish vs 1 bearish evidence words']
+2026-02-20 09:47:05,148 - trading_bot.agents - WARNING - [volatility] Validation issues: ['Direction-evidence mismatch: BEARISH call but 4 bullish vs 1 bearish evidence words']
+2026-02-20 09:47:05,148 - trading_bot.agents - INFO - [volatility] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-20 09:47:23,828 - trading_bot.signal_generator - INFO - Agent research complete for KCZ6 (202612): 8/8 returned non-default results
+2026-02-20 09:47:23,829 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-20 09:47:23,829 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.7 = 1.67", "macro": "domain=1.5 \u00d7 reliability=0.5 = 0.77", "geopolitical": "domain=1.5 \u00d7 reliability=0.5 = 0.78", "supply_chain": "domain=1.5 \u00d7 reliability=1.1 = 1.68", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.09", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.27", "technical": "domain=1.0 \u00d7 reliability=1.1 = 1.17", "volatility": "domain=2.2 \u00d7 reliability=0.8 = 0.48"}
+2026-02-20 09:47:23,830 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.313, dominant=supply_chain)
+2026-02-20 09:47:23,830 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.74,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.67,
+    "contribution": -1.339
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.51,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.77,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.52,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.78,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.68,
+    "contribution": 1.342
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.73,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.09,
+    "contribution": -0.87
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.27,
+    "contribution": -1.02
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.17,
+    "contribution": -0.762
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.3,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.77,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.48,
+    "contribution": -0.143
+  }
+]
+2026-02-20 09:47:39,232 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-20 09:47:52,162 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil supply outlook has improved materially (record Conab 
+2026-02-20 09:47:52,162 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-20 09:47:52,162 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-20 09:47:54,716 - trading_bot.signal_generator - INFO - Council Decision KCU6 (202609): BEARISH (0.7)
+2026-02-20 09:47:54,718 - root - INFO - Logged council decision for KCU6 (202609)
+2026-02-20 09:47:54,723 - trading_bot.decision_signals - INFO - Decision signal logged: KCU6 (202609) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-20 09:47:54,808 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread with expensive vol (thesis=PLAUSIBLE)
+2026-02-20 09:47:54,808 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BEARISH)
+2026-02-20 09:47:54,808 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCU6
+2026-02-20 09:48:28,485 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil crop outlook remains strongly favorable (record harve
+2026-02-20 09:48:28,486 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-20 09:48:28,486 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-20 09:48:30,494 - trading_bot.signal_generator - INFO - Council Decision KCZ6 (202612): BEARISH (0.7)
+2026-02-20 09:48:30,495 - root - INFO - Logged council decision for KCZ6 (202612)
+2026-02-20 09:48:30,499 - trading_bot.decision_signals - INFO - Decision signal logged: KCZ6 (202612) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-20 09:48:30,582 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread with expensive vol (thesis=PLAUSIBLE)
+2026-02-20 09:48:30,582 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BEARISH)
+2026-02-20 09:48:30,582 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCZ6
+2026-02-20 09:48:30,992 - trading_bot.signal_generator - INFO - Agent research complete for KCH7 (202703): 8/8 returned non-default results
+2026-02-20 09:48:30,992 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-20 09:48:30,993 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.7 = 1.67", "macro": "domain=1.5 \u00d7 reliability=0.5 = 0.77", "geopolitical": "domain=1.5 \u00d7 reliability=0.5 = 0.78", "supply_chain": "domain=1.5 \u00d7 reliability=1.1 = 1.68", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.09", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.27", "technical": "domain=1.0 \u00d7 reliability=1.1 = 1.17", "volatility": "domain=2.2 \u00d7 reliability=0.8 = 1.73"}
+2026-02-20 09:48:30,994 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=-0.050, dominant=supply_chain)
+2026-02-20 09:48:30,994 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.74,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.67,
+    "contribution": -1.339
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.51,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.77,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.52,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.78,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.68,
+    "contribution": 1.342
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.73,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.09,
+    "contribution": -0.87
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.27,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.17,
+    "contribution": -0.762
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.77,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.73,
+    "contribution": 1.125
+  }
+]
+2026-02-20 09:49:52,851 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil supply outlook remains decisively expansionary (recor
+2026-02-20 09:49:52,851 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=NEUTRAL → multiplier=1.0, adj_confidence=0.7
+2026-02-20 09:49:52,851 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-20 09:49:54,972 - trading_bot.signal_generator - INFO - Council Decision KCH7 (202703): BEARISH (0.7)
+2026-02-20 09:49:54,975 - root - INFO - Logged council decision for KCH7 (202703)
+2026-02-20 09:49:54,980 - trading_bot.decision_signals - INFO - Decision signal logged: KCH7 (202703) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-20 09:49:55,060 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-20 09:49:55,061 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-20 09:49:55,061 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCH7
+2026-02-20 09:49:55,065 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-02-20 09:49:55,067 - OrderManager - INFO - Generated 5 signals: [{'contract_month': '202605', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Market reality does not show a washout dip (24h +1.75%, 5-day +2.58%), so the decision hinges on whether the “near-term logistics squeeze” is strong enough to override the broader supply picture. The Bear’s argument is more grounded in the current data because it triangulates multiple independent, coffee-relevant supply indicators pointing the same direction: (1) Agronomy shows conditions are beneficial in the grain-filling stage with above-normal rain, supporting (rather than threatening) Conab’s record crop projection; (2) Inventory/flow evidence shows ICE-certified stocks rising and global exports higher recently, which is inconsistent with a sustained physical shortage narrative; (3) Positioning/volatility data describe a market that has already repriced lower on surplus expectations, with bearish skew still present.\n\nBy contrast, the Bull’s strongest point—Brazil’s January export plunge tied to Santos delays—does demonstrate *friction in exports*, but the evidence set does not prove this is an enduring, market-tightening supply shock rather than episodic bottlenecks. The geopolitical/logistics reports themselves are cautious/conditional and do not provide coffee-specific, persistent constraint metrics (queues, dwell times, multi-month inability to clear). Moreover, the Bull overreaches by treating BRL strength as “confirmed” producer withholding; the Macro report explicitly flags the lack of coffee-specific confirmation, and the observed accumulation in certified stocks undercuts the idea that supply is broadly being withheld from deliverable channels.\n\nRespecting trend/structure: price is still well below the 200-day SMA in a range-bound regime, which fits the Bear framing of a bounce within a larger bearish repricing. Technicals show no clear overbought condition (RSI neutral), so there is no strong technical buy trigger—only two-way risk.\n\nEvidence counting: the bearish case has more independent confirmation (weather/agronomy + production forecast + certified stocks + global exports + speculative unwind/put-heavy skew). The bullish case rests heavily on one channel (Santos delays) plus extrapolations (BRL incentives, “tight stocks now dominate”), with internal inconsistency in the stock narrative (ICE stocks rising vs “critical tightness”).\n\nVolatility-cost awareness: the volatility analyst does *not* say options are expensive; if anything, they’re described as relatively cheap versus realized moves. So there is no mandatory downgrade on that basis, but the conflicting near-term logistics risk keeps this from reaching PROVEN. [Consensus ALIGNED (Vote=BEARISH)] [VOL WARNING: Options expensive. Spread costs elevated. Thesis: PLAUSIBLE]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.7, 'price': 290.7, 'sma_200': 331.70275000000004, 'expected_price': 290.7, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202607', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/price-action check: 24h change is only mildly positive (+1.73%), so there is no “technical liquidation” constraint forcing caution on buying dips, but the broader context remains a post-breakdown market (recent multi-month/15‑month lows; price well below long-term averages). The small 24h/5-day bounce aligns with oversold/short-covering narratives rather than a confirmed regime change.\n\nEvidence counting (independent lines):\n1) Agronomist provides high-confidence, crop-stage-specific weather evidence (above-average rainfall during bean-filling) that supports Conab’s record 2026 production projection. This is a direct fundamental supply driver and is not dependent on market interpretation.\n2) Inventory shows ICE-certified stocks rising materially on a daily print and frames it as a leading indicator that acute tightness is easing; combined with a record crop forecast, this supports surplus/relief rather than scarcity.\n3) Sentiment/positioning shows liquidation/capitulation driving the selloff, with rebounds described as tactical short-covering in oversold territory—consistent with “bear market bounce” dynamics rather than a new bullish catalyst.\n4) Technicals remain bearish (downtrend, broken former support now resistance). Even the technical report concedes “oversold,” but still classifies the dominant trend as down.\n\nAdjudicating the debate: The Permabear is more grounded in the current data because their core claim matches the majority of hard fundamentals provided: (a) production outlook is improving with corroborated weather; (b) visible inventories are rising; (c) the recent price collapse/long liquidation supports that the market is responding to surplus expectations. The Permabull’s strongest point—Santos logistics constraints blocking shipments—has some evidence (export drop, vessel schedule changes, stated bags prevented), but it is weaker as a price-setting thesis here because (i) even the geopolitics/logistics specialist frames the congestion/blank sailings/TRACES issues as “neutral-to-slightly-tightening risk,” not a confirmed severe choke point, and (ii) the inventory build undercuts the idea that near-term deliverable supply is tightening in a way that must lift futures.\n\nThe “priced in” check: the market is not up >3% on the day, so we do not auto-dismiss bullish news as priced-in. Still, the bull’s evidence mostly explains why supply *might* be delayed, while the bear’s evidence speaks to why supply is *likely larger* and why tightness is easing—more durable drivers.\n\nVolatility cost awareness: the volatility analyst describes IV as elevated but “cheap vs HV,” not “options are expensive.” Therefore no mandatory downgrade applies. However, the presence of high IV and bearish skew supports the interpretation that downside fear remains and any bounce is likely corrective.\n\nNet: The bear wins on breadth and durability of evidence (weather + official crop projection + inventories + positioning/technicals). The bull’s logistics shock is real but, based on the cross-agent writeups, looks more like a timing/friction amplifier than an overwhelming new-weather or structural supply shock capable of overturning the improving production/inventory picture. [Consensus ALIGNED (Vote=BEARISH)]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 285.95, 'sma_200': 321.9025, 'expected_price': 285.95, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202609', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'The Bear’s case is more grounded in the current data because it relies on multiple independent, directly coffee-relevant signals pointing the same way: (1) Agronomy and Conab align on a high-supply setup (above-average rains during maturation and a record 2026 production projection), (2) inventories are not acting like an acute shortage (ICE certified stocks have built), and (3) market structure remains technically bearish with price well below the 200-day SMA and described as a persistent downtrend, even if there is a short-term bounce.\n\nThe Bull’s core catalyst is a Santos bottleneck. That is directionally plausible (Cecafé delay/backlog + January export drop), but it is less cleanly established as the dominant driver because the Geopolitical/ports data explicitly weakens the “acute, ongoing gridlock” claim (current waits and yard utilization look functional). The Bear also makes a stronger internal-consistency point: the reported backlog does not fully explain the export shortfall, implying the January export print may not be a pure logistics shock. In other words, the Bull has one strong line of evidence (Cecafé delays/exports), while the Bear has several corroborating lines (crop/weather, stocks, price action/technical trend) that better explain why the market has been repriced lower.\n\nTrend/respect-the-tape: the 24h move is only modestly up (not a liquidation event and not a “priced-in” melt-up), and the market remains below long-term trend. That supports treating the bounce as counter-trend rather than the start of a sustained bull leg.\n\nVolatility cost awareness: implied volatility is extremely elevated and inverted, which is consistent with near-term uncertainty and makes directional longs more costly/fragile. Per the framework, this downgrades conviction, preventing a “PROVEN” call despite strong bearish fundamentals. [Consensus ALIGNED (Vote=BEARISH)] [VOL WARNING: Options expensive. Spread costs elevated. Thesis: PLAUSIBLE]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.7, 'price': 281.85, 'sma_200': 311.8765, 'expected_price': 281.85, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202612', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/price-action check: The 24h move is only mildly positive (+1.48%), so there is no forced “buy the dip” or “priced-in breakout” signal from the decision framework. The broader setup is still a downtrend/oversold condition (well below the 200-day, weak momentum), making short-covering rallies plausible but not, by itself, a new bull market.\n\nOn the debate, the Bear is more grounded in the most direct, market-clearing data: (1) certified stocks are rising, which is hard evidence that some deliverable supply is reaching the system; (2) the agronomy/weather + Conab record-crop projection is corroborated by multiple independent sources (rains above normal; continued storms; prices recently at multi-month/15-month lows on “improved supply outlook”); and (3) sentiment/positioning evidence still supports a market dominated by liquidation and supply expectations rather than a confirmed, persistent shortage.\n\nThe Bull’s best point is that Santos congestion and January export weakness are real and could create near-term availability tightness, consistent with backwardation and the risk of episodic delays. However, the Bull over-extends this into an “override” of the supply picture without resolving the key contradiction the Bear highlights: if logistics are preventing large volumes from moving, the contemporaneous rise in exchange-certified stocks argues that tightness is not binding enough to stop deliverable coffee from accumulating. That makes logistics more like a volatility/timing catalyst (spreads, nearby squeezes) than a durable bullish fundamental.\n\nEvidence counting: Multiple independent lines (Agronomist + Inventory + Sentiment + parts of Technical) align on “big crop/ample supply expectations + bearish regime,” whereas the bullish case relies heavily on a single chokepoint thesis (Santos) that is contested by inventory behavior and even the geopolitics snapshot showing no acute queue at the same time. With the market regime labeled range-bound and momentum oversold, the most defensible stance is bearish on fundamentals but not “high-conviction proven” due to near-term squeeze risk.\n\nVolatility cost awareness: The volatility report frames options as relatively cheap vs realized (not expensive), so there is no required downgrade under the framework. [Consensus ALIGNED (Vote=BEARISH)] [VOL WARNING: Options expensive. Spread costs elevated. Thesis: PLAUSIBLE]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.7, 'price': 277.45, 'sma_200': 304.12, 'expected_price': 277.45, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202703', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/respect-the-tape: The 24h change is only mildly positive (+1.5%), so there is no forced “don’t-buy” liquidation signal; however the broader context remains a market coming off 15‑month lows and trading well below the 200‑day SMA in a range-bound regime—consistent with a bearish primary trend with occasional oversold bounces.\n\nEvidence counting (independent lines): The Bear is better grounded because multiple independent reports converge on a structural supply build: (1) Agronomist shows Minas Gerais has meaningful rainfall surplus with continued precipitation, supporting Conab’s record harvest projection; fungal risk is explicitly only “moderate” and not presented as yield-threatening in the packet. (2) Inventory shows ICE certified stocks rising, which directly weakens a near-term scarcity narrative even if the curve remains backwardated. (3) Technical confirms the market is still structurally weak versus long-term trend (below 200‑day), even while acknowledging oversold conditions can produce tactical relief rallies. These three are different mechanisms (weather/production, deliverable inventory, market structure/price trend) pointing in the same bearish direction.\n\nPriced-in check: There is no +3% upside spike that would force a “priced in” dismissal of bullish news. But the market already moved to 15‑month lows on the record-crop narrative, implying the dominant marginal driver has been supply expectations rather than logistics headlines.\n\nHegelian synthesis (bear vs bull): The Bull’s strongest contribution is that Santos frictions are real and can create episodic nearby tightness; the supply_chain report cites vessel delays and a January export drop, and the geopolitical report supports “tail risk” of peak-period congestion. But the Bull over-extends by treating this as overriding the structural harvest/inventory signals: the same geopolitical snapshot also shows manageable port conditions (short waits, moderate yard utilization) and the supply_chain note itself admits the backlog explains only part of the export shortfall—so the “acute chokehold” is not proven as the dominant driver of price.\n\nOverbought/oversold point: The Bear fairly notes oversold conditions and lightened length, but uses that to argue that even with conditions that could spark a squeeze, price action remains subdued—supporting the idea fundamentals are capping rallies. This aligns with the Technical report’s conclusion: don’t chase new shorts into weakness, but the broader bias remains negative.\n\nVolatility cost awareness: The Volatility analyst does not characterize options as expensive; rather, it flags IV rank around mid-level with downside skew. That does not force a downgrade under the rule, but it reinforces that the market is still paying for downside protection—consistent with bearish underlying sentiment rather than a clean bullish inflection.\n\nNet: The Bear’s case has more direct, commodity-specific, and mutually reinforcing evidence (crop outlook + inventories + trend). The Bull’s case relies on a near-term logistics squeeze that is plausible but not shown, in this dataset, to be both current and sufficiently large to dominate the supply narrative. [Consensus ALIGNED (Vote=NEUTRAL)]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 272.75, 'sma_200': 298.867, 'expected_price': 272.75, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}]
+2026-02-20 09:49:55,067 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-20 09:49:55,070 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 09:49:55,070 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 09:49:55,150 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-20 09:49:55,151 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-20 09:49:55,151 - OrderManager - INFO - Skipping KCH7: Too deferred (390 days > 365 max)
+2026-02-20 09:49:55,151 - OrderManager - INFO - Date filter passed: 4/5 contracts within 365 days.
+2026-02-20 09:49:55,151 - OrderManager - INFO - Checking liquidity for 4 contracts (parallel)...
+2026-02-20 09:49:57,654 - OrderManager - INFO - Liquidity check cleanup complete.
+2026-02-20 09:49:57,654 - OrderManager - INFO - Volume filter passed: 4 liquid candidates proceeding to signal generation.
+2026-02-20 09:49:57,724 - OrderManager - INFO - Account Value for Sizing: $32,490.71
+2026-02-20 09:49:57,726 - OrderManager - INFO - L1 RECONCILED: Reset committed capital from $1,556.25 to $0.00
+2026-02-20 09:49:57,727 - OrderManager - INFO - Requesting snapshot market price for KCK6...
+2026-02-20 09:49:57,769 - OrderManager - INFO - Using bid/ask midpoint for KCK6: 290.125
+2026-02-20 09:49:57,770 - root - INFO - Fetching option chain for future KCK6...
+2026-02-20 09:49:58,040 - root - INFO - --- Defining BEARISH Spread for KCK6 ---
+2026-02-20 09:49:58,041 - root - WARNING - No strikes near 290.125 meet min OI threshold (10). Using closest strike 290.0 anyway.
+2026-02-20 09:49:58,041 - root - INFO - Identified ATM strike: 290.0 for underlying price 290.125
+2026-02-20 09:49:58,041 - root - WARNING - No strikes near 285.86571875 meet min OI threshold (10). Using closest strike 285.0 anyway.
+2026-02-20 09:49:58,042 - root - INFO - Defined Bear Put Spread legs: BUY 290.0P, SELL 285.0P
+2026-02-20 09:49:58,043 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(0.6) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.510)
+2026-02-20 09:49:58,044 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-20 09:49:58,459 - root - INFO - Fetching market data for option: KOK6 P2.9
+2026-02-20 09:50:00,461 - root - INFO - Using IBKR Model Greeks IV: 37.95%
+2026-02-20 09:50:00,466 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 09:50:00,466 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 09:50:00,468 - root - INFO - Theoretical price calculated for P @ 290.0: {'price': np.float64(15.2109), 'delta': np.float64(-0.4557), 'gamma': np.float64(0.0098), 'vega': np.float64(42.1463), 'theta': np.float64(-0.1794)}
+2026-02-20 09:50:00,468 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 P2.9 @ 15.21
+2026-02-20 09:50:00,469 - root - INFO - Fetching market data for option: KOK6 P2.85
+2026-02-20 09:50:02,472 - root - INFO - Using IBKR Model Greeks IV: 38.04%
+2026-02-20 09:50:02,479 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 09:50:02,480 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 09:50:02,483 - root - INFO - Theoretical price calculated for P @ 285.0: {'price': np.float64(12.8288), 'delta': np.float64(-0.4067), 'gamma': np.float64(0.0096), 'vega': np.float64(41.2424), 'theta': np.float64(-0.1744)}
+2026-02-20 09:50:02,484 - root - INFO -   -> Leg Theoretical Price (SELL): KOK6 P2.85 @ 12.83
+2026-02-20 09:50:02,484 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (1.83) is 76.8% of theoretical price (2.38), which exceeds the max of 45.0%. Aborting order.
+2026-02-20 09:50:02,484 - OrderManager - INFO - Requesting snapshot market price for KCN6...
+2026-02-20 09:50:02,802 - OrderManager - INFO - Using bid/ask midpoint for KCN6: 285.275
+2026-02-20 09:50:02,803 - root - INFO - Fetching option chain for future KCN6...
+2026-02-20 09:50:02,862 - root - INFO - --- Defining BEARISH Spread for KCN6 ---
+2026-02-20 09:50:02,864 - root - WARNING - No strikes near 285.275 meet min OI threshold (10). Using closest strike 285.0 anyway.
+2026-02-20 09:50:02,865 - root - INFO - Identified ATM strike: 285.0 for underlying price 285.275
+2026-02-20 09:50:02,867 - root - WARNING - No strikes near 280.93483125 meet min OI threshold (10). Using closest strike 280.0 anyway.
+2026-02-20 09:50:02,867 - root - INFO - Defined Bear Put Spread legs: BUY 285.0P, SELL 280.0P
+2026-02-20 09:50:02,869 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.2) * Heat(1.0) * Conviction(1.0) = 2 (raw: 1.020)
+2026-02-20 09:50:02,870 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-20 09:50:03,195 - root - INFO - Fetching market data for option: KON6 P2.85
+2026-02-20 09:50:05,197 - root - INFO - Using IBKR Model Greeks IV: 38.11%
+2026-02-20 09:50:05,204 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 09:50:05,204 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 09:50:05,207 - root - INFO - Theoretical price calculated for P @ 285.0: {'price': np.float64(21.9915), 'delta': np.float64(-0.4332), 'gamma': np.float64(0.0065), 'vega': np.float64(62.1568), 'theta': np.float64(-0.1217)}
+2026-02-20 09:50:05,208 - root - INFO -   -> Leg Theoretical Price (BUY): KON6 P2.85 @ 21.99
+2026-02-20 09:50:05,208 - root - INFO - Fetching market data for option: KON6 P2.8
+2026-02-20 09:50:07,211 - root - INFO - Using IBKR Model Greeks IV: 38.14%
+2026-02-20 09:50:07,218 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 09:50:07,218 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 09:50:07,220 - root - INFO - Theoretical price calculated for P @ 280.0: {'price': np.float64(19.5386), 'delta': np.float64(-0.4005), 'gamma': np.float64(0.0064), 'vega': np.float64(61.0715), 'theta': np.float64(-0.1186)}
+2026-02-20 09:50:07,220 - root - INFO -   -> Leg Theoretical Price (SELL): KON6 P2.8 @ 19.54
+2026-02-20 09:50:07,221 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (2.42) is 98.7% of theoretical price (2.45), which exceeds the max of 45.0%. Aborting order.
+2026-02-20 09:50:07,221 - OrderManager - INFO - Requesting snapshot market price for KCU6...
+2026-02-20 09:50:07,544 - OrderManager - INFO - Using bid/ask midpoint for KCU6: 280.725
+2026-02-20 09:50:07,545 - root - INFO - Fetching option chain for future KCU6...
+2026-02-20 09:50:07,600 - root - INFO - --- Defining BEARISH Spread for KCU6 ---
+2026-02-20 09:50:07,601 - root - WARNING - No strikes near 280.725 meet min OI threshold (10). Using closest strike 280.0 anyway.
+2026-02-20 09:50:07,601 - root - INFO - Identified ATM strike: 280.0 for underlying price 280.725
+2026-02-20 09:50:07,601 - root - WARNING - No strikes near 275.99966875 meet min OI threshold (10). Using closest strike 275.0 anyway.
+2026-02-20 09:50:07,601 - root - INFO - Defined Bear Put Spread legs: BUY 280.0P, SELL 275.0P
+2026-02-20 09:50:07,603 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(0.6) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.510)
+2026-02-20 09:50:07,603 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-20 09:50:07,925 - root - INFO - Fetching market data for option: KOU6 P2.8
+2026-02-20 09:50:09,928 - root - INFO - Using IBKR Model Greeks IV: 37.94%
+2026-02-20 09:50:09,934 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 09:50:09,934 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 09:50:09,938 - root - INFO - Theoretical price calculated for P @ 280.0: {'price': np.float64(26.0988), 'delta': np.float64(-0.4152), 'gamma': np.float64(0.0053), 'vega': np.float64(75.788), 'theta': np.float64(-0.0978)}
+2026-02-20 09:50:09,938 - root - INFO -   -> Leg Theoretical Price (BUY): KOU6 P2.8 @ 26.10
+2026-02-20 09:50:09,938 - root - INFO - Fetching market data for option: KOU6 P2.75
+2026-02-20 09:50:11,939 - root - INFO - Using IBKR Model Greeks IV: 37.89%
+2026-02-20 09:50:11,942 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 09:50:11,942 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 09:50:11,944 - root - INFO - Theoretical price calculated for P @ 275.0: {'price': np.float64(23.5809), 'delta': np.float64(-0.3887), 'gamma': np.float64(0.0052), 'vega': np.float64(74.5067), 'theta': np.float64(-0.0952)}
+2026-02-20 09:50:11,944 - root - INFO -   -> Leg Theoretical Price (SELL): KOU6 P2.75 @ 23.58
+2026-02-20 09:50:11,944 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (5.39) is 214.1% of theoretical price (2.52), which exceeds the max of 45.0%. Aborting order.
+2026-02-20 09:50:11,945 - OrderManager - INFO - Requesting snapshot market price for KCZ6...
+2026-02-20 09:50:12,274 - OrderManager - INFO - Using bid/ask midpoint for KCZ6: 276.525
+2026-02-20 09:50:12,274 - root - INFO - Fetching option chain for future KCZ6...
+2026-02-20 09:50:12,329 - root - INFO - --- Defining BEARISH Spread for KCZ6 ---
+2026-02-20 09:50:12,329 - root - WARNING - No strikes near 276.525 meet min OI threshold (10). Using closest strike 277.5 anyway.
+2026-02-20 09:50:12,330 - root - INFO - Identified ATM strike: 277.5 for underlying price 276.525
+2026-02-20 09:50:12,330 - root - WARNING - No strikes near 273.55951875 meet min OI threshold (10). Using closest strike 272.5 anyway.
+2026-02-20 09:50:12,330 - root - INFO - Defined Bear Put Spread legs: BUY 277.5P, SELL 272.5P
+2026-02-20 09:50:12,332 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(0.6) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.510)
+2026-02-20 09:50:12,332 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-20 09:50:12,651 - root - INFO - Fetching market data for option: KOZ6 P2.775
+2026-02-20 09:50:14,654 - root - INFO - Using IBKR Model Greeks IV: 36.18%
+2026-02-20 09:50:14,658 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 09:50:14,659 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 09:50:14,660 - root - INFO - Theoretical price calculated for P @ 277.5: {'price': np.float64(30.0733), 'delta': np.float64(-0.4064), 'gamma': np.float64(0.0046), 'vega': np.float64(91.3971), 'theta': np.float64(-0.078)}
+2026-02-20 09:50:14,661 - root - INFO -   -> Leg Theoretical Price (BUY): KOZ6 P2.775 @ 30.07
+2026-02-20 09:50:14,661 - root - INFO - Fetching market data for option: KOZ6 P2.725
+2026-02-20 09:50:16,663 - root - INFO - Using IBKR Model Greeks IV: 36.15%
+2026-02-20 09:50:16,670 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 09:50:16,671 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 09:50:16,676 - root - INFO - Theoretical price calculated for P @ 272.5: {'price': np.float64(27.5411), 'delta': np.float64(-0.3837), 'gamma': np.float64(0.0045), 'vega': np.float64(89.9723), 'theta': np.float64(-0.076)}
+2026-02-20 09:50:16,678 - root - INFO -   -> Leg Theoretical Price (SELL): KOZ6 P2.725 @ 27.54
+2026-02-20 09:50:16,678 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (7.77) is 306.8% of theoretical price (2.53), which exceeds the max of 45.0%. Aborting order.
+2026-02-20 09:50:16,678 - OrderManager - WARNING - No active future for signal month 202703.
+2026-02-20 09:50:16,678 - OrderManager - INFO - --- Order generation complete. 0 orders queued. ---
+2026-02-20 09:50:16,917 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-20 09:50:16,919 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-20 09:50:19,921 - OrderManager - INFO - No orders were queued. Skipping placement step.
+2026-02-20 09:50:19,922 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-02-20 09:50:19,929 - Orchestrator - INFO - Next task 'signal_early' (Signal: Early) scheduled for 2026-02-20 12:01:00 UTC. Waiting for 2.18 hours.
+2026-02-20 09:50:27,616 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3050, market_open=True, trading_day=True
+2026-02-20 09:55:28,563 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3055, market_open=True, trading_day=True
+2026-02-20 10:00:29,312 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3060, market_open=True, trading_day=True
+2026-02-20 10:05:30,791 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3065, market_open=True, trading_day=True
+2026-02-20 10:10:31,469 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3070, market_open=True, trading_day=True
+2026-02-20 10:15:32,725 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3075, market_open=True, trading_day=True
+2026-02-20 10:20:33,959 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3080, market_open=True, trading_day=True
+2026-02-20 10:25:34,914 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3085, market_open=True, trading_day=True
+2026-02-20 10:30:35,896 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3090, market_open=True, trading_day=True
+2026-02-20 10:35:39,907 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3095, market_open=True, trading_day=True
+2026-02-20 10:40:40,882 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3100, market_open=True, trading_day=True
+2026-02-20 10:45:41,852 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3105, market_open=True, trading_day=True
+2026-02-20 10:50:42,847 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3110, market_open=True, trading_day=True
+2026-02-20 10:55:43,819 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3115, market_open=True, trading_day=True
+2026-02-20 11:00:44,505 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3120, market_open=True, trading_day=True
+2026-02-20 11:05:45,452 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3125, market_open=True, trading_day=True
+2026-02-20 11:10:46,417 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3130, market_open=True, trading_day=True
+2026-02-20 11:15:47,106 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3135, market_open=True, trading_day=True
+2026-02-20 11:20:48,103 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3140, market_open=True, trading_day=True
+2026-02-20 11:25:49,077 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3145, market_open=True, trading_day=True
+2026-02-20 11:30:49,800 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3150, market_open=True, trading_day=True
+2026-02-20 11:35:23,611 - Orchestrator - INFO - 2026-02-20 11:35:23,610 - root - INFO - Running Iron Condor thesis validation check...
+2026-02-20 11:35:23,651 - Orchestrator - INFO - 2026-02-20 11:35:23,650 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-20 11:35:23,788 - Orchestrator - INFO - 2026-02-20 11:35:23,788 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-20 11:36:17,247 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3155, market_open=True, trading_day=True
+2026-02-20 11:41:18,529 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3160, market_open=True, trading_day=True
+2026-02-20 11:46:19,768 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3165, market_open=True, trading_day=True
+2026-02-20 11:51:20,492 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3170, market_open=True, trading_day=True
+2026-02-20 11:56:21,276 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3175, market_open=True, trading_day=True
+2026-02-20 12:01:00,002 - Orchestrator - INFO - --- Running scheduled task: signal_early [guarded_generate_orders] ---
+2026-02-20 12:01:00,142 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-20 12:01:00,143 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-20 12:01:00,143 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-20 12:01:00,150 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-20 12:01:00,165 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-20 12:01:00,398 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 64 created from CSV, 0 resolved from council_history
+2026-02-20 12:01:00,400 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-20 12:01:00,400 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-20 12:01:00,401 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-20 12:01:00,401 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-20 12:01:00,401 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-20 12:01:00,401 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 240...
+2026-02-20 12:01:00,631 - trading_bot.connection_pool - INFO - IB (drawdown_check) connected successfully with ID 240
+2026-02-20 12:01:00,733 - trading_bot.connection_pool - INFO - Disconnecting IB (drawdown_check)...
+2026-02-20 12:01:03,762 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-02-20 12:01:03,764 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-02-20 12:01:03,765 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 147...
+2026-02-20 12:01:04,078 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 147
+2026-02-20 12:01:04,084 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-20 12:01:04,084 - OrderManager - INFO - Connected to IB for signal generation (purpose: orchestrator_orders).
+2026-02-20 12:01:04,084 - OrderManager - INFO - Step 1: Generating structured signals via Council...
+2026-02-20 12:01:04,084 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
+2026-02-20 12:01:04,189 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-20 12:01:04,189 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-20 12:01:04,189 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-20 12:01:04,194 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-20 12:01:04,204 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-20 12:01:04,401 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 64 created from CSV, 0 resolved from council_history
+2026-02-20 12:01:04,403 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-20 12:01:04,403 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-20 12:01:04,403 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-20 12:01:04,403 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-20 12:01:04,403 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-20 12:01:04,404 - trading_bot.agents - INFO - Grounded data cache invalidated (0 entries cleared). Next cycle will perform fresh searches.
+2026-02-20 12:01:04,404 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-20 12:01:04,404 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-20 12:01:04,404 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-20 12:01:04,406 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 12:01:04,406 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 12:01:04,511 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-20 12:01:04,511 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-20 12:01:04,511 - trading_bot.market_data_provider - INFO - Building market context for 5 contracts...
+2026-02-20 12:01:04,512 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-20 12:01:04,512 - trading_bot.market_data_provider - INFO - Building market context for KCN6 (202607)...
+2026-02-20 12:01:04,512 - trading_bot.market_data_provider - INFO - Building market context for KCU6 (202609)...
+2026-02-20 12:01:05,844 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=287.20, sma_200=331.68525, regime=RANGE_BOUND, vol_5d=0.0232
+2026-02-20 12:01:05,846 - trading_bot.market_data_provider - INFO - Building market context for KCZ6 (202612)...
+2026-02-20 12:01:05,890 - trading_bot.market_data_provider - INFO - Market context for KCN6 (202607): price=282.45, sma_200=321.885, regime=RANGE_BOUND, vol_5d=0.0229
+2026-02-20 12:01:05,891 - trading_bot.market_data_provider - INFO - Building market context for KCH7 (202703)...
+2026-02-20 12:01:05,960 - trading_bot.market_data_provider - INFO - Market context for KCU6 (202609): price=277.80, sma_200=311.85625, regime=RANGE_BOUND, vol_5d=0.0223
+2026-02-20 12:01:06,379 - trading_bot.market_data_provider - INFO - Market context for KCH7 (202703): price=270.30, sma_200=298.85474999999997, regime=RANGE_BOUND, vol_5d=0.0215
+2026-02-20 12:01:06,444 - trading_bot.market_data_provider - INFO - Market context for KCZ6 (202612): price=273.45, sma_200=304.1, regime=RANGE_BOUND, vol_5d=0.0219
+2026-02-20 12:01:06,445 - trading_bot.market_data_provider - INFO - Market context complete: 5/5 contracts successful
+2026-02-20 12:01:06,446 - trading_bot.signal_generator - INFO - Market context built for 5 contracts
+2026-02-20 12:01:06,446 - trading_bot.signal_generator - INFO - Convening Council for KCK6 (202605) (Cycle: KC-d7fb83bc)...
+2026-02-20 12:01:06,446 - trading_bot.signal_generator - INFO - Convening Council for KCN6 (202607) (Cycle: KC-94c61da8)...
+2026-02-20 12:01:06,446 - trading_bot.signal_generator - INFO - Convening Council for KCU6 (202609) (Cycle: KC-e86d72b9)...
+2026-02-20 12:01:07,312 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-20 12:01:07,313 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-20 12:01:07,671 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-20 12:01:07,671 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-20 12:01:08,068 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-20 12:01:08,068 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-20 12:01:08,435 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-20 12:01:08,435 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-20 12:01:08,783 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-20 12:01:08,783 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-20 12:01:09,143 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-20 12:01:09,143 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-20 12:01:09,494 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-20 12:01:09,494 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-20 12:01:09,829 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-20 12:01:09,830 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-20 12:01:10,156 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-20 12:01:10,157 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-20 12:01:10,486 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-20 12:01:10,487 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-20 12:01:10,829 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-20 12:01:10,829 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-20 12:01:11,183 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-20 12:01:11,183 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-20 12:01:11,572 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-20 12:01:11,573 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-20 12:01:11,922 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-20 12:01:11,923 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-20 12:01:12,256 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-20 12:01:12,256 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-20 12:01:12,612 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-20 12:01:12,613 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-20 12:01:12,939 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-20 12:01:12,939 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-20 12:01:13,294 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-20 12:01:13,295 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-20 12:01:13,635 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-20 12:01:13,635 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-20 12:01:13,970 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-20 12:01:13,970 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-20 12:01:14,339 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-20 12:01:14,339 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-20 12:01:14,690 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-20 12:01:14,690 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-20 12:01:15,053 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-20 12:01:15,053 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-20 12:01:15,391 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-20 12:01:15,391 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-20 12:01:22,234 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3180, market_open=True, trading_day=True
+2026-02-20 12:01:49,649 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-20 12:02:24,968 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-20 12:02:29,812 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-20 12:02:31,692 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-20 12:02:42,708 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 2 bearish evidence words']
+2026-02-20 12:02:42,708 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 2 bearish evidence words']
+2026-02-20 12:02:42,708 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-20 12:02:49,214 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-20 12:03:36,318 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 3 bearish evidence words', "Possible hallucination: 4 numbers not in grounded data: ['156', '198', '222']"]
+2026-02-20 12:03:36,318 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 3 bearish evidence words', "Possible hallucination: 4 numbers not in grounded data: ['156', '198', '222']"]
+2026-02-20 12:03:36,319 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-20 12:03:59,376 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-20 12:04:03,043 - trading_bot.signal_generator - INFO - Agent research complete for KCK6 (202605): 8/8 returned non-default results
+2026-02-20 12:04:03,044 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-20 12:04:03,045 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.7 = 1.67", "macro": "domain=1.5 \u00d7 reliability=0.5 = 0.77", "geopolitical": "domain=1.5 \u00d7 reliability=0.5 = 0.78", "supply_chain": "domain=1.5 \u00d7 reliability=1.1 = 1.68", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.09", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.27", "technical": "domain=1.0 \u00d7 reliability=1.1 = 1.17", "volatility": "domain=2.2 \u00d7 reliability=0.8 = 1.73"}
+2026-02-20 12:04:03,045 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.506, dominant=supply_chain)
+2026-02-20 12:04:03,046 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.74,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.67,
+    "contribution": -1.339
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.51,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.77,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.52,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.78,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.68,
+    "contribution": -1.342
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.73,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.09,
+    "contribution": -0.87
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.27,
+    "contribution": -0.829
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.17,
+    "contribution": -0.762
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.77,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.73,
+    "contribution": 0.0
+  }
+]
+2026-02-20 12:04:36,022 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 3 bearish evidence words']
+2026-02-20 12:04:36,023 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 3 bearish evidence words']
+2026-02-20 12:04:36,023 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-20 12:05:03,932 - trading_bot.signal_generator - INFO - Agent research complete for KCN6 (202607): 8/8 returned non-default results
+2026-02-20 12:05:03,932 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-20 12:05:03,934 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.7 = 1.67", "macro": "domain=1.5 \u00d7 reliability=0.5 = 0.77", "geopolitical": "domain=1.5 \u00d7 reliability=0.5 = 0.78", "supply_chain": "domain=1.5 \u00d7 reliability=1.1 = 1.68", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.09", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.27", "technical": "domain=1.0 \u00d7 reliability=1.1 = 1.17", "volatility": "domain=2.2 \u00d7 reliability=0.8 = 1.73"}
+2026-02-20 12:05:03,934 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=-0.075, dominant=supply_chain)
+2026-02-20 12:05:03,934 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.74,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.67,
+    "contribution": -1.339
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.51,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.77,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.52,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.78,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.68,
+    "contribution": 1.342
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.73,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.09,
+    "contribution": -0.87
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.27,
+    "contribution": -1.02
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.17,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.77,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.73,
+    "contribution": 1.125
+  }
+]
+2026-02-20 12:05:05,292 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil record-crop outlook (Conab/StoneX) increasingly confi
+2026-02-20 12:05:05,292 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-20 12:05:05,292 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-20 12:05:06,748 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-20 12:05:09,546 - trading_bot.agents - WARNING - [volatility] Output validation issues: ['Direction-evidence mismatch: BULLISH call but 7 bearish vs 0 bullish evidence words']
+2026-02-20 12:05:09,546 - trading_bot.agents - WARNING - [volatility] Validation issues: ['Direction-evidence mismatch: BULLISH call but 7 bearish vs 0 bullish evidence words']
+2026-02-20 12:05:09,547 - trading_bot.agents - INFO - [volatility] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-20 12:05:10,144 - trading_bot.signal_generator - INFO - Council Decision KCK6 (202605): BEARISH (0.7)
+2026-02-20 12:05:10,146 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-20 12:05:10,154 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-20 12:05:10,224 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=NEUTRAL)
+2026-02-20 12:05:10,224 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=NEUTRAL)
+2026-02-20 12:05:10,224 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCK6
+2026-02-20 12:05:10,224 - trading_bot.signal_generator - INFO - Convening Council for KCZ6 (202612) (Cycle: KC-1fe72836)...
+2026-02-20 12:05:11,113 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-20 12:05:11,114 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-20 12:05:11,114 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-02-20 12:05:11,838 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-20 12:05:11,839 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-20 12:05:11,839 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-02-20 12:05:12,621 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-20 12:05:13,000 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-20 12:05:13,000 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-20 12:05:13,000 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-02-20 12:05:14,145 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-20 12:05:14,145 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-20 12:05:14,145 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-02-20 12:05:14,882 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-20 12:05:14,882 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-20 12:05:14,882 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-02-20 12:05:15,256 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 3 bearish evidence words']
+2026-02-20 12:05:15,256 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 3 bearish evidence words']
+2026-02-20 12:05:15,256 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-20 12:05:16,028 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-20 12:05:16,028 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-20 12:05:16,028 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-02-20 12:05:17,105 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-20 12:05:17,105 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-20 12:05:17,497 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-20 12:05:17,497 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-20 12:05:50,078 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-20 12:06:10,031 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Gemini timed out after 60.0s
+2026-02-20 12:06:23,691 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3185, market_open=True, trading_day=True
+2026-02-20 12:06:50,661 - trading_bot.signal_generator - INFO - Agent research complete for KCU6 (202609): 8/8 returned non-default results
+2026-02-20 12:06:50,663 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-20 12:06:50,667 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.7 = 1.67", "macro": "domain=1.5 \u00d7 reliability=0.5 = 0.77", "geopolitical": "domain=1.5 \u00d7 reliability=0.5 = 0.78", "supply_chain": "domain=1.5 \u00d7 reliability=1.1 = 1.68", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.09", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.27", "technical": "domain=1.0 \u00d7 reliability=1.1 = 1.17", "volatility": "domain=2.2 \u00d7 reliability=0.8 = 1.73"}
+2026-02-20 12:06:50,668 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.353, dominant=supply_chain)
+2026-02-20 12:06:50,668 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.74,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.67,
+    "contribution": -1.339
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.51,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.77,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.52,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.78,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.68,
+    "contribution": 1.342
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.73,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.09,
+    "contribution": -0.87
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.27,
+    "contribution": -0.829
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.17,
+    "contribution": -0.762
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.77,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.73,
+    "contribution": -1.125
+  }
+]
+2026-02-20 12:06:54,323 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Improving and/or ample supply expectations (beneficial Brazi
+2026-02-20 12:06:54,325 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=NEUTRAL → multiplier=1.0, adj_confidence=0.7
+2026-02-20 12:06:54,325 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-20 12:06:57,243 - trading_bot.signal_generator - INFO - Council Decision KCN6 (202607): BEARISH (0.7)
+2026-02-20 12:06:57,245 - root - INFO - Logged council decision for KCN6 (202607)
+2026-02-20 12:06:57,249 - trading_bot.decision_signals - INFO - Decision signal logged: KCN6 (202607) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-20 12:06:57,311 - trading_bot.brier_bridge - WARNING - DEPRECATION: Legacy Brier system used 500 times. Will be removed after 2026-03-01 00:00:00+00:00
+2026-02-20 12:06:57,324 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-20 12:06:57,324 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-20 12:06:57,324 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCN6
+2026-02-20 12:06:57,324 - trading_bot.signal_generator - INFO - Convening Council for KCH7 (202703) (Cycle: KC-aaa08986)...
+2026-02-20 12:06:58,187 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-20 12:06:58,187 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-20 12:06:58,187 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-02-20 12:06:59,276 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-20 12:06:59,276 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-20 12:06:59,276 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-02-20 12:07:00,039 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-20 12:07:00,396 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-20 12:07:00,396 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-20 12:07:00,397 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-02-20 12:07:01,478 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-20 12:07:01,478 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-20 12:07:01,478 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-02-20 12:07:02,680 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-20 12:07:02,680 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-20 12:07:02,680 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-02-20 12:07:03,075 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 3 bearish evidence words']
+2026-02-20 12:07:03,075 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 3 bearish evidence words']
+2026-02-20 12:07:03,075 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-20 12:07:03,803 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-20 12:07:03,803 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-20 12:07:03,803 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-02-20 12:07:04,945 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-20 12:07:04,945 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-20 12:07:05,294 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-20 12:07:05,294 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-20 12:07:24,992 - trading_bot.signal_generator - INFO - Agent research complete for KCZ6 (202612): 8/8 returned non-default results
+2026-02-20 12:07:24,992 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-20 12:07:24,993 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.5 \u00d7 reliability=0.9 = 1.35", "macro": "domain=1.5 \u00d7 reliability=0.7 = 0.97", "geopolitical": "domain=1.5 \u00d7 reliability=0.7 = 0.97", "supply_chain": "domain=1.5 \u00d7 reliability=1.0 = 1.53", "inventory": "domain=1.5 \u00d7 reliability=0.8 = 1.28", "sentiment": "domain=1.5 \u00d7 reliability=0.7 = 1.06", "technical": "domain=2.2 \u00d7 reliability=0.9 = 2.01", "volatility": "domain=1.0 \u00d7 reliability=0.7 = 0.78"}
+2026-02-20 12:07:24,994 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.230, dominant=agronomist)
+2026-02-20 12:07:24,994 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.9,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.35,
+    "contribution": -1.079
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.65,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.97,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.65,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.97,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.02,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.53,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.28,
+    "contribution": -1.024
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.71,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.06,
+    "contribution": -0.69
+  },
+  {
+    "agent": "technical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.89,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.01,
+    "contribution": 0.0
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.74,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.78,
+    "contribution": 0.506
+  }
+]
+2026-02-20 12:07:43,860 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-20 12:08:01,273 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil supply outlook is improving (Conab record-crop projec
+2026-02-20 12:08:01,273 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-20 12:08:01,273 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-20 12:08:03,463 - trading_bot.signal_generator - INFO - Council Decision KCU6 (202609): BEARISH (0.7)
+2026-02-20 12:08:03,465 - root - INFO - Logged council decision for KCU6 (202609)
+2026-02-20 12:08:03,476 - trading_bot.decision_signals - INFO - Decision signal logged: KCU6 (202609) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-20 12:08:03,549 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread with expensive vol (thesis=PLAUSIBLE)
+2026-02-20 12:08:03,549 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BEARISH)
+2026-02-20 12:08:03,549 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCU6
+2026-02-20 12:08:28,747 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil supply outlook improving (persistent Minas Gerais rai
+2026-02-20 12:08:28,747 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-20 12:08:28,748 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-20 12:08:30,998 - trading_bot.signal_generator - INFO - Council Decision KCZ6 (202612): BEARISH (0.7)
+2026-02-20 12:08:30,999 - root - INFO - Logged council decision for KCZ6 (202612)
+2026-02-20 12:08:31,003 - trading_bot.decision_signals - INFO - Decision signal logged: KCZ6 (202612) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-20 12:08:31,087 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-20 12:08:31,087 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-20 12:08:31,087 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCZ6
+2026-02-20 12:08:43,447 - trading_bot.signal_generator - INFO - Agent research complete for KCH7 (202703): 8/8 returned non-default results
+2026-02-20 12:08:43,448 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-20 12:08:43,449 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.7 = 1.67", "macro": "domain=1.5 \u00d7 reliability=0.5 = 0.77", "geopolitical": "domain=1.5 \u00d7 reliability=0.5 = 0.78", "supply_chain": "domain=1.5 \u00d7 reliability=1.1 = 1.68", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.09", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.27", "technical": "domain=1.0 \u00d7 reliability=1.1 = 1.17", "volatility": "domain=2.2 \u00d7 reliability=0.8 = 1.73"}
+2026-02-20 12:08:43,449 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.238, dominant=volatility)
+2026-02-20 12:08:43,450 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.74,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.67,
+    "contribution": -1.339
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.51,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.77,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.52,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.78,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.68,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.73,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.09,
+    "contribution": -0.87
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.27,
+    "contribution": -0.829
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 1.12,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.17,
+    "contribution": -0.762
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.77,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.73,
+    "contribution": 1.385
+  }
+]
+2026-02-20 12:09:47,053 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil supply outlook improving: Conab’s record crop project
+2026-02-20 12:09:47,054 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-20 12:09:47,054 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-20 12:09:49,100 - trading_bot.signal_generator - INFO - Council Decision KCH7 (202703): BEARISH (0.7)
+2026-02-20 12:09:49,102 - root - INFO - Logged council decision for KCH7 (202703)
+2026-02-20 12:09:49,107 - trading_bot.decision_signals - INFO - Decision signal logged: KCH7 (202703) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-20 12:09:49,191 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-20 12:09:49,191 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-20 12:09:49,191 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCH7
+2026-02-20 12:09:49,196 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-02-20 12:09:49,198 - OrderManager - INFO - Generated 5 signals: [{'contract_month': '202605', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Market trend/context does not force a contrarian call: 24h change is only slightly positive (+0.58%), and the broader tape remains depressed (15-month low; well below the 200-day SMA) with technicals still flagged as strong-sell. Against that backdrop, the Permabear’s case is more grounded in coffee-specific, supply-side fundamentals that are already translating into observable inventory: (1) two independent crop forecasts (Conab and StoneX) point to a record Brazil crop; (2) agronomy/weather evidence (beneficial rains during grain-fill) supports those forecasts rather than contradicting them; (3) ICE-certified stocks are rising, a concrete indicator the surplus narrative is moving from “projection” to “visible supply”; (4) price action/technicals align with a market that is repricing abundance, not reacting to an acute shortage.\n\nThe Permabull’s strongest points—export slump, Santos congestion, Red Sea rerouting, and BRL strength—are real but are less convincingly tied to a sustained coffee price lift. The specialist reports themselves repeatedly flag the causal-chain weakness: logistics friction is hard to translate into a durable shortage without proving it overwhelms inventory buffers and the incoming crop; BRL-commercialization evidence is soybean-based and only conditionally applicable to coffee; and the export drop can plausibly reflect seasonal/inter-harvest dynamics and buyer timing rather than a binding constraint. Moreover, the bull leans heavily on “oversold/short-covering” as a reversal trigger, but that’s a tactical argument that doesn’t outweigh the multi-source fundamental supply build unless a genuine new weather shock emerges (none is present; weather is currently beneficial).\n\nEvidence-counting favors the bear with multiple independent lines pointing the same direction (crop size projections, supportive weather, rising certified stocks, bearish technical regime). The bull’s evidence clusters around near-term friction and positioning/mean-reversion, and even the geopolitics/logistics and macro reports characterize those impacts as conditional/insufficiently quantified.\n\nVolatility-cost awareness also tempers conviction: options are described as relatively expensive, which argues against high-conviction directional positioning and downgrades what might otherwise be a stronger “proven” downtrend into a more cautious, but still bearish, thesis. [Consensus ALIGNED (Vote=BEARISH)]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.7, 'price': 287.2, 'sma_200': 331.68525, 'expected_price': 287.2, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202607', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/responsiveness check: There is no “technical liquidation” trigger in the last 24h (+0.36%) and the 5‑day move is small (+0.89%), so we don’t default to forced-selling logic or a dip-buy reflex. Market is range-bound and still well below the 200‑day SMA, consistent with a larger downtrend that has not reversed.\n\nOn the debate, the Bear is more grounded in the full packet because it relies on multiple direct, coffee-relevant fundamental lines that point the same way: (1) agronomy shows above-average rains in Minas during grain-filling, which the agronomist argues removes drought premium and is yield-supportive (bearish); (2) Conab’s record crop projection is a strong directional anchor for future balance (bearish); (3) inventory dynamics include meaningful certified stocks plus a sizable pending grading queue, and the inventory analyst’s core point is that backwardation/spot tightness is likely temporary as certification catches up (bearish); and (4) sentiment/positioning evidence shows long liquidation and falling open interest aligned with a market repricing toward better supply (bearish).\n\nBy contrast, the Bull’s central “supply shock/physical tightness” claim leans heavily on January export declines and attempts to infer scarcity by ruling out freight/port congestion. The geopolitical report itself cautions that causality for the export drop is unresolved, and Santos indicators (2‑day waits; manageable utilization) do not confirm an acute bottleneck. The supply_chain report’s inference (“therefore scarcity”) is plausible but not demonstrated; it also conflicts with evidence of easing global freight costs, which reduces the likelihood of export constraint from shipping conditions. In short: the export print is a fact, but the Bull’s explanation (structural, coffee-specific tightness) is not as well-proven as the Bear’s broader supply-improving case.\n\nHegelian synthesis: The Bull does make a valid tactical point that liquidation can precede sharp mean-reversion, and the volatility/technical notes support two-way risk in a range. However, the Bull does not conclusively prove a durable supply shock; meanwhile the Bear’s “risk premium removal + large crop + inventory pipeline catching up” is better supported and more directly tied to forward fundamentals.\n\nEvidence counting: Independent bearish supports come from agronomy (weather/yield), official crop outlook (Conab), inventory mechanics (pending grading + stocks), and positioning/price action (liquidation + multi-month lows). The bullish case has fewer independent pillars and depends on a contested attribution of export weakness.\n\nVolatility cost awareness: The volatility analyst describes options as cheap versus realized vol (not expensive), so there is no mandated downgrade. Still, high IV/backwardation implies noisy price action; that argues for moderation in conviction rather than flipping directional. [Consensus ALIGNED (Vote=NEUTRAL)]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 282.45, 'sma_200': 321.885, 'expected_price': 282.45, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202609', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/respect-the-tape: There is no technical-liquidation signal today (24h change mildly negative, not a crash), but the higher-level structure remains bearish: price is materially below the 200-day SMA and the market has recently printed multi-month lows. That makes “buying tightness” a tougher call unless the bull can prove a decisive, near-term supply shock.\n\nOn fundamentals, the Bear is more grounded in the current data. Multiple independent reports point the same direction: (1) Conab’s record 2026 production projection (inventory report, technical report, volatility report) is a clear forward supply headwind; (2) the agronomist’s weather read is not a bullish shock—rainfall is described as broadly beneficial during bean-filling, aligning with improved crop prospects and prior price weakness; (3) ICE certified stocks are rising, which undercuts the “acute nearby shortage is intensifying” framing (even if absolute levels remain low).\n\nThe Bull’s strongest pillar—January exports down sharply plus Santos delays—does show near-term flow tightness, but the evidentiary leap is that this must translate into a durable price-supportive shortage. The supply_chain report itself cautions against over-attributing the export drop to port congestion and suggests crop availability/withholding as a major driver. That makes the bull case more conditional: it depends on continued withholding/tight old-crop and persistent bottlenecks outweighing the increasingly bearish crop setup.\n\nPositioning/technicals: crowded shorts and neutral RSI do create squeeze risk, but the sentiment and volatility reports frame recent rebounds as countertrend short-covering within a still-dominant bearish backdrop. With options described as expensive (high IV), the cost of expressing bullish convexity is unfavorable; per the framework, that downgrades conviction.\n\nNet: The Bear presents more independent, directly coffee-relevant evidence (crop outlook + beneficial weather + trend + rising certified stocks + weak speculative positioning) than the Bull, whose thesis leans heavily on logistics/withholding and squeeze dynamics that are plausible but not proven to overwhelm the supply narrative. [Consensus ALIGNED (Vote=BEARISH)] [VOL WARNING: Options expensive. Spread costs elevated. Thesis: PLAUSIBLE]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.7, 'price': 277.8, 'sma_200': 311.85625, 'expected_price': 277.8, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202612', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Market reality check does not trigger the “technical liquidation” rule (24h change is only mildly negative and 5-day trend is flat), so this is primarily a fundamentals-and-positioning call.\n\nOn the debate, the Permabear is more grounded in the highest-specificity, coffee-direct data: (1) agronomics show a strong wet pattern in Minas Gerais through late February during bean-filling (AccuWeather/NOAA), which directly supports yield/bean size; (2) Conab projects a record Brazilian crop with Arabica up sharply, which is a clear structural headwind even if realized later; (3) ICE-certified stocks are rising, signaling improving deliverable availability; and (4) price action has been making lows and remains materially below the 200-day SMA in a range-bound regime, consistent with a market that has been de-risking on better supply expectations. The bear’s positioning point also aligns with the sentiment report: managed money reduced longs and added shorts, and the “oversold short-covering” described by multiple sources reads as a countertrend bounce rather than evidence of a durable bullish reversal.\n\nThe Permabull’s best evidence—January exports down sharply, Santos delays, and lean-ish ICE stocks—does support near-term tightness risk. However, the supply-chain and geopolitical reports themselves frame these as mixed and time-horizon dependent: logistics frictions are not proven to be worsening in real time, global container pricing is easing, and the EUDR postponement reduces a potential near-term disruption premium. The bull also leans on BRL strength and soybean selling behavior as support; the macro specialist explicitly flags this as indirect and not coffee-specific, so it is weaker as a decisive catalyst. Overall, the bull makes a valid “nearby tightness / relief rally” case, but it is less anchored to dominant, coffee-specific supply fundamentals that multiple independent agents (agronomist, inventory, sentiment; plus technical leaning cautious bearish) converge on.\n\nVolatility does not force a downgrade: the volatility analyst characterizes options as relatively cheap, not expensive, so there is no added penalty to conviction from volatility cost awareness.\n\nNet: The better-evidenced, multi-source narrative is that improved Brazilian weather + record crop expectations + rising certified stocks keep upside rallies tactical and vulnerable, making the bearish case more data-grounded than the bullish defense. [Consensus ALIGNED (Vote=BEARISH)]', 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 273.45, 'sma_200': 304.1, 'expected_price': 273.45, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202703', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Market reality does not signal forced liquidation (24h change only mildly negative; 5-day trend flat), so this is primarily a fundamentals/positioning decision rather than a “technical flush” decision. On the core question—what is most grounded in current data—the Permabear is better anchored to coffee-specific, directly price-relevant evidence across multiple independent channels: (1) fundamental supply: Conab’s record crop projection (with higher Arabica) is consistent with the Agronomist’s wet forecast during bean-filling and the broader ENSO transition reducing drought-tail-risk; (2) availability: ICE-certified stocks are rising, which is a direct observable tightening/loosening gauge; (3) market validation: prices making multi-month/15-month lows despite backwardation suggests the market is prioritizing forward supply improvement over residual spot tightness; (4) speculative flows/structure: COT shows longs falling and shorts rising, and price remains well below the 200-day average, consistent with a market that is not yet rebuilding durable upside momentum.\n\nThe Permabull’s strongest point is near-term physical tightness: sharply lower January exports and documented Santos delays, with backwardation consistent with some nearby scarcity. However, the bull case leans on logistics as an “override” of the crop/weather regime shift, and the evidence is mixed on immediacy and direction: container rates are falling (easing global shipping stress), record Santos throughput can indicate resilience as much as congestion, and the geopolitics item on Cape detours is not clearly linked to Brazil-to-consumer coffee routes (more indirect network effects). In short, the bull has a credible tactical bounce narrative (oversold + short-covering + shorts elevated), but weaker evidence that a durable supply shock is developing that would negate the improving Brazil crop/weather/inventory backdrop.\n\nVolatility costs also degrade directional conviction: implied volatility being characterized as expensive argues against paying up for upside exposure and reinforces that any bullish expression is better framed as tactical/volatility monetization rather than a high-conviction directional turn. Net: bear thesis wins on breadth and directness of evidence, but oversold/short-covering and logistical frictions prevent a “proven” level call. [Consensus ALIGNED (Vote=BEARISH)]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 270.3, 'sma_200': 298.85474999999997, 'expected_price': 270.3, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}]
+2026-02-20 12:09:49,198 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-20 12:09:49,201 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 12:09:49,202 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 12:09:49,317 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-20 12:09:49,318 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-20 12:09:49,318 - OrderManager - INFO - Skipping KCH7: Too deferred (390 days > 365 max)
+2026-02-20 12:09:49,318 - OrderManager - INFO - Date filter passed: 4/5 contracts within 365 days.
+2026-02-20 12:09:49,319 - OrderManager - INFO - Checking liquidity for 4 contracts (parallel)...
+2026-02-20 12:09:51,822 - OrderManager - INFO - Liquidity check cleanup complete.
+2026-02-20 12:09:51,822 - OrderManager - INFO - Volume filter passed: 4 liquid candidates proceeding to signal generation.
+2026-02-20 12:09:51,885 - OrderManager - INFO - Account Value for Sizing: $32,490.71
+2026-02-20 12:09:51,887 - OrderManager - INFO - Requesting snapshot market price for KCK6...
+2026-02-20 12:09:51,929 - OrderManager - INFO - Using bid/ask midpoint for KCK6: 285.275
+2026-02-20 12:09:51,929 - root - INFO - Fetching option chain for future KCK6...
+2026-02-20 12:09:51,972 - root - INFO - --- Defining BEARISH Spread for KCK6 ---
+2026-02-20 12:09:51,973 - root - WARNING - No strikes near 285.275 meet min OI threshold (10). Using closest strike 285.0 anyway.
+2026-02-20 12:09:51,973 - root - INFO - Identified ATM strike: 285.0 for underlying price 285.275
+2026-02-20 12:09:51,974 - root - WARNING - No strikes near 280.93483125 meet min OI threshold (10). Using closest strike 280.0 anyway.
+2026-02-20 12:09:51,974 - root - INFO - Defined Bear Put Spread legs: BUY 285.0P, SELL 280.0P
+2026-02-20 12:09:51,976 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.0) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.850)
+2026-02-20 12:09:51,976 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-20 12:09:52,263 - root - INFO - Fetching market data for option: KOK6 P2.85
+2026-02-20 12:09:54,265 - root - INFO - Using IBKR Model Greeks IV: 38.00%
+2026-02-20 12:09:54,271 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 12:09:54,271 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 12:09:54,274 - root - INFO - Theoretical price calculated for P @ 285.0: {'price': np.float64(14.9002), 'delta': np.float64(-0.4542), 'gamma': np.float64(0.01), 'vega': np.float64(41.4236), 'theta': np.float64(-0.1765)}
+2026-02-20 12:09:54,274 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 P2.85 @ 14.90
+2026-02-20 12:09:54,274 - root - INFO - Fetching market data for option: KOK6 P2.8
+2026-02-20 12:09:56,276 - root - INFO - Using IBKR Model Greeks IV: 38.10%
+2026-02-20 12:09:56,282 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 12:09:56,283 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 12:09:56,285 - root - INFO - Theoretical price calculated for P @ 280.0: {'price': np.float64(12.5294), 'delta': np.float64(-0.4044), 'gamma': np.float64(0.0097), 'vega': np.float64(40.4959), 'theta': np.float64(-0.1714)}
+2026-02-20 12:09:56,285 - root - INFO -   -> Leg Theoretical Price (SELL): KOK6 P2.8 @ 12.53
+2026-02-20 12:09:56,286 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (1.60) is 67.5% of theoretical price (2.37), which exceeds the max of 45.0%. Aborting order.
+2026-02-20 12:09:56,286 - OrderManager - INFO - Requesting snapshot market price for KCN6...
+2026-02-20 12:09:56,601 - OrderManager - INFO - Using bid/ask midpoint for KCN6: 280.54999999999995
+2026-02-20 12:09:56,601 - root - INFO - Fetching option chain for future KCN6...
+2026-02-20 12:09:56,604 - root - INFO - --- Defining BEARISH Spread for KCN6 ---
+2026-02-20 12:09:56,605 - root - WARNING - No strikes near 280.54999999999995 meet min OI threshold (10). Using closest strike 280.0 anyway.
+2026-02-20 12:09:56,605 - root - INFO - Identified ATM strike: 280.0 for underlying price 280.54999999999995
+2026-02-20 12:09:56,605 - root - WARNING - No strikes near 276.0021625 meet min OI threshold (10). Using closest strike 275.0 anyway.
+2026-02-20 12:09:56,605 - root - INFO - Defined Bear Put Spread legs: BUY 280.0P, SELL 275.0P
+2026-02-20 12:09:56,606 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.2) * Heat(1.0) * Conviction(1.0) = 2 (raw: 1.020)
+2026-02-20 12:09:56,606 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-20 12:09:56,834 - root - INFO - Fetching market data for option: KON6 P2.8
+2026-02-20 12:09:58,835 - root - INFO - Using IBKR Model Greeks IV: 38.26%
+2026-02-20 12:09:58,841 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 12:09:58,841 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 12:09:58,842 - root - INFO - Theoretical price calculated for P @ 280.0: {'price': np.float64(21.5764), 'delta': np.float64(-0.4313), 'gamma': np.float64(0.0066), 'vega': np.float64(61.0764), 'theta': np.float64(-0.1199)}
+2026-02-20 12:09:58,843 - root - INFO -   -> Leg Theoretical Price (BUY): KON6 P2.8 @ 21.58
+2026-02-20 12:09:58,843 - root - INFO - Fetching market data for option: KON6 P2.75
+2026-02-20 12:10:00,844 - root - INFO - Using IBKR Model Greeks IV: 38.31%
+2026-02-20 12:10:00,848 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 12:10:00,849 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 12:10:00,851 - root - INFO - Theoretical price calculated for P @ 275.0: {'price': np.float64(19.1459), 'delta': np.float64(-0.3982), 'gamma': np.float64(0.0065), 'vega': np.float64(59.9677), 'theta': np.float64(-0.1169)}
+2026-02-20 12:10:00,852 - root - INFO -   -> Leg Theoretical Price (SELL): KON6 P2.75 @ 19.15
+2026-02-20 12:10:00,852 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (2.07) is 85.2% of theoretical price (2.43), which exceeds the max of 45.0%. Aborting order.
+2026-02-20 12:10:00,852 - OrderManager - INFO - Requesting snapshot market price for KCU6...
+2026-02-20 12:10:01,170 - OrderManager - INFO - Using bid/ask midpoint for KCU6: 276.075
+2026-02-20 12:10:01,171 - root - INFO - Fetching option chain for future KCU6...
+2026-02-20 12:10:01,173 - root - INFO - --- Defining BEARISH Spread for KCU6 ---
+2026-02-20 12:10:01,174 - root - WARNING - No strikes near 276.075 meet min OI threshold (10). Using closest strike 275.0 anyway.
+2026-02-20 12:10:01,174 - root - INFO - Identified ATM strike: 275.0 for underlying price 276.075
+2026-02-20 12:10:01,174 - root - WARNING - No strikes near 271.06593125 meet min OI threshold (10). Using closest strike 270.0 anyway.
+2026-02-20 12:10:01,174 - root - INFO - Defined Bear Put Spread legs: BUY 275.0P, SELL 270.0P
+2026-02-20 12:10:01,176 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(0.6) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.510)
+2026-02-20 12:10:01,176 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-20 12:10:01,440 - root - INFO - Fetching market data for option: KOU6 P2.75
+2026-02-20 12:10:03,442 - root - INFO - Using IBKR Model Greeks IV: 37.85%
+2026-02-20 12:10:03,449 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 12:10:03,450 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 12:10:03,452 - root - INFO - Theoretical price calculated for P @ 275.0: {'price': np.float64(25.4115), 'delta': np.float64(-0.4133), 'gamma': np.float64(0.0054), 'vega': np.float64(74.4536), 'theta': np.float64(-0.0958)}
+2026-02-20 12:10:03,453 - root - INFO -   -> Leg Theoretical Price (BUY): KOU6 P2.75 @ 25.41
+2026-02-20 12:10:03,453 - root - INFO - Fetching market data for option: KOU6 P2.7
+2026-02-20 12:10:05,455 - root - INFO - Using IBKR Model Greeks IV: 37.80%
+2026-02-20 12:10:05,463 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 12:10:05,463 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 12:10:05,467 - root - INFO - Theoretical price calculated for P @ 270.0: {'price': np.float64(22.9069), 'delta': np.float64(-0.3862), 'gamma': np.float64(0.0053), 'vega': np.float64(73.1398), 'theta': np.float64(-0.0932)}
+2026-02-20 12:10:05,467 - root - INFO -   -> Leg Theoretical Price (SELL): KOU6 P2.7 @ 22.91
+2026-02-20 12:10:05,467 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (4.31) is 172.1% of theoretical price (2.50), which exceeds the max of 45.0%. Aborting order.
+2026-02-20 12:10:05,467 - OrderManager - INFO - Requesting snapshot market price for KCZ6...
+2026-02-20 12:10:05,783 - OrderManager - INFO - Using bid/ask midpoint for KCZ6: 271.9
+2026-02-20 12:10:05,784 - root - INFO - Fetching option chain for future KCZ6...
+2026-02-20 12:10:05,828 - root - INFO - --- Defining BEARISH Spread for KCZ6 ---
+2026-02-20 12:10:05,829 - root - WARNING - No strikes near 271.9 meet min OI threshold (10). Using closest strike 272.5 anyway.
+2026-02-20 12:10:05,829 - root - INFO - Identified ATM strike: 272.5 for underlying price 271.9
+2026-02-20 12:10:05,830 - root - WARNING - No strikes near 268.625425 meet min OI threshold (10). Using closest strike 267.5 anyway.
+2026-02-20 12:10:05,830 - root - INFO - Defined Bear Put Spread legs: BUY 272.5P, SELL 267.5P
+2026-02-20 12:10:05,832 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.2) * Heat(1.0) * Conviction(1.0) = 2 (raw: 1.020)
+2026-02-20 12:10:05,832 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-20 12:10:06,145 - root - INFO - Fetching market data for option: KOZ6 P2.725
+2026-02-20 12:10:08,147 - root - INFO - Using IBKR Model Greeks IV: 36.11%
+2026-02-20 12:10:08,153 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 12:10:08,154 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 12:10:08,156 - root - INFO - Theoretical price calculated for P @ 272.5: {'price': np.float64(29.3239), 'delta': np.float64(-0.4048), 'gamma': np.float64(0.0046), 'vega': np.float64(89.7796), 'theta': np.float64(-0.0764)}
+2026-02-20 12:10:08,156 - root - INFO -   -> Leg Theoretical Price (BUY): KOZ6 P2.725 @ 29.32
+2026-02-20 12:10:08,156 - root - INFO - Fetching market data for option: KOZ6 P2.675
+2026-02-20 12:10:10,157 - root - INFO - Using IBKR Model Greeks IV: 36.08%
+2026-02-20 12:10:10,163 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 12:10:10,163 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 12:10:10,165 - root - INFO - Theoretical price calculated for P @ 267.5: {'price': np.float64(26.7976), 'delta': np.float64(-0.3816), 'gamma': np.float64(0.0046), 'vega': np.float64(88.3262), 'theta': np.float64(-0.0744)}
+2026-02-20 12:10:10,165 - root - INFO -   -> Leg Theoretical Price (SELL): KOZ6 P2.675 @ 26.80
+2026-02-20 12:10:10,165 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (7.16) is 283.4% of theoretical price (2.53), which exceeds the max of 45.0%. Aborting order.
+2026-02-20 12:10:10,165 - OrderManager - WARNING - No active future for signal month 202703.
+2026-02-20 12:10:10,165 - OrderManager - INFO - --- Order generation complete. 0 orders queued. ---
+2026-02-20 12:10:10,483 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-20 12:10:10,485 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-20 12:10:13,489 - OrderManager - INFO - No orders were queued. Skipping placement step.
+2026-02-20 12:10:13,489 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-02-20 12:10:13,499 - Orchestrator - INFO - Next task 'audit_mid_session' (Audit: Mid-Session) scheduled for 2026-02-20 13:52:00 UTC. Waiting for 1.70 hours.
+2026-02-20 12:11:24,699 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3190, market_open=True, trading_day=True
+2026-02-20 12:16:25,677 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3195, market_open=True, trading_day=True
+2026-02-20 12:21:26,673 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3200, market_open=True, trading_day=True
+2026-02-20 12:26:27,370 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3205, market_open=True, trading_day=True
+2026-02-20 12:31:28,911 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3210, market_open=True, trading_day=True
+2026-02-20 12:31:30,625 - Orchestrator - INFO - WeatherSentinel: trigger detected (source=WeatherSentinel, severity=9)
+2026-02-20 12:31:30,648 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-02-20 12:31:30,709 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: DROUGHT in Central Highlands: 0.0mm (BULLISH, FLOWERING stage) (Cycle: KC-7243fadc)
+2026-02-20 12:31:31,084 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-20 12:31:31,096 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-20 12:31:31,225 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-20 12:31:31,225 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-20 12:31:31,225 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-20 12:31:31,231 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-20 12:31:31,241 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-20 12:31:31,507 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 109 created from CSV, 0 resolved from council_history
+2026-02-20 12:31:31,509 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-20 12:31:31,510 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-20 12:31:31,510 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-20 12:31:31,510 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-20 12:31:31,510 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-20 12:31:31,510 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-20 12:31:31,514 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 12:31:31,515 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 12:31:31,605 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-20 12:31:31,606 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-20 12:31:31,607 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-20 12:31:36,095 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-20 12:31:36,679 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=286.00, sma_200=331.67925, regime=RANGE_BOUND, vol_5d=0.0231
+2026-02-20 12:31:36,679 - Orchestrator - INFO - Emergency market context: price=286.0, regime=RANGE_BOUND
+2026-02-20 12:31:36,679 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
+2026-02-20 12:31:36,680 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
+2026-02-20 12:31:36,680 - trading_bot.agents - INFO - Waking up agronomist...
+2026-02-20 12:31:37,094 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-20 12:31:37,094 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-20 12:31:39,026 - Orchestrator - INFO - MacroContagionSentinel: trigger detected (source=MacroContagionSentinel, severity=9)
+2026-02-20 12:31:39,045 - trading_bot.state_manager - INFO - Logged sentinel event from MacroContagionSentinel to history.
+2026-02-20 12:31:39,045 - Orchestrator - WARNING - Emergency cycle for MacroContagionSentinel queued (Lock active).
+2026-02-20 12:33:26,703 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-20 12:33:26,704 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=3.0 \u00d7 reliability=0.9 = 2.70", "macro": "domain=1.0 \u00d7 reliability=0.7 = 0.65", "geopolitical": "domain=0.5 \u00d7 reliability=0.7 = 0.32", "supply_chain": "domain=1.5 \u00d7 reliability=1.0 = 1.53", "inventory": "domain=1.5 \u00d7 reliability=0.8 = 1.28", "sentiment": "domain=1.0 \u00d7 reliability=0.7 = 0.71", "technical": "domain=2.2 \u00d7 reliability=0.9 = 2.01", "volatility": "domain=1.4 \u00d7 reliability=0.7 = 1.04"}
+2026-02-20 12:33:26,705 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.020, dominant=agronomist)
+2026-02-20 12:33:26,705 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 3.0,
+    "reliability_mult": 0.9,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.7,
+    "contribution": 2.158
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.65,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 0.65,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 0.5,
+    "reliability_mult": 0.65,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 0.32,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.02,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.53,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.28,
+    "contribution": -1.024
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.71,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 0.71,
+    "contribution": -0.46
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.89,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 2.01,
+    "contribution": -1.303
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.4,
+    "reliability_mult": 0.74,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.04,
+    "contribution": 0.831
+  }
+]
+2026-02-20 12:35:02,194 - trading_bot.agents - INFO - Master Decision: NEUTRAL | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Vietnam Central Highlands drought at flowering (0.0mm weekly
+2026-02-20 12:35:02,195 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.7)
+2026-02-20 12:35:02,197 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-20 12:35:02,199 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-20 12:35:02,199 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-20 12:35:02,201 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-20 12:35:02,211 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-20 12:35:02,213 - Orchestrator - INFO - Emergency Cycle ACTION: VOLATILITY (VOLATILITY)
+2026-02-20 12:35:02,213 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-20 12:35:02,213 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-20 12:35:09,215 - Orchestrator - WARNING - COMPLIANCE BLOCKED Emergency Trade: HALLUCINATION: The Decision Reasoning references '0.0mm weekly precipitation in Vietnam's Central Highlands during the FLOWERING stage' as a 'Sentinel trigger' and a core justification for acknowledging bullish weather risk. This specific precipitation measurement (0.0mm) does NOT appear in any of the provided reports. The Agronomist report mentions 'dry sunlight' and flowering conditions but provides NO numerical precipitation data. The reasoning also references a 'Sentinel' system/trigger that is not mentioned in any report. Additionally, the reasoning states 'record Vietnam domestic prices cited in the same report' - while the Agronomist does mention record domestic prices in Vietnam's Central Highlands on [2026-02-20], there is no connection made in that report to a 0.0mm precipitation measurement. The decision reasoning fabricates a specific quantitative weather data point that does not exist in the evidence base.
+2026-02-20 12:35:09,450 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-20 12:35:09,456 - Orchestrator - INFO - Post-cycle debounce: 1800s (actionable trade)
+2026-02-20 12:35:09,458 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by MacroContagionSentinel: Fed Policy Shock: HAWKISH_PIVOT - FOMC minutes released May 22 revealed that 'various' officials expressed a willingness to further tighten policy if inflation risks materialize, a more hawkish stance than previously signaled by Chair Powell. (Cycle: KC-36b86796)
+2026-02-20 12:35:09,680 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-20 12:35:09,796 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-20 12:35:09,796 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-20 12:35:09,796 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-20 12:35:09,802 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-20 12:35:09,812 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-20 12:35:10,064 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 88 created from CSV, 0 resolved from council_history
+2026-02-20 12:35:10,065 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-20 12:35:10,066 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-20 12:35:10,066 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-20 12:35:10,066 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-20 12:35:10,066 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-20 12:35:10,066 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-20 12:35:10,068 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-20 12:35:10,068 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-20 12:35:10,134 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-20 12:35:10,135 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-20 12:35:10,135 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-20 12:35:14,254 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-20 12:35:14,836 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=285.90, sma_200=331.67875, regime=RANGE_BOUND, vol_5d=0.0231
+2026-02-20 12:35:14,836 - Orchestrator - INFO - Emergency market context: price=285.9, regime=RANGE_BOUND
+2026-02-20 12:35:14,836 - trading_bot.semantic_cache - INFO - CACHE CROSS-SOURCE INVALIDATION: 1 entries removed for KCK6 (202605) (kept MacroContagionSentinel)
+2026-02-20 12:35:14,836 - trading_bot.agents - INFO - Running Specialized Cycle triggered by MacroContagionSentinel...
+2026-02-20 12:35:14,837 - trading_bot.agents - INFO - Routing to macro (Reason: Matched: MacroContagionSentinel/policy)
+2026-02-20 12:35:14,838 - trading_bot.agents - INFO - Waking up macro...
+2026-02-20 12:35:15,284 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-20 12:35:15,284 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-20 12:35:49,654 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'volatility', 'sentiment', 'geopolitical']
+2026-02-20 12:36:11,141 - trading_bot.agents - INFO - Cross-Cue Triggered: macro -> ['fundamentalist', 'volatility', 'sentiment', 'geopolitical']
+2026-02-20 12:36:11,141 - trading_bot.agents - INFO - Waking up cued agents: ['volatility', 'sentiment', 'geopolitical']
+2026-02-20 12:36:11,557 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-20 12:36:11,557 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-20 12:36:11,946 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-20 12:36:11,946 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-20 12:36:12,309 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-20 12:36:12,309 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-20 12:36:34,209 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-20 12:36:38,807 - trading_bot.agents - WARNING - [geopolitical] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 7 bullish vs 4 bearish evidence words']
+2026-02-20 12:36:38,808 - trading_bot.agents - WARNING - [geopolitical] Validation issues: ['Direction-evidence mismatch: BEARISH call but 7 bullish vs 4 bearish evidence words']
+2026-02-20 12:36:38,808 - trading_bot.agents - INFO - [geopolitical] Confidence clamped: 0.66 → 0.36 (adjustment: 0.36)
+2026-02-20 12:36:42,415 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3215, market_open=True, trading_day=True
+2026-02-20 12:37:34,265 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-02-20 12:38:13,513 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-20 12:38:13,515 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=0.5 \u00d7 reliability=0.9 = 0.45", "macro": "domain=3.0 \u00d7 reliability=0.7 = 1.94", "geopolitical": "domain=2.0 \u00d7 reliability=0.7 = 1.30", "supply_chain": "domain=1.0 \u00d7 reliability=1.0 = 1.02", "inventory": "domain=0.5 \u00d7 reliability=0.8 = 0.43", "sentiment": "domain=2.0 \u00d7 reliability=0.7 = 1.42", "technical": "domain=2.2 \u00d7 reliability=0.9 = 2.01", "volatility": "domain=1.4 \u00d7 reliability=0.7 = 1.04"}
+2026-02-20 12:38:13,515 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.536, dominant=technical)
+2026-02-20 12:38:13,515 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 0.5,
+    "reliability_mult": 0.9,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.45,
+    "contribution": 0.36
+  },
+  {
+    "agent": "macro",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 3.0,
+    "reliability_mult": 0.65,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.94,
+    "contribution": -1.259
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.0,
+    "reliability_mult": 0.65,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.3,
+    "contribution": -0.844
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "NEUTRAL",
+    "confidence": 0.8,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.02,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 1.02,
+    "contribution": 0.0
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 0.5,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 0.43,
+    "contribution": -0.341
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.0,
+    "reliability_mult": 0.71,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.42,
+    "contribution": -0.921
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.89,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 2.01,
+    "contribution": -1.303
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.4,
+    "reliability_mult": 0.74,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.04,
+    "contribution": -0.831
+  }
+]
+2026-02-20 12:39:22,874 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil’s record-crop supply outlook (Conab) validated by fav
+2026-02-20 12:39:50,844 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. This trade exhibits three cardinal sins of systematic failure: (1) We are selling at 15-month lows into a crowded consensus with explicit short-covering already underway—classic late-cycle entry. (2) We are conflating a Q2/Q3 2026 supply forecast with current February spot tightness, mistiming the trade by 8-16 weeks and ignoring the backwardation signal that the market is paying a premium for nearby coffee. (3) We have constructed a macro narrative (hawkish Fed/strong USD) from a single data point and assumed linear transmission to coffee without stress-testing USD reversal risk or measuring actual correlation strength. The 0.7 confidence is false precision built on confirmation bias—seven agents read the same Conab report and weather data, then voted in unison. The correct trade may indeed be bearish, but the correct entry is either (a) after a relief rally back to 310-320¢/lb resistance, giving better risk/reward, or (b) via a calendar spread (short deferred, long nearby) to monetize the backwardation while maintaining bearish structural view. Selling outright at 285.9¢/lb after a 17.42% monthly decline is picking up pennies in front of a short-squeeze steamroller.
+2026-02-20 12:39:50,846 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-20 12:39:50,848 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-20 12:39:50,849 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-20 12:39:50,849 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-20 12:39:50,852 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-20 12:39:50,857 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-20 12:39:51,040 - Orchestrator - INFO - Emergency Cycle concluded with no action: BEARISH (VOLATILITY)
+2026-02-20 12:39:51,042 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-20 12:41:42,580 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3220, market_open=True, trading_day=True
+2026-02-20 12:46:43,312 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3225, market_open=True, trading_day=True
+2026-02-20 12:51:44,560 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3230, market_open=True, trading_day=True
+2026-02-20 12:56:45,538 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3235, market_open=True, trading_day=True
