@@ -1,131 +1,164 @@
-2026-02-20 17:51:03,945 - Orchestrator - INFO - =============================================
-2026-02-20 17:51:03,945 - Orchestrator - INFO - === Starting Trading Bot Orchestrator [CC] ===
-2026-02-20 17:51:03,945 - Orchestrator - INFO - =============================================
-2026-02-20 17:51:03,945 - Orchestrator - INFO - Data directory: /home/rodrigo/real_options/data/CC
-2026-02-20 17:51:03,947 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-20 17:51:03,948 - Orchestrator - INFO - Applied commodity overrides for CC: ['commodity', 'strategy', 'risk_management']
-2026-02-20 17:51:03,948 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-20 17:51:03,948 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-20 17:51:03,948 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-20 17:51:03,949 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/CC
-2026-02-20 17:51:03,949 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-20 17:51:03,949 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-20 17:51:03,949 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/CC/tms
-2026-02-20 17:51:03,949 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-20 17:51:03,949 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-20 17:51:03,949 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-20 17:51:03,949 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-20 17:51:03,949 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/CC/research_provenance.log
-2026-02-20 17:51:03,955 - Orchestrator - WARNING - ============================================================
-2026-02-20 17:51:03,955 - Orchestrator - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
-2026-02-20 17:51:03,955 - Orchestrator - WARNING -   Client IDs: DEV range (10-79)
-2026-02-20 17:51:03,955 - Orchestrator - WARNING -   Trading Mode: LIVE
-2026-02-20 17:51:03,955 - Orchestrator - WARNING - ============================================================
-2026-02-20 17:51:03,955 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-20 17:51:03,955 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.06%)
-2026-02-20 17:51:03,955 - Orchestrator - INFO - Drawdown Guard initialized.
-2026-02-20 17:51:03,955 - Orchestrator - INFO - Expiry filter window: 45-365 DTE
-2026-02-20 17:51:04,105 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-02-20 17:51:04,111 - Orchestrator - INFO - Processing 3 deferred triggers from overnight
-2026-02-20 17:51:04,111 - trading_bot.connection_pool - INFO - Connecting IB (deferred) ID: 480 [REMOTE/PAPER]...
-2026-02-20 17:51:04,571 - trading_bot.connection_pool - INFO - IB (deferred) connected successfully with ID 480
-2026-02-20 17:51:04,577 - Orchestrator - INFO - Duplicate trigger detected: f83fc2f5
-2026-02-20 17:51:04,577 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): PriceSentinel
-2026-02-20 17:51:04,578 - Orchestrator - INFO - Duplicate trigger detected: 93817fef
-2026-02-20 17:51:04,578 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): XSentimentSentinel
-2026-02-20 17:51:04,578 - Orchestrator - INFO - Duplicate trigger detected: d60eba46
-2026-02-20 17:51:04,578 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
-2026-02-20 17:51:04,578 - Orchestrator - INFO - Deferred triggers complete: 0 processed, 3 skipped, 0 rejected (contaminated)
-2026-02-20 17:51:04,578 - trading_bot.connection_pool - INFO - Disconnecting IB (deferred)...
-2026-02-20 17:51:07,581 - Orchestrator - INFO - Built session schedule: 17 tasks for CC (04:45-13:30 ET)
-2026-02-20 17:51:07,582 - Orchestrator - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
-2026-02-20 17:51:07,586 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 8 scheduled tasks already passed:\n  - 04:00 ET: start_monitoring\n  - 04:01 ET: process_deferred_triggers\n  - 04:30 ET: cleanup_orphaned_theses\n  - 05:11 ET: signal_open\n  - 07:22 ET: signal_early\n  - 09:07 ET: audit_mid_session\n  - 09:33 ET: signal_mid\n  - 11:45 ET: signal_late
-2026-02-20 17:51:07,589 - Orchestrator - INFO - --- Recovery: Evaluating 8 missed tasks ---
-2026-02-20 17:51:07,589 - Orchestrator - INFO - 🔄 RECOVERY: Running missed start_monitoring [start_monitoring] (was scheduled 04:00 ET)
-2026-02-20 17:51:07,589 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
-2026-02-20 17:51:07,593 - Orchestrator - INFO - --- Starting position monitoring process ---
-2026-02-20 17:51:07,595 - Orchestrator - INFO - Successfully started position monitor with PID: 2225723
-2026-02-20 17:51:07,596 - Orchestrator - INFO - Started position monitoring service.
-2026-02-20 17:51:07,602 - Orchestrator - INFO - ✅ RECOVERY: start_monitoring completed
-2026-02-20 17:51:07,602 - Orchestrator - INFO - 🔄 RECOVERY: Running missed process_deferred_triggers [process_deferred_triggers] (was scheduled 04:01 ET)
-2026-02-20 17:51:07,606 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-02-20 17:51:07,608 - Orchestrator - INFO - No deferred triggers to process.
-2026-02-20 17:51:07,612 - Orchestrator - INFO - ✅ RECOVERY: process_deferred_triggers completed
-2026-02-20 17:51:07,612 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 04:30 ET)
-2026-02-20 17:51:07,612 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
-2026-02-20 17:51:07,614 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 474 [REMOTE/PAPER]...
-2026-02-20 17:51:07,798 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 474
-2026-02-20 17:51:07,874 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-20 17:51:08,145 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
-2026-02-20 17:51:08,286 - Orchestrator - INFO - Thesis cleanup: no orphans found
-2026-02-20 17:51:08,286 - trading_bot.connection_pool - INFO - Disconnecting IB (cleanup)...
-2026-02-20 17:51:11,299 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
-2026-02-20 17:51:11,299 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
-2026-02-20 17:51:11,299 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
-2026-02-20 17:51:11,300 - Orchestrator - INFO - 🔄 RECOVERY: Running missed audit_mid_session [run_position_audit_cycle] (was scheduled 09:07 ET)
-2026-02-20 17:51:11,300 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
-2026-02-20 17:51:11,303 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 456 [REMOTE/PAPER]...
-2026-02-20 17:51:11,636 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 456
-2026-02-20 17:51:11,647 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-20 17:51:11,672 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
-2026-02-20 17:51:11,719 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
-2026-02-20 17:51:11,766 - Orchestrator - INFO - No open positions to audit.
-2026-02-20 17:51:11,769 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
-2026-02-20 17:51:12,872 - Orchestrator - INFO - 2026-02-20 17:51:12,872 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-20 17:51:12,874 - Orchestrator - INFO - 2026-02-20 17:51:12,873 - __main__ - INFO - Position monitor connection attempt 1/5...
-2026-02-20 17:51:12,874 - Orchestrator - INFO - 2026-02-20 17:51:12,873 - trading_bot.connection_pool - INFO - Connecting IB (monitor) ID: 427 [REMOTE/PAPER]...
-2026-02-20 17:51:13,431 - Orchestrator - INFO - 2026-02-20 17:51:13,431 - trading_bot.connection_pool - INFO - IB (monitor) connected successfully with ID 427
-2026-02-20 17:51:13,437 - Orchestrator - INFO - 2026-02-20 17:51:13,436 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-20 17:51:13,438 - Orchestrator - INFO - 2026-02-20 17:51:13,437 - __main__ - INFO - Position monitor connected and watching open positions.
-2026-02-20 17:51:13,438 - Orchestrator - INFO - 2026-02-20 17:51:13,437 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
-2026-02-20 17:51:13,438 - Orchestrator - INFO - 2026-02-20 17:51:13,438 - root - INFO - Order status and execution event handlers registered.
-2026-02-20 17:51:13,630 - Orchestrator - INFO - 2026-02-20 17:51:13,630 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
-2026-02-20 17:51:14,777 - Orchestrator - INFO - ✅ RECOVERY: audit_mid_session completed
-2026-02-20 17:51:14,778 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
-2026-02-20 17:51:14,778 - Orchestrator - INFO - ✅ ALREADY RAN: signal_late completed earlier today (before restart). Skipping re-execution.
-2026-02-20 17:51:14,778 - Orchestrator - INFO - System restarted with 8 missed tasks.\n✅ 4 recovered | ⏭️ 0 skipped | ✔️ 4 already ran
-2026-02-20 17:51:15,119 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-20 17:51:15,517 - Orchestrator - INFO - Running TopicDiscoveryAgent on startup...
-2026-02-20 17:51:15,573 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-02-20 17:51:19,863 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
-2026-02-20 17:51:19,865 - Orchestrator - INFO - Startup TopicDiscovery: 3 topics, No changes
-2026-02-20 17:51:19,867 - Orchestrator - INFO - Next task 'audit_pre_close' (Audit: Pre-Close) scheduled for 2026-02-20 17:55:00 UTC. Waiting for 0.06 hours.
-2026-02-20 17:51:19,867 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-20 17:51:20,557 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
-2026-02-20 17:51:20,558 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 419 [REMOTE/PAPER]...
-2026-02-20 17:51:20,559 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-02-20 17:51:20,962 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 419
-2026-02-20 17:51:20,968 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-20 17:51:20,968 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
-2026-02-20 17:51:20,968 - root - INFO - Fetching 1 active futures contracts for CC on NYBOT...
-2026-02-20 17:51:20,974 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-20 17:51:21,050 - root - INFO - Skipping contract CCH6 (Exp: 20260316): Expires < 45 days.
-2026-02-20 17:51:21,053 - root - INFO - Found 9 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-02-20 17:51:21,053 - Orchestrator - INFO - Refreshed contract cache: CCK6
-2026-02-20 17:51:21,053 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-02-20 17:51:21,054 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 445 [REMOTE/PAPER]...
-2026-02-20 17:51:21,462 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 445
-2026-02-20 17:51:21,471 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-20 17:51:23,716 - Orchestrator - INFO - Emergency cycle BLOCKED (daily trading cutoff 12:12 ET): PriceSentinel — deferring to Monday
-2026-02-20 17:51:23,721 - trading_bot.state_manager - INFO - Queued deferred trigger from PriceSentinel
-2026-02-20 17:51:23,943 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-20 17:51:26,523 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-02-20 17:51:50,554 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=6)
-2026-02-20 17:51:50,569 - Orchestrator - INFO - Emergency cycle BLOCKED (daily trading cutoff 12:12 ET): XSentimentSentinel — deferring to Monday
-2026-02-20 17:51:50,573 - trading_bot.state_manager - INFO - Queued deferred trigger from XSentimentSentinel
-2026-02-20 17:51:50,833 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-20 17:52:12,047 - Orchestrator - INFO - MacroContagionSentinel: trigger detected (source=MacroContagionSentinel, severity=9)
-2026-02-20 17:52:12,072 - Orchestrator - INFO - Emergency cycle BLOCKED (daily trading cutoff 12:12 ET): MacroContagionSentinel — deferring to Monday
-2026-02-20 17:52:12,076 - trading_bot.state_manager - INFO - Queued deferred trigger from MacroContagionSentinel
-2026-02-20 17:52:12,668 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-20 17:55:00,004 - Orchestrator - INFO - --- Running scheduled task: audit_pre_close [run_position_audit_cycle] ---
-2026-02-20 17:55:00,009 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
-2026-02-20 17:55:00,010 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 457 [REMOTE/PAPER]...
-2026-02-20 17:55:00,575 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 457
-2026-02-20 17:55:00,581 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-20 17:55:00,592 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
-2026-02-20 17:55:01,136 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
-2026-02-20 17:55:01,335 - Orchestrator - INFO - No open positions to audit.
-2026-02-20 17:55:01,337 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
-2026-02-20 17:55:04,349 - Orchestrator - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-02-20 18:05:00 UTC. Waiting for 0.17 hours.
-2026-02-20 17:56:12,546 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=True, trading_day=True
+2026-02-20 18:28:20,533 - Orchestrator - INFO - =============================================
+2026-02-20 18:28:20,533 - Orchestrator - INFO - === Starting Trading Bot Orchestrator [CC] ===
+2026-02-20 18:28:20,533 - Orchestrator - INFO - =============================================
+2026-02-20 18:28:20,533 - Orchestrator - INFO - Data directory: /home/rodrigo/real_options/data/CC
+2026-02-20 18:28:20,535 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-20 18:28:20,536 - Orchestrator - INFO - Applied commodity overrides for CC: ['commodity', 'strategy', 'risk_management']
+2026-02-20 18:28:20,536 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-20 18:28:20,536 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-20 18:28:20,537 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-20 18:28:20,537 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/CC
+2026-02-20 18:28:20,537 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-20 18:28:20,537 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-20 18:28:20,537 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/CC/tms
+2026-02-20 18:28:20,537 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-20 18:28:20,537 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-20 18:28:20,537 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-20 18:28:20,537 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-20 18:28:20,538 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/CC/research_provenance.log
+2026-02-20 18:28:20,542 - Orchestrator - WARNING - ============================================================
+2026-02-20 18:28:20,543 - Orchestrator - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
+2026-02-20 18:28:20,543 - Orchestrator - WARNING -   Client IDs: DEV range (10-79)
+2026-02-20 18:28:20,543 - Orchestrator - WARNING -   Trading Mode: LIVE
+2026-02-20 18:28:20,543 - Orchestrator - WARNING - ============================================================
+2026-02-20 18:28:20,544 - Orchestrator - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-20 18:28:20,544 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.06%)
+2026-02-20 18:28:20,544 - Orchestrator - INFO - Drawdown Guard initialized.
+2026-02-20 18:28:20,545 - Orchestrator - INFO - Expiry filter window: 45-365 DTE
+2026-02-20 18:28:20,714 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-02-20 18:28:20,718 - Orchestrator - INFO - Processing 3 deferred triggers from overnight
+2026-02-20 18:28:20,719 - trading_bot.connection_pool - INFO - Connecting IB (deferred) ID: 483 [REMOTE/PAPER]...
+2026-02-20 18:28:21,089 - trading_bot.connection_pool - INFO - IB (deferred) connected successfully with ID 483
+2026-02-20 18:28:21,096 - Orchestrator - INFO - Duplicate trigger detected: 1f214ce2
+2026-02-20 18:28:21,096 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): PriceSentinel
+2026-02-20 18:28:21,096 - Orchestrator - INFO - Duplicate trigger detected: 2dab17ab
+2026-02-20 18:28:21,096 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): XSentimentSentinel
+2026-02-20 18:28:21,096 - Orchestrator - INFO - Duplicate trigger detected: 10b5d0ea
+2026-02-20 18:28:21,096 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
+2026-02-20 18:28:21,096 - Orchestrator - INFO - Deferred triggers complete: 0 processed, 3 skipped, 0 rejected (contaminated)
+2026-02-20 18:28:21,096 - trading_bot.connection_pool - INFO - Disconnecting IB (deferred)...
+2026-02-20 18:28:24,101 - Orchestrator - INFO - Built session schedule: 17 tasks for CC (04:45-13:30 ET)
+2026-02-20 18:28:24,101 - Orchestrator - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
+2026-02-20 18:28:24,104 - Orchestrator - WARNING - ⚠️ LATE START DETECTED: 12 scheduled tasks already passed:\n  - 04:00 ET: start_monitoring\n  - 04:01 ET: process_deferred_triggers\n  - 04:30 ET: cleanup_orphaned_theses\n  - 05:11 ET: signal_open\n  - 07:22 ET: signal_early\n  - 09:07 ET: audit_mid_session\n  - 09:33 ET: signal_mid\n  - 11:45 ET: signal_late\n  - 12:55 ET: audit_pre_close\n  - 13:05 ET: close_stale_primary\n  - 13:15 ET: close_stale_fallback\n  - 13:25 ET: emergency_hard_close
+2026-02-20 18:28:24,106 - Orchestrator - INFO - --- Recovery: Evaluating 12 missed tasks ---
+2026-02-20 18:28:24,106 - Orchestrator - INFO - 🔄 RECOVERY: Running missed start_monitoring [start_monitoring] (was scheduled 04:00 ET)
+2026-02-20 18:28:24,106 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
+2026-02-20 18:28:24,107 - Orchestrator - INFO - --- Starting position monitoring process ---
+2026-02-20 18:28:24,108 - Orchestrator - INFO - Successfully started position monitor with PID: 2228485
+2026-02-20 18:28:24,108 - Orchestrator - INFO - Started position monitoring service.
+2026-02-20 18:28:24,111 - Orchestrator - INFO - ✅ RECOVERY: start_monitoring completed
+2026-02-20 18:28:24,111 - Orchestrator - INFO - 🔄 RECOVERY: Running missed process_deferred_triggers [process_deferred_triggers] (was scheduled 04:01 ET)
+2026-02-20 18:28:24,113 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-02-20 18:28:24,113 - Orchestrator - INFO - No deferred triggers to process.
+2026-02-20 18:28:24,115 - Orchestrator - INFO - ✅ RECOVERY: process_deferred_triggers completed
+2026-02-20 18:28:24,116 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 04:30 ET)
+2026-02-20 18:28:24,116 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-20 18:28:24,116 - trading_bot.connection_pool - INFO - Connecting IB (cleanup) ID: 470 [REMOTE/PAPER]...
+2026-02-20 18:28:24,307 - trading_bot.connection_pool - INFO - IB (cleanup) connected successfully with ID 470
+2026-02-20 18:28:24,403 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-20 18:28:24,638 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-20 18:28:24,827 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-20 18:28:24,827 - trading_bot.connection_pool - INFO - Disconnecting IB (cleanup)...
+2026-02-20 18:28:27,840 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-20 18:28:27,840 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
+2026-02-20 18:28:27,841 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
+2026-02-20 18:28:27,841 - Orchestrator - INFO - 🔄 RECOVERY: Running missed audit_mid_session [run_position_audit_cycle] (was scheduled 09:07 ET)
+2026-02-20 18:28:27,841 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-20 18:28:27,844 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 459 [REMOTE/PAPER]...
+2026-02-20 18:28:28,165 - trading_bot.connection_pool - INFO - IB (audit) connected successfully with ID 459
+2026-02-20 18:28:28,176 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-20 18:28:28,214 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-20 18:28:28,226 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
+2026-02-20 18:28:28,230 - Orchestrator - INFO - No open positions to audit.
+2026-02-20 18:28:28,235 - trading_bot.connection_pool - INFO - Disconnecting IB (audit)...
+2026-02-20 18:28:31,257 - Orchestrator - INFO - ✅ RECOVERY: audit_mid_session completed
+2026-02-20 18:28:31,259 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
+2026-02-20 18:28:31,259 - Orchestrator - INFO - ✅ ALREADY RAN: signal_late completed earlier today (before restart). Skipping re-execution.
+2026-02-20 18:28:31,259 - Orchestrator - INFO - 🔄 RECOVERY: Running missed audit_pre_close [run_position_audit_cycle] (was scheduled 12:55 ET)
+2026-02-20 18:28:31,259 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-20 18:28:31,259 - Orchestrator - ERROR - Position Audit Cycle failed: Connection audit in backoff period
+Traceback (most recent call last):
+  File "/home/rodrigo/real_options/orchestrator.py", line 1596, in run_position_audit_cycle
+    ib = await IBConnectionPool.get_connection("audit", config)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rodrigo/real_options/trading_bot/connection_pool.py", line 148, in get_connection
+    raise ConnectionError(f"Connection {purpose} in backoff period")
+ConnectionError: Connection audit in backoff period
+2026-02-20 18:28:31,280 - Orchestrator - INFO - ✅ RECOVERY: audit_pre_close completed
+2026-02-20 18:28:31,280 - Orchestrator - INFO - 🔄 RECOVERY: Running missed close_stale_primary [close_stale_positions] (was scheduled 13:05 ET)
+2026-02-20 18:28:31,280 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-20 18:28:31,280 - OrderManager - INFO - --- Weekly Close Triggered: Friday Weekly Close. Closing ALL positions. ---
+2026-02-20 18:28:31,283 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 431 [REMOTE/PAPER]...
+2026-02-20 18:28:31,628 - Orchestrator - INFO - 2026-02-20 18:28:31,627 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-20 18:28:31,632 - Orchestrator - INFO - 2026-02-20 18:28:31,629 - __main__ - INFO - Position monitor connection attempt 1/5...
+2026-02-20 18:28:31,633 - Orchestrator - INFO - 2026-02-20 18:28:31,630 - trading_bot.connection_pool - INFO - Connecting IB (monitor) ID: 425 [REMOTE/PAPER]...
+2026-02-20 18:28:31,988 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 431
+2026-02-20 18:28:31,997 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-20 18:28:31,997 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-20 18:28:32,544 - OrderManager - INFO - Found 1 live position legs in the IB account.
+2026-02-20 18:28:32,545 - OrderManager - INFO -   Filtered to 0 positions with non-zero quantity (1 already closed/zero-qty excluded)
+2026-02-20 18:28:32,545 - OrderManager - INFO - All returned positions have zero quantity — nothing to close.
+2026-02-20 18:28:32,545 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-20 18:28:32,689 - Orchestrator - INFO - 2026-02-20 18:28:32,687 - trading_bot.connection_pool - INFO - IB (monitor) connected successfully with ID 425
+2026-02-20 18:28:32,693 - Orchestrator - INFO - 2026-02-20 18:28:32,693 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-20 18:28:32,694 - Orchestrator - INFO - 2026-02-20 18:28:32,694 - __main__ - INFO - Position monitor connected and watching open positions.
+2026-02-20 18:28:32,695 - Orchestrator - INFO - 2026-02-20 18:28:32,695 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
+2026-02-20 18:28:32,696 - Orchestrator - INFO - 2026-02-20 18:28:32,696 - root - INFO - Order status and execution event handlers registered.
+2026-02-20 18:28:32,793 - Orchestrator - INFO - 2026-02-20 18:28:32,792 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-20 18:28:35,554 - Orchestrator - INFO - ✅ RECOVERY: close_stale_primary completed
+2026-02-20 18:28:35,555 - Orchestrator - INFO - 🔄 RECOVERY: Running missed close_stale_fallback [close_stale_positions_fallback] (was scheduled 13:15 ET)
+2026-02-20 18:28:35,555 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-02-20 18:28:35,555 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-02-20 18:28:35,555 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-20 18:28:35,555 - OrderManager - INFO - --- Weekly Close Triggered: Friday Weekly Close. Closing ALL positions. ---
+2026-02-20 18:28:35,556 - OrderManager - WARNING - close_stale_positions connection attempt 1/3 failed: Connection orchestrator_orders in backoff period. Retrying in 5.0s...
+2026-02-20 18:28:35,556 - trading_bot.connection_pool - WARNING - FORCE RESETTING connection: orchestrator_orders
+2026-02-20 18:28:40,562 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 430 [REMOTE/PAPER]...
+2026-02-20 18:28:40,927 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 430
+2026-02-20 18:28:40,933 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-20 18:28:40,934 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-20 18:28:41,039 - OrderManager - INFO - Found 1 live position legs in the IB account.
+2026-02-20 18:28:41,039 - OrderManager - INFO -   Filtered to 0 positions with non-zero quantity (1 already closed/zero-qty excluded)
+2026-02-20 18:28:41,039 - OrderManager - INFO - All returned positions have zero quantity — nothing to close.
+2026-02-20 18:28:41,040 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-20 18:28:44,046 - Orchestrator - INFO - ✅ RECOVERY: close_stale_fallback completed
+2026-02-20 18:28:44,046 - Orchestrator - INFO - 🔄 RECOVERY: Running missed emergency_hard_close [emergency_hard_close] (was scheduled 13:25 ET)
+2026-02-20 18:28:44,047 - Orchestrator - INFO - --- Emergency Hard Close Check (T-45 min) ---
+2026-02-20 18:28:44,047 - Orchestrator - CRITICAL - Emergency hard close FAILED entirely: Connection orchestrator_orders in backoff period
+2026-02-20 18:28:44,467 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-20 18:28:44,476 - Orchestrator - INFO - ✅ RECOVERY: emergency_hard_close completed
+2026-02-20 18:28:44,476 - Orchestrator - INFO - System restarted with 12 missed tasks.\n✅ 8 recovered | ⏭️ 0 skipped | ✔️ 4 already ran
+2026-02-20 18:28:44,811 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-20 18:28:45,564 - Orchestrator - INFO - Running TopicDiscoveryAgent on startup...
+2026-02-20 18:28:45,621 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-20 18:28:49,228 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-20 18:28:49,233 - Orchestrator - INFO - Startup TopicDiscovery: 3 topics, No changes
+2026-02-20 18:28:49,235 - Orchestrator - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-02-20 18:35:00 UTC. Waiting for 0.10 hours.
+2026-02-20 18:28:49,235 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-20 18:28:49,782 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-02-20 18:28:49,782 - trading_bot.connection_pool - INFO - Connecting IB (sentinel) ID: 415 [REMOTE/PAPER]...
+2026-02-20 18:28:49,784 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-20 18:28:50,194 - trading_bot.connection_pool - INFO - IB (sentinel) connected successfully with ID 415
+2026-02-20 18:28:50,200 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-20 18:28:50,200 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
+2026-02-20 18:28:50,201 - root - INFO - Fetching 1 active futures contracts for CC on NYBOT...
+2026-02-20 18:28:50,204 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-20 18:28:50,277 - root - INFO - Skipping contract CCH6 (Exp: 20260316): Expires < 45 days.
+2026-02-20 18:28:50,278 - root - INFO - Found 9 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-20 18:28:50,278 - Orchestrator - INFO - Refreshed contract cache: CCK6
+2026-02-20 18:28:50,278 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-02-20 18:28:50,278 - trading_bot.connection_pool - INFO - Connecting IB (microstructure) ID: 446 [REMOTE/PAPER]...
+2026-02-20 18:28:50,644 - trading_bot.connection_pool - INFO - IB (microstructure) connected successfully with ID 446
+2026-02-20 18:28:50,650 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-20 18:28:52,893 - Orchestrator - INFO - Emergency cycle BLOCKED (daily trading cutoff 12:12 ET): PriceSentinel — deferring to Monday
+2026-02-20 18:28:52,896 - trading_bot.state_manager - INFO - Queued deferred trigger from PriceSentinel
+2026-02-20 18:28:53,257 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-20 18:28:55,768 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-20 18:29:19,747 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=7)
+2026-02-20 18:29:19,764 - Orchestrator - INFO - Emergency cycle BLOCKED (daily trading cutoff 12:12 ET): XSentimentSentinel — deferring to Monday
+2026-02-20 18:29:19,769 - trading_bot.state_manager - INFO - Queued deferred trigger from XSentimentSentinel
+2026-02-20 18:29:19,980 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-20 18:29:44,008 - Orchestrator - INFO - MacroContagionSentinel: trigger detected (source=MacroContagionSentinel, severity=9)
+2026-02-20 18:29:44,027 - Orchestrator - INFO - Emergency cycle BLOCKED (daily trading cutoff 12:12 ET): MacroContagionSentinel — deferring to Monday
+2026-02-20 18:29:44,030 - trading_bot.state_manager - INFO - Queued deferred trigger from MacroContagionSentinel
+2026-02-20 18:29:44,266 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
