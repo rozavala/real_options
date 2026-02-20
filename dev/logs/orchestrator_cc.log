@@ -741,3 +741,54 @@ TimeoutError
 2026-02-20 15:24:05,060 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=425, market_open=True, trading_day=True
 2026-02-20 15:25:18,890 - Orchestrator - INFO - 2026-02-20 15:25:18,889 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
 2026-02-20 15:29:05,813 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=430, market_open=True, trading_day=True
+2026-02-20 15:34:06,574 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=435, market_open=True, trading_day=True
+2026-02-20 15:35:18,999 - Orchestrator - INFO - 2026-02-20 15:35:18,999 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-20 15:39:07,357 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=440, market_open=True, trading_day=True
+2026-02-20 15:39:07,478 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 36% of average (Sev: 6)
+2026-02-20 15:39:07,485 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-20 15:44:08,124 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=445, market_open=True, trading_day=True
+2026-02-20 15:45:19,011 - Orchestrator - INFO - 2026-02-20 15:45:19,011 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-20 15:47:08,743 - Orchestrator - INFO - PriceSentinel detected 1.6% move - triggering position audit
+2026-02-20 15:47:08,813 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (PriceSentinel trigger (1.6% move)) ---
+2026-02-20 15:47:08,835 - trading_bot.connection_pool - INFO - Connecting IB (audit) ID: 458 [REMOTE/PAPER]...
+2026-02-20 15:47:08,856 - trading_bot.state_manager - INFO - Logged sentinel event from PriceSentinel to history.
+2026-02-20 15:47:08,864 - Orchestrator - WARNING - Drawdown Circuit Breaker ACTIVE (PANIC) - Skipping Emergency Cycle
+2026-02-20 15:47:08,865 - Orchestrator - INFO - Post-cycle debounce: 0s (gate-blocked (no debounce))
+2026-02-20 15:47:23,872 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-02-20 15:47:24,382 - trading_bot.connection_pool - ERROR - IB (audit) connection failed: . Next retry backoff: 20.0s
+2026-02-20 15:47:24,384 - Orchestrator - ERROR - Position Audit Cycle failed: 
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/asyncio/tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/rodrigo/real_options/orchestrator.py", line 1592, in run_position_audit_cycle
+    ib = await IBConnectionPool.get_connection("audit", config)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rodrigo/real_options/trading_bot/connection_pool.py", line 279, in get_connection
+    raise e
+  File "/home/rodrigo/real_options/trading_bot/connection_pool.py", line 187, in get_connection
+    await ib.connectAsync(
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py", line 1748, in connectAsync
+    await self.client.connectAsync(host, port, clientId, timeout)
+  File "/home/rodrigo/real_options/venv/lib/python3.12/site-packages/ib_insync/client.py", line 217, in connectAsync
+    await asyncio.wait_for(self.apiStart, timeout)
+  File "/usr/lib/python3.12/asyncio/tasks.py", line 519, in wait_for
+    async with timeouts.timeout(timeout):
+  File "/usr/lib/python3.12/asyncio/timeouts.py", line 115, in __aexit__
+    raise TimeoutError from exc_val
+TimeoutError
+2026-02-20 15:49:08,835 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=450, market_open=True, trading_day=True
+2026-02-20 15:50:29,624 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=7)
+2026-02-20 15:50:29,650 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
+2026-02-20 15:50:29,651 - Orchestrator - WARNING - Drawdown Circuit Breaker ACTIVE (PANIC) - Skipping Emergency Cycle
+2026-02-20 15:50:29,651 - Orchestrator - INFO - Post-cycle debounce: 0s (gate-blocked (no debounce))
+2026-02-20 15:53:29,805 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 49% of average (Sev: 5)
+2026-02-20 15:53:29,813 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-20 15:54:29,830 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=455, market_open=True, trading_day=True
+2026-02-20 15:55:19,085 - Orchestrator - INFO - 2026-02-20 15:55:19,083 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-20 15:59:30,017 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=460, market_open=True, trading_day=True
