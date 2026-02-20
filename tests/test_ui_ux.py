@@ -67,5 +67,43 @@ class TestCockpitUX(unittest.TestCase):
         self.assertTrue(found_progressive_enhancement,
                         "Did not find progressive enhancement pattern for error display")
 
+    def test_market_clock_tooltips(self):
+        """
+        Verify that the Market Clock Widget in pages/1_Cockpit.py has tooltips
+        displaying the date for "UTC Time" and "New York Time (Market)".
+        """
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '1_Cockpit.py')
+
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        found_utc = False
+        found_ny = False
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'metric':
+                # Check arguments
+                if not node.args:
+                    continue
+
+                label = None
+                if isinstance(node.args[0], ast.Constant):
+                    label = node.args[0].value
+
+                if label == "UTC Time":
+                    found_utc = True
+                    # Check for help keyword argument
+                    has_help = any(kw.arg == 'help' for kw in node.keywords)
+                    self.assertTrue(has_help, "UTC Time metric is missing 'help' tooltip with date")
+
+                if label == "New York Time (Market)":
+                    found_ny = True
+                    # Check for help keyword argument
+                    has_help = any(kw.arg == 'help' for kw in node.keywords)
+                    self.assertTrue(has_help, "New York Time metric is missing 'help' tooltip with date")
+
+        self.assertTrue(found_utc, "Could not find 'UTC Time' metric call")
+        self.assertTrue(found_ny, "Could not find 'New York Time (Market)' metric call")
+
 if __name__ == '__main__':
     unittest.main()
