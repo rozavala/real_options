@@ -1535,6 +1535,13 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         # Add to market context
         enriched_context = market_context + weighted_context
 
+        # v8.0 P3: Inject regime transition alert if detected
+        from trading_bot.weighted_voting import detect_regime_transition
+        regime_alert = detect_regime_transition(market_data)
+        if regime_alert:
+            enriched_context += regime_alert
+            logger.info("Regime transition alert injected into emergency cycle context")
+
         # Run Decision Loop with Context Injection
         decision = await self.decide(contract_name, market_data, final_reports, enriched_context, trigger_reason=trigger.reason, cycle_id=cycle_id, trigger=trigger)
 

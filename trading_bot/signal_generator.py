@@ -459,6 +459,13 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 except Exception as e:
                     logger.warning(f"Failed to check sensor status: {e}")
 
+                # v8.0 P3: Inject regime transition alert if detected
+                from trading_bot.weighted_voting import detect_regime_transition
+                regime_alert = detect_regime_transition(market_ctx)
+                if regime_alert:
+                    market_context_str += regime_alert
+                    logger.info("Regime transition alert injected into scheduled cycle context")
+
                 # Call decided (which now includes the Hegelian Loop)
                 decision = await council.decide(contract_name, market_ctx, reports, market_context_str)
 

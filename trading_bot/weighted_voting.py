@@ -322,6 +322,73 @@ class RegimeDetector:
             return 'UNKNOWN'
 
 
+def detect_regime_transition(market_data: dict) -> str:
+    """
+    Detect regime transitions from market data signals.
+
+    Looks for divergence between short-term momentum and longer-term trend,
+    which can indicate a regime change in progress.
+
+    Returns:
+        Empty string if no transition detected, or an alert string for injection.
+    """
+    try:
+        price_24h_pct = market_data.get('24h_change_pct', 0.0)
+        price_5d_pct = market_data.get('5d_change_pct', 0.0)
+        sma_50 = market_data.get('sma_50')
+        sma_200 = market_data.get('sma_200')
+        current_price = market_data.get('last_price') or market_data.get('price')
+
+        signals = []
+
+        # Signal 1: Short/long momentum divergence
+        # 24h moving one way while 5d trend is the other
+        if price_24h_pct and price_5d_pct:
+            if (price_24h_pct > 0.015 and price_5d_pct < -0.02):
+                signals.append("Short-term bounce (+{:.1%} 24h) against 5-day downtrend ({:.1%})".format(
+                    price_24h_pct, price_5d_pct))
+            elif (price_24h_pct < -0.015 and price_5d_pct > 0.02):
+                signals.append("Short-term selloff ({:.1%} 24h) against 5-day uptrend (+{:.1%})".format(
+                    price_24h_pct, price_5d_pct))
+
+        # Signal 2: Price crossing SMA (golden/death cross proximity)
+        if current_price and sma_50 and sma_200:
+            try:
+                price_f = float(current_price)
+                sma50_f = float(sma_50)
+                sma200_f = float(sma_200)
+                # Price recently crossed SMA-50
+                if abs(price_f - sma50_f) / sma50_f < 0.01:
+                    direction = "above" if price_f > sma50_f else "below"
+                    signals.append(f"Price near SMA-50 crossing ({direction})")
+                # SMA-50 near SMA-200 (golden/death cross zone)
+                if abs(sma50_f - sma200_f) / sma200_f < 0.02:
+                    direction = "golden cross" if sma50_f > sma200_f else "death cross"
+                    signals.append(f"SMA-50/200 convergence ({direction} zone)")
+            except (ValueError, TypeError, ZeroDivisionError):
+                pass
+
+        if not signals:
+            return ""
+
+        alert = (
+            "\n\n--- REGIME TRANSITION ALERT ---\n"
+            "Detected signals suggesting a potential regime change:\n"
+        )
+        for s in signals:
+            alert += f"  - {s}\n"
+        alert += (
+            "NOTE: This is informational. Momentum is the default state — "
+            "reversal requires independent fundamental confirmation.\n"
+            "--- END REGIME TRANSITION ALERT ---\n"
+        )
+        return alert
+
+    except Exception as e:
+        logger.debug(f"Regime transition detection failed (non-fatal): {e}")
+        return ""
+
+
 def detect_market_regime_simple(volatility_report: str, price_change_pct: float) -> str:
     """Detect current market regime for weight adjustment (Simple Fallback)."""
 
