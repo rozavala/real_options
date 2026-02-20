@@ -21,3 +21,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-12 - Progressive Enhancement for Copy Functionality
 **Learning:** `st.popover` (Streamlit v1.33+) provides a cleaner UX for secondary actions like "Copy ID" compared to `st.expander`.
 **Action:** Use `if hasattr(st, "popover"):` to conditionally render the modern UI, falling back to `st.expander` to ensure accessibility and functionality across different deployments.
+
+## 2026-02-20 - Contextual Timestamps for Data Freshness
+**Learning:** When displaying system state files (like `state.json`) in an administrative dashboard, providing a "Last Updated" timestamp is critical for user trust and debugging. It prevents users from making decisions based on stale data and allows them to verify if a recent automated process has successfully completed.
+**Action:** Always include `os.path.getmtime()` timestamps when rendering file contents or system state summaries. Use UTC formatting for consistency in globally distributed systems.

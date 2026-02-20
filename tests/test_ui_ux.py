@@ -105,5 +105,47 @@ class TestCockpitUX(unittest.TestCase):
         self.assertTrue(found_utc, "Could not find 'UTC Time' metric call")
         self.assertTrue(found_ny, "Could not find 'New York Time (Market)' metric call")
 
+class TestUtilitiesUX(unittest.TestCase):
+    def test_log_collection_safety_interlock(self):
+        """Verify safety interlock for Log Collection in pages/5_Utilities.py."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '5_Utilities.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        found_checkbox = False
+        found_button_disabled = False
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                if node.func.attr == 'checkbox':
+                    if any(isinstance(arg, ast.Constant) and "collect and archive logs" in str(arg.value) for arg in node.args):
+                        found_checkbox = True
+                if node.func.attr == 'button':
+                    if any(isinstance(arg, ast.Constant) and "Collect Logs" in str(arg.value) for arg in node.args):
+                        # Check for disabled=not confirm_logs
+                        for kw in node.keywords:
+                            if kw.arg == 'disabled' and isinstance(kw.value, ast.UnaryOp) and isinstance(kw.value.op, ast.Not):
+                                found_button_disabled = True
+
+        self.assertTrue(found_checkbox, "Log Collection missing safety interlock checkbox")
+        self.assertTrue(found_button_disabled, "Log Collection button not disabled by interlock")
+
+    def test_state_json_timestamp(self):
+        """Verify state.json timestamp display in pages/5_Utilities.py."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '5_Utilities.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        found_timestamp_caption = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'caption':
+                for arg in node.args:
+                    if isinstance(arg, ast.JoinedStr):
+                        for value in arg.values:
+                            if isinstance(value, ast.Constant) and "Last updated:" in str(value.value):
+                                found_timestamp_caption = True
+
+        self.assertTrue(found_timestamp_caption, "state.json view missing 'Last updated' timestamp caption")
+
 if __name__ == '__main__':
     unittest.main()

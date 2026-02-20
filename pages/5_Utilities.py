@@ -50,10 +50,13 @@ Collect and archive logs to the centralized logs branch for analysis and debuggi
 This captures orchestrator logs, dashboard logs, state files, and trading data.
 """)
 
+# Safety Interlock
+confirm_logs = st.checkbox("I confirm I want to collect and archive logs", key="confirm_logs")
 if st.button(
     "🚀 Collect Logs",
     type="primary",
-    help="Triggers the log collection script to archive system logs, state files, and trading data for analysis."
+    disabled=not confirm_logs,
+    help="Triggers the log collection script to archive system logs, state files, and trading data for analysis. This may take 2-3 minutes."
 ):
     with st.spinner(f"Collecting {current_env} logs..."):
         try:
@@ -506,6 +509,8 @@ with state_cols[0]:
             if os.path.exists(state_path):
                 with open(state_path, 'r') as f:
                     state_data = json.load(f)
+                    mtime = os.path.getmtime(state_path)
+                    st.caption(f"🕒 Last updated: {datetime.fromtimestamp(mtime, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC")
                     st.json(state_data)
             else:
                 st.warning("⚠️ state.json file not found")
