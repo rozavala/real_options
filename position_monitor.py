@@ -9,8 +9,10 @@ open positions against configured stop-loss and take-profit thresholds.
 
 import asyncio
 import logging
+import os
 import random
 import signal
+import sys
 import traceback
 
 from ib_insync import IB
@@ -101,6 +103,19 @@ async def main():
 
 
 if __name__ == "__main__":
+    # Guard: only run from the deployed directory, not from dev/CI clones.
+    # Prevents orphaned monitors when subprocesses are accidentally spawned
+    # from non-production working directories (e.g. Claude Code workspaces).
+    _expected_suffix = "/real_options"
+    _cwd = os.path.realpath(os.getcwd())
+    if not _cwd.endswith(_expected_suffix):
+        logger.error(
+            f"Position monitor refused to start: CWD '{_cwd}' does not end "
+            f"with '{_expected_suffix}'. This script should only run from the "
+            f"deployed directory."
+        )
+        sys.exit(1)
+
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
