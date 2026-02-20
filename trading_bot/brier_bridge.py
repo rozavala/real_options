@@ -204,23 +204,11 @@ def get_agent_reliability(agent_name: str, regime: str = "NORMAL", window: int =
             return 1.0
 
         # FIX (P1-B, 2026-02-04): Call the correct method on the tracker.
+        # v8.0: Tracker now handles cross-regime fallback internally (4-path).
+        # Bridge NORMAL fallback removed — would cause double-fallback confusion.
         from trading_bot.enhanced_brier import normalize_regime
         canonical_regime = normalize_regime(regime).value  # .value → string for dict lookup
         multiplier = tracker.get_agent_reliability(agent_name, canonical_regime)
-
-        # FIX (P0-REGIME, 2026-02-07): Regime fallback to NORMAL.
-        # Although we now normalize regime strings (harmonization complete),
-        # historical data may still be stored under "NORMAL" due to previous mismatches.
-        # This fallback ensures we don't return 1.0 (inert) when specific regime data
-        # is missing but general "NORMAL" data exists.
-        if multiplier == 1.0 and regime != "NORMAL":
-            fallback_mult = tracker.get_agent_reliability(agent_name, "NORMAL")
-            if fallback_mult != 1.0:
-                logger.info(
-                    f"Agent {agent_name}: No Brier data for regime={regime}, "
-                    f"using NORMAL fallback (multiplier={fallback_mult:.2f})"
-                )
-                multiplier = fallback_mult
 
         logger.debug(
             f"Agent {agent_name} reliability (regime={regime}): "

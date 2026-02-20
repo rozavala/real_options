@@ -55,33 +55,19 @@ class TestGetAgentReliability(unittest.TestCase):
         self.assertEqual(result, 1.5)
 
     @patch('trading_bot.brier_bridge._get_enhanced_tracker')
-    def test_regime_fallback_to_normal(self, mock_get_tracker):
-        # Mock tracker
+    def test_bridge_delegates_to_tracker_without_fallback(self, mock_get_tracker):
+        """v8.0: Bridge delegates directly to tracker — no NORMAL fallback."""
         mock_tracker = MagicMock()
         mock_get_tracker.return_value = mock_tracker
 
-        # Setup: HIGH_VOLATILITY returns 1.0 (no data), NORMAL returns 1.5
-        def side_effect(agent, regime):
-            if regime == "HIGH_VOL":
-                return 1.0
-            if regime == "NORMAL":
-                return 1.5
-            return 1.0
+        # Tracker returns 1.0 for HIGH_VOL (no regime-specific data)
+        mock_tracker.get_agent_reliability.return_value = 1.0
 
-        mock_tracker.get_agent_reliability.side_effect = side_effect
-
-        # Action: request for HIGH_VOLATILITY
         result = get_agent_reliability('agronomist', 'HIGH_VOLATILITY')
 
-        # Assert: should return NORMAL value (1.5)
-        self.assertEqual(result, 1.5)
-
-        # Verify both calls were made
-        expected_calls = [
-            unittest.mock.call('agronomist', 'HIGH_VOL'),
-            unittest.mock.call('agronomist', 'NORMAL')
-        ]
-        mock_tracker.get_agent_reliability.assert_has_calls(expected_calls)
+        # Bridge should NOT retry with NORMAL — tracker handles cross-regime internally
+        self.assertEqual(result, 1.0)
+        mock_tracker.get_agent_reliability.assert_called_once_with('agronomist', 'HIGH_VOL')
 
 
 class TestRecordAgentPrediction(unittest.TestCase):

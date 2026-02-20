@@ -193,5 +193,47 @@ class TestEnhancedBrierMath(unittest.TestCase):
         # Ensure unknown returns NORMAL
         self.assertEqual(normalize_regime("SUPER_WEIRD_MARKET"), MarketRegime.NORMAL)
 
+    # === v8.0: 4-Path Fallback Tests ===
+
+    def test_cross_regime_blend_when_specific_regime_sparse(self):
+        """Path 2: Agent has <5 scores in requested regime but >=5 total across others."""
+        agent = "blend_agent"
+        # 2 scores in HIGH_VOL (too few for path 1)
+        # 8 scores in NORMAL (enough for path 2 blend)
+        self.tracker.agent_scores[agent] = {
+            'HIGH_VOL': [0.1, 0.15],          # 2 scores, avg=0.125
+            'NORMAL': [0.2] * 8,              # 8 scores, avg=0.2
+        }
+        self.tracker._legacy_accuracy_cache = {}
+
+        result = self.tracker.get_agent_reliability(agent, 'HIGH_VOL')
+
+        # Should NOT be 1.0 (baseline) — cross-regime blend kicks in
+        self.assertNotEqual(result, 1.0)
+        # HIGH_VOL mult: 2.0 - (0.125 * 4.0) = 1.5, weight 2
+        # NORMAL mult: 2.0 - (0.2 * 4.0) = 1.2, weight 8
+        # Blended: (1.5*2 + 1.2*8) / 10 = 1.26
+        self.assertAlmostEqual(result, 1.26, places=2)
+
+    def test_accuracy_floor_penalizes_bad_agent(self):
+        """Path 3: Agent with <30% legacy accuracy and 0 Enhanced scores → 0.5."""
+        agent = "bad_agent"
+        self.tracker._legacy_accuracy_cache = {agent: 0.20}
+        # No enhanced data at all
+        self.tracker.agent_scores.pop(agent, None)
+
+        result = self.tracker.get_agent_reliability(agent, 'NORMAL')
+        self.assertEqual(result, 0.5)
+
+    def test_accuracy_floor_skipped_when_accuracy_ok(self):
+        """Path 3 skip: Agent with >=30% legacy accuracy and 0 Enhanced scores → baseline 1.0."""
+        agent = "ok_agent"
+        self.tracker._legacy_accuracy_cache = {agent: 0.55}
+        self.tracker.agent_scores.pop(agent, None)
+
+        result = self.tracker.get_agent_reliability(agent, 'NORMAL')
+        self.assertEqual(result, 1.0)
+
+
 if __name__ == '__main__':
     unittest.main()
