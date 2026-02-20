@@ -219,9 +219,7 @@ class PortfolioVaRCalculator:
                 last_attempt_error=str(e),
                 computed_by=commodity,
             )
-            # Preserve previous good result in cache if available
-            if self._cached_result and self._cached_result.last_attempt_status == "OK":
-                self._cached_result.last_attempt_status = "OK"  # Keep good cache
+            # Write failure to disk but preserve previous good in-memory cache
             self._save_state(fail_result)
             raise
 
@@ -538,7 +536,7 @@ class PortfolioVaRCalculator:
                     continue
 
             try:
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 data = await loop.run_in_executor(
                     None,
                     lambda t=yf_ticker, lb=lookback_days: yf.download(
