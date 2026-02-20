@@ -2657,11 +2657,17 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
         StateManager.queue_deferred_trigger(trigger)
 
         # Notify operator for potential manual intervention
+        # Include payload summary if available (e.g., Fed policy shock detail)
+        reason_detail = trigger.reason[:200]
+        if isinstance(getattr(trigger, 'payload', None), dict):
+            _summary = trigger.payload.get('summary', '')
+            if _summary:
+                reason_detail = f"{reason_detail} - {_summary[:200]}"
         send_pushover_notification(
             config.get('notifications', {}),
             f"⏸️ Post-Cutoff: {trigger.source}",
             (
-                f"{trigger.reason[:200]}\n"
+                f"{reason_detail}\n"
                 f"Deferred to {next_session} ({day_name} {cutoff_hour}:{cutoff_minute:02d} ET cutoff).\n"
                 f"Severity: {getattr(trigger, 'severity', 'N/A')}/10\n"
                 f"Manual intervention available via dashboard."
@@ -2763,7 +2769,12 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
             active_ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
             cycle_id = generate_cycle_id(active_ticker)
             logger.info(f"🚨 EMERGENCY CYCLE TRIGGERED by {trigger.source}: {trigger.reason} (Cycle: {cycle_id})")
-            send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", trigger.reason)
+            _trigger_detail = trigger.reason
+            if isinstance(getattr(trigger, 'payload', None), dict):
+                _ps = trigger.payload.get('summary', '')
+                if _ps:
+                    _trigger_detail = f"{trigger.reason} - {_ps[:200]}"
+            send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", _trigger_detail)
 
             # --- DEFCON 1: Crash Protection ---
             # If price drops > 5% instantly, do NOT open new trades. Liquidation logic is complex, so we just Halt.
