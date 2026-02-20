@@ -2675,6 +2675,31 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
         )
         return
 
+    # === HOLDING-TIME GATE (early exit — avoids burning API calls) ===
+    # On weekly-close days (Friday / pre-holiday Thursday), skip the entire
+    # council pipeline if there isn't enough time to hold a new position.
+    remaining_hours = hours_until_weekly_close(config)
+    if remaining_hours < float('inf'):
+        min_holding = config.get('risk_management', {}).get('friday_min_holding_hours', 2.0)
+    else:
+        min_holding = config.get('risk_management', {}).get('min_holding_hours', 6.0)
+
+    if remaining_hours < min_holding:
+        logger.info(
+            f"Emergency cycle BLOCKED (holding-time gate): Only {remaining_hours:.1f}h until weekly close "
+            f"(minimum: {min_holding}h). Skipping council pipeline for {trigger.source}."
+        )
+        _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (holding-time gate: {remaining_hours:.1f}h < {min_holding}h)")
+        StateManager.queue_deferred_trigger(trigger)
+        send_pushover_notification(
+            config.get('notifications', {}),
+            f"📅 Deferred: {trigger.source}",
+            f"Weekly close in {remaining_hours:.1f}h — below {min_holding}h minimum.\n"
+            f"Trigger deferred (no API calls spent).\n"
+            f"Reason: {trigger.reason[:200]}"
+        )
+        return
+
     # === NEW: Log Trigger for Fallback ===
     StateManager.log_sentinel_event(trigger)
 
@@ -3198,27 +3223,6 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         return
 
                     logger.info("Decision is actionable. Generating order...")
-
-                    # === HOLDING-TIME GATE (same logic as scheduled path) ===
-                    remaining_hours = hours_until_weekly_close(config)
-                    if remaining_hours < float('inf'):
-                        min_holding = config.get('risk_management', {}).get('friday_min_holding_hours', 2.0)
-                    else:
-                        min_holding = config.get('risk_management', {}).get('min_holding_hours', 6.0)
-
-                    if remaining_hours < min_holding:
-                        logger.info(
-                            f"Emergency holding-time gate: Only {remaining_hours:.1f}h until weekly close "
-                            f"(minimum: {min_holding}h). Skipping emergency order."
-                        )
-                        send_pushover_notification(
-                            config.get('notifications', {}),
-                            "📅 Emergency Order Skipped",
-                            f"Weekly close in {remaining_hours:.1f}h — below {min_holding}h minimum. "
-                            f"Emergency signal from {trigger.source} not executed."
-                        )
-                        _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (holding-time gate: {remaining_hours:.1f}h < {min_holding}h)")
-                        return
 
                     # === NEW: Dynamic Position Sizing ===
                     sizer = DynamicPositionSizer(config)
