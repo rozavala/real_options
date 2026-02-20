@@ -1356,6 +1356,253 @@ def calculate_rolling_win_rate(graded_df: pd.DataFrame, window: int = 20) -> pd.
     return graded[['timestamp', 'rolling_win_rate']]
 
 
+def calculate_learning_metrics(graded_df: pd.DataFrame, windows: list[int] = None) -> dict:
+    """
+    Calculates time-series learning metrics for the Learning Curve section.
+
+    Uses trade-sequence x-axis (not calendar time) since trades are irregularly spaced.
+    Only includes resolved trades (WIN/LOSS) — PENDING trades are excluded.
+
+    Args:
+        graded_df: Output of grade_decision_quality() with 'outcome' column.
+        windows: Rolling window sizes for win rate. Defaults to [20, 50].
+
+    Returns:
+        dict with keys:
+        - 'trade_series': DataFrame with trade_num, timestamp, rolling win rates,
+          cumulative P&L, process_score, skill_pct columns
+        - 'has_data': bool — whether there's enough data to plot
+        - 'total_resolved': int — number of resolved trades
+    """
+    if windows is None:
+        windows = [20, 50]
+
+    result = {'trade_series': pd.DataFrame(), 'has_data': False, 'total_resolved': 0}
+
+    if graded_df.empty:
+        return result
+
+    resolved = graded_df[graded_df['outcome'].isin(['WIN', 'LOSS'])].copy()
+    if len(resolved) < 3:
+        return result
+
+    resolved = resolved.sort_values('timestamp').reset_index(drop=True)
+    resolved['trade_num'] = range(1, len(resolved) + 1)
+    resolved['is_win'] = (resolved['outcome'] == 'WIN').astype(int)
+
+    # Rolling win rates at each window size
+    for w in windows:
+        resolved[f'win_rate_{w}'] = (
+            resolved['is_win'].rolling(window=w, min_periods=max(3, w // 4)).mean() * 100
+        )
+
+    # Cumulative P&L
+    pnl_col = 'pnl' if 'pnl' in resolved.columns else 'pnl_realized'
+    if pnl_col in resolved.columns:
+        resolved['cum_pnl'] = pd.to_numeric(resolved[pnl_col], errors='coerce').fillna(0).cumsum()
+    else:
+        resolved['cum_pnl'] = 0.0
+
+    # Process quality: confidence * |weighted_score| (same formula as Process vs Outcome)
+    if 'master_confidence' in resolved.columns and 'weighted_score' in resolved.columns:
+        w_score = pd.to_numeric(resolved['weighted_score'], errors='coerce').abs().fillna(0)
+        conf = pd.to_numeric(resolved['master_confidence'], errors='coerce').fillna(0.5)
+        resolved['process_score'] = conf * w_score
+
+        # Normalize to 0-1
+        max_ps = resolved['process_score'].max()
+        if max_ps > 0:
+            resolved['process_score_norm'] = resolved['process_score'] / max_ps
+        else:
+            resolved['process_score_norm'] = 0.5
+
+        # Classify quadrants: SKILL = good process + win
+        median_ps = resolved['process_score_norm'].median()
+        good_process = resolved['process_score_norm'] >= median_ps
+        good_outcome = resolved['is_win'] == 1
+
+        # Rolling SKILL % over the primary window
+        w0 = windows[0]
+        resolved['is_skill'] = (good_process & good_outcome).astype(int)
+        resolved['skill_pct'] = (
+            resolved['is_skill'].rolling(window=w0, min_periods=max(3, w0 // 4)).mean() * 100
+        )
+    else:
+        resolved['process_score_norm'] = 0.5
+        resolved['skill_pct'] = np.nan
+
+    keep_cols = ['trade_num', 'timestamp', 'cum_pnl', 'process_score_norm', 'skill_pct']
+    keep_cols += [f'win_rate_{w}' for w in windows]
+
+    result['trade_series'] = resolved[keep_cols]
+    result['has_data'] = True
+    result['total_resolved'] = len(resolved)
+
+    return result
+
+
+def calculate_rolling_agent_accuracy(council_df: pd.DataFrame, window: int = 30) -> pd.DataFrame:
+    """
+    Calculates per-agent rolling accuracy over a trade-sequence window.
+
+    Handles both DIRECTIONAL (sentiment vs actual_trend_direction) and
+    VOLATILITY (volatility_sentiment vs volatility_outcome) scoring.
+
+    Args:
+        council_df: Raw council history DataFrame (pre-grading).
+        window: Rolling window size for accuracy calculation.
+
+    Returns:
+        DataFrame with columns: trade_num, timestamp, and one column per agent
+        containing rolling accuracy (0-100%). Empty DataFrame if insufficient data.
+    """
+    if council_df.empty:
+        return pd.DataFrame()
+
+    agents = [
+        'meteorologist_sentiment', 'macro_sentiment', 'geopolitical_sentiment',
+        'fundamentalist_sentiment', 'sentiment_sentiment', 'technical_sentiment',
+        'volatility_sentiment', 'master_decision'
+    ]
+
+    df = council_df.copy()
+    df = df.sort_values('timestamp').reset_index(drop=True)
+
+    # Ensure prediction_type exists
+    if 'prediction_type' not in df.columns:
+        df['prediction_type'] = np.nan
+    vol_strategies = ['LONG_STRADDLE', 'IRON_CONDOR']
+    dir_strategies = ['BULL_CALL_SPREAD', 'BEAR_PUT_SPREAD']
+    if 'strategy_type' in df.columns:
+        df.loc[df['strategy_type'].isin(vol_strategies) & df['prediction_type'].isna(), 'prediction_type'] = 'VOLATILITY'
+        df.loc[df['strategy_type'].isin(dir_strategies) & df['prediction_type'].isna(), 'prediction_type'] = 'DIRECTIONAL'
+
+    # --- Score each agent per row ---
+    for agent in agents:
+        if agent not in df.columns:
+            df[f'{agent}_correct'] = np.nan
+            continue
+
+        correct = pd.Series(np.nan, index=df.index)
+
+        # DIRECTIONAL scoring
+        dir_mask = (df['prediction_type'] == 'DIRECTIONAL')
+        if 'actual_trend_direction' in df.columns:
+            has_actual = dir_mask & df['actual_trend_direction'].isin(['UP', 'DOWN'])
+            if has_actual.any():
+                sent = df.loc[has_actual, agent].astype(str).str.upper().str.strip()
+                valid = ~sent.isin(['NEUTRAL', 'NONE', '', 'NAN', 'N/A'])
+
+                is_bullish = sent.isin(['BULLISH', 'LONG', 'UP'])
+                actual_up = df.loc[has_actual, 'actual_trend_direction'] == 'UP'
+                actual_down = df.loc[has_actual, 'actual_trend_direction'] == 'DOWN'
+
+                agent_correct = ((is_bullish & actual_up) | (~is_bullish & actual_down))
+                correct.loc[has_actual] = np.where(valid, agent_correct.astype(float), np.nan)
+
+        # VOLATILITY scoring (only for volatility_sentiment and master_decision)
+        if agent in ('volatility_sentiment', 'master_decision'):
+            vol_mask = (df['prediction_type'] == 'VOLATILITY')
+            if 'volatility_outcome' in df.columns:
+                has_outcome = vol_mask & df['volatility_outcome'].notna()
+                if has_outcome.any():
+                    if agent == 'master_decision':
+                        # Master scored on strategy success
+                        if 'strategy_type' in df.columns:
+                            straddle_win = (
+                                (df.loc[has_outcome, 'strategy_type'] == 'LONG_STRADDLE') &
+                                (df.loc[has_outcome, 'volatility_outcome'] == 'BIG_MOVE')
+                            )
+                            condor_win = (
+                                (df.loc[has_outcome, 'strategy_type'] == 'IRON_CONDOR') &
+                                (df.loc[has_outcome, 'volatility_outcome'] == 'STAYED_FLAT')
+                            )
+                            correct.loc[has_outcome] = (straddle_win | condor_win).astype(float)
+                    else:
+                        # Volatility agent scored on prediction
+                        sent = df.loc[has_outcome, agent].astype(str).str.upper().str.strip()
+                        valid = ~sent.isin(['NEUTRAL', 'NONE', '', 'NAN', 'N/A'])
+                        predicted_high = sent.isin(['HIGH', 'BULLISH', 'VOLATILE'])
+                        predicted_low = sent.isin(['LOW', 'BEARISH', 'QUIET', 'RANGE_BOUND'])
+                        big_move = df.loc[has_outcome, 'volatility_outcome'] == 'BIG_MOVE'
+                        stayed_flat = df.loc[has_outcome, 'volatility_outcome'] == 'STAYED_FLAT'
+                        agent_correct = ((big_move & predicted_high) | (stayed_flat & predicted_low))
+                        correct.loc[has_outcome] = np.where(valid, agent_correct.astype(float), np.nan)
+
+        df[f'{agent}_correct'] = correct
+
+    # --- Build rolling accuracy ---
+    # Only keep rows where at least one agent has a score
+    correct_cols = [f'{a}_correct' for a in agents]
+    has_any = df[correct_cols].notna().any(axis=1)
+    scored = df[has_any].copy().reset_index(drop=True)
+
+    if len(scored) < 3:
+        return pd.DataFrame()
+
+    scored['trade_num'] = range(1, len(scored) + 1)
+
+    result = scored[['trade_num', 'timestamp']].copy()
+    for agent in agents:
+        col = f'{agent}_correct'
+        if col in scored.columns:
+            result[agent] = (
+                scored[col].rolling(window=window, min_periods=max(3, window // 4)).mean() * 100
+            )
+
+    return result
+
+
+def calculate_confidence_calibration(graded_df: pd.DataFrame, n_bins: int = 5) -> pd.DataFrame:
+    """
+    Calculates confidence calibration data: binned confidence vs actual win rate.
+
+    Perfect calibration = 45-degree line (70% confidence should win 70% of the time).
+    Above the line = under-confident. Below = overconfident.
+
+    Args:
+        graded_df: Output of grade_decision_quality() with 'outcome' column.
+        n_bins: Number of confidence bins.
+
+    Returns:
+        DataFrame with columns: bin_center, actual_win_rate, count, bin_label.
+        Empty DataFrame if insufficient data.
+    """
+    if graded_df.empty or 'master_confidence' not in graded_df.columns:
+        return pd.DataFrame()
+
+    resolved = graded_df[graded_df['outcome'].isin(['WIN', 'LOSS'])].copy()
+    if len(resolved) < 5:
+        return pd.DataFrame()
+
+    resolved['confidence'] = pd.to_numeric(resolved['master_confidence'], errors='coerce')
+    resolved = resolved[resolved['confidence'].notna() & (resolved['confidence'] > 0)]
+    if resolved.empty:
+        return pd.DataFrame()
+
+    resolved['is_win'] = (resolved['outcome'] == 'WIN').astype(int)
+
+    # Create bins — use quantile-based if data is clustered, else uniform
+    conf_min = resolved['confidence'].min()
+    conf_max = resolved['confidence'].max()
+
+    # Uniform bins across the confidence range
+    bins = np.linspace(max(conf_min - 0.01, 0), min(conf_max + 0.01, 1.0), n_bins + 1)
+    resolved['bin'] = pd.cut(resolved['confidence'], bins=bins, include_lowest=True)
+
+    calibration = resolved.groupby('bin', observed=True).agg(
+        actual_win_rate=('is_win', 'mean'),
+        count=('is_win', 'count'),
+        avg_confidence=('confidence', 'mean')
+    ).reset_index()
+
+    calibration['actual_win_rate'] *= 100
+    calibration['bin_center'] = calibration['avg_confidence'] * 100
+    calibration['bin_label'] = calibration['bin'].astype(str)
+
+    return calibration[['bin_center', 'actual_win_rate', 'count', 'bin_label']]
+
+
 # === PORTFOLIO FUNCTIONS ===
 
 def fetch_portfolio_data(_config, trade_df: pd.DataFrame) -> pd.DataFrame:

@@ -19,6 +19,9 @@ from dashboard_utils import (
     grade_decision_quality,
     calculate_confusion_matrix,
     calculate_agent_scores,
+    calculate_learning_metrics,
+    calculate_rolling_agent_accuracy,
+    calculate_confidence_calibration,
     fetch_live_dashboard_data,
     get_config,
     _resolve_data_path
@@ -213,6 +216,177 @@ st.markdown("---")
 
 # === SECTION 2: Process vs Outcome ===
 create_process_outcome_matrix(graded_df)
+
+# === SECTION: Learning Curve ===
+st.markdown("---")
+st.subheader("📈 Learning Curve")
+st.caption("Is the system improving over time? Trade-sequence axis (not calendar) — each tick is one resolved trade.")
+
+learning = calculate_learning_metrics(graded_df, windows=[20, 50])
+
+if learning['has_data']:
+    ts = learning['trade_series']
+
+    # --- Chart 1: Rolling Win Rate + Cumulative P&L ---
+    fig_lr = make_subplots(specs=[[{"secondary_y": True}]])
+
+    # Win rate lines
+    if 'win_rate_20' in ts.columns:
+        fig_lr.add_trace(
+            go.Scatter(x=ts['trade_num'], y=ts['win_rate_20'], name='Win Rate (20)',
+                       line=dict(color='#636EFA', width=2)),
+            secondary_y=False
+        )
+    if 'win_rate_50' in ts.columns:
+        fig_lr.add_trace(
+            go.Scatter(x=ts['trade_num'], y=ts['win_rate_50'], name='Win Rate (50)',
+                       line=dict(color='#00CC96', width=2, dash='dash')),
+            secondary_y=False
+        )
+
+    # 50% reference line
+    fig_lr.add_hline(y=50, line_dash="dot", line_color="gray",
+                     annotation_text="50% (coin flip)", annotation_position="bottom right",
+                     secondary_y=False)
+
+    # Cumulative P&L area
+    fig_lr.add_trace(
+        go.Scatter(x=ts['trade_num'], y=ts['cum_pnl'], name='Cumulative P&L',
+                   fill='tozeroy', fillcolor='rgba(99,110,250,0.1)',
+                   line=dict(color='#AB63FA', width=1)),
+        secondary_y=True
+    )
+
+    fig_lr.update_layout(
+        title='Rolling Win Rate & Cumulative P&L',
+        height=400,
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+        margin=dict(l=0, r=0, t=60, b=0)
+    )
+    fig_lr.update_xaxes(title_text='Trade #')
+    fig_lr.update_yaxes(title_text='Win Rate %', range=[0, 100], secondary_y=False)
+    fig_lr.update_yaxes(title_text='Cumulative P&L ($)', secondary_y=True)
+
+    st.plotly_chart(fig_lr, use_container_width=True)
+
+    # --- Chart 2: Process Quality Trend (SKILL %) ---
+    if 'skill_pct' in ts.columns and ts['skill_pct'].notna().any():
+        fig_skill = go.Figure()
+        fig_skill.add_trace(
+            go.Scatter(x=ts['trade_num'], y=ts['skill_pct'], name='SKILL %',
+                       fill='tozeroy', fillcolor='rgba(0,204,150,0.15)',
+                       line=dict(color='#00CC96', width=2))
+        )
+        fig_skill.add_hline(y=25, line_dash="dot", line_color="gray",
+                            annotation_text="25% (random)", annotation_position="bottom right")
+        fig_skill.update_layout(
+            title='Process Quality Trend (SKILL = Good Process + Win)',
+            height=300,
+            yaxis=dict(title='SKILL %', range=[0, 100]),
+            xaxis=dict(title='Trade #'),
+            margin=dict(l=0, r=0, t=60, b=0)
+        )
+        st.plotly_chart(fig_skill, use_container_width=True)
+
+    # --- Chart 3: Agent Accuracy Over Time ---
+    agent_rolling = calculate_rolling_agent_accuracy(council_df, window=30)
+
+    if not agent_rolling.empty:
+        agent_pretty = {
+            'meteorologist_sentiment': 'Meteorologist',
+            'macro_sentiment': 'Macro',
+            'geopolitical_sentiment': 'Geopolitical',
+            'fundamentalist_sentiment': 'Fundamentalist',
+            'sentiment_sentiment': 'Sentiment',
+            'technical_sentiment': 'Technical',
+            'volatility_sentiment': 'Volatility',
+            'master_decision': 'Master'
+        }
+        agent_colors = {
+            'meteorologist_sentiment': '#FFA15A',
+            'macro_sentiment': '#636EFA',
+            'geopolitical_sentiment': '#EF553B',
+            'fundamentalist_sentiment': '#00CC96',
+            'sentiment_sentiment': '#AB63FA',
+            'technical_sentiment': '#19D3F3',
+            'volatility_sentiment': '#FF6692',
+            'master_decision': '#B6E880'
+        }
+
+        fig_agents = go.Figure()
+        for agent_col in agent_pretty:
+            if agent_col in agent_rolling.columns and agent_rolling[agent_col].notna().any():
+                fig_agents.add_trace(
+                    go.Scatter(
+                        x=agent_rolling['trade_num'],
+                        y=agent_rolling[agent_col],
+                        name=agent_pretty[agent_col],
+                        line=dict(color=agent_colors.get(agent_col, '#FFFFFF'), width=1.5),
+                        opacity=0.85
+                    )
+                )
+
+        fig_agents.add_hline(y=50, line_dash="dot", line_color="gray")
+        fig_agents.update_layout(
+            title='Agent Accuracy Over Time (Rolling 30)',
+            height=400,
+            yaxis=dict(title='Accuracy %', range=[0, 100]),
+            xaxis=dict(title='Trade #'),
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+            margin=dict(l=0, r=0, t=60, b=0)
+        )
+        st.plotly_chart(fig_agents, use_container_width=True)
+
+    # --- Chart 4: Confidence Calibration ---
+    calibration = calculate_confidence_calibration(graded_df, n_bins=5)
+
+    if not calibration.empty:
+        fig_cal = go.Figure()
+
+        # Perfect calibration line
+        fig_cal.add_trace(
+            go.Scatter(x=[0, 100], y=[0, 100], name='Perfect Calibration',
+                       line=dict(color='gray', dash='dash', width=1),
+                       showlegend=True)
+        )
+
+        # Actual calibration points
+        fig_cal.add_trace(
+            go.Scatter(
+                x=calibration['bin_center'],
+                y=calibration['actual_win_rate'],
+                mode='markers+lines',
+                name='Actual Win Rate',
+                marker=dict(size=calibration['count'].clip(upper=30) + 5, color='#636EFA'),
+                text=[f"n={c}" for c in calibration['count']],
+                textposition='top center',
+                line=dict(color='#636EFA', width=2)
+            )
+        )
+
+        fig_cal.update_layout(
+            title='Confidence Calibration (dot size = sample count)',
+            height=350,
+            xaxis=dict(title='Predicted Confidence %', range=[40, 100]),
+            yaxis=dict(title='Actual Win Rate %', range=[0, 100]),
+            margin=dict(l=0, r=0, t=60, b=0)
+        )
+        st.plotly_chart(fig_cal, use_container_width=True)
+
+        # Calibration summary
+        if len(calibration) >= 2:
+            avg_gap = abs(calibration['bin_center'] - calibration['actual_win_rate']).mean()
+            if avg_gap < 5:
+                st.success(f"Well calibrated — avg gap {avg_gap:.1f}pp")
+            elif avg_gap < 15:
+                st.info(f"Moderately calibrated — avg gap {avg_gap:.1f}pp")
+            else:
+                direction = "overconfident" if (calibration['bin_center'] > calibration['actual_win_rate']).mean() > 0.5 else "underconfident"
+                st.warning(f"Poorly calibrated ({direction}) — avg gap {avg_gap:.1f}pp")
+
+    st.caption(f"Based on {learning['total_resolved']} resolved trades")
+else:
+    st.info("Need at least 3 resolved trades (WIN/LOSS) to render learning curves.")
 
 # === NEW SECTION: Volatility Trade Performance ===
 st.markdown("---")
