@@ -2258,6 +2258,10 @@ class MacroContagionSentinel(Sentinel):
 
     async def check_fed_policy_shock(self) -> Optional[Dict]:
         now = datetime.now(timezone.utc)
+        # Reload from shared file — another commodity instance may have updated it
+        shared_ts = self._load_last_policy_check()
+        if shared_ts and (not self.last_policy_check or shared_ts > self.last_policy_check):
+            self.last_policy_check = shared_ts
         if self.last_policy_check and (now - self.last_policy_check).total_seconds() < self.policy_check_interval:
             return None
 
