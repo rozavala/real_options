@@ -203,9 +203,11 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
 
     # Ensure columns exist (if migrated recently, they should be there, but good to be safe)
     required_cols = ['exit_price', 'exit_timestamp', 'pnl_realized', 'actual_trend_direction', 'volatility_outcome']
+    str_cols = {'exit_timestamp', 'actual_trend_direction', 'volatility_outcome'}
     for col in required_cols:
         if col not in df.columns:
-            df[col] = None
+            # Use object dtype for string columns to avoid FutureWarning on mixed-type assignment
+            df[col] = pd.Series([None] * len(df), dtype='object' if col in str_cols else 'float64')
 
     # Identify candidates for reconciliation
     try:
