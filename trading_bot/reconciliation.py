@@ -539,6 +539,10 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                     'confidence': float(row.get('master_confidence', 0.0) or 0.0),
                     'strategy_type': row.get('strategy_type', ''),
                     'trigger_type': row.get('trigger_type', ''),
+                    'schedule_id': row.get('schedule_id', ''),
+                    'thesis_strength': row.get('thesis_strength', ''),
+                    'primary_catalyst': row.get('primary_catalyst', ''),
+                    'dissent_acknowledged': row.get('dissent_acknowledged', ''),
                 }
 
                 # Construct exit data

@@ -32,7 +32,7 @@ from trading_bot.strategy_router import (
 
 logger = logging.getLogger(__name__)
 
-async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_type=None) -> list:
+async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_type=None, schedule_id: str = None) -> list:
     """
     Generates trading signals via the Council's multi-agent analysis.
 
@@ -104,7 +104,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
     sem = asyncio.Semaphore(3)
 
     # 4. Define the async processor for a single contract
-    async def process_contract(contract, market_ctx, trigger_type=trigger_type):
+    async def process_contract(contract, market_ctx, trigger_type=trigger_type, schedule_id=schedule_id):
         contract_name = f"{contract.localSymbol} ({contract.lastTradeDateOrContractMonth[:6]})"
 
         # Skip contracts with no live price — avoids wasting LLM spend on NaN data
@@ -727,6 +727,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                         "dominant_agent": weighted_result.get('dominant_agent', 'Unknown'),
                         "weighted_score": weighted_result.get('weighted_score', 0.0),
                         "trigger_type": weighted_result.get('trigger_type', 'scheduled'),
+                        "schedule_id": schedule_id or '',
 
                         # [E.1] VaR observability
                         "var_utilization": round(var_utilization, 3) if var_utilization else None,
