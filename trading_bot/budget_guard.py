@@ -11,6 +11,7 @@ This is a CIRCUIT BREAKER, not a throttle. Once tripped, it stays tripped
 until the next reset. This prevents oscillating between modes.
 """
 
+import csv
 import json
 import logging
 import os
@@ -69,7 +70,10 @@ class BudgetGuard:
 
         data_dir = config.get('data_dir', 'data')
         self.state_file = Path(os.path.join(data_dir, "budget_state.json"))
+        self._costs_csv = Path(os.path.join(data_dir, "llm_daily_costs.csv"))
         self._daily_spend = 0.0
+        self._cost_by_source: dict[str, float] = {}
+        self._request_count = 0
         self._last_reset_date: Optional[str] = None
         self._budget_hit = False
         self._warning_sent = False
@@ -83,6 +87,8 @@ class BudgetGuard:
                 with open(self.state_file, 'r') as f:
                     data = json.load(f)
                     self._daily_spend = data.get('daily_spend', 0.0)
+                    self._cost_by_source = data.get('cost_by_source', {})
+                    self._request_count = data.get('request_count', 0)
                     self._last_reset_date = data.get('last_reset_date')
                     self._budget_hit = data.get('budget_hit', False)
                     self._warning_sent = data.get('warning_sent', False)
@@ -94,6 +100,8 @@ class BudgetGuard:
             self.state_file.parent.mkdir(parents=True, exist_ok=True)
             data = {
                 'daily_spend': self._daily_spend,
+                'cost_by_source': self._cost_by_source,
+                'request_count': self._request_count,
                 'last_reset_date': self._last_reset_date,
                 'budget_hit': self._budget_hit,
                 'warning_sent': self._warning_sent
@@ -105,11 +113,38 @@ class BudgetGuard:
         except Exception as e:
             logger.error(f"Failed to save budget state: {e}")
 
+    def _archive_daily_costs(self):
+        """Append yesterday's costs to llm_daily_costs.csv before resetting."""
+        if self._daily_spend <= 0 and self._request_count == 0:
+            return  # Nothing to archive
+
+        try:
+            write_header = not self._costs_csv.exists()
+            with open(self._costs_csv, 'a', newline='') as f:
+                writer = csv.writer(f)
+                if write_header:
+                    writer.writerow(['date', 'total_usd', 'request_count', 'cost_by_source'])
+                writer.writerow([
+                    self._last_reset_date,
+                    round(self._daily_spend, 4),
+                    self._request_count,
+                    json.dumps(self._cost_by_source),
+                ])
+            logger.info(
+                f"Archived daily LLM costs for {self._last_reset_date}: "
+                f"${self._daily_spend:.2f}, {self._request_count} requests"
+            )
+        except Exception as e:
+            logger.error(f"Failed to archive daily costs: {e}")
+
     def _check_reset(self):
         """Reset daily spend at midnight UTC."""
         today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
         if self._last_reset_date != today:
+            self._archive_daily_costs()
             self._daily_spend = 0.0
+            self._cost_by_source = {}
+            self._request_count = 0
             self._budget_hit = False
             self._warning_sent = False
             self._last_reset_date = today
@@ -161,6 +196,8 @@ class BudgetGuard:
         """
         self._check_reset()
         self._daily_spend += cost_usd
+        self._request_count += 1
+        self._cost_by_source[source] = self._cost_by_source.get(source, 0.0) + cost_usd
 
         # Warning threshold
         if not self._warning_sent and self._daily_spend >= self.daily_budget * self.warning_pct:
@@ -204,6 +241,8 @@ class BudgetGuard:
             'pct_used': (self._daily_spend / self.daily_budget * 100) if self.daily_budget > 0 else 0,
             'sentinel_only_mode': self._budget_hit,
             'reset_date': self._last_reset_date,
+            'cost_by_source': dict(self._cost_by_source),
+            'request_count': self._request_count,
         }
 
 

@@ -2005,6 +2005,44 @@ def load_council_history_for_commodity(ticker: str) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+@st.cache_data(ttl=10)
+def load_budget_status(ticker: str = None) -> dict:
+    """Load current budget guard state for the dashboard.
+
+    Reads budget_state.json for the given commodity. Returns an empty dict
+    if the file doesn't exist (budget guard hasn't been initialized yet).
+    """
+    ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
+    path = _resolve_data_path_for('budget_state.json', ticker)
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+@st.cache_data(ttl=300)
+def load_llm_daily_costs(ticker: str = None) -> pd.DataFrame:
+    """Load historical daily LLM cost data.
+
+    Reads llm_daily_costs.csv for the given commodity. Returns an empty
+    DataFrame if the file doesn't exist yet (no daily reset has occurred).
+    """
+    ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
+    path = _resolve_data_path_for('llm_daily_costs.csv', ticker)
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    try:
+        df = pd.read_csv(path)
+        if 'date' in df.columns:
+            df['date'] = pd.to_datetime(df['date'])
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+
 def get_system_heartbeat_for_commodity(ticker: str) -> dict:
     """Get orchestrator heartbeat for a specific commodity."""
     heartbeat = {
