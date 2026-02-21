@@ -664,6 +664,7 @@ def log_council_decision(decision_data):
         "dominant_agent",     # Agent with highest contribution
         "weighted_score",     # Final weighted score (-1 to 1)
         "trigger_type",       # What triggered the decision (scheduled, weather, news, etc.)
+        "schedule_id",        # Schedule task ID (signal_early, signal_euro, etc.)
         # NEW COLUMNS (v3 — Judge & Jury Protocol)
         "thesis_strength",        # SPECULATIVE / PLAUSIBLE / PROVEN
         "primary_catalyst",       # Single most important driver

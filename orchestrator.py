@@ -4193,7 +4193,7 @@ async def run_brier_reconciliation(config: dict):
     # so it reports accurate post-resolution counts.
     await _check_feedback_loop_health(config)
 
-async def guarded_generate_orders(config: dict):
+async def guarded_generate_orders(config: dict, schedule_id: str = None):
     """Generate orders with budget and cutoff guards."""
 
     # v3.1: Check equity data freshness before cycle
@@ -4295,7 +4295,7 @@ async def guarded_generate_orders(config: dict):
                  except Exception:
                      pass
 
-    await generate_and_execute_orders(config, shutdown_check=is_system_shutdown)
+    await generate_and_execute_orders(config, shutdown_check=is_system_shutdown, schedule_id=schedule_id)
 
     # Invalidate semantic cache after scheduled cycle (fresh analysis supersedes cached)
     try:
@@ -5012,7 +5012,10 @@ async def main(commodity_ticker: str = None):
                 GLOBAL_DEDUPLICATOR.set_cooldown("GLOBAL", 600)
 
                 try:
-                    await next_task.function(config)
+                    if next_task.func_name == 'guarded_generate_orders':
+                        await next_task.function(config, schedule_id=next_task.id)
+                    else:
+                        await next_task.function(config)
                     record_task_completion(next_task.id)
                 finally:
                     # Clear cooldown immediately after task finishes
