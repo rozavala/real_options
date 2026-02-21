@@ -937,11 +937,37 @@ def fetch_all_live_data(_config: dict) -> dict:
 
         result['connection_status'] = 'CONNECTED'
 
-        # Configure market data type
-        configure_market_data_type(ib)
+        # Execute concurrent fetch
+        async def _fetch_concurrently():
+            configure_market_data_type(ib)
 
-        # Account Summary
-        for av in ib.accountSummary():
+            # Kick off PnL (needs warmup)
+            accounts = ib.managedAccounts()
+            if accounts:
+                ib.reqPnL(accounts[0])
+
+            # Define concurrent tasks
+            tasks = [
+                ib.accountSummaryAsync(),
+                ib.positionsAsync(),
+                ib.portfolioAsync(),
+                ib.openOrdersAsync(),
+                # Wait at least 1s for PnL to arrive, overlapping with other requests
+                asyncio.sleep(1.0)
+            ]
+
+            # Run all concurrently
+            results = await asyncio.gather(*tasks)
+
+            # Fetch PnL (now that we waited)
+            pnl = ib.pnl()
+
+            return results[0], results[1], results[2], results[3], pnl
+
+        summary, positions, portfolio, orders, pnl_data = loop.run_until_complete(_fetch_concurrently())
+
+        # Process Account Summary
+        for av in summary:
             result['account_summary'][av.tag] = av.value
             if av.tag == 'NetLiquidation':
                 result['net_liquidation'] = float(av.value)
@@ -952,23 +978,18 @@ def fetch_all_live_data(_config: dict) -> dict:
             elif av.tag == 'MaintMarginReq':
                 result['maint_margin'] = float(av.value)
 
-        # Daily P&L
-        accounts = ib.managedAccounts()
-        if accounts:
-            ib.reqPnL(accounts[0])
-            ib.sleep(1)
-            pnl_data = ib.pnl()
-            if pnl_data:
-                raw_pnl = pnl_data[0].dailyPnL
-                # NaN is truthy in Python, so `or 0.0` doesn't catch it.
-                # Must use explicit math.isnan() check.
-                import math
-                result['daily_pnl'] = 0.0 if (raw_pnl is None or math.isnan(raw_pnl)) else raw_pnl
+        # Process Daily P&L
+        if pnl_data:
+            raw_pnl = pnl_data[0].dailyPnL
+            # NaN is truthy in Python, so `or 0.0` doesn't catch it.
+            # Must use explicit math.isnan() check.
+            import math
+            result['daily_pnl'] = 0.0 if (raw_pnl is None or math.isnan(raw_pnl)) else raw_pnl
 
         # Positions & Portfolio
-        result['open_positions'] = ib.positions()
-        result['portfolio_items'] = ib.portfolio()
-        result['pending_orders'] = ib.openOrders()
+        result['open_positions'] = positions
+        result['portfolio_items'] = portfolio
+        result['pending_orders'] = orders
 
     except Exception as e:
         result['connection_status'] = 'ERROR'
