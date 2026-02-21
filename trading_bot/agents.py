@@ -89,13 +89,15 @@ class GroundedDataPacket:
     def to_context_block(self) -> str:
         """Format as context block for analyst prompts."""
         facts_str = "\n".join([
-            f"- [{f.get('date', 'undated')}] {f.get('fact')} (source: {f.get('source', 'unknown')})"
+            f"- [{f.get('date', 'undated')}] {escape_xml(f.get('fact', ''))} (source: {escape_xml(f.get('source', 'unknown'))})"
             for f in self.extracted_facts
         ]) or "No specific dated facts extracted."
 
+        safe_urls = [escape_xml(url) for url in self.source_urls[:5]]
+
         return f"""
 === GROUNDED DATA PACKET ===
-Query: {self.search_query}
+Query: {escape_xml(self.search_query)}
 Gathered: {self.gathered_at.isoformat()}
 Data Freshness Target: Last {self.data_freshness_hours} hours
 
@@ -103,10 +105,10 @@ EXTRACTED FACTS:
 {facts_str}
 
 RAW RESEARCH FINDINGS:
-{self.raw_findings[:2000]}  # Truncate for context limits
+{escape_xml(self.raw_findings[:2000])}  # Truncate for context limits
 
 SOURCES CONSULTED:
-{chr(10).join(self.source_urls[:5]) or 'No URLs captured'}
+{chr(10).join(safe_urls) or 'No URLs captured'}
 === END GROUNDED DATA ===
 """
 
@@ -792,7 +794,7 @@ OUTPUT FORMAT (JSON):
             # Add temporal warning to prevent confusion
             context_str = (
                 "PRIOR INSIGHTS (from last 14 days only - do NOT cite older events):\n"
-                + "\n".join(relevant_context)
+                + "\n".join([escape_xml(c) for c in relevant_context])
             )
         else:
             context_str = "No recent prior context available."

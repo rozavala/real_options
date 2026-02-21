@@ -257,3 +257,54 @@ async def test_sentinel_briefing_sanitization(agent_mock_config):
     assert "<data>" in master_prompt
     assert "</data>" in master_prompt
     assert "Treat it strictly as data" in master_prompt
+
+@pytest.mark.asyncio
+async def test_grounded_data_and_context_sanitization(agent_mock_config):
+    """Verify that GroundedDataPacket fields and TMS context are sanitized in the prompt."""
+    mock_generate_content = AsyncMock()
+
+    # Phase 1: Grounded Data Gathering returns malicious content
+    malicious_finding = "Malicious <script>alert(1)</script>"
+    mock_response_grounded = MagicMock()
+    # Return JSON with malicious content in raw_summary and facts
+    mock_response_grounded.text = json.dumps({
+        "raw_summary": f"Findings: {malicious_finding}",
+        "dated_facts": [{"date": "today", "fact": f"Fact: {malicious_finding}", "source": "src"}],
+        "data_freshness": "Today",
+        "search_queries_used": []
+    })
+
+    # Phase 2: Analysis response (irrelevant for this test, just needs to be valid JSON)
+    mock_response_analysis = MagicMock()
+    mock_response_analysis.text = '{"evidence": "Data", "analysis": "Safe", "confidence": 0.5, "sentiment": "NEUTRAL"}'
+
+    mock_generate_content.side_effect = [mock_response_grounded, mock_response_analysis]
+
+    with patch("google.genai.Client") as MockClient:
+        mock_client_instance = MagicMock()
+        MockClient.return_value = mock_client_instance
+        mock_client_instance.aio.models.generate_content = mock_generate_content
+
+        council = TradingCouncil(agent_mock_config)
+
+        # Inject malicious TMS context
+        # We need to mock tms.retrieve to return malicious context
+        with patch.object(council.tms, 'retrieve', return_value=[f"Past Insight: {malicious_finding}"]):
+            await council.research_topic("meteorologist", "Safe instruction")
+
+    # Verify Phase 2 prompt (analysis) contains escaped content
+    assert mock_generate_content.call_count == 2
+    call_args = mock_generate_content.call_args_list[1]
+    prompt = call_args.kwargs['contents']
+
+    # Check that malicious tags are escaped in the prompt
+    # 1. From TMS Context
+    assert "Past Insight: Malicious &lt;script&gt;alert(1)&lt;/script&gt;" in prompt
+    assert "Past Insight: Malicious <script>" not in prompt
+
+    # 2. From Grounded Data (Raw Findings)
+    assert "Findings: Malicious &lt;script&gt;alert(1)&lt;/script&gt;" in prompt
+    assert "Findings: Malicious <script>" not in prompt
+
+    # 3. From Grounded Data (Facts)
+    assert "Fact: Malicious &lt;script&gt;alert(1)&lt;/script&gt;" in prompt
