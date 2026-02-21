@@ -314,7 +314,7 @@ try:
 
     agent_names_list = list(_DISPLAY_NAMES.keys()) if _DISPLAY_NAMES else [
         'agronomist', 'inventory', 'macro', 'sentiment',
-        'technical', 'volatility', 'geopolitical'
+        'technical', 'volatility', 'geopolitical', 'supply_chain'
     ]
 
     NON_NORMAL_REGIMES = ['HIGH_VOL', 'RANGE_BOUND', 'WEATHER_EVENT', 'MACRO_SHIFT']

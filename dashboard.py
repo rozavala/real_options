@@ -56,6 +56,7 @@ selected = st.sidebar.selectbox(
 if selected != st.session_state['commodity_ticker']:
     st.session_state['commodity_ticker'] = selected
     os.environ['COMMODITY_TICKER'] = selected
+    st.cache_data.clear()
     st.rerun()
 
 # === IMPORTS ===
@@ -204,6 +205,8 @@ try:
             'strategy_type': 'Strategy',
             'thesis_strength': 'Thesis',
             'trigger_type': 'Trigger',
+            'outcome': 'Outcome',
+            'pnl_realized': 'P&L',
         }
         for src, dst in col_map.items():
             if src in recent.columns:
@@ -214,6 +217,18 @@ try:
         if 'Confidence' in recent.columns:
             recent['Confidence'] = recent['Confidence'].apply(
                 lambda x: f"{float(x)*100:.0f}%" if x is not None else "?"
+            )
+
+        # Format outcome with visual indicators
+        if 'Outcome' in recent.columns:
+            recent['Outcome'] = recent['Outcome'].apply(
+                lambda x: '\u2705 WIN' if x == 'WIN' else '\u274c LOSS' if x == 'LOSS' else '\u2014'
+            )
+
+        # Format P&L as currency
+        if 'P&L' in recent.columns:
+            recent['P&L'] = recent['P&L'].apply(
+                lambda x: f"${float(x):+,.2f}" if pd.notna(x) and x != 0 else "\u2014"
             )
 
         if display_cols:

@@ -639,7 +639,7 @@ if run_validation:
                         # Select relevant columns
                         display_df = df[['status', 'name', 'message', 'details', 'duration_ms']]
 
-                        styled_df = display_df.style.applymap(color_status, subset=['status'])
+                        styled_df = display_df.style.map(color_status, subset=['status'])
                         st.dataframe(styled_df, width='stretch', hide_index=True)
 
                 except json.JSONDecodeError:

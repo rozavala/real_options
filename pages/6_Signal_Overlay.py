@@ -838,13 +838,18 @@ if price_df is not None and not price_df.empty:
         price_idx = pd.DataFrame(index=price_df.index).reset_index()
         price_idx.columns = ['candle_timestamp']
 
+        # Dynamic tolerance: tighter for intraday, wider for daily
+        _tolerance_map = {'5m': 'minutes=30', '15m': 'minutes=30', '30m': 'hours=2', '1h': 'hours=2', '1d': 'hours=4'}
+        _tol_str = _tolerance_map.get(timeframe, 'hours=4')
+        _tol = pd.Timedelta(**{_tol_str.split('=')[0]: int(_tol_str.split('=')[1])})
+
         merged = pd.merge_asof(
             signals,
             price_idx,
             left_on='timestamp',
             right_on='candle_timestamp',
             direction='nearest',
-            tolerance=pd.Timedelta(hours=4)
+            tolerance=_tol
         )
 
         matched_signals = merged.dropna(subset=['candle_timestamp'])
@@ -998,6 +1003,7 @@ if price_df is not None and not price_df.empty:
     if not plot_df.empty and show_confidence:
         # Scale confidence (0-1) to volume range so both are visible on same axis
         max_vol = price_df['Volume'].max() if 'Volume' in price_df.columns and not price_df['Volume'].empty else 1
+        max_vol = max_vol if pd.notna(max_vol) and max_vol > 0 else 1.0
         scaled_confidence = plot_df['plot_confidence'] * max_vol
         fig.add_trace(go.Scatter(
             x=plot_df['plot_x_num'],
@@ -1093,8 +1099,17 @@ if price_df is not None and not price_df.empty:
                         'high_volatility': 'rgba(171, 99, 250, 0.06)',
                     }
 
-                    # Map each signal to its nearest candle index
-                    ds_df['num_idx'] = ds_df['timestamp'].map(timestamp_to_num)
+                    # Snap each signal to its nearest candle via merge_asof
+                    _price_ts = pd.DataFrame({
+                        'candle_ts': price_df.index,
+                        'num_idx': price_df['num_index'].values
+                    }).sort_values('candle_ts')
+                    ds_df = ds_df.sort_values('timestamp')
+                    ds_df = pd.merge_asof(
+                        ds_df, _price_ts,
+                        left_on='timestamp', right_on='candle_ts',
+                        direction='nearest'
+                    )
                     ds_df = ds_df.dropna(subset=['num_idx'])
 
                     if not ds_df.empty:
@@ -1127,6 +1142,16 @@ if price_df is not None and not price_df.empty:
                             )
         except Exception:
             pass  # Silently skip if regime data unavailable
+
+        if show_regime_overlay:
+            st.caption(
+                "Regime overlay: "
+                "\U0001f7e2 Green = bullish | "
+                "\U0001f534 Red = bearish | "
+                "\u26aa Gray = neutral | "
+                "\U0001f7e0 Orange = range-bound | "
+                "\U0001f7e3 Purple = high volatility"
+            )
 
     # Determine title based on contract
     if actual_ticker_display:

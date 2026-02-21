@@ -39,7 +39,6 @@ council_df = load_council_history()
 config = get_config()
 
 # E4 FIX: Get starting capital from config/profile
-from dashboard_utils import get_starting_capital
 starting_capital = get_starting_capital(config)
 
 if not equity_df.empty:
@@ -453,6 +452,7 @@ if has_sharpe or has_dd or has_wl:
         if has_sharpe:
             daily_std = _daily_returns.std()
             daily_mean = _daily_returns.mean()
+            # Simplified Sharpe (excess return over 0%, not risk-free rate)
             sharpe = (daily_mean / daily_std * np.sqrt(252)) if daily_std > 0 else 0.0
             st.metric(
                 "Sharpe Ratio", f"{sharpe:.2f}",
