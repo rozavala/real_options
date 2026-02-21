@@ -52,25 +52,17 @@ except Exception as e:
 if not _HAS_COMMODITY_PROFILES:
     logger.info(f"Profile system disabled. Reason: {_PROFILE_IMPORT_ERROR or 'Unknown'}")
 
-# Setup Provenance Logger
+# Setup Provenance Logger (handler added lazily via set_data_dir to avoid
+# writing to the root data/ dir before the commodity-specific path is known)
 from logging.handlers import RotatingFileHandler
 provenance_logger = logging.getLogger("provenance")
 provenance_logger.setLevel(logging.INFO)
 provenance_logger.propagate = False
 _provenance_data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
-if not provenance_logger.handlers:
-    os.makedirs(_provenance_data_dir, exist_ok=True)
-    fh = RotatingFileHandler(
-        os.path.join(_provenance_data_dir, 'research_provenance.log'),
-        maxBytes=10 * 1024 * 1024,
-        backupCount=3
-    )
-    fh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
-    provenance_logger.addHandler(fh)
 
 
 def set_data_dir(data_dir: str):
-    """Reconfigure provenance logger for a commodity-specific data directory."""
+    """Configure (or reconfigure) provenance logger for a commodity-specific data directory."""
     global _provenance_data_dir
     _provenance_data_dir = data_dir
     os.makedirs(data_dir, exist_ok=True)
