@@ -24,6 +24,9 @@ config = get_config()
 
 st.set_page_config(layout="wide", page_title="Utilities | Real Options")
 
+from _commodity_selector import selected_commodity
+ticker = selected_commodity()
+
 st.title("🔧 Utilities")
 st.caption("System maintenance and operational tools")
 

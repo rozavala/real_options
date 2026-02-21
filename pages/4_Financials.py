@@ -29,13 +29,16 @@ import numpy as np
 
 st.set_page_config(layout="wide", page_title="Financials | Real Options")
 
+from _commodity_selector import selected_commodity
+ticker = selected_commodity()
+
 st.title("📈 Financial Performance")
 st.caption("ROI & Audit - Institutional-grade reporting on actual dollars gained or lost")
 
 # --- Load Data ---
-equity_df = load_equity_data()
-trade_df = load_trade_data()
-council_df = load_council_history()
+equity_df = load_equity_data(ticker=ticker)
+trade_df = load_trade_data(ticker=ticker)
+council_df = load_council_history(ticker=ticker)
 config = get_config()
 
 # E4 FIX: Get starting capital from config/profile
@@ -309,7 +312,7 @@ if not council_df.empty and 'strategy_type' in council_df.columns and 'pnl_reali
                     legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
                     margin=dict(l=0, r=0, t=60, b=0)
                 )
-                st.plotly_chart(fig_roll, use_container_width=True)
+                st.plotly_chart(fig_roll, width='stretch')
 
                 for warning_msg in _declining:
                     st.warning(warning_msg)
@@ -353,7 +356,7 @@ st.caption("Calendar view of monthly performance - standard hedge fund reporting
 
 if not equity_df.empty:
     # Calculate monthly returns
-    equity_df['month'] = equity_df['timestamp'].dt.to_period('M')
+    equity_df['month'] = equity_df['timestamp'].dt.tz_localize(None).dt.to_period('M')
 
     monthly = equity_df.groupby('month').agg({
         'total_value_usd': ['first', 'last']

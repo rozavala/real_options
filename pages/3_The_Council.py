@@ -19,11 +19,14 @@ from dashboard_utils import load_council_history, get_status_color
 
 st.set_page_config(layout="wide", page_title="Council | Real Options")
 
+from _commodity_selector import selected_commodity
+ticker = selected_commodity()
+
 st.title("🧠 The Council Chamber")
 st.caption("Agent Explainability - Understand the reasoning behind every trade decision")
 
 # --- Load Data ---
-council_df = load_council_history()
+council_df = load_council_history(ticker=ticker)
 
 if council_df.empty:
     st.warning("No council history data available.")

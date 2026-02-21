@@ -481,6 +481,9 @@ def _relative_time(ts) -> str:
 
 st.set_page_config(layout="wide", page_title="Cockpit | Real Options")
 
+from _commodity_selector import selected_commodity
+ticker = selected_commodity()
+
 st.title("🦅 The Cockpit")
 st.caption("Situational Awareness - System health, capital safety, and emergency controls")
 
@@ -964,7 +967,7 @@ if config:
     st.markdown("---")
     st.subheader("📊 Rolling Win Rate (Last 20 Decisions)")
 
-    council_df = load_council_history()
+    council_df = load_council_history(ticker=ticker)
     if not council_df.empty:
         graded = grade_decision_quality(council_df)
         rolling = calculate_rolling_win_rate(graded, window=20)
@@ -1016,7 +1019,7 @@ if config:
                 st.dataframe(
                     _display_df,
                     hide_index=True,
-                    use_container_width=True,
+                    width="stretch",
                     column_config={
                         'Time': st.column_config.TextColumn(width='small'),
                         'Contract': st.column_config.TextColumn(width='medium'),
@@ -1187,7 +1190,7 @@ with st.expander("Recent Compliance Decisions"):
                             'Strategy': str(row.get('strategy_type', 'N/A')).replace('_', ' ').title(),
                             'Reason': str(row.get('reason', 'N/A'))[:80],
                         })
-                    st.dataframe(pd.DataFrame(_rej_rows), hide_index=True, use_container_width=True)
+                    st.dataframe(pd.DataFrame(_rej_rows), hide_index=True, width="stretch")
                 else:
                     st.info("No compliance rejections recorded")
             else:

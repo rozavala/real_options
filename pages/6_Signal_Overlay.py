@@ -33,6 +33,9 @@ from dashboard_utils import get_config
 
 st.set_page_config(layout="wide", page_title="Signal Analysis | Real Options")
 
+from _commodity_selector import selected_commodity
+ticker = selected_commodity()
+
 # E1: Dynamic profile loading
 config = get_config()
 profile = get_active_profile(config)
@@ -400,7 +403,7 @@ with st.sidebar:
     st.header("📜 Contract")
 
     # Load council data early to get available contracts
-    council_df_for_contracts = load_council_history()
+    council_df_for_contracts = load_council_history(ticker=ticker)
     available_contracts = get_available_contracts(council_df_for_contracts)
 
     # Build options list: Front Month + specific contracts
@@ -748,7 +751,7 @@ with st.spinner(f"Loading {get_contract_display_name(selected_contract)} data...
     else:
         actual_ticker_display = get_contract_display_name(selected_contract)
 
-    council_df = load_council_history()
+    council_df = load_council_history(ticker=ticker)
 
 
 # === PLOTTING ===

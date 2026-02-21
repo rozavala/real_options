@@ -103,8 +103,8 @@ def test_shared_state_source_uses_statemanager():
             func_source = ast.get_source_segment(source, node)
             assert 'StateManager._load_raw_sync' in func_source, \
                 "_load_shared_state should call StateManager._load_raw_sync"
-            assert 'STATE_FILE_PATH' in func_source, \
-                "_load_shared_state should have a fallback using STATE_FILE_PATH"
+            assert '_get_state_file_path' in func_source, \
+                "_load_shared_state should have a fallback using _get_state_file_path()"
             return
 
     pytest.fail("_load_shared_state function not found in dashboard_utils.py")
