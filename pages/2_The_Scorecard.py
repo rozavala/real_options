@@ -109,11 +109,14 @@ def create_process_outcome_matrix(df: pd.DataFrame):
 
 st.set_page_config(layout="wide", page_title="Scorecard | Real Options")
 
+from _commodity_selector import selected_commodity
+ticker = selected_commodity()
+
 st.title("⚖️ The Scorecard")
 st.caption("Decision Quality Analysis - Is the Master Strategist generating alpha or just noise?")
 
 # --- Load Data ---
-council_df = load_council_history()
+council_df = load_council_history(ticker=ticker)
 config = get_config()
 
 if council_df.empty:
@@ -287,7 +290,7 @@ if learning['has_data']:
     fig_lr.update_yaxes(title_text='Win Rate %', range=[0, 100], secondary_y=False)
     fig_lr.update_yaxes(title_text='Cumulative P&L ($)', secondary_y=True)
 
-    st.plotly_chart(fig_lr, use_container_width=True)
+    st.plotly_chart(fig_lr, width='stretch')
 
     # --- Chart 2: Process Quality Trend ---
     has_process = 'rolling_process' in ts.columns and ts['rolling_process'].notna().any()
@@ -319,7 +322,7 @@ if learning['has_data']:
             legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
             margin=dict(l=0, r=0, t=60, b=0)
         )
-        st.plotly_chart(fig_skill, use_container_width=True)
+        st.plotly_chart(fig_skill, width='stretch')
 
     # --- Trend summary indicator ---
     wr_col = 'win_rate_20'
@@ -387,7 +390,7 @@ if learning['has_data']:
                 legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
                 margin=dict(l=0, r=0, t=60, b=0)
             )
-            st.plotly_chart(fig_agents, use_container_width=True)
+            st.plotly_chart(fig_agents, width='stretch')
         else:
             st.info("Not enough resolved trades with actual outcomes for agent accuracy tracking.")
 
@@ -431,7 +434,7 @@ if learning['has_data']:
                 xaxis=dict(title='Confidence Bin'),
                 margin=dict(l=0, r=0, t=60, b=0)
             )
-            st.plotly_chart(fig_cal, use_container_width=True)
+            st.plotly_chart(fig_cal, width='stretch')
 
             # Calibration summary
             if len(calibration) >= 2:
@@ -512,7 +515,7 @@ if os.path.exists(_signals_path):
                         margin=dict(l=0, r=0, t=20, b=0),
                         showlegend=False
                     )
-                    st.plotly_chart(fig_regime, use_container_width=True)
+                    st.plotly_chart(fig_regime, width='stretch')
 
                     # Trade counts per regime
                     counts = [f"**{row['regime']}**: {row['total']} trades" for _, row in regime_stats.iterrows()]
@@ -576,7 +579,7 @@ if 'strategy_type' in graded_df.columns:
                 'Total P&L ($)': st.column_config.NumberColumn(format="$%.2f"),
             },
             hide_index=True,
-            use_container_width=True
+            width='stretch'
         )
 
         # Best strategy insight
@@ -600,8 +603,8 @@ st.caption("Do winning trades differ in holding time from losing trades?")
 _duration_shown = False
 if 'exit_timestamp' in graded_df.columns and 'timestamp' in graded_df.columns:
     dur_df = graded_df[graded_df['outcome'].isin(['WIN', 'LOSS'])].copy()
-    dur_df['exit_ts'] = pd.to_datetime(dur_df['exit_timestamp'], errors='coerce')
-    dur_df['entry_ts'] = pd.to_datetime(dur_df['timestamp'], errors='coerce')
+    dur_df['exit_ts'] = pd.to_datetime(dur_df['exit_timestamp'], utc=True, errors='coerce')
+    dur_df['entry_ts'] = pd.to_datetime(dur_df['timestamp'], utc=True, errors='coerce')
     dur_df = dur_df[dur_df['exit_ts'].notna() & dur_df['entry_ts'].notna()]
 
     if not dur_df.empty:

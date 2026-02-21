@@ -21,6 +21,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import _resolve_data_path
 
 st.set_page_config(layout="wide", page_title="Brier Analysis | Real Options")
+
+from _commodity_selector import selected_commodity
+ticker = selected_commodity()
+
 st.title("🎯 Brier Analysis")
 st.caption("Agent prediction quality, calibration curves, and learning feedback")
 
@@ -255,7 +259,7 @@ if enhanced_data and enhanced_data.get('calibration_buckets'):
                     bgcolor='rgba(255,255,255,0.8)',
                 )
 
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
                 with st.expander("Calibration Data"):
                     st.dataframe(cal_df, hide_index=True)
@@ -413,7 +417,7 @@ if not weight_df.empty and len(weight_df) >= 5:
         legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0),
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # --- Agent trajectory summary: current vs 30 cycles ago ---
     summary_rows = []
@@ -459,7 +463,7 @@ if not weight_df.empty and len(weight_df) >= 5:
         return 'color: gray'
 
     styled = summary_df.style.map(_color_delta, subset=['Delta'])
-    st.dataframe(styled, hide_index=True, use_container_width=True)
+    st.dataframe(styled, hide_index=True, width="stretch")
 
 elif not weight_df.empty:
     st.info("Insufficient weight evolution data (need at least 5 rows). Data accumulates as trading cycles run.")
@@ -540,7 +544,7 @@ try:
                     return ''
 
             styled_regime = display_df.style.map(_color_accuracy)
-            st.dataframe(styled_regime, use_container_width=True)
+            st.dataframe(styled_regime, width="stretch")
 
             # Best agent per regime
             best_agents = []
@@ -570,7 +574,7 @@ try:
             ranking[['Agent', 'total', 'correct', 'accuracy']].rename(
                 columns={'total': 'Predictions', 'correct': 'Correct', 'accuracy': 'Accuracy %'}
             ),
-            hide_index=True, use_container_width=True,
+            hide_index=True, width="stretch",
         )
         st.caption("Regime-specific breakdown will appear when decision_signals.csv contains regime data.")
     else:

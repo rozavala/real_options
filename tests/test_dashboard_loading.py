@@ -44,7 +44,7 @@ def test_load_council_history_mixed_format(mixed_timestamp_csv):
             importlib.reload(sys.modules['dashboard_utils'])
         import dashboard_utils
 
-        with patch.object(dashboard_utils, 'COUNCIL_HISTORY_PATH', mixed_timestamp_csv), \
+        with patch.object(dashboard_utils, '_resolve_data_path_for', return_value=mixed_timestamp_csv), \
              patch.object(dashboard_utils, '_load_legacy_council_history', return_value=pd.DataFrame()):
 
             df = dashboard_utils.load_council_history()

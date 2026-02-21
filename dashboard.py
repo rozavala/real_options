@@ -1,145 +1,115 @@
 """
-Coffee Bot Real Options - Main Entry Point
+Real Options Portfolio — Main Entry Point
 
-This file serves as the entry point and redirects to the multi-page app.
+Cross-commodity portfolio home page. Shows health, financials, and recent
+activity across all active commodities. Individual commodity drill-down
+lives on pages 1-7 (each page has its own commodity selector).
+
 Streamlit's native multi-page support handles routing via the pages/ directory.
 """
 
 import streamlit as st
-from config_loader import load_config, deep_merge
 from trading_bot.logging_config import setup_logging
-
-# Set up dashboard-specific logging (per-commodity to avoid log collision)
 import os
-_dashboard_ticker = os.environ.get("COMMODITY_TICKER", "KC").lower()
-setup_logging(log_file=f"logs/dashboard_{_dashboard_ticker}.log")
+import json
 
-# Dynamic configuration for commodity-aware branding
-_cfg = load_config()
-_dashboard_ticker_upper = os.environ.get("COMMODITY_TICKER", "KC").upper()
-
-# Mirror orchestrator's commodity override logic
-if _cfg:
-    _overrides = _cfg.get('commodity_overrides', {}).get(_dashboard_ticker_upper, {})
-    if _overrides:
-        _cfg = deep_merge(_cfg, _overrides)
-    _cfg.setdefault('commodity', {})['ticker'] = _dashboard_ticker_upper
-
-_EMOJI_MAP = {'Coffee': '\u2615', 'Cocoa': '\U0001f36b', 'Sugar': '\U0001f36c'}
-_commodity_name = _cfg.get('commodity', {}).get('name', 'Coffee') if _cfg else 'Coffee'
-_commodity_emoji = _EMOJI_MAP.get(_commodity_name.split()[0], '\U0001f4ca')
+# Single consolidated dashboard log (not per-commodity)
+setup_logging(log_file="logs/dashboard.log")
 
 st.set_page_config(
     layout="wide",
-    page_title=f"{_commodity_name} Real Options",
-    page_icon=_commodity_emoji,
+    page_title="Real Options Portfolio",
+    page_icon="\U0001f4ca",
     initial_sidebar_state="expanded"
 )
 
-# === COMMODITY SELECTOR (sidebar) ===
-_COMMODITIES = ["KC", "CC", "SB"]
-_COMMODITY_LABELS = {
-    "KC": "\u2615 KC (Coffee)",
-    "CC": "\U0001f36b CC (Cocoa)",
-    "SB": "\U0001f36c SB (Sugar)",
-}
-
-if 'commodity_ticker' not in st.session_state:
-    st.session_state['commodity_ticker'] = os.environ.get('COMMODITY_TICKER', 'KC')
-
-selected = st.sidebar.selectbox(
-    "Commodity",
-    _COMMODITIES,
-    index=_COMMODITIES.index(st.session_state['commodity_ticker']),
-    format_func=lambda x: _COMMODITY_LABELS.get(x, x),
-)
-if selected != st.session_state['commodity_ticker']:
-    st.session_state['commodity_ticker'] = selected
-    os.environ['COMMODITY_TICKER'] = selected
-    st.cache_data.clear()
-    st.rerun()
-
 # === IMPORTS ===
+import pandas as pd
+from datetime import datetime, timezone
 from dashboard_utils import (
-    get_system_heartbeat,
-    fetch_live_dashboard_data,
+    discover_active_commodities,
+    get_system_heartbeat_for_commodity,
+    load_council_history_for_commodity,
+    grade_decision_quality,
     fetch_all_live_data,
     get_config,
-    fetch_todays_benchmark_data,
-    load_council_history,
-    get_sentinel_status,
-    _resolve_data_path,
 )
 
 config = get_config()
 
-# The presence of files in pages/ directory enables multi-page mode automatically.
-# This file becomes the "home" page.
+_COMMODITY_META = {
+    "KC": {"name": "Coffee", "emoji": "\u2615"},
+    "CC": {"name": "Cocoa", "emoji": "\U0001f36b"},
+    "SB": {"name": "Sugar", "emoji": "\U0001f36c"},
+}
 
-st.title(f"{_commodity_emoji} {_commodity_name} Real Options")
+st.title("\U0001f4ca Real Options Portfolio")
 
-# === SYSTEM HEALTH SUMMARY (4 columns) ===
-heartbeat = get_system_heartbeat()
+# =====================================================================
+# SECTION 1: Portfolio Health — per-commodity orchestrator status
+# =====================================================================
+active_commodities = discover_active_commodities()
 
-col1, col2, col3, col4 = st.columns(4)
+st.markdown("### Portfolio Health")
+health_cols = st.columns(max(len(active_commodities), 1))
 
-with col1:
-    orch_status = heartbeat['orchestrator_status']
-    if orch_status == "ONLINE":
-        st.metric("Orchestrator", "Online", delta="Healthy", delta_color="normal")
-    elif orch_status == "STALE":
-        st.metric("Orchestrator", "Stale", delta="Check logs", delta_color="off")
-    else:
-        st.metric("Orchestrator", "Offline", delta="Down", delta_color="inverse")
+for idx, ticker in enumerate(active_commodities):
+    meta = _COMMODITY_META.get(ticker, {"name": ticker, "emoji": "\U0001f4ca"})
+    hb = get_system_heartbeat_for_commodity(ticker)
+    status = hb["orchestrator_status"]
 
-with col2:
-    try:
-        live = fetch_all_live_data(config) if config else {}
-        conn = live.get('connection_status', 'DISCONNECTED')
-        if conn == 'CONNECTED':
-            st.metric("IB Gateway", "Connected", delta="Healthy", delta_color="normal")
-        elif conn == 'ERROR':
-            st.metric("IB Gateway", "Error", delta=live.get('error', '')[:30], delta_color="inverse")
+    with health_cols[idx]:
+        if status == "ONLINE":
+            st.metric(
+                f"{meta['emoji']} {meta['name']} ({ticker})",
+                "Online",
+                delta="Healthy",
+                delta_color="normal",
+            )
+        elif status == "STALE":
+            st.metric(
+                f"{meta['emoji']} {meta['name']} ({ticker})",
+                "Stale",
+                delta="Check logs",
+                delta_color="off",
+            )
         else:
-            st.metric("IB Gateway", "Offline", delta="No connection", delta_color="inverse")
-    except Exception:
-        st.metric("IB Gateway", "Offline", delta="No connection", delta_color="inverse")
-        live = {}
+            st.metric(
+                f"{meta['emoji']} {meta['name']} ({ticker})",
+                "Offline",
+                delta="Down",
+                delta_color="inverse",
+            )
 
-with col3:
-    try:
-        sentinels = get_sentinel_status()
-        stale_count = sum(1 for s in sentinels.values() if s.get('is_stale'))
-        total_sentinels = len(sentinels)
-        active_count = total_sentinels - stale_count
-        if stale_count == 0:
-            st.metric("Sentinels", f"{active_count}/{total_sentinels}", delta="All active", delta_color="normal")
-        else:
-            st.metric("Sentinels", f"{active_count}/{total_sentinels}", delta=f"{stale_count} stale", delta_color="inverse")
-    except Exception:
-        st.metric("Sentinels", "Unknown", delta="No data", delta_color="off")
-
-with col4:
-    try:
-        from trading_bot.utils import is_market_open
-        market_open = is_market_open(config) if config else False
-        if market_open:
-            st.metric("Market", "Open", delta="Trading", delta_color="normal")
-        else:
-            st.metric("Market", "Closed", delta="After hours", delta_color="off")
-    except Exception:
-        st.metric("Market", "Unknown", delta="No data", delta_color="off")
-
-# === DAILY P&L ===
+# =====================================================================
+# SECTION 2: Financial Summary — NLV, Daily P&L, Portfolio VaR
+# =====================================================================
 st.markdown("---")
+st.markdown("### Financial Summary")
 
-pnl_col, nlv_col, bench_col = st.columns(3)
+fin_col1, fin_col2, fin_col3 = st.columns(3)
 
-with pnl_col:
+# IB account data (single account, shared across commodities)
+try:
+    live = fetch_all_live_data(config) if config else {}
+except Exception:
+    live = {}
+
+with fin_col1:
     try:
-        if live.get('connection_status') == 'CONNECTED':
-            daily_pnl = live.get('daily_pnl', 0.0)
-            nlv = live.get('net_liquidation', 0.0)
+        if live.get("connection_status") == "CONNECTED":
+            nlv = live.get("net_liquidation", 0.0)
+            st.metric("Net Liquidation", f"${nlv:,.2f}")
+        else:
+            st.metric("Net Liquidation", "IB Offline")
+    except Exception:
+        st.metric("Net Liquidation", "IB Offline")
+
+with fin_col2:
+    try:
+        if live.get("connection_status") == "CONNECTED":
+            daily_pnl = live.get("daily_pnl", 0.0)
+            nlv = live.get("net_liquidation", 0.0)
             pnl_pct = (daily_pnl / nlv * 100) if nlv > 0 else 0.0
             st.metric("Daily P&L", f"${daily_pnl:,.0f}", delta=f"{pnl_pct:+.2f}%")
         else:
@@ -147,42 +117,83 @@ with pnl_col:
     except Exception:
         st.metric("Daily P&L", "IB Offline")
 
-with nlv_col:
+with fin_col3:
     try:
-        if live.get('connection_status') == 'CONNECTED':
-            nlv = live.get('net_liquidation', 0.0)
-            st.metric("Net Liquidation", f"${nlv:,.2f}")
+        var_path = os.path.join("data", "var_state.json")
+        if os.path.exists(var_path):
+            with open(var_path, "r") as f:
+                var_data = json.load(f)
+            var_95 = var_data.get("var_95", 0)
+            limit = var_data.get("var_limit", 0)
+            utilization = (var_95 / limit * 100) if limit > 0 else 0.0
+            st.metric("Portfolio VaR (95%)", f"${var_95:,.0f}", delta=f"{utilization:.0f}% utilized")
         else:
-            st.metric("Net Liquidation", "IB Offline")
+            st.metric("Portfolio VaR (95%)", "No data")
     except Exception:
-        st.metric("Net Liquidation", "IB Offline")
+        st.metric("Portfolio VaR (95%)", "No data")
 
-with bench_col:
-    try:
-        benchmarks = fetch_todays_benchmark_data()
-        ticker = _cfg.get('commodity', {}).get('ticker', 'KC') if _cfg else 'KC'
-        benchmark_symbol = f"{ticker}=F"
-        pct = benchmarks.get(benchmark_symbol, 0)
-        st.metric(f"{ticker} Benchmark", f"{pct:+.2f}%")
-    except Exception:
-        st.metric("Benchmark", "No data")
-
-# === RECENT DECISIONS FEED ===
+# =====================================================================
+# SECTION 3: Per-Commodity Cards — trade count, last decision, win rate
+# =====================================================================
 st.markdown("---")
-st.markdown("### Recent Decisions")
+st.markdown("### Commodity Summary")
+
+card_cols = st.columns(max(len(active_commodities), 1))
+
+for idx, ticker in enumerate(active_commodities):
+    meta = _COMMODITY_META.get(ticker, {"name": ticker, "emoji": "\U0001f4ca"})
+    council_df = load_council_history_for_commodity(ticker)
+
+    with card_cols[idx]:
+        st.markdown(f"#### {meta['emoji']} {meta['name']}")
+
+        if council_df.empty:
+            st.caption("No trading history yet.")
+            continue
+
+        total_trades = len(council_df)
+
+        # Win rate from graded decisions
+        graded = grade_decision_quality(council_df)
+        resolved = graded[graded["outcome"].isin(["WIN", "LOSS"])] if not graded.empty else pd.DataFrame()
+        wins = len(resolved[resolved["outcome"] == "WIN"]) if not resolved.empty else 0
+        win_rate = (wins / len(resolved) * 100) if len(resolved) > 0 else 0.0
+
+        # Last decision
+        last_row = council_df.iloc[0]
+        last_decision = last_row.get("master_decision", "---")
+        last_strategy = last_row.get("strategy_type", "---")
+
+        st.metric("Trades", str(total_trades))
+        st.metric("Win Rate", f"{win_rate:.0f}%", delta=f"{wins}W / {len(resolved) - wins}L")
+        st.caption(f"Last: **{last_decision}** / {last_strategy}")
+
+# =====================================================================
+# SECTION 4: Recent Activity Feed — merged council history (top 10)
+# =====================================================================
+st.markdown("---")
+st.markdown("### Recent Activity")
 
 try:
-    council_df = load_council_history()
-    if not council_df.empty:
-        from datetime import datetime, timezone
-        recent = council_df.head(5).copy()
+    all_dfs = []
+    for ticker in active_commodities:
+        df = load_council_history_for_commodity(ticker)
+        if not df.empty:
+            all_dfs.append(df)
+
+    if all_dfs:
+        merged = pd.concat(all_dfs, ignore_index=True)
+        merged = merged.sort_values("timestamp", ascending=False).head(10).copy()
+
+        graded_merged = grade_decision_quality(merged)
 
         display_cols = []
-        if 'timestamp' in recent.columns:
+        if "timestamp" in graded_merged.columns:
             now = datetime.now(timezone.utc)
+
             def _relative_time(ts):
                 try:
-                    if hasattr(ts, 'tzinfo') and ts.tzinfo is None:
+                    if hasattr(ts, "tzinfo") and ts.tzinfo is None:
                         import pytz
                         ts = pytz.utc.localize(ts)
                     delta = now - ts
@@ -195,56 +206,63 @@ try:
                         return f"{int(hours / 24)}d ago"
                 except Exception:
                     return "?"
-            recent['Time'] = recent['timestamp'].apply(_relative_time)
-            display_cols.append('Time')
+
+            graded_merged["Time"] = graded_merged["timestamp"].apply(_relative_time)
+            display_cols.append("Time")
+
+        if "commodity" in graded_merged.columns:
+            graded_merged["Commodity"] = graded_merged["commodity"]
+            display_cols.append("Commodity")
 
         col_map = {
-            'contract': 'Contract',
-            'master_decision': 'Decision',
-            'master_confidence': 'Confidence',
-            'strategy_type': 'Strategy',
-            'thesis_strength': 'Thesis',
-            'trigger_type': 'Trigger',
-            'outcome': 'Outcome',
-            'pnl_realized': 'P&L',
+            "contract": "Contract",
+            "master_decision": "Decision",
+            "master_confidence": "Confidence",
+            "strategy_type": "Strategy",
+            "thesis_strength": "Thesis",
+            "trigger_type": "Trigger",
+            "outcome": "Outcome",
+            "pnl_realized": "P&L",
         }
         for src, dst in col_map.items():
-            if src in recent.columns:
-                recent[dst] = recent[src]
+            if src in graded_merged.columns:
+                graded_merged[dst] = graded_merged[src]
                 display_cols.append(dst)
 
         # Format confidence as percentage
-        if 'Confidence' in recent.columns:
-            recent['Confidence'] = recent['Confidence'].apply(
+        if "Confidence" in graded_merged.columns:
+            graded_merged["Confidence"] = graded_merged["Confidence"].apply(
                 lambda x: f"{float(x)*100:.0f}%" if x is not None else "?"
             )
 
         # Format outcome with visual indicators
-        if 'Outcome' in recent.columns:
-            recent['Outcome'] = recent['Outcome'].apply(
-                lambda x: '\u2705 WIN' if x == 'WIN' else '\u274c LOSS' if x == 'LOSS' else '\u2014'
+        if "Outcome" in graded_merged.columns:
+            graded_merged["Outcome"] = graded_merged["Outcome"].apply(
+                lambda x: "\u2705 WIN" if x == "WIN" else "\u274c LOSS" if x == "LOSS" else "\u2014"
             )
 
         # Format P&L as currency
-        if 'P&L' in recent.columns:
-            recent['P&L'] = recent['P&L'].apply(
+        if "P&L" in graded_merged.columns:
+            graded_merged["P&L"] = graded_merged["P&L"].apply(
                 lambda x: f"${float(x):+,.2f}" if pd.notna(x) and x != 0 else "\u2014"
             )
 
         if display_cols:
             st.dataframe(
-                recent[display_cols],
-                use_container_width=True,
+                graded_merged[display_cols],
+                width='stretch',
                 hide_index=True,
             )
         else:
             st.info("No decision columns available.")
     else:
         st.info("No council decisions yet.")
-except Exception as e:
-    st.info(f"No decision data available.")
+except Exception:
+    st.info("No decision data available.")
 
-# === NAVIGATION ===
+# =====================================================================
+# SECTION 5: Navigation
+# =====================================================================
 st.markdown("---")
 st.markdown("### Navigate")
 
@@ -281,4 +299,7 @@ else:
     | **Brier Analysis** | Which agents need tuning? Accuracy, calibration, learning |
     """)
 
-st.caption(f"Select a page from the sidebar or above to begin. Viewing: {_commodity_emoji} {_dashboard_ticker_upper}")
+active_str = ", ".join(
+    f"{_COMMODITY_META.get(t, {}).get('emoji', '')} {t}" for t in active_commodities
+)
+st.caption(f"Active commodities: {active_str}")

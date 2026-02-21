@@ -72,6 +72,21 @@ def _resolve_data_path(filename: str) -> str:
     return commodity_path  # Default to commodity path for creation
 
 
+def _resolve_data_path_for(filename: str, ticker: str) -> str:
+    """Resolve a data file path for a specific commodity ticker.
+
+    Same 3-tier fallback as _resolve_data_path but with explicit ticker
+    (no env var dependency), enabling commodity switching at runtime.
+    """
+    commodity_path = os.path.join("data", ticker, filename)
+    legacy_path = os.path.join("data", filename)
+    if os.path.exists(commodity_path):
+        return commodity_path
+    if os.path.exists(legacy_path):
+        return legacy_path
+    return commodity_path
+
+
 # === CONFIGURATION ===
 # E4 FIX: Dynamic starting capital handled in get_starting_capital function
 STATE_FILE_PATH = _resolve_data_path('state.json')
@@ -79,6 +94,21 @@ _ticker_for_log = os.environ.get("COMMODITY_TICKER", "KC").lower()
 ORCHESTRATOR_LOG_PATH = f'logs/orchestrator_{_ticker_for_log}.log'
 COUNCIL_HISTORY_PATH = _resolve_data_path('council_history.csv')
 DAILY_EQUITY_PATH = _resolve_data_path('daily_equity.csv')
+
+
+# Dynamic path getters (re-evaluate each call for in-app commodity switching)
+def _get_state_file_path():
+    return _resolve_data_path('state.json')
+
+def _get_orchestrator_log_path():
+    ticker = os.environ.get("COMMODITY_TICKER", "KC").lower()
+    return f'logs/orchestrator_{ticker}.log'
+
+def _get_council_history_path():
+    return _resolve_data_path('council_history.csv')
+
+def _get_daily_equity_path():
+    return _resolve_data_path('daily_equity.csv')
 
 
 # === DATA LOADING FUNCTIONS ===
@@ -144,10 +174,10 @@ def get_commodity_profile(config: dict = None) -> dict:
 
 
 @st.cache_data(ttl=60)
-def load_trade_data():
+def load_trade_data(ticker: str = None):
     """Loads and caches the consolidated trade ledger."""
     try:
-        ticker = os.environ.get("COMMODITY_TICKER", "KC")
+        ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
         data_dir = os.path.join("data", ticker)
         df = get_trade_ledger_df(data_dir)
         if not df.empty:
@@ -186,18 +216,20 @@ def _load_legacy_council_history(data_dir: str) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=60)
-def load_council_history():
+def load_council_history(ticker: str = None):
     """
     Loads council_history.csv for decision analysis.
     Also loads any archived legacy files and concatenates them.
     """
     try:
+        ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
+        council_path = _resolve_data_path_for('council_history.csv', ticker)
         dataframes = []
-        data_dir = os.path.dirname(COUNCIL_HISTORY_PATH)
+        data_dir = os.path.dirname(council_path)
 
         # Load main file
-        if os.path.exists(COUNCIL_HISTORY_PATH):
-            df = pd.read_csv(COUNCIL_HISTORY_PATH)
+        if os.path.exists(council_path):
+            df = pd.read_csv(council_path)
             if not df.empty:
                 # OPTIMIZATION: Parse timestamps immediately for live data
                 if 'timestamp' in df.columns:
@@ -227,11 +259,13 @@ def load_council_history():
 
 
 @st.cache_data(ttl=300)
-def load_equity_data():
+def load_equity_data(ticker: str = None):
     """Loads daily_equity.csv for equity curve visualization."""
     try:
-        if os.path.exists(DAILY_EQUITY_PATH):
-            df = pd.read_csv(DAILY_EQUITY_PATH)
+        ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
+        equity_path = _resolve_data_path_for('daily_equity.csv', ticker)
+        if os.path.exists(equity_path):
+            df = pd.read_csv(equity_path)
             if not df.empty:
                 df['timestamp'] = parse_ts_column(df['timestamp'])
                 df = df.sort_values('timestamp')
@@ -332,9 +366,10 @@ def _load_shared_state() -> dict:
         return StateManager._load_raw_sync()
     except Exception:
         # Fallback if import fails or StateManager errors
-        if os.path.exists(STATE_FILE_PATH):
+        state_path = _get_state_file_path()
+        if os.path.exists(state_path):
             try:
-                with open(STATE_FILE_PATH, 'r') as f:
+                with open(state_path, 'r') as f:
                     return json.load(f)
             except Exception:
                 pass
@@ -357,15 +392,17 @@ def get_system_heartbeat():
     }
 
     # Check Orchestrator log
-    if os.path.exists(ORCHESTRATOR_LOG_PATH):
-        mtime = datetime.fromtimestamp(os.path.getmtime(ORCHESTRATOR_LOG_PATH))
+    log_path = _get_orchestrator_log_path()
+    if os.path.exists(log_path):
+        mtime = datetime.fromtimestamp(os.path.getmtime(log_path))
         heartbeat['orchestrator_last_pulse'] = mtime
         minutes_since = (datetime.now() - mtime).total_seconds() / 60
         heartbeat['orchestrator_status'] = 'ONLINE' if minutes_since < heartbeat['alert_threshold_minutes'] else 'STALE'
 
     # Check State file
-    if os.path.exists(STATE_FILE_PATH):
-        mtime = datetime.fromtimestamp(os.path.getmtime(STATE_FILE_PATH))
+    state_path = _get_state_file_path()
+    if os.path.exists(state_path):
+        mtime = datetime.fromtimestamp(os.path.getmtime(state_path))
         heartbeat['state_last_pulse'] = mtime
         minutes_since = (datetime.now() - mtime).total_seconds() / 60
         heartbeat['state_status'] = 'ONLINE' if minutes_since < heartbeat['alert_threshold_minutes'] else 'STALE'
@@ -377,6 +414,12 @@ def get_system_heartbeat():
 
 ACTIVE_SCHEDULE_PATH = _resolve_data_path('active_schedule.json')
 TASK_COMPLETIONS_PATH = _resolve_data_path('task_completions.json')
+
+def _get_active_schedule_path():
+    return _resolve_data_path('active_schedule.json')
+
+def _get_task_completions_path():
+    return _resolve_data_path('task_completions.json')
 
 # Legacy labels: fallback for old active_schedule.json files without 'label' field.
 # New schedules include per-instance labels (e.g., "Signal: Early Session (04:00 ET)")
@@ -422,11 +465,12 @@ def load_task_schedule_status() -> dict:
     }
 
     # Load active schedule
-    if not os.path.exists(ACTIVE_SCHEDULE_PATH):
+    schedule_path = _get_active_schedule_path()
+    if not os.path.exists(schedule_path):
         return result
 
     try:
-        with open(ACTIVE_SCHEDULE_PATH, 'r') as f:
+        with open(schedule_path, 'r') as f:
             schedule_data = json.load(f)
     except Exception:
         return result
@@ -491,8 +535,9 @@ def load_task_schedule_status() -> dict:
     # Load completions
     completions = {}
     try:
-        if os.path.exists(TASK_COMPLETIONS_PATH):
-            with open(TASK_COMPLETIONS_PATH, 'r') as f:
+        completions_path = _get_task_completions_path()
+        if os.path.exists(completions_path):
+            with open(completions_path, 'r') as f:
                 tracker_data = json.load(f)
 
             # Only use completions from today (NY timezone)
@@ -1850,8 +1895,9 @@ def get_current_market_regime() -> str:
     """
     try:
         # Priority 1: Council history (most recent regime from actual decisions)
-        if os.path.exists(COUNCIL_HISTORY_PATH):
-            df = pd.read_csv(COUNCIL_HISTORY_PATH)
+        council_path = _get_council_history_path()
+        if os.path.exists(council_path):
+            df = pd.read_csv(council_path)
             if not df.empty and 'entry_regime' in df.columns:
                 recent_regimes = df['entry_regime'].dropna()
                 if not recent_regimes.empty:
@@ -1887,3 +1933,60 @@ def get_strategy_color(strategy_type: str) -> str:
         'LONG_STRADDLE': '#AB63FA'      # Purple
     }
     return colors.get(strategy_type, '#FFFFFF')
+
+
+# === CROSS-COMMODITY HELPERS (for portfolio home page) ===
+
+_ALL_TICKERS = ["KC", "CC", "SB"]
+
+def discover_active_commodities() -> list[str]:
+    """Return tickers that have a data directory with state.json."""
+    active = []
+    for ticker in _ALL_TICKERS:
+        state_path = os.path.join("data", ticker, "state.json")
+        data_dir = os.path.join("data", ticker)
+        if os.path.isdir(data_dir) and os.path.exists(state_path):
+            active.append(ticker)
+    return active if active else ["KC"]
+
+
+def load_council_history_for_commodity(ticker: str) -> pd.DataFrame:
+    """Load council_history.csv for a specific commodity, adding a 'commodity' column."""
+    council_path = _resolve_data_path_for('council_history.csv', ticker)
+    if not os.path.exists(council_path):
+        return pd.DataFrame()
+    try:
+        df = pd.read_csv(council_path)
+        if not df.empty:
+            if 'timestamp' in df.columns:
+                df['timestamp'] = parse_ts_column(df['timestamp'])
+            df['commodity'] = ticker
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+
+def get_system_heartbeat_for_commodity(ticker: str) -> dict:
+    """Get orchestrator heartbeat for a specific commodity."""
+    heartbeat = {
+        'ticker': ticker,
+        'orchestrator_status': 'OFFLINE',
+        'orchestrator_last_pulse': None,
+        'state_status': 'OFFLINE',
+        'state_last_pulse': None,
+    }
+    log_path = f'logs/orchestrator_{ticker.lower()}.log'
+    if os.path.exists(log_path):
+        mtime = datetime.fromtimestamp(os.path.getmtime(log_path))
+        heartbeat['orchestrator_last_pulse'] = mtime
+        minutes_since = (datetime.now() - mtime).total_seconds() / 60
+        heartbeat['orchestrator_status'] = 'ONLINE' if minutes_since < 10 else 'STALE'
+
+    state_path = os.path.join("data", ticker, "state.json")
+    if os.path.exists(state_path):
+        mtime = datetime.fromtimestamp(os.path.getmtime(state_path))
+        heartbeat['state_last_pulse'] = mtime
+        minutes_since = (datetime.now() - mtime).total_seconds() / 60
+        heartbeat['state_status'] = 'ONLINE' if minutes_since < 10 else 'STALE'
+
+    return heartbeat

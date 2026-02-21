@@ -71,10 +71,10 @@ rollback_and_restart() {
         chmod 755 logs 2>/dev/null || true
         for _t in "${ALL_TICKERS[@]}"; do
             _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
-            touch "logs/orchestrator_${_tl}.log" "logs/dashboard_${_tl}.log" 2>/dev/null || true
-            chmod 664 "logs/orchestrator_${_tl}.log" "logs/dashboard_${_tl}.log" 2>/dev/null || true
+            touch "logs/orchestrator_${_tl}.log" 2>/dev/null || true
+            chmod 664 "logs/orchestrator_${_tl}.log" 2>/dev/null || true
         done
-        touch logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
+        touch logs/dashboard.log logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log 2>/dev/null || true
 
         # Kill any orphaned processes before restarting
         pkill -9 -f "orchestrator.py" 2>/dev/null || true
@@ -83,7 +83,6 @@ rollback_and_restart() {
 
         # Restart ALL commodity services via systemd
         sudo systemctl daemon-reload
-        _rb_port=8501
         for _t in "${ALL_TICKERS[@]}"; do
             _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
             if [ "$_t" = "KC" ]; then _svc="$SERVICE_NAME"; else _svc="trading-bot-${_tl}"; fi
@@ -95,10 +94,12 @@ rollback_and_restart() {
                 echo "  Rollback: $_svc start failed, falling back to nohup"
                 nohup python -u orchestrator.py --commodity "$_t" >> "logs/orchestrator_${_tl}.log" 2>&1 &
             fi
-            # Restart dashboard for this commodity
-            COMMODITY_TICKER="$_t" nohup streamlit run dashboard.py --server.address 0.0.0.0 --server.port "$_rb_port" > "logs/dashboard_${_tl}.log" 2>&1 &
-            _rb_port=$((_rb_port + 1))
         done
+
+        # Single dashboard (commodity selection is in-app)
+        echo "  Rollback: Starting dashboard on port 8501..."
+        nohup streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501 > "logs/dashboard.log" 2>&1 &
+        echo "  Rollback: Dashboard started (PID: $!, port: 8501)"
 
         echo "--- Rollback complete. Old version restarted. ---"
         echo "--- MANUAL INVESTIGATION REQUIRED ---"
@@ -172,8 +173,8 @@ ROTATE_DATE=$(date --iso=s)
 for _t in "${ALL_TICKERS[@]}"; do
     _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
     [ -f "logs/orchestrator_${_tl}.log" ] && mv "logs/orchestrator_${_tl}.log" "logs/orchestrator_${_tl}-${ROTATE_DATE}.log" || true
-    [ -f "logs/dashboard_${_tl}.log" ] && mv "logs/dashboard_${_tl}.log" "logs/dashboard_${_tl}-${ROTATE_DATE}.log" || true
 done
+[ -f logs/dashboard.log ] && mv logs/dashboard.log "logs/dashboard-${ROTATE_DATE}.log" || true
 [ -f logs/equity_logger.log ] && mv logs/equity_logger.log "logs/equity_logger-${ROTATE_DATE}.log" || true
 [ -f logs/sentinels.log ] && mv logs/sentinels.log "logs/sentinels-${ROTATE_DATE}.log" || true
 
@@ -182,10 +183,10 @@ find logs/ -name "*-20*.log" -mtime +7 -delete 2>/dev/null || true
 
 # Ensure logs directory exists with correct permissions
 chmod 755 logs
-LOG_FILES=(logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log)
+LOG_FILES=(logs/manual_test.log logs/performance_analyzer.log logs/equity_logger.log logs/sentinels.log logs/dashboard.log)
 for _t in "${ALL_TICKERS[@]}"; do
     _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
-    LOG_FILES+=("logs/orchestrator_${_tl}.log" "logs/dashboard_${_tl}.log")
+    LOG_FILES+=("logs/orchestrator_${_tl}.log")
 done
 touch "${LOG_FILES[@]}"
 chmod 664 "${LOG_FILES[@]}"
@@ -253,8 +254,7 @@ echo "--- 9. Starting services... ---"
 echo "  Reloading systemd..."
 sudo systemctl daemon-reload
 
-# Start all commodity services and their dashboards
-DASHBOARD_PORT=8501
+# Start all commodity orchestrator services
 for _t in "${ALL_TICKERS[@]}"; do
     _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
     if [ "$_t" = "KC" ]; then _svc="$SERVICE_NAME"; else _svc="trading-bot-${_tl}"; fi
@@ -288,14 +288,12 @@ for _t in "${ALL_TICKERS[@]}"; do
         rollback_and_restart
     fi
     echo "  $_svc service started (PID: $SVC_PID)"
-
-    # Start dashboard for this commodity
-    echo "  Starting $_t dashboard on port $DASHBOARD_PORT..."
-    COMMODITY_TICKER="$_t" nohup streamlit run dashboard.py --server.address 0.0.0.0 --server.port "$DASHBOARD_PORT" > "logs/dashboard_${_tl}.log" 2>&1 &
-    echo "  $_t dashboard started (PID: $!, port: $DASHBOARD_PORT)"
-
-    DASHBOARD_PORT=$((DASHBOARD_PORT + 1))
 done
+
+# Single dashboard (commodity selection is in-app)
+echo "  Starting dashboard on port 8501..."
+nohup streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501 > "logs/dashboard.log" 2>&1 &
+echo "  Dashboard started (PID: $!, port: 8501)"
 
 # Final verification after 3 more seconds — check all services are still alive
 sleep 3
