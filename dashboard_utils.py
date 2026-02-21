@@ -111,6 +111,45 @@ def _get_daily_equity_path():
     return _resolve_data_path('daily_equity.csv')
 
 
+# === TRADE JOURNAL ===
+
+@st.cache_data(ttl=120)
+def load_trade_journal(ticker: str = None) -> list:
+    """Load trade journal entries for a commodity."""
+    ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
+    journal_path = _resolve_data_path_for('trade_journal.json', ticker)
+    if not os.path.exists(journal_path):
+        return []
+    try:
+        with open(journal_path, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def find_journal_entry(journal: list, contract: str, pnl: float) -> dict | None:
+    """Find the journal entry matching a council decision by contract and P&L.
+
+    Returns the best match or None. Matches on contract name and approximate
+    P&L (within $1 tolerance), picking the closest PnL if multiple match.
+    """
+    if not journal or not contract or pnl is None:
+        return None
+    try:
+        pnl = float(pnl)
+    except (ValueError, TypeError):
+        return None
+
+    candidates = [
+        e for e in journal
+        if e.get('contract') == contract and abs(e.get('pnl', 0) - pnl) < 1.0
+    ]
+    if not candidates:
+        return None
+    # Pick closest PnL match
+    return min(candidates, key=lambda e: abs(e.get('pnl', 0) - pnl))
+
+
 # === DATA LOADING FUNCTIONS ===
 
 def get_starting_capital(config: dict) -> float:

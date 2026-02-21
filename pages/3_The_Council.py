@@ -15,7 +15,7 @@ import html
 from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dashboard_utils import load_council_history, get_status_color
+from dashboard_utils import load_council_history, get_status_color, load_trade_journal, find_journal_entry
 
 st.set_page_config(layout="wide", page_title="Council | Real Options")
 
@@ -545,6 +545,53 @@ if pd.notna(actual_trend) and actual_trend:
             st.metric("P&L", "Pending")
 else:
     st.info("⏳ Decision pending reconciliation (T+1)")
+
+# === Journal Reflection (post-mortem) ===
+_pnl_val = row.get('pnl_realized', None)
+if pd.notna(actual_trend) and actual_trend and pd.notna(_pnl_val):
+    journal = load_trade_journal(ticker=ticker)
+    journal_entry = find_journal_entry(journal, row.get('contract', ''), _pnl_val)
+
+    if journal_entry:
+        narrative = journal_entry.get('narrative', '')
+
+        if isinstance(narrative, dict):
+            # LLM-generated structured reflection
+            st.markdown("#### 📓 Trade Reflection")
+
+            summary = narrative.get('summary', '')
+            if summary:
+                st.markdown(f"**Summary:** {summary}")
+
+            refl_cols = st.columns(2)
+            with refl_cols[0]:
+                went_right = narrative.get('what_went_right', [])
+                if went_right:
+                    st.markdown("**What went right:**")
+                    for item in went_right:
+                        st.markdown(f"- {item}")
+
+            with refl_cols[1]:
+                went_wrong = narrative.get('what_went_wrong', [])
+                if went_wrong:
+                    st.markdown("**What went wrong:**")
+                    for item in went_wrong:
+                        st.markdown(f"- {item}")
+
+            lesson = narrative.get('lesson', '') or journal_entry.get('key_lesson', '')
+            if lesson:
+                st.info(f"**Lesson:** {lesson}")
+
+            rule = narrative.get('rule_suggestion', '')
+            if rule:
+                st.caption(f"Rule suggestion: {rule}")
+        elif narrative:
+            # Template narrative (no LLM)
+            st.markdown("#### 📓 Trade Reflection")
+            st.markdown(narrative)
+            key_lesson = journal_entry.get('key_lesson', '')
+            if key_lesson:
+                st.info(f"**Lesson:** {key_lesson}")
 
 # === Dissent Outcome Tracking ===
 try:
