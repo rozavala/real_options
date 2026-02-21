@@ -13,6 +13,8 @@ import numpy as np
 import os
 import sys
 import json
+import math
+import plotly.graph_objects as go
 from datetime import datetime, timezone, timedelta
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -28,7 +30,6 @@ st.caption("Agent prediction quality, calibration curves, and learning feedback"
 @st.cache_data(ttl=120)
 def load_enhanced_brier():
     """Load enhanced Brier data from JSON."""
-    from dashboard_utils import _resolve_data_path
     path = _resolve_data_path("enhanced_brier.json")
     if not os.path.exists(path):
         return None
@@ -42,7 +43,6 @@ def load_enhanced_brier():
 @st.cache_data(ttl=120)
 def load_structured_predictions():
     """Load structured prediction CSV."""
-    from dashboard_utils import _resolve_data_path
     path = _resolve_data_path("agent_accuracy_structured.csv")
     if not os.path.exists(path):
         return pd.DataFrame()
@@ -58,7 +58,6 @@ def load_structured_predictions():
 @st.cache_data(ttl=120)
 def load_legacy_accuracy():
     """Load legacy accuracy CSV."""
-    from dashboard_utils import _resolve_data_path
     path = _resolve_data_path("agent_accuracy.csv")
     if not os.path.exists(path):
         return pd.DataFrame()
@@ -66,6 +65,40 @@ def load_legacy_accuracy():
         return pd.read_csv(path)
     except Exception:
         return pd.DataFrame()
+
+
+@st.cache_data(ttl=120)
+def load_weight_evolution():
+    """Load weight evolution CSV."""
+    path = _resolve_data_path('weight_evolution.csv')
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    try:
+        return pd.read_csv(path, parse_dates=['timestamp'])
+    except Exception:
+        return pd.DataFrame()
+
+
+@st.cache_data(ttl=120)
+def load_decision_signals():
+    """Load decision signals CSV for regime context."""
+    path = _resolve_data_path('decision_signals.csv')
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    try:
+        df = pd.read_csv(path)
+        if 'timestamp' in df.columns:
+            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+
+# Load display names once
+try:
+    from trading_bot.agent_names import AGENT_DISPLAY_NAMES as _DISPLAY_NAMES
+except ImportError:
+    _DISPLAY_NAMES = {}
 
 
 # === SECTION 1: System Health Overview ===
@@ -92,7 +125,6 @@ if enhanced_data:
     )
 
 elif not struct_df.empty:
-    # Fallback: no enhanced data, show CSV metrics
     total = len(struct_df)
     pending = (struct_df['actual'] == 'PENDING').sum()
     orphaned = (struct_df['actual'] == 'ORPHANED').sum() if 'actual' in struct_df.columns else 0
@@ -134,14 +166,12 @@ if enhanced_data and enhanced_data.get('agent_scores'):
         scores_df = pd.DataFrame(rows)
         scores_df = scores_df.sort_values('Avg Brier')
 
-        # Color-code: lower Brier = better (green), higher = worse (red)
         st.dataframe(
             scores_df,
             width="stretch",
             hide_index=True,
         )
 
-        # Quick interpretation
         st.caption(
             "**Brier Score Guide:** 0.0 = perfect, 0.25 = random baseline, 0.5 = always wrong. "
             "Lower is better. Agents need 5+ resolved predictions for reliable scoring."
@@ -155,14 +185,13 @@ else:
 st.markdown("---")
 
 
-# === SECTION 3: Calibration Curves ===
+# === SECTION 3: Calibration Curves (Enhanced with reference line + sample counts) ===
 st.subheader("📈 Calibration Curves")
-st.caption("Perfect calibration = diagonal line. Above = overconfident, Below = underconfident.")
+st.caption("Perfect calibration = diagonal line. Above = underconfident, Below = overconfident.")
 
 if enhanced_data and enhanced_data.get('calibration_buckets'):
     cal_data = enhanced_data['calibration_buckets']
 
-    # Select agent
     agents = list(cal_data.keys())
     if agents:
         selected_agent = st.selectbox("Select Agent", agents)
@@ -187,13 +216,47 @@ if enhanced_data and enhanced_data.get('calibration_buckets'):
             if cal_rows:
                 cal_df = pd.DataFrame(cal_rows)
 
-                # Simple line chart (Streamlit native)
-                st.line_chart(
-                    cal_df.set_index('Predicted Probability')['Actual Accuracy'],
-                    width="stretch",
+                fig = go.Figure()
+
+                # Perfect calibration reference line (diagonal)
+                fig.add_trace(go.Scatter(
+                    x=[0, 1], y=[0, 1],
+                    mode='lines',
+                    line=dict(dash='dash', color='gray', width=1),
+                    name='Perfect Calibration',
+                    showlegend=True
+                ))
+
+                # Actual calibration data with sample count labels
+                fig.add_trace(go.Scatter(
+                    x=cal_df['Predicted Probability'],
+                    y=cal_df['Actual Accuracy'],
+                    mode='lines+markers+text',
+                    marker=dict(size=10),
+                    text=[f"n={n}" for n in cal_df['Sample Size']],
+                    textposition='top center',
+                    textfont=dict(size=10),
+                    name=selected_agent,
+                    showlegend=True
+                ))
+
+                fig.update_layout(
+                    xaxis_title='Predicted Probability',
+                    yaxis_title='Actual Accuracy',
+                    height=400,
+                    margin=dict(t=30, b=40),
                 )
 
-                # Show raw data
+                fig.add_annotation(
+                    x=0.75, y=0.55,
+                    text="Above = underconfident<br>Below = overconfident",
+                    showarrow=False,
+                    font=dict(size=10, color='gray'),
+                    bgcolor='rgba(255,255,255,0.8)',
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
+
                 with st.expander("Calibration Data"):
                     st.dataframe(cal_df, hide_index=True)
             else:
@@ -211,7 +274,6 @@ st.markdown("---")
 st.subheader("📅 Prediction Timeline")
 
 if not struct_df.empty and 'timestamp' in struct_df.columns:
-    # Daily prediction counts
     struct_df['date'] = struct_df['timestamp'].dt.date
 
     daily = struct_df.groupby('date').agg(
@@ -225,7 +287,6 @@ if not struct_df.empty and 'timestamp' in struct_df.columns:
         width="stretch",
     )
 
-    # Show per-agent breakdown
     with st.expander("Per-Agent Breakdown"):
         if 'agent' in struct_df.columns:
             agent_summary = struct_df.groupby('agent').agg(
@@ -250,37 +311,34 @@ st.caption("These weights influence council voting. 1.0 = baseline, >1.0 = trust
 
 try:
     from trading_bot.brier_bridge import get_agent_reliability
-    from trading_bot.agent_names import AGENT_DISPLAY_NAMES
 
-    agent_names = list(AGENT_DISPLAY_NAMES.keys()) if hasattr(AGENT_DISPLAY_NAMES, 'keys') else [
+    agent_names_list = list(_DISPLAY_NAMES.keys()) if _DISPLAY_NAMES else [
         'agronomist', 'inventory', 'macro', 'sentiment',
-        'technical', 'volatility', 'geopolitical'
+        'technical', 'volatility', 'geopolitical', 'supply_chain'
     ]
 
     NON_NORMAL_REGIMES = ['HIGH_VOL', 'RANGE_BOUND', 'WEATHER_EVENT', 'MACRO_SHIFT']
     weight_rows = []
     has_regime_specific = False
 
-    for agent in agent_names:
-        # Always get NORMAL baseline
+    for agent in agent_names_list:
         normal_mult = get_agent_reliability(agent, 'NORMAL')
         status = '🟢 Trusted' if normal_mult > 1.2 else '🔴 Distrusted' if normal_mult < 0.8 else '⚪ Baseline'
 
         weight_rows.append({
-            'Agent': AGENT_DISPLAY_NAMES.get(agent, agent),
+            'Agent': _DISPLAY_NAMES.get(agent, agent),
             'Regime': 'ALL (baseline)',
             'Multiplier': round(normal_mult, 3),
             'Status': status,
         })
 
-        # Only show non-NORMAL regimes if they differ from NORMAL (i.e., have regime-specific data)
         for regime in NON_NORMAL_REGIMES:
             regime_mult = get_agent_reliability(agent, regime)
             if regime_mult != 1.0 and abs(regime_mult - normal_mult) > 0.001:
                 has_regime_specific = True
                 regime_status = '🟢 Trusted' if regime_mult > 1.2 else '🔴 Distrusted' if regime_mult < 0.8 else '⚪ Baseline'
                 weight_rows.append({
-                    'Agent': AGENT_DISPLAY_NAMES.get(agent, agent),
+                    'Agent': _DISPLAY_NAMES.get(agent, agent),
                     'Regime': regime,
                     'Multiplier': round(regime_mult, 3),
                     'Status': regime_status,
@@ -303,49 +361,223 @@ except Exception as e:
     st.error(f"Error loading reliability data: {e}")
 
 
-# === WEIGHT EVOLUTION OVER TIME ===
+# === SECTION 6: AGENT INFLUENCE OVER TIME (Learning Trajectory) ===
 st.markdown("---")
-st.subheader("📈 Weight Evolution")
+st.subheader("📈 Agent Influence Over Time")
+st.caption("Agents above 1.0 have earned more influence through accurate predictions. Below 1.0 means the system trusts them less.")
 
-weight_csv = _resolve_data_path('weight_evolution.csv')
-if os.path.exists(weight_csv):
-    try:
-        weight_df = pd.read_csv(weight_csv, parse_dates=['timestamp'])
+weight_df = load_weight_evolution()
 
-        if not weight_df.empty:
-            # Let user select agents to compare
-            available_agents = sorted(weight_df['agent'].unique())
-            selected_agents = st.multiselect(
-                "Select agents to compare:",
-                available_agents,
-                default=available_agents[:4]  # Show first 4 by default
-            )
+if not weight_df.empty and len(weight_df) >= 5:
+    available_agents = sorted(weight_df['agent'].unique())
 
-            if selected_agents:
-                filtered = weight_df[weight_df['agent'].isin(selected_agents)]
+    _AGENT_COLORS = {
+        'agronomist': '#2ca02c',
+        'macro': '#1f77b4',
+        'geopolitical': '#ff7f0e',
+        'supply_chain': '#d62728',
+        'inventory': '#9467bd',
+        'sentiment': '#8c564b',
+        'technical': '#e377c2',
+        'volatility': '#7f7f7f',
+    }
 
-                # Pivot for plotting
-                pivot = filtered.pivot_table(
-                    index='timestamp',
-                    columns='agent',
-                    values='reliability_mult',
-                    aggfunc='last'
-                )
+    fig = go.Figure()
 
-                st.line_chart(pivot)
+    # Baseline reference at 1.0
+    fig.add_hline(
+        y=1.0, line_dash="dash", line_color="gray", line_width=1,
+        annotation_text="Baseline (1.0)",
+        annotation_position="bottom right",
+        annotation_font_color="gray",
+    )
 
-                # Summary table: current state
-                latest = weight_df.sort_values('timestamp').groupby('agent').last()
-                st.dataframe(
-                    latest[['regime', 'domain_weight', 'reliability_mult', 'final_weight']],
-                    width="stretch"
-                )
+    for agent in available_agents:
+        agent_data = weight_df[weight_df['agent'] == agent].sort_values('timestamp')
+        display_name = _DISPLAY_NAMES.get(agent, agent.title())
+        color = _AGENT_COLORS.get(agent, None)
+
+        fig.add_trace(go.Scatter(
+            x=agent_data['timestamp'],
+            y=agent_data['final_weight'],
+            mode='lines',
+            name=display_name,
+            line=dict(color=color, width=2) if color else dict(width=2),
+        ))
+
+    fig.update_layout(
+        yaxis_title='Final Weight',
+        xaxis_title='Time',
+        height=420,
+        margin=dict(t=20, b=40),
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0),
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    # --- Agent trajectory summary: current vs 30 cycles ago ---
+    summary_rows = []
+    for agent in available_agents:
+        agent_data = weight_df[weight_df['agent'] == agent].sort_values('timestamp')
+        current_weight = agent_data['final_weight'].iloc[-1]
+
+        if len(agent_data) > 30:
+            past_weight = agent_data['final_weight'].iloc[-31]
+        elif len(agent_data) > 1:
+            past_weight = agent_data['final_weight'].iloc[0]
         else:
-            st.info("Weight evolution data will appear after the next trading cycle.")
-    except Exception as e:
-        st.warning(f"Could not load weight evolution data: {e}")
+            past_weight = current_weight
+
+        delta = current_weight - past_weight
+        display_name = _DISPLAY_NAMES.get(agent, agent.title())
+
+        if delta > 0.005:
+            trend_str = f"from {past_weight:.2f}"
+            arrow = "^"
+        elif delta < -0.005:
+            trend_str = f"from {past_weight:.2f}"
+            arrow = "v"
+        else:
+            trend_str = "stable"
+            arrow = "="
+
+        summary_rows.append({
+            'Agent': display_name,
+            'Current Weight': round(current_weight, 2),
+            'Trend': arrow,
+            'vs 30 Cycles Ago': trend_str,
+            'Delta': round(delta, 3),
+        })
+
+    summary_df = pd.DataFrame(summary_rows).sort_values('Current Weight', ascending=False)
+
+    def _color_delta(val):
+        if val > 0.005:
+            return 'color: #2ca02c'
+        elif val < -0.005:
+            return 'color: #d62728'
+        return 'color: gray'
+
+    styled = summary_df.style.map(_color_delta, subset=['Delta'])
+    st.dataframe(styled, hide_index=True, use_container_width=True)
+
+elif not weight_df.empty:
+    st.info("Insufficient weight evolution data (need at least 5 rows). Data accumulates as trading cycles run.")
 else:
     st.info("Weight evolution tracking not yet active. Data will appear after the next trading cycle.")
+
+
+# === SECTION 7: REGIME-SPECIFIC AGENT RANKING ===
+st.markdown("---")
+st.subheader("🏆 Agent Accuracy by Market Regime")
+st.caption("Which agents perform best in each market condition?")
+
+try:
+    accuracy_df = load_legacy_accuracy()
+    signals_df = load_decision_signals()
+
+    _have_accuracy = not accuracy_df.empty and 'agent' in accuracy_df.columns and 'correct' in accuracy_df.columns
+    _have_signals = not signals_df.empty and 'regime' in signals_df.columns
+
+    if _have_accuracy and _have_signals:
+        # Parse timestamps for date-based join
+        if 'timestamp' in accuracy_df.columns:
+            accuracy_df['timestamp'] = pd.to_datetime(accuracy_df['timestamp'], utc=True, errors='coerce')
+            accuracy_df['date'] = accuracy_df['timestamp'].dt.date
+
+        if 'timestamp' in signals_df.columns:
+            signals_df['date'] = signals_df['timestamp'].dt.date
+
+        # One regime per day (latest signal that day)
+        regime_by_date = signals_df.sort_values('timestamp').drop_duplicates(
+            subset='date', keep='last'
+        )[['date', 'regime']]
+
+        merged = accuracy_df.merge(regime_by_date, on='date', how='inner')
+
+        if not merged.empty:
+            # Group by (agent, regime) -> accuracy
+            regime_acc = merged.groupby(['agent', 'regime']).agg(
+                correct=('correct', 'sum'),
+                total=('correct', 'count'),
+            ).reset_index()
+            regime_acc['accuracy'] = regime_acc['correct'] / regime_acc['total']
+
+            # Build pivot table
+            pivot = regime_acc.pivot_table(index='agent', columns='regime', values='accuracy')
+            counts = regime_acc.pivot_table(index='agent', columns='regime', values='total')
+
+            # Format cells: "---" for <3 samples
+            display_data = {}
+            for regime in pivot.columns:
+                col_vals = []
+                for agent in pivot.index:
+                    acc = pivot.loc[agent, regime] if not pd.isna(pivot.loc[agent, regime]) else None
+                    cnt = counts.loc[agent, regime] if not pd.isna(counts.loc[agent, regime]) else 0
+                    if cnt < 3 or acc is None:
+                        col_vals.append("---")
+                    else:
+                        col_vals.append(f"{acc * 100:.0f}%")
+                display_data[regime] = col_vals
+
+            display_df = pd.DataFrame(display_data, index=[
+                _DISPLAY_NAMES.get(a, a.title()) for a in pivot.index
+            ])
+            display_df.index.name = 'Agent'
+
+            def _color_accuracy(val):
+                if val == "---":
+                    return 'color: gray'
+                try:
+                    pct = int(val.replace('%', ''))
+                    if pct >= 60:
+                        return 'background-color: rgba(44, 160, 44, 0.2); color: #2ca02c'
+                    elif pct >= 40:
+                        return 'background-color: rgba(255, 193, 7, 0.2); color: #856404'
+                    else:
+                        return 'background-color: rgba(214, 39, 40, 0.2); color: #d62728'
+                except (ValueError, AttributeError):
+                    return ''
+
+            styled_regime = display_df.style.map(_color_accuracy)
+            st.dataframe(styled_regime, use_container_width=True)
+
+            # Best agent per regime
+            best_agents = []
+            for regime in pivot.columns:
+                valid = pivot[regime].dropna()
+                valid = valid[counts[regime].fillna(0) >= 3]
+                if not valid.empty:
+                    best = valid.idxmax()
+                    best_name = _DISPLAY_NAMES.get(best, best.title())
+                    best_acc = valid.max() * 100
+                    best_agents.append(f"**{regime}**: {best_name} ({best_acc:.0f}%)")
+
+            if best_agents:
+                st.markdown("**Top performer per regime:** " + " | ".join(best_agents))
+        else:
+            st.info("Could not match accuracy data with regime data. Timestamps may not overlap.")
+    elif _have_accuracy:
+        # No regime data -- show overall ranking
+        ranking = accuracy_df.groupby('agent').agg(
+            total=('correct', 'count'),
+            correct=('correct', 'sum'),
+        ).reset_index()
+        ranking['accuracy'] = (ranking['correct'] / ranking['total'] * 100).round(1)
+        ranking = ranking.sort_values('accuracy', ascending=False)
+        ranking['Agent'] = ranking['agent'].map(lambda a: _DISPLAY_NAMES.get(a, a.title()))
+        st.dataframe(
+            ranking[['Agent', 'total', 'correct', 'accuracy']].rename(
+                columns={'total': 'Predictions', 'correct': 'Correct', 'accuracy': 'Accuracy %'}
+            ),
+            hide_index=True, use_container_width=True,
+        )
+        st.caption("Regime-specific breakdown will appear when decision_signals.csv contains regime data.")
+    else:
+        st.info("Regime-specific data not available. Requires agent_accuracy.csv and decision_signals.csv.")
+
+except Exception as e:
+    st.warning(f"Could not compute regime-specific rankings: {e}")
 
 
 # === TMS TEMPORAL DECAY VISUALIZATION ===
@@ -353,14 +585,8 @@ st.markdown("---")
 st.subheader("🕐 TMS Temporal Decay Curves")
 st.caption("Shows how different document types lose relevance over time")
 
-import math
-import numpy as np
-
-# Load decay rates from commodity profile
 try:
     from config.commodity_profiles import get_active_profile
-    # Config is not available in this scope, try loading default/mock
-    # In a real app, config is loaded from config_loader
     from config_loader import load_config
     config = load_config()
     profile = get_active_profile(config)
@@ -374,7 +600,6 @@ except Exception:
         'macro': 0.02, 'technical': 0.05, 'default': 0.05
     }
 
-# Generate decay curves
 days = np.arange(0, 60, 0.5)
 chart_data = {}
 
@@ -383,7 +608,6 @@ for doc_type in display_types:
     lam = decay_rates.get(doc_type, 0.05)
     chart_data[f"{doc_type} (λ={lam})"] = [math.exp(-lam * d) for d in days]
 
-import pandas as pd
 decay_df = pd.DataFrame(chart_data, index=days)
 decay_df.index.name = 'Age (days)'
 

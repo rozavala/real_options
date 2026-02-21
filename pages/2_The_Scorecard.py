@@ -24,8 +24,10 @@ from dashboard_utils import (
     calculate_confidence_calibration,
     fetch_live_dashboard_data,
     get_config,
-    _resolve_data_path
+    _resolve_data_path,
+    STRATEGY_ABBREVIATIONS
 )
+import numpy as np
 
 def create_process_outcome_matrix(df: pd.DataFrame):
     """
@@ -96,6 +98,14 @@ def create_process_outcome_matrix(df: pd.DataFrame):
     fig.add_vline(x=process_threshold, line_dash="dash", line_color="gray")
 
     st.plotly_chart(fig, width='stretch')
+
+    with st.expander("How to read this chart"):
+        st.markdown(
+            "**Process Score** = Confidence x |Weighted Score|. "
+            "High process score means strong conviction backed by agent consensus. "
+            "Good process can still lose (Bad Luck quadrant) — focus on staying in "
+            "**Skill** + **Bad Luck** quadrants."
+        )
 
 st.set_page_config(layout="wide", page_title="Scorecard | Real Options")
 
@@ -440,9 +450,195 @@ if learning['has_data']:
 else:
     st.info("Need at least 3 resolved trades (WIN/LOSS) to render learning curves.")
 
+# === NEW SECTION: Regime-Specific Win Rate ===
+st.markdown("---")
+st.subheader("Regime-Specific Win Rate")
+st.caption("Does the system perform differently in different market conditions?")
+
+# Load decision_signals.csv for regime data
+_signals_path = _resolve_data_path("decision_signals.csv")
+_regime_shown = False
+
+if os.path.exists(_signals_path):
+    try:
+        signals_df = pd.read_csv(_signals_path)
+        if not signals_df.empty and 'regime' in signals_df.columns and 'cycle_id' in signals_df.columns:
+            # Join with graded council history on cycle_id
+            regime_join = graded_df.copy()
+            if 'cycle_id' in regime_join.columns:
+                # Get regime per cycle_id from signals
+                regime_map = signals_df.dropna(subset=['regime']).drop_duplicates(
+                    subset=['cycle_id'], keep='last'
+                ).set_index('cycle_id')['regime']
+
+                # Map regime onto graded trades
+                regime_join['regime'] = regime_join['cycle_id'].map(regime_map)
+
+                # Filter to graded trades with regime
+                regime_graded = regime_join[
+                    regime_join['outcome'].isin(['WIN', 'LOSS']) &
+                    regime_join['regime'].notna()
+                ]
+
+                if not regime_graded.empty:
+                    regime_stats = regime_graded.groupby('regime').agg(
+                        wins=('outcome', lambda x: (x == 'WIN').sum()),
+                        total=('outcome', 'count')
+                    ).reset_index()
+                    regime_stats['win_rate'] = (regime_stats['wins'] / regime_stats['total'] * 100).round(1)
+                    regime_stats = regime_stats.sort_values('win_rate', ascending=True)
+
+                    # Color bars by performance
+                    regime_stats['color'] = regime_stats['win_rate'].apply(
+                        lambda r: '#00CC96' if r > 55 else ('#FFA15A' if r >= 40 else '#EF553B')
+                    )
+
+                    fig_regime = go.Figure()
+                    fig_regime.add_trace(go.Bar(
+                        y=regime_stats['regime'],
+                        x=regime_stats['win_rate'],
+                        orientation='h',
+                        marker_color=regime_stats['color'],
+                        text=[f"{r:.0f}%" for r in regime_stats['win_rate']],
+                        textposition='outside',
+                        hovertemplate='%{y}: %{x:.1f}% win rate<extra></extra>'
+                    ))
+                    fig_regime.add_vline(x=50, line_dash="dash", line_color="gray",
+                                        annotation_text="50% (coin flip)")
+                    fig_regime.update_layout(
+                        height=max(200, len(regime_stats) * 60 + 80),
+                        xaxis=dict(title='Win Rate %', range=[0, max(110, regime_stats['win_rate'].max() + 15)]),
+                        yaxis=dict(title=''),
+                        margin=dict(l=0, r=0, t=20, b=0),
+                        showlegend=False
+                    )
+                    st.plotly_chart(fig_regime, use_container_width=True)
+
+                    # Trade counts per regime
+                    counts = [f"**{row['regime']}**: {row['total']} trades" for _, row in regime_stats.iterrows()]
+                    st.caption(" | ".join(counts))
+                    _regime_shown = True
+    except Exception:
+        pass
+
+if not _regime_shown:
+    st.info("Regime data not available (requires decision_signals.csv with regime column).")
+
+
+# === NEW SECTION: Strategy-Specific Win Rate ===
+st.markdown("---")
+st.subheader("Strategy Win Rate Breakdown")
+st.caption("Which trading strategy is working best?")
+
+_STRATEGY_PRETTY = {
+    'BULL_CALL_SPREAD': 'Bull Call Spread',
+    'BEAR_PUT_SPREAD': 'Bear Put Spread',
+    'LONG_STRADDLE': 'Long Straddle',
+    'IRON_CONDOR': 'Iron Condor',
+    'DIRECTIONAL': 'Directional',
+}
+
+if 'strategy_type' in graded_df.columns:
+    strat_graded = graded_df[graded_df['outcome'].isin(['WIN', 'LOSS'])].copy()
+    if not strat_graded.empty:
+        strat_stats = strat_graded.groupby('strategy_type').agg(
+            trades=('outcome', 'count'),
+            wins=('outcome', lambda x: (x == 'WIN').sum()),
+            losses=('outcome', lambda x: (x == 'LOSS').sum()),
+        ).reset_index()
+
+        # Add P&L if available
+        pnl_col_strat = 'pnl' if 'pnl' in strat_graded.columns else 'pnl_realized'
+        if pnl_col_strat in strat_graded.columns:
+            pnl_agg = strat_graded.groupby('strategy_type')[pnl_col_strat].agg(['mean', 'sum']).reset_index()
+            pnl_agg.columns = ['strategy_type', 'avg_pnl', 'total_pnl']
+            strat_stats = strat_stats.merge(pnl_agg, on='strategy_type', how='left')
+        else:
+            strat_stats['avg_pnl'] = np.nan
+            strat_stats['total_pnl'] = np.nan
+
+        strat_stats['win_rate'] = (strat_stats['wins'] / strat_stats['trades'] * 100).round(1)
+        strat_stats = strat_stats.sort_values('total_pnl', ascending=False, na_position='last')
+
+        # Pretty names
+        strat_stats['Strategy'] = strat_stats['strategy_type'].map(_STRATEGY_PRETTY).fillna(strat_stats['strategy_type'])
+
+        display_strat = strat_stats[['Strategy', 'trades', 'win_rate', 'avg_pnl', 'total_pnl']].copy()
+        display_strat.columns = ['Strategy', 'Trades', 'Win Rate %', 'Avg P&L ($)', 'Total P&L ($)']
+
+        st.dataframe(
+            display_strat,
+            column_config={
+                'Win Rate %': st.column_config.ProgressColumn(
+                    min_value=0, max_value=100, format="%.0f%%"
+                ),
+                'Avg P&L ($)': st.column_config.NumberColumn(format="$%.2f"),
+                'Total P&L ($)': st.column_config.NumberColumn(format="$%.2f"),
+            },
+            hide_index=True,
+            use_container_width=True
+        )
+
+        # Best strategy insight
+        best = strat_stats.iloc[0]
+        best_name = _STRATEGY_PRETTY.get(best['strategy_type'], best['strategy_type'])
+        if pd.notna(best['total_pnl']):
+            st.caption(f"Best strategy: **{best_name}** ({best['win_rate']:.0f}% win rate, ${best['total_pnl']:+,.0f} total P&L)")
+        else:
+            st.caption(f"Best strategy by win rate: **{best_name}** ({best['win_rate']:.0f}%)")
+    else:
+        st.info("No graded trades with strategy data yet.")
+else:
+    st.info("No strategy type data available.")
+
+
+# === NEW SECTION: Trade Duration Distribution ===
+st.markdown("---")
+st.subheader("Trade Duration: Winners vs Losers")
+st.caption("Do winning trades differ in holding time from losing trades?")
+
+_duration_shown = False
+if 'exit_timestamp' in graded_df.columns and 'timestamp' in graded_df.columns:
+    dur_df = graded_df[graded_df['outcome'].isin(['WIN', 'LOSS'])].copy()
+    dur_df['exit_ts'] = pd.to_datetime(dur_df['exit_timestamp'], errors='coerce')
+    dur_df['entry_ts'] = pd.to_datetime(dur_df['timestamp'], errors='coerce')
+    dur_df = dur_df[dur_df['exit_ts'].notna() & dur_df['entry_ts'].notna()]
+
+    if not dur_df.empty:
+        dur_df['duration_hours'] = (dur_df['exit_ts'] - dur_df['entry_ts']).dt.total_seconds() / 3600
+        # Filter out negative or implausible durations
+        dur_df = dur_df[dur_df['duration_hours'] > 0]
+
+        if not dur_df.empty:
+            avg_win_dur = dur_df.loc[dur_df['outcome'] == 'WIN', 'duration_hours'].mean()
+            avg_loss_dur = dur_df.loc[dur_df['outcome'] == 'LOSS', 'duration_hours'].mean()
+
+            dur_cols = st.columns(2)
+            with dur_cols[0]:
+                if pd.notna(avg_win_dur):
+                    st.metric("Avg Winning Duration", f"{avg_win_dur:.1f}h")
+                else:
+                    st.metric("Avg Winning Duration", "N/A")
+            with dur_cols[1]:
+                if pd.notna(avg_loss_dur):
+                    st.metric("Avg Losing Duration", f"{avg_loss_dur:.1f}h")
+                else:
+                    st.metric("Avg Losing Duration", "N/A")
+
+            if pd.notna(avg_win_dur) and pd.notna(avg_loss_dur):
+                if avg_win_dur < avg_loss_dur:
+                    st.caption("Winners close faster -- system may be cutting losses slowly.")
+                elif avg_loss_dur < avg_win_dur:
+                    st.caption("Losers close faster -- quick stops are working.")
+            _duration_shown = True
+
+if not _duration_shown:
+    st.info("Duration data not available (requires exit_timestamp column).")
+
+
 # === NEW SECTION: Volatility Trade Performance ===
 st.markdown("---")
-st.subheader("⚡ Volatility Strategy Performance")
+st.subheader("Volatility Strategy Performance")
 
 vol_df = graded_df[graded_df['prediction_type'] == 'VOLATILITY'] if 'prediction_type' in graded_df.columns else pd.DataFrame()
 
