@@ -340,10 +340,9 @@ else:
 
 st.markdown("---")
 
-# === SECTION 3: Master Decision Details ===
-st.subheader("👑 Master Decision")
+# === SECTION 2.7: Forensic Context Panel ===
 
-# Helper for NaN safety
+# Helper for NaN safety (needed before forensic context uses it)
 def safe_display(value, fallback="N/A"):
     """Convert NaN/None/empty values to a readable fallback."""
     if value is None or (isinstance(value, float) and pd.isna(value)):
@@ -351,6 +350,77 @@ def safe_display(value, fallback="N/A"):
     if str(value).strip().lower() == 'nan' or str(value).strip() == '':
         return fallback
     return str(value)
+
+st.subheader("🔎 Forensic Context")
+st.caption("What triggered this decision and how strong was the conviction pipeline?")
+
+forensic_cols = st.columns(4)
+
+with forensic_cols[0]:
+    trigger_raw = safe_display(row.get('trigger_type'), "unknown")
+    trigger_lower = trigger_raw.lower().strip()
+    if trigger_lower == 'scheduled':
+        trigger_badge = "📅 Scheduled"
+        trigger_color = "#636EFA"
+    elif trigger_lower == 'emergency':
+        trigger_badge = "🚨 Emergency"
+        trigger_color = "#EF553B"
+    else:
+        # Sentinel-triggered (e.g., "PriceSentinel")
+        trigger_badge = f"📡 {trigger_raw}"
+        trigger_color = "#FFA15A"
+    st.markdown(f"""
+    <div style="background-color: {trigger_color}; padding: 8px 12px;
+                border-radius: 15px; color: white; font-weight: bold; text-align: center;">
+        {html.escape(trigger_badge)}
+    </div>
+    """, unsafe_allow_html=True)
+    st.caption("Trigger Type")
+
+with forensic_cols[1]:
+    catalyst_text = safe_display(row.get('primary_catalyst'), "Not recorded")
+    # Truncate to ~100 chars
+    if len(catalyst_text) > 100:
+        catalyst_text = catalyst_text[:97] + "..."
+    st.markdown(f"**{html.escape(catalyst_text)}**")
+    st.caption("Primary Catalyst")
+
+with forensic_cols[2]:
+    conv_raw = row.get('conviction_multiplier', None)
+    conv_val = None
+    if conv_raw is not None and conv_raw != '' and pd.notna(conv_raw):
+        try:
+            conv_val = float(conv_raw)
+        except (ValueError, TypeError):
+            pass
+    if conv_val is not None:
+        st.progress(conv_val, text=f"{conv_val:.2f}")
+        st.caption("Conviction Pipeline")
+        st.markdown(
+            "<small>1.0 = full conviction. 0.70 = divergent (partial dampening). 0.50 = high disagreement</small>",
+            unsafe_allow_html=True,
+            help="1.0 = full conviction (FULL alignment). 0.70 = divergent (partial dampening). 0.50 = high disagreement"
+        )
+    else:
+        st.info("N/A")
+        st.caption("Conviction Pipeline")
+
+with forensic_cols[3]:
+    thesis_str = safe_display(row.get('thesis_strength'), "UNKNOWN")
+    ts_colors = {'PROVEN': '#00CC96', 'PLAUSIBLE': '#FFA15A', 'SPECULATIVE': '#EF553B'}
+    ts_color = ts_colors.get(thesis_str, '#888888')
+    st.markdown(f"""
+    <div style="background-color: {ts_color}; padding: 8px 12px;
+                border-radius: 15px; color: white; font-weight: bold; text-align: center;">
+        {html.escape(thesis_str)}
+    </div>
+    """, unsafe_allow_html=True)
+    st.caption("Thesis Strength")
+
+st.markdown("---")
+
+# === SECTION 3: Master Decision Details ===
+st.subheader("👑 Master Decision")
 
 # Show prediction type badge
 pred_type = row.get('prediction_type', 'DIRECTIONAL')
@@ -472,6 +542,40 @@ if pd.notna(actual_trend) and actual_trend:
             st.metric("P&L", "Pending")
 else:
     st.info("⏳ Decision pending reconciliation (T+1)")
+
+# === Dissent Outcome Tracking ===
+try:
+    if 'dissent_acknowledged' in council_df.columns and 'actual_trend_direction' in council_df.columns:
+        # Find rows where dissent was present and outcome is known
+        dissent_mask = council_df['dissent_acknowledged'].notna() & (council_df['dissent_acknowledged'] != '') & (council_df['dissent_acknowledged'] != 'N/A')
+        outcome_mask = council_df['actual_trend_direction'].notna() & (council_df['actual_trend_direction'] != '')
+        dissent_graded = council_df[dissent_mask & outcome_mask].copy()
+
+        if len(dissent_graded) >= 5:
+            # Compute win/loss when dissent was overruled
+            dissent_wins = 0
+            dissent_losses = 0
+            for _, drow in dissent_graded.iterrows():
+                d_master = drow.get('master_decision', 'NEUTRAL')
+                d_trend = drow.get('actual_trend_direction', '')
+                d_correct = (
+                    (d_master == 'BULLISH' and d_trend == 'UP') or
+                    (d_master == 'BEARISH' and d_trend == 'DOWN')
+                )
+                if d_master != 'NEUTRAL':
+                    if d_correct:
+                        dissent_wins += 1
+                    else:
+                        dissent_losses += 1
+
+            total_dissent = dissent_wins + dissent_losses
+            if total_dissent > 0:
+                pct = (dissent_wins / total_dissent) * 100
+                st.caption(f"Dissent overruled correctly: {dissent_wins}/{total_dissent} times ({pct:.0f}%)")
+        elif len(dissent_graded) > 0:
+            st.caption("Insufficient dissent data for analysis (need 5+ graded decisions with dissent)")
+except Exception:
+    pass  # Silently skip if data isn't available
 
 st.markdown("---")
 

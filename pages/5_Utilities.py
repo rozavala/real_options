@@ -668,6 +668,89 @@ These processes normally run automatically in the orchestrator but can be trigge
 on-demand for debugging or immediate verification.
 """)
 
+# --- Last-run timestamps for each reconciliation process ---
+import re as _re
+
+_RECON_STATE_PATH = _resolve_data_path("reconciliation_runs.json")
+
+def _load_recon_timestamps() -> dict:
+    """Load last-run timestamps for reconciliation processes."""
+    try:
+        if os.path.exists(_RECON_STATE_PATH):
+            with open(_RECON_STATE_PATH, 'r') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+def _save_recon_timestamp(process_name: str):
+    """Record the current time as the last run for a reconciliation process."""
+    try:
+        data = _load_recon_timestamps()
+        data[process_name] = datetime.now(timezone.utc).isoformat()
+        os.makedirs(os.path.dirname(_RECON_STATE_PATH), exist_ok=True)
+        with open(_RECON_STATE_PATH, 'w') as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
+
+def _format_last_run(process_name: str) -> str:
+    """Return a human-readable 'last run' string."""
+    ts_data = _load_recon_timestamps()
+    ts_str = ts_data.get(process_name)
+    if not ts_str:
+        return "Never run"
+    try:
+        ts = datetime.fromisoformat(ts_str)
+        delta = datetime.now(timezone.utc) - ts
+        hours = delta.total_seconds() / 3600
+        if hours < 1:
+            return f"{int(delta.total_seconds() / 60)}m ago"
+        elif hours < 24:
+            return f"{int(hours)}h ago"
+        else:
+            return f"{int(hours / 24)}d ago"
+    except Exception:
+        return ts_str
+
+def _parse_recon_summary(raw_output: str) -> str:
+    """Parse reconciliation subprocess output into a concise summary."""
+    lines = raw_output.strip().splitlines() if raw_output else []
+    if not lines:
+        return "Completed (no output)"
+
+    summaries = []
+    # Look for common patterns in reconciliation output
+    for line in lines:
+        line_lower = line.lower()
+        # Match "Updated N rows", "Resolved N predictions", "N discrepancies", etc.
+        if any(kw in line_lower for kw in ['updated', 'resolved', 'backfilled', 'synced', 'processed', 'found', 'graded', 'wrote']):
+            summaries.append(line.strip())
+        elif _re.search(r'\d+\s+(row|record|prediction|trade|position|entr)', line_lower):
+            summaries.append(line.strip())
+
+    if summaries:
+        return " | ".join(summaries[:3])  # Show up to 3 summary lines
+    # Fallback: last non-empty line
+    for line in reversed(lines):
+        if line.strip():
+            return line.strip()[:120]
+    return "Completed"
+
+# Show last-run overview
+recon_names = {
+    'council_history': 'Council History',
+    'trade_ledger': 'Trade Ledger',
+    'positions': 'Active Positions',
+    'equity': 'Equity History',
+    'brier': 'Brier Scores',
+}
+last_run_cols = st.columns(len(recon_names))
+for i, (key, label) in enumerate(recon_names.items()):
+    with last_run_cols[i]:
+        st.caption(f"**{label}**")
+        st.text(_format_last_run(key))
+
 confirm_recon = st.checkbox("Unlock reconciliation tools", key="confirm_recon")
 
 # Create a 2x2 grid for reconciliation buttons
@@ -690,23 +773,25 @@ with recon_row1[0]:
                     cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 )
 
+                raw_output = (result.stdout + result.stderr).strip()
                 if result.returncode == 0:
-                    st.success("✅ Council history reconciliation complete!")
-                    # Clear cache to show updated data
+                    _save_recon_timestamp('council_history')
+                    summary = _parse_recon_summary(raw_output)
+                    st.success(f"Council history reconciled: {summary}")
                     st.cache_data.clear()
-                    with st.expander("View Details"):
-                        st.code((result.stdout + result.stderr).strip() or "No output")
+                    with st.expander("View Full Output"):
+                        st.code(raw_output or "No output")
                 else:
                     st.error("❌ Council history reconciliation failed")
                     with st.expander("View Error"):
-                        st.code((result.stderr + result.stdout).strip() or "No output")
+                        st.code(raw_output or "No output")
 
             except subprocess.TimeoutExpired:
-                st.error("⏱️ Reconciliation timed out (180s)")
+                st.error("Reconciliation timed out (180s)")
             except FileNotFoundError:
-                st.error("❌ backfill_council_history.py not found")
+                st.error("backfill_council_history.py not found")
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
 # --- Trade Ledger Reconciliation ---
 with recon_row1[1]:
@@ -724,27 +809,28 @@ with recon_row1[1]:
                     cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 )
 
+                raw_output = (result.stdout + result.stderr).strip()
                 if result.returncode == 0:
-                    # Check if discrepancies were found
-                    output = (result.stdout + result.stderr).strip()
-                    if "No discrepancies found" in output:
-                        st.success("✅ Trade ledger is perfectly in sync!")
+                    _save_recon_timestamp('trade_ledger')
+                    if "No discrepancies found" in raw_output:
+                        st.success("Trade ledger is perfectly in sync!")
                     else:
-                        st.warning("⚠️ Discrepancies found - check archive_ledger/ directory")
+                        summary = _parse_recon_summary(raw_output)
+                        st.warning(f"Discrepancies found: {summary}")
 
-                    with st.expander("View Details"):
-                        st.code(output or "No output")
+                    with st.expander("View Full Output"):
+                        st.code(raw_output or "No output")
                 else:
                     st.error("❌ Trade reconciliation failed")
                     with st.expander("View Error"):
-                        st.code((result.stderr + result.stdout).strip() or "No output")
+                        st.code(raw_output or "No output")
 
             except subprocess.TimeoutExpired:
-                st.error("⏱️ Reconciliation timed out (120s)")
+                st.error("Reconciliation timed out (120s)")
             except FileNotFoundError:
-                st.error("❌ reconcile_trades.py not found")
+                st.error("reconcile_trades.py not found")
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
 # --- Active Positions Reconciliation ---
 with recon_row2[0]:
@@ -776,24 +862,26 @@ asyncio.run(main())
                     cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 )
 
+                raw_output = (result.stdout + result.stderr).strip()
                 if result.returncode == 0:
-                    output = (result.stdout + result.stderr).strip()
-                    if "No discrepancies found" in output:
-                        st.success("✅ Positions are in sync!")
+                    _save_recon_timestamp('positions')
+                    if "No discrepancies found" in raw_output:
+                        st.success("Positions are in sync!")
                     else:
-                        st.warning("⚠️ Position discrepancies detected")
+                        summary = _parse_recon_summary(raw_output)
+                        st.warning(f"Position discrepancies: {summary}")
 
-                    with st.expander("View Details"):
-                        st.code(output or "No output")
+                    with st.expander("View Full Output"):
+                        st.code(raw_output or "No output")
                 else:
                     st.error("❌ Position reconciliation failed")
                     with st.expander("View Error"):
-                        st.code((result.stderr + result.stdout).strip() or "No output")
+                        st.code(raw_output or "No output")
 
             except subprocess.TimeoutExpired:
-                st.error("⏱️ Reconciliation timed out (60s)")
+                st.error("Reconciliation timed out (60s)")
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
 # --- Equity Sync (Legacy/Subprocess) ---
 with recon_row2[1]:
@@ -811,20 +899,23 @@ with recon_row2[1]:
                     cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 )
 
+                raw_output = (result.stdout + result.stderr).strip()
                 if result.returncode == 0:
-                    st.success("✅ Equity data synced successfully!")
+                    _save_recon_timestamp('equity')
+                    summary = _parse_recon_summary(raw_output)
+                    st.success(f"Equity synced: {summary}")
                     st.cache_data.clear()
-                    with st.expander("View Output"):
-                        st.code((result.stdout + result.stderr).strip() or "No output")
+                    with st.expander("View Full Output"):
+                        st.code(raw_output or "No output")
                 else:
                     st.error("❌ Sync failed")
                     with st.expander("View Error"):
-                        st.code((result.stderr + result.stdout).strip() or "No output")
+                        st.code(raw_output or "No output")
 
             except subprocess.TimeoutExpired:
-                st.error("⏱️ Sync timed out (60s)")
+                st.error("Sync timed out (60s)")
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
 recon_row3 = st.columns(2)
 
@@ -858,20 +949,23 @@ with recon_row3[0]:
                     cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 )
 
+                raw_output = (result.stdout + result.stderr).strip()
                 if result.returncode == 0:
-                    st.success("✅ Brier reconciliation complete!")
+                    _save_recon_timestamp('brier')
+                    summary = _parse_recon_summary(raw_output)
+                    st.success(f"Brier reconciliation complete: {summary}")
                     st.cache_data.clear()
-                    with st.expander("View Details"):
-                        st.code((result.stdout + result.stderr).strip() or "No output")
+                    with st.expander("View Full Output"):
+                        st.code(raw_output or "No output")
                 else:
                     st.error("❌ Brier reconciliation failed")
                     with st.expander("View Error"):
-                        st.code((result.stderr + result.stdout).strip() or "No output")
+                        st.code(raw_output or "No output")
 
             except subprocess.TimeoutExpired:
-                st.error("⏱️ Reconciliation timed out (300s)")
+                st.error("Reconciliation timed out (300s)")
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
 st.markdown("---")
 

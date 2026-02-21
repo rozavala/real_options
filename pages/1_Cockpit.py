@@ -8,6 +8,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta, timezone
+import json
 import pytz
 import sys
 import os
@@ -29,7 +30,8 @@ from dashboard_utils import (
     get_current_market_regime,
     get_commodity_profile,
     load_task_schedule_status,
-    load_deduplicator_metrics
+    load_deduplicator_metrics,
+    _resolve_data_path
 )
 from trading_bot.calendars import is_trading_day
 
@@ -451,6 +453,32 @@ def render_prediction_markets():
     except Exception as e:
         st.error(f"Error loading prediction market data: {e}")
 
+def _relative_time(ts) -> str:
+    """Format a timestamp as a human-readable relative time string."""
+    try:
+        if isinstance(ts, str):
+            ts = pd.Timestamp(ts)
+        if hasattr(ts, 'tzinfo') and ts.tzinfo is not None:
+            now = datetime.now(timezone.utc)
+            ts = ts.tz_convert('UTC') if hasattr(ts, 'tz_convert') else ts
+        else:
+            now = datetime.utcnow()
+        delta = now - ts
+        seconds = delta.total_seconds()
+        if seconds < 60:
+            return "just now"
+        elif seconds < 3600:
+            return f"{int(seconds // 60)}m ago"
+        elif seconds < 86400:
+            return f"{int(seconds // 3600)}h ago"
+        elif seconds < 172800:
+            return "yesterday"
+        else:
+            return f"{int(seconds // 86400)}d ago"
+    except Exception:
+        return "N/A"
+
+
 st.set_page_config(layout="wide", page_title="Cockpit | Real Options")
 
 st.title("🦅 The Cockpit")
@@ -459,12 +487,43 @@ st.caption("Situational Awareness - System health, capital safety, and emergency
 if os.getenv("TRADING_MODE", "LIVE").upper().strip() == "OFF":
     st.warning("TRADING OFF — No real orders are being placed. Analysis pipeline runs normally.")
 
-# --- Global Time Settings ---
-st.markdown("### 🕒 **All times displayed in UTC**")
-
-# --- Load Data ---
+# --- Load Data (needed for health banner) ---
 config = get_config()
 heartbeat = get_system_heartbeat()
+
+# === SYSTEM HEALTH BANNER ===
+try:
+    _health_issues = []
+    # Check orchestrator heartbeat
+    if heartbeat.get('orchestrator_status') == 'OFFLINE':
+        _health_issues.append("Orchestrator Offline")
+    # Check state manager
+    if heartbeat.get('state_status') == 'OFFLINE':
+        _health_issues.append("State Manager Offline")
+    # Check IB connection
+    _ib_health = get_ib_connection_health()
+    if _ib_health.get('sentinel_ib') != 'CONNECTED':
+        _health_issues.append("IB Disconnected")
+    # Check sentinel staleness
+    _sentinels = get_sentinel_status()
+    _stale_count = sum(1 for s in _sentinels.values() if s.get('is_stale', False))
+    _error_count = sum(1 for s in _sentinels.values() if s.get('status') == 'ERROR')
+    if _error_count > 0:
+        _health_issues.append(f"{_error_count} Sentinel Error{'s' if _error_count > 1 else ''}")
+    elif _stale_count > 0:
+        _health_issues.append(f"{_stale_count} Stale Sentinel{'s' if _stale_count > 1 else ''}")
+
+    if not _health_issues:
+        st.success("All Systems Operational")
+    elif any(kw in ' '.join(_health_issues) for kw in ['Offline', 'Disconnected', 'Error']):
+        st.error(f"{len(_health_issues)} issue{'s' if len(_health_issues) > 1 else ''}: {', '.join(_health_issues)}")
+    else:
+        st.warning(f"{len(_health_issues)} issue{'s' if len(_health_issues) > 1 else ''}: {', '.join(_health_issues)}")
+except Exception:
+    pass  # Health banner is non-critical
+
+# --- Global Time Settings ---
+st.markdown("### 🕒 **All times displayed in UTC**")
 
 # --- Market Clock Widget ---
 utc_now = datetime.now(timezone.utc)
@@ -877,6 +936,15 @@ if config:
                         )
                         if s.get('description'):
                             st.caption(s['description'])
+
+            # VaR Enforcement Mode Badge
+            _var_mode = config.get('compliance', {}).get('var_enforcement_mode', 'log_only')
+            _var_badge = {
+                'log_only': "VaR: Log Only (not enforcing)",
+                'warn': "VaR: Warning Mode",
+                'enforce': "VaR: Enforcing (will block trades above limit)",
+            }
+            st.caption(_var_badge.get(_var_mode, f"VaR: {_var_mode}"))
     except Exception:
         pass  # VaR display is non-critical
 
@@ -921,6 +989,49 @@ if config:
             st.info("Not enough graded decisions for sparkline.")
     else:
         st.info("No council history available.")
+
+    # === SECTION: Recent Trade Activity Feed ===
+    st.markdown("---")
+    st.subheader("Recent Trade Activity")
+    try:
+        _trades_df = council_df if not council_df.empty else pd.DataFrame()
+        if not _trades_df.empty and 'pnl_realized' in _trades_df.columns:
+            _trades_df = _trades_df.copy()
+            _trades_df['_pnl'] = pd.to_numeric(_trades_df['pnl_realized'], errors='coerce')
+            _completed = _trades_df[_trades_df['_pnl'].notna()].head(10)
+            if not _completed.empty:
+                _display_rows = []
+                for _, row in _completed.iterrows():
+                    _ts = row.get('timestamp', '')
+                    _pnl_val = row['_pnl']
+                    _display_rows.append({
+                        'Time': _relative_time(_ts),
+                        'Contract': str(row.get('contract', 'N/A'))[:20],
+                        'Direction': row.get('master_decision', 'N/A'),
+                        'Strategy': str(row.get('strategy_type', 'N/A')).replace('_', ' ').title(),
+                        'P&L': f"${_pnl_val:+,.0f}",
+                        'Strength': row.get('thesis_strength', 'N/A'),
+                    })
+                _display_df = pd.DataFrame(_display_rows)
+                st.dataframe(
+                    _display_df,
+                    hide_index=True,
+                    use_container_width=True,
+                    column_config={
+                        'Time': st.column_config.TextColumn(width='small'),
+                        'Contract': st.column_config.TextColumn(width='medium'),
+                        'Direction': st.column_config.TextColumn(width='small'),
+                        'Strategy': st.column_config.TextColumn(width='medium'),
+                        'P&L': st.column_config.TextColumn(width='small'),
+                        'Strength': st.column_config.TextColumn(width='small'),
+                    }
+                )
+            else:
+                st.info("No recent trade activity")
+        else:
+            st.info("No recent trade activity")
+    except Exception:
+        st.info("No recent trade activity")
 
 else:
     st.error("Configuration not loaded. Cannot fetch live data.")
@@ -1056,6 +1167,35 @@ with ctrl_cols[2]:
         with st.spinner("Refreshing data..."):
             st.cache_data.clear()
             st.rerun()
+
+# === Compliance Rejection Feed ===
+with st.expander("Recent Compliance Decisions"):
+    try:
+        _compliance_path = _resolve_data_path("compliance_decisions.csv")
+        if os.path.exists(_compliance_path):
+            _comp_df = pd.read_csv(_compliance_path)
+            if not _comp_df.empty and 'approved' in _comp_df.columns:
+                # Filter to rejections (approved == False or "False" string)
+                _comp_df['_approved'] = _comp_df['approved'].astype(str).str.strip().str.lower()
+                _rejections = _comp_df[_comp_df['_approved'] == 'false'].tail(5).iloc[::-1]
+                if not _rejections.empty:
+                    _rej_rows = []
+                    for _, row in _rejections.iterrows():
+                        _rej_rows.append({
+                            'Time': _relative_time(row.get('timestamp', '')),
+                            'Contract': str(row.get('contract', 'N/A'))[:20],
+                            'Strategy': str(row.get('strategy_type', 'N/A')).replace('_', ' ').title(),
+                            'Reason': str(row.get('reason', 'N/A'))[:80],
+                        })
+                    st.dataframe(pd.DataFrame(_rej_rows), hide_index=True, use_container_width=True)
+                else:
+                    st.info("No compliance rejections recorded")
+            else:
+                st.info("No compliance rejections recorded")
+        else:
+            st.info("Compliance log not available")
+    except Exception:
+        st.info("Compliance log not available")
 
 st.markdown("---")
 

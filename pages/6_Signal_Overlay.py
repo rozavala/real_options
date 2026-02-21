@@ -452,6 +452,8 @@ with st.sidebar:
     show_day_separators = st.toggle("Show Day/Week Separators", value=True)
     show_confidence = st.toggle("Show Confidence Scores", value=True)
     show_outcomes = st.toggle("Highlight Win/Loss", value=True)
+    show_regime_overlay = st.toggle("Show Regime Overlay", value=True,
+                                     help="Shade chart background by market regime")
 
 
 # === DATA FUNCTIONS ===
@@ -861,13 +863,13 @@ if price_df is not None and not price_df.empty:
             plot_df['candle_low'] = aligned_prices['Low'].values
 
             plot_df['y_pos'] = np.where(
-                plot_df['marker_symbol'] == 'triangle-down',
-                plot_df['candle_high'] * 1.002,
-                plot_df['candle_low'] * 0.998
+                plot_df['marker_symbol'] == 'triangle-up',
+                plot_df['candle_high'] * 1.003,
+                plot_df['candle_low'] * 0.997
             )
 
             plot_df['text_pos'] = np.where(
-                plot_df['marker_symbol'] == 'triangle-down',
+                plot_df['marker_symbol'] == 'triangle-up',
                 "top center",
                 "bottom center"
             )
@@ -1068,6 +1070,64 @@ if price_df is not None and not price_df.empty:
                         row=1, col=1
                     )
 
+    # === REGIME OVERLAY (Background Shading) ===
+    if show_regime_overlay:
+        try:
+            from dashboard_utils import _resolve_data_path as _rdp
+            _ds_path = _rdp('decision_signals.csv')
+            if os.path.exists(_ds_path):
+                ds_df = pd.read_csv(_ds_path)
+                if not ds_df.empty and 'regime' in ds_df.columns and 'timestamp' in ds_df.columns:
+                    ds_df['timestamp'] = parse_ts_column(ds_df['timestamp'])
+                    ds_df = ds_df.dropna(subset=['timestamp', 'regime'])
+                    if ds_df['timestamp'].dt.tz is None:
+                        ds_df['timestamp'] = ds_df['timestamp'].dt.tz_localize('UTC')
+                    ds_df['timestamp'] = ds_df['timestamp'].dt.tz_convert('America/New_York')
+                    ds_df = ds_df.sort_values('timestamp')
+
+                    regime_colors = {
+                        'bullish': 'rgba(0, 204, 150, 0.06)',
+                        'bearish': 'rgba(239, 85, 59, 0.06)',
+                        'neutral': 'rgba(136, 136, 136, 0.04)',
+                        'range_bound': 'rgba(255, 161, 90, 0.06)',
+                        'high_volatility': 'rgba(171, 99, 250, 0.06)',
+                    }
+
+                    # Map each signal to its nearest candle index
+                    ds_df['num_idx'] = ds_df['timestamp'].map(timestamp_to_num)
+                    ds_df = ds_df.dropna(subset=['num_idx'])
+
+                    if not ds_df.empty:
+                        # Build regime spans: consecutive signals with same regime
+                        ds_df = ds_df.sort_values('num_idx')
+                        prev_regime = None
+                        span_start = None
+                        for _, sig_row in ds_df.iterrows():
+                            regime = str(sig_row['regime']).lower().strip()
+                            idx = sig_row['num_idx']
+                            if regime != prev_regime:
+                                # Close previous span
+                                if prev_regime is not None and span_start is not None:
+                                    color = regime_colors.get(prev_regime, 'rgba(136, 136, 136, 0.04)')
+                                    fig.add_vrect(
+                                        x0=span_start, x1=idx,
+                                        fillcolor=color, layer="below", line_width=0,
+                                        row=1, col=1
+                                    )
+                                span_start = idx
+                                prev_regime = regime
+                        # Close final span
+                        if prev_regime is not None and span_start is not None:
+                            final_x = price_df['num_index'].max()
+                            color = regime_colors.get(prev_regime, 'rgba(136, 136, 136, 0.04)')
+                            fig.add_vrect(
+                                x0=span_start, x1=final_x,
+                                fillcolor=color, layer="below", line_width=0,
+                                row=1, col=1
+                            )
+        except Exception:
+            pass  # Silently skip if regime data unavailable
+
     # Determine title based on contract
     if actual_ticker_display:
         chart_title = f"{actual_ticker_display} | {selected_agent_label} | {timeframe} | Last {lookback_days} Days"
@@ -1186,6 +1246,31 @@ if price_df is not None and not price_df.empty:
             if graded > 0:
                 win_rate = wins / graded * 100
                 st.caption(f"📈 Win Rate: **{win_rate:.1f}%** ({wins}W / {losses}L from {graded} graded signals)")
+
+    # === STRATEGY PERFORMANCE TABLE ===
+    if not plot_df.empty and 'outcome' in plot_df.columns and 'strategy_type' in plot_df.columns:
+        graded_signals = plot_df[plot_df['outcome'].isin(['WIN', 'LOSS'])].copy()
+        if not graded_signals.empty:
+            st.markdown("---")
+            st.subheader("🎯 Strategy Performance")
+
+            strat_stats = graded_signals.groupby('strategy_type').agg(
+                Signals=('outcome', 'count'),
+                Wins=('outcome', lambda x: (x == 'WIN').sum()),
+                Losses=('outcome', lambda x: (x == 'LOSS').sum()),
+            ).reset_index()
+            strat_stats.rename(columns={'strategy_type': 'Strategy'}, inplace=True)
+            strat_stats['Win Rate%'] = (strat_stats['Wins'] / strat_stats['Signals'] * 100).round(1)
+            strat_stats = strat_stats.sort_values('Win Rate%', ascending=False).reset_index(drop=True)
+
+            st.dataframe(
+                strat_stats,
+                column_config={
+                    "Win Rate%": st.column_config.ProgressColumn("Win Rate%", min_value=0, max_value=100, format="%.1f%%"),
+                },
+                hide_index=True,
+                width="stretch"
+            )
 
     # === DOWNLOAD SECTION ===
     st.markdown("---")

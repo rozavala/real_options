@@ -22,8 +22,10 @@ from dashboard_utils import (
     fetch_benchmark_data,
     fetch_live_dashboard_data,
     get_config,
-    get_starting_capital
+    get_starting_capital,
+    grade_decision_quality
 )
+import numpy as np
 
 st.set_page_config(layout="wide", page_title="Financials | Real Options")
 
@@ -214,6 +216,9 @@ if not equity_df.empty:
 else:
     st.warning("No equity data available. Ensure equity_logger.py is running.")
 
+# Pre-compute graded trades for sections that need it
+graded_fin = grade_decision_quality(council_df) if not council_df.empty else pd.DataFrame()
+
 st.markdown("---")
 
 
@@ -244,6 +249,71 @@ if not council_df.empty and 'strategy_type' in council_df.columns and 'pnl_reali
 
     # Detailed table
     st.dataframe(strategy_perf)
+
+    # Rolling win rate by strategy (time dimension)
+    if not graded_fin.empty and 'strategy_type' in graded_fin.columns:
+        strat_resolved = graded_fin[graded_fin['outcome'].isin(['WIN', 'LOSS'])].copy()
+        strat_resolved = strat_resolved.sort_values('timestamp').reset_index(drop=True)
+
+        if len(strat_resolved) > 20:
+            strat_resolved['is_win'] = (strat_resolved['outcome'] == 'WIN').astype(int)
+            strat_resolved['trade_num'] = range(1, len(strat_resolved) + 1)
+
+            strategies_present = strat_resolved['strategy_type'].unique()
+            strat_colors = {
+                'BULL_CALL_SPREAD': '#00CC96',
+                'BEAR_PUT_SPREAD': '#EF553B',
+                'LONG_STRADDLE': '#AB63FA',
+                'IRON_CONDOR': '#636EFA',
+            }
+            strat_pretty = {
+                'BULL_CALL_SPREAD': 'Bull Call Spread',
+                'BEAR_PUT_SPREAD': 'Bear Put Spread',
+                'LONG_STRADDLE': 'Long Straddle',
+                'IRON_CONDOR': 'Iron Condor',
+            }
+
+            fig_roll = go.Figure()
+            _declining = []
+
+            for strat in strategies_present:
+                s_df = strat_resolved[strat_resolved['strategy_type'] == strat].copy()
+                if len(s_df) < 5:
+                    continue
+                s_df['rolling_wr'] = s_df['is_win'].rolling(window=min(10, len(s_df)), min_periods=3).mean() * 100
+                s_df = s_df[s_df['rolling_wr'].notna()]
+
+                if s_df.empty:
+                    continue
+
+                pretty = strat_pretty.get(strat, strat)
+                fig_roll.add_trace(go.Scatter(
+                    x=s_df['trade_num'], y=s_df['rolling_wr'],
+                    name=pretty,
+                    line=dict(color=strat_colors.get(strat, '#FFFFFF'), width=2)
+                ))
+
+                # Check for declining trend
+                if len(s_df) >= 10:
+                    first_q = s_df['rolling_wr'].iloc[:len(s_df)//3].mean()
+                    last_q = s_df['rolling_wr'].iloc[-len(s_df)//3:].mean()
+                    if first_q - last_q > 15:
+                        _declining.append(f"{pretty} win rate declining (was {first_q:.0f}%, now {last_q:.0f}%)")
+
+            if fig_roll.data:
+                fig_roll.add_hline(y=50, line_dash="dot", line_color="gray")
+                fig_roll.update_layout(
+                    title='Rolling Win Rate by Strategy (window=10)',
+                    height=350,
+                    xaxis=dict(title='Trade #'),
+                    yaxis=dict(title='Win Rate %', range=[0, 100]),
+                    legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+                    margin=dict(l=0, r=0, t=60, b=0)
+                )
+                st.plotly_chart(fig_roll, use_container_width=True)
+
+                for warning_msg in _declining:
+                    st.warning(warning_msg)
 
 # === NEW: Trade Type Breakdown ===
 st.subheader("📊 Directional vs Volatility Performance")
@@ -320,6 +390,97 @@ if not equity_df.empty:
         st.info("Not enough monthly data for heatmap.")
 else:
     st.info("Equity data not available for monthly analysis.")
+
+st.markdown("---")
+
+# === SECTION: Risk-Adjusted Returns ===
+st.subheader("Risk-Adjusted Returns")
+st.caption("Are the returns worth the risk taken?")
+
+# Determine data source for risk metrics
+_risk_data_available = False
+
+# Try equity curve first for Sharpe and drawdown
+_daily_returns = None
+_max_dd_pct = None
+_recovery_days = None
+
+if not equity_df.empty and len(equity_df) >= 10:
+    eq_sorted = equity_df.sort_values('timestamp').copy()
+    eq_sorted['daily_return'] = eq_sorted['total_value_usd'].pct_change()
+    _daily_returns = eq_sorted['daily_return'].dropna()
+
+    # Max drawdown + recovery
+    eq_sorted['peak'] = eq_sorted['total_value_usd'].cummax()
+    eq_sorted['dd'] = (eq_sorted['total_value_usd'] - eq_sorted['peak']) / eq_sorted['peak']
+    _max_dd_pct = eq_sorted['dd'].min() * 100  # negative percentage
+
+    # Recovery time: days from trough back to peak
+    trough_idx = eq_sorted['dd'].idxmin()
+    post_trough = eq_sorted.loc[trough_idx:]
+    recovered = post_trough[post_trough['total_value_usd'] >= post_trough.iloc[0]['peak']]
+    if not recovered.empty:
+        _recovery_days = (recovered.iloc[0]['timestamp'] - eq_sorted.loc[trough_idx, 'timestamp']).days
+    else:
+        _recovery_days = None  # still in drawdown
+
+# Win/Loss ratio from council_history
+_wl_ratio = None
+
+if not graded_fin.empty:
+    pnl_c = 'pnl' if 'pnl' in graded_fin.columns else 'pnl_realized'
+    if pnl_c in graded_fin.columns:
+        fin_resolved = graded_fin[graded_fin['outcome'].isin(['WIN', 'LOSS'])].copy()
+        fin_resolved['_pnl'] = pd.to_numeric(fin_resolved[pnl_c], errors='coerce')
+        fin_resolved = fin_resolved[fin_resolved['_pnl'].notna()]
+
+        if len(fin_resolved) >= 10:
+            avg_win = fin_resolved.loc[fin_resolved['_pnl'] > 0, '_pnl'].mean()
+            avg_loss = fin_resolved.loc[fin_resolved['_pnl'] < 0, '_pnl'].abs().mean()
+            if pd.notna(avg_win) and pd.notna(avg_loss) and avg_loss > 0:
+                _wl_ratio = avg_win / avg_loss
+            _risk_data_available = True
+
+# Check if we have enough data for any metric
+has_sharpe = _daily_returns is not None and len(_daily_returns) >= 10
+has_dd = _max_dd_pct is not None
+has_wl = _wl_ratio is not None
+
+if has_sharpe or has_dd or has_wl:
+    risk_cols = st.columns(3)
+
+    with risk_cols[0]:
+        if has_sharpe:
+            daily_std = _daily_returns.std()
+            daily_mean = _daily_returns.mean()
+            sharpe = (daily_mean / daily_std * np.sqrt(252)) if daily_std > 0 else 0.0
+            st.metric(
+                "Sharpe Ratio", f"{sharpe:.2f}",
+                help="Risk-adjusted return. >1.0 is good, >2.0 is excellent, <0.5 is poor"
+            )
+        else:
+            st.metric("Sharpe Ratio", "N/A", help="Needs daily equity data")
+
+    with risk_cols[1]:
+        if has_dd:
+            recovery_text = f" ({_recovery_days}d recovery)" if _recovery_days is not None else " (ongoing)"
+            st.metric(
+                "Max Drawdown", f"{_max_dd_pct:.1f}%",
+                help=f"Deepest peak-to-trough decline{recovery_text}"
+            )
+        else:
+            st.metric("Max Drawdown", "N/A", help="Needs equity history")
+
+    with risk_cols[2]:
+        if has_wl:
+            st.metric(
+                "Win/Loss Ratio", f"{_wl_ratio:.2f}",
+                help=">1.5 means winners are bigger than losers"
+            )
+        else:
+            st.metric("Win/Loss Ratio", "N/A", help="Needs 10+ graded trades with P&L")
+else:
+    st.info("Insufficient data for risk metrics (need daily equity data or 10+ graded trades).")
 
 st.markdown("---")
 
