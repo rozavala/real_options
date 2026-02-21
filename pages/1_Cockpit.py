@@ -626,8 +626,13 @@ with hb_cols[2]:
                    if s.get('status') in ('OK', 'IDLE', 'INITIALIZING'))
     error_count = sum(1 for s in sentinels.values() if s.get('status') == 'ERROR')
     sentinel_icon = "🟢" if error_count == 0 else "🟡" if error_count <= 2 else "🔴"
+    sentinel_help = "Sentinels reporting OK or IDLE vs total registered"
+    if error_count > 0:
+        errors = [s.get('display_name', 'Unknown Sentinel') for s in sentinels.values() if s.get('status') == 'ERROR']
+        sentinel_help += "\n\n🚨 **Errors:**\n" + "\n".join([f"- {name}" for name in errors])
+
     st.metric("Sentinel Array", f"{sentinel_icon} {ok_count}/{len(sentinels)}",
-              help="Sentinels reporting OK or IDLE vs total registered")
+              help=sentinel_help)
     if error_count > 0:
         st.caption(f"⚠️ {error_count} sentinel(s) in error state")
 
@@ -635,7 +640,12 @@ with hb_cols[3]:
     ib_health = get_ib_connection_health()
     ib_status = "ONLINE" if ib_health.get("sentinel_ib") == "CONNECTED" else "OFFLINE"
     ib_color = "🟢" if ib_status == "ONLINE" else "🔴"
-    st.metric("IB Gateway", f"{ib_color} {ib_status}", help="Connection status to Interactive Brokers Gateway")
+
+    ib_help = "Connection status to Interactive Brokers Gateway"
+    if ib_status != "ONLINE":
+        ib_help += f"\n\nLast successful: {ib_health.get('last_successful_connection', 'Never')}"
+
+    st.metric("IB Gateway", f"{ib_color} {ib_status}", help=ib_help)
 
     if ib_health.get("reconnect_backoff", 0) > 0:
         st.caption(f"⏳ Backoff: {ib_health['reconnect_backoff']}s")
