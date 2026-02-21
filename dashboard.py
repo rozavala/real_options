@@ -25,6 +25,11 @@ st.set_page_config(
 
 # === IMPORTS ===
 import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.express as px
+import calendar
 from datetime import datetime, timezone
 from dashboard_utils import (
     discover_active_commodities,
@@ -33,6 +38,9 @@ from dashboard_utils import (
     grade_decision_quality,
     fetch_all_live_data,
     get_config,
+    load_equity_data,
+    fetch_benchmark_data,
+    get_starting_capital,
 )
 
 config = get_config()
@@ -131,6 +139,258 @@ with fin_col3:
             st.metric("Portfolio VaR (95%)", "No data")
     except Exception:
         st.metric("Portfolio VaR (95%)", "No data")
+
+# =====================================================================
+# SECTION 2b: Equity Curve + Drawdown (account-wide from daily_equity.csv)
+# =====================================================================
+st.markdown("---")
+st.markdown("### Equity Curve")
+
+# Always load from KC — equity_logger only runs for primary commodity but
+# records account-wide NLV.
+equity_df = load_equity_data(ticker="KC")
+
+if not equity_df.empty:
+    equity_df = equity_df.sort_values('timestamp')
+
+    # Merge trade markers from ALL commodities
+    all_trade_markers = []
+    for _tk in active_commodities:
+        _cdf = load_council_history_for_commodity(_tk)
+        if not _cdf.empty and 'timestamp' in _cdf.columns:
+            _markers = _cdf[['timestamp', 'master_decision']].copy()
+            _markers['timestamp'] = pd.to_datetime(_markers['timestamp'])
+            all_trade_markers.append(_markers)
+    trade_markers = pd.concat(all_trade_markers, ignore_index=True) if all_trade_markers else pd.DataFrame()
+
+    fig_eq = make_subplots(
+        rows=2, cols=1,
+        row_heights=[0.7, 0.3],
+        shared_xaxes=True,
+        vertical_spacing=0.05,
+        subplot_titles=('Equity Curve', 'Drawdown')
+    )
+
+    fig_eq.add_trace(
+        go.Scatter(
+            x=equity_df['timestamp'],
+            y=equity_df['total_value_usd'],
+            mode='lines',
+            name='Equity',
+            line=dict(color='#636EFA', width=2)
+        ),
+        row=1, col=1
+    )
+
+    if not trade_markers.empty:
+        buys = trade_markers[trade_markers['master_decision'] == 'BULLISH']
+        sells = trade_markers[trade_markers['master_decision'] == 'BEARISH']
+
+        if not buys.empty:
+            buy_eq = pd.merge_asof(
+                buys.sort_values('timestamp'),
+                equity_df[['timestamp', 'total_value_usd']].sort_values('timestamp'),
+                on='timestamp'
+            )
+            fig_eq.add_trace(
+                go.Scatter(
+                    x=buy_eq['timestamp'],
+                    y=buy_eq['total_value_usd'],
+                    mode='markers',
+                    name='Buy Signal',
+                    marker=dict(symbol='triangle-up', size=12, color='#00CC96')
+                ),
+                row=1, col=1
+            )
+
+        if not sells.empty:
+            sell_eq = pd.merge_asof(
+                sells.sort_values('timestamp'),
+                equity_df[['timestamp', 'total_value_usd']].sort_values('timestamp'),
+                on='timestamp'
+            )
+            fig_eq.add_trace(
+                go.Scatter(
+                    x=sell_eq['timestamp'],
+                    y=sell_eq['total_value_usd'],
+                    mode='markers',
+                    name='Sell Signal',
+                    marker=dict(symbol='triangle-down', size=12, color='#EF553B')
+                ),
+                row=1, col=1
+            )
+
+    # Drawdown
+    equity_df['peak'] = equity_df['total_value_usd'].cummax()
+    equity_df['drawdown'] = (equity_df['total_value_usd'] - equity_df['peak']) / equity_df['peak'] * 100
+
+    fig_eq.add_trace(
+        go.Scatter(
+            x=equity_df['timestamp'],
+            y=equity_df['drawdown'],
+            mode='lines',
+            fill='tozeroy',
+            name='Drawdown',
+            line=dict(color='#EF553B', width=1)
+        ),
+        row=2, col=1
+    )
+
+    fig_eq.update_layout(height=600, showlegend=True, hovermode='x unified')
+    fig_eq.update_yaxes(title_text="Equity ($)", row=1, col=1)
+    fig_eq.update_yaxes(title_text="Drawdown (%)", row=2, col=1)
+    st.plotly_chart(fig_eq, use_container_width=True)
+
+    max_dd = equity_df['drawdown'].min()
+    st.caption(f"Maximum Drawdown: {max_dd:.2f}%")
+else:
+    st.info("No equity data available. Ensure equity_logger is running.")
+
+# =====================================================================
+# SECTION 2c: Risk Metrics — Sharpe Ratio, Max Drawdown
+# =====================================================================
+st.markdown("---")
+st.markdown("### Risk Metrics")
+
+if not equity_df.empty and len(equity_df) >= 10:
+    eq_sorted = equity_df.sort_values('timestamp').copy()
+    eq_sorted['daily_return'] = eq_sorted['total_value_usd'].pct_change()
+    _daily_returns = eq_sorted['daily_return'].dropna()
+
+    # Max drawdown + recovery
+    eq_sorted['_peak'] = eq_sorted['total_value_usd'].cummax()
+    eq_sorted['_dd'] = (eq_sorted['total_value_usd'] - eq_sorted['_peak']) / eq_sorted['_peak']
+    _max_dd_pct = eq_sorted['_dd'].min() * 100
+
+    trough_idx = eq_sorted['_dd'].idxmin()
+    post_trough = eq_sorted.loc[trough_idx:]
+    recovered = post_trough[post_trough['total_value_usd'] >= post_trough.iloc[0]['_peak']]
+    _recovery_days = (recovered.iloc[0]['timestamp'] - eq_sorted.loc[trough_idx, 'timestamp']).days if not recovered.empty else None
+
+    risk_col1, risk_col2 = st.columns(2)
+
+    with risk_col1:
+        if len(_daily_returns) >= 10:
+            daily_std = _daily_returns.std()
+            daily_mean = _daily_returns.mean()
+            sharpe = (daily_mean / daily_std * np.sqrt(252)) if daily_std > 0 else 0.0
+            st.metric(
+                "Sharpe Ratio", f"{sharpe:.2f}",
+                help="Risk-adjusted return. >1.0 is good, >2.0 is excellent, <0.5 is poor"
+            )
+        else:
+            st.metric("Sharpe Ratio", "N/A", help="Needs daily equity data")
+
+    with risk_col2:
+        recovery_text = f" ({_recovery_days}d recovery)" if _recovery_days is not None else " (ongoing)"
+        st.metric(
+            "Max Drawdown", f"{_max_dd_pct:.1f}%",
+            help=f"Deepest peak-to-trough decline{recovery_text}"
+        )
+else:
+    st.info("Insufficient equity data for risk metrics (need 10+ daily snapshots).")
+
+# =====================================================================
+# SECTION 2d: Monthly Returns Heatmap
+# =====================================================================
+st.markdown("---")
+st.markdown("### Monthly Returns")
+st.caption("Calendar view of monthly performance")
+
+if not equity_df.empty:
+    _eq_hm = equity_df.copy()
+    _eq_hm['month'] = _eq_hm['timestamp'].dt.tz_localize(None).dt.to_period('M')
+
+    monthly = _eq_hm.groupby('month').agg({'total_value_usd': ['first', 'last']})
+    monthly.columns = ['start', 'end']
+    monthly['return'] = ((monthly['end'] - monthly['start']) / monthly['start']) * 100
+
+    monthly = monthly.reset_index()
+    monthly['year'] = monthly['month'].dt.year
+    monthly['month_num'] = monthly['month'].dt.month
+    monthly['month_name'] = monthly['month_num'].apply(lambda x: calendar.month_abbr[x])
+
+    if len(monthly) > 1:
+        pivot = monthly.pivot(index='year', columns='month_name', values='return')
+        month_order = [calendar.month_abbr[i] for i in range(1, 13)]
+        pivot = pivot.reindex(columns=[m for m in month_order if m in pivot.columns])
+
+        fig_hm = px.imshow(
+            pivot,
+            labels=dict(x="Month", y="Year", color="Return %"),
+            color_continuous_scale='RdYlGn',
+            color_continuous_midpoint=0,
+            aspect='auto'
+        )
+        fig_hm.update_layout(height=300)
+        st.plotly_chart(fig_hm, use_container_width=True)
+    else:
+        st.info("Not enough monthly data for heatmap.")
+else:
+    st.info("Equity data not available for monthly analysis.")
+
+# =====================================================================
+# SECTION 2e: Benchmark Comparison
+# =====================================================================
+st.markdown("---")
+st.markdown("### Benchmark Comparison")
+
+if not equity_df.empty:
+    starting_capital = get_starting_capital(config) if config else 50000.0
+    if not equity_df.empty:
+        starting_capital = equity_df.iloc[0]['total_value_usd']
+
+    start_date = equity_df['timestamp'].min()
+    end_date = equity_df['timestamp'].max()
+
+    benchmark_df = fetch_benchmark_data(start_date, end_date)
+
+    if not benchmark_df.empty:
+        bot_returns = (equity_df.set_index('timestamp')['total_value_usd'] / starting_capital - 1) * 100
+        bot_returns = bot_returns.resample('D').last().dropna()
+
+        fig_bm = go.Figure()
+
+        fig_bm.add_trace(go.Scatter(
+            x=bot_returns.index,
+            y=bot_returns.values,
+            name='Real Options',
+            line=dict(color='#636EFA', width=2)
+        ))
+
+        if 'SPY' in benchmark_df.columns:
+            fig_bm.add_trace(go.Scatter(
+                x=benchmark_df.index,
+                y=benchmark_df['SPY'],
+                name='S&P 500',
+                line=dict(color='#FFA15A', width=1, dash='dot')
+            ))
+
+        from config import get_active_profile
+        profile = get_active_profile(config) if config else None
+        if profile:
+            benchmark_col = f"{profile.ticker}=F"
+            if benchmark_col in benchmark_df.columns:
+                fig_bm.add_trace(go.Scatter(
+                    x=benchmark_df.index,
+                    y=benchmark_df[benchmark_col],
+                    name=f'{profile.name} Futures',
+                    line=dict(color='#00CC96', width=1, dash='dot')
+                ))
+
+        fig_bm.update_layout(
+            title='Returns vs Benchmarks',
+            xaxis_title='Date',
+            yaxis_title='Return (%)',
+            height=400,
+            hovermode='x unified'
+        )
+
+        st.plotly_chart(fig_bm, use_container_width=True)
+    else:
+        st.info("Could not fetch benchmark data.")
+else:
+    st.info("Equity data required for benchmark comparison.")
 
 # =====================================================================
 # SECTION 3: Per-Commodity Cards — trade count, last decision, win rate
@@ -280,8 +540,8 @@ if hasattr(st, "page_link"):
     with col2:
         st.page_link("pages/2_The_Scorecard.py", label="The Scorecard", icon="\u2696\ufe0f",
                       help="How are we performing? Win rates, decision quality, learning curves", width="stretch")
-        st.page_link("pages/4_Financials.py", label="Financials", icon="\U0001f4c8",
-                      help="Are we making money? P&L, equity curve, risk metrics", width="stretch")
+        st.page_link("pages/4_Financials.py", label="Trade Analytics", icon="\U0001f4c8",
+                      help="Per-commodity strategy performance, trade breakdown, execution ledger", width="stretch")
         st.page_link("pages/6_Signal_Overlay.py", label="Signal Overlay", icon="\U0001f3af",
                       help="How do signals align with price? Visual forensics", width="stretch")
 else:
@@ -293,7 +553,7 @@ else:
     | **Cockpit** | Is the system running? Check positions, health, emergencies |
     | **Scorecard** | How are we performing? Win rates, decision quality, learning curves |
     | **Council** | Why did we decide that? Agent debate, voting, forensics |
-    | **Financials** | Are we making money? P&L, equity curve, risk metrics |
+    | **Trade Analytics** | Per-commodity strategy performance, trade breakdown, execution ledger |
     | **Utilities** | Debug and control: logs, manual trading, reconciliation |
     | **Signal Overlay** | How do signals align with price? Visual forensics |
     | **Brier Analysis** | Which agents need tuning? Accuracy, calibration, learning |
