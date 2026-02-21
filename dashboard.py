@@ -544,6 +544,8 @@ if hasattr(st, "page_link"):
                       help="Per-commodity strategy performance, trade breakdown, execution ledger", width="stretch")
         st.page_link("pages/6_Signal_Overlay.py", label="Signal Overlay", icon="\U0001f3af",
                       help="How do signals align with price? Visual forensics", width="stretch")
+        st.page_link("pages/8_LLM_Monitor.py", label="LLM Monitor", icon="\U0001f4b0",
+                      help="API costs, budget utilization, provider health, latency", width="stretch")
 else:
     st.markdown("""
     Use the sidebar to navigate between pages:
@@ -557,6 +559,7 @@ else:
     | **Utilities** | Debug and control: logs, manual trading, reconciliation |
     | **Signal Overlay** | How do signals align with price? Visual forensics |
     | **Brier Analysis** | Which agents need tuning? Accuracy, calibration, learning |
+    | **LLM Monitor** | API costs, budget utilization, provider health, latency |
     """)
 
 active_str = ", ".join(
