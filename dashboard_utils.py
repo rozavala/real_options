@@ -900,6 +900,7 @@ def fetch_all_live_data(_config: dict) -> dict:
     1. Creates FRESH event loop for thread safety
     2. Uses RANDOM ClientID to prevent tab collisions
     3. Proper cleanup with blocking sleep for Gateway
+    4. OPTIMIZATION: Uses asyncio.gather for parallel fetching (Bolt)
     """
     result = {
         'net_liquidation': 0.0,
@@ -923,6 +924,7 @@ def fetch_all_live_data(_config: dict) -> dict:
         # Random ClientID prevents collision if two browser tabs refresh simultaneously
         client_id = random.randint(1000, 9999)
 
+        # 1. Connect (Sync wrapper around async)
         loop.run_until_complete(ib.connectAsync(
             _config.get('connection', {}).get('host', '127.0.0.1'),
             _config.get('connection', {}).get('port', 7497),
@@ -940,35 +942,64 @@ def fetch_all_live_data(_config: dict) -> dict:
         # Configure market data type
         configure_market_data_type(ib)
 
-        # Account Summary
-        for av in ib.accountSummary():
-            result['account_summary'][av.tag] = av.value
-            if av.tag == 'NetLiquidation':
-                result['net_liquidation'] = float(av.value)
-            elif av.tag == 'UnrealizedPnL':
-                result['unrealized_pnl'] = float(av.value)
-            elif av.tag == 'RealizedPnL':
-                result['realized_pnl'] = float(av.value)
-            elif av.tag == 'MaintMarginReq':
-                result['maint_margin'] = float(av.value)
-
-        # Daily P&L
+        # 2. Start PnL Subscription (Early)
+        # Allows PnL data to arrive while we fetch other data
         accounts = ib.managedAccounts()
         if accounts:
             ib.reqPnL(accounts[0])
-            ib.sleep(1)
-            pnl_data = ib.pnl()
-            if pnl_data:
-                raw_pnl = pnl_data[0].dailyPnL
-                # NaN is truthy in Python, so `or 0.0` doesn't catch it.
-                # Must use explicit math.isnan() check.
-                import math
-                result['daily_pnl'] = 0.0 if (raw_pnl is None or math.isnan(raw_pnl)) else raw_pnl
 
-        # Positions & Portfolio
-        result['open_positions'] = ib.positions()
+        # 3. Fetch Portfolio (Synchronous/Blocking)
+        # Must be called synchronously to avoid loop conflicts with ib_insync's internal loop usage.
+        # This consumes ~0.2s of the PnL wait time.
         result['portfolio_items'] = ib.portfolio()
-        result['pending_orders'] = ib.openOrders()
+
+        # 4. Async Fetch for Parallelizable Data
+        async def _fetch_rest():
+            # Wait for remaining PnL data (0.8s instead of 1.0s, as portfolio() consumed time)
+            async def wait_remaining_pnl():
+                await asyncio.sleep(0.8)
+                return ib.pnl()
+
+            # Launch parallel tasks
+            # accountSummaryAsync returns list[AccountValue]
+            # reqPositionsAsync returns list[Position]
+            # reqAllOpenOrdersAsync returns list[Order]
+            tasks = [
+                ib.accountSummaryAsync(),
+                ib.reqPositionsAsync(),
+                ib.reqAllOpenOrdersAsync(),
+                wait_remaining_pnl()
+            ]
+
+            return await asyncio.gather(*tasks)
+
+        # Execute async gather
+        async_results = loop.run_until_complete(_fetch_rest())
+
+        # 5. Unpack Results
+        summary_data = async_results[0]
+        result['open_positions'] = async_results[1]
+        result['pending_orders'] = async_results[2]
+        pnl_data = async_results[3]
+
+        # Process Account Summary
+        if summary_data:
+            for av in summary_data:
+                result['account_summary'][av.tag] = av.value
+                if av.tag == 'NetLiquidation':
+                    result['net_liquidation'] = float(av.value)
+                elif av.tag == 'UnrealizedPnL':
+                    result['unrealized_pnl'] = float(av.value)
+                elif av.tag == 'RealizedPnL':
+                    result['realized_pnl'] = float(av.value)
+                elif av.tag == 'MaintMarginReq':
+                    result['maint_margin'] = float(av.value)
+
+        # Process PnL
+        if pnl_data:
+            raw_pnl = pnl_data[0].dailyPnL
+            import math
+            result['daily_pnl'] = 0.0 if (raw_pnl is None or math.isnan(raw_pnl)) else raw_pnl
 
     except Exception as e:
         result['connection_status'] = 'ERROR'
