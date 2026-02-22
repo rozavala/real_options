@@ -643,7 +643,8 @@ with hb_cols[3]:
 
     ib_help = "Connection status to Interactive Brokers Gateway"
     if ib_status != "ONLINE":
-        ib_help += f"\n\nLast successful: {ib_health.get('last_successful_connection', 'Never')}"
+        last_conn = ib_health.get('last_successful_connection') or 'Never'
+        ib_help += f"\n\nLast successful: {last_conn}"
 
     st.metric("IB Gateway", f"{ib_color} {ib_status}", help=ib_help)
 
