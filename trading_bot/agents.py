@@ -19,7 +19,7 @@ from trading_bot.confidence_utils import parse_confidence
 from trading_bot.state_manager import StateManager
 from trading_bot.sentinels import SentinelTrigger
 from trading_bot.semantic_router import SemanticRouter
-from trading_bot.utils import escape_xml
+from trading_bot.utils import escape_xml, sanitize_prompt_content
 from trading_bot.market_data_provider import format_market_context_for_prompt
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole, get_router, CriticalRPCError
 from trading_bot.budget_guard import BudgetThrottledError
@@ -89,13 +89,15 @@ class GroundedDataPacket:
     def to_context_block(self) -> str:
         """Format as context block for analyst prompts."""
         facts_str = "\n".join([
-            f"- [{f.get('date', 'undated')}] {f.get('fact')} (source: {f.get('source', 'unknown')})"
+            f"- [{f.get('date', 'undated')}] {sanitize_prompt_content(f.get('fact', ''))} (source: {sanitize_prompt_content(f.get('source', 'unknown'))})"
             for f in self.extracted_facts
         ]) or "No specific dated facts extracted."
 
+        safe_urls = [sanitize_prompt_content(url) for url in self.source_urls[:5]]
+
         return f"""
 === GROUNDED DATA PACKET ===
-Query: {self.search_query}
+Query: {sanitize_prompt_content(self.search_query)}
 Gathered: {self.gathered_at.isoformat()}
 Data Freshness Target: Last {self.data_freshness_hours} hours
 
@@ -103,10 +105,10 @@ EXTRACTED FACTS:
 {facts_str}
 
 RAW RESEARCH FINDINGS:
-{self.raw_findings[:2000]}  # Truncate for context limits
+{sanitize_prompt_content(self.raw_findings[:2000])}  # Truncate for context limits
 
 SOURCES CONSULTED:
-{chr(10).join(self.source_urls[:5]) or 'No URLs captured'}
+{chr(10).join(safe_urls) or 'No URLs captured'}
 === END GROUNDED DATA ===
 """
 
@@ -792,7 +794,7 @@ OUTPUT FORMAT (JSON):
             # Add temporal warning to prevent confusion
             context_str = (
                 "PRIOR INSIGHTS (from last 14 days only - do NOT cite older events):\n"
-                + "\n".join(relevant_context)
+                + "\n".join([sanitize_prompt_content(c) for c in relevant_context])
             )
         else:
             context_str = "No recent prior context available."
