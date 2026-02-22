@@ -219,7 +219,12 @@ with manual_cols[0]:
 
     is_authorized = confirm_exec and confirm_text == "EXECUTE"
 
-    if st.button("🚀 Force Generate & Execute Orders", type="primary", disabled=not is_authorized):
+    if st.button(
+        "🚀 Force Generate & Execute Orders",
+        type="primary",
+        disabled=not is_authorized,
+        help="Bypasses the normal schedule to run a full analysis and trade cycle immediately (Data Pull → Council → Signals → Orders). Requires 'EXECUTE' confirmation."
+    ):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -507,6 +512,8 @@ with state_cols[0]:
         try:
             state_path = _resolve_data_path("state.json")
             if os.path.exists(state_path):
+                mtime = os.path.getmtime(state_path)
+                st.caption(f"🕒 Last updated: {datetime.fromtimestamp(mtime, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
                 with open(state_path, 'r') as f:
                     state_data = json.load(f)
                     st.json(state_data)
@@ -1045,14 +1052,14 @@ st.subheader("ℹ️ System Information")
 info_cols = st.columns(3)
 
 with info_cols[0]:
-    st.metric("Python Version", sys.version.split()[0])
+    st.metric("Python Version", sys.version.split()[0], help="The version of the Python interpreter running this application.")
 
 with info_cols[1]:
     import streamlit
-    st.metric("Streamlit Version", streamlit.__version__)
+    st.metric("Streamlit Version", streamlit.__version__, help="The version of the Streamlit framework used to build this dashboard.")
 
 with info_cols[2]:
-    st.metric("Current Time (UTC)", datetime.now(timezone.utc).strftime("%H:%M:%S"))
+    st.metric("Current Time (UTC)", datetime.now(timezone.utc).strftime("%H:%M:%S"), help="Current system time in UTC. All bot schedules and log timestamps use UTC for consistency.")
 
 # Display recent log files
 st.markdown("### 📄 Recent Log Files")
@@ -1104,7 +1111,8 @@ try:
                     st.metric(
                         label=name.replace('Sentinel', '').strip(),
                         value=f"{data['alerts_today']} today",
-                        delta=f"{data['conversion_rate']:.0%} → trades"
+                        delta=f"{data['conversion_rate']:.0%} → trades",
+                        help=f"**{name}** stats for today. 'Conversion rate' shows the percentage of alerts that were validated by the Council and resulted in a trade decision."
                     )
     else:
         st.info("No sentinel alerts recorded yet.")
