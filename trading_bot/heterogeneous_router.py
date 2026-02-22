@@ -729,7 +729,8 @@ class HeterogeneousRouter:
         role: AgentRole,
         prompt: str,
         system_prompt: Optional[str] = None,
-        response_json: bool = False
+        response_json: bool = False,
+        route_info: Optional[dict] = None
     ) -> str:
         """
         Route request to appropriate model with robust fallback.
@@ -755,6 +756,8 @@ class HeterogeneousRouter:
             cached_response = self.cache.get(full_key_prompt, role.value)
             if cached_response:
                 logger.debug(f"Cache hit for {role.value}")
+                if route_info is not None:
+                    route_info.update({'provider': 'cache', 'model': 'cache', 'input_tokens': 0, 'output_tokens': 0, 'latency_ms': 0})
                 return cached_response
 
         # 1. Get Primary Assignment
@@ -818,6 +821,14 @@ class HeterogeneousRouter:
                         latency_ms=latency_ms,
                         was_fallback=False
                     )
+                    if route_info is not None:
+                        route_info.update({
+                            'provider': primary_provider.value,
+                            'model': primary_model,
+                            'input_tokens': in_tok,
+                            'output_tokens': out_tok,
+                            'latency_ms': latency_ms,
+                        })
                     return text
 
                 except RuntimeError as e:
@@ -933,6 +944,14 @@ class HeterogeneousRouter:
                 if use_cache:
                     self.cache.set(full_key_prompt, role.value, text)
 
+                if route_info is not None:
+                    route_info.update({
+                        'provider': fallback_provider.value,
+                        'model': fallback_model,
+                        'input_tokens': in_tok,
+                        'output_tokens': out_tok,
+                        'latency_ms': latency_ms,
+                    })
                 return text
 
             except RuntimeError as e:

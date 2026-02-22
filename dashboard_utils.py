@@ -2067,3 +2067,27 @@ def get_system_heartbeat_for_commodity(ticker: str) -> dict:
         heartbeat['state_status'] = 'ONLINE' if minutes_since < 10 else 'STALE'
 
     return heartbeat
+
+
+@st.cache_data(ttl=60)
+def load_prompt_traces(ticker: str = None):
+    """Load prompt trace data for dashboard display."""
+    ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
+    try:
+        from trading_bot.prompt_trace import get_prompt_trace_df
+        df = get_prompt_trace_df(commodity=ticker)
+        # Fill NaN for Streamlit compatibility
+        numeric_cols = ['demo_count', 'tms_context_count', 'grounded_freshness_hours',
+                        'prompt_tokens', 'completion_tokens', 'latency_ms']
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = df[col].fillna(0)
+        string_cols = ['prompt_source', 'model_provider', 'model_name',
+                       'assigned_provider', 'assigned_model', 'persona_hash', 'dspy_version']
+        for col in string_cols:
+            if col in df.columns:
+                df[col] = df[col].fillna('')
+        return df
+    except Exception as e:
+        logger.error(f"Failed to load prompt traces: {e}")
+        return pd.DataFrame()

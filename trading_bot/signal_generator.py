@@ -29,6 +29,7 @@ from trading_bot.strategy_router import (
     calculate_agent_conflict,
     detect_imminent_catalyst,
 )
+from trading_bot.prompt_trace import PromptTraceCollector, PromptTraceRecord, hash_persona
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +133,13 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
         # === Generate Cycle ID for this contract's decision ===
         cycle_id = generate_cycle_id(get_active_ticker(config))
 
+        # === Prompt Trace Collector ===
+        trace_collector = PromptTraceCollector(
+            cycle_id=cycle_id,
+            commodity=get_active_ticker(config),
+            contract=contract_name,
+        )
+
         agent_data = {} # Initialize outside try/except to avoid UnboundLocalError
         regime_for_voting = 'UNKNOWN' # Initialize here to avoid scope issues
         reports = {} # Initialize here to ensure scope for return
@@ -154,9 +162,9 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                                   'inventory', 'sentiment', 'technical', 'volatility']:
                     prompt_text = prompts.get(agent_key, f"Analyze {agent_key} conditions.").replace("{contract}", contract_sym)
                     if agent_key in _reflexion_agents:
-                        tasks[agent_key] = council.research_topic_with_reflexion(agent_key, prompt_text)
+                        tasks[agent_key] = council.research_topic_with_reflexion(agent_key, prompt_text, trace_collector=trace_collector)
                     else:
-                        tasks[agent_key] = council.research_topic(agent_key, prompt_text)
+                        tasks[agent_key] = council.research_topic(agent_key, prompt_text, trace_collector=trace_collector)
 
                 # B. Execute Research (Parallel) with Rate Limit Protection
                 # Add slight stagger to avoid instantaneous burst
@@ -467,7 +475,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     logger.info("Regime transition alert injected into scheduled cycle context")
 
                 # Call decided (which now includes the Hegelian Loop)
-                decision = await council.decide(contract_name, market_ctx, reports, market_context_str)
+                decision = await council.decide(contract_name, market_ctx, reports, market_context_str, trace_collector=trace_collector)
 
                 # Ensure decision confidence is valid
                 try:
@@ -517,7 +525,8 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
 
                 if is_emergency and decision.get('direction') != 'NEUTRAL' and decision.get('confidence', 0) > 0.5:
                     da_review = await council.run_devils_advocate(
-                        decision, str(reports), market_context_str
+                        decision, str(reports), market_context_str,
+                        trace_collector=trace_collector
                     )
                     if not da_review.get('proceed', True):
                         logger.warning(f"DA VETOED emergency trade: {da_review.get('recommendation')}")
@@ -546,13 +555,34 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                         compliance_context += f"\n--- IBKR MARKET DATA ---\n{ibkr_data_str}\n"
                     debate_summary = decision.get('debate_summary', '')
 
+                    _compliance_route_info = {}
                     audit = await compliance.audit_decision(
                         reports,
                         compliance_context,
                         decision,
                         council.personas.get('master', ''),
-                        debate_summary=debate_summary
+                        debate_summary=debate_summary,
+                        route_info=_compliance_route_info
                     )
+                    if trace_collector:
+                        try:
+                            from trading_bot.heterogeneous_router import AgentRole as _AR
+                            _assigned = compliance.router.assignments.get(_AR.COMPLIANCE_OFFICER, (None, None)) if hasattr(compliance, 'router') and compliance.router else (None, None)
+                            trace_collector.record(PromptTraceRecord(
+                                phase='compliance',
+                                agent='compliance',
+                                prompt_source='legacy',
+                                model_provider=_compliance_route_info.get('provider', ''),
+                                model_name=_compliance_route_info.get('model', ''),
+                                assigned_provider=_assigned[0].value if _assigned[0] else '',
+                                assigned_model=_assigned[1] or '',
+                                persona_hash=hash_persona(council.personas.get('master', '')),
+                                prompt_tokens=_compliance_route_info.get('input_tokens', 0),
+                                completion_tokens=_compliance_route_info.get('output_tokens', 0),
+                                latency_ms=_compliance_route_info.get('latency_ms', 0),
+                            ))
+                        except Exception:
+                            pass
 
                     if not audit.get('approved', True):
                         logger.warning(f"COMPLIANCE BLOCKED {contract_name}: {audit.get('flagged_reason')}")
@@ -803,6 +833,13 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
 
                     except Exception as brier_e:
                         logger.error(f"Failed to record Brier predictions for {contract_name}: {brier_e}")
+
+                    # Flush prompt traces (non-fatal)
+                    if trace_collector:
+                        try:
+                            await asyncio.to_thread(trace_collector.flush)
+                        except Exception as flush_e:
+                            logger.error(f"Failed to flush prompt traces: {flush_e}")
 
                 except Exception as log_e:
                     logger.error(f"Failed to log council decision for {contract_name}: {log_e}")

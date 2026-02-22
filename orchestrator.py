@@ -4799,6 +4799,7 @@ async def main(commodity_ticker: str = None):
     from trading_bot.brier_reconciliation import set_data_dir as set_brier_recon_dir
     from trading_bot.router_metrics import set_data_dir as set_router_metrics_dir
     from trading_bot.agents import set_data_dir as set_agents_dir
+    from trading_bot.prompt_trace import set_data_dir as set_prompt_trace_dir
 
     StateManager.set_data_dir(data_dir)
     set_tracker_dir(data_dir)
@@ -4813,6 +4814,7 @@ async def main(commodity_ticker: str = None):
     set_brier_recon_dir(data_dir)
     set_router_metrics_dir(data_dir)
     set_agents_dir(data_dir)
+    set_prompt_trace_dir(data_dir)
 
     # E.1: Portfolio VaR — shared data dir (NOT per-commodity)
     from trading_bot.var_calculator import set_var_data_dir
