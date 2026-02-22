@@ -949,38 +949,63 @@ def fetch_all_live_data(_config: dict) -> dict:
             ib.reqPnL(accounts[0])
 
         # 3. Fetch Portfolio (Synchronous/Blocking)
-        # Must be called synchronously to avoid loop conflicts with ib_insync's internal loop usage.
-        # This consumes ~0.2s of the PnL wait time.
+        # In-memory dictionary lookup, very fast.
         result['portfolio_items'] = ib.portfolio()
 
-        # 4. Async Fetch for Parallelizable Data
+        # 4. Async Fetch for Parallelizable Data with Robust Error Handling
         async def _fetch_rest():
-            # Wait for remaining PnL data (0.8s instead of 1.0s, as portfolio() consumed time)
-            async def wait_remaining_pnl():
-                await asyncio.sleep(0.8)
+            # Wait for PnL data to arrive (parallel with other fetches)
+            async def wait_pnl():
+                await asyncio.sleep(1.0)
                 return ib.pnl()
 
-            # Launch parallel tasks
+            # Launch parallel tasks with timeouts
             # accountSummaryAsync returns list[AccountValue]
             # reqPositionsAsync returns list[Position]
-            # reqAllOpenOrdersAsync returns list[Order]
-            tasks = [
-                ib.accountSummaryAsync(),
-                ib.reqPositionsAsync(),
-                ib.reqAllOpenOrdersAsync(),
-                wait_remaining_pnl()
-            ]
+            # reqAllOpenOrdersAsync returns list[Trade] (fix: need to extract .order)
 
-            return await asyncio.gather(*tasks)
+            t1 = asyncio.wait_for(ib.accountSummaryAsync(), timeout=15)
+            t2 = asyncio.wait_for(ib.reqPositionsAsync(), timeout=15)
+            t3 = asyncio.wait_for(ib.reqAllOpenOrdersAsync(), timeout=15)
+            t4 = wait_pnl()
+
+            # Use return_exceptions=True so one failure doesn't kill all data
+            return await asyncio.gather(t1, t2, t3, t4, return_exceptions=True)
 
         # Execute async gather
         async_results = loop.run_until_complete(_fetch_rest())
 
-        # 5. Unpack Results
-        summary_data = async_results[0]
-        result['open_positions'] = async_results[1]
-        result['pending_orders'] = async_results[2]
-        pnl_data = async_results[3]
+        # 5. Unpack Results with Type Safety
+        # Summary
+        if isinstance(async_results[0], list):
+            summary_data = async_results[0]
+        else:
+            logger.warning(f"Account Summary fetch failed: {async_results[0]}")
+            summary_data = []
+
+        # Positions
+        if isinstance(async_results[1], list):
+            result['open_positions'] = async_results[1]
+        else:
+            logger.warning(f"Positions fetch failed: {async_results[1]}")
+            result['open_positions'] = []
+
+        # Orders (Fix: Extract .order from Trade objects if needed)
+        if isinstance(async_results[2], list):
+            trades = async_results[2]
+            # reqAllOpenOrdersAsync returns Trade objects, but openOrders() returned Order objects.
+            # We map Trade -> Trade.order to maintain compatibility.
+            result['pending_orders'] = [t.order for t in trades] if trades and hasattr(trades[0], 'order') else trades
+        else:
+            logger.warning(f"Open Orders fetch failed: {async_results[2]}")
+            result['pending_orders'] = []
+
+        # PnL
+        if isinstance(async_results[3], list):
+            pnl_data = async_results[3]
+        else:
+            logger.warning(f"PnL fetch failed: {async_results[3]}")
+            pnl_data = []
 
         # Process Account Summary
         if summary_data:
