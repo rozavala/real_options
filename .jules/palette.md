@@ -21,3 +21,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-12 - Progressive Enhancement for Copy Functionality
 **Learning:** `st.popover` (Streamlit v1.33+) provides a cleaner UX for secondary actions like "Copy ID" compared to `st.expander`.
 **Action:** Use `if hasattr(st, "popover"):` to conditionally render the modern UI, falling back to `st.expander` to ensure accessibility and functionality across different deployments.
+
+## 2026-02-22 - Contextual Clarity via Tooltips
+**Learning:** In data-dense trading dashboards, metrics and high-impact buttons can be ambiguous to new or stressed users. Using the `help` parameter in `st.metric` and `st.button` provides essential "just-in-time" documentation without cluttering the visual interface.
+**Action:** Always provide descriptive tooltips for system-level metrics (e.g., Python/Streamlit versions, UTC time) and high-stakes manual triggers (e.g., Force Generate) to reduce cognitive load and operational risk.
