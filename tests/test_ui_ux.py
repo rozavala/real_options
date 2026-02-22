@@ -105,24 +105,5 @@ class TestCockpitUX(unittest.TestCase):
         self.assertTrue(found_utc, "Could not find 'UTC Time' metric call")
         self.assertTrue(found_ny, "Could not find 'New York Time (Market)' metric call")
 
-    def test_refresh_toast_implementation(self):
-        """
-        Verify that the refresh button action includes a toast notification.
-        """
-        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '1_Cockpit.py')
-
-        with open(file_path, 'r') as f:
-            tree = ast.parse(f.read())
-
-        found_toast = False
-        for node in ast.walk(tree):
-            # Check for st.toast call
-            if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Attribute) and node.func.attr == 'toast':
-                    found_toast = True
-                    break
-
-        self.assertTrue(found_toast, "st.toast usage not found in 1_Cockpit.py")
-
 if __name__ == '__main__':
     unittest.main()

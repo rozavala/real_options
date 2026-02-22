@@ -458,11 +458,14 @@ def _relative_time(ts) -> str:
     try:
         if isinstance(ts, str):
             ts = pd.Timestamp(ts)
-        if hasattr(ts, 'tzinfo') and ts.tzinfo is not None:
-            now = datetime.now(timezone.utc)
-            ts = ts.tz_convert('UTC') if hasattr(ts, 'tz_convert') else ts
-        else:
-            now = datetime.utcnow()
+
+        # Standardize to UTC-aware datetime
+        if not hasattr(ts, 'tzinfo') or ts.tzinfo is None:
+            ts = ts.astimezone(timezone.utc)
+        elif hasattr(ts, 'tz_convert'):
+            ts = ts.tz_convert('UTC')
+
+        now = datetime.now(timezone.utc)
         delta = now - ts
         seconds = delta.total_seconds()
         if seconds < 60:
@@ -593,11 +596,7 @@ with hb_cols[0]:
     orch_color = "🟢" if orch_status == "ONLINE" else "🔴" if orch_status == "OFFLINE" else "🟡"
     orch_delta = None
     if heartbeat['orchestrator_last_pulse']:
-        # Ensure UTC aware for relative time
-        ts = heartbeat['orchestrator_last_pulse']
-        if ts.tzinfo is None:
-            ts = ts.astimezone(timezone.utc)
-        orch_delta = f"Pulse: {_relative_time(ts)}"
+        orch_delta = f"Pulse: {_relative_time(heartbeat['orchestrator_last_pulse'])}"
 
     st.metric(
         "Orchestrator",
@@ -613,11 +612,7 @@ with hb_cols[1]:
 
     state_delta = None
     if heartbeat['state_last_pulse']:
-        # Ensure UTC aware for relative time
-        ts = heartbeat['state_last_pulse']
-        if ts.tzinfo is None:
-            ts = ts.astimezone(timezone.utc)
-        state_delta = f"Pulse: {_relative_time(ts)}"
+        state_delta = f"Pulse: {_relative_time(heartbeat['state_last_pulse'])}"
 
     st.metric(
         "State Manager",
@@ -1187,8 +1182,6 @@ with ctrl_cols[2]:
         help="Clears application cache and forces a full data reload from IB/APIs. Requires confirmation."
     ):
         with st.spinner("Refreshing data..."):
-            if hasattr(st, "toast"):
-                st.toast("Refreshing dashboard data...", icon="🔄")
             st.cache_data.clear()
             st.rerun()
 
