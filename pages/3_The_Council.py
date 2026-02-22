@@ -15,7 +15,7 @@ import html
 from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dashboard_utils import load_council_history, get_status_color, load_trade_journal, find_journal_entry
+from dashboard_utils import load_council_history, get_status_color, load_trade_journal, find_journal_entry, load_prompt_traces
 
 st.set_page_config(layout="wide", page_title="Council | Real Options")
 
@@ -665,3 +665,73 @@ if not vetoed_df.empty:
     )
 else:
     st.success("No compliance vetoes recorded - all decisions passed compliance checks.")
+
+# === SECTION 6: Prompt Provenance ===
+st.markdown("---")
+st.subheader("Prompt Provenance")
+st.caption("Model routing fidelity, prompt source tracking, and persona drift detection")
+
+traces_df = load_prompt_traces(ticker=ticker)
+if traces_df.empty:
+    st.info("No prompt trace data available yet. Traces are recorded during trading cycles.")
+else:
+    with st.expander("Agent Prompt Configuration (Latest Cycle)", expanded=False):
+        latest_cycle = traces_df['cycle_id'].iloc[-1] if 'cycle_id' in traces_df.columns and len(traces_df) > 0 else None
+        if latest_cycle:
+            cycle_traces = traces_df[traces_df['cycle_id'] == latest_cycle]
+            display_cols = ['agent', 'phase', 'prompt_source', 'model_provider', 'model_name',
+                            'assigned_provider', 'assigned_model', 'persona_hash', 'demo_count',
+                            'latency_ms']
+            available_cols = [c for c in display_cols if c in cycle_traces.columns]
+            st.dataframe(cycle_traces[available_cols], use_container_width=True, hide_index=True)
+        else:
+            st.info("No cycle data found.")
+
+    with st.expander("Model Routing Fidelity", expanded=False):
+        if 'assigned_provider' in traces_df.columns and 'model_provider' in traces_df.columns:
+            routed = traces_df[traces_df['assigned_provider'] != '']
+            total = len(routed)
+            if total > 0:
+                matched = len(routed[routed['assigned_provider'] == routed['model_provider']])
+                fallback_count = total - matched
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Total Routed Calls", total)
+                col2.metric("Primary Success", matched)
+                col3.metric("Fallbacks", fallback_count,
+                            delta=f"-{fallback_count}" if fallback_count > 0 else None,
+                            delta_color="inverse")
+                if fallback_count > 0:
+                    fallbacks = routed[routed['assigned_provider'] != routed['model_provider']]
+                    st.dataframe(
+                        fallbacks[['agent', 'assigned_provider', 'assigned_model',
+                                   'model_provider', 'model_name']],
+                        use_container_width=True, hide_index=True
+                    )
+            else:
+                st.info("No routed calls with assignment data yet.")
+
+    with st.expander("Prompt Source Trends", expanded=False):
+        if 'prompt_source' in traces_df.columns:
+            source_counts = traces_df['prompt_source'].value_counts()
+            if not source_counts.empty:
+                fig = px.pie(
+                    values=source_counts.values,
+                    names=source_counts.index,
+                    title="Prompt Source Distribution",
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+    with st.expander("Persona Drift Detection", expanded=False):
+        if 'persona_hash' in traces_df.columns and 'agent' in traces_df.columns:
+            agent_traces = traces_df[traces_df['persona_hash'] != '']
+            if not agent_traces.empty:
+                drift = agent_traces.groupby('agent')['persona_hash'].nunique().reset_index()
+                drift.columns = ['Agent', 'Unique Persona Hashes']
+                drifted = drift[drift['Unique Persona Hashes'] > 1]
+                if not drifted.empty:
+                    st.warning(f"{len(drifted)} agent(s) have changed persona text across cycles:")
+                    st.dataframe(drifted, use_container_width=True, hide_index=True)
+                else:
+                    st.success("All agent personas are stable (single hash per agent).")
+            else:
+                st.info("No persona hash data available.")

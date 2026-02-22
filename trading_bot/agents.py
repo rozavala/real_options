@@ -28,6 +28,7 @@ from trading_bot.reliability_scorer import ReliabilityScorer
 from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type
 from trading_bot.enhanced_brier import EnhancedBrierTracker
 from trading_bot.observability import ObservabilityHub, AgentTrace
+from trading_bot.prompt_trace import PromptTraceRecord, hash_persona
 
 logger = logging.getLogger(__name__)
 
@@ -519,7 +520,7 @@ class TradingCouncil:
             text = text[:-3]
         return text.strip()
 
-    async def _route_call(self, role: AgentRole, prompt: str, system_prompt: str = None, response_json: bool = False) -> str:
+    async def _route_call(self, role: AgentRole, prompt: str, system_prompt: str = None, response_json: bool = False, route_info: dict = None) -> str:
         """
         Route call to appropriate model based on role.
         Falls back to Gemini if router unavailable.
@@ -528,7 +529,7 @@ class TradingCouncil:
         try:
             if self.use_heterogeneous and self.heterogeneous_router:
                 try:
-                    result = await self.heterogeneous_router.route(role, prompt, system_prompt, response_json)
+                    result = await self.heterogeneous_router.route(role, prompt, system_prompt, response_json, route_info=route_info)
                     return result
                 except BudgetThrottledError:
                     raise  # Don't fall back to Gemini — budget applies to all providers
@@ -537,6 +538,8 @@ class TradingCouncil:
 
             # Fallback to existing Gemini implementation
             model_to_use = self.master_model_name if role == AgentRole.MASTER_STRATEGIST else self.agent_model_name
+            if route_info is not None:
+                route_info.update({'provider': 'gemini', 'model': model_to_use, 'input_tokens': 0, 'output_tokens': 0})
             return await self._call_model(model_to_use, prompt, response_json=response_json)
         finally:
             latency = time.time() - start_time
@@ -769,7 +772,7 @@ OUTPUT FORMAT (JSON):
             logger.warning(f"Reflexion query failed for {agent_name}: {e}")
             return base_prompt  # Fail-safe: no reflexion is always better than crashing
 
-    async def research_topic(self, persona_key: str, search_instruction: str, regime_context: str = "") -> str:
+    async def research_topic(self, persona_key: str, search_instruction: str, regime_context: str = "", trace_collector=None) -> str:
         """
         Conducts deep-dive research using a specialized agent persona.
 
@@ -816,12 +819,15 @@ OUTPUT FORMAT (JSON):
 
         # === PHASE 2: HETEROGENEOUS ANALYSIS ===
         persona_prompt = self.personas.get(persona_key, "You are a helpful research assistant.")
+        _prompt_source = "legacy"
+        _demo_count = 0
 
         # ENHANCED: Try commodity-aware prompt first, fall back to legacy
         if self.commodity_profile and _HAS_COMMODITY_PROFILES:
             try:
                 # Use commodity-specific prompt template
                 persona_prompt = get_agent_prompt(persona_key, self.commodity_profile, regime_context=regime_context)
+                _prompt_source = "commodity_profile"
                 logger.debug(f"Using commodity-aware prompt for {persona_key}")
             except (ValueError, KeyError) as e:
                 # Fall back to legacy persona prompt (no change in behavior)
@@ -836,7 +842,9 @@ OUTPUT FORMAT (JSON):
             optimized = self._load_optimized_prompt(commodity_ticker, persona_key)
             if optimized:
                 persona_prompt = optimized["instruction"]
+                _prompt_source = "dspy_optimized"
                 demos = optimized.get("demos")
+                _demo_count = len(demos) if demos and isinstance(demos, list) else 0
                 if demos and isinstance(demos, list):
                     demo_text = self._format_demos(demos)
                     persona_prompt = f"{persona_prompt}\n\nEXAMPLES OF GOOD ANALYSIS:\n{demo_text}"
@@ -880,12 +888,41 @@ OUTPUT FORMAT (JSON):
         role = role_map.get(persona_key, AgentRole.AGRONOMIST)
 
         try:
+            _research_route_info = {}
+            _trace_start = time.time()
             # Phase 2 always uses heterogeneous routing for diverse analysis if enabled
             if self.use_heterogeneous:
-                result_raw = await self.heterogeneous_router.route(role, full_prompt, response_json=True)
+                result_raw = await self.heterogeneous_router.route(role, full_prompt, response_json=True, route_info=_research_route_info)
             else:
                 # If no heterogeneous, fallback to agent model (Gemini) without tools
                 result_raw = await self._call_model(self.agent_model_name, full_prompt, use_tools=False, response_json=True)
+                _research_route_info = {'provider': 'gemini', 'model': self.agent_model_name, 'input_tokens': 0, 'output_tokens': 0}
+            if 'latency_ms' not in _research_route_info:
+                _research_route_info['latency_ms'] = (time.time() - _trace_start) * 1000
+
+            # Emit prompt trace
+            if trace_collector:
+                try:
+                    _assigned = self.heterogeneous_router.assignments.get(role, (None, None)) if self.use_heterogeneous and self.heterogeneous_router else (None, None)
+                    trace_collector.record(PromptTraceRecord(
+                        phase='research',
+                        agent=persona_key,
+                        prompt_source=_prompt_source,
+                        model_provider=_research_route_info.get('provider', ''),
+                        model_name=_research_route_info.get('model', ''),
+                        assigned_provider=_assigned[0].value if _assigned[0] else '',
+                        assigned_model=_assigned[1] or '',
+                        persona_hash=hash_persona(persona_prompt),
+                        demo_count=_demo_count,
+                        tms_context_count=len(relevant_context) if relevant_context else 0,
+                        grounded_freshness_hours=grounded_data.data_freshness_hours,
+                        reflexion_applied=False,
+                        prompt_tokens=_research_route_info.get('input_tokens', 0),
+                        completion_tokens=_research_route_info.get('output_tokens', 0),
+                        latency_ms=_research_route_info.get('latency_ms', 0),
+                    ))
+                except Exception:
+                    pass  # Never block trading
 
             # Validate Output (New 3-tuple Unpacking)
             is_valid, issues, conf_adj = self._validate_agent_output(
@@ -975,11 +1012,11 @@ OUTPUT FORMAT (JSON):
         except Exception as e:
             return {'data': f"Error conducting research: {str(e)}", 'confidence': 0.0, 'sentiment': 'NEUTRAL'}
 
-    async def research_topic_with_reflexion(self, persona_key: str, search_instruction: str, regime_context: str = "") -> dict:
+    async def research_topic_with_reflexion(self, persona_key: str, search_instruction: str, regime_context: str = "", trace_collector=None) -> dict:
         """Research with self-correction loop."""
 
         # Step 1: Initial analysis
-        initial_response_struct = await self.research_topic(persona_key, search_instruction, regime_context=regime_context)
+        initial_response_struct = await self.research_topic(persona_key, search_instruction, regime_context=regime_context, trace_collector=trace_collector)
         initial_text = initial_response_struct.get('data', '')
 
         # Step 2: Reflexion prompt
@@ -1013,7 +1050,27 @@ OUTPUT FORMAT (JSON ONLY):
         }
         role = role_map.get(persona_key, AgentRole.AGRONOMIST)
 
-        revised_raw = await self._route_call(role, reflexion_prompt, response_json=True)
+        _reflexion_route_info = {}
+        revised_raw = await self._route_call(role, reflexion_prompt, response_json=True, route_info=_reflexion_route_info)
+
+        if trace_collector:
+            try:
+                _assigned = self.heterogeneous_router.assignments.get(role, (None, None)) if self.use_heterogeneous and self.heterogeneous_router else (None, None)
+                trace_collector.record(PromptTraceRecord(
+                    phase='research',
+                    agent=persona_key,
+                    prompt_source='legacy',
+                    model_provider=_reflexion_route_info.get('provider', ''),
+                    model_name=_reflexion_route_info.get('model', ''),
+                    assigned_provider=_assigned[0].value if _assigned[0] else '',
+                    assigned_model=_assigned[1] or '',
+                    reflexion_applied=True,
+                    prompt_tokens=_reflexion_route_info.get('input_tokens', 0),
+                    completion_tokens=_reflexion_route_info.get('output_tokens', 0),
+                    latency_ms=_reflexion_route_info.get('latency_ms', 0),
+                ))
+            except Exception:
+                pass
 
         try:
             data = json.loads(self._clean_json_text(revised_raw))
@@ -1037,7 +1094,7 @@ OUTPUT FORMAT (JSON ONLY):
             'sentiment': data.get('sentiment', 'NEUTRAL')
         }
 
-    async def _get_red_team_analysis(self, persona_key: str, reports_text: str, market_data: dict, opponent_argument: str = None, market_context: str = "") -> str:
+    async def _get_red_team_analysis(self, persona_key: str, reports_text: str, market_data: dict, opponent_argument: str = None, market_context: str = "", trace_collector=None) -> str:
         """Gets critique/defense from Permabear or Permabull."""
         persona_prompt = self.personas.get(persona_key, "")
 
@@ -1064,11 +1121,31 @@ OUTPUT FORMAT (JSON ONLY):
         try:
             # Enforce JSON output for structured debate
             role = AgentRole.PERMABEAR if persona_key == 'permabear' else AgentRole.PERMABULL
-            return await self._route_call(role, prompt, response_json=True)
+            _debate_route_info = {}
+            result = await self._route_call(role, prompt, response_json=True, route_info=_debate_route_info)
+            if trace_collector:
+                try:
+                    _assigned = self.heterogeneous_router.assignments.get(role, (None, None)) if self.use_heterogeneous and self.heterogeneous_router else (None, None)
+                    trace_collector.record(PromptTraceRecord(
+                        phase='debate',
+                        agent=persona_key,
+                        prompt_source='legacy',
+                        model_provider=_debate_route_info.get('provider', ''),
+                        model_name=_debate_route_info.get('model', ''),
+                        assigned_provider=_assigned[0].value if _assigned[0] else '',
+                        assigned_model=_assigned[1] or '',
+                        persona_hash=hash_persona(persona_prompt),
+                        prompt_tokens=_debate_route_info.get('input_tokens', 0),
+                        completion_tokens=_debate_route_info.get('output_tokens', 0),
+                        latency_ms=_debate_route_info.get('latency_ms', 0),
+                    ))
+                except Exception:
+                    pass
+            return result
         except Exception as e:
             return json.dumps({"error": str(e), "position": "NEUTRAL", "key_arguments": []})
 
-    async def run_debate(self, reports_text: str, market_data: dict, market_context: str = "") -> tuple[str, str]:
+    async def run_debate(self, reports_text: str, market_data: dict, market_context: str = "", trace_collector=None) -> tuple[str, str]:
         """
         Run sequential attack-defense debate.
         Step 1: PERMABEAR generates the Thesis (Attack).
@@ -1076,14 +1153,14 @@ OUTPUT FORMAT (JSON ONLY):
         """
 
         # Step 1: Bear attacks the thesis (with market context including sentinel briefing)
-        bear_json = await self._get_red_team_analysis("permabear", reports_text, market_data, market_context=market_context)
+        bear_json = await self._get_red_team_analysis("permabear", reports_text, market_data, market_context=market_context, trace_collector=trace_collector)
 
         # Step 2: Bull must RESPOND to the specific critique
-        bull_json = await self._get_red_team_analysis("permabull", reports_text, market_data, opponent_argument=bear_json, market_context=market_context)
+        bull_json = await self._get_red_team_analysis("permabull", reports_text, market_data, opponent_argument=bear_json, market_context=market_context, trace_collector=trace_collector)
 
         return bear_json, bull_json
 
-    async def run_devils_advocate(self, decision: dict, reports_text: str, market_context: str) -> dict:
+    async def run_devils_advocate(self, decision: dict, reports_text: str, market_context: str, trace_collector=None) -> dict:
         """
         Run Pre-Mortem analysis on a tentative decision.
         Returns: {'proceed': bool, 'risks': list, 'recommendation': str}
@@ -1119,9 +1196,10 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
 
         # Retry Loop for JSON Parsing
         max_retries = 2
+        _da_route_info = {}
         for attempt in range(max_retries + 1):
             try:
-                response = await self._route_call(AgentRole.PERMABEAR, prompt, response_json=True)
+                response = await self._route_call(AgentRole.PERMABEAR, prompt, response_json=True, route_info=_da_route_info)
                 cleaned = self._clean_json_text(response)
                 if not cleaned:
                     raise ValueError("Empty response")
@@ -1143,6 +1221,23 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                     result['proceed'] = raw is True or (isinstance(raw, str) and raw.lower() in ('true', 'yes'))
                     logger.warning(f"DA 'proceed' was {type(raw).__name__} ({raw!r}), coerced to {result['proceed']}")
 
+                if trace_collector:
+                    try:
+                        _assigned = self.heterogeneous_router.assignments.get(AgentRole.PERMABEAR, (None, None)) if self.use_heterogeneous and self.heterogeneous_router else (None, None)
+                        trace_collector.record(PromptTraceRecord(
+                            phase='devils_advocate',
+                            agent='devils_advocate',
+                            prompt_source='legacy',
+                            model_provider=_da_route_info.get('provider', ''),
+                            model_name=_da_route_info.get('model', ''),
+                            assigned_provider=_assigned[0].value if _assigned[0] else '',
+                            assigned_model=_assigned[1] or '',
+                            prompt_tokens=_da_route_info.get('input_tokens', 0),
+                            completion_tokens=_da_route_info.get('output_tokens', 0),
+                            latency_ms=_da_route_info.get('latency_ms', 0),
+                        ))
+                    except Exception:
+                        pass
                 return result
 
             except Exception as e:
@@ -1198,7 +1293,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                         'da_bypassed': True  # R3: Signal to downstream components
                     }
 
-    async def decide(self, contract_name: str, market_data: dict, research_reports: dict, market_context: str, trigger_reason: str = None, cycle_id: str = "", trigger: SentinelTrigger = None) -> dict:
+    async def decide(self, contract_name: str, market_data: dict, research_reports: dict, market_context: str, trigger_reason: str = None, cycle_id: str = "", trigger: SentinelTrigger = None, trace_collector=None) -> dict:
         """
         The Hegelian Loop: Thesis (Reports) -> Antithesis (Bear/Bull) -> Synthesis (Master).
         """
@@ -1272,7 +1367,7 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         # Run sequentially (Bear Attack -> Bull Defense)
         # Inject sentinel briefing so debate agents know WHY this cycle exists
         debate_market_context = market_context + sentinel_briefing if sentinel_briefing else market_context
-        bear_json, bull_json = await self.run_debate(reports_text, market_data, market_context=debate_market_context)
+        bear_json, bull_json = await self.run_debate(reports_text, market_data, market_context=debate_market_context, trace_collector=trace_collector)
 
         # v8.1: Store debate summary for compliance audit pipeline
         self._last_debate_summary = f"BEAR ATTACK:\n{bear_json}\n\nBULL DEFENSE:\n{bull_json}"
@@ -1311,7 +1406,26 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         )
 
         try:
-            response_text = await self._route_call(AgentRole.MASTER_STRATEGIST, full_prompt, response_json=True)
+            _master_route_info = {}
+            response_text = await self._route_call(AgentRole.MASTER_STRATEGIST, full_prompt, response_json=True, route_info=_master_route_info)
+            if trace_collector:
+                try:
+                    _assigned = self.heterogeneous_router.assignments.get(AgentRole.MASTER_STRATEGIST, (None, None)) if self.use_heterogeneous and self.heterogeneous_router else (None, None)
+                    trace_collector.record(PromptTraceRecord(
+                        phase='decision',
+                        agent='master',
+                        prompt_source='legacy',
+                        model_provider=_master_route_info.get('provider', ''),
+                        model_name=_master_route_info.get('model', ''),
+                        assigned_provider=_assigned[0].value if _assigned[0] else '',
+                        assigned_model=_assigned[1] or '',
+                        persona_hash=hash_persona(master_persona),
+                        prompt_tokens=_master_route_info.get('input_tokens', 0),
+                        completion_tokens=_master_route_info.get('output_tokens', 0),
+                        latency_ms=_master_route_info.get('latency_ms', 0),
+                    ))
+                except Exception:
+                    pass
             cleaned_text = self._clean_json_text(response_text)
             decision = json.loads(cleaned_text)
             if not isinstance(decision, dict):

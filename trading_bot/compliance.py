@@ -700,7 +700,7 @@ class ComplianceGuardian:
             logger.error(f"Compliance review failed: {e}")
             return False, f"Compliance Error: {e}"
 
-    async def audit_decision(self, reports: dict, market_context: str, decision: dict, master_persona: str, ib=None, debate_summary: str = "") -> dict:
+    async def audit_decision(self, reports: dict, market_context: str, decision: dict, master_persona: str, ib=None, debate_summary: str = "", route_info: dict = None) -> dict:
         """
         Audits the Master Strategist's decision.
         """
@@ -784,7 +784,8 @@ class ComplianceGuardian:
             response = await self.router.route(
                 AgentRole.COMPLIANCE_OFFICER,
                 prompt,
-                response_json=True
+                response_json=True,
+                route_info=route_info
             )
 
             if not response or not response.strip():
