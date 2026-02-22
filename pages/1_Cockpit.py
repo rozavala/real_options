@@ -593,14 +593,18 @@ with hb_cols[0]:
     orch_color = "🟢" if orch_status == "ONLINE" else "🔴" if orch_status == "OFFLINE" else "🟡"
     orch_delta = None
     if heartbeat['orchestrator_last_pulse']:
-        orch_delta = f"Last pulse: {heartbeat['orchestrator_last_pulse'].strftime('%H:%M:%S')}"
+        # Ensure UTC aware for relative time
+        ts = heartbeat['orchestrator_last_pulse']
+        if ts.tzinfo is None:
+            ts = ts.astimezone(timezone.utc)
+        orch_delta = f"Pulse: {_relative_time(ts)}"
 
     st.metric(
         "Orchestrator",
         f"{orch_color} {orch_status}",
         delta=orch_delta,
         delta_color="off",
-        help="Green if log updated within 10 minutes"
+        help=f"Last pulse: {heartbeat.get('orchestrator_last_pulse', 'N/A')}\nGreen if log updated within 10 minutes"
     )
 
 with hb_cols[1]:
@@ -609,14 +613,18 @@ with hb_cols[1]:
 
     state_delta = None
     if heartbeat['state_last_pulse']:
-        state_delta = f"Last pulse: {heartbeat['state_last_pulse'].strftime('%H:%M:%S')}"
+        # Ensure UTC aware for relative time
+        ts = heartbeat['state_last_pulse']
+        if ts.tzinfo is None:
+            ts = ts.astimezone(timezone.utc)
+        state_delta = f"Pulse: {_relative_time(ts)}"
 
     st.metric(
         "State Manager",
         f"{state_color} {state_status}",
         delta=state_delta,
         delta_color="off",
-        help="Green if state.json updated within 10 minutes"
+        help=f"Last pulse: {heartbeat.get('state_last_pulse', 'N/A')}\nGreen if state.json updated within 10 minutes"
     )
 
 with hb_cols[2]:
@@ -1179,6 +1187,8 @@ with ctrl_cols[2]:
         help="Clears application cache and forces a full data reload from IB/APIs. Requires confirmation."
     ):
         with st.spinner("Refreshing data..."):
+            if hasattr(st, "toast"):
+                st.toast("Refreshing dashboard data...", icon="🔄")
             st.cache_data.clear()
             st.rerun()
 
