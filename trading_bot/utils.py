@@ -228,6 +228,19 @@ def escape_xml(text: str) -> str:
     return clean_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def sanitize_prompt_content(text: str) -> str:
+    """Sanitize content for LLM prompt injection — escape angle brackets only.
+
+    Unlike escape_xml(), does NOT escape & since LLMs don't parse XML entities
+    and &amp; in research text degrades analysis quality.
+    """
+    if not isinstance(text, str):
+        return str(text)
+    # Strip invalid XML control characters (0x00-0x1F except tab, newline, carriage return)
+    clean_text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', text)
+    return clean_text.replace("<", "&lt;").replace(">", "&gt;")
+
+
 def log_order_event(trade: Trade, status: str, message: str = ""):
     """Logs the status change of an order to the `order_events.csv` file.
 

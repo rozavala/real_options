@@ -264,7 +264,8 @@ async def test_grounded_data_and_context_sanitization(agent_mock_config):
     mock_generate_content = AsyncMock()
 
     # Phase 1: Grounded Data Gathering returns malicious content
-    malicious_finding = "Malicious <script>alert(1)</script>"
+    # Mix of malicious tags (should be escaped) and ampersands (should NOT be escaped)
+    malicious_finding = "Malicious <script>alert(1)</script> & S&P 500"
     mock_response_grounded = MagicMock()
     # Return JSON with malicious content in raw_summary and facts
     mock_response_grounded.text = json.dumps({
@@ -301,6 +302,9 @@ async def test_grounded_data_and_context_sanitization(agent_mock_config):
     # 1. From TMS Context
     assert "Past Insight: Malicious &lt;script&gt;alert(1)&lt;/script&gt;" in prompt
     assert "Past Insight: Malicious <script>" not in prompt
+    # Check that ampersands are preserved (not double escaped or escaped at all)
+    assert "S&P 500" in prompt
+    assert "S&amp;P 500" not in prompt
 
     # 2. From Grounded Data (Raw Findings)
     assert "Findings: Malicious &lt;script&gt;alert(1)&lt;/script&gt;" in prompt
