@@ -458,11 +458,14 @@ def _relative_time(ts) -> str:
     try:
         if isinstance(ts, str):
             ts = pd.Timestamp(ts)
-        if hasattr(ts, 'tzinfo') and ts.tzinfo is not None:
-            now = datetime.now(timezone.utc)
-            ts = ts.tz_convert('UTC') if hasattr(ts, 'tz_convert') else ts
-        else:
-            now = datetime.utcnow()
+
+        # Standardize to UTC-aware datetime
+        if not hasattr(ts, 'tzinfo') or ts.tzinfo is None:
+            ts = ts.astimezone(timezone.utc)
+        elif hasattr(ts, 'tz_convert'):
+            ts = ts.tz_convert('UTC')
+
+        now = datetime.now(timezone.utc)
         delta = now - ts
         seconds = delta.total_seconds()
         if seconds < 60:
@@ -593,14 +596,14 @@ with hb_cols[0]:
     orch_color = "🟢" if orch_status == "ONLINE" else "🔴" if orch_status == "OFFLINE" else "🟡"
     orch_delta = None
     if heartbeat['orchestrator_last_pulse']:
-        orch_delta = f"Last pulse: {heartbeat['orchestrator_last_pulse'].strftime('%H:%M:%S')}"
+        orch_delta = f"Pulse: {_relative_time(heartbeat['orchestrator_last_pulse'])}"
 
     st.metric(
         "Orchestrator",
         f"{orch_color} {orch_status}",
         delta=orch_delta,
         delta_color="off",
-        help="Green if log updated within 10 minutes"
+        help=f"Last pulse: {heartbeat.get('orchestrator_last_pulse', 'N/A')}\nGreen if log updated within 10 minutes"
     )
 
 with hb_cols[1]:
@@ -609,14 +612,14 @@ with hb_cols[1]:
 
     state_delta = None
     if heartbeat['state_last_pulse']:
-        state_delta = f"Last pulse: {heartbeat['state_last_pulse'].strftime('%H:%M:%S')}"
+        state_delta = f"Pulse: {_relative_time(heartbeat['state_last_pulse'])}"
 
     st.metric(
         "State Manager",
         f"{state_color} {state_status}",
         delta=state_delta,
         delta_color="off",
-        help="Green if state.json updated within 10 minutes"
+        help=f"Last pulse: {heartbeat.get('state_last_pulse', 'N/A')}\nGreen if state.json updated within 10 minutes"
     )
 
 with hb_cols[2]:
