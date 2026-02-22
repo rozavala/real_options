@@ -1843,10 +1843,15 @@ class PredictionMarketSentinel(Sentinel):
 
         Returns candidate dict or None if slug is invalid/closed/low-liquidity.
         """
-        url = f"{self.api_url}?slug={slug}&closed=false&active=true&limit=1"
+        params = {
+            "slug": slug,
+            "closed": "false",
+            "active": "true",
+            "limit": "1"
+        }
         try:
             session = await self._get_session()
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+            async with session.get(self.api_url, params=params, timeout=aiohttp.ClientTimeout(total=15)) as response:
                 if response.status != 200:
                     return None
                 data = await response.json()
