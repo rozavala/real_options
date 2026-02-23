@@ -77,7 +77,10 @@
     "take_profit_capture_pct": 0.8,
     "stop_loss_max_risk_pct": 0.5,
     "hard_freshness_limit_hours": 24,
-    "soft_freshness_limit_hours": 4
+    "soft_freshness_limit_hours": 4,
+    "max_total_positions": 30,
+    "max_commodity_concentration_pct": 0.5,
+    "max_correlated_exposure_pct": 0.7
   },
   "drawdown_circuit_breaker": {
     "enabled": true,
@@ -733,6 +736,13 @@
     ],
     "notify_on_issue_created": true,
     "triage_model": "claude-sonnet-4-6"
+  },
+  "active_commodities": [
+    "KC",
+    "CC"
+  ],
+  "llm": {
+    "max_concurrent_calls": 4
   },
   "commodity_overrides": {
     "CC": {
