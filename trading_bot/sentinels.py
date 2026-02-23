@@ -97,6 +97,18 @@ def with_retry(max_attempts: int = 3, backoff: float = 2.0):
         return wrapper
     return decorator
 
+def _record_sentinel_cost(config, model, input_tokens, output_tokens, source):
+    """Record LLM cost from direct sentinel calls to the budget guard."""
+    try:
+        from trading_bot.budget_guard import calculate_api_cost, get_budget_guard
+        budget = get_budget_guard()
+        if budget and (input_tokens or output_tokens):
+            cost = calculate_api_cost(model, input_tokens, output_tokens)
+            budget.record_cost(cost, source=source)
+    except Exception:
+        pass  # Cost tracking must never break sentinel operation
+
+
 class SentinelTrigger:
     """Represents an event triggered by a sentinel."""
     def __init__(self, source: str, reason: str, payload: Dict[str, Any] = None, severity: int = 5):
@@ -851,6 +863,13 @@ class LogisticsSentinel(Sentinel):
             contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
+        if hasattr(response, 'usage_metadata') and response.usage_metadata:
+            _record_sentinel_cost(
+                self.config, self.model,
+                response.usage_metadata.prompt_token_count or 0,
+                response.usage_metadata.candidates_token_count or 0,
+                source="sentinel/LogisticsSentinel",
+            )
         text = response.text.strip()
         if text.startswith("```json"): text = text[7:]
         elif text.startswith("```"): text = text[3:]
@@ -1038,6 +1057,13 @@ class NewsSentinel(Sentinel):
             contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
+        if hasattr(response, 'usage_metadata') and response.usage_metadata:
+            _record_sentinel_cost(
+                self.config, self.model,
+                response.usage_metadata.prompt_token_count or 0,
+                response.usage_metadata.candidates_token_count or 0,
+                source="sentinel/NewsSentinel",
+            )
         text = response.text.strip()
         if text.startswith("```json"): text = text[7:]
         elif text.startswith("```"): text = text[3:]
@@ -1288,6 +1314,14 @@ class XSentimentSentinel(Sentinel):
                     logger.error(f"X API error {response.status}: {error_text}")
                     _sentinel_diag.error(f"  X API error {response.status}: {error_text[:200]}")
                     return []
+                # Track X API usage (separate from LLM spend)
+                try:
+                    from trading_bot.budget_guard import get_budget_guard
+                    budget = get_budget_guard()
+                    if budget:
+                        budget.record_x_api_call()
+                except Exception:
+                    pass
                 data = await response.json()
                 raw_count = len(data.get("data", []))
                 posts = []
@@ -1427,6 +1461,13 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                     max_tokens=2000,
                     response_format={"type": "json_object"}
                 )
+                if hasattr(response, 'usage') and response.usage:
+                    _record_sentinel_cost(
+                        self.config, self.model,
+                        response.usage.prompt_tokens or 0,
+                        response.usage.completion_tokens or 0,
+                        source="sentinel/XSentimentSentinel(grok)",
+                    )
                 message = response.choices[0].message
                 if message.content and message.content.strip():
                     _sentinel_diag.info(f"  Grok returned content (iteration {iteration}), parsing JSON...")
@@ -2299,6 +2340,13 @@ class MacroContagionSentinel(Sentinel):
                     response_mime_type="application/json",
                 )
             )
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                _record_sentinel_cost(
+                    self.config, self.model,
+                    response.usage_metadata.prompt_token_count or 0,
+                    response.usage_metadata.candidates_token_count or 0,
+                    source="sentinel/MacroContagionSentinel",
+                )
 
             # Clean JSON
             text = response.text.strip()

@@ -580,6 +580,19 @@ class TradingCouncil:
                     contents=prompt,
                     config=types.GenerateContentConfig(**config_args)
                 )
+                if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                    try:
+                        from trading_bot.budget_guard import calculate_api_cost, get_budget_guard
+                        budget = get_budget_guard()
+                        if budget:
+                            cost = calculate_api_cost(
+                                model_name,
+                                response.usage_metadata.prompt_token_count or 0,
+                                response.usage_metadata.candidates_token_count or 0,
+                            )
+                            budget.record_cost(cost, source="council/grounded_data")
+                    except Exception:
+                        pass
                 return response.text
             except Exception as e:
                 if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):

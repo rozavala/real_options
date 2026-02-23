@@ -489,6 +489,17 @@ Answer ONLY with a JSON object: {{"relevant": true/false, "score": 0-5, "reasoni
                     {"role": "user", "content": prompt}
                 ]
             )
+            if self._budget_guard and hasattr(message, 'usage') and message.usage:
+                try:
+                    from trading_bot.budget_guard import calculate_api_cost
+                    cost = calculate_api_cost(
+                        self.llm_model,
+                        message.usage.input_tokens or 0,
+                        message.usage.output_tokens or 0,
+                    )
+                    self._budget_guard.record_cost(cost, source="topic_discovery")
+                except Exception:
+                    pass
             return message.content[0].text
         except Exception as e:
             # Handle potential budget/rate limit errors
