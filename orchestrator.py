@@ -4845,9 +4845,10 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
     logger.info(summary)
 
     # Always send ONE notification on restart (even if nothing recovered)
+    ticker = config.get('symbol', config.get('commodity', {}).get('ticker', ''))
     send_pushover_notification(
         config.get('notifications', {}),
-        f"🔄 System Restart: {recovered} Tasks Recovered",
+        f"🔄 [{ticker}] Restart: {recovered} Tasks Recovered",
         summary
     )
 
