@@ -20,6 +20,43 @@ logger = logging.getLogger(__name__)
 _BASE_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'KC')
 STATE_FILE = os.path.join(_BASE_DATA_DIR, 'state.json')
 
+
+def _get_state_file() -> str:
+    """Resolve state file via ContextVar (multi-engine) or module global (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), 'state.json')
+    except LookupError:
+        return STATE_FILE
+
+
+def _get_state_lock_file() -> str:
+    """Resolve state lock file via ContextVar (multi-engine) or class var (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), '.state_global.lock')
+    except LookupError:
+        return StateManager._STATE_LOCK_FILE
+
+
+def _get_deferred_triggers_file() -> str:
+    """Resolve deferred triggers file via ContextVar (multi-engine) or class var (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), 'deferred_triggers.json')
+    except LookupError:
+        return StateManager.DEFERRED_TRIGGERS_FILE
+
+
+def _get_deferred_lock_file() -> str:
+    """Resolve deferred lock file via ContextVar (multi-engine) or class var (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), '.deferred_triggers.lock')
+    except LookupError:
+        return StateManager._DEFERRED_LOCK_FILE
+
+
 def _validate_confidence(value: Any) -> float:
     """
     Validates and clamps confidence values to [0.0, 1.0].
@@ -80,10 +117,11 @@ class StateManager:
     @classmethod
     def _save_raw_sync(cls, data: dict):
         """Internal sync save with file locking."""
-        temp_file = STATE_FILE + ".tmp"
+        state_file = _get_state_file()
+        temp_file = state_file + ".tmp"
 
         # Ensure dir exists
-        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+        os.makedirs(os.path.dirname(state_file), exist_ok=True)
 
         with open(temp_file, 'w') as f:
             if HAS_FCNTL:
@@ -101,16 +139,17 @@ class StateManager:
                 elif '_fallback_lock' in globals():
                     _fallback_lock.release()
 
-        os.replace(temp_file, STATE_FILE)
+        os.replace(temp_file, state_file)
 
     @classmethod
     def _load_raw_sync(cls) -> dict:
         """Internal sync load."""
-        if not os.path.exists(STATE_FILE):
+        state_file = _get_state_file()
+        if not os.path.exists(state_file):
             return {}
 
         try:
-            with open(STATE_FILE, 'r') as f:
+            with open(state_file, 'r') as f:
                 if HAS_FCNTL:
                     fcntl.flock(f, fcntl.LOCK_SH)
                 try:
@@ -142,8 +181,9 @@ class StateManager:
     @classmethod
     def _with_state_lock(cls, fn):
         """Execute fn under the global state file lock (read-modify-write safe)."""
-        os.makedirs(os.path.dirname(cls._STATE_LOCK_FILE), exist_ok=True)
-        with open(cls._STATE_LOCK_FILE, 'w') as lock_fd:
+        lock_file = _get_state_lock_file()
+        os.makedirs(os.path.dirname(lock_file), exist_ok=True)
+        with open(lock_file, 'w') as lock_fd:
             if HAS_FCNTL:
                 fcntl.flock(lock_fd, fcntl.LOCK_EX)
             elif '_fallback_lock' in globals():
@@ -334,8 +374,9 @@ class StateManager:
     @classmethod
     def _with_deferred_lock(cls, fn):
         """Execute fn under the deferred triggers file lock (read-modify-write safe)."""
-        os.makedirs(os.path.dirname(cls._DEFERRED_LOCK_FILE), exist_ok=True)
-        with open(cls._DEFERRED_LOCK_FILE, 'w') as lock_fd:
+        lock_file = _get_deferred_lock_file()
+        os.makedirs(os.path.dirname(lock_file), exist_ok=True)
+        with open(lock_file, 'w') as lock_fd:
             if HAS_FCNTL:
                 fcntl.flock(lock_fd, fcntl.LOCK_EX)
             elif '_fallback_lock' in globals():
@@ -351,13 +392,14 @@ class StateManager:
     @classmethod
     def _write_deferred_triggers(cls, triggers: list):
         """Atomically write deferred triggers via temp file + os.replace."""
-        os.makedirs(os.path.dirname(cls.DEFERRED_TRIGGERS_FILE), exist_ok=True)
-        temp_file = cls.DEFERRED_TRIGGERS_FILE + ".tmp"
+        dt_file = _get_deferred_triggers_file()
+        os.makedirs(os.path.dirname(dt_file), exist_ok=True)
+        temp_file = dt_file + ".tmp"
         with open(temp_file, 'w') as f:
             json.dump(triggers, f, indent=2)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(temp_file, cls.DEFERRED_TRIGGERS_FILE)
+        os.replace(temp_file, dt_file)
 
     @classmethod
     def queue_deferred_trigger(cls, trigger: Any):
@@ -439,10 +481,11 @@ class StateManager:
 
     @classmethod
     def _load_deferred_triggers(cls) -> list:
-        if not os.path.exists(cls.DEFERRED_TRIGGERS_FILE):
+        dt_file = _get_deferred_triggers_file()
+        if not os.path.exists(dt_file):
             return []
         try:
-            with open(cls.DEFERRED_TRIGGERS_FILE, 'r') as f:
+            with open(dt_file, 'r') as f:
                 data = json.load(f)
                 if not isinstance(data, list):
                     raise ValueError(f"Expected list, got {type(data).__name__}")
@@ -451,9 +494,9 @@ class StateManager:
             logger.error(f"Failed to load deferred triggers: {e}. Resetting corrupted file.")
             # Recovery: backup corrupted file and reset to empty list
             try:
-                backup = cls.DEFERRED_TRIGGERS_FILE + ".corrupt"
-                if os.path.exists(cls.DEFERRED_TRIGGERS_FILE):
-                    os.replace(cls.DEFERRED_TRIGGERS_FILE, backup)
+                backup = dt_file + ".corrupt"
+                if os.path.exists(dt_file):
+                    os.replace(dt_file, backup)
                     logger.warning(f"Corrupted deferred triggers backed up to {backup}")
                 cls._write_deferred_triggers([])
             except Exception as recovery_err:

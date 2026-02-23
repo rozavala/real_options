@@ -63,6 +63,16 @@ def set_data_dir(data_dir: str):
     SIGNALS_FILE_PATH = os.path.join(data_dir, 'decision_signals.csv')
     logger.info(f"DecisionSignals data_dir set to: {data_dir}")
 
+
+def _get_signals_file_path() -> str:
+    """Resolve signals file path via ContextVar (multi-engine) or module global (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), 'decision_signals.csv')
+    except LookupError:
+        return SIGNALS_FILE_PATH
+
+
 # Canonical schema — order matters for CSV columns
 SCHEMA_COLUMNS = [
     'timestamp',
@@ -123,28 +133,29 @@ def log_decision_signal(
             'trigger_type': [trigger_type],
         })
 
-        if not os.path.exists(SIGNALS_FILE_PATH):
-            logger.info(f"Creating new decision_signals.csv at {SIGNALS_FILE_PATH}")
-            new_row.to_csv(SIGNALS_FILE_PATH, index=False)
+        signals_path = _get_signals_file_path()
+        if not os.path.exists(signals_path):
+            logger.info(f"Creating new decision_signals.csv at {signals_path}")
+            new_row.to_csv(signals_path, index=False)
         else:
             # Schema migration: check if columns match
             try:
-                existing_header = pd.read_csv(SIGNALS_FILE_PATH, nrows=0)
+                existing_header = pd.read_csv(signals_path, nrows=0)
                 if list(existing_header.columns) != SCHEMA_COLUMNS:
                     logger.info("Schema mismatch in decision_signals.csv — migrating in-place.")
-                    full_df = pd.read_csv(SIGNALS_FILE_PATH)
+                    full_df = pd.read_csv(signals_path)
                     for col in SCHEMA_COLUMNS:
                         if col not in full_df.columns:
                             full_df[col] = None
                     full_df = full_df[SCHEMA_COLUMNS]
                     combined = pd.concat([full_df, new_row], ignore_index=True)
-                    temp_path = SIGNALS_FILE_PATH + ".tmp"
+                    temp_path = signals_path + ".tmp"
                     combined.to_csv(temp_path, index=False)
-                    os.replace(temp_path, SIGNALS_FILE_PATH)
+                    os.replace(temp_path, signals_path)
                 else:
-                    new_row.to_csv(SIGNALS_FILE_PATH, mode='a', header=False, index=False)
+                    new_row.to_csv(signals_path, mode='a', header=False, index=False)
             except pd.errors.EmptyDataError:
-                new_row.to_csv(SIGNALS_FILE_PATH, index=False)
+                new_row.to_csv(signals_path, index=False)
 
         logger.info(f"Decision signal logged: {contract} → {signal} ({prediction_type}/{strategy})")
         return True
@@ -159,12 +170,13 @@ def get_decision_signals_df() -> pd.DataFrame:
     Read decision_signals.csv into a DataFrame with parsed timestamps.
     Returns empty DataFrame if file doesn't exist.
     """
-    if not os.path.exists(SIGNALS_FILE_PATH):
-        logger.info(f"No decision_signals.csv found at {SIGNALS_FILE_PATH}")
+    signals_path = _get_signals_file_path()
+    if not os.path.exists(signals_path):
+        logger.info(f"No decision_signals.csv found at {signals_path}")
         return pd.DataFrame(columns=SCHEMA_COLUMNS)
 
     try:
-        df = pd.read_csv(SIGNALS_FILE_PATH)
+        df = pd.read_csv(signals_path)
         if 'timestamp' in df.columns:
             df['timestamp'] = parse_ts_column(df['timestamp'])
         return df

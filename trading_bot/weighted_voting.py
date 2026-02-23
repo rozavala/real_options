@@ -732,10 +732,12 @@ async def calculate_weighted_decision(
             import csv
             from datetime import datetime, timezone
 
-            weight_csv = os.path.join(
-                _data_dir or os.path.join('data', os.environ.get('COMMODITY_TICKER', 'KC')),
-                'weight_evolution.csv'
-            )
+            try:
+                from trading_bot.data_dir_context import get_engine_data_dir
+                _eff_dir = get_engine_data_dir()
+            except LookupError:
+                _eff_dir = _data_dir or os.path.join('data', os.environ.get('COMMODITY_TICKER', 'KC'))
+            weight_csv = os.path.join(_eff_dir, 'weight_evolution.csv')
             file_exists = os.path.exists(weight_csv)
 
             # Ensure directory exists

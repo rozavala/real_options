@@ -28,6 +28,15 @@ def set_data_dir(data_dir: str):
     logger.info(f"SentinelStats data_dir set to: {data_dir}")
 
 
+def _get_stats_file() -> Path:
+    """Resolve stats file via ContextVar (multi-engine) or module global (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return Path(get_engine_data_dir()) / "sentinel_stats.json"
+    except LookupError:
+        return STATS_FILE
+
+
 class SentinelStats:
     """Collect and expose sentinel performance statistics."""
 
@@ -36,9 +45,10 @@ class SentinelStats:
 
     def _load_stats(self) -> dict:
         """Load stats from file."""
-        if STATS_FILE.exists():
+        stats_file = _get_stats_file()
+        if stats_file.exists():
             try:
-                with open(STATS_FILE, 'r') as f:
+                with open(stats_file, 'r') as f:
                     return json.load(f)
             except Exception as e:
                 logger.warning(f"Failed to load sentinel stats: {e}")
@@ -46,9 +56,10 @@ class SentinelStats:
 
     def _save_stats(self):
         """Save stats to file."""
+        stats_file = _get_stats_file()
         self.stats['last_updated'] = datetime.now(timezone.utc).isoformat()
-        STATS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with open(STATS_FILE, 'w') as f:
+        stats_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(stats_file, 'w') as f:
             json.dump(self.stats, f, indent=2)
 
     def record_alert(self, sentinel_name: str, triggered_trade: bool):

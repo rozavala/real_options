@@ -35,6 +35,18 @@ def set_data_dir(data_dir: str):
     logging.getLogger(__name__).info(f"Utils data_dir set to: {data_dir}")
 
 
+def _get_data_dir() -> str:
+    """Resolve data directory via ContextVar (multi-engine) or module global (legacy).
+
+    Returns None if no data directory is configured (triggers legacy fallback).
+    """
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return get_engine_data_dir()
+    except LookupError:
+        return _data_dir
+
+
 # --- TRADING MODE HELPERS ---
 _TRADING_MODE = None
 
@@ -253,9 +265,10 @@ def log_order_event(trade: Trade, status: str, message: str = ""):
         message (str, optional): Any additional message, like an error reason.
     """
     # Use commodity-specific data_dir if set, else legacy project root
-    if _data_dir:
-        os.makedirs(_data_dir, exist_ok=True)
-        ledger_path = os.path.join(_data_dir, 'order_events.csv')
+    eff_dir = _get_data_dir()
+    if eff_dir:
+        os.makedirs(eff_dir, exist_ok=True)
+        ledger_path = os.path.join(eff_dir, 'order_events.csv')
     else:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         ledger_path = os.path.join(base_dir, 'order_events.csv')
@@ -470,9 +483,10 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
         position_id (str, optional): The stable identifier for the position.
     """
     # Use commodity-specific data_dir if set, else legacy project root
-    if _data_dir:
-        os.makedirs(_data_dir, exist_ok=True)
-        ledger_path = os.path.join(_data_dir, 'trade_ledger.csv')
+    eff_dir = _get_data_dir()
+    if eff_dir:
+        os.makedirs(eff_dir, exist_ok=True)
+        ledger_path = os.path.join(eff_dir, 'trade_ledger.csv')
     else:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
@@ -611,9 +625,10 @@ def archive_trade_ledger():
     with a timestamp appended to its name.
     """
     ledger_filename = 'trade_ledger.csv'
-    if _data_dir:
-        ledger_path = os.path.join(_data_dir, ledger_filename)
-        archive_dir = os.path.join(_data_dir, 'archive_ledger')
+    eff_dir = _get_data_dir()
+    if eff_dir:
+        ledger_path = os.path.join(eff_dir, ledger_filename)
+        archive_dir = os.path.join(eff_dir, 'archive_ledger')
     else:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         ledger_path = os.path.join(base_dir, ledger_filename)
@@ -645,8 +660,9 @@ def log_council_decision(decision_data):
     """
     import pandas as pd
 
-    if _data_dir:
-        council_data_dir = _data_dir
+    eff_dir = _get_data_dir()
+    if eff_dir:
+        council_data_dir = eff_dir
     else:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         council_data_dir = os.path.join(base_dir, 'data')

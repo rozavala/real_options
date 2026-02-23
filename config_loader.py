@@ -201,6 +201,19 @@ def load_config() -> dict | None:
     return config
 
 
+def get_active_commodities(config: dict = None) -> list:
+    """Return list of active commodity tickers.
+
+    Priority: ACTIVE_COMMODITIES env var > config.active_commodities > ['KC'].
+    """
+    env_val = os.getenv('ACTIVE_COMMODITIES')
+    if env_val:
+        return [t.strip().upper() for t in env_val.split(',') if t.strip()]
+    if config:
+        return config.get('active_commodities', ['KC'])
+    return ['KC']
+
+
 def deep_merge(base: dict, override: dict) -> dict:
     """Recursively merge override into base dict. Override values win.
 

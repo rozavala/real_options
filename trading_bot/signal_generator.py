@@ -474,6 +474,26 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     market_context_str += regime_alert
                     logger.info("Regime transition alert injected into scheduled cycle context")
 
+                # === Shared Macro Context (Phase 3: SharedContext) ===
+                # Inject cross-commodity macro research from MasterOrchestrator's
+                # daily macro service, eliminating duplicate LLM calls per engine.
+                try:
+                    from trading_bot.data_dir_context import get_engine_runtime
+                    _rt = get_engine_runtime()
+                    if _rt and _rt.shared and not _rt.shared.macro_cache.is_stale():
+                        _macro = await _rt.shared.macro_cache.get()
+                        _thesis = _macro.get('macro_thesis') if _macro else None
+                        if _thesis and isinstance(_thesis, dict):
+                            _summary = _thesis.get('summary', '')
+                            if _summary:
+                                market_context_str += (
+                                    f"\n=== SHARED MACRO INTELLIGENCE ===\n"
+                                    f"{_summary}\n"
+                                    f"=== END MACRO ===\n"
+                                )
+                except Exception:
+                    pass  # Non-fatal — engines operate independently without macro cache
+
                 # Call decided (which now includes the Hegelian Loop)
                 decision = await council.decide(contract_name, market_ctx, reports, market_context_str, trace_collector=trace_collector)
 

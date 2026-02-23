@@ -248,6 +248,81 @@ EMERGENCY_LOCK = asyncio.Lock()
 _INFLIGHT_TASKS: set[asyncio.Task] = set()
 
 
+# ---------------------------------------------------------------------------
+# Engine-scoped accessors — ContextVar first, module global fallback (Phase 2)
+# ---------------------------------------------------------------------------
+
+def _get_deduplicator():
+    """Get the TriggerDeduplicator for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.deduplicator if rt else GLOBAL_DEDUPLICATOR
+
+
+def _get_budget_guard():
+    """Get the BudgetGuard for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.budget_guard if rt else GLOBAL_BUDGET_GUARD
+
+
+def _get_drawdown_guard():
+    """Get the DrawdownGuard for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.drawdown_guard if rt else GLOBAL_DRAWDOWN_GUARD
+
+
+def _get_emergency_lock():
+    """Get the emergency cycle lock for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.emergency_lock if rt else EMERGENCY_LOCK
+
+
+def _get_inflight_tasks() -> set:
+    """Get the inflight tasks set for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.inflight_tasks if rt else _INFLIGHT_TASKS
+
+
+def _get_startup_discovery_time() -> float:
+    """Get the startup topic discovery timestamp for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.startup_discovery_time if rt else _STARTUP_DISCOVERY_TIME
+
+
+def _set_startup_discovery_time(value: float):
+    """Set the startup topic discovery timestamp for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    if rt:
+        rt.startup_discovery_time = value
+    else:
+        global _STARTUP_DISCOVERY_TIME
+        _STARTUP_DISCOVERY_TIME = value
+
+
+def _get_brier_streak() -> int:
+    """Get the Brier zero-resolution streak counter for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.brier_zero_resolution_streak if rt else _brier_zero_resolution_streak
+
+
+def _set_brier_streak(value: int):
+    """Set the Brier zero-resolution streak counter for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    if rt:
+        rt.brier_zero_resolution_streak = value
+    else:
+        global _brier_zero_resolution_streak
+        _brier_zero_resolution_streak = value
+
+
 def _extract_agent_prediction(report) -> tuple:
     """
     Extract direction and confidence from an agent report.
@@ -1587,7 +1662,8 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
 
     logger.info(f"--- POSITION AUDIT CYCLE ({trigger_source}) ---")
 
-    llm_budget_available = not (GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit)
+    _bg = _get_budget_guard()
+    llm_budget_available = not (_bg and _bg.is_budget_hit)
     if not llm_budget_available:
         logger.info("Budget hit — position audit will skip LLM-based checks (IC/straddle checks still active)")
 
@@ -2487,7 +2563,7 @@ async def process_deferred_triggers(config: dict):
                     continue
 
             # === CRITICAL FIX: Check deduplicator before each cycle ===
-            if GLOBAL_DEDUPLICATOR.should_process(trigger):
+            if _get_deduplicator().should_process(trigger):
                 await run_emergency_cycle(trigger, config, ib_conn)
                 processed_count += 1
                 # Note: run_emergency_cycle sets POST_CYCLE debounce internally
@@ -2704,11 +2780,12 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
     StateManager.log_sentinel_event(trigger)
 
     # Acquire Lock to prevent race conditions
-    if EMERGENCY_LOCK.locked():
+    _elock = _get_emergency_lock()
+    if _elock.locked():
         logger.warning(f"Emergency cycle for {trigger.source} queued (Lock active).")
 
     try:
-        await asyncio.wait_for(EMERGENCY_LOCK.acquire(), timeout=300)
+        await asyncio.wait_for(_elock.acquire(), timeout=300)
     except asyncio.TimeoutError:
         severity = getattr(trigger, 'severity', 'N/A')
         logger.error(
@@ -2764,7 +2841,8 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 return
 
             # Check Budget
-            if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
+            _bg = _get_budget_guard()
+            if _bg and _bg.is_budget_hit:
                 logger.warning("Budget hit — skipping Emergency Cycle (Sentinel-only mode)")
                 _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (budget hit)")
                 send_pushover_notification(config.get('notifications', {}), "Budget Guard",
@@ -2772,19 +2850,20 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 return
 
             # === Drawdown Circuit Breaker ===
-            if GLOBAL_DRAWDOWN_GUARD:
+            _dg = _get_drawdown_guard()
+            if _dg:
                 # Update P&L and Check
                 if not ib.isConnected():
                     logger.warning("IB disconnected — skipping drawdown P&L update (guard state preserved)")
                     status = "IB_DISCONNECTED"
                 else:
-                    status = await GLOBAL_DRAWDOWN_GUARD.update_pnl(ib)
-                if not GLOBAL_DRAWDOWN_GUARD.is_entry_allowed():
+                    status = await _dg.update_pnl(ib)
+                if not _dg.is_entry_allowed():
                     logger.warning(f"Drawdown Circuit Breaker ACTIVE ({status}) - Skipping Emergency Cycle")
                     _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (drawdown breaker: {status})")
                     return
 
-                if GLOBAL_DRAWDOWN_GUARD.should_panic_close():
+                if _dg.should_panic_close():
                      logger.critical("Drawdown PANIC triggered during emergency cycle check. Triggering Hard Close.")
                      _sentinel_diag.critical(f"OUTCOME {trigger.source}: PANIC CLOSE (drawdown)")
                      await emergency_hard_close(config)
@@ -3290,6 +3369,20 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                             await place_queued_orders(config, orders_list=emergency_order_list)
                             logger.info(f"Emergency Order Placed (Qty: {qty}).")
 
+                            # === Update portfolio-wide position count (Phase 3: SharedContext) ===
+                            try:
+                                from trading_bot.data_dir_context import get_engine_runtime
+                                _rt = get_engine_runtime()
+                                if _rt and _rt.shared and _rt.shared.portfolio_guard:
+                                    ticker = config.get('symbol', 'KC')
+                                    snap = await _rt.shared.portfolio_guard.get_snapshot()
+                                    current_count = snap.get('positions', {}).get(ticker, 0)
+                                    await _rt.shared.portfolio_guard.update_positions(
+                                        ticker, current_count + 1, 0
+                                    )
+                            except Exception as _prg_e:
+                                logger.debug(f"PRG position update failed (non-fatal): {_prg_e}")
+
                 # === BRIER SCORE RECORDING (Dual-Write: Legacy CSV + Enhanced JSON) ===
                 try:
                     from trading_bot.brier_bridge import record_agent_prediction
@@ -3342,16 +3435,16 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 debounce_reason = "neutral decision"
 
             if debounce_seconds > 0:
-                GLOBAL_DEDUPLICATOR.set_cooldown("POST_CYCLE", debounce_seconds)
+                _get_deduplicator().set_cooldown("POST_CYCLE", debounce_seconds)
             else:
-                GLOBAL_DEDUPLICATOR.clear_cooldown("POST_CYCLE")
+                _get_deduplicator().clear_cooldown("POST_CYCLE")
 
             logger.info(f"Post-cycle debounce: {debounce_seconds}s ({debounce_reason})")
             if cycle_actually_ran:
                 outcome = "TRADE" if is_actionable else "NEUTRAL"
                 _sentinel_diag.info(f"OUTCOME {trigger.source}: {outcome} (debounce={debounce_seconds}s)")
     finally:
-        EMERGENCY_LOCK.release()
+        _elock.release()
 
 
 def validate_trigger(trigger):
@@ -3368,7 +3461,7 @@ def validate_trigger(trigger):
 
 def _log_task_exception(task: asyncio.Task, name: str):
     """Generic callback to log exceptions from fire-and-forget tasks."""
-    _INFLIGHT_TASKS.discard(task)
+    _get_inflight_tasks().discard(task)
     try:
         exc = task.exception()
     except asyncio.CancelledError:
@@ -3381,7 +3474,7 @@ def _log_task_exception(task: asyncio.Task, name: str):
 
 def _emergency_cycle_done_callback(task: asyncio.Task, trigger_source: str, config: dict):
     """Callback to catch and report crashes in fire-and-forget emergency cycle tasks."""
-    _INFLIGHT_TASKS.discard(task)
+    _get_inflight_tasks().discard(task)
     try:
         exc = task.exception()
     except asyncio.CancelledError:
@@ -3397,7 +3490,7 @@ def _emergency_cycle_done_callback(task: asyncio.Task, trigger_source: str, conf
         _sentinel_diag.error(f"OUTCOME {trigger_source}: CRASHED ({type(exc).__name__}: {exc})")
         SENTINEL_STATS.record_error(trigger_source, f"CRASH: {type(exc).__name__}")
         # Prevent crash-loop: cooldown so the sentinel doesn't immediately re-trigger
-        GLOBAL_DEDUPLICATOR.set_cooldown(trigger_source, 1800)  # 30-min crash cooldown
+        _get_deduplicator().set_cooldown(trigger_source, 1800)  # 30-min crash cooldown
         try:
             send_pushover_notification(
                 config.get('notifications', {}),
@@ -3437,18 +3530,18 @@ async def _run_periodic_sentinel(
         if trigger:
             logger.info(f"{sentinel_name}: trigger detected (source={trigger.source}, severity={getattr(trigger, 'severity', '?')})")
             if market_open and sentinel_ib and sentinel_ib.isConnected():
-                if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                if _get_deduplicator().should_process(trigger):
                     task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                    _INFLIGHT_TASKS.add(task)
+                    _get_inflight_tasks().add(task)
                     task.add_done_callback(
                         lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
                     )
-                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, cooldown_seconds)
+                    _get_deduplicator().set_cooldown(trigger.source, cooldown_seconds)
             else:
                 # Record hash in deduplicator BEFORE deferring — prevents
                 # duplicate notifications on restart (sentinel re-fires same
                 # trigger, but deduplicator now recognizes it)
-                if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                if _get_deduplicator().should_process(trigger):
                     StateManager.queue_deferred_trigger(trigger)
                     logger.info(f"Deferred {trigger.source} trigger for market open")
                 else:
@@ -3515,7 +3608,7 @@ async def run_sentinels(config: dict):
     last_news = 0
     last_x_sentiment = 0
     last_prediction_market = 0
-    last_topic_discovery = _STARTUP_DISCOVERY_TIME  # 0 if startup scan failed/skipped → runs on first iteration
+    last_topic_discovery = _get_startup_discovery_time()  # 0 if startup scan failed/skipped → runs on first iteration
     last_macro_contagion = 0
 
     # Contract Cache
@@ -3731,18 +3824,18 @@ async def run_sentinels(config: dict):
                                 config,
                                 f"PriceSentinel trigger ({price_change:.1f}% move)"
                             ))
-                            _INFLIGHT_TASKS.add(audit_task)
+                            _get_inflight_tasks().add(audit_task)
                             audit_task.add_done_callback(
                                 lambda t: _log_task_exception(t, "position_audit_price_trigger")
                             )
 
-                    if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
+                    if trigger and _get_deduplicator().should_process(trigger):
                         task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                        _INFLIGHT_TASKS.add(task)
+                        _get_inflight_tasks().add(task)
                         task.add_done_callback(
                             lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
                         )
-                        GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                        _get_deduplicator().set_cooldown(trigger.source, 900)
                 except asyncio.TimeoutError:
                     logger.error("PriceSentinel TIMED OUT after 30s")
                     _health_error = "TIMEOUT after 30s"
@@ -3802,13 +3895,13 @@ async def run_sentinels(config: dict):
                             logger.info(f"XSentimentSentinel: trigger detected (severity={getattr(trigger, 'severity', '?')})")
                             x_sentinel_stats['triggers_today'] += 1
                             if market_open and sentinel_ib and sentinel_ib.isConnected():
-                                if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                                if _get_deduplicator().should_process(trigger):
                                     task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                                    _INFLIGHT_TASKS.add(task)
+                                    _get_inflight_tasks().add(task)
                                     task.add_done_callback(
                                         lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
                                     )
-                                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                                    _get_deduplicator().set_cooldown(trigger.source, 900)
                             else:
                                 StateManager.queue_deferred_trigger(trigger)
                                 logger.info(f"Deferred {trigger.source} trigger for market open")
@@ -3857,8 +3950,7 @@ async def run_sentinels(config: dict):
             if discovery_config.get('enabled', False) and (now - last_topic_discovery) > discovery_interval:
                 try:
                     from trading_bot.topic_discovery import TopicDiscoveryAgent
-                    # Inject GLOBAL_BUDGET_GUARD (dependency injection)
-                    discovery_agent = TopicDiscoveryAgent(config, budget_guard=GLOBAL_BUDGET_GUARD)
+                    discovery_agent = TopicDiscoveryAgent(config, budget_guard=_get_budget_guard())
                     result = await discovery_agent.run_scan()
                     logger.info(
                         f"TopicDiscovery: {result['metadata']['topics_discovered']} topics, "
@@ -3887,18 +3979,18 @@ async def run_sentinels(config: dict):
                         if tier == NotificationTier.CRITICAL:
                             # Severity 9-10: Full emergency cycle (must still pass deduplicator)
                             logger.warning(f"MICROSTRUCTURE CRITICAL: {micro_trigger.reason}")
-                            if GLOBAL_DEDUPLICATOR.should_process(micro_trigger):
+                            if _get_deduplicator().should_process(micro_trigger):
                                 task = asyncio.create_task(run_emergency_cycle(micro_trigger, config, sentinel_ib))
-                                _INFLIGHT_TASKS.add(task)
+                                _get_inflight_tasks().add(task)
                                 task.add_done_callback(
                                     lambda t, src=micro_trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
                                 )
-                                GLOBAL_DEDUPLICATOR.set_cooldown(micro_trigger.source, 900)
+                                _get_deduplicator().set_cooldown(micro_trigger.source, 900)
                         elif tier == NotificationTier.PUSHOVER:
                             # Severity 7-8: Log + Pushover but NO emergency cycle
                             # Liquidity depletion is informational, not actionable by council
                             logger.warning(f"MICROSTRUCTURE ALERT: {micro_trigger.reason}")
-                            if GLOBAL_DEDUPLICATOR.should_process(micro_trigger):
+                            if _get_deduplicator().should_process(micro_trigger):
                                 StateManager.log_sentinel_event(micro_trigger)
                                 SENTINEL_STATS.record_alert(micro_trigger.source, triggered_trade=False)
                                 send_pushover_notification(
@@ -3906,7 +3998,7 @@ async def run_sentinels(config: dict):
                                     "Microstructure Alert",
                                     f"{micro_trigger.reason} (Severity: {micro_trigger.severity:.1f})"
                                 )
-                                GLOBAL_DEDUPLICATOR.set_cooldown(micro_trigger.source, 1800)
+                                _get_deduplicator().set_cooldown(micro_trigger.source, 1800)
                         elif tier == NotificationTier.DASHBOARD:
                             # Severity 5-6: Log only (visible in dashboard via sentinel history)
                             logger.info(f"MICROSTRUCTURE NOTE: {micro_trigger.reason} (Sev: {micro_trigger.severity})")
@@ -4148,7 +4240,6 @@ async def run_brier_reconciliation(config: dict):
             logger.warning(f"Enhanced Brier backfill failed (non-fatal): {backfill_e}")
 
         # v5.4: Stall detection — alert after 3 consecutive days with 0 resolutions
-        global _brier_zero_resolution_streak
         try:
             import json
             brier_path = os.path.join(config.get('data_dir', 'data'), 'enhanced_brier.json')
@@ -4166,21 +4257,22 @@ async def run_brier_reconciliation(config: dict):
                     )
                 )
                 if resolved_today == 0 and pending > 0:
-                    _brier_zero_resolution_streak += 1
+                    _set_brier_streak(_get_brier_streak() + 1)
+                    streak = _get_brier_streak()
                     logger.warning(
                         f"Brier stall: {pending} pending, 0 resolved today "
-                        f"(streak: {_brier_zero_resolution_streak} days)"
+                        f"(streak: {streak} days)"
                     )
-                    if _brier_zero_resolution_streak >= 3:
+                    if streak >= 3:
                         send_pushover_notification(
                             config.get('notifications', {}),
                             "⚠️ Brier Reconciliation Stall",
                             f"{pending} predictions pending, 0 resolved for "
-                            f"{_brier_zero_resolution_streak} consecutive days. "
+                            f"{streak} consecutive days. "
                             f"Check council_history backfill and schedule ordering."
                         )
                 else:
-                    _brier_zero_resolution_streak = 0
+                    _set_brier_streak(0)
                     if resolved_today > 0:
                         logger.info(f"Brier reconciliation: {resolved_today} predictions resolved today")
         except Exception as e:
@@ -4199,9 +4291,19 @@ async def guarded_generate_orders(config: dict, schedule_id: str = None):
     # v3.1: Check equity data freshness before cycle
     await check_and_recover_equity_data(config)
 
-    if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
+    _bg = _get_budget_guard()
+    if _bg and _bg.is_budget_hit:
         logger.warning("Budget hit - skipping scheduled orders.")
         return
+
+    # === Portfolio-wide risk gate (Phase 3: SharedContext) ===
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    if rt and rt.shared and rt.shared.portfolio_guard:
+        allowed, reason = await rt.shared.portfolio_guard.can_open_position(rt.ticker, 0)
+        if not allowed:
+            logger.warning(f"Signal cycle BLOCKED by PortfolioRiskGuard: {reason}")
+            return
 
     # --- QUARANTINE HEALTH CHECK (Fix B2) ---
     # Ensure any agents past their quarantine cooldown are released
@@ -4265,7 +4367,8 @@ async def guarded_generate_orders(config: dict, schedule_id: str = None):
         return
 
     # Check Drawdown Guard
-    if GLOBAL_DRAWDOWN_GUARD:
+    _dg = _get_drawdown_guard()
+    if _dg:
         ib = None
         try:
              # Need a connection to check P&L.
@@ -4276,8 +4379,8 @@ async def guarded_generate_orders(config: dict, schedule_id: str = None):
              if not ib.isConnected():
                  logger.warning("IB disconnected — skipping drawdown P&L update (guard state preserved)")
              else:
-                 await GLOBAL_DRAWDOWN_GUARD.update_pnl(ib)
-             if not GLOBAL_DRAWDOWN_GUARD.is_entry_allowed():
+                 await _dg.update_pnl(ib)
+             if not _dg.is_entry_allowed():
                  logger.warning("Order generation BLOCKED: Drawdown Guard Active")
                  return
         except Exception as e:
@@ -4748,7 +4851,10 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
 
 
 async def main(commodity_ticker: str = None):
-    """The main long-running orchestrator process."""
+    """The main long-running orchestrator process.
+
+    LEGACY: Single-engine mode. For multi-commodity, use MasterOrchestrator → CommodityEngine.
+    """
     # --- Multi-commodity path isolation ---
     ticker = commodity_ticker or os.environ.get("COMMODITY_TICKER", "KC")
     ticker = ticker.upper()
@@ -4781,9 +4887,12 @@ async def main(commodity_ticker: str = None):
     config['data_dir'] = data_dir
     config['symbol'] = ticker
     config.setdefault('commodity', {})['ticker'] = ticker
-    # Primary commodity owns account-wide equity tracking (NetLiquidation).
-    # Non-primary commodities skip equity snapshots to avoid duplicate data.
-    config['commodity']['is_primary'] = (ticker == 'KC')
+    # is_primary is set by CommodityEngine._build_config() in multi-engine mode.
+    # In legacy single-engine mode, it defaults to True (the guard default).
+
+    # --- Set ContextVar for multi-engine data isolation ---
+    from trading_bot.data_dir_context import set_engine_data_dir
+    set_engine_data_dir(data_dir)
 
     # --- Initialize all path-dependent modules BEFORE anything else ---
     from trading_bot.state_manager import StateManager
@@ -4865,7 +4974,7 @@ async def main(commodity_ticker: str = None):
             )
 
     # Update deduplicator with config values
-    GLOBAL_DEDUPLICATOR.critical_severity_threshold = config.get('sentinels', {}).get('critical_severity_threshold', 9)
+    _get_deduplicator().critical_severity_threshold = config.get('sentinels', {}).get('critical_severity_threshold', 9)
 
     # Initialize Budget Guard (singleton — shared with heterogeneous_router)
     global GLOBAL_BUDGET_GUARD
@@ -4876,6 +4985,16 @@ async def main(commodity_ticker: str = None):
     global GLOBAL_DRAWDOWN_GUARD
     GLOBAL_DRAWDOWN_GUARD = DrawdownGuard(config)
     logger.info("Drawdown Guard initialized.")
+
+    # === Set EngineRuntime ContextVar (Phase 2: engine-scoped state) ===
+    from trading_bot.data_dir_context import EngineRuntime, set_engine_runtime
+    _runtime = EngineRuntime(
+        ticker=ticker,
+        deduplicator=GLOBAL_DEDUPLICATOR,
+        budget_guard=GLOBAL_BUDGET_GUARD,
+        drawdown_guard=GLOBAL_DRAWDOWN_GUARD,
+    )
+    set_engine_runtime(_runtime)
 
     # M6 FIX: Validate expiry overlap
     from config import get_active_profile
@@ -4967,19 +5086,18 @@ async def main(commodity_ticker: str = None):
     # === STARTUP: Run Topic Discovery Agent immediately ===
     # Ensures PredictionMarketSentinel has topics before sentinel loop begins.
     # The sentinel loop will handle subsequent 12-hour refreshes.
-    global _STARTUP_DISCOVERY_TIME
     discovery_config = config.get('sentinels', {}).get('prediction_markets', {}).get('discovery_agent', {})
     if discovery_config.get('enabled', False):
         try:
             from trading_bot.topic_discovery import TopicDiscoveryAgent
             logger.info("Running TopicDiscoveryAgent on startup...")
-            startup_discovery = TopicDiscoveryAgent(config, budget_guard=GLOBAL_BUDGET_GUARD)
+            startup_discovery = TopicDiscoveryAgent(config, budget_guard=_get_budget_guard())
             result = await startup_discovery.run_scan()
             logger.info(
                 f"Startup TopicDiscovery: {result['metadata']['topics_discovered']} topics, "
                 f"{result['changes']['summary']}"
             )
-            _STARTUP_DISCOVERY_TIME = time_module.time()
+            _set_startup_discovery_time(time_module.time())
         except Exception as e:
             logger.warning(f"Startup TopicDiscovery failed (sentinel loop will retry): {e}")
 
@@ -5011,7 +5129,7 @@ async def main(commodity_ticker: str = None):
 
                 # Set global cooldown during scheduled cycle (e.g. 10 mins)
                 # This prevents Sentinels from firing Emergency Cycles while we are busy
-                GLOBAL_DEDUPLICATOR.set_cooldown("GLOBAL", 600)
+                _get_deduplicator().set_cooldown("GLOBAL", 600)
 
                 try:
                     if next_task.func_name == 'guarded_generate_orders':
@@ -5021,7 +5139,7 @@ async def main(commodity_ticker: str = None):
                     record_task_completion(next_task.id)
                 finally:
                     # Clear cooldown immediately after task finishes
-                    GLOBAL_DEDUPLICATOR.clear_cooldown("GLOBAL")
+                    _get_deduplicator().clear_cooldown("GLOBAL")
 
             except asyncio.CancelledError:
                 logger.info("Orchestrator main loop cancelled.")
@@ -5038,13 +5156,14 @@ async def main(commodity_ticker: str = None):
 
         # Cancel any in-flight fire-and-forget tasks (emergency cycles, audits)
         # before releasing connections they may be using
-        if _INFLIGHT_TASKS:
-            logger.info(f"Cancelling {len(_INFLIGHT_TASKS)} in-flight tasks...")
-            for t in list(_INFLIGHT_TASKS):
+        _ift = _get_inflight_tasks()
+        if _ift:
+            logger.info(f"Cancelling {len(_ift)} in-flight tasks...")
+            for t in list(_ift):
                 t.cancel()
             # Give tasks a moment to handle CancelledError gracefully
             await asyncio.sleep(1)
-            _INFLIGHT_TASKS.clear()
+            _ift.clear()
 
         if monitor_process and monitor_process.returncode is None:
             await stop_monitoring(config)
@@ -5068,10 +5187,17 @@ if __name__ == "__main__":
         '--sequential', action='store_true',
         help="Run tasks sequentially (legacy mode)"
     )
+    parser.add_argument(
+        '--multi', action='store_true',
+        help="Multi-commodity mode: run all active commodities in a single process via MasterOrchestrator"
+    )
     args = parser.parse_args()
 
     if args.sequential:
         asyncio.run(sequential_main())
+    elif args.multi:
+        from trading_bot.master_orchestrator import main as master_main
+        asyncio.run(master_main())
     else:
         loop = asyncio.get_event_loop()
         main_task = None

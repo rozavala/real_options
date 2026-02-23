@@ -53,6 +53,15 @@ def set_data_dir(data_dir: str):
     logger.info(f"TMS default path set to: {_default_tms_path}")
 
 
+def _get_default_tms_path() -> str:
+    """Resolve TMS path via ContextVar (multi-engine) or module global (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), "tms")
+    except LookupError:
+        return _default_tms_path
+
+
 class TransactiveMemory:
     """
     Shared memory system for cross-agent knowledge retrieval using Vector DB.
@@ -61,7 +70,7 @@ class TransactiveMemory:
     """
 
     def __init__(self, persist_path: str = None):
-        persist_path = persist_path or _default_tms_path
+        persist_path = persist_path or _get_default_tms_path()
         """Initialize TMS with ChromaDB backend."""
         os.makedirs(os.path.dirname(persist_path) if os.path.dirname(persist_path) else '.', exist_ok=True)
 
