@@ -648,7 +648,15 @@ for summary_col, (name, sentiment_col) in summary_cols.items():
 
     with st.expander(f"{icon} {name} ({sentiment})"):
         summary = row.get(summary_col, 'No summary available.')
-        st.write(summary)
+
+        # UX: Color-coded container based on sentiment
+        s_upper = str(sentiment).upper()
+        if 'BULL' in s_upper:
+            st.success(summary)
+        elif 'BEAR' in s_upper:
+            st.error(summary)
+        else:
+            st.info(summary)
 
 st.markdown("---")
 
