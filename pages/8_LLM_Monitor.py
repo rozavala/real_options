@@ -92,6 +92,21 @@ else:
 
 
 # =====================================================================
+# SECTION 1b: X/Twitter API Usage
+# =====================================================================
+x_api_calls = budget.get('x_api_calls', 0) if budget else 0
+if x_api_calls > 0:
+    st.markdown("---")
+    st.subheader("X (Twitter) API Usage")
+    col1, col2 = st.columns(2)
+    col1.metric("API Calls Today", str(x_api_calls))
+    col2.caption(
+        "X API calls are counted but not included in the LLM budget. "
+        "These use the X Bearer Token (separate billing)."
+    )
+
+
+# =====================================================================
 # SECTION 2: Cost by Agent Role
 # =====================================================================
 st.markdown("---")

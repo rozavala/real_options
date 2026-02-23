@@ -77,6 +77,7 @@ class BudgetGuard:
         self._last_reset_date: Optional[str] = None
         self._budget_hit = False
         self._warning_sent = False
+        self._x_api_calls = 0
 
         self._load_state()
         self._check_reset()
@@ -92,6 +93,7 @@ class BudgetGuard:
                     self._last_reset_date = data.get('last_reset_date')
                     self._budget_hit = data.get('budget_hit', False)
                     self._warning_sent = data.get('warning_sent', False)
+                    self._x_api_calls = data.get('x_api_calls', 0)
             except Exception as e:
                 logger.warning(f"Failed to load budget state: {e}")
 
@@ -104,7 +106,8 @@ class BudgetGuard:
                 'request_count': self._request_count,
                 'last_reset_date': self._last_reset_date,
                 'budget_hit': self._budget_hit,
-                'warning_sent': self._warning_sent
+                'warning_sent': self._warning_sent,
+                'x_api_calls': self._x_api_calls,
             }
             temp_path = str(self.state_file) + ".tmp"
             with open(temp_path, 'w') as f:
@@ -123,12 +126,13 @@ class BudgetGuard:
             with open(self._costs_csv, 'a', newline='') as f:
                 writer = csv.writer(f)
                 if write_header:
-                    writer.writerow(['date', 'total_usd', 'request_count', 'cost_by_source'])
+                    writer.writerow(['date', 'total_usd', 'request_count', 'cost_by_source', 'x_api_calls'])
                 writer.writerow([
                     self._last_reset_date,
                     round(self._daily_spend, 4),
                     self._request_count,
                     json.dumps(self._cost_by_source),
+                    self._x_api_calls,
                 ])
             logger.info(
                 f"Archived daily LLM costs for {self._last_reset_date}: "
@@ -147,6 +151,7 @@ class BudgetGuard:
             self._request_count = 0
             self._budget_hit = False
             self._warning_sent = False
+            self._x_api_calls = 0
             self._last_reset_date = today
             self._save_state()
             logger.info(f"Budget guard reset for {today}. Limit: ${self.daily_budget:.2f}")
@@ -231,6 +236,12 @@ class BudgetGuard:
         self._check_reset()
         return max(0.0, self.daily_budget - self._daily_spend)
 
+    def record_x_api_call(self):
+        """Record an X/Twitter API call (separate from LLM spend)."""
+        self._check_reset()
+        self._x_api_calls += 1
+        self._save_state()
+
     def get_status(self) -> dict:
         """Get current budget status for dashboard display."""
         self._check_reset()
@@ -243,6 +254,7 @@ class BudgetGuard:
             'reset_date': self._last_reset_date,
             'cost_by_source': dict(self._cost_by_source),
             'request_count': self._request_count,
+            'x_api_calls': self._x_api_calls,
         }
 
 
