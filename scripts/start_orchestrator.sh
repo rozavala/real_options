@@ -13,16 +13,21 @@ fi
 
 cd "$REPO_ROOT"
 
-# Commodity ticker (default: KC)
-COMMODITY="${1:-${COMMODITY_TICKER:-KC}}"
-export COMMODITY_TICKER="$COMMODITY"
+# Detect mode: LEGACY_MODE=true runs single-commodity, otherwise MasterOrchestrator
+LEGACY_MODE="${LEGACY_MODE:-false}"
 
 # Ensure log directory exists
 mkdir -p logs
 
-# Ensure data directory exists
-mkdir -p "data/$COMMODITY"
-
-# Start
-echo "Starting orchestrator from $REPO_ROOT for commodity $COMMODITY..."
-exec python -u orchestrator.py --commodity "$COMMODITY"
+if [ "$LEGACY_MODE" = "true" ]; then
+    # Legacy: single-commodity mode
+    COMMODITY="${1:-${COMMODITY_TICKER:-KC}}"
+    export COMMODITY_TICKER="$COMMODITY"
+    mkdir -p "data/$COMMODITY"
+    echo "Starting orchestrator from $REPO_ROOT for commodity $COMMODITY (legacy mode)..."
+    exec python -u orchestrator.py --commodity "$COMMODITY"
+else
+    # Default: MasterOrchestrator (all active commodities in one process)
+    echo "Starting MasterOrchestrator from $REPO_ROOT..."
+    exec python -u orchestrator.py
+fi
