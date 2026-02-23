@@ -290,13 +290,17 @@ fi
 # =========================================================================
 echo "--- 9. Starting services... ---"
 
-# Sync service file if repo version differs from installed version
-REPO_SERVICE="scripts/trading-bot.service"
-LIVE_SERVICE="/etc/systemd/system/$SERVICE_NAME.service"
-if [ -f "$REPO_SERVICE" ]; then
-    if ! diff -q "$REPO_SERVICE" "$LIVE_SERVICE" >/dev/null 2>&1; then
-        echo "  Syncing service file (repo differs from installed)..."
-        sudo cp "$REPO_SERVICE" "$LIVE_SERVICE" || echo "  WARNING: Could not sync service file (check sudoers)"
+# Sync service file if repo version differs from installed version.
+# Only on PROD — the repo service file has production paths (/opt/real_options, User=coffee-bot).
+# DEV servers manage their own service files manually.
+if [ "${ENV_NAME:-DEV}" = "PROD" ]; then
+    REPO_SERVICE="scripts/trading-bot.service"
+    LIVE_SERVICE="/etc/systemd/system/$SERVICE_NAME.service"
+    if [ -f "$REPO_SERVICE" ]; then
+        if ! diff -q "$REPO_SERVICE" "$LIVE_SERVICE" >/dev/null 2>&1; then
+            echo "  Syncing service file (repo differs from installed)..."
+            sudo cp "$REPO_SERVICE" "$LIVE_SERVICE" || echo "  WARNING: Could not sync service file (check sudoers)"
+        fi
     fi
 fi
 
