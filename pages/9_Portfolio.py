@@ -38,31 +38,44 @@ prg_state = _load_json(os.path.join(DATA_ROOT, "portfolio_risk_state.json"))
 
 if prg_state:
     status = prg_state.get("status", "UNKNOWN")
-    status_colors = {
-        "NORMAL": "green", "WARNING": "orange", "HALT": "red", "PANIC": "red",
-    }
-    color = status_colors.get(status, "grey")
-    st.markdown(
-        f"### Status: :{color}[{status}]"
-    )
+    if status == "NORMAL":
+        st.success(f"**Portfolio Status: {status}**")
+    elif status == "WARNING":
+        st.warning(f"**Portfolio Status: {status}**")
+    elif status in ["HALT", "PANIC"]:
+        st.error(f"**Portfolio Status: {status}**")
+    else:
+        st.info(f"**Portfolio Status: {status}**")
 
     cols = st.columns(4)
     with cols[0]:
         equity = prg_state.get("current_equity", 0)
-        st.metric("Net Liquidation", f"${equity:,.0f}" if equity else "N/A")
+        st.metric(
+            "Net Liquidation", f"${equity:,.0f}" if equity else "N/A",
+            help="Total unified account value including cash and market value of all positions."
+        )
     with cols[1]:
         peak = prg_state.get("peak_equity", 0)
-        st.metric("Peak Equity", f"${peak:,.0f}" if peak else "N/A")
+        st.metric(
+            "Peak Equity", f"${peak:,.0f}" if peak else "N/A",
+            help="The highest net liquidation value observed for the account since inception."
+        )
     with cols[2]:
         daily_pnl = prg_state.get("daily_pnl", 0)
-        st.metric("Daily P&L", f"${daily_pnl:+,.0f}" if daily_pnl else "$0")
+        st.metric(
+            "Daily P&L", f"${daily_pnl:+,.0f}" if daily_pnl else "$0",
+            help="Account-wide P&L for the current trading day."
+        )
     with cols[3]:
         starting = prg_state.get("starting_equity", 0)
         if starting > 0 and equity > 0:
             dd_pct = ((starting - equity) / starting) * 100
-            st.metric("Drawdown", f"{dd_pct:.2f}%")
+            st.metric(
+                "Drawdown", f"{dd_pct:.2f}%",
+                help="Percentage decline from starting equity."
+            )
         else:
-            st.metric("Drawdown", "N/A")
+            st.metric("Drawdown", "N/A", help="Cannot calculate drawdown without starting equity.")
 
     st.caption(f"Last updated: {prg_state.get('last_updated', 'unknown')}")
 else:
@@ -136,16 +149,25 @@ if var_state:
     cols = st.columns(3)
     with cols[0]:
         var_95 = var_state.get("var_95", 0)
-        st.metric("VaR (95%)", f"${var_95:,.0f}" if var_95 else "N/A")
+        st.metric(
+            "VaR (95%)", f"${var_95:,.0f}" if var_95 else "N/A",
+            help="Value at Risk (95% confidence): Estimated maximum loss over one day based on current portfolio correlations."
+        )
     with cols[1]:
         var_limit = var_state.get("var_limit", 0)
-        st.metric("VaR Limit", f"${var_limit:,.0f}" if var_limit else "N/A")
+        st.metric(
+            "VaR Limit", f"${var_limit:,.0f}" if var_limit else "N/A",
+            help="Maximum daily VaR allowed by the compliance system."
+        )
     with cols[2]:
         if var_95 and var_limit and var_limit > 0:
             utilization = (var_95 / var_limit) * 100
-            st.metric("Utilization", f"{utilization:.1f}%")
+            st.metric(
+                "Utilization", f"{utilization:.1f}%",
+                help="Percentage of the VaR limit currently being used."
+            )
         else:
-            st.metric("Utilization", "N/A")
+            st.metric("Utilization", "N/A", help="VaR utilization not available.")
 
     enforcement = var_state.get("enforcement_mode", "unknown")
     st.caption(f"Enforcement mode: **{enforcement}** | Last computed: {var_state.get('last_computed', 'unknown')}")

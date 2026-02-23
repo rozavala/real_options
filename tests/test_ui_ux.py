@@ -105,5 +105,103 @@ class TestCockpitUX(unittest.TestCase):
         self.assertTrue(found_utc, "Could not find 'UTC Time' metric call")
         self.assertTrue(found_ny, "Could not find 'New York Time (Market)' metric call")
 
+
+class TestDashboardUX(unittest.TestCase):
+    def test_dashboard_metric_tooltips(self):
+        """Verify that key metrics in dashboard.py have help tooltips."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'dashboard.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        target_metrics = ["Net Liquidation", "Daily P&L", "Portfolio VaR (95%)", "Trades", "Win Rate"]
+        found_metrics = {m: False for m in target_metrics}
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'metric':
+                if not node.args:
+                    continue
+
+                label = None
+                if isinstance(node.args[0], ast.Constant):
+                    label = node.args[0].value
+
+                if label in found_metrics:
+                    found_metrics[label] = True
+                    has_help = any(kw.arg == 'help' for kw in node.keywords)
+                    self.assertTrue(has_help, f"Metric '{label}' is missing 'help' tooltip")
+
+        for metric, found in found_metrics.items():
+            self.assertTrue(found, f"Could not find metric '{metric}' in dashboard.py")
+
+    def test_dashboard_activity_dataframe_config(self):
+        """Verify that the Recent Activity dataframe in dashboard.py uses column_config."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'dashboard.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        found_config = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'dataframe':
+                # Check if this is the Recent Activity dataframe (it's inside Section 4)
+                # We look for column_config keyword
+                for kw in node.keywords:
+                    if kw.arg == 'column_config':
+                        found_config = True
+                        break
+
+        self.assertTrue(found_config, "Recent Activity dataframe is missing 'column_config'")
+
+
+class TestPortfolioUX(unittest.TestCase):
+    def test_portfolio_semantic_status(self):
+        """Verify that pages/9_Portfolio.py uses semantic status containers."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '9_Portfolio.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        found_semantic = False
+        semantic_funcs = {'success', 'warning', 'error', 'info'}
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                if node.func.attr in semantic_funcs:
+                    # Check if it's the status display (contains "Portfolio Status")
+                    for arg in node.args:
+                        if isinstance(arg, ast.JoinedStr):
+                            for value in arg.values:
+                                if isinstance(value, ast.Constant) and "Portfolio Status" in str(value.value):
+                                    found_semantic = True
+                        elif isinstance(arg, ast.Constant) and "Portfolio Status" in str(arg.value):
+                            found_semantic = True
+
+        self.assertTrue(found_semantic, "Portfolio status display does not use semantic containers (st.success/warning/etc.)")
+
+    def test_portfolio_metric_tooltips(self):
+        """Verify that metrics in pages/9_Portfolio.py have help tooltips."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '9_Portfolio.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        target_metrics = ["Net Liquidation", "Peak Equity", "Daily P&L", "Drawdown", "VaR (95%)", "VaR Limit", "Utilization"]
+        found_metrics = {m: False for m in target_metrics}
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'metric':
+                if not node.args:
+                    continue
+
+                label = None
+                if isinstance(node.args[0], ast.Constant):
+                    label = node.args[0].value
+
+                if label in found_metrics:
+                    found_metrics[label] = True
+                    has_help = any(kw.arg == 'help' for kw in node.keywords)
+                    self.assertTrue(has_help, f"Metric '{label}' in Portfolio is missing 'help' tooltip")
+
+        for metric, found in found_metrics.items():
+            self.assertTrue(found, f"Could not find metric '{metric}' in pages/9_Portfolio.py")
+
+
 if __name__ == '__main__':
     unittest.main()
