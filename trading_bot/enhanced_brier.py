@@ -481,7 +481,7 @@ class EnhancedBrierTracker:
         resolved_from_ch = 0
         if os.path.exists(council_path):
             try:
-                ch_df = pd.read_csv(council_path)
+                ch_df = pd.read_csv(council_path, on_bad_lines='warn')
                 # Build cycle_id → actual_trend_direction lookup
                 ch_outcomes = {}
                 for _, row in ch_df.iterrows():
