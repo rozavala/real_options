@@ -105,6 +105,12 @@ class SelfHealingMonitor:
 
     def _check_stale_deferred_triggers(self):
         try:
+            from trading_bot.utils import is_market_open
+            # Deferred triggers can only be processed when the market is open.
+            # Don't warn about accumulation during off-hours / weekends.
+            if not is_market_open(self.config):
+                return
+
             from trading_bot.state_manager import StateManager
             # Use non-destructive read — get_deferred_triggers() clears the file!
             deferred = StateManager._load_deferred_triggers()
@@ -117,8 +123,10 @@ class SelfHealingMonitor:
             pass
 
     def _check_log_writability(self):
-        """Verify orchestrator.log has an active handler in the logging system.
+        """Verify the orchestrator log has an active file handler.
 
+        In --multi mode the handler is for orchestrator_multi.log.
+        In single-engine mode it's orchestrator_{ticker}.log.
         Uses a grace period to avoid false positives during initialization.
         """
         # Skip check during first 60 seconds to avoid initialization race conditions
@@ -127,35 +135,18 @@ class SelfHealingMonitor:
             return
 
         try:
-            # Derive per-commodity log filename
-            ticker = os.environ.get("COMMODITY_TICKER", "KC").lower()
-            log_name = f"orchestrator_{ticker}.log"
-
-            # Check if the root logger has any file handlers for this commodity's log
+            # Check if root logger has ANY file handler (covers both modes)
             root_logger = logging.getLogger()
-            has_file_handler = False
-
-            for handler in root_logger.handlers:
-                if isinstance(handler, logging.FileHandler):
-                    if hasattr(handler, 'baseFilename'):
-                        if log_name in handler.baseFilename:
-                            has_file_handler = True
-                            break
+            has_file_handler = any(
+                isinstance(h, logging.FileHandler) for h in root_logger.handlers
+            )
 
             if not has_file_handler:
-                # Only warn if we're past initialization and the file exists
-                log_file = Path(f"logs/{log_name}")
-                if log_file.exists():
-                    logger.warning(
-                        f"SELF-HEAL: {log_name} exists but no file handler attached. "
-                        "Logs may only be going to stdout. "
-                        "Check logging_config.py for permission issues."
-                    )
-                else:
-                    logger.debug(
-                        f"SELF-HEAL: {log_name} not found and no file handler. "
-                        "This may be expected in certain deployment modes."
-                    )
+                logger.warning(
+                    "SELF-HEAL: No file handler attached to root logger. "
+                    "Logs may only be going to stdout. "
+                    "Check logging_config.py for permission issues."
+                )
         except Exception as e:
             # Fail-safe: Don't crash the monitor if the check itself fails
             logger.debug(f"Log writability check failed: {e}")
