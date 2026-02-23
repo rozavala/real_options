@@ -155,3 +155,335 @@
 2026-02-23 15:59:48,717 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.5 \u00d7 reliability=0.8 = 0.91", "macro": "domain=1.5 \u00d7 reliability=1.0 = 1.18", "geopolitical": "domain=1.0 \u00d7 reliability=0.6 = 0.06", "supply_chain": "domain=1.0 \u00d7 reliability=0.8 = 0.08", "inventory": "domain=1.0 \u00d7 reliability=1.0 = 0.10", "sentiment": "domain=2.0 \u00d7 reliability=0.9 = 1.80", "technical": "domain=2.1 \u00d7 reliability=1.0 = 2.09", "volatility": "domain=3.8 \u00d7 reliability=0.9 = 0.34"}
 2026-02-23 15:59:48,717 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.587, dominant=sentiment)
 2026-02-23 15:59:48,718 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "agronomist",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.76,\n    "staleness_weight": 0.8,\n    "age_hours": 3.0,\n    "final_weight": 0.91,\n    "contribution": -0.592\n  },\n  {\n    "agent": "macro",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.98,\n    "staleness_weight": 0.8,\n    "age_hours": 3.0,\n    "final_weight": 1.18,\n    "contribution": 0.0\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.56,\n    "staleness_weight": 0.1,\n    "age_hours": 77.6,\n    "final_weight": 0.06,\n    "contribution": -0.036\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.85,\n    "staleness_weight": 0.1,\n    "age_hours": 77.6,\n    "final_weight": 0.08,\n    "contribution": -0.068\n  },\n  {\n    "agent": "inventory",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 1.0,\n    "reliability_mult": 1.0,\n    "staleness_weight": 0.1,\n    "age_hours": 77.6,\n    "final_weight": 0.1,\n    "contribution": -0.08\n  },\n  {\n    "agent": "sentiment",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 2.0,\n    "reliability_mult": 0.9,\n    "staleness_weight": 1.0,\n    "age_hours": 1.0,\n    "final_weight": 1.8,\n    "contribution": -1.438\n  },\n  {\n    "agent": "technical",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 2.0999999999999996,\n    "reliability_mult": 1.0,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "final_weight": 2.09,\n    "contribution": -1.358\n  },\n  {\n    "agent": "volatility",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 3.75,\n    "reliability_mult": 0.91,\n    "staleness_weight": 0.1,\n    "age_hours": 71.1,\n    "final_weight": 0.34,\n    "contribution": -0.274\n  }\n]
+2026-02-23 16:01:01,154 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.8) | Catalyst: Brazil supply outlook improving into 2026 (record CONAB crop
+2026-02-23 16:01:21,712 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PROVEN (conf=0.9) | Catalyst: Evidence of demand weakness and available supply: European Q
+2026-02-23 16:01:54,465 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. The pre-mortem reveals that this bearish trade has a catastrophically asymmetric risk profile at current entry. The bearish thesis (CONAB record crop, favorable weather) is almost certainly already priced into a 30% decline from peak. What is NOT priced in is the squeeze risk from a 15-month record short position colliding with 26-year low certified stocks and a deeply backwardated curve. The maximum pain scenario — a violent short squeeze of 10-15% in 5 days — is plausible, has multiple independent triggers, and is not adequately compensated by the bearish edge (which requires waiting months for the Brazil harvest to actually hit the market). If this trade is taken at all, it should only be via defined-risk structures (long puts) sized at no more than 0.5% VaR, with a hard stop above 300 cents. A naked short futures position in KCK6 at 279.8 into this setup is a risk management failure waiting to happen. The consensus confidence of only 0.58 and the dominant agent being the agronomist (who explicitly noted fungal disease risk they partially dismissed) further underscore that this is a PLAUSIBLE lean, not a high-conviction trade warranting capital deployment.
+2026-02-23 16:01:54,466 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-23 16:01:54,467 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-23 16:01:54,468 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-23 16:01:54,468 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-23 16:01:54,471 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-23 16:01:54,476 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-23 16:01:54,596 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-02-23 16:01:55,007 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 234 created from CSV, 0 resolved from council_history
+2026-02-23 16:01:55,041 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (VOLATILITY)
+2026-02-23 16:01:55,044 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-23 16:01:55,046 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping MacroContagionSentinel
+2026-02-23 16:01:55,046 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
+2026-02-23 16:01:55,046 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping XSentimentSentinel
+2026-02-23 16:01:55,046 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): XSentimentSentinel
+2026-02-23 16:01:55,046 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping XSentimentSentinel
+2026-02-23 16:01:55,046 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): XSentimentSentinel
+2026-02-23 16:01:55,046 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping XSentimentSentinel
+2026-02-23 16:01:55,046 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): XSentimentSentinel
+2026-02-23 16:01:55,046 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping WeatherSentinel
+2026-02-23 16:01:55,047 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:01:55,047 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping WeatherSentinel
+2026-02-23 16:01:55,047 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:01:55,047 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping WeatherSentinel
+2026-02-23 16:01:55,047 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:01:55,047 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping MacroContagionSentinel
+2026-02-23 16:01:55,047 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
+2026-02-23 16:01:55,047 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping MacroContagionSentinel
+2026-02-23 16:01:55,047 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
+2026-02-23 16:01:55,047 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping MacroContagionSentinel
+2026-02-23 16:01:55,047 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
+2026-02-23 16:01:55,047 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping WeatherSentinel
+2026-02-23 16:01:55,047 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping PredictionMarketSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): PredictionMarketSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping MacroContagionSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping MacroContagionSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping WeatherSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping MacroContagionSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping WeatherSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping MacroContagionSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping WeatherSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:01:55,049 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping WeatherSentinel
+2026-02-23 16:01:55,050 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:01:55,050 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping WeatherSentinel
+2026-02-23 16:01:55,050 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:01:55,050 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping WeatherSentinel
+2026-02-23 16:01:55,050 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:01:55,050 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping MacroContagionSentinel
+2026-02-23 16:01:55,050 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
+2026-02-23 16:01:55,050 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping WeatherSentinel
+2026-02-23 16:01:55,050 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:01:55,050 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping MacroContagionSentinel
+2026-02-23 16:01:55,050 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
+2026-02-23 16:01:55,050 - Orchestrator - INFO - Deferred triggers complete: 1 processed, 25 skipped, 0 rejected (contaminated)
+2026-02-23 16:01:55,050 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_deferred)...
+2026-02-23 16:01:58,056 - Orchestrator - INFO - Built session schedule: 17 tasks for KC (04:15-13:30 ET)
+2026-02-23 16:01:58,056 - Engine.KC - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
+2026-02-23 16:01:58,059 - Engine.KC - WARNING - LATE START DETECTED: 7 scheduled tasks already passed:\n  - 03:30 ET: start_monitoring\n  - 03:31 ET: process_deferred_triggers\n  - 04:00 ET: cleanup_orphaned_theses\n  - 04:42 ET: signal_open\n  - 07:01 ET: signal_early\n  - 08:52 ET: audit_mid_session\n  - 09:20 ET: signal_mid
+2026-02-23 16:01:58,061 - Orchestrator - INFO - --- Recovery: Evaluating 7 missed tasks ---
+2026-02-23 16:01:58,061 - Orchestrator - INFO - 🔄 RECOVERY: Running missed start_monitoring [start_monitoring] (was scheduled 03:30 ET)
+2026-02-23 16:01:58,061 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
+2026-02-23 16:01:58,062 - Orchestrator - INFO - --- Starting position monitoring process ---
+2026-02-23 16:01:58,063 - Orchestrator - INFO - Successfully started position monitor with PID: 2422441
+2026-02-23 16:01:58,064 - Orchestrator - INFO - Started position monitoring service.
+2026-02-23 16:01:58,066 - Orchestrator - INFO - ✅ RECOVERY: start_monitoring completed
+2026-02-23 16:01:58,066 - Orchestrator - INFO - 🔄 RECOVERY: Running missed process_deferred_triggers [process_deferred_triggers] (was scheduled 03:31 ET)
+2026-02-23 16:01:58,068 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-02-23 16:01:58,068 - Orchestrator - INFO - No deferred triggers to process.
+2026-02-23 16:01:58,071 - Orchestrator - INFO - ✅ RECOVERY: process_deferred_triggers completed
+2026-02-23 16:01:58,071 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 04:00 ET)
+2026-02-23 16:01:58,071 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-23 16:01:58,072 - trading_bot.connection_pool - INFO - Connecting IB (KC_cleanup) ID: 72 [REMOTE/PAPER]...
+2026-02-23 16:01:58,389 - trading_bot.connection_pool - INFO - IB (KC_cleanup) connected successfully with ID 72
+2026-02-23 16:01:58,414 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-23 16:01:58,465 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-23 16:01:58,465 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_cleanup)...
+2026-02-23 16:02:00,886 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED with this trade at current confidence and sizing without addressing the following: (1) The entry point at $3,146 is 4.6% above a known cost-curve support floor of ~$3,000 — the risk/reward on a new short at these levels is asymmetrically poor. (2) Extreme bearish sentiment (2.32/10) and crowded fresh shorts create acute short-squeeze risk within the 5-day window. (3) The Ivory Coast farmgate cut is unconfirmed as of the official CCC statement; this is a 'contemplated' event being traded as a 'done' event. (4) The macro analyst's documented precedent of a 3.77% single-day squeeze on Feb 20 via USD weakness is directly applicable and unrebutted. If the framework requires a trade, reduce confidence to no higher than 0.65 (matching the median agent score), reduce position size to 50% of normal, set a hard stop above $3,400 (the pre-trigger level), and REQUIRE a confirmed CCC farmgate price cut announcement before adding to the position. The 0.9 confidence rating is not supported by the evidence and represents a dangerous overconfidence given the known short-squeeze setup.
+2026-02-23 16:02:00,887 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-23 16:02:00,891 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=HIGH_VOLATILITY
+2026-02-23 16:02:00,893 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=HIGH_VOLATILITY
+2026-02-23 16:02:00,893 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-23 16:02:00,895 - root - INFO - Logged council decision for CCK6 (202605)
+2026-02-23 16:02:00,901 - trading_bot.decision_signals - INFO - Decision signal logged: CCK6 (202605) → NEUTRAL (DIRECTIONAL/NONE)
+2026-02-23 16:02:01,017 - trading_bot.enhanced_brier - INFO - Loaded 480 predictions from /home/rodrigo/real_options/data/CC/enhanced_brier.json
+2026-02-23 16:02:01,114 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 1 created from CSV, 0 resolved from council_history
+2026-02-23 16:02:01,150 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-02-23 16:02:01,154 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-23 16:02:01,155 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping XSentimentSentinel
+2026-02-23 16:02:01,155 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): XSentimentSentinel
+2026-02-23 16:02:01,155 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping MacroContagionSentinel
+2026-02-23 16:02:01,155 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
+2026-02-23 16:02:01,155 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping XSentimentSentinel
+2026-02-23 16:02:01,156 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): XSentimentSentinel
+2026-02-23 16:02:01,159 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping XSentimentSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): XSentimentSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping XSentimentSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): XSentimentSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping WeatherSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping WeatherSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping PredictionMarketSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): PredictionMarketSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping WeatherSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping NewsSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): NewsSentinel
+2026-02-23 16:02:01,160 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping MacroContagionSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): MacroContagionSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping WeatherSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping WeatherSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping WeatherSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping NewsSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): NewsSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping NewsSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): NewsSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping WeatherSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:02:01,161 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping WeatherSentinel
+2026-02-23 16:02:01,163 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-02-23 16:02:01,163 - Orchestrator - INFO - Deferred triggers complete: 1 processed, 18 skipped, 0 rejected (contaminated)
+2026-02-23 16:02:01,163 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_deferred)...
+2026-02-23 16:02:01,476 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-23 16:02:01,477 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
+2026-02-23 16:02:01,478 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
+2026-02-23 16:02:01,478 - Orchestrator - INFO - 🔄 RECOVERY: Running missed audit_mid_session [run_position_audit_cycle] (was scheduled 08:52 ET)
+2026-02-23 16:02:01,478 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-23 16:02:01,478 - trading_bot.connection_pool - INFO - Connecting IB (KC_audit) ID: 55 [REMOTE/PAPER]...
+2026-02-23 16:02:01,845 - trading_bot.connection_pool - INFO - IB (KC_audit) connected successfully with ID 55
+2026-02-23 16:02:01,856 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 16:02:01,874 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-23 16:02:01,884 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
+2026-02-23 16:02:01,897 - Orchestrator - INFO - No open positions to audit.
+2026-02-23 16:02:01,901 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_audit)...
+2026-02-23 16:02:02,412 - Orchestrator - INFO - 2026-02-23 16:02:02,411 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-23 16:02:02,413 - Orchestrator - INFO - 2026-02-23 16:02:02,412 - __main__ - INFO - Position monitor connection attempt 1/5...
+2026-02-23 16:02:02,415 - Orchestrator - INFO - 2026-02-23 16:02:02,415 - trading_bot.connection_pool - INFO - Connecting IB (monitor) ID: 26 [REMOTE/PAPER]...
+2026-02-23 16:02:02,772 - Orchestrator - INFO - 2026-02-23 16:02:02,772 - trading_bot.connection_pool - INFO - IB (monitor) connected successfully with ID 26
+2026-02-23 16:02:02,777 - Orchestrator - INFO - 2026-02-23 16:02:02,777 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 16:02:02,778 - Orchestrator - INFO - 2026-02-23 16:02:02,777 - __main__ - INFO - Position monitor connected and watching open positions.
+2026-02-23 16:02:02,778 - Orchestrator - INFO - 2026-02-23 16:02:02,777 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
+2026-02-23 16:02:02,778 - Orchestrator - INFO - 2026-02-23 16:02:02,777 - root - INFO - Order status and execution event handlers registered.
+2026-02-23 16:02:02,886 - Orchestrator - INFO - 2026-02-23 16:02:02,886 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-23 16:02:04,168 - Orchestrator - INFO - Built session schedule: 17 tasks for CC (04:45-13:30 ET)
+2026-02-23 16:02:04,169 - Engine.CC - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
+2026-02-23 16:02:04,172 - Engine.CC - WARNING - LATE START DETECTED: 7 scheduled tasks already passed:\n  - 04:00 ET: start_monitoring\n  - 04:01 ET: process_deferred_triggers\n  - 04:30 ET: cleanup_orphaned_theses\n  - 05:11 ET: signal_open\n  - 07:22 ET: signal_early\n  - 09:07 ET: audit_mid_session\n  - 09:33 ET: signal_mid
+2026-02-23 16:02:04,174 - Orchestrator - INFO - --- Recovery: Evaluating 7 missed tasks ---
+2026-02-23 16:02:04,175 - Orchestrator - INFO - 🔄 RECOVERY: Running missed start_monitoring [start_monitoring] (was scheduled 04:00 ET)
+2026-02-23 16:02:04,175 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
+2026-02-23 16:02:04,176 - Orchestrator - WARNING - Monitoring process is already running.
+2026-02-23 16:02:04,179 - Orchestrator - INFO - ✅ RECOVERY: start_monitoring completed
+2026-02-23 16:02:04,179 - Orchestrator - INFO - 🔄 RECOVERY: Running missed process_deferred_triggers [process_deferred_triggers] (was scheduled 04:01 ET)
+2026-02-23 16:02:04,181 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-02-23 16:02:04,181 - Orchestrator - INFO - No deferred triggers to process.
+2026-02-23 16:02:04,184 - Orchestrator - INFO - ✅ RECOVERY: process_deferred_triggers completed
+2026-02-23 16:02:04,184 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 04:30 ET)
+2026-02-23 16:02:04,184 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-23 16:02:04,184 - trading_bot.connection_pool - INFO - Connecting IB (CC_cleanup) ID: 472 [REMOTE/PAPER]...
+2026-02-23 16:02:04,505 - trading_bot.connection_pool - INFO - IB (CC_cleanup) connected successfully with ID 472
+2026-02-23 16:02:04,516 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-23 16:02:04,519 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-23 16:02:04,519 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_cleanup)...
+2026-02-23 16:02:04,907 - Orchestrator - INFO - ✅ RECOVERY: audit_mid_session completed
+2026-02-23 16:02:04,907 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
+2026-02-23 16:02:04,908 - Orchestrator - INFO - System restarted with 7 missed tasks.\n✅ 4 recovered | ⏭️ 0 skipped | ✔️ 3 already ran
+2026-02-23 16:02:05,148 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-23 16:02:05,154 - Engine.KC - INFO - Running TopicDiscoveryAgent on startup...
+2026-02-23 16:02:05,187 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-23 16:02:07,524 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-23 16:02:07,525 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
+2026-02-23 16:02:07,525 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
+2026-02-23 16:02:07,525 - Orchestrator - INFO - 🔄 RECOVERY: Running missed audit_mid_session [run_position_audit_cycle] (was scheduled 09:07 ET)
+2026-02-23 16:02:07,525 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-23 16:02:07,526 - trading_bot.connection_pool - INFO - Connecting IB (CC_audit) ID: 457 [REMOTE/PAPER]...
+2026-02-23 16:02:07,882 - trading_bot.connection_pool - INFO - IB (CC_audit) connected successfully with ID 457
+2026-02-23 16:02:07,891 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 16:02:07,898 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-23 16:02:07,903 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
+2026-02-23 16:02:07,906 - Orchestrator - INFO - No open positions to audit.
+2026-02-23 16:02:07,908 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_audit)...
+2026-02-23 16:02:10,913 - Orchestrator - INFO - ✅ RECOVERY: audit_mid_session completed
+2026-02-23 16:02:10,914 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
+2026-02-23 16:02:10,914 - Orchestrator - INFO - System restarted with 7 missed tasks.\n✅ 4 recovered | ⏭️ 0 skipped | ✔️ 3 already ran
+2026-02-23 16:02:11,110 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-23 16:02:11,111 - Engine.CC - INFO - Running TopicDiscoveryAgent on startup...
+2026-02-23 16:02:11,141 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-23 16:02:23,922 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-23 16:02:23,924 - Engine.KC - INFO - Startup TopicDiscovery: 4 topics, No changes
+2026-02-23 16:02:23,926 - Engine.KC - INFO - Next task 'signal_late' (Signal: Late) scheduled for 2026-02-23 16:39:00 UTC. Waiting for 0.61 hours.
+2026-02-23 16:02:23,926 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-23 16:02:24,304 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-02-23 16:02:24,305 - trading_bot.connection_pool - INFO - Connecting IB (KC_sentinel) ID: 18 [REMOTE/PAPER]...
+2026-02-23 16:02:24,305 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-23 16:02:24,332 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-23 16:02:24,335 - Engine.CC - INFO - Startup TopicDiscovery: 4 topics, No changes
+2026-02-23 16:02:24,335 - Engine.CC - INFO - Next task 'signal_late' (Signal: Late) scheduled for 2026-02-23 16:45:00 UTC. Waiting for 0.71 hours.
+2026-02-23 16:02:24,335 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-23 16:02:24,778 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-02-23 16:02:24,779 - trading_bot.connection_pool - INFO - Connecting IB (CC_sentinel) ID: 416 [REMOTE/PAPER]...
+2026-02-23 16:02:24,780 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-23 16:02:25,095 - trading_bot.connection_pool - INFO - IB (KC_sentinel) connected successfully with ID 18
+2026-02-23 16:02:25,101 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 16:02:25,101 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
+2026-02-23 16:02:25,101 - Orchestrator - INFO - SENTINEL SAFETY NET: First market-open transition — processing deferred triggers
+2026-02-23 16:02:25,103 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-02-23 16:02:25,103 - Orchestrator - INFO - No deferred triggers to process.
+2026-02-23 16:02:25,103 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-23 16:02:25,106 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-23 16:02:25,895 - trading_bot.connection_pool - INFO - IB (CC_sentinel) connected successfully with ID 416
+2026-02-23 16:02:25,901 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 16:02:25,901 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
+2026-02-23 16:02:25,901 - Orchestrator - INFO - SENTINEL SAFETY NET: First market-open transition — processing deferred triggers
+2026-02-23 16:02:25,904 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-02-23 16:02:25,904 - Orchestrator - INFO - No deferred triggers to process.
+2026-02-23 16:02:25,904 - root - INFO - Fetching 1 active futures contracts for CC on NYBOT...
+2026-02-23 16:02:25,909 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-23 16:02:25,910 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-23 16:02:25,910 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-23 16:02:25,910 - Orchestrator - INFO - Refreshed contract cache: KCK6
+2026-02-23 16:02:25,911 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-02-23 16:02:25,911 - trading_bot.connection_pool - INFO - Connecting IB (KC_microstructure) ID: 46 [REMOTE/PAPER]...
+2026-02-23 16:02:25,972 - root - INFO - Skipping contract CCH6 (Exp: 20260316): Expires < 45 days.
+2026-02-23 16:02:25,973 - root - INFO - Found 9 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-23 16:02:25,973 - Orchestrator - INFO - Refreshed contract cache: CCK6
+2026-02-23 16:02:25,973 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-02-23 16:02:25,975 - trading_bot.connection_pool - INFO - Connecting IB (CC_microstructure) ID: 446 [REMOTE/PAPER]...
+2026-02-23 16:02:26,027 - trading_bot.connection_pool - INFO - IB (KC_microstructure) connected successfully with ID 46
+2026-02-23 16:02:26,032 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 16:02:30,069 - Orchestrator - INFO - WeatherSentinel: trigger detected (source=WeatherSentinel, severity=9)
+2026-02-23 16:02:30,069 - Orchestrator - WARNING - CRITICAL trigger WeatherSentinel (Sev: 9) bypassing post-cycle debounce
+2026-02-23 16:02:30,108 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-02-23 16:02:30,169 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: DROUGHT in Central Highlands: 21.6mm (BULLISH, FLOWERING stage) (Cycle: KC-91a1c40e)
+2026-02-23 16:02:30,358 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-23 16:02:30,366 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-23 16:02:30,469 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-23 16:02:30,469 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'anthropic', 'openai', 'xai']
+2026-02-23 16:02:30,469 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'anthropic', 'openai', 'xai'], 'diversity_score': 1.0}
+2026-02-23 16:02:30,475 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-23 16:02:30,483 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-02-23 16:02:30,853 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 240 created from CSV, 0 resolved from council_history
+2026-02-23 16:02:30,854 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-23 16:02:30,855 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-23 16:02:30,855 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-23 16:02:30,855 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-23 16:02:30,855 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-23 16:02:30,855 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-23 16:02:30,857 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-23 16:02:30,922 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-23 16:02:30,923 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-23 16:02:30,923 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-23 16:02:35,039 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-23 16:02:35,410 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=279.95, sma_200=331.27875, regime=RANGE_BOUND, vol_5d=0.0246
+2026-02-23 16:02:35,411 - Orchestrator - INFO - Emergency market context: price=279.95, regime=RANGE_BOUND
+2026-02-23 16:02:35,411 - trading_bot.semantic_cache - INFO - CACHE CROSS-SOURCE INVALIDATION: 1 entries removed for KCK6 (202605) (kept WeatherSentinel)
+2026-02-23 16:02:35,411 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
+2026-02-23 16:02:35,412 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
+2026-02-23 16:02:35,412 - trading_bot.agents - INFO - Waking up agronomist...
+2026-02-23 16:02:35,825 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-23 16:02:35,825 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-23 16:02:40,978 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-02-23 16:02:41,483 - trading_bot.connection_pool - ERROR - IB (CC_microstructure) connection failed: . Next retry backoff: 10.0s
+2026-02-23 16:02:41,483 - Orchestrator - ERROR - Failed to engage MicrostructureSentinel: 
+2026-02-23 16:02:41,702 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping PriceSentinel
+2026-02-23 16:02:44,220 - Orchestrator - INFO - WeatherSentinel: trigger detected (source=WeatherSentinel, severity=7)
+2026-02-23 16:02:44,220 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping WeatherSentinel
+2026-02-23 16:02:50,256 - trading_bot.rate_limiter - INFO - Rate limiter: 6 requests queued, waiting 2.4s for next slot
+2026-02-23 16:02:50,256 - trading_bot.rate_limiter - INFO - Rate limiter: 7 requests queued, waiting 2.4s for next slot
+2026-02-23 16:02:52,657 - trading_bot.rate_limiter - INFO - Rate limiter: 6 requests queued, waiting 2.4s for next slot
+2026-02-23 16:02:52,657 - trading_bot.rate_limiter - INFO - Rate limiter: 6 requests queued, waiting 2.4s for next slot
+2026-02-23 16:02:52,657 - trading_bot.rate_limiter - INFO - Rate limiter: 6 requests queued, waiting 2.4s for next slot
+2026-02-23 16:02:52,657 - trading_bot.rate_limiter - INFO - Rate limiter: 6 requests queued, waiting 2.4s for next slot
+2026-02-23 16:02:52,657 - trading_bot.rate_limiter - INFO - Rate limiter: 6 requests queued, waiting 2.4s for next slot
+2026-02-23 16:02:52,657 - trading_bot.rate_limiter - INFO - Rate limiter: 6 requests queued, waiting 2.4s for next slot
+2026-02-23 16:03:02,201 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=6)
+2026-02-23 16:03:02,202 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:06:55.041968. Skipping XSentimentSentinel
+2026-02-23 16:03:17,960 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=7)
+2026-02-23 16:03:17,960 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping XSentimentSentinel
+2026-02-23 16:03:18,725 - Orchestrator - INFO - MacroContagionSentinel: trigger detected (source=MacroContagionSentinel, severity=7)
+2026-02-23 16:03:18,725 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-02-23 16:07:01.150765. Skipping MacroContagionSentinel
+2026-02-23 16:03:52,630 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 16:04:07,273 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-23 16:04:07,284 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-02-23 16:04:07,889 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 240 created from CSV, 0 resolved from council_history
+2026-02-23 16:04:07,892 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=3.0 \u00d7 reliability=1.1 = 3.19", "macro": "domain=1.0 \u00d7 reliability=0.7 = 0.62", "geopolitical": "domain=0.5 \u00d7 reliability=0.9 = 0.43", "supply_chain": "domain=1.5 \u00d7 reliability=0.7 = 1.01", "inventory": "domain=1.5 \u00d7 reliability=0.8 = 1.16", "sentiment": "domain=1.0 \u00d7 reliability=1.2 = 1.16", "technical": "domain=2.2 \u00d7 reliability=1.1 = 2.40", "volatility": "domain=1.4 \u00d7 reliability=0.8 = 1.11"}
+2026-02-23 16:04:07,893 - trading_bot.weighted_voting - INFO - Weighted Vote: BULLISH (score=0.133, dominant=agronomist)
+2026-02-23 16:04:07,893 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "agronomist",\n    "direction": "BULLISH",\n    "confidence": 0.8,\n    "domain_weight": 3.0,\n    "reliability_mult": 1.06,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "final_weight": 3.19,\n    "contribution": 2.554\n  },\n  {\n    "agent": "macro",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.65,\n    "staleness_weight": 0.95,\n    "age_hours": 1.5,\n    "final_weight": 0.62,\n    "contribution": 0.0\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 0.5,\n    "reliability_mult": 0.9,\n    "staleness_weight": 0.95,\n    "age_hours": 1.5,\n    "final_weight": 0.43,\n    "contribution": 0.0\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BULLISH",\n    "confidence": 0.8,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.71,\n    "staleness_weight": 0.95,\n    "age_hours": 1.5,\n    "final_weight": 1.01,\n    "contribution": 0.812\n  },\n  {\n    "agent": "inventory",\n    "direction": "BEARISH",\n    "confidence": 0.55,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.81,\n    "staleness_weight": 0.95,\n    "age_hours": 1.5,\n    "final_weight": 1.16,\n    "contribution": -0.637\n  },\n  {\n    "agent": "sentiment",\n    "direction": "BEARISH",\n    "confidence": 0.55,\n    "domain_weight": 1.0,\n    "reliability_mult": 1.16,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "final_weight": 1.16,\n    "contribution": -0.64\n  },\n  {\n    "agent": "technical",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 2.25,\n    "reliability_mult": 1.12,\n    "staleness_weight": 0.95,\n    "age_hours": 1.5,\n    "final_weight": 2.4,\n    "contribution": 0.0\n  },\n  {\n    "agent": "volatility",\n    "direction": "BEARISH",\n    "confidence": 0.55,\n    "domain_weight": 1.4,\n    "reliability_mult": 0.83,\n    "staleness_weight": 0.95,\n    "age_hours": 1.5,\n    "final_weight": 1.11,\n    "contribution": -0.613\n  }\n]
+2026-02-23 16:04:18,740 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-02-23 16:04:18,742 - trading_bot.connection_pool - INFO - Connecting IB (CC_microstructure) ID: 447 [REMOTE/PAPER]...
+2026-02-23 16:04:19,058 - trading_bot.connection_pool - INFO - IB (CC_microstructure) connected successfully with ID 447
+2026-02-23 16:04:19,065 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 16:05:39,309 - trading_bot.agents - INFO - Master Decision: BULLISH | Thesis: PLAUSIBLE (conf=0.8) | Catalyst: Critical Vietnam Central Highlands drought during the coffee
+2026-02-23 16:06:34,912 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. The pre-mortem analysis reveals a trade built on a single high-conviction agronomic catalyst (Vietnam flowering drought) that is (a) already known to the market which was DOWN 2.4% on the day, (b) not corroborated by any bullish price action, and (c) offset by two powerful and currently active bearish fundamentals — record Brazilian crop projection and Vietnam export surge — that were systematically discounted rather than falsified. The multi-agent consensus confidence was only 0.57 with a weighted score of 0.133; 5 of 8 agents were NEUTRAL or BEARISH; the final recommendation at 0.8 confidence represents an unjustified override of the distributed signal. The specific failure scenarios are concrete and high-probability: supply avalanche from Brazil accelerating ahead of schedule, Vietnam drought proving transient, or the crowded-short squeeze simply failing to fire. With zero current portfolio positions and VaR at 0%, the correct action is to WAIT for price confirmation — specifically, a daily close above 296-300 with expanding open interest and a shift in the supply chain data — before committing capital. Entering now is catching a falling knife on a weather narrative in a structurally bearish trend.
+2026-02-23 16:06:34,913 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-23 16:06:34,915 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-23 16:06:34,915 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-23 16:06:34,915 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-23 16:06:34,917 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-23 16:06:34,922 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-23 16:06:35,074 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (VOLATILITY)
+2026-02-23 16:06:35,080 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-23 16:07:04,844 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=True, trading_day=True
+2026-02-23 16:07:21,438 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=True, trading_day=True
+2026-02-23 16:08:53,160 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 16:12:02,954 - Orchestrator - INFO - 2026-02-23 16:12:02,953 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-23 16:12:07,366 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_open=True, trading_day=True
+2026-02-23 16:12:22,185 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_open=True, trading_day=True
+2026-02-23 16:13:53,585 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 16:17:09,874 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_open=True, trading_day=True
+2026-02-23 16:17:22,934 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_open=True, trading_day=True
+2026-02-23 16:18:54,113 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 16:22:02,972 - Orchestrator - INFO - 2026-02-23 16:22:02,972 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-23 16:22:12,134 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_open=True, trading_day=True
+2026-02-23 16:22:23,704 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_open=True, trading_day=True
+2026-02-23 16:23:54,635 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 16:25:14,125 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 35% of average (Sev: 6)
+2026-02-23 16:25:14,132 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-23 16:27:14,372 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=25, market_open=True, trading_day=True
+2026-02-23 16:27:24,425 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=25, market_open=True, trading_day=True
+2026-02-23 16:28:55,121 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
