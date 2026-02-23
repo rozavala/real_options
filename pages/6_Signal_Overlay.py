@@ -867,9 +867,9 @@ if price_df is not None and not price_df.empty:
             missing_dates = sorted(d for d in unmatched_dates if d not in price_dates)
             if missing_dates:
                 date_str = ', '.join(str(d) for d in missing_dates[:5])
-                st.warning(
-                    f"⚠️ {unmatched_count} of {len(signals)} signals could not align to price candles "
-                    f"(no price data for: {date_str}). Try a different timeframe or check yfinance data availability."
+                st.caption(
+                    f"ℹ️ {unmatched_count} signal(s) not shown — Yahoo Finance has no {timeframe} data for {date_str}. "
+                    f"Try the 1d timeframe to see them."
                 )
             else:
                 st.caption(f"ℹ️ {unmatched_count} signal(s) outside alignment tolerance ({_tol}) — not shown on chart.")
