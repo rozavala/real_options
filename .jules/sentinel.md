@@ -12,3 +12,8 @@
 **Vulnerability:** `TradingCouncil` agents interpolated `search_instruction` (containing untrusted social media/news content) directly into prompt instructions without sanitization.
 **Learning:** Even "internal" task descriptions become attack vectors if they include data derived from external triggers (e.g. `SentinelTrigger.payload`).
 **Prevention:** Implemented `escape_xml` utility. Prompts now wrap untrusted task context in `<task>...</task>` tags with explicit instructions to treat the block as data/context only.
+
+## 2026-02-27 - URL Parameter Injection in Sentinels
+**Vulnerability:** `LogisticsSentinel` and `NewsSentinel` constructed Google News RSS URLs using string concatenation and `replace(' ', '+')` instead of proper URL encoding.
+**Learning:** Manual URL construction is brittle. Special characters (like `&` in "Port & Terminal" or `Coffee (Arabica)`) can break the URL structure or inject new parameters if not properly escaped.
+**Prevention:** Always use `urllib.parse.quote_plus` (or `urlencode`) when constructing query strings, even if the source data (like `profile.name`) comes from configuration.
