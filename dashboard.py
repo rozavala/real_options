@@ -45,12 +45,16 @@ from dashboard_utils import (
 
 config = get_config()
 
-_COMMODITY_META = {
-    "KC": {"name": "Coffee", "emoji": "\u2615"},
-    "CC": {"name": "Cocoa", "emoji": "\U0001f36b"},
-    "NG": {"name": "Natural Gas", "emoji": "\U0001f525"},
-    "SB": {"name": "Sugar", "emoji": "\U0001f36c"},
-}
+def _get_commodity_meta(ticker: str) -> dict:
+    """Build display metadata from CommodityProfile — no hardcoded dict."""
+    from _commodity_selector import _TICKER_EMOJI, _TYPE_EMOJI
+    try:
+        from config.commodity_profiles import get_commodity_profile
+        profile = get_commodity_profile(ticker)
+        emoji = _TICKER_EMOJI.get(ticker, _TYPE_EMOJI.get(profile.commodity_type, "\U0001f4ca"))
+        return {"name": profile.name, "emoji": emoji}
+    except Exception:
+        return {"name": ticker, "emoji": "\U0001f4ca"}
 
 st.title("\U0001f4ca Real Options Portfolio")
 
@@ -63,7 +67,7 @@ st.markdown("### Portfolio Health")
 health_cols = st.columns(max(len(active_commodities), 1))
 
 for idx, ticker in enumerate(active_commodities):
-    meta = _COMMODITY_META.get(ticker, {"name": ticker, "emoji": "\U0001f4ca"})
+    meta = _get_commodity_meta(ticker)
     hb = get_system_heartbeat_for_commodity(ticker)
     status = hb["orchestrator_status"]
 
@@ -402,7 +406,7 @@ st.markdown("### Commodity Summary")
 card_cols = st.columns(max(len(active_commodities), 1))
 
 for idx, ticker in enumerate(active_commodities):
-    meta = _COMMODITY_META.get(ticker, {"name": ticker, "emoji": "\U0001f4ca"})
+    meta = _get_commodity_meta(ticker)
     council_df = load_council_history_for_commodity(ticker)
 
     with card_cols[idx]:
@@ -567,6 +571,6 @@ else:
     """)
 
 active_str = ", ".join(
-    f"{_COMMODITY_META.get(t, {}).get('emoji', '')} {t}" for t in active_commodities
+    f"{_get_commodity_meta(t)['emoji']} {t}" for t in active_commodities
 )
 st.caption(f"Active commodities: {active_str}")

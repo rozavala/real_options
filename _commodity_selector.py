@@ -11,13 +11,33 @@ Renders a sidebar selectbox for commodity switching. On change:
 import streamlit as st
 import os
 
+from config.commodity_profiles import CommodityType
 
-_COMMODITY_LABELS = {
-    "KC": "\u2615 KC (Coffee)",
-    "CC": "\U0001f36b CC (Cocoa)",
-    "NG": "\U0001f525 NG (Natural Gas)",
-    "SB": "\U0001f36c SB (Sugar)",
+
+# Emoji by commodity type — no per-ticker maintenance needed
+_TYPE_EMOJI = {
+    CommodityType.SOFT: "\u2615",      # coffee cup (generic soft)
+    CommodityType.ENERGY: "\U0001f525", # fire
+    CommodityType.METAL: "\U0001fab6",  # rock
+    CommodityType.GRAIN: "\U0001f33e",  # rice/grain
 }
+
+# Optional per-ticker emoji overrides (only when the type default isn't ideal)
+_TICKER_EMOJI = {
+    "CC": "\U0001f36b",  # chocolate bar
+    "SB": "\U0001f36c",  # candy
+}
+
+
+def _commodity_label(ticker: str) -> str:
+    """Build a display label like '☕ KC (Coffee Arabica)' from CommodityProfile."""
+    try:
+        from config.commodity_profiles import get_commodity_profile
+        profile = get_commodity_profile(ticker)
+        emoji = _TICKER_EMOJI.get(ticker, _TYPE_EMOJI.get(profile.commodity_type, "\U0001f4ca"))
+        return f"{emoji} {ticker} ({profile.name})"
+    except Exception:
+        return ticker
 
 
 def _reinit_data_dirs(ticker: str):
@@ -55,7 +75,7 @@ def selected_commodity() -> str:
         "Commodity",
         available,
         index=available.index(current) if current in available else 0,
-        format_func=lambda x: _COMMODITY_LABELS.get(x, x),
+        format_func=_commodity_label,
     )
 
     if selected != current:
