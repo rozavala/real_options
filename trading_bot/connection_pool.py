@@ -33,7 +33,7 @@ DEV_CLIENT_ID_DEFAULT = 80  # Unknown purposes in dev: 80-84
 # Multi-commodity client ID offsets.
 # KC uses base 100-279, position_monitor uses 300-399.
 # CC starts at 400 to give range 500-679.
-COMMODITY_ID_OFFSET = {"KC": 0, "CC": 400, "SB": 800}
+COMMODITY_ID_OFFSET = {"KC": 0, "CC": 400, "SB": 800, "NG": 1200}
 
 
 def _is_remote_gateway(config: dict) -> bool:

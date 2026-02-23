@@ -383,6 +383,13 @@ def set_data_dir(data_dir: str):
 def get_brier_tracker(data_dir: str = None) -> BrierScoreTracker:
     global _tracker
     if _tracker is None:
+        # ContextVar > explicit arg > module global
+        if data_dir is None:
+            try:
+                from trading_bot.data_dir_context import get_engine_data_dir
+                data_dir = get_engine_data_dir()
+            except LookupError:
+                pass
         effective_dir = data_dir or _data_dir
         if effective_dir:
             _tracker = BrierScoreTracker(history_file=os.path.join(effective_dir, "agent_accuracy.csv"))

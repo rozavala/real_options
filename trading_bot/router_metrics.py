@@ -30,7 +30,11 @@ def set_data_dir(data_dir: str):
     logger.info(f"RouterMetrics data_dir set to: {data_dir}")
 
 def _get_metrics_file():
-    return os.path.join(_data_dir, 'router_metrics.json')
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), 'router_metrics.json')
+    except LookupError:
+        return os.path.join(_data_dir, 'router_metrics.json')
 
 
 class RouterMetrics:

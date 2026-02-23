@@ -26,7 +26,11 @@ def set_data_dir(data_dir: str):
 
 def _get_paths():
     """Return (structured_file, council_file, accuracy_file) for active commodity."""
-    base = _data_dir or os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"))
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        base = get_engine_data_dir()
+    except LookupError:
+        base = _data_dir or os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"))
     return (
         os.path.join(base, "agent_accuracy_structured.csv"),
         os.path.join(base, "council_history.csv"),

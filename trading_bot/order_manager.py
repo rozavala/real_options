@@ -56,11 +56,22 @@ def set_capital_state_dir(data_dir: str):
     CAPITAL_STATE_FILE = Path(os.path.join(data_dir, "capital_state.json"))
     logger.info(f"OrderManager capital state dir set to: {data_dir}")
 
+
+def _get_capital_state_file() -> Path:
+    """Resolve capital state file via ContextVar (multi-engine) or module global (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return Path(os.path.join(get_engine_data_dir(), "capital_state.json"))
+    except LookupError:
+        return CAPITAL_STATE_FILE
+
+
 def _load_committed_capital() -> float:
     """Load persisted committed capital or 0.0 if none."""
-    if CAPITAL_STATE_FILE.exists():
+    cap_file = _get_capital_state_file()
+    if cap_file.exists():
         try:
-            with open(CAPITAL_STATE_FILE, 'r') as f:
+            with open(cap_file, 'r') as f:
                 data = json.load(f)
                 return data.get('committed_capital', 0.0)
         except Exception as e:
@@ -69,14 +80,15 @@ def _load_committed_capital() -> float:
 
 def _save_committed_capital(amount: float):
     """Persist committed capital to disk (atomic write)."""
-    CAPITAL_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = str(CAPITAL_STATE_FILE) + ".tmp"
+    cap_file = _get_capital_state_file()
+    cap_file.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = str(cap_file) + ".tmp"
     with open(temp_path, 'w') as f:
         json.dump({
             'committed_capital': amount,
             'last_updated': datetime.now(timezone.utc).isoformat()
         }, f)
-    os.replace(temp_path, str(CAPITAL_STATE_FILE))
+    os.replace(temp_path, str(cap_file))
 
 async def _reconcile_working_orders(ib: IB, config: dict) -> float:
     """

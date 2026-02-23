@@ -66,6 +66,15 @@ def set_data_dir(data_dir: str):
     logger.info(f"PromptTrace data_dir set to: {data_dir}")
 
 
+def _get_prompt_trace_path() -> str:
+    """Resolve prompt trace path via ContextVar (multi-engine) or module global (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), 'prompt_trace.csv')
+    except LookupError:
+        return PROMPT_TRACE_PATH
+
+
 # Canonical schema — order matters for CSV columns
 SCHEMA_COLUMNS = [
     'timestamp',
@@ -163,10 +172,11 @@ class PromptTraceCollector:
             return 0
 
         try:
-            file_exists = os.path.exists(PROMPT_TRACE_PATH)
-            os.makedirs(os.path.dirname(PROMPT_TRACE_PATH), exist_ok=True)
+            trace_path = _get_prompt_trace_path()
+            file_exists = os.path.exists(trace_path)
+            os.makedirs(os.path.dirname(trace_path) or '.', exist_ok=True)
 
-            with open(PROMPT_TRACE_PATH, 'a', newline='') as f:
+            with open(trace_path, 'a', newline='') as f:
                 writer = csv.DictWriter(f, fieldnames=SCHEMA_COLUMNS)
                 if not file_exists:
                     writer.writeheader()
@@ -174,7 +184,7 @@ class PromptTraceCollector:
                     row = asdict(rec)
                     writer.writerow({k: row.get(k, '') for k in SCHEMA_COLUMNS})
 
-            logger.info(f"Flushed {len(records)} prompt traces to {PROMPT_TRACE_PATH}")
+            logger.info(f"Flushed {len(records)} prompt traces to {trace_path}")
             return len(records)
 
         except Exception as e:
@@ -187,11 +197,12 @@ def get_prompt_trace_df(commodity: Optional[str] = None) -> pd.DataFrame:
     Read prompt_trace.csv into a DataFrame with parsed timestamps.
     Returns empty DataFrame if file doesn't exist.
     """
-    if not os.path.exists(PROMPT_TRACE_PATH):
+    trace_path = _get_prompt_trace_path()
+    if not os.path.exists(trace_path):
         return pd.DataFrame(columns=SCHEMA_COLUMNS)
 
     try:
-        df = pd.read_csv(PROMPT_TRACE_PATH)
+        df = pd.read_csv(trace_path)
         # Forward-compat: add missing columns with appropriate defaults
         for col in SCHEMA_COLUMNS:
             if col not in df.columns:

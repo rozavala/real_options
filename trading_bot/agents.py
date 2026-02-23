@@ -77,6 +77,15 @@ def set_data_dir(data_dir: str):
     provenance_logger.addHandler(new_fh)
     logger.info(f"Agents provenance log set to: {new_path}")
 
+
+def _get_provenance_data_dir() -> str:
+    """Resolve provenance data dir via ContextVar (multi-engine) or module global (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return get_engine_data_dir()
+    except LookupError:
+        return _provenance_data_dir
+
 @dataclass
 class GroundedDataPacket:
     """Container for grounded research data with provenance."""

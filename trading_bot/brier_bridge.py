@@ -255,6 +255,13 @@ def set_data_dir(data_dir: str):
 def _get_enhanced_tracker(data_dir: str = None):
     """Lazy singleton for EnhancedBrierTracker. Recreates if data_dir changes."""
     global _enhanced_tracker, _enhanced_tracker_data_dir
+    # ContextVar > explicit arg > module global
+    if data_dir is None:
+        try:
+            from trading_bot.data_dir_context import get_engine_data_dir
+            data_dir = get_engine_data_dir()
+        except LookupError:
+            pass
     effective_dir = data_dir or _enhanced_tracker_data_dir
     if _enhanced_tracker is not None and effective_dir == _enhanced_tracker_data_dir:
         return _enhanced_tracker
