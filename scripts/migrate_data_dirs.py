@@ -286,9 +286,9 @@ def main():
 
     print(f"\n{'Would process' if args.dry_run else 'Processed'}: {moved} items moved, {cleaned} stale CC files removed")
     if not args.dry_run:
-        print("\nMigration complete. You can now start the orchestrator with:")
-        print("  python orchestrator.py --commodity KC")
-        print("  python orchestrator.py --commodity CC")
+        print("\nMigration complete. Start the orchestrator with:")
+        print("  python orchestrator.py              # MasterOrchestrator (default, all commodities)")
+        print("  python orchestrator.py --commodity KC  # Single-engine legacy mode")
 
 
 if __name__ == '__main__':
