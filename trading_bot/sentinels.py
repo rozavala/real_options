@@ -16,6 +16,7 @@ import pytz
 import aiohttp
 import json
 import re
+from urllib.parse import quote_plus
 from functools import wraps
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager
@@ -833,13 +834,13 @@ class LogisticsSentinel(Sentinel):
             return config_urls
 
         base = "https://news.google.com/rss/search?q="
-        commodity_name = self.profile.name.lower().replace(' ', '+')
+        commodity_name = quote_plus(self.profile.name.lower())
 
         urls = []
 
         # Monitor specific logistics hubs defined in profile
         for hub in self.profile.logistics_hubs:
-            hub_name = hub.name.replace(' ', '+')
+            hub_name = quote_plus(hub.name)
             urls.append(f"{base}{hub_name}+logistics+{commodity_name}")
 
         # General supply chain search
@@ -1017,14 +1018,14 @@ class NewsSentinel(Sentinel):
             return config_urls
 
         base = "https://news.google.com/rss/search?q="
-        commodity_name = self.profile.name.lower().replace(' ', '+')
+        commodity_name = quote_plus(self.profile.name.lower())
         keywords = self.profile.news_keywords or [commodity_name]
 
         urls = []
 
         # Core market feeds (site-restricted for quality)
         for source in ['reuters.com', 'bloomberg.com']:
-            primary_kw = keywords[0].replace(' ', '+')
+            primary_kw = quote_plus(keywords[0])
             urls.append(f"{base}{primary_kw}+markets+site:{source}")
 
         # Region-specific feeds (top 2 producing regions)
@@ -1032,11 +1033,11 @@ class NewsSentinel(Sentinel):
         top_regions = sorted_regions[:2]
 
         for region in top_regions:
-            region_name = region.name.replace(' ', '+')
+            region_name = quote_plus(region.name)
             urls.append(f"{base}{region_name}+{commodity_name}")
 
         # General sentiment feed
-        primary_kw = keywords[0].replace(' ', '+')
+        primary_kw = quote_plus(keywords[0])
         urls.append(f"{base}{primary_kw}+futures+market+sentiment")
 
         if not urls:
@@ -2466,7 +2467,7 @@ class FundamentalRegimeSentinel(Sentinel):
 
     async def check_news_sentiment(self) -> str:
         try:
-            commodity_q = self.profile.name.lower().replace(' ', '+')
+            commodity_q = quote_plus(self.profile.name.lower())
             surplus_url = f"https://news.google.com/rss/search?q={commodity_q}+market+surplus"
             deficit_url = f"https://news.google.com/rss/search?q={commodity_q}+market+deficit"
 
