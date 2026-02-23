@@ -16940,3 +16940,148 @@ VERDICT: NO—do not proceed with a naked/linear bearish expression into an over
 2026-02-23 15:53:10,492 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 41% of average (Sev: 5)
 2026-02-23 15:53:10,498 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
 2026-02-23 15:57:11,322 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=7725, market_open=True, trading_day=True
+2026-02-23 16:02:14,504 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=7730, market_open=True, trading_day=True
+2026-02-23 16:03:46,552 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=6)
+2026-02-23 16:03:46,574 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
+2026-02-23 16:03:46,575 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by XSentimentSentinel: UNUSUAL X ACTIVITY SPIKE (22 posts) (Cycle: KC-8c3e2107)
+2026-02-23 16:03:46,808 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-23 16:03:46,821 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-23 16:03:46,926 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-23 16:03:46,926 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-23 16:03:46,926 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-23 16:03:46,931 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-23 16:03:46,947 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-23 16:03:47,311 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 229 created from CSV, 0 resolved from council_history
+2026-02-23 16:03:47,313 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-23 16:03:47,314 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-23 16:03:47,314 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-23 16:03:47,314 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-23 16:03:47,314 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-23 16:03:47,314 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-23 16:03:47,317 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-23 16:03:47,317 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-23 16:03:47,386 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-23 16:03:47,387 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-23 16:03:47,387 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-23 16:03:51,503 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-23 16:03:51,992 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=279.85, sma_200=331.277, regime=RANGE_BOUND, vol_5d=0.0248
+2026-02-23 16:03:51,992 - Orchestrator - INFO - Emergency market context: price=279.85, regime=RANGE_BOUND
+2026-02-23 16:03:51,993 - trading_bot.agents - INFO - Running Specialized Cycle triggered by XSentimentSentinel...
+2026-02-23 16:03:51,994 - trading_bot.agents - INFO - Routing to sentiment (Reason: Matched: XSentimentSentinel/spike)
+2026-02-23 16:03:51,994 - trading_bot.agents - INFO - Waking up sentiment...
+2026-02-23 16:03:52,510 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-23 16:03:52,511 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-23 16:04:19,661 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-23 16:04:19,664 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.5 \u00d7 reliability=1.0 = 1.36", "macro": "domain=1.5 \u00d7 reliability=0.7 = 0.91", "geopolitical": "domain=1.5 \u00d7 reliability=0.7 = 0.92", "supply_chain": "domain=1.5 \u00d7 reliability=1.0 = 1.35", "inventory": "domain=1.5 \u00d7 reliability=0.8 = 1.13", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.13", "technical": "domain=2.2 \u00d7 reliability=0.9 = 1.97", "volatility": "domain=1.0 \u00d7 reliability=0.7 = 0.73"}
+2026-02-23 16:04:19,664 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.388, dominant=technical)
+2026-02-23 16:04:19,664 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.96,
+    "staleness_weight": 0.94,
+    "age_hours": 1.6,
+    "final_weight": 1.36,
+    "contribution": -1.084
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.65,
+    "staleness_weight": 0.94,
+    "age_hours": 1.6,
+    "final_weight": 0.91,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.65,
+    "staleness_weight": 0.94,
+    "age_hours": 1.6,
+    "final_weight": 0.92,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.96,
+    "staleness_weight": 0.94,
+    "age_hours": 1.6,
+    "final_weight": 1.35,
+    "contribution": 1.078
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.81,
+    "staleness_weight": 0.94,
+    "age_hours": 1.6,
+    "final_weight": 1.13,
+    "contribution": -0.908
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.75,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.13,
+    "contribution": -0.9
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.93,
+    "staleness_weight": 0.94,
+    "age_hours": 1.6,
+    "final_weight": 1.97,
+    "contribution": -1.283
+  },
+  {
+    "agent": "volatility",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.74,
+    "staleness_weight": 0.94,
+    "age_hours": 1.6,
+    "final_weight": 0.73,
+    "contribution": -0.585
+  }
+]
+2026-02-23 16:05:20,463 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil supply outlook strengthening (record/bumper crop proj
+2026-02-23 16:05:54,398 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED WITH BEARISH TRADE. This setup is a textbook 'right thesis, wrong timing' trap. The fundamental bear case (record Brazil crop) is valid for Q3 2026+ but requires 4-6 months to materialize. Meanwhile, three ACUTE risks create violent upside exposure: (1) Physical tightness evidenced by backwardation, export collapse, and port congestion is unresolved and can squeeze March/May contracts before new-crop arrival; (2) Weather risk is asymmetric—further rain is already priced, but any dryness is NOT; (3) Positioning is dangerously one-sided (prices at 15-month lows, RSI oversold, expensive puts, crowded analyst consensus). The 'dominant agent: technical' weighting is a red flag—when fundamentals (bear) conflict with structure (squeeze risk), structure wins in the short term. RECOMMENDED ALTERNATIVE: Wait for either (a) a squeeze to $3.40-3.60 to re-enter shorts with better risk/reward, or (b) confirmation that April weather remains benign and Santos congestion clears (2-3 weeks). If forced to trade now, a LONG straddle (buy volatility) better captures the bimodal risk than a naked short. The market is NOT in a safe trending bear—it's in a coiled spring with 55% vessel delays and farmers sitting on unsold inventory.
+2026-02-23 16:05:54,399 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-23 16:05:54,400 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-23 16:05:54,401 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-23 16:05:54,401 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-23 16:05:54,403 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-23 16:05:54,408 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-23 16:05:54,566 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (VOLATILITY)
+2026-02-23 16:05:54,569 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-23 16:07:47,429 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=7735, market_open=True, trading_day=True
+2026-02-23 16:08:47,872 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 41% of average (Sev: 5)
+2026-02-23 16:08:47,877 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-23 16:12:48,683 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=7740, market_open=True, trading_day=True
+2026-02-23 16:17:49,962 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=7745, market_open=True, trading_day=True
+2026-02-23 16:19:50,745 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 42% of average (Sev: 5)
+2026-02-23 16:19:50,749 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-23 16:22:51,243 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=7750, market_open=True, trading_day=True
+2026-02-23 16:27:52,535 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=7755, market_open=True, trading_day=True
+2026-02-23 16:27:52,758 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 45% of average (Sev: 5)
+2026-02-23 16:27:52,763 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
