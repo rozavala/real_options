@@ -1,0 +1,171 @@
+{
+    "name": "Natural Gas (Henry Hub)",
+    "ticker": "NG",
+    "commodity_type": "energy",
+    "contract": {
+        "exchange": "NYMEX",
+        "symbol": "NG",
+        "contract_months": ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"],
+        "tick_size": 0.001,
+        "tick_value": 10.0,
+        "contract_size": 10000,
+        "unit": "$/mmBtu",
+        "trading_hours_et": "09:00-14:30",
+        "spot_month_limit": 0,
+        "all_months_limit": 0
+    },
+    "primary_regions": [
+        {
+            "name": "Permian Basin",
+            "country": "United States",
+            "latitude": 31.9,
+            "longitude": -102.1,
+            "weight": 0.30,
+            "frost_threshold_celsius": -5.0,
+            "drought_soil_moisture_pct": 5.0,
+            "flood_precip_mm_24h": 150.0,
+            "harvest_months": [],
+            "planting_months": []
+        },
+        {
+            "name": "Appalachian Basin (Marcellus/Utica)",
+            "country": "United States",
+            "latitude": 40.5,
+            "longitude": -79.5,
+            "weight": 0.35,
+            "frost_threshold_celsius": -15.0,
+            "drought_soil_moisture_pct": 5.0,
+            "flood_precip_mm_24h": 100.0,
+            "harvest_months": [],
+            "planting_months": []
+        },
+        {
+            "name": "Haynesville Shale",
+            "country": "United States",
+            "latitude": 32.5,
+            "longitude": -93.8,
+            "weight": 0.20,
+            "frost_threshold_celsius": -5.0,
+            "drought_soil_moisture_pct": 5.0,
+            "flood_precip_mm_24h": 150.0,
+            "harvest_months": [],
+            "planting_months": []
+        },
+        {
+            "name": "Gulf Coast LNG Export Zone",
+            "country": "United States",
+            "latitude": 29.7,
+            "longitude": -95.0,
+            "weight": 0.15,
+            "frost_threshold_celsius": -2.0,
+            "drought_soil_moisture_pct": 5.0,
+            "flood_precip_mm_24h": 200.0,
+            "harvest_months": [],
+            "planting_months": []
+        }
+    ],
+    "logistics_hubs": [
+        {
+            "name": "Henry Hub (Erath, LA)",
+            "hub_type": "pipeline_hub",
+            "country": "United States",
+            "latitude": 30.0,
+            "longitude": -92.1,
+            "congestion_vessel_threshold": 0,
+            "dwell_time_alert_days": 0
+        },
+        {
+            "name": "Sabine Pass LNG Terminal",
+            "hub_type": "lng_terminal",
+            "country": "United States",
+            "latitude": 29.7,
+            "longitude": -93.9,
+            "congestion_vessel_threshold": 15,
+            "dwell_time_alert_days": 3
+        },
+        {
+            "name": "Freeport LNG Terminal",
+            "hub_type": "lng_terminal",
+            "country": "United States",
+            "latitude": 28.9,
+            "longitude": -95.3,
+            "congestion_vessel_threshold": 10,
+            "dwell_time_alert_days": 3
+        }
+    ],
+    "inventory_sources": [
+        "EIA Weekly Natural Gas Storage Report",
+        "EIA Natural Gas Monthly",
+        "Baker Hughes Rig Count",
+        "Platts Gas Daily"
+    ],
+    "news_keywords": [
+        "natural gas", "henry hub", "LNG", "gas storage", "EIA storage",
+        "heating degree days", "cooling degree days", "polar vortex",
+        "pipeline capacity", "gas production", "shale gas", "marcellus",
+        "permian gas", "haynesville", "gas exports", "LNG exports",
+        "gas demand", "power generation gas", "gas rig count"
+    ],
+    "agronomy_context": "Not applicable for energy commodities. Natural gas production is driven by drilling activity (rig counts), well completion rates, and associated gas from oil production (especially Permian Basin). Key supply metrics: dry gas production (~105 Bcf/d US), storage levels vs 5-year average, and LNG export feed gas.",
+    "macro_context": "Natural gas prices are driven by weather (heating/cooling demand), LNG export capacity, pipeline constraints, coal-to-gas switching economics, and industrial demand. USD strength has limited direct impact since NG is domestically priced. Key macro indicators: GDP growth (industrial demand), electricity generation mix, and carbon policy. Interest rates affect drilling economics via E&P capex budgets.",
+    "supply_chain_context": "Henry Hub is the primary US pricing point. Key pipelines: Transco, Rockies Express, Gulf Coast laterals. LNG export terminals (Sabine Pass, Freeport, Cameron, Corpus Christi) create export demand floor. Storage operates on injection (Apr-Oct) and withdrawal (Nov-Mar) cycles. Underground storage capacity ~4.7 Tcf with ~3.5 Tcf typical peak. Freeze-offs in producing regions can sharply curtail supply during extreme cold.",
+    "social_accounts": [
+        "EIAgov", "PlattsGas", "RBNEnergy", "NGIntelligence"
+    ],
+    "sentiment_search_queries": [
+        "natural gas price", "henry hub", "LNG shipping", "gas storage report",
+        "heating degree days forecast", "polar vortex natural gas"
+    ],
+    "legitimate_data_sources": [
+        "eia.gov", "cmegroup.com", "platts.com", "naturalgasintel.com",
+        "rbnenergy.com", "weather.gov"
+    ],
+    "weather_apis": ["open-meteo"],
+    "volatility_high_iv_rank": 0.65,
+    "volatility_low_iv_rank": 0.25,
+    "price_move_alert_pct": 3.0,
+    "straddle_risk_threshold": 8000.0,
+    "fallback_iv": 0.55,
+    "risk_free_rate": 0.04,
+    "default_starting_capital": 50000.0,
+    "min_dte": 14,
+    "max_dte": 180,
+    "stop_parse_range": [0.5, 50.0],
+    "typical_price_range": [1.0, 20.0],
+    "yfinance_ticker": "NG=F",
+    "concentration_proxies": ["NG", "CL", "UNG", "XOP"],
+    "concentration_label": "US Energy",
+    "cross_commodity_basket": {
+        "crude_oil": "CL=F",
+        "heating_oil": "HO=F",
+        "rbob_gasoline": "RB=F",
+        "coal": "MTF=F",
+        "carbon": "GCL=F"
+    },
+    "tms_decay_rates": {
+        "weather": 0.25,
+        "logistics": 0.08,
+        "news": 0.10,
+        "sentiment": 0.10,
+        "price": 0.25,
+        "microstructure": 0.30,
+        "technical": 0.05,
+        "macro": 0.02,
+        "geopolitical": 0.03,
+        "inventory": 0.15,
+        "supply_chain": 0.05,
+        "research": 0.005,
+        "trade_journal": 0.01,
+        "default": 0.05
+    },
+    "research_prompts": {
+        "agronomist": "Analyze current US natural gas production trends, rig counts, well completion rates, and associated gas output from oil basins. Focus on supply-side factors affecting Henry Hub pricing.",
+        "macro": "Evaluate macroeconomic factors affecting natural gas demand: industrial activity, power generation fuel switching, LNG export demand, and seasonal weather patterns (heating/cooling degree days).",
+        "fundamentalist": "Review EIA storage data vs 5-year average, production vs consumption balance, LNG export feed gas volumes, and pipeline capacity utilization for supply/demand assessment.",
+        "technical": "Analyze NG futures price action, volume patterns, open interest changes, seasonal spread behavior, and key technical levels on the front-month and calendar spreads.",
+        "volatility": "Assess natural gas implied volatility levels, term structure (contango/backwardation), seasonal volatility patterns, and weather-driven vol spikes. NG is historically one of the most volatile commodity markets.",
+        "geopolitical": "Evaluate geopolitical factors: US LNG export policy, European gas supply dynamics (TTF spread), pipeline politics, sanctions on competing suppliers, and energy security concerns.",
+        "sentiment": "Gauge market sentiment from trader positioning (COT data), gas-focused social media, industry newsletters (RBN, NGI), and options market skew.",
+        "supply_chain": "Monitor pipeline maintenance schedules, LNG terminal utilization, storage injection/withdrawal rates, and regional basis differentials (Henry Hub vs other hubs)."
+    }
+}

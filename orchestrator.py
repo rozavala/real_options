@@ -4533,7 +4533,11 @@ def _build_session_schedule(config: dict) -> list:
         _add_task(sid, dt.time(), 'guarded_generate_orders', slbl)
 
     # 3. Intra-session tasks: open_time + (session_minutes * session_pct)
+    ticker = get_active_ticker(config)
     for entry in tmpl.get('intra_session_tasks', []):
+        cf = entry.get('commodity_filter', '')
+        if cf and cf != ticker:
+            continue
         dt = open_dt + timedelta(minutes=session_minutes * entry['session_pct'])
         _add_task(entry['id'], dt.time(), entry['function'], entry.get('label', entry['id']))
 

@@ -794,6 +794,15 @@ def _load_profile_from_json(path: str) -> CommodityProfile:
             'supply_chain': 0.05, 'research': 0.005, 'trade_journal': 0.01,
             'default': 0.05
         }),
+        # Risk/pricing fields (must match dataclass — JSON profiles need these)
+        straddle_risk_threshold=data.get('straddle_risk_threshold', 10000.0),
+        fallback_iv=data.get('fallback_iv', 0.35),
+        risk_free_rate=data.get('risk_free_rate', 0.04),
+        default_starting_capital=data.get('default_starting_capital', 50000.0),
+        min_dte=data.get('min_dte', 45),
+        max_dte=data.get('max_dte', 365),
+        stop_parse_range=data.get('stop_parse_range', [0.0, 9999.0]),
+        typical_price_range=data.get('typical_price_range', [0.0, 9999.0]),
         # Commodity-agnostic fields
         yfinance_ticker=data.get('yfinance_ticker', ''),
         research_prompts=data.get('research_prompts', {}),
