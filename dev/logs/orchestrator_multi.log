@@ -2230,3 +2230,64 @@ TimeoutError
 2026-02-23 14:59:28,520 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PROVEN (conf=0.9) | Catalyst: Converging evidence of a demand-led downturn alongside incre
 2026-02-23 14:59:55,177 - trading_bot.self_healing - WARNING - SELF-HEAL: 26 deferred triggers accumulated. Check process_deferred_triggers.
 2026-02-23 14:59:55,183 - trading_bot.self_healing - WARNING - SELF-HEAL: 19 deferred triggers accumulated. Check process_deferred_triggers.
+2026-02-23 15:00:11,217 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. This trade fails the pre-mortem test catastrophically on multiple independent vectors. The setup has all the hallmarks of a crowded, late-cycle, momentum-chasing short: price already -25% in 30 days, -70%+ from all-time highs, extreme bearish social sentiment (a contrarian warning at extremes), the dominant consensus agent is social sentiment rather than fundamentals, and multiple agents explicitly flagged exhaustion risk that the synthesis overrode. The confidence of 0.9 is not supported by the underlying agent confidence distribution (most agents are 0.65-0.80, with a moderate-confidence sentiment agent dominating). If you must trade this view, wait for a technical rebound toward $3,400-3,500 resistance to establish a short with better risk/reward, tighter stop-loss, and confirmation that the surplus narrative is accelerating rather than being revised downward. At current price levels, the asymmetry is unfavorable: upside squeeze risk of 15-20% vs. incremental downside of 5-8% to next support. RISK/REWARD IS NEGATIVE.
+2026-02-23 15:00:11,218 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-23 15:00:11,219 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=HIGH_VOLATILITY
+2026-02-23 15:00:11,219 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=HIGH_VOLATILITY
+2026-02-23 15:00:11,220 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-23 15:00:11,221 - root - INFO - Logged council decision for CCK6 (202605)
+2026-02-23 15:00:11,225 - trading_bot.decision_signals - INFO - Decision signal logged: CCK6 (202605) → NEUTRAL (DIRECTIONAL/NONE)
+2026-02-23 15:00:11,339 - trading_bot.enhanced_brier - INFO - Loaded 472 predictions from /home/rodrigo/real_options/data/CC/enhanced_brier.json
+2026-02-23 15:00:11,393 - trading_bot.enhanced_brier - WARNING - Council history backfill failed (non-fatal): Error tokenizing data. C error: Expected 38 fields in line 53, saw 39\n
+2026-02-23 15:00:11,421 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-02-23 15:00:11,428 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-23 15:01:14,754 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 15:02:12,607 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=365, market_open=True, trading_day=True
+2026-02-23 15:02:17,846 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=365, market_open=True, trading_day=True
+2026-02-23 15:02:47,228 - OrderManager - INFO - Order 17 (KC-P280.0+P275.0): Still at cap 2.70 for 25 minutes. Current market: Submitted
+2026-02-23 15:03:18,435 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 48% of average (Sev: 5)
+2026-02-23 15:03:18,440 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-23 15:04:14,794 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 39% of average (Sev: 6)
+2026-02-23 15:04:14,798 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-23 15:04:55,213 - trading_bot.self_healing - WARNING - SELF-HEAL: 26 deferred triggers accumulated. Check process_deferred_triggers.
+2026-02-23 15:04:55,220 - trading_bot.self_healing - WARNING - SELF-HEAL: 19 deferred triggers accumulated. Check process_deferred_triggers.
+2026-02-23 15:05:32,442 - OrderManager - WARNING - Monitoring loop timed out. Some orders may not be in a terminal state.
+2026-02-23 15:05:36,552 - OrderManager - WARNING - Order 17 (KC-P280.0+P275.0) TIMED OUT. Original Limit: 2.50. Final BAG: 2.13x2.83, V:0.0, L:N/A@15:05:33. Final LEGs: Leg KOK6 P2.8: 15.08x15.45, V:0.0, L:N/A, Leg KOK6 P2.75: 12.62x12.99, V:5.0, L:13.37
+2026-02-23 15:05:36,553 - OrderManager - INFO - Order 17 status update: PendingCancel
+2026-02-23 15:05:36,554 - OrderManager - WARNING - Cancelling orphaned catastrophe stop (order 18) for unfilled spread 17
+2026-02-23 15:05:36,679 - OrderManager - INFO - Order 17 status update: Cancelled
+2026-02-23 15:05:37,080 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-23 15:05:37,082 - OrderManager - INFO - --- Finished monitoring and cleanup. ---
+2026-02-23 15:05:37,082 - OrderManager - INFO - Order placement complete. Releasing event handlers.
+2026-02-23 15:05:37,082 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-02-23 15:05:40,083 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-02-23 15:05:40,084 - trading_bot.semantic_cache - INFO - CACHE INVALIDATED BY TICKER (KC): 1 entries removed
+2026-02-23 15:05:40,091 - Engine.KC - INFO - Next task 'signal_late' (Signal: Late) scheduled for 2026-02-23 16:39:00 UTC. Waiting for 1.56 hours.
+2026-02-23 15:06:03,271 - Orchestrator - INFO - 2026-02-23 15:06:03,270 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-23 15:06:15,232 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 15:07:15,095 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=370, market_open=True, trading_day=True
+2026-02-23 15:07:19,156 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=370, market_open=True, trading_day=True
+2026-02-23 15:09:55,243 - trading_bot.self_healing - WARNING - SELF-HEAL: 26 deferred triggers accumulated. Check process_deferred_triggers.
+2026-02-23 15:09:55,248 - trading_bot.self_healing - WARNING - SELF-HEAL: 19 deferred triggers accumulated. Check process_deferred_triggers.
+2026-02-23 15:11:15,660 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 15:12:16,804 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=375, market_open=True, trading_day=True
+2026-02-23 15:12:20,412 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=375, market_open=True, trading_day=True
+2026-02-23 15:14:55,276 - trading_bot.self_healing - WARNING - SELF-HEAL: 26 deferred triggers accumulated. Check process_deferred_triggers.
+2026-02-23 15:14:55,285 - trading_bot.self_healing - WARNING - SELF-HEAL: 19 deferred triggers accumulated. Check process_deferred_triggers.
+2026-02-23 15:16:03,279 - Orchestrator - INFO - 2026-02-23 15:16:03,279 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-23 15:16:15,943 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 15:17:18,745 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=380, market_open=True, trading_day=True
+2026-02-23 15:17:21,688 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=380, market_open=True, trading_day=True
+2026-02-23 15:19:55,305 - trading_bot.self_healing - WARNING - SELF-HEAL: 26 deferred triggers accumulated. Check process_deferred_triggers.
+2026-02-23 15:19:55,316 - trading_bot.self_healing - WARNING - SELF-HEAL: 19 deferred triggers accumulated. Check process_deferred_triggers.
+2026-02-23 15:21:16,473 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 15:22:21,011 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=385, market_open=True, trading_day=True
+2026-02-23 15:22:22,999 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=385, market_open=True, trading_day=True
+2026-02-23 15:24:55,343 - trading_bot.self_healing - WARNING - SELF-HEAL: 26 deferred triggers accumulated. Check process_deferred_triggers.
+2026-02-23 15:24:55,351 - trading_bot.self_healing - WARNING - SELF-HEAL: 19 deferred triggers accumulated. Check process_deferred_triggers.
+2026-02-23 15:26:03,362 - Orchestrator - INFO - 2026-02-23 15:26:03,362 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-23 15:26:17,064 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-23 15:27:22,724 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=390, market_open=True, trading_day=True
+2026-02-23 15:27:24,265 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=390, market_open=True, trading_day=True
+2026-02-23 15:29:55,389 - trading_bot.self_healing - WARNING - SELF-HEAL: 19 deferred triggers accumulated. Check process_deferred_triggers.
+2026-02-23 15:29:55,398 - trading_bot.self_healing - WARNING - SELF-HEAL: 26 deferred triggers accumulated. Check process_deferred_triggers.
