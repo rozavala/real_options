@@ -29,3 +29,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-24 - Semantic Containers for Scannability
 **Learning:** Using `st.success`, `st.error`, and `st.info` as wrappers for text content (not just alerts) provides immediate, color-coded context that improves scannability for sentiment-heavy data.
 **Action:** Apply this pattern when displaying categorical data with strong positive/negative connotations (like Bullish/Bearish sentiment) to reduce cognitive load.
+
+## 2026-02-23 - Standardizing Contextual Clarity across Dashboard Pages
+**Learning:** In multi-page trading dashboards, inconsistent tooltip usage and status indicators across different pages can create cognitive friction. Users expect a "unified language" for metrics (e.g., Net Liquidation, VaR) regardless of which page they are viewing.
+**Action:** Standardize tooltip descriptions for identical metrics across all pages. Use semantic containers (`st.success`, `st.warning`, `st.error`) instead of manual markdown styling for system statuses to provide a consistent visual hierarchy and better scannability.
