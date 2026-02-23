@@ -4,6 +4,14 @@ import pandas as pd
 from datetime import datetime
 import pytest
 import os
+import sys
+
+# Mock dependencies to avoid installing them
+sys.modules["matplotlib"] = MagicMock()
+sys.modules["matplotlib.pyplot"] = MagicMock()
+sys.modules["plotly"] = MagicMock()
+sys.modules["plotly.graph_objects"] = MagicMock()
+sys.modules["trading_bot.performance_graphs"] = MagicMock()
 
 # Mock objects to simulate ib_insync classes without needing the library
 class MockContract:

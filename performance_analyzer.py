@@ -15,6 +15,7 @@ from notifications import send_pushover_notification
 # Decision signals: lightweight summary of Council decisions
 from trading_bot.decision_signals import get_decision_signals_df
 from trading_bot.performance_graphs import generate_performance_charts
+from trading_bot.timestamps import parse_ts_column
 from config_loader import load_config
 
 logger = logging.getLogger("PerformanceAnalyzer")
@@ -40,7 +41,10 @@ def _load_archive_file(filepath: str, mtime: float) -> pd.DataFrame:
     Cached loader for archive files.
     The mtime argument ensures that if the file changes, we reload it.
     """
-    return pd.read_csv(filepath)
+    df = pd.read_csv(filepath)
+    if 'timestamp' in df.columns:
+        df['timestamp'] = parse_ts_column(df['timestamp'])
+    return df
 
 
 def get_trade_ledger_df(data_dir: str = None):
@@ -58,7 +62,10 @@ def get_trade_ledger_df(data_dir: str = None):
 
     if os.path.exists(ledger_path):
         logger.info(f"Loading main trade ledger: {os.path.basename(ledger_path)}")
-        dataframes.append(pd.read_csv(ledger_path))
+        main_df = pd.read_csv(ledger_path)
+        if 'timestamp' in main_df.columns:
+            main_df['timestamp'] = parse_ts_column(main_df['timestamp'])
+        dataframes.append(main_df)
     else:
         logger.debug("Main trade_ledger.csv not found. This is normal for new installations.")
 
@@ -91,7 +98,7 @@ def get_trade_ledger_df(data_dir: str = None):
         return pd.DataFrame(columns=['timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity', 'reason'])
 
     full_ledger = pd.concat(dataframes, ignore_index=True)
-    full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
+    # Timestamp parsing is now done during loading/caching, no need to re-parse the full concatenated DF
 
     # Coerce P&L column to numeric, turning any non-numeric values into NaN
     full_ledger['total_value_usd'] = pd.to_numeric(full_ledger['total_value_usd'], errors='coerce')
