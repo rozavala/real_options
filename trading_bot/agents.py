@@ -412,22 +412,25 @@ class TradingCouncil:
         # Check 3: Hallucination flag — numbers not in grounded data
         # v5.2 FIX: Context-aware thresholds and price-level whitelisting
         # v8.0 FIX: Strip commas before extraction so "3,040" → "3040" (not "040")
+        # v8.1 FIX: Extract whole floats (not decimal fragments) so "6481.605" → "6481.605" not "6481"+"605"
         import re as re_mod
         _strip_commas = lambda t: re_mod.sub(r'(\d),(\d)', r'\1\2', t)
-        output_numbers = set(re_mod.findall(r'\b\d{3,}\b', _strip_commas(analysis)))
-        source_numbers = set(re_mod.findall(r'\b\d{3,}\b', _strip_commas(grounded_data)))
+        _number_pat = r'\b\d{3,}(?:\.\d+)?\b'  # 3+ digit integers, optionally with decimal part
+        output_numbers = set(re_mod.findall(_number_pat, _strip_commas(analysis)))
+        source_numbers = set(re_mod.findall(_number_pat, _strip_commas(grounded_data)))
         fabricated = output_numbers - source_numbers
 
         # Whitelist price levels near the underlying price for technical/volatility/macro agents
         # These agents CALCULATE support/resistance levels that won't appear in input data.
         if agent_name in ('technical', 'volatility', 'macro'):
             try:
-                price_numbers = [float(n) for n in source_numbers if 50 < float(n) < 1000]
+                price_numbers = [float(n) for n in source_numbers if 50 < float(n) < 100000]
                 if price_numbers:
-                    ref_price = max(price_numbers)  # Use highest as reference
+                    # Whitelist if within 30% of ANY source price (not just max).
+                    # Handles cases where current price diverges from SMA (e.g., CC: 3146 vs SMA 6481).
                     fabricated = {
                         n for n in fabricated
-                        if not (ref_price * 0.7 < float(n) < ref_price * 1.3)
+                        if not any(ref * 0.7 < float(n) < ref * 1.3 for ref in price_numbers)
                     }
             except (ValueError, ZeroDivisionError):
                 pass  # If parsing fails, keep original check
