@@ -541,20 +541,47 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
                 logging.warning(f"Could not find detailed contract for {contract.conId}. Ledger may be incomplete.")
 
         execution = fill.execution
-        # Resolve multiplier: prefer IBKR contract data, fallback to profile
-        _fallback_mult = 37500.0  # ultimate fallback
+
+        # --- Derive commodity from fill contract, not engine config ---
+        _fill_symbol = ''
         try:
-            from config.commodity_profiles import get_commodity_profile
-            _fb_profile = get_commodity_profile(get_active_ticker(config) if config else 'KC')
-            _fallback_mult = float(_fb_profile.contract.contract_size)
+            _fill_symbol = getattr(contract, 'symbol', '') or ''
         except Exception:
             pass
+        if not _fill_symbol:
+            # Fallback: parse localSymbol (e.g., "KCH6 C3.5" → "KC")
+            import re as _re
+            _ls = getattr(contract, 'localSymbol', '') or ''
+            _m = _re.match(r'^([A-Z]{2,4})', _ls)
+            _fill_symbol = _m.group(1) if _m else ''
+        if not _fill_symbol:
+            _fill_symbol = get_active_ticker(config) if config else 'KC'
+
+        # Look up profile once — reuse for multiplier, divisor, and strike normalization
+        _fill_profile = None
+        try:
+            from config.commodity_profiles import get_commodity_profile
+            _fill_profile = get_commodity_profile(_fill_symbol)
+        except Exception:
+            pass
+
+        # Resolve multiplier: prefer IBKR contract data, fallback to profile
+        _fallback_mult = float(_fill_profile.contract.contract_size) if _fill_profile else 37500.0
         try:
             multiplier = float(contract.multiplier) if contract.multiplier else _fallback_mult
         except (ValueError, TypeError):
             multiplier = _fallback_mult
 
-        total_value = (execution.price * execution.shares * multiplier) / 100.0
+        # Determine price divisor based on commodity unit
+        _price_divisor = 1.0
+        _is_cents_based = False
+        if _fill_profile:
+            _unit = _fill_profile.contract.unit.lower()
+            _is_cents_based = any(ind in _unit for ind in CENTS_INDICATORS)
+            if _is_cents_based:
+                _price_divisor = 100.0
+
+        total_value = (execution.price * execution.shares * multiplier) / _price_divisor
         action = 'BUY' if execution.side == 'BOT' else 'SELL'
         if action == 'BUY':
             total_value *= -1
@@ -566,17 +593,7 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
         try:
             if strike_value != 'N/A':
                 strike_value = float(strike_value)
-
-            # Detect cents-based pricing from profile unit, fallback to multiplier heuristic
-            unit = ""
-            try:
-                from config.commodity_profiles import get_commodity_profile
-                profile = get_commodity_profile(get_active_ticker(config) if config else 'KC')
-                unit = profile.contract.unit.lower()
-            except Exception:
-                pass
-            is_cents_based = any(ind in unit for ind in CENTS_INDICATORS) if unit else False
-            if is_cents_based and isinstance(strike_value, (int, float)):
+            if _is_cents_based and isinstance(strike_value, (int, float)):
                 if 0 < strike_value < 100.0:
                     strike_value = round(strike_value * 100.0, 2)
                     logging.debug(
@@ -944,7 +961,7 @@ DEFAULT_OPTIONS_TICK_SIZE = 0.05
 COFFEE_OPTIONS_TICK_SIZE = DEFAULT_OPTIONS_TICK_SIZE  # Backward-compat alias
 
 
-def round_to_tick(price: float, tick_size: float = COFFEE_OPTIONS_TICK_SIZE, action: str = 'BUY') -> float:
+def round_to_tick(price: float, tick_size: float = None, action: str = 'BUY', config: dict = None) -> float:
     """
     Round a price to the nearest valid tick increment.
 
@@ -953,13 +970,27 @@ def round_to_tick(price: float, tick_size: float = COFFEE_OPTIONS_TICK_SIZE, act
 
     Args:
         price: The price to round
-        tick_size: Minimum price increment (default: 0.05 for KC options)
+        tick_size: Minimum price increment (default: profile-driven or 0.05)
         action: 'BUY' or 'SELL' to determine rounding direction
+        config: Optional config dict for profile-driven tick size lookup
 
     Returns:
         Price rounded to valid tick increment
     """
     import math
+
+    if tick_size is None:
+        tick_size = COFFEE_OPTIONS_TICK_SIZE
+        if config:
+            try:
+                from config.commodity_profiles import get_active_profile
+                profile = get_active_profile(config)
+                tick_size = profile.contract.tick_size
+            except Exception:
+                pass
+
+    # Domain safety: prevent division by zero
+    tick_size = max(tick_size, 1e-6)
 
     if action == 'BUY':
         # Round down for buys (don't overpay)
@@ -968,7 +999,9 @@ def round_to_tick(price: float, tick_size: float = COFFEE_OPTIONS_TICK_SIZE, act
         # Round up for sells (don't undersell)
         val = math.ceil(price / tick_size) * tick_size
 
-    return round(val, 2)
+    # Dynamic precision based on tick_size (e.g., 0.05→2, 0.001→3)
+    precision = max(0, -int(math.floor(math.log10(tick_size))))
+    return round(val, precision)
 
 def word_boundary_match(keyword: str, text: str) -> bool:
     """Check if keyword matches in text using word-boundary matching.

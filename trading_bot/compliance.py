@@ -4,13 +4,20 @@ import os
 import asyncio
 import re
 import time as _time
+from datetime import datetime
 from dataclasses import dataclass
 from typing import Optional
+import pytz
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole
 from trading_bot.utils import get_dollar_multiplier, get_active_ticker
 from config.commodity_profiles import get_active_profile
 
 logger = logging.getLogger(__name__)
+
+
+def _eia_now_et():
+    """Return current time in US/Eastern. Extracted for testability."""
+    return datetime.now(pytz.timezone('America/New_York'))
 
 # --- VaR startup grace period ---
 # Set explicitly by orchestrator main(), NOT at import time.
@@ -508,6 +515,29 @@ class ComplianceGuardian:
             elif qty > volume_15m * self.limits['max_volume_pct']:
                 reason = f"REJECTED - Article II: Order qty {qty} exceeds {self.limits['max_volume_pct']:.0%} of volume ({volume_15m:.0f})."
                 return False, reason
+
+        # === EIA Natural Gas Storage Report Blackout Window ===
+        # EIA releases weekly NG storage data Thursdays 10:30 AM ET.
+        # Block NG orders in the +/- 5 minute window to avoid slippage.
+        _order_commodity = (
+            order_context.get('commodity', '')
+            or order_context.get('symbol', '')
+            or getattr(self, '_ticker', '')
+            or ''
+        ).upper()
+        if _order_commodity == 'NG':
+            _now_et = _eia_now_et()
+            # Thursday = weekday 3
+            if _now_et.weekday() == 3:
+                _eia_start = _now_et.replace(hour=10, minute=25, second=0, microsecond=0)
+                _eia_end = _now_et.replace(hour=10, minute=35, second=0, microsecond=0)
+                if _eia_start <= _now_et <= _eia_end:
+                    reason = (
+                        f"REJECTED - EIA Blackout: NG order blocked during EIA storage report "
+                        f"window ({_eia_start.strftime('%H:%M')}-{_eia_end.strftime('%H:%M')} ET)"
+                    )
+                    logger.warning(reason)
+                    return False, reason
 
         # Prepare Review Packet
         # Calculate actual capital at risk for spreads (not fictitious futures notional)
