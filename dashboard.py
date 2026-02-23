@@ -48,6 +48,7 @@ config = get_config()
 _COMMODITY_META = {
     "KC": {"name": "Coffee", "emoji": "\u2615"},
     "CC": {"name": "Cocoa", "emoji": "\U0001f36b"},
+    "NG": {"name": "Natural Gas", "emoji": "\U0001f525"},
     "SB": {"name": "Sugar", "emoji": "\U0001f36c"},
 }
 

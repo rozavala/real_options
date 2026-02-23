@@ -15,6 +15,7 @@ import os
 _COMMODITY_LABELS = {
     "KC": "\u2615 KC (Coffee)",
     "CC": "\U0001f36b CC (Cocoa)",
+    "NG": "\U0001f525 NG (Natural Gas)",
     "SB": "\U0001f36c SB (Sugar)",
 }
 
