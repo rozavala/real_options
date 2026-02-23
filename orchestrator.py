@@ -287,6 +287,42 @@ def _get_inflight_tasks() -> set:
     return rt.inflight_tasks if rt else _INFLIGHT_TASKS
 
 
+def _get_startup_discovery_time() -> float:
+    """Get the startup topic discovery timestamp for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.startup_discovery_time if rt else _STARTUP_DISCOVERY_TIME
+
+
+def _set_startup_discovery_time(value: float):
+    """Set the startup topic discovery timestamp for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    if rt:
+        rt.startup_discovery_time = value
+    else:
+        global _STARTUP_DISCOVERY_TIME
+        _STARTUP_DISCOVERY_TIME = value
+
+
+def _get_brier_streak() -> int:
+    """Get the Brier zero-resolution streak counter for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.brier_zero_resolution_streak if rt else _brier_zero_resolution_streak
+
+
+def _set_brier_streak(value: int):
+    """Set the Brier zero-resolution streak counter for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    if rt:
+        rt.brier_zero_resolution_streak = value
+    else:
+        global _brier_zero_resolution_streak
+        _brier_zero_resolution_streak = value
+
+
 def _extract_agent_prediction(report) -> tuple:
     """
     Extract direction and confidence from an agent report.
@@ -3333,6 +3369,20 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                             await place_queued_orders(config, orders_list=emergency_order_list)
                             logger.info(f"Emergency Order Placed (Qty: {qty}).")
 
+                            # === Update portfolio-wide position count (Phase 3: SharedContext) ===
+                            try:
+                                from trading_bot.data_dir_context import get_engine_runtime
+                                _rt = get_engine_runtime()
+                                if _rt and _rt.shared and _rt.shared.portfolio_guard:
+                                    ticker = config.get('symbol', 'KC')
+                                    snap = await _rt.shared.portfolio_guard.get_snapshot()
+                                    current_count = snap.get('positions', {}).get(ticker, 0)
+                                    await _rt.shared.portfolio_guard.update_positions(
+                                        ticker, current_count + 1, 0
+                                    )
+                            except Exception as _prg_e:
+                                logger.debug(f"PRG position update failed (non-fatal): {_prg_e}")
+
                 # === BRIER SCORE RECORDING (Dual-Write: Legacy CSV + Enhanced JSON) ===
                 try:
                     from trading_bot.brier_bridge import record_agent_prediction
@@ -3558,7 +3608,7 @@ async def run_sentinels(config: dict):
     last_news = 0
     last_x_sentiment = 0
     last_prediction_market = 0
-    last_topic_discovery = _STARTUP_DISCOVERY_TIME  # 0 if startup scan failed/skipped → runs on first iteration
+    last_topic_discovery = _get_startup_discovery_time()  # 0 if startup scan failed/skipped → runs on first iteration
     last_macro_contagion = 0
 
     # Contract Cache
@@ -4190,7 +4240,6 @@ async def run_brier_reconciliation(config: dict):
             logger.warning(f"Enhanced Brier backfill failed (non-fatal): {backfill_e}")
 
         # v5.4: Stall detection — alert after 3 consecutive days with 0 resolutions
-        global _brier_zero_resolution_streak
         try:
             import json
             brier_path = os.path.join(config.get('data_dir', 'data'), 'enhanced_brier.json')
@@ -4208,21 +4257,22 @@ async def run_brier_reconciliation(config: dict):
                     )
                 )
                 if resolved_today == 0 and pending > 0:
-                    _brier_zero_resolution_streak += 1
+                    _set_brier_streak(_get_brier_streak() + 1)
+                    streak = _get_brier_streak()
                     logger.warning(
                         f"Brier stall: {pending} pending, 0 resolved today "
-                        f"(streak: {_brier_zero_resolution_streak} days)"
+                        f"(streak: {streak} days)"
                     )
-                    if _brier_zero_resolution_streak >= 3:
+                    if streak >= 3:
                         send_pushover_notification(
                             config.get('notifications', {}),
                             "⚠️ Brier Reconciliation Stall",
                             f"{pending} predictions pending, 0 resolved for "
-                            f"{_brier_zero_resolution_streak} consecutive days. "
+                            f"{streak} consecutive days. "
                             f"Check council_history backfill and schedule ordering."
                         )
                 else:
-                    _brier_zero_resolution_streak = 0
+                    _set_brier_streak(0)
                     if resolved_today > 0:
                         logger.info(f"Brier reconciliation: {resolved_today} predictions resolved today")
         except Exception as e:
@@ -4245,6 +4295,15 @@ async def guarded_generate_orders(config: dict, schedule_id: str = None):
     if _bg and _bg.is_budget_hit:
         logger.warning("Budget hit - skipping scheduled orders.")
         return
+
+    # === Portfolio-wide risk gate (Phase 3: SharedContext) ===
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    if rt and rt.shared and rt.shared.portfolio_guard:
+        allowed, reason = await rt.shared.portfolio_guard.can_open_position(rt.ticker, 0)
+        if not allowed:
+            logger.warning(f"Signal cycle BLOCKED by PortfolioRiskGuard: {reason}")
+            return
 
     # --- QUARANTINE HEALTH CHECK (Fix B2) ---
     # Ensure any agents past their quarantine cooldown are released
@@ -4792,7 +4851,10 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
 
 
 async def main(commodity_ticker: str = None):
-    """The main long-running orchestrator process."""
+    """The main long-running orchestrator process.
+
+    LEGACY: Single-engine mode. For multi-commodity, use MasterOrchestrator → CommodityEngine.
+    """
     # --- Multi-commodity path isolation ---
     ticker = commodity_ticker or os.environ.get("COMMODITY_TICKER", "KC")
     ticker = ticker.upper()
@@ -4825,9 +4887,8 @@ async def main(commodity_ticker: str = None):
     config['data_dir'] = data_dir
     config['symbol'] = ticker
     config.setdefault('commodity', {})['ticker'] = ticker
-    # Primary commodity owns account-wide equity tracking (NetLiquidation).
-    # Non-primary commodities skip equity snapshots to avoid duplicate data.
-    config['commodity']['is_primary'] = (ticker == 'KC')
+    # is_primary is set by CommodityEngine._build_config() in multi-engine mode.
+    # In legacy single-engine mode, it defaults to True (the guard default).
 
     # --- Set ContextVar for multi-engine data isolation ---
     from trading_bot.data_dir_context import set_engine_data_dir
@@ -5025,7 +5086,6 @@ async def main(commodity_ticker: str = None):
     # === STARTUP: Run Topic Discovery Agent immediately ===
     # Ensures PredictionMarketSentinel has topics before sentinel loop begins.
     # The sentinel loop will handle subsequent 12-hour refreshes.
-    global _STARTUP_DISCOVERY_TIME
     discovery_config = config.get('sentinels', {}).get('prediction_markets', {}).get('discovery_agent', {})
     if discovery_config.get('enabled', False):
         try:
@@ -5037,7 +5097,7 @@ async def main(commodity_ticker: str = None):
                 f"Startup TopicDiscovery: {result['metadata']['topics_discovered']} topics, "
                 f"{result['changes']['summary']}"
             )
-            _STARTUP_DISCOVERY_TIME = time_module.time()
+            _set_startup_discovery_time(time_module.time())
         except Exception as e:
             logger.warning(f"Startup TopicDiscovery failed (sentinel loop will retry): {e}")
 

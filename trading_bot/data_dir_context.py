@@ -87,6 +87,8 @@ class EngineRuntime:
     emergency_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     inflight_tasks: set = field(default_factory=set)
     startup_discovery_time: float = 0.0
+    shared: Any = None             # SharedContext reference (Phase 2)
+    brier_zero_resolution_streak: int = 0
 
 
 # No default — LookupError triggers fallback to module globals in legacy mode
