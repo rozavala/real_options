@@ -263,7 +263,6 @@ async def _post_close_service(shared: SharedContext, config: dict):
                 primary_config = config.copy()
                 primary_data_dir = os.path.join('data', shared.active_commodities[0])
                 primary_config['data_dir'] = primary_data_dir
-                primary_config.setdefault('commodity', {})['is_primary'] = True
                 await sync_equity_from_flex(primary_config)
                 await log_equity_snapshot(primary_config)
             except Exception as e:

@@ -37,10 +37,6 @@ async def sync_equity_from_flex(config: dict):
 
     Only runs for the primary commodity (KC) since NetLiquidation is account-wide.
     """
-    if not config.get('commodity', {}).get('is_primary', True):
-        logger.info("Skipping equity sync — non-primary commodity (account equity tracked by primary)")
-        return
-
     logger.info("--- Starting Equity Synchronization from Flex Query ---")
 
     # Get the ID from the config (loaded from .env), or fallback to os.getenv just in case
@@ -143,10 +139,6 @@ async def log_equity_snapshot(config: dict):
 
     Only runs for the primary commodity (KC) since NetLiquidation is account-wide.
     """
-    if not config.get('commodity', {}).get('is_primary', True):
-        logger.info("Skipping equity snapshot — non-primary commodity (account equity tracked by primary)")
-        return
-
     logger.info("--- Starting Equity Snapshot Logging ---")
 
     data_dir = config.get('data_dir', 'data')

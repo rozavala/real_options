@@ -546,6 +546,8 @@ if hasattr(st, "page_link"):
                       help="How do signals align with price? Visual forensics", width="stretch")
         st.page_link("pages/8_LLM_Monitor.py", label="LLM Monitor", icon="\U0001f4b0",
                       help="API costs, budget utilization, provider health, latency", width="stretch")
+        st.page_link("pages/9_Portfolio.py", label="Portfolio", icon="\U0001f4ca",
+                      help="Account-wide risk status, cross-commodity positions, engine health", width="stretch")
 else:
     st.markdown("""
     Use the sidebar to navigate between pages:
@@ -560,6 +562,7 @@ else:
     | **Signal Overlay** | How do signals align with price? Visual forensics |
     | **Brier Analysis** | Which agents need tuning? Accuracy, calibration, learning |
     | **LLM Monitor** | API costs, budget utilization, provider health, latency |
+    | **Portfolio** | Account-wide risk status, cross-commodity positions, engine health |
     """)
 
 active_str = ", ".join(

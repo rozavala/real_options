@@ -71,7 +71,9 @@ logger = logging.getLogger("Orchestrator")
 
 # --- Global Process Handle for the monitor ---
 monitor_process = None
+# DEPRECATED: Use _get_budget_guard() accessor instead. Kept for legacy single-engine mode.
 GLOBAL_BUDGET_GUARD = None
+# DEPRECATED: Use _get_drawdown_guard() accessor instead. Kept for legacy single-engine mode.
 GLOBAL_DRAWDOWN_GUARD = None
 _STARTUP_DISCOVERY_TIME = 0  # Set to time.time() after successful startup topic discovery
 
@@ -238,13 +240,13 @@ class TriggerDeduplicator:
             del self.cooldowns[source]
             self._save_state()
 
-# Global Deduplicator Instance — initialized in main() with commodity-specific state_file
+# DEPRECATED: Use _get_deduplicator() accessor instead. Kept for legacy single-engine mode.
 GLOBAL_DEDUPLICATOR = None
 
-# Concurrent Cycle Lock (Global)
+# DEPRECATED: Use _get_emergency_lock() accessor instead. Kept for legacy single-engine mode.
 EMERGENCY_LOCK = asyncio.Lock()
 
-# Track fire-and-forget tasks so they can be cancelled on shutdown
+# DEPRECATED: Use _get_inflight_tasks() accessor instead. Kept for legacy single-engine mode.
 _INFLIGHT_TASKS: set[asyncio.Task] = set()
 
 
@@ -1169,32 +1171,8 @@ async def check_and_recover_equity_data(config: dict) -> bool:
     data_dir = config.get('data_dir', 'data')
     equity_file = Path(os.path.join(data_dir, "daily_equity.csv"))
     max_staleness_hours = config.get('monitoring', {}).get('equity_max_staleness_hours', 24)
-    is_primary = config.get('commodity', {}).get('is_primary', True)
-
-    # Non-primary: equity is account-wide, copy from primary's data dir
-    if not is_primary:
-        primary_equity = Path("data/KC/daily_equity.csv")
-        if primary_equity.exists():
-            age_hours = (
-                datetime.now() - datetime.fromtimestamp(primary_equity.stat().st_mtime)
-            ).total_seconds() / 3600
-            if age_hours <= max_staleness_hours:
-                shutil.copy2(str(primary_equity), str(equity_file))
-                logger.info(
-                    f"Copied equity data from primary ({age_hours:.1f}h old)"
-                )
-                return True
-            else:
-                logger.warning(
-                    f"Primary equity data is stale ({age_hours:.1f}h) — "
-                    f"primary instance should refresh it"
-                )
-                # Still copy the stale data so we have something
-                shutil.copy2(str(primary_equity), str(equity_file))
-                return False
-        else:
-            logger.warning("Primary equity file not found")
-            return False
+    # In --multi mode, MasterOrchestrator's equity service handles equity data.
+    # In single-engine mode, this function runs the Flex query below.
 
     # Check staleness
     if equity_file.exists():
@@ -4863,8 +4841,15 @@ async def main(commodity_ticker: str = None):
     data_dir = os.path.join(base_dir, 'data', ticker)
     os.makedirs(data_dir, exist_ok=True)
 
-    # Per-commodity logging (must be first — before any logger.info calls)
-    setup_logging(log_file=f"logs/orchestrator_{ticker.lower()}.log")
+    # Per-commodity logging — only in single-engine mode.
+    # In --multi mode, setup_logging was already called once by the __main__ block.
+    from trading_bot.data_dir_context import get_engine_runtime
+    if get_engine_runtime() is not None:
+        # Multi-engine mode — logging already configured by __main__
+        logger.info(f"Engine [{ticker}] using unified multi-engine log")
+    else:
+        # Single-engine mode (no EngineRuntime set yet) — configure per-commodity log
+        setup_logging(log_file=f"logs/orchestrator_{ticker.lower()}.log")
 
     logger.info("=============================================")
     logger.info(f"=== Starting Trading Bot Orchestrator [{ticker}] ===")
@@ -5179,30 +5164,30 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Trading Bot Orchestrator")
     parser.add_argument(
-        '--commodity', type=str,
-        default=os.environ.get("COMMODITY_TICKER", "KC"),
-        help="Commodity ticker (e.g. KC, CC). Default: $COMMODITY_TICKER or KC"
+        '--commodity', type=str, default=None,
+        help="Run single commodity engine (e.g. --commodity KC). Overrides --multi."
     )
     parser.add_argument(
         '--sequential', action='store_true',
-        help="Run tasks sequentially (legacy mode)"
+        help="Run tasks sequentially (legacy diagnostic mode)"
     )
     parser.add_argument(
-        '--multi', action='store_true',
-        help="Multi-commodity mode: run all active commodities in a single process via MasterOrchestrator"
+        '--multi', action='store_true', default=True,
+        help="Run MasterOrchestrator with all active commodities (default)"
     )
     args = parser.parse_args()
 
+    legacy_mode = os.environ.get("LEGACY_MODE", "").lower() == "true"
+
     if args.sequential:
         asyncio.run(sequential_main())
-    elif args.multi:
-        from trading_bot.master_orchestrator import main as master_main
-        asyncio.run(master_main())
-    else:
+    elif args.commodity or legacy_mode:
+        # Single-commodity mode: explicit --commodity flag or LEGACY_MODE=true
+        ticker = args.commodity or os.environ.get("COMMODITY_TICKER", "KC")
         loop = asyncio.get_event_loop()
         main_task = None
         try:
-            main_task = loop.create_task(main(commodity_ticker=args.commodity))
+            main_task = loop.create_task(main(commodity_ticker=ticker))
             loop.run_until_complete(main_task)
         except (KeyboardInterrupt, SystemExit):
             logger.info("Orchestrator stopped by user.")
@@ -5211,3 +5196,8 @@ if __name__ == "__main__":
                 loop.run_until_complete(main_task)
         finally:
             loop.close()
+    else:
+        # Default: --multi (MasterOrchestrator)
+        setup_logging(log_file="logs/orchestrator_multi.log")
+        from trading_bot.master_orchestrator import main as master_main
+        asyncio.run(master_main())
