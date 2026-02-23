@@ -123,6 +123,9 @@ class IBConnectionPool:
 
     @classmethod
     async def get_connection(cls, purpose: str, config: dict) -> IB:
+        # Save unprefixed purpose for client ID lookup (DEV_CLIENT_ID_BASE keys
+        # are unprefixed: "drawdown_check", "sentinel", etc.)
+        purpose_base = purpose
         purpose = _resolve_purpose(purpose)
         if purpose not in cls._locks:
             cls._locks[purpose] = asyncio.Lock()
@@ -199,10 +202,10 @@ class IBConnectionPool:
             for id_attempt in range(max_id_retries):
                 ib = IB()
                 if _is_remote_gateway(config):
-                    base_id = DEV_CLIENT_ID_BASE.get(purpose, DEV_CLIENT_ID_DEFAULT)
+                    base_id = DEV_CLIENT_ID_BASE.get(purpose_base, DEV_CLIENT_ID_DEFAULT)
                     client_id = base_id + random.randint(0, DEV_CLIENT_ID_JITTER) + commodity_offset
                 else:
-                    base_id = cls.CLIENT_ID_BASE.get(purpose, 280)
+                    base_id = cls.CLIENT_ID_BASE.get(purpose_base, 280)
                     client_id = base_id + random.randint(0, 9) + commodity_offset
 
                 logger.info(f"Connecting IB ({purpose}) ID: {client_id}{remote_tag}...")

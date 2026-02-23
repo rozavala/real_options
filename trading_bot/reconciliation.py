@@ -69,7 +69,7 @@ async def reconcile_council_history(config: dict, ib: IB = None):
         return
 
     try:
-        df = pd.read_csv(file_path)
+        df = pd.read_csv(file_path, on_bad_lines='warn')
     except Exception as e:
         logger.error(f"Failed to read council_history.csv: {e}")
         return

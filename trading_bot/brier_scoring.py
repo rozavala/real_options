@@ -425,7 +425,7 @@ def resolve_pending_predictions(council_history_path: str = None, data_dir: str 
 
     try:
         predictions_df = pd.read_csv(structured_file)
-        council_df = pd.read_csv(council_history_path)
+        council_df = pd.read_csv(council_history_path, on_bad_lines='warn')
 
         if predictions_df.empty or council_df.empty:
             logger.info("Empty dataframes — nothing to resolve")

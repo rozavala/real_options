@@ -19,8 +19,9 @@ class TestSentinelLoop(unittest.IsolatedAsyncioTestCase):
     @patch('orchestrator.configure_market_data_type')
     @patch('orchestrator.GLOBAL_DEDUPLICATOR')
     @patch('orchestrator.get_active_futures', new_callable=AsyncMock)
+    @patch('orchestrator.process_deferred_triggers', new_callable=AsyncMock)
     async def test_run_sentinels_lazy_init_and_market_hours(
-        self, mock_get_futures, mock_dedup, mock_configure, mock_is_trading, mock_is_market_open,
+        self, mock_process_deferred, mock_get_futures, mock_dedup, mock_configure, mock_is_trading, mock_is_market_open,
         mock_micro_class, mock_macro_class, mock_prediction_class, mock_x_class, mock_news_class, mock_logistics_class,
         mock_weather_class, mock_price_class, mock_ib_pool
     ):

@@ -2217,7 +2217,7 @@ async def sentinel_effectiveness_check(config: dict):
                     import pandas as pd
                     ch_path = os.path.join(config.get('data_dir', 'data'), 'council_history.csv')
                     if os.path.exists(ch_path):
-                        ch_df = pd.read_csv(ch_path)
+                        ch_df = pd.read_csv(ch_path, on_bad_lines='warn')
                         if not ch_df.empty and 'timestamp' in ch_df.columns:
                             ch_df['timestamp'] = pd.to_datetime(ch_df['timestamp'], utc=True, errors='coerce')
                             today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
@@ -3594,6 +3594,13 @@ async def run_sentinels(config: dict):
     last_contract_refresh = 0
     CONTRACT_REFRESH_INTERVAL = 14400  # 4 hours
 
+    # Deferred trigger processing: one-shot flag
+    # The scheduled task runs at 3:31 AM ET but market opens at 4:15 AM ET,
+    # so the task always skips (is_market_open check fails). Process deferred
+    # triggers once on the first market-open transition in the sentinel loop.
+    _deferred_processed_today = False
+    _deferred_last_date = None
+
     # Outage Tracking (only relevant during market hours)
     last_successful_ib_time = None  # Will be set on first successful connection
     outage_notification_sent = False
@@ -3681,6 +3688,23 @@ async def run_sentinels(config: dict):
                                 logger.error(
                                     f"Safety net start_monitoring failed: {e}"
                                 )
+
+                        # === DEFERRED TRIGGER PROCESSING ===
+                        # Process deferred triggers once per day on first market-open
+                        # transition. The scheduled task at 03:31 ET fires before
+                        # market open (04:15 ET) and always skips.
+                        today = datetime.now().date()
+                        if not _deferred_processed_today or _deferred_last_date != today:
+                            _deferred_processed_today = True
+                            _deferred_last_date = today
+                            logger.info(
+                                "SENTINEL SAFETY NET: First market-open transition — "
+                                "processing deferred triggers"
+                            )
+                            try:
+                                await process_deferred_triggers(config)
+                            except Exception as e:
+                                logger.error(f"Deferred trigger processing failed: {e}")
 
                     except Exception as e:
                         # Log as WARNING during market hours (connection should be possible)

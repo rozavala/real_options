@@ -239,7 +239,7 @@ def _load_legacy_council_history(data_dir: str) -> pd.DataFrame:
         ]
         for legacy_file in legacy_files:
             try:
-                legacy_df = pd.read_csv(legacy_file)
+                legacy_df = pd.read_csv(legacy_file, on_bad_lines='warn')
                 if not legacy_df.empty:
                     legacy_dfs.append(legacy_df)
             except Exception as e:
@@ -268,7 +268,7 @@ def load_council_history(ticker: str = None):
 
         # Load main file
         if os.path.exists(council_path):
-            df = pd.read_csv(council_path)
+            df = pd.read_csv(council_path, on_bad_lines='warn')
             if not df.empty:
                 # OPTIMIZATION: Parse timestamps immediately for live data
                 if 'timestamp' in df.columns:
@@ -1992,7 +1992,7 @@ def get_current_market_regime() -> str:
         # Priority 1: Council history (most recent regime from actual decisions)
         council_path = _get_council_history_path()
         if os.path.exists(council_path):
-            df = pd.read_csv(council_path)
+            df = pd.read_csv(council_path, on_bad_lines='warn')
             if not df.empty and 'entry_regime' in df.columns:
                 recent_regimes = df['entry_regime'].dropna()
                 if not recent_regimes.empty:
@@ -2051,7 +2051,7 @@ def load_council_history_for_commodity(ticker: str) -> pd.DataFrame:
     if not os.path.exists(council_path):
         return pd.DataFrame()
     try:
-        df = pd.read_csv(council_path)
+        df = pd.read_csv(council_path, on_bad_lines='warn')
         if not df.empty:
             if 'timestamp' in df.columns:
                 df['timestamp'] = parse_ts_column(df['timestamp'])
