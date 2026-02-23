@@ -120,6 +120,46 @@ Specialized LLM personas that analyze grounded data.
 8.  **Execution:** The `OrderManager` (`trading_bot/order_manager.py`) constructs the order (e.g., Bull Call Spread) and submits it to `ib_interface.py`.
 9.  **Monitoring:** The system monitors the position for P&L triggers, regime shifts (via `check_iron_condor_theses`), or thesis invalidation.
 
+## Running
+
+### Prerequisites
+- Python 3.11+
+- Interactive Brokers Gateway (IB Gateway or TWS) running on configured port
+- API keys in `.env` (see `.env.example`)
+
+### Quick Start
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Default: MasterOrchestrator (all active commodities in one process)
+python orchestrator.py
+
+# Single commodity (legacy mode)
+python orchestrator.py --commodity KC
+
+# Force legacy mode via environment
+LEGACY_MODE=true python orchestrator.py
+
+# Dashboard
+streamlit run dashboard.py
+```
+
+### Configuration
+- **`config.json`**: Primary configuration (model registry, thresholds, sentinel intervals)
+- **`ACTIVE_COMMODITIES`**: Comma-separated list of tickers in `.env` (default: `KC,CC`)
+- **`LEGACY_MODE=true`**: Disables MasterOrchestrator, runs a single CommodityEngine per process
+- **`commodity_overrides`**: Per-commodity config overrides in `config.json` (e.g., `commodity_overrides.CC`)
+
+### Deployment
+```bash
+# DEV: Push to main → auto-deploys via GitHub Actions
+git push origin main
+
+# PROD: Push to production branch
+git push origin production
+```
+
 ## Tech Stack
 
 -   **Runtime:** Python 3.11+, `asyncio`
@@ -127,7 +167,7 @@ Specialized LLM personas that analyze grounded data.
 -   **AI:** Google Gemini (1.5 Pro/Flash), OpenAI (GPT-4o), Anthropic (Claude 3.5 Sonnet), xAI (Grok)
 -   **Memory:** ChromaDB (Vector Store)
 -   **Dashboard:** Streamlit
--   **Orchestration:** Custom Event Loop (`orchestrator.py`)
+-   **Orchestration:** MasterOrchestrator → CommodityEngine (`master_orchestrator.py`, `commodity_engine.py`)
 -   **Observability:** Custom logging + Pushover notifications
 
 ## License

@@ -13,6 +13,7 @@ set -e
 #   4. Config files are valid JSON
 #   5. Per-commodity data sanity (data dir writable, config loads, key paths resolve)
 #   6. verify_system_readiness.py passes (quick mode, skip IBKR)
+#   7. MasterOrchestrator mode (--multi) import check
 # =============================================================================
 
 # Determine Repo Root
@@ -34,7 +35,7 @@ fi
 
 ERRORS=0
 
-echo "  [1/6] Checking required directories..."
+echo "  [1/7] Checking required directories..."
 REQUIRED_DIRS=(
     "config"
     "config/profiles"
@@ -44,13 +45,12 @@ REQUIRED_DIRS=(
     "data/KC"              # Primary commodity data directory
     "data/KC/surrogate_models"
 )
-# Auto-add directories for any installed commodity services
-for _svc_file in /etc/systemd/system/trading-bot-*.service; do
-    [ -f "$_svc_file" ] || continue
-    _bn=$(basename "$_svc_file" .service)
-    _sf="${_bn#trading-bot-}"
-    _tk=$(echo "$_sf" | tr '[:lower:]' '[:upper:]')
-    [ "$_tk" = "$(echo trading-bot | tr '[:lower:]' '[:upper:]')" ] && continue
+# Auto-add directories for any commodity data dirs (e.g. data/CC, data/SB)
+for _data_dir in data/*/; do
+    [ -d "$_data_dir" ] || continue
+    _tk=$(basename "$_data_dir")
+    [[ "$_tk" =~ ^[A-Z]{2,4}$ ]] || continue
+    [ "$_tk" = "KC" ] && continue  # Already in list
     REQUIRED_DIRS+=("data/$_tk")
 done
 for dir in "${REQUIRED_DIRS[@]}"; do
@@ -60,7 +60,7 @@ for dir in "${REQUIRED_DIRS[@]}"; do
     fi
 done
 
-echo "  [2/6] Checking required files..."
+echo "  [2/7] Checking required files..."
 REQUIRED_FILES=(
     # New packages (__init__.py)
     "config/__init__.py"
@@ -90,7 +90,7 @@ for file in "${REQUIRED_FILES[@]}"; do
     fi
 done
 
-echo "  [3/6] Checking Python imports..."
+echo "  [3/7] Checking Python imports..."
 # Each import block tests one phase of the HRO guide.
 # We test them individually so failures are pinpointed.
 
@@ -153,7 +153,7 @@ if [ $? -ne 0 ]; then
     ERRORS=$((ERRORS + 1))
 fi
 
-echo "  [4/6] Validating config files..."
+echo "  [4/7] Validating config files..."
 python -c "
 import json, sys
 configs = ['config.json']
@@ -184,22 +184,19 @@ if [ $? -ne 0 ]; then
     ERRORS=$((ERRORS + 1))
 fi
 
-echo "  [5/6] Per-commodity data sanity..."
-# Auto-detect all commodity tickers from installed systemd services.
-# To add a new commodity: install its service file (trading-bot-{ticker}.service)
-# and create data/{TICKER}/ — this loop picks it up automatically.
-ALL_TICKERS=("KC")
-for svc_file in /etc/systemd/system/trading-bot-*.service; do
-    [ -f "$svc_file" ] || continue
-    # Extract ticker: trading-bot-cc.service → CC
-    _basename=$(basename "$svc_file" .service)          # trading-bot-cc
-    _suffix="${_basename#trading-bot-}"                  # cc
-    _ticker=$(echo "$_suffix" | tr '[:lower:]' '[:upper:]')  # CC
-    # Skip if it's the base service (no suffix) or already in list
-    [ "$_ticker" = "$(echo trading-bot | tr '[:lower:]' '[:upper:]')" ] && continue
-    [[ " ${ALL_TICKERS[*]} " == *" $_ticker "* ]] && continue
+echo "  [5/7] Per-commodity data sanity..."
+# Auto-detect all commodity tickers from data/ directories.
+# To add a new commodity: create data/{TICKER}/ and register a commodity profile.
+ALL_TICKERS=()
+for _data_dir in data/*/; do
+    [ -d "$_data_dir" ] || continue
+    _ticker=$(basename "$_data_dir")
+    # Only uppercase directory names (KC, CC, SB) — skip surrogate_models etc.
+    [[ "$_ticker" =~ ^[A-Z]{2,4}$ ]] || continue
     ALL_TICKERS+=("$_ticker")
 done
+# Fallback: at least KC
+[ ${#ALL_TICKERS[@]} -eq 0 ] && ALL_TICKERS=("KC")
 
 COMMODITY_WARNINGS=0
 for _ticker in "${ALL_TICKERS[@]}"; do
@@ -262,7 +259,7 @@ if [ $COMMODITY_WARNINGS -gt 0 ]; then
     echo "    ($COMMODITY_WARNINGS warnings — normal for new commodities)"
 fi
 
-echo "  [6/6] Running system readiness check..."
+echo "  [6/7] Running system readiness check..."
 if [ -f "verify_system_readiness.py" ]; then
     # Quick mode, skip IBKR (Gateway may not be ready during deploy)
     # CRITICAL: Use `if !` pattern so set -e doesn't abort on non-zero exit.
@@ -275,6 +272,20 @@ if [ -f "verify_system_readiness.py" ]; then
     fi
 else
     echo "    ⏭️  verify_system_readiness.py not found, skipping"
+fi
+
+echo "  [7/7] Checking MasterOrchestrator mode..."
+LEGACY_MODE="${LEGACY_MODE:-false}"
+if [ "$LEGACY_MODE" = "true" ]; then
+    echo "    ℹ️  LEGACY_MODE=true — running per-commodity services"
+else
+    # Verify MasterOrchestrator imports work
+    if ! python -c "from trading_bot.master_orchestrator import main" 2>/dev/null; then
+        echo "    ❌ MasterOrchestrator import failed"
+        ERRORS=$((ERRORS + 1))
+    else
+        echo "    ✅ MasterOrchestrator mode ready (${#ALL_TICKERS[@]} commodities: ${ALL_TICKERS[*]})"
+    fi
 fi
 
 # Final verdict
