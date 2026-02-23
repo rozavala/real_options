@@ -546,6 +546,7 @@ class HeterogeneousRouter:
         self.config = config
         self.clients: dict[str, LLMClient] = {}
         self.registry = config.get('model_registry', {})
+        self.llm_semaphore = None  # Optional: set by MasterOrchestrator for backpressure
 
         # Extract API keys
         self.api_keys = {
@@ -793,7 +794,13 @@ class HeterogeneousRouter:
                 start_time = time.time()
                 try:
                     client = self._get_client(primary_provider, primary_model)
-                    text, in_tok, out_tok = await client.generate(prompt, system_prompt, response_json)
+                    if self.llm_semaphore:
+                        await self.llm_semaphore.acquire()
+                    try:
+                        text, in_tok, out_tok = await client.generate(prompt, system_prompt, response_json)
+                    finally:
+                        if self.llm_semaphore:
+                            self.llm_semaphore.release()
 
                     # Defense-in-depth: catch empty responses that slipped past client validation
                     if not text or not text.strip():
@@ -900,7 +907,13 @@ class HeterogeneousRouter:
             start_time = time.time()
             try:
                 client = self._get_client(fallback_provider, fallback_model)
-                text, in_tok, out_tok = await client.generate(prompt, system_prompt, response_json)
+                if self.llm_semaphore:
+                    await self.llm_semaphore.acquire()
+                try:
+                    text, in_tok, out_tok = await client.generate(prompt, system_prompt, response_json)
+                finally:
+                    if self.llm_semaphore:
+                        self.llm_semaphore.release()
 
                 # Defense-in-depth: catch empty responses from fallback providers
                 if not text or not text.strip():

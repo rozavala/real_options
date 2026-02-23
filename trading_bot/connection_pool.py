@@ -42,6 +42,29 @@ def _is_remote_gateway(config: dict) -> bool:
     return host not in ('127.0.0.1', 'localhost', '::1')
 
 
+def _resolve_purpose(purpose: str) -> str:
+    """Prefix purpose with engine ticker if running in multi-engine mode.
+
+    In single-engine mode (no EngineRuntime set), returns purpose as-is.
+    In multi-engine mode, returns 'KC_sentinel', 'CC_orders', etc.
+    Already-prefixed purposes (e.g., from CommodityEngine._get_ib()) pass through.
+    """
+    # If purpose already contains an underscore with a known ticker prefix, pass through
+    if '_' in purpose:
+        prefix = purpose.split('_')[0]
+        if prefix in COMMODITY_ID_OFFSET:
+            return purpose
+
+    try:
+        from trading_bot.data_dir_context import get_engine_runtime
+        rt = get_engine_runtime()
+        if rt and rt.ticker:
+            return f"{rt.ticker}_{purpose}"
+    except Exception:
+        pass
+    return purpose
+
+
 class IBConnectionPool:
     _instances: Dict[str, IB] = {}
     _locks: Dict[str, asyncio.Lock] = {}
@@ -100,6 +123,7 @@ class IBConnectionPool:
 
     @classmethod
     async def get_connection(cls, purpose: str, config: dict) -> IB:
+        purpose = _resolve_purpose(purpose)
         if purpose not in cls._locks:
             cls._locks[purpose] = asyncio.Lock()
             cls._reconnect_backoff[purpose] = 5.0
@@ -281,6 +305,7 @@ class IBConnectionPool:
     @classmethod
     async def release_connection(cls, purpose: str):
         """Releases a specific connection from the pool."""
+        purpose = _resolve_purpose(purpose)
         if purpose not in cls._locks:
             cls._locks[purpose] = asyncio.Lock()
 

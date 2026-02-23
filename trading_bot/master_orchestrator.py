@@ -87,18 +87,22 @@ async def main(active_commodities: list = None, single_commodity: str = None):
     from trading_bot.heterogeneous_router import HeterogeneousRouter
     from trading_bot.budget_guard import get_budget_guard
 
+    router = HeterogeneousRouter(config)
+    llm_sem = asyncio.Semaphore(
+        config.get('llm', {}).get('max_concurrent_calls', 4)
+    )
+    router.llm_semaphore = llm_sem  # Wire backpressure into router
+
     shared = SharedContext(
         base_config=config,
-        router=HeterogeneousRouter(config),
+        router=router,
         budget_guard=get_budget_guard(config),
         portfolio_guard=PortfolioRiskGuard(
             config={**config, 'data_dir_root': 'data'}
         ),
         macro_cache=MacroCache(),
         active_commodities=tickers,
-        llm_semaphore=asyncio.Semaphore(
-            config.get('llm', {}).get('max_concurrent_calls', 4)
-        ),
+        llm_semaphore=llm_sem,
     )
 
     # Create engines
