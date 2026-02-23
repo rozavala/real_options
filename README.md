@@ -26,6 +26,7 @@ graph TD
         HR[🔀 Heterogeneous Router]
         SC[🧠 Semantic Cache]
         TMS[💾 Transactive Memory (ChromaDB)]
+        DSPy[🔧 DSPy Optimizer]
     end
 
     subgraph "Tier 2: Specialist Analysts (The Council)"
@@ -49,6 +50,7 @@ graph TD
 
     subgraph "Execution & Risk"
         CG[🛡️ Compliance Guardian]
+        VAR[📉 Portfolio VaR Guard]
         DPS[⚖️ Dynamic Sizer]
         OM[⚡ Order Manager]
         IB[Interactive Brokers Gateway]
@@ -76,6 +78,7 @@ graph TD
 3.  **Heterogeneous Router (`trading_bot/heterogeneous_router.py`):** Routes LLM requests to the best-fit provider (Gemini, OpenAI, Anthropic, xAI) based on the agent's role (e.g., 'Agronomist' uses Gemini Pro for large context, 'Volatility' uses xAI for reasoning).
 4.  **Semantic Cache (`trading_bot/semantic_cache.py`):** Caches Council decisions based on market state vectors (Price/Vol/Sentiment/Regime). Prevents redundant LLM calls when the market hasn't materially changed.
 5.  **Transactive Memory System (`trading_bot/tms.py`):** A ChromaDB-based vector store that allows agents to store and retrieve insights across cycles, enabling "institutional memory."
+6.  **DSPy Optimizer (`trading_bot/dspy_optimizer.py`):** An offline optimization pipeline that uses feedback from `council_history.csv` to refine agent prompts via BootstrapFewShot learning.
 
 ### Tier 1: Sentinels (`trading_bot/sentinels.py`)
 Lightweight monitors that scan 24/7 for specific triggers.
@@ -106,6 +109,7 @@ Specialized LLM personas that analyze grounded data.
 *   **Master Strategist:** Synthesizes all reports and the debate to render a verdict (Direction + Confidence).
 *   **Devil's Advocate:** Runs a pre-mortem ("Assume this trade failed. Why?") to identify blind spots.
 *   **Compliance Guardian (`trading_bot/compliance.py`):** Deterministic veto power. Checks VaR, margin, concentration, and blacklist.
+*   **Portfolio Risk Guard (`trading_bot/var_calculator.py`):** Calculates portfolio-wide Full Revaluation Historical Simulation VaR (95%/99%). Includes an AI Risk Agent (L1 Interpreter + L2 Scenario Architect) to narrate risks.
 *   **Dynamic Position Sizer (`trading_bot/position_sizer.py`):** Calculates trade size based on conviction (Kelly Criterion adjusted by Volatility).
 
 ## Information Flow
@@ -132,14 +136,12 @@ Specialized LLM personas that analyze grounded data.
 # Install dependencies
 pip install -r requirements.txt
 
-# Default: MasterOrchestrator (all active commodities in one process)
+# Default: Multi-Commodity Mode (MasterOrchestrator)
+# Spawns isolated CommodityEngine processes for all active tickers
 python orchestrator.py
 
-# Single commodity (legacy mode)
+# Single commodity (Debug/Legacy mode)
 python orchestrator.py --commodity KC
-
-# Force legacy mode via environment
-LEGACY_MODE=true python orchestrator.py
 
 # Dashboard
 streamlit run dashboard.py

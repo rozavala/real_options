@@ -48,6 +48,7 @@ A set of agents that synthesize the analysts' reports.
 - **Commodity Engine:** Runs the per-commodity loop.
 - **Heterogeneous Router:** Dispatches LLM calls to Gemini, OpenAI, Anthropic, or xAI.
 - **Semantic Cache:** Caches decisions to optimize costs and latency.
+- **DSPy Optimizer:** Offline pipeline that refines agent prompts using historical feedback (BootstrapFewShot).
 
 ## Knowledge Generation and Memory
 
