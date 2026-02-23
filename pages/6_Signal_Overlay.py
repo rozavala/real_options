@@ -739,12 +739,13 @@ with st.spinner(f"Loading {get_contract_display_name(selected_contract)} data...
     # Fetch price data for selected contract
     price_df = fetch_price_history_extended(ticker=yf_ticker, period=yf_period, interval=timeframe)
 
-    # Fallback: If specific contract has no data, try front month
+    # Fallback: If specific contract has no data, try continuous front month
     if price_df is None or price_df.empty:
-        if selected_contract != 'FRONT_MONTH':
-            st.warning(f"⚠️ No price data available for {selected_contract}. Falling back to front month.")
-            price_df = fetch_price_history_extended(ticker=f'{profile.contract.symbol}=F', period=yf_period, interval=timeframe)
-            # Update display to show fallback
+        continuous_ticker = f'{profile.contract.symbol}=F'
+        if yf_ticker != continuous_ticker:
+            # Resolved FRONT_MONTH or specific contract had no data — try continuous contract
+            st.warning(f"⚠️ No price data for `{yf_ticker}`. Falling back to `{continuous_ticker}`.")
+            price_df = fetch_price_history_extended(ticker=continuous_ticker, period=yf_period, interval=timeframe)
             actual_ticker_display = "Front Month (Fallback)"
         else:
             actual_ticker_display = None
@@ -856,6 +857,22 @@ if price_df is not None and not price_df.empty:
         )
 
         matched_signals = merged.dropna(subset=['candle_timestamp'])
+        unmatched_count = len(signals) - len(matched_signals)
+
+        if unmatched_count > 0:
+            # Show which dates have signals but no price data
+            unmatched = merged[merged['candle_timestamp'].isna()]
+            unmatched_dates = unmatched['timestamp'].dt.date.unique()
+            price_dates = set(price_df.index.date)
+            missing_dates = sorted(d for d in unmatched_dates if d not in price_dates)
+            if missing_dates:
+                date_str = ', '.join(str(d) for d in missing_dates[:5])
+                st.warning(
+                    f"⚠️ {unmatched_count} of {len(signals)} signals could not align to price candles "
+                    f"(no price data for: {date_str}). Try a different timeframe or check yfinance data availability."
+                )
+            else:
+                st.caption(f"ℹ️ {unmatched_count} signal(s) outside alignment tolerance ({_tol}) — not shown on chart.")
 
         if not matched_signals.empty:
             aligned_prices = price_df.loc[matched_signals['candle_timestamp']]
