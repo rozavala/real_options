@@ -199,9 +199,9 @@ def get_commodity_profile(config: dict = None) -> dict:
         cp = get_cp(symbol)
         return {
             'name': cp.name,
-            'price_unit': cp.price_unit if hasattr(cp, 'price_unit') else ('cents/lb' if symbol == 'KC' else 'USD/MT'),
-            'stop_parse_range': [80, 800] if symbol == 'KC' else [3000, 15000],
-            'typical_price_range': [100, 600] if symbol == 'KC' else [4000, 12000],
+            'price_unit': cp.contract.unit if hasattr(cp.contract, 'unit') else 'USD',
+            'stop_parse_range': list(cp.stop_parse_range) if hasattr(cp, 'stop_parse_range') else [0, 100000],
+            'typical_price_range': list(cp.typical_price_range) if hasattr(cp, 'typical_price_range') else [0, 100000],
         }
     except Exception:
         return {
@@ -2032,16 +2032,22 @@ def get_strategy_color(strategy_type: str) -> str:
 
 # === CROSS-COMMODITY HELPERS (for portfolio home page) ===
 
-_ALL_TICKERS = ["KC", "CC", "SB"]
-
 def discover_active_commodities() -> list[str]:
-    """Return tickers that have a data directory with state.json."""
+    """Return tickers that have a data directory with state.json.
+
+    Scans the data/ directory dynamically — no hardcoded ticker list.
+    """
     active = []
-    for ticker in _ALL_TICKERS:
-        state_path = os.path.join("data", ticker, "state.json")
-        data_dir = os.path.join("data", ticker)
-        if os.path.isdir(data_dir) and os.path.exists(state_path):
-            active.append(ticker)
+    data_root = "data"
+    if os.path.isdir(data_root):
+        for entry in sorted(os.listdir(data_root)):
+            # Commodity tickers are 2-4 uppercase letters
+            if not entry.isalpha() or not entry.isupper() or len(entry) > 4:
+                continue
+            data_dir = os.path.join(data_root, entry)
+            state_path = os.path.join(data_dir, "state.json")
+            if os.path.isdir(data_dir) and os.path.exists(state_path):
+                active.append(entry)
     return active if active else ["KC"]
 
 
