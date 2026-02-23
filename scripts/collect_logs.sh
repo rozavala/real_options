@@ -121,7 +121,7 @@ if [ -d "$REPO_DIR/logs" ]; then
     mkdir -p "$DEST_DIR/logs"
 
     # Shared log files
-    for logfile in "manual_test.log" "performance_analyzer.log" "equity_logger.log" "sentinels.log" "error_reporter.log"; do
+    for logfile in "manual_test.log" "performance_analyzer.log" "equity_logger.log" "sentinels.log" "error_reporter.log" "orchestrator_multi.log"; do
         if [ -f "$REPO_DIR/logs/$logfile" ]; then
             cp "$REPO_DIR/logs/$logfile" "$DEST_DIR/logs/"
         fi
@@ -261,9 +261,16 @@ if [ "$ENV_NAME" = "prod" ]; then
         echo ""
 
         echo "=== RECENT ERRORS (if any) ==="
+        # Check unified multi-engine log first (--multi mode)
+        if [ -s "$REPO_DIR/logs/orchestrator_multi.log" ]; then
+            echo "Recent orchestrator errors [multi]:"
+            grep -i "error\|critical\|exception" "$REPO_DIR/logs/orchestrator_multi.log" | tail -20 || true
+            echo ""
+        fi
+        # Also check per-commodity logs (legacy mode or leftover)
         for _t in "${ALL_TICKERS[@]}"; do
             _tl=$(echo "$_t" | tr '[:upper:]' '[:lower:]')
-            if [ -f "$REPO_DIR/logs/orchestrator_${_tl}.log" ]; then
+            if [ -s "$REPO_DIR/logs/orchestrator_${_tl}.log" ]; then
                 echo "Recent orchestrator errors [$_t]:"
                 grep -i "error\|critical\|exception" "$REPO_DIR/logs/orchestrator_${_tl}.log" | tail -10 || true
                 echo ""
