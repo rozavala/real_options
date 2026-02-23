@@ -16,6 +16,7 @@ import logging
 import os
 import time as time_module
 from datetime import datetime, time, timedelta, timezone
+from logging.handlers import RotatingFileHandler
 
 import pytz
 
@@ -23,6 +24,21 @@ from trading_bot.shared_context import SharedContext
 from trading_bot.data_dir_context import set_engine_data_dir
 
 logger = logging.getLogger(__name__)
+
+
+class _EngineContextFilter(logging.Filter):
+    """Only passes log records emitted within this engine's asyncio context."""
+
+    def __init__(self, data_dir):
+        super().__init__()
+        self.data_dir = data_dir
+
+    def filter(self, record):
+        try:
+            from trading_bot.data_dir_context import _engine_data_dir
+            return _engine_data_dir.get() == self.data_dir
+        except LookupError:
+            return False
 
 
 class CommodityEngine:
@@ -76,13 +92,25 @@ class CommodityEngine:
         # === 1. TASK-LOCAL DATA DIRECTORY — FIRST CALL ===
         set_engine_data_dir(self.data_dir)
 
-        # === 2. Per-commodity logging (only in single-engine mode) ===
-        # In --multi mode, __main__ already configured the unified orchestrator_multi.log.
-        # Calling setup_logging again would replace the root handler (force=True),
-        # causing cross-engine log contamination since all engines share one process.
+        # === 2. Per-commodity logging ===
         if self.shared is None:
+            # Single-engine mode: configure root logger
             from trading_bot.logging_config import setup_logging
             setup_logging(log_file=f"logs/orchestrator_{self.ticker.lower()}.log")
+        else:
+            # Multi-engine mode: add filtered per-engine file handler
+            # (orchestrator_multi.log keeps all interleaved logs unchanged)
+            from trading_bot.logging_config import SanitizedFormatter
+            engine_log = f"logs/orchestrator_{self.ticker.lower()}.log"
+            os.makedirs("logs", exist_ok=True)
+            handler = RotatingFileHandler(
+                engine_log, maxBytes=50 * 1024 * 1024, backupCount=5, encoding='utf-8'
+            )
+            handler.setFormatter(SanitizedFormatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            ))
+            handler.addFilter(_EngineContextFilter(self.data_dir))
+            logging.getLogger().addHandler(handler)
 
         self._logger.info("=============================================")
         self._logger.info(f"=== Starting CommodityEngine [{self.ticker}] ===")
@@ -243,7 +271,18 @@ class CommodityEngine:
         # === 14. Startup topic discovery ===
         await self._run_startup_topic_discovery()
 
-        # === 15. Start sentinels ===
+        # === 15. Start sentinels (staggered in multi-engine mode) ===
+        if self.shared and hasattr(self.shared, 'active_commodities'):
+            try:
+                engine_idx = self.shared.active_commodities.index(self.ticker)
+            except ValueError:
+                engine_idx = 0
+            if engine_idx > 0:
+                sentinel_stagger = engine_idx * 15
+                self._logger.info(
+                    f"Staggering sentinel startup by {sentinel_stagger}s (engine #{engine_idx})"
+                )
+                await asyncio.sleep(sentinel_stagger)
         sentinel_task = asyncio.create_task(run_sentinels(self.config))
         sentinel_task.add_done_callback(
             lambda t: self._logger.critical(f"SENTINEL TASK DIED: {t.exception()}")

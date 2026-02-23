@@ -22,6 +22,7 @@ class TokenBucketLimiter:
         self._lock = asyncio.Lock()
         self._request_times: deque = deque(maxlen=100)
         self._waiters = 0
+        self._last_queue_log = 0.0
 
     async def acquire(self, timeout: float = 60.0) -> bool:
         deadline = time.monotonic() + timeout
@@ -45,10 +46,13 @@ class TokenBucketLimiter:
                 remaining = deadline - time.monotonic()
 
                 if self._waiters > 5:
-                    logger.info(
-                        f"Rate limiter: {self._waiters} requests queued, "
-                        f"waiting {wait_time:.1f}s for next slot"
-                    )
+                    now_mono = time.monotonic()
+                    if now_mono - self._last_queue_log > 10.0:
+                        self._last_queue_log = now_mono
+                        logger.info(
+                            f"Rate limiter: {self._waiters} requests queued, "
+                            f"waiting {wait_time:.1f}s for next slot"
+                        )
 
                 await asyncio.sleep(min(wait_time, max(0.1, remaining)))
 
