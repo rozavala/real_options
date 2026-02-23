@@ -1951,6 +1951,8 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
 
     except Exception as e:
         logger.exception(f"Position Audit Cycle failed: {e}")
+        if config.get('_recovery_mode'):
+            raise  # Let recover_missed_tasks() see the failure
     finally:
         if ib is not None:
             try:
@@ -4775,6 +4777,8 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
 
     logger.info(f"--- Recovery: Evaluating {len(sorted_missed)} missed tasks ---")
 
+    config['_recovery_mode'] = True
+
     for task in sorted_missed:
         if task.id in seen_ids:
             logger.debug(
@@ -4831,11 +4835,14 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
                 record_task_completion(task.id)
                 logger.info(f"✅ RECOVERY: {task.id} completed")
                 recovered += 1
+                await asyncio.sleep(6)  # Allow IB connection backoff to expire between tasks
             except Exception as e:
                 logger.exception(f"❌ RECOVERY: {task.id} failed: {e}")
         else:
             logger.info(f"⏭️ RECOVERY SKIP: {task.id} — {skip_reason}")
             skipped += 1
+
+    config.pop('_recovery_mode', None)
 
     total_evaluated = recovered + skipped + already_ran
     summary = (
