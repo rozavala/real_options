@@ -714,7 +714,7 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
         send_pushover_notification(config.get('notifications', {}), "Trading Orders Queued", message)
 
     except Exception as e:
-        msg = f"A critical error occurred during order generation: {e}"
+        msg = f"A critical error occurred during order generation: {type(e).__name__}: {e}"
         logger.critical(msg, exc_info=True)
         send_pushover_notification(config.get('notifications', {}), "Order Generation CRITICAL", f"{msg}\n{traceback.format_exc()}")
         # Force-reset pooled connection on critical error so next get_connection() creates fresh

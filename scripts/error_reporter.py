@@ -52,6 +52,7 @@ class LogEntry:
     level: str  # "ERROR" or "CRITICAL"
     message: str
     source_file: str  # Which log file this came from
+    traceback: str = ""  # Continuation lines (exc_info tracebacks, etc.)
 
 
 @dataclass
@@ -242,6 +243,12 @@ _LOG_LINE_RE = re.compile(
     r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+)\s+-\s+(\S+)\s+-\s+(ERROR|CRITICAL)\s+-\s+(.*)$"
 )
 
+# Detects the start of ANY log-format line (any level) — used to delimit entries
+# so that continuation lines (tracebacks) aren't mistaken for a new entry.
+_LOG_ANY_LINE_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+\s+-\s+"
+)
+
 # Pattern for rotated log files (date stamp in name) — skip these
 _ROTATED_LOG_RE = re.compile(r"-\d{4}-\d{2}-\d{2}T")
 
@@ -290,16 +297,46 @@ def parse_log_file(
                     # We're mid-line, skip to the next line
                     f.readline()
                 # else: we're at a line boundary, no skip needed
+
+            # State machine: track the current ERROR/CRITICAL entry and
+            # accumulate continuation lines (exc_info tracebacks) that follow.
+            current_entry: "LogEntry | None" = None
+            tb_lines: list[str] = []
+
             for line in f:
-                m = _LOG_LINE_RE.match(line.rstrip())
-                if m:
-                    entries.append(LogEntry(
-                        timestamp=m.group(1),
-                        logger_name=m.group(2),
-                        level=m.group(3),
-                        message=m.group(4),
-                        source_file=filepath,
-                    ))
+                stripped = line.rstrip()
+                m = _LOG_LINE_RE.match(stripped)
+                is_any_log_line = bool(m or _LOG_ANY_LINE_RE.match(stripped))
+
+                if is_any_log_line:
+                    # Finalize the previous ERROR/CRITICAL entry (with its traceback)
+                    if current_entry is not None:
+                        if tb_lines:
+                            current_entry.traceback = "\n".join(tb_lines)
+                        entries.append(current_entry)
+                        current_entry = None
+                        tb_lines = []
+
+                    # Start tracking if this line is ERROR or CRITICAL
+                    if m:
+                        current_entry = LogEntry(
+                            timestamp=m.group(1),
+                            logger_name=m.group(2),
+                            level=m.group(3),
+                            message=m.group(4),
+                            source_file=filepath,
+                        )
+                else:
+                    # Continuation line (traceback frame, exception line, etc.)
+                    if current_entry is not None and len(tb_lines) < 30:
+                        tb_lines.append(stripped)
+
+            # Finalize the last entry in the file
+            if current_entry is not None:
+                if tb_lines:
+                    current_entry.traceback = "\n".join(tb_lines)
+                entries.append(current_entry)
+
             new_offset = f.tell()
     except OSError as e:
         logger.warning(f"Could not read {filepath}: {e}")
@@ -715,7 +752,13 @@ def run_pipeline(config: dict, dry_run: bool = False) -> int:
             continue  # Transient, skip
 
         sanitized = sanitize_message(entry.message)
+        # Fingerprint on first-line message only for stable deduplication.
         fp = compute_fingerprint(category, entry.message)
+        # Include traceback in sample_message so GitHub issues show full context.
+        if entry.traceback:
+            full_sample = sanitized + "\n" + sanitize_message(entry.traceback)
+        else:
+            full_sample = sanitized
 
         if fp in signatures:
             sig = signatures[fp]
@@ -727,7 +770,7 @@ def run_pipeline(config: dict, dry_run: bool = False) -> int:
             signatures[fp] = ErrorSignature(
                 category=category,
                 fingerprint=fp,
-                sample_message=sanitized,
+                sample_message=full_sample,
                 count=1,
                 first_seen=entry.timestamp,
                 last_seen=entry.timestamp,
