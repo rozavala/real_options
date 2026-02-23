@@ -1,14 +1,58 @@
 [
   {
-    "source": "MacroContagionSentinel",
-    "reason": "Cross-Commodity Contagion: Cocoa correlating with Gold/Silver (0.78)",
+    "source": "XSentimentSentinel",
+    "reason": "EXTREMELY BEARISH X sentiment (score: 1.5/10)",
     "payload": {
-      "type": "CROSS_COMMODITY_CONTAGION",
-      "correlation_precious": 0.7808898587975207,
-      "correlation_grains": -0.15350812086884255,
-      "interpretation": "Cocoa trading as RISK ASSET (like Gold/Silver), not AG COMMODITY",
-      "severity": "HIGH"
+      "sentiment_score": 1.51,
+      "confidence": 0.66,
+      "top_themes": [
+        "Price plunges and collapses",
+        "Bear market continuation",
+        "Supply incentives and demand reduction",
+        "Sharp cocoa price decline (50% plunge)",
+        "Producer price cuts in Ghana and potential in Ivory Coast"
+      ],
+      "post_volume": 80,
+      "volume_baseline": 9.5,
+      "volume_spike": true,
+      "query_results": [
+        {
+          "query": "cocoa futures",
+          "score": 1.0,
+          "volume": 8,
+          "confidence": 0.95,
+          "top_post": "Ole_S_Hansen: '#Cocoa prices have collapsed... New York futures slumped to a fresh' (377 likes)"
+        },
+        {
+          "query": "cocoa prices",
+          "score": 1.0,
+          "volume": 13,
+          "confidence": 0.95,
+          "top_post": "Cocoa just crashed 50% and markets rarely move this fast... (Buddyspa11)"
+        },
+        {
+          "query": "CC futures",
+          "score": 5.0,
+          "volume": 0,
+          "confidence": 0.1,
+          "top_post": null
+        }
+      ]
     },
-    "timestamp": "2026-02-23T17:06:47.517991+00:00"
+    "timestamp": "2026-02-23T17:52:16.904600+00:00"
+  },
+  {
+    "source": "PriceSentinel",
+    "reason": "Cumulative -5.3% move over 3 days (BEARISH)",
+    "payload": {
+      "contract": "CCK6",
+      "change_pct": -5.34,
+      "type": "CUMULATIVE",
+      "days": 3,
+      "start_price": 3314.0,
+      "end_price": 3137.0,
+      "direction": "BEARISH"
+    },
+    "timestamp": "2026-02-23T17:52:22.775005+00:00"
   }
 ]
