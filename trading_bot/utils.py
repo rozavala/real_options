@@ -716,6 +716,11 @@ def log_council_decision(decision_data):
         "primary_catalyst",       # Single most important driver
         "conviction_multiplier",  # 0.5 / 0.75 / 1.0 from consensus sensor
         "dissent_acknowledged",   # Strongest counter-argument Master chose to override
+        # NEW COLUMNS (v4 — VaR & Compliance observability)
+        "compliance_reason",      # Why compliance approved/vetoed
+        "var_utilization",        # Portfolio VaR utilization at decision time
+        "var_dampener",           # VaR dampener multiplier applied
+        "risk_briefing_injected", # Whether risk briefing was injected into prompts
     ]
 
     # Free-text fields that may contain LLM output — sanitize for CSV formula injection
