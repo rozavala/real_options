@@ -8,12 +8,36 @@ produce uniform and readable log messages.
 import logging
 import sys
 import os
+import re
 from logging.handlers import RotatingFileHandler
+
+# Patterns for sensitive keys to redact
+# Covers OpenAI (sk-...), Anthropic (sk-ant-...), Google (AIza...), xAI (xai-...)
+# Pre-compiled for performance
+REDACTION_PATTERNS = [
+    re.compile(r'\b(sk-[a-zA-Z0-9\-\_]{20,})\b'),       # OpenAI / generic secret keys
+    re.compile(r'\b(xai-[a-zA-Z0-9\-\_]{20,})\b'),      # xAI keys
+    re.compile(r'\b(AIza[0-9A-Za-z\-\_]{35})\b'),       # Google API keys
+    re.compile(r'\b(sk-ant-[a-zA-Z0-9\-\_]{20,})\b'),   # Anthropic keys
+]
+
+
+def redact_secrets(message: str) -> str:
+    """Redacts sensitive API keys from the log message."""
+    if not isinstance(message, str):
+        return message
+
+    for pattern in REDACTION_PATTERNS:
+        message = pattern.sub('[REDACTED]', message)
+    return message
 
 
 def sanitize_log_message(record_msg: str) -> str:
-    """Escapes newlines in log messages to prevent log injection attacks."""
+    """Escapes newlines and redacts secrets in log messages."""
     if isinstance(record_msg, str):
+        # 1. Redact secrets first (before escaping potentially breaks regex)
+        record_msg = redact_secrets(record_msg)
+        # 2. Escape newlines (Log Injection mitigation)
         return record_msg.replace('\n', '\\n').replace('\r', '\\r')
     return record_msg
 
