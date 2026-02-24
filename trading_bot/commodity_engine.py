@@ -309,6 +309,12 @@ class CommodityEngine:
             healing_task.cancel()
             sentinel_task.cancel()
 
+            # Await sentinel task so its cleanup code (aiohttp session close) runs
+            try:
+                await asyncio.wait_for(sentinel_task, timeout=10)
+            except (asyncio.CancelledError, asyncio.TimeoutError, Exception):
+                pass
+
             # Cancel in-flight fire-and-forget tasks
             ift = self._runtime.inflight_tasks if self._runtime else set()
             if ift:

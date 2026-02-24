@@ -8,26 +8,28 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# Compressed client ID range for remote/dev Gateway connections (10-79).
+# Compressed client ID range for remote/dev Gateway connections.
 # Avoids collision with production IDs (100-279) when sharing a Gateway.
+# Each purpose gets base + random(0, DEV_CLIENT_ID_JITTER) + commodity_offset.
 DEV_CLIENT_ID_BASE = {
     "main": 10,
-    "sentinel": 15,
-    "emergency": 20,
-    "monitor": 25,
-    "orchestrator_orders": 30,
-    "dashboard_orders": 35,
-    "dashboard_close": 40,
-    "microstructure": 45,
-    "test_utilities": 50,
-    "audit": 55,
-    "equity_logger": 60,
-    "reconciliation": 65,
-    "cleanup": 70,
-    "drawdown_check": 75,
+    "sentinel": 16,
+    "emergency": 22,
+    "monitor": 28,
+    "orchestrator_orders": 34,
+    "dashboard_orders": 40,
+    "dashboard_close": 46,
+    "microstructure": 52,
+    "test_utilities": 58,
+    "audit": 64,
+    "equity_logger": 70,
+    "reconciliation": 76,
+    "cleanup": 82,
+    "drawdown_check": 88,
+    "deferred": 94,
 }
-DEV_CLIENT_ID_JITTER = 4   # random(0, 4) for dev; prod uses random(0, 9)
-DEV_CLIENT_ID_DEFAULT = 80  # Unknown purposes in dev: 80-84
+DEV_CLIENT_ID_JITTER = 5   # random(0, 5) — widened from 4 to reduce collision probability
+DEV_CLIENT_ID_DEFAULT = 100  # Unknown purposes in dev: 100-105
 
 
 # Multi-commodity client ID offsets.
@@ -91,6 +93,7 @@ class IBConnectionPool:
         "equity_logger": 250,     # Range: 250-259
         "reconciliation": 260,    # Range: 260-269
         "cleanup": 270,           # Range: 270-279
+        "deferred": 290,          # Range: 290-299 (deferred trigger processing)
         # Note: position_monitor.py uses 300-399
         # Note: reconciliation uses random 5000-9999
         # DEFAULT for unknown purposes: 280-289 (avoid adding new purposes without explicit ID)

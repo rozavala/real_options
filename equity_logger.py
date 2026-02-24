@@ -36,7 +36,14 @@ async def sync_equity_from_flex(config: dict):
     the file to ensure the local equity history matches the broker's official record.
 
     Only runs for the primary commodity (KC) since NetLiquidation is account-wide.
+    Non-primary engines skip to avoid duplicate Flex queries and identical data.
     """
+    # Guard: only the primary engine syncs account-wide equity
+    is_primary = config.get('commodity', {}).get('is_primary', True)
+    if not is_primary:
+        logger.info("Equity sync skipped (non-primary engine).")
+        return
+
     logger.info("--- Starting Equity Synchronization from Flex Query ---")
 
     # Get the ID from the config (loaded from .env), or fallback to os.getenv just in case
@@ -138,7 +145,14 @@ async def log_equity_snapshot(config: dict):
     Connects to IB, fetches NetLiquidation, and logs it to data/{ticker}/daily_equity.csv.
 
     Only runs for the primary commodity (KC) since NetLiquidation is account-wide.
+    Non-primary engines skip to avoid duplicate IB connections and identical data.
     """
+    # Guard: only the primary engine logs account-wide equity
+    is_primary = config.get('commodity', {}).get('is_primary', True)
+    if not is_primary:
+        logger.info("Equity snapshot skipped (non-primary engine).")
+        return
+
     logger.info("--- Starting Equity Snapshot Logging ---")
 
     data_dir = config.get('data_dir', 'data')
