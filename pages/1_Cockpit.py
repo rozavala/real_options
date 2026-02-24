@@ -19,10 +19,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import (
     get_config,
     get_system_heartbeat,
+    get_system_heartbeat_for_commodity,
     get_sentinel_status,
     get_ib_connection_health,
     fetch_all_live_data,
     fetch_todays_benchmark_data,
+    discover_active_commodities,
     load_council_history,
     grade_decision_quality,
     calculate_rolling_win_rate,
@@ -498,20 +500,25 @@ if os.getenv("TRADING_MODE", "LIVE").upper().strip() == "OFF":
 config = get_config()
 heartbeat = get_system_heartbeat()
 
-# === SYSTEM HEALTH BANNER ===
+# === SYSTEM HEALTH BANNER (cross-commodity) ===
 try:
     _health_issues = []
-    # Check orchestrator heartbeat
-    if heartbeat.get('orchestrator_status') == 'OFFLINE':
-        _health_issues.append("Orchestrator Offline")
-    # Check state manager
+    _all_tickers = discover_active_commodities()
+
+    # Cross-commodity engine health check
+    for _ck in _all_tickers:
+        _ck_hb = get_system_heartbeat_for_commodity(_ck)
+        if _ck_hb['orchestrator_status'] == 'OFFLINE':
+            _health_issues.append(f"{_ck} Offline")
+        elif _ck_hb['orchestrator_status'] == 'STALE':
+            _health_issues.append(f"{_ck} Stale")
+
+    # Selected commodity detailed checks
     if heartbeat.get('state_status') == 'OFFLINE':
         _health_issues.append("State Manager Offline")
-    # Check IB connection
     _ib_health = get_ib_connection_health()
     if _ib_health.get('sentinel_ib') != 'CONNECTED':
         _health_issues.append("IB Disconnected")
-    # Check sentinel staleness
     _sentinels = get_sentinel_status()
     _stale_count = sum(1 for s in _sentinels.values() if s.get('is_stale', False))
     _error_count = sum(1 for s in _sentinels.values() if s.get('status') == 'ERROR')
@@ -521,7 +528,7 @@ try:
         _health_issues.append(f"{_stale_count} Stale Sentinel{'s' if _stale_count > 1 else ''}")
 
     if not _health_issues:
-        st.success("All Systems Operational")
+        st.success(f"All Systems Operational ({len(_all_tickers)} engine{'s' if len(_all_tickers) != 1 else ''})")
     elif any(kw in ' '.join(_health_issues) for kw in ['Offline', 'Disconnected', 'Error']):
         st.error(f"{len(_health_issues)} issue{'s' if len(_health_issues) > 1 else ''}: {', '.join(_health_issues)}")
     else:
@@ -878,7 +885,8 @@ st.markdown("---")
 # === SECTION 2: Financial HUD ===
 if config:
     live_data = fetch_all_live_data(config)
-    benchmarks = fetch_todays_benchmark_data()
+    _all_commodities = tuple(discover_active_commodities())
+    benchmarks = fetch_todays_benchmark_data(commodity_tickers=_all_commodities)
 
     # Render Portfolio Risk
     render_portfolio_risk_summary(live_data)
@@ -978,16 +986,20 @@ if config:
     except Exception:
         pass  # VaR display is non-critical
 
-    # Render Benchmarks
+    # Render Benchmarks — show S&P 500 + ALL active commodities
     st.caption("Market Benchmarks")
-    bench_cols = st.columns(6)
+    bench_cols = st.columns(min(1 + len(_all_commodities), 6))
     with bench_cols[0]:
         st.metric("S&P 500", f"{benchmarks.get('SPY', 0):+.2f}%")
-    with bench_cols[1]:
-        # Use page-level ticker from commodity selector (not config, which could be stale)
-        _bench_name = config.get('commodity', {}).get('name', ticker)
-        yf_ticker = f"{ticker}=F"
-        st.metric(_bench_name, f"{benchmarks.get(yf_ticker, 0):+.2f}%")
+    for _bi, _bt in enumerate(_all_commodities):
+        if _bi + 1 >= len(bench_cols):
+            break
+        with bench_cols[_bi + 1]:
+            _yf = f"{_bt}=F"
+            _pct = benchmarks.get(_yf, 0)
+            # Highlight selected commodity
+            _label = f"**{_bt}**" if _bt == ticker else _bt
+            st.metric(_label, f"{_pct:+.2f}%")
 
     # Rolling Win Rate Sparkline
     st.markdown("---")
@@ -1019,48 +1031,55 @@ if config:
     else:
         st.info("No council history available.")
 
-    # === SECTION: Recent Trade Activity Feed ===
+    # === SECTION: Recent Decisions Feed ===
     st.markdown("---")
-    st.subheader("Recent Trade Activity")
+    st.subheader("Recent Decisions")
     try:
-        _trades_df = council_df if not council_df.empty else pd.DataFrame()
-        if not _trades_df.empty and 'pnl_realized' in _trades_df.columns:
-            _trades_df = _trades_df.copy()
-            _trades_df['_pnl'] = pd.to_numeric(_trades_df['pnl_realized'], errors='coerce')
-            _completed = _trades_df[_trades_df['_pnl'].notna()].head(10)
-            if not _completed.empty:
-                _display_rows = []
-                for _, row in _completed.iterrows():
-                    _ts = row.get('timestamp', '')
-                    _pnl_val = row['_pnl']
-                    _display_rows.append({
-                        'Time': _relative_time(_ts),
-                        'Contract': str(row.get('contract', 'N/A'))[:20],
-                        'Direction': row.get('master_decision', 'N/A'),
-                        'Strategy': str(row.get('strategy_type', 'N/A')).replace('_', ' ').title(),
-                        'P&L': f"${_pnl_val:+,.0f}",
-                        'Strength': row.get('thesis_strength', 'N/A'),
-                    })
-                _display_df = pd.DataFrame(_display_rows)
-                st.dataframe(
-                    _display_df,
-                    hide_index=True,
-                    width="stretch",
-                    column_config={
-                        'Time': st.column_config.TextColumn(width='small'),
-                        'Contract': st.column_config.TextColumn(width='medium'),
-                        'Direction': st.column_config.TextColumn(width='small'),
-                        'Strategy': st.column_config.TextColumn(width='medium'),
-                        'P&L': st.column_config.TextColumn(width='small'),
-                        'Strength': st.column_config.TextColumn(width='small'),
-                    }
-                )
-            else:
-                st.info("No recent trade activity")
+        if not council_df.empty:
+            _recent = council_df.head(10).copy()
+            _display_rows = []
+            for _, _r in _recent.iterrows():
+                _ts = _r.get('timestamp', '')
+                _pnl_val = pd.to_numeric(_r.get('pnl_realized', None), errors='coerce')
+                if pd.notna(_pnl_val) and _pnl_val != 0:
+                    _outcome = f"${_pnl_val:+,.0f}"
+                else:
+                    _outcome = "Open"
+
+                _trigger = str(_r.get('trigger_type', 'scheduled')).replace('_', ' ').title()
+                _decision = _r.get('master_decision', 'N/A')
+                _strategy = str(_r.get('strategy_type', 'N/A')).replace('_', ' ').title()
+                _conf = _r.get('master_confidence', None)
+                _conf_str = f"{float(_conf)*100:.0f}%" if pd.notna(_conf) else "N/A"
+
+                _display_rows.append({
+                    'Time': _relative_time(_ts),
+                    'Trigger': _trigger,
+                    'Decision': _decision,
+                    'Confidence': _conf_str,
+                    'Strategy': _strategy,
+                    'Strength': _r.get('thesis_strength', 'N/A'),
+                    'Outcome': _outcome,
+                })
+            _display_df = pd.DataFrame(_display_rows)
+            st.dataframe(
+                _display_df,
+                hide_index=True,
+                width="stretch",
+                column_config={
+                    'Time': st.column_config.TextColumn(width='small'),
+                    'Trigger': st.column_config.TextColumn(width='small'),
+                    'Decision': st.column_config.TextColumn(width='small'),
+                    'Confidence': st.column_config.TextColumn(width='small'),
+                    'Strategy': st.column_config.TextColumn(width='medium'),
+                    'Strength': st.column_config.TextColumn(width='small'),
+                    'Outcome': st.column_config.TextColumn(width='small'),
+                }
+            )
         else:
-            st.info("No recent trade activity")
+            st.info("No recent decisions")
     except Exception:
-        st.info("No recent trade activity")
+        st.info("No recent decisions")
 
 else:
     st.error("Configuration not loaded. Cannot fetch live data.")

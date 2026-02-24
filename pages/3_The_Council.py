@@ -627,6 +627,18 @@ try:
 except Exception:
     pass  # Silently skip if data isn't available
 
+# --- Cross-page Navigation ---
+try:
+    _nav_cols = st.columns(3)
+    with _nav_cols[0]:
+        st.page_link("pages/2_The_Scorecard.py", label="View in Scorecard", icon="📊")
+    with _nav_cols[1]:
+        st.page_link("pages/6_Signal_Overlay.py", label="View Price Action", icon="📈")
+    with _nav_cols[2]:
+        st.page_link("pages/7_Brier_Analysis.py", label="Agent Accuracy", icon="🎯")
+except Exception:
+    pass  # st.page_link may not be available in older Streamlit versions
+
 st.markdown("---")
 
 # === SECTION 4: Agent Summaries ===
@@ -683,8 +695,15 @@ traces_df = load_prompt_traces(ticker=ticker)
 if traces_df.empty:
     st.info("No prompt trace data available yet. Traces are recorded during trading cycles.")
 else:
-    with st.expander("Agent Prompt Configuration (Latest Cycle)", expanded=False):
-        latest_cycle = traces_df['cycle_id'].iloc[-1] if 'cycle_id' in traces_df.columns and len(traces_df) > 0 else None
+    # Link prompt provenance to the SELECTED decision, not just the latest cycle
+    _selected_cycle_id = row.get('cycle_id', None) if 'row' in dir() else None
+    with st.expander("Agent Prompt Configuration", expanded=False):
+        latest_cycle = (
+            _selected_cycle_id
+            if (_selected_cycle_id and 'cycle_id' in traces_df.columns
+                and _selected_cycle_id in traces_df['cycle_id'].values)
+            else (traces_df['cycle_id'].iloc[-1] if 'cycle_id' in traces_df.columns and len(traces_df) > 0 else None)
+        )
         if latest_cycle:
             cycle_traces = traces_df[traces_df['cycle_id'] == latest_cycle]
             display_cols = ['agent', 'phase', 'prompt_source', 'model_provider', 'model_name',

@@ -1045,25 +1045,31 @@ def fetch_all_live_data(_config: dict) -> dict:
 
 
 @st.cache_data(ttl=300)
-def fetch_todays_benchmark_data():
-    """Fetches today's performance for SPY and Commodity Futures from Yahoo Finance."""
-    try:
-        # Commodity-agnostic: derive ticker from config
-        config = get_config()
-        commodity_ticker = config.get('commodity', {}).get('ticker', 'KC')
-        yf_commodity = f"{commodity_ticker}=F"
-        tickers = ['SPY', yf_commodity]
+def fetch_todays_benchmark_data(commodity_tickers: tuple = None):
+    """Fetches today's performance for SPY and ALL active commodity futures from Yahoo Finance.
 
-        data = yf.download(tickers, period="5d", progress=False, auto_adjust=True)['Close']
+    Args:
+        commodity_tickers: Tuple of commodity tickers (e.g., ("KC", "CC", "NG")).
+                          Tuple (not list) for Streamlit cache hashability.
+                          If None, falls back to the selected commodity only.
+    """
+    try:
+        if commodity_tickers is None:
+            config = get_config()
+            commodity_tickers = (config.get('commodity', {}).get('ticker', 'KC'),)
+
+        yf_tickers = ['SPY'] + [f"{t}=F" for t in commodity_tickers]
+
+        data = yf.download(yf_tickers, period="5d", progress=False, auto_adjust=True)['Close']
         if data.empty:
             return {}
         changes = {}
-        for ticker in tickers:
+        for ticker in yf_tickers:
             try:
                 if isinstance(data, pd.DataFrame) and ticker in data.columns:
                     series = data[ticker].dropna()
                 else:
-                    if len(tickers) == 1:
+                    if len(yf_tickers) == 1:
                         series = data.dropna()
                     else:
                         continue

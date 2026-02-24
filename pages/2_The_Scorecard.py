@@ -338,7 +338,7 @@ if learning['has_data']:
             st.caption(f"{icon} Win rate {arrow}: {first_val:.0f}% → {last_val:.0f}% ({delta:+.0f}pp)")
 
     # --- Chart 3: Agent Accuracy Over Time (in expander) ---
-    with st.expander("Agent Accuracy Over Time", expanded=False):
+    with st.expander("Agent Accuracy Over Time", expanded=True):
         agent_window = st.select_slider(
             "Rolling window size",
             options=[10, 15, 20, 25, 30],
@@ -658,7 +658,7 @@ if not vol_df.empty:
             total_vol = wins + losses
             win_rate = wins/total_vol*100 if total_vol > 0 else 0
             st.metric("Win Rate", f"{win_rate:.1f}%")
-            st.caption(f"Wins when price moved >1.8%: {wins} | Losses: {losses}")
+            st.caption(f"Wins when price moved significantly: {wins} | Losses: {losses}")
         else:
             st.info("No Long Straddle trades.")
 
@@ -671,7 +671,7 @@ if not vol_df.empty:
             total_vol = wins + losses
             win_rate = wins/total_vol*100 if total_vol > 0 else 0
             st.metric("Win Rate", f"{win_rate:.1f}%")
-            st.caption(f"Wins when price stayed <2%: {wins} | Losses: {losses}")
+            st.caption(f"Wins when price stayed range-bound: {wins} | Losses: {losses}")
         else:
             st.info("No Iron Condor trades.")
 else:
