@@ -763,6 +763,35 @@ with st.spinner(f"Loading {get_contract_display_name(selected_contract)} data...
     else:
         actual_ticker_display = get_contract_display_name(selected_contract)
 
+    # Backfill intraday gaps with daily candles so signals on missing dates still appear.
+    # yfinance sometimes has 1d data for dates where 5m data is unavailable.
+    if price_df is not None and not price_df.empty and timeframe in ('5m', '15m', '30m', '1h'):
+        daily_df = fetch_price_history_extended(ticker=yf_ticker, period=yf_period, interval='1d')
+        if daily_df is not None and not daily_df.empty:
+            intraday_dates = set(price_df.index.date)
+            daily_dates = set(daily_df.index.date)
+            missing = daily_dates - intraday_dates
+            if missing:
+                # Insert daily candles at market open time for each missing date
+                try:
+                    from config.commodity_profiles import parse_trading_hours
+                    _open_time, _ = parse_trading_hours(profile.contract.trading_hours_et)
+                except Exception:
+                    _open_time = time(4, 0)
+                ny_tz = pytz.timezone('America/New_York')
+                fill_rows = []
+                for row_ts, row_data in daily_df.iterrows():
+                    if row_ts.date() in missing:
+                        # Place the daily candle at market open time
+                        open_dt = ny_tz.localize(datetime.combine(row_ts.date(), _open_time))
+                        fill_row = row_data.copy()
+                        fill_row.name = open_dt
+                        fill_rows.append(fill_row)
+                if fill_rows:
+                    fill_df = pd.DataFrame(fill_rows)
+                    price_df = pd.concat([price_df, fill_df]).sort_index()
+                    price_df = price_df[~price_df.index.duplicated(keep='first')]
+
     council_df = load_council_history(ticker=ticker)
 
 
