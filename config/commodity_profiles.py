@@ -430,7 +430,7 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
 
     sentiment_search_queries=[
         "coffee futures",
-        "arabica prices",
+        "arabica coffee market",
         "KC futures",
         "robusta market",
         "coffee supply",
