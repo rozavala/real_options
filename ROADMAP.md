@@ -1,7 +1,7 @@
 # Real Options — Engineering Roadmap
 
-**Last updated:** 2026-02-20
-**Reviewed by:** Rodrigo + Claude
+**Last updated:** 2026-02-21
+**Reviewed by:** Jules
 
 ---
 
@@ -39,6 +39,7 @@
 | B.4 Cross-Agent Knowledge Graph | TMS handles knowledge sharing; active cross-cueing unproven need |
 | G.5 Multi-Commodity | **Done.** Cocoa (CC) launched Feb 17. Full path isolation across 34 modules, per-commodity systemd services, staggered boot, auto-detect deploy pipeline. PRs #879-#949. KC + CC running simultaneously on DEV. Key infra: `set_data_dir()` pattern across all stateful modules, `COMMODITY_ID_OFFSET` for IB client IDs, `_resolve_data_path()` for dashboard, `migrate_data_dirs.py` for migration, per-commodity deploy verification |
 | E.1 Portfolio-Level VaR | **Done.** PR #976 (merged Feb 20). `trading_bot/var_calculator.py` (1127 lines): Full Revaluation HS VaR at 95%/99% with B-S repricing, batched IV fetch, yfinance historical returns, AI Risk Agent (L1 Interpreter + L2 Scenario Architect). Compliance gate with 3-mode enforcement (`log_only`→`warn`→`enforce`), startup grace period, emergency bypass. VaR dampener in weighted voting (80-100% utilization → 1.0-0.5x confidence). Shared `data/var_state.json` (portfolio-wide, not per-commodity). 34 tests (25 VaR + 9 compliance). Ships as Phase A (`log_only`). |
+| F.5 Prediction Market Integration | **Done.** `PredictionMarketSentinel` overhauled with Gamma API. `TopicDiscoveryAgent` automates topic finding using Claude Haiku (dynamic interest areas, LLM relevance filtering). Integrated with TMS for zombie position protection. |
 | E.3 Liquidity-Aware Execution | **Done.** `order_manager.py:check_liquidity_conditions()` — pre-execution bid/ask depth analysis, BAG combo leg liquidity aggregation, per-order spread logging. Remaining VWAP/TWAP only matters at much larger position sizes ($500K+). |
 
 ---
@@ -127,45 +128,34 @@ Text-Based Information Coefficient (sentiment signal x confidence vs actual retu
 
 ---
 
-### #7 — F.5 Prediction Market Deep Integration
-**Type:** Validation | **Effort:** 2-3 weeks | **Status:** Partial (trigger only)
-
-`PredictionMarketSentinel` (451 lines in `sentinels.py`) monitors Polymarket via gamma-api, tracks probability shifts via high-water marks, fires triggers on significant moves. But integration is one-way. Need: post-Council cross-check (does Council's bullish call align with prediction market odds?), divergence scoring, auto-flag or veto when Council diverges sharply from liquid prediction markets.
-
-**Why #7:** Free second opinion from real-money markets. A Council bullish call with Polymarket pricing in bearish outcomes is a red flag worth catching.
-
-**Revenue impact:** Medium — prevents bad trades when markets already know something the Council missed.
-
----
-
-### #8 — D.1 Event-Driven Backtest Engine
+### #7 — D.1 Event-Driven Backtest Engine
 **Type:** Validation | **Effort:** 6-8 weeks | **Status:** Not started
 
 Discrete-event simulation replaying historical data through the full system. Priority queue architecture, simulated latency, strict temporal isolation. Uses surrogate (C.4) for normal regimes, full Council for crises.
 
-**Why #8:** The only rigorous way to validate strategy changes. Table-stakes for serious trading.
+**Why #7:** The only rigorous way to validate strategy changes. Table-stakes for serious trading.
 
 **Prerequisites:** C.4, B.2 (done)
 
 ---
 
-### #9 — D.4 Paper Trading Shadow Mode
+### #8 — D.4 Paper Trading Shadow Mode
 **Type:** Safety | **Effort:** 3-4 weeks | **Status:** Not started
 
 Run proposed changes in a paper-trading sandbox alongside live system. Both see same data; only live executes. Compare decisions and outcomes. Promotion gate: shadow must outperform live for N days.
 
-**Why #9:** Cheaper, faster validation than full backtesting for incremental changes.
+**Why #8:** Cheaper, faster validation than full backtesting for incremental changes.
 
 ---
 
-### #10 — F.1 Dynamic Agent Recruiting
+### #9 — F.1 Dynamic Agent Recruiting
 **Type:** Intelligence | **Effort:** 3-4 weeks | **Status:** Not started
 
 Meta-agent spawns temporary specialists for unusual events (strikes, new regulations, pest outbreaks). Decommissions when event passes. Template library per event category.
 
 ---
 
-### #11 — B.3 Agentic RAG for Research
+### #10 — B.3 Agentic RAG for Research
 **Type:** Knowledge | **Effort:** 4-5 weeks | **Status:** Not started
 
 Researcher agent monitors preprint servers, USDA/ICO reports. Extracts causal mechanisms and quantitative findings. Stores in TMS as `type: RESEARCH_FINDING`.
@@ -174,14 +164,14 @@ Researcher agent monitors preprint servers, USDA/ICO reports. Extracts causal me
 
 ---
 
-### #12 — G.1 Formal Observability (AgentOps)
+### #11 — G.1 Formal Observability (AgentOps)
 **Type:** Ops | **Effort:** 2-3 weeks | **Status:** Partial (internal only)
 
 Custom `observability.py` exists with HallucinationDetector, AgentTrace, and ObservabilityHub. Missing: third-party integration (AgentOps or LangSmith) for trace replay, cost attribution dashboards, and alert rules. Keep custom hallucination detection as it's commodity-aware.
 
 ---
 
-### #13 — F.6 Synthetic Rare Event Generation
+### #12 — F.6 Synthetic Rare Event Generation
 **Type:** Stress test | **Effort:** 3-4 weeks | **Status:** Not started
 
 Combine real historical events in novel ways for stress testing. "What if frost + strike + BRL crash simultaneously?" Augments DSPy training set. Note: E.1 VaR already includes basic stress scenarios (price + IV shocks via `compute_stress_scenario()`); this extends to multi-factor combinatorial scenarios.
@@ -222,11 +212,11 @@ C.4 Surrogate ──→ C.2 Regime Switching
 | ~~Phase 2~~ | ~~F.4, E.2~~ | ~~4-6 weeks~~ | **Done** |
 | ~~Phase 3~~ | ~~A.1 DSPy~~ | ~~3-4 weeks~~ | **Done** |
 | ~~Phase 4a~~ | ~~G.5 Multi-Commodity~~ | ~~2 weeks~~ | **Done** (CC launched Feb 17) |
-| ~~Phase 4b~~ | ~~E.1 VaR~~ | ~~3-4 weeks~~ | **Done** (PR #976, Feb 20). Ships as `log_only` — flip to `warn`/`enforce` after live validation |
+| ~~Phase 4b~~ | ~~E.1 VaR, F.5 Prediction Market~~ | ~~3-4 weeks~~ | **Done** (VaR Feb 20, PM Integration) |
 | **Phase 5** | **#1 C.4/C.2 Surrogate+Regime** | **3-4 weeks** | **Cost reduction — LLM costs doubled with CC, surrogate saves 60-80%** |
 | Phase 6 | #2 E.4 Greeks + #3 G.6 3rd Commodity | 3-4 weeks | Risk visibility + growth |
 | Phase 7 | #4 A.2 TextGrad + #5 G.2 A/B Testing | 4-6 weeks | Decision quality + optimization safety |
-| Phase 8 | #6 D.5 Reasoning Metrics + #7 F.5 Prediction Market | 4-6 weeks | Diagnostics + validation |
-| Phase 9 | #8-#13 (depth + scale) | 20-30 weeks | Foundation for scale |
+| Phase 8 | #6 D.5 Reasoning Metrics | 4-6 weeks | Diagnostics + validation |
+| Phase 9 | #7-#12 (depth + scale) | 20-30 weeks | Foundation for scale |
 
 **Phase 5 rationale:** Surrogate/regime-switching is now the clear #1 priority. E.1 VaR shipped, so the survival gap is closed. LLM costs are the biggest drag on profitability — two commodities each running 4+ signal cycles/day through a 7-agent Council is expensive. Regime routing on quiet days (70% of sessions) could save $600-1600/month across KC+CC.

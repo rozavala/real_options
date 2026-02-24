@@ -4,33 +4,41 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 
 ## Principles
 
-1.  **Safety First:** This is a live trading system. Never modify execution logic (e.g., `order_manager.py`, `ib_interface.py`) without thorough testing and understanding of the implications.
-2.  **Heterogeneity:** The system is designed to use multiple LLM providers via the `HeterogeneousRouter`. When adding or modifying agent roles, maintain this heterogeneity to prevent algorithmic monoculture.
-3.  **Fail-Closed:** All components must fail closed. If an error occurs during a trade cycle, the trade should be blocked by default. See `trading_bot/risk_management.py` and `trading_bot/compliance.py` for examples of this pattern.
-4.  **Traceability:** All decisions must be logged. Ensure that any new logic maintains the forensic record in `council_history.csv` and `decision_signals.csv`.
+1.  **Safety First:** This is a live trading system. Never modify execution logic (e.g., `order_manager.py`, `ib_interface.py`) without thorough testing.
+2.  **Heterogeneity:** The system uses multiple LLM providers via `HeterogeneousRouter`. Maintain provider diversity.
+3.  **Fail-Closed:** All components must fail closed. If an error occurs, the trade is blocked.
+4.  **Traceability:** All decisions must be logged in `council_history.csv` and `decision_signals.csv`.
 
 ## Core Components
 
--   **Master Orchestrator (`master_orchestrator.py`):** The top-level supervisor for multi-commodity operations.
--   **Commodity Engine (`trading_bot/commodity_engine.py`):** The runtime for a single commodity.
--   **Heterogeneous Router (`trading_bot/heterogeneous_router.py`):** Routes LLM calls to different providers (Gemini, OpenAI, Anthropic, xAI) based on the agent's role.
--   **Semantic Cache (`trading_bot/semantic_cache.py`):** Caches decisions to avoid redundant API calls when the market state is unchanged.
--   **Sentinels (`trading_bot/sentinels.py`):** Monitor external events and trigger emergency cycles.
--   **Council (`trading_bot/agents.py`):** A collection of specialized agents that debate and decide on trades.
--   **Compliance (`trading_bot/compliance.py`):** The final arbiter of all trades, enforcing risk limits.
--   **TMS (`trading_bot/tms.py`):** The Transactive Memory System, used for sharing knowledge across agents and cycles.
+-   **Master Orchestrator (`trading_bot/master_orchestrator.py`):** The top-level supervisor for multi-commodity operations. Manages shared services (Equity, Macro, VaR).
+-   **Commodity Engine (`trading_bot/commodity_engine.py`):** The isolated runtime for a single commodity (ticker).
+-   **Heterogeneous Router (`trading_bot/heterogeneous_router.py`):** Routes LLM calls to different providers (Gemini, OpenAI, Anthropic, xAI).
+-   **Semantic Cache (`trading_bot/semantic_cache.py`):** Caches decisions to avoid redundant API calls.
+-   **Sentinels (`trading_bot/sentinels.py`):** Monitor external events (Price, Weather, News, Polymarket, Macro).
+-   **Council (`trading_bot/agents.py`):** Specialized agents that debate and decide on trades.
+-   **Compliance (`trading_bot/compliance.py`):** Enforces risk limits and "dead checks".
+-   **Portfolio Risk Guard (`trading_bot/var_calculator.py`):** Calculates portfolio-wide VaR (95%/99%) and runs the **AI Risk Agent** for narrative analysis and stress testing.
+-   **TMS (`trading_bot/tms.py`):** Transactive Memory System for institutional memory.
+
+## Infrastructure Agents
+
+-   **Topic Discovery Agent (`trading_bot/topic_discovery.py`):** Scans Prediction Markets (Polymarket) for new topics using Claude Haiku. Auto-configures `PredictionMarketSentinel`.
+-   **Risk Agent (Embedded in `var_calculator.py`):**
+    -   **L1 Interpreter:** Explains VaR metrics in plain English.
+    -   **L2 Scenario Architect:** Generates plausible stress scenarios based on sentinel intelligence.
 
 ## LLM Routing & Caching
 
--   **Routing:** Agents do not call LLM APIs directly. They must go through the `HeterogeneousRouter` (or `TradingCouncil` wrapper) which handles provider selection, rate limiting, and fallbacks.
--   **Caching:** Be aware that agent outputs may be cached by `SemanticCache`. If your agent relies on highly real-time data (seconds precision), ensure it is correctly integrated with the Sentinel system which bypasses cache for fresh triggers.
+-   **Routing:** Agents must use `HeterogeneousRouter`. Do not call LLM APIs directly unless authorized (e.g., Sentinels with specific provider needs).
+-   **Caching:** Be aware of `SemanticCache`. Fresh triggers bypass cache via specific flags.
 
 ## Knowledge Generation
 
--   **`.jules/` Directory:** Use this directory to store agent-level knowledge, learnings, and architectural notes.
--   **Readiness Check:** Use `verify_system_readiness.py` to diagnose the system state.
+-   **`.jules/` Directory:** Store agent-level knowledge and architectural notes here.
+-   **Readiness Check:** Use `verify_system_readiness.py` to diagnose system state.
 
 ## Operational Procedures
 
--   **Backtesting:** Use the `backtesting/` directory for strategy validation.
--   **Dashboard:** The Streamlit dashboard (`dashboard.py`) is the primary interface for human monitoring.
+-   **Backtesting:** Use `backtesting/` directory.
+-   **Dashboard:** Streamlit dashboard (`dashboard.py`) is the primary interface.
