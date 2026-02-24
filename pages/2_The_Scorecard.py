@@ -204,20 +204,28 @@ with matrix_cols[1]:
     metric_cols = st.columns(4)
 
     with metric_cols[0]:
-        st.metric("Precision", f"{confusion['precision']:.1%}")
-        st.caption("TP / (TP + FP)")
+        st.metric(
+            "Precision", f"{confusion['precision']:.1%}",
+            help="Precision (Positive Predictive Value): TP / (TP + FP). Measures how many of the AI's bullish/bearish calls were actually correct."
+        )
 
     with metric_cols[1]:
-        st.metric("Recall", f"{confusion['recall']:.1%}")
-        st.caption("TP / (TP + FN)")
+        st.metric(
+            "Recall", f"{confusion['recall']:.1%}",
+            help="Recall (Sensitivity): TP / (TP + FN). Measures the AI's ability to find all profitable opportunities in the market."
+        )
 
     with metric_cols[2]:
-        st.metric("Accuracy", f"{confusion['accuracy']:.1%}")
-        st.caption("(TP + TN) / Total")
+        st.metric(
+            "Accuracy", f"{confusion['accuracy']:.1%}",
+            help="Accuracy: (TP + TN) / Total. The overall percentage of correct market direction predictions."
+        )
 
     with metric_cols[3]:
-        st.metric("Total Graded", confusion['total'])
-        st.caption("Decisions evaluated")
+        st.metric(
+            "Total Graded", confusion['total'],
+            help="Total number of Master decisions that have been reconciled against actual market outcomes."
+        )
 
     # After the existing metrics, add volatility context:
     if confusion.get('vol_total', 0) > 0:
@@ -792,7 +800,20 @@ if sorted_agents:
 
     # Detailed table
     with st.expander("📋 Detailed Scores"):
-        st.dataframe(chart_data, width="stretch")
+        st.dataframe(
+            chart_data,
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "Accuracy": st.column_config.ProgressColumn(
+                    "Accuracy",
+                    help="Prediction accuracy percentage",
+                    format="%.1f%%",
+                    min_value=0,
+                    max_value=100,
+                )
+            }
+        )
 else:
     st.info("Not enough data to calculate agent scores.")
 
