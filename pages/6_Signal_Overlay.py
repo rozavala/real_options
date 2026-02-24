@@ -264,7 +264,10 @@ def resolve_front_month_ticker(config_path: str = "config.json") -> tuple[str, s
             # Sort by DTE ascending — first one is the trading front month
             candidates.sort(key=lambda x: x[0])
             front_symbol = candidates[0][1]
-            yf_ticker = f"{front_symbol}.NYB"
+            # Use exchange-specific suffix (NYB for ICE/NYBOT, NYM for NYMEX, etc.)
+            suffix_map = {'ICE': 'NYB', 'NYBOT': 'NYB', 'NYMEX': 'NYM', 'COMEX': 'CMX', 'CME': 'CME'}
+            suffix = suffix_map.get(profile.contract.exchange, 'NYB')
+            yf_ticker = f"{front_symbol}.{suffix}"
             return (yf_ticker, front_symbol)
 
     except Exception as e:
