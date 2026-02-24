@@ -275,7 +275,7 @@ async def _post_close_service(shared: SharedContext, config: dict):
                     ticker_config = config.copy()
                     ticker_config['data_dir'] = os.path.join('data', ticker)
                     ticker_config['symbol'] = ticker
-                    await run_reconciliation(ticker_config)
+                    await run_reconciliation(config=ticker_config)
             except Exception as e:
                 logger.error(f"Post-close reconciliation failed: {e}")
 

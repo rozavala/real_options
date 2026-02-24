@@ -684,7 +684,7 @@ def parse_flex_csv_to_df(csv_data: str, config: dict = None) -> pd.DataFrame:
     return df_out
 
 
-async def main(lookback_days: int = None):
+async def main(lookback_days: int = None, config: dict = None):
     """
     Main function to orchestrate the trade reconciliation process.
     Fetches reports from multiple Flex Queries, consolidates them, and then
@@ -694,7 +694,8 @@ async def main(lookback_days: int = None):
     logger.info("Starting trade reconciliation using Flex Queries.")
 
     # --- 1. Load Configuration ---
-    config = load_config()
+    if config is None:
+        config = load_config()
     # Inject data_dir for commodity isolation if not already set
     if 'data_dir' not in config:
         ticker = os.environ.get("COMMODITY_TICKER", "KC").upper()

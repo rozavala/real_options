@@ -38,7 +38,13 @@ def _get_stats_file() -> Path:
 
 
 class SentinelStats:
-    """Collect and expose sentinel performance statistics."""
+    """Collect and expose sentinel performance statistics.
+
+    In multi-engine mode, multiple engines share this singleton but write to
+    different files (via ContextVar-resolved _get_stats_file()). To prevent
+    cross-engine data contamination, every mutating operation reloads from
+    disk first (read-modify-write pattern).
+    """
 
     def __init__(self):
         self.stats = self._load_stats()
@@ -62,6 +68,14 @@ class SentinelStats:
         with open(stats_file, 'w') as f:
             json.dump(self.stats, f, indent=2)
 
+    def _reload(self):
+        """Reload stats from disk for the current engine's data dir.
+
+        Prevents cross-engine contamination when a singleton is shared
+        across CommodityEngines in multi-engine mode.
+        """
+        self.stats = self._load_stats()
+
     def record_alert(self, sentinel_name: str, triggered_trade: bool):
         """
         Record a sentinel alert.
@@ -70,6 +84,7 @@ class SentinelStats:
             sentinel_name: Name of the sentinel
             triggered_trade: Whether alert led to trade execution
         """
+        self._reload()
         if sentinel_name not in self.stats['sentinels']:
             self.stats['sentinels'][sentinel_name] = {
                 'total_alerts': 0,
@@ -102,6 +117,7 @@ class SentinelStats:
             sentinel_name: Name of the sentinel (e.g., 'WeatherSentinel')
             error_type: Type of error (e.g., 'TIMEOUT', 'CRASH: ValueError')
         """
+        self._reload()
         if sentinel_name not in self.stats['sentinels']:
             self.stats['sentinels'][sentinel_name] = {
                 'total_alerts': 0,
@@ -133,10 +149,12 @@ class SentinelStats:
         Returns:
             Dict of {sentinel_name: stats_dict}
         """
+        self._reload()
         return self.stats.get('sentinels', {})
 
     def get_dashboard_stats(self) -> dict:
         """Get stats formatted for dashboard display."""
+        self._reload()
         result = {}
         today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
 

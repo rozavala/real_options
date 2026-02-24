@@ -280,6 +280,7 @@ class HallucinationDetector:
                 logger.error(f"Agent {agent} QUARANTINED: {len(cycles_with_flags)} flawed cycles in 7 days.")
 
         # --- AUTO-RELEASE LOGIC (AMENDMENT 2: handles empty recent_flags) ---
+        pre_quarantine = frozenset(self.quarantined_agents)
         if agent in self.quarantined_agents:
             if not recent_flags:
                 # No flags at all in 7-day window → definitely release
@@ -291,6 +292,10 @@ class HallucinationDetector:
                 if hours_since > 48:
                     self.quarantined_agents.discard(agent)
                     logger.info(f"Agent {agent} AUTO-RELEASED from quarantine (clean for {hours_since:.1f}h)")
+
+        # Persist quarantine state when it changes (not just on manual release)
+        if frozenset(self.quarantined_agents) != pre_quarantine:
+            self._save_state()
 
         return final_flags
 

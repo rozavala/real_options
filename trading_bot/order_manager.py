@@ -1258,12 +1258,26 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     logger.error(f"whatIfOrderAsync returned None for {display_name}. Skipping.")
                     continue
                 if isinstance(what_if, list):
-                    logger.error(f"whatIfOrderAsync returned list for {display_name} (IB rejected combo). Skipping.")
-                    continue
-                if not hasattr(what_if, 'initMarginChange') or what_if.initMarginChange == '':
+                    # IB rejected combo whatIfOrder (common for "riskless combination").
+                    # Fall back to synthetic max-risk calculation from leg strikes.
+                    logger.warning(
+                        f"whatIfOrderAsync returned list for {display_name} "
+                        f"(IB rejected combo). Falling back to calculate_spread_max_risk."
+                    )
+                    try:
+                        margin_impact = await calculate_spread_max_risk(ib, contract, order, config)
+                        if margin_impact <= 0:
+                            logger.error(f"Synthetic margin for {display_name} is ${margin_impact:,.2f}. Skipping.")
+                            continue
+                        logger.info(f"Synthetic margin for {display_name}: ${margin_impact:,.2f}")
+                    except Exception as fallback_err:
+                        logger.error(f"Synthetic margin fallback failed for {display_name}: {fallback_err}. Skipping.")
+                        continue
+                elif not hasattr(what_if, 'initMarginChange') or what_if.initMarginChange == '':
                     logger.error(f"whatIfOrderAsync returned empty/invalid result for {display_name}. Skipping.")
                     continue
-                margin_impact = float(what_if.initMarginChange)
+                else:
+                    margin_impact = float(what_if.initMarginChange)
 
                 if margin_impact < current_available_funds:
                     orders_to_place.append((contract, order, decision_data))
