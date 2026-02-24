@@ -7848,3 +7848,180 @@ Real mon...
 2026-02-24 12:56:31,771 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.045, last=0.045, delta=0.0%, threshold=8%, hwm=0
 2026-02-24 12:56:31,787 - sentinel_diag - INFO -   PredictionMarket [How much revenue will the U.S. raise from tariffs ]: price=0.002, last=0.002, delta=0.0%, threshold=8%, hwm=0
 2026-02-24 12:56:31,791 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-02-24 13:01:31,886 - sentinel_diag - INFO - XSentimentSentinel: running (market open)
+2026-02-24 13:01:31,886 - sentinel_diag - INFO - XSentimentSentinel: querying 8 queries: ['coffee futures', 'arabica prices', 'KC futures', 'robusta market', 'coffee supply', 'Brazil coffee harvest', 'coffee supply chain', 'US coffee tariffs']
+2026-02-24 13:01:33,050 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='coffee futures', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-24 13:01:33,050 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-24 13:01:34,550 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='arabica prices', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-24 13:01:34,551 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-24 13:01:34,554 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='KC futures', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-24 13:01:34,554 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-24 13:01:35,727 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-24 13:01:35,728 - sentinel_diag - INFO -   Tool args: {'query': 'coffee futures (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 100, 'mode': 'Latest'}
+2026-02-24 13:01:35,728 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='coffee futures (from:SpillingTheBean OR from:optima_t OR fro', limit=100)
+2026-02-24 13:01:35,794 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:35,795 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:35,795 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:35,795 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='coffee futures -meme -joke -spam -giveaway -airdrop -nft -cr', limit=100)
+2026-02-24 13:01:35,846 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:35,847 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:35,847 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:35,847 - sentinel_diag - INFO -   x_search result: 0 posts, stage=broad, quality=low
+2026-02-24 13:01:35,847 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-24 13:01:36,055 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='robusta market', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-24 13:01:36,055 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-24 13:01:37,164 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-24 13:01:37,164 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=0, summary=No recent relevant posts found from specified accounts regarding coffee futures,
+2026-02-24 13:01:37,729 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='coffee supply', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-24 13:01:37,729 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-24 13:01:37,998 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-24 13:01:37,999 - sentinel_diag - INFO -   Tool args: {'query': 'KC futures (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 100, 'mode': 'Latest'}
+2026-02-24 13:01:37,999 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='KC futures (from:SpillingTheBean OR from:optima_t OR from:Re', limit=100)
+2026-02-24 13:01:38,041 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:38,041 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:38,041 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:38,042 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='KC futures -meme -joke -spam -giveaway -airdrop -nft -crypto', limit=100)
+2026-02-24 13:01:38,083 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:38,083 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:38,083 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:38,084 - sentinel_diag - INFO -   x_search result: 0 posts, stage=broad, quality=low
+2026-02-24 13:01:38,084 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-24 13:01:39,489 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-24 13:01:39,490 - sentinel_diag - INFO -   Tool args: {'query': 'robusta market (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 100, 'mode': 'Latest'}
+2026-02-24 13:01:39,490 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='robusta market (from:SpillingTheBean OR from:optima_t OR fro', limit=100)
+2026-02-24 13:01:39,538 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:39,538 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:39,539 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:39,539 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='robusta market -meme -joke -spam -giveaway -airdrop -nft -cr', limit=100)
+2026-02-24 13:01:39,583 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:39,583 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:39,583 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:39,583 - sentinel_diag - INFO -   x_search result: 0 posts, stage=broad, quality=low
+2026-02-24 13:01:39,583 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-24 13:01:39,870 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-24 13:01:39,870 - sentinel_diag - INFO -   Tool args: {'query': 'arabica prices (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-02-24 13:01:39,870 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='arabica prices (from:SpillingTheBean OR from:optima_t OR fro', limit=50)
+2026-02-24 13:01:39,916 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:39,916 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:39,916 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:39,916 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='arabica prices -meme -joke -spam -giveaway -airdrop -nft -cr', limit=50)
+2026-02-24 13:01:39,963 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:39,963 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:39,963 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:39,963 - sentinel_diag - INFO -   x_search result: 0 posts, stage=broad, quality=low
+2026-02-24 13:01:39,963 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-24 13:01:40,708 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-24 13:01:40,708 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.1, volume=0, summary=No recent relevant posts found from specified accounts regarding KC futures. Sen
+2026-02-24 13:01:40,855 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-24 13:01:40,855 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=0, summary=No recent relevant posts found from the specified accounts on the robusta market
+2026-02-24 13:01:40,971 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='Brazil coffee harvest', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-24 13:01:40,971 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-24 13:01:41,363 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-24 13:01:41,363 - sentinel_diag - INFO -   Tool args: {'query': 'coffee supply (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 100, 'mode': 'Latest'}
+2026-02-24 13:01:41,363 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='coffee supply (from:SpillingTheBean OR from:optima_t OR from', limit=100)
+2026-02-24 13:01:41,406 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:41,406 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:41,406 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:41,406 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='coffee supply -meme -joke -spam -giveaway -airdrop -nft -cry', limit=100)
+2026-02-24 13:01:41,448 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:41,448 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:41,448 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:41,448 - sentinel_diag - INFO -   x_search result: 0 posts, stage=broad, quality=low
+2026-02-24 13:01:41,448 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-24 13:01:42,106 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-24 13:01:42,107 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.1, volume=0, summary=No recent relevant posts found from specified accounts regarding Arabica prices,
+2026-02-24 13:01:43,059 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='coffee supply chain', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-24 13:01:43,059 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-24 13:01:43,125 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-24 13:01:43,125 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=0, summary=No recent posts found matching the query on coffee supply from specified account
+2026-02-24 13:01:44,998 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='US coffee tariffs', model=grok-4-1-fast-reasoning, tools=enabled
+2026-02-24 13:01:44,998 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-02-24 13:01:45,188 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-24 13:01:45,188 - sentinel_diag - INFO -   Tool args: {'query': 'Brazil coffee harvest (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 100, 'mode': 'Latest'}
+2026-02-24 13:01:45,188 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='Brazil coffee harvest (from:SpillingTheBean OR from:optima_t', limit=100)
+2026-02-24 13:01:45,232 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:45,232 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:45,232 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:45,232 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='Brazil coffee harvest -meme -joke -spam -giveaway -airdrop -', limit=100)
+2026-02-24 13:01:45,274 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:45,274 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:45,274 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:45,274 - sentinel_diag - INFO -   x_search result: 0 posts, stage=broad, quality=low
+2026-02-24 13:01:45,274 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-24 13:01:47,321 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-24 13:01:47,322 - sentinel_diag - INFO -   Tool args: {'query': 'coffee supply chain (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 100, 'mode': 'Latest'}
+2026-02-24 13:01:47,322 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='coffee supply chain (from:SpillingTheBean OR from:optima_t O', limit=100)
+2026-02-24 13:01:47,367 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:47,368 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:47,368 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:47,368 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='coffee supply chain -meme -joke -spam -giveaway -airdrop -nf', limit=100)
+2026-02-24 13:01:47,429 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:47,429 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:47,430 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:47,430 - sentinel_diag - INFO -   x_search result: 0 posts, stage=broad, quality=low
+2026-02-24 13:01:47,430 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-24 13:01:47,545 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-24 13:01:47,545 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=0, summary=No recent posts found matching the query for Brazil coffee harvest from specifie
+2026-02-24 13:01:47,978 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-02-24 13:01:47,978 - sentinel_diag - INFO -   Tool args: {'query': 'US coffee tariffs (from:SpillingTheBean OR from:optima_t OR from:Reuters OR from:ICOcoffeeorg OR from:zerohedge OR from:Barchart OR from:WSJ) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-02-24 13:01:47,979 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='US coffee tariffs (from:SpillingTheBean OR from:optima_t OR ', limit=50)
+2026-02-24 13:01:48,024 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:48,024 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:48,024 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:48,024 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='US coffee tariffs -meme -joke -spam -giveaway -airdrop -nft ', limit=50)
+2026-02-24 13:01:48,066 - sentinel_diag - INFO -   X API response status: 403
+2026-02-24 13:01:48,066 - trading_bot.sentinels - ERROR - X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will be blocked until the next cycle begins on 2026-03-19. To resume access immediately, you can increase your spend cap in the developer console.","type":"https://api.twitter.com/2/problems/credits"}
+2026-02-24 13:01:48,066 - sentinel_diag - ERROR -   X API error 403: {"account_id":2013334169322168320,"reset_date":"2026-03-19","title":"SpendCapReached","detail":"Your enrolled account [2013334169322168320] has reached its billing cycle spend cap. API requests will b
+2026-02-24 13:01:48,066 - sentinel_diag - INFO -   x_search result: 0 posts, stage=broad, quality=low
+2026-02-24 13:01:48,066 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-02-24 13:01:49,689 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-24 13:01:49,690 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=0, summary=No recent posts found matching the query for US coffee tariffs from specified ac
+2026-02-24 13:01:50,027 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-02-24 13:01:50,027 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=0, summary=No recent relevant posts found on X matching the query for coffee supply chain f
+2026-02-24 13:01:50,027 - sentinel_diag - INFO - XSentimentSentinel: 8/8 queries returned valid results
+2026-02-24 13:01:50,027 - sentinel_diag - INFO -   Query 0 result: sentiment=5.0, confidence=0.2, volume=0, themes=[]
+2026-02-24 13:01:50,027 - sentinel_diag - INFO -   Query 1 result: sentiment=5.0, confidence=0.1, volume=0, themes=[]
+2026-02-24 13:01:50,027 - sentinel_diag - INFO -   Query 2 result: sentiment=5.0, confidence=0.1, volume=0, themes=[]
+2026-02-24 13:01:50,027 - sentinel_diag - INFO -   Query 3 result: sentiment=5.0, confidence=0.2, volume=0, themes=[]
+2026-02-24 13:01:50,028 - sentinel_diag - INFO -   Query 4 result: sentiment=5.0, confidence=0.2, volume=0, themes=[]
+2026-02-24 13:01:50,028 - sentinel_diag - INFO -   Query 5 result: sentiment=5.0, confidence=0.2, volume=0, themes=[]
+2026-02-24 13:01:50,028 - sentinel_diag - INFO -   Query 6 result: sentiment=5.0, confidence=0.2, volume=0, themes=[]
+2026-02-24 13:01:50,028 - sentinel_diag - INFO -   Query 7 result: sentiment=5.0, confidence=0.2, volume=0, themes=[]
+2026-02-24 13:01:50,032 - sentinel_diag - INFO - XSentimentSentinel: avg_sentiment=5.00, avg_confidence=0.18, total_volume=0, volume_spike=False, thresholds: bullish>=6.5, bearish<=3.5, top_themes=[]
+2026-02-24 13:01:50,032 - sentinel_diag - INFO - XSentimentSentinel: no trigger (sentiment within normal range, no volume spike)
+2026-02-24 13:01:50,035 - sentinel_diag - INFO - PredictionMarketSentinel: polling 4 topics
+2026-02-24 13:01:50,067 - sentinel_diag - INFO -   PredictionMarket [Fed decisions (Dec-Mar)]: price=0.955, last=0.955, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:01:50,084 - sentinel_diag - INFO -   PredictionMarket [Will tariffs generate >$250b in 2025?]: price=0.006, last=0.006, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:01:50,103 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.045, last=0.045, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:01:50,127 - sentinel_diag - INFO -   PredictionMarket [How much revenue will the U.S. raise from tariffs ]: price=0.002, last=0.002, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:01:50,132 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-02-24 13:06:50,210 - sentinel_diag - INFO - PredictionMarketSentinel: polling 4 topics
+2026-02-24 13:06:50,242 - sentinel_diag - INFO -   PredictionMarket [Fed decisions (Dec-Mar)]: price=0.955, last=0.955, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:06:50,254 - sentinel_diag - INFO -   PredictionMarket [Will tariffs generate >$250b in 2025?]: price=0.006, last=0.006, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:06:50,272 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.045, last=0.045, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:06:50,287 - sentinel_diag - INFO -   PredictionMarket [How much revenue will the U.S. raise from tariffs ]: price=0.002, last=0.002, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:06:50,292 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-02-24 13:11:50,368 - sentinel_diag - INFO - PredictionMarketSentinel: polling 4 topics
+2026-02-24 13:11:50,406 - sentinel_diag - INFO -   PredictionMarket [Fed decisions (Dec-Mar)]: price=0.955, last=0.955, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:11:50,424 - sentinel_diag - INFO -   PredictionMarket [Will tariffs generate >$250b in 2025?]: price=0.006, last=0.006, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:11:50,442 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.045, last=0.045, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:11:50,461 - sentinel_diag - INFO -   PredictionMarket [How much revenue will the U.S. raise from tariffs ]: price=0.002, last=0.002, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:11:50,466 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-02-24 13:16:50,685 - sentinel_diag - INFO - PredictionMarketSentinel: polling 4 topics
+2026-02-24 13:16:50,721 - sentinel_diag - INFO -   PredictionMarket [Fed decisions (Dec-Mar)]: price=0.955, last=0.955, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:16:50,737 - sentinel_diag - INFO -   PredictionMarket [Will tariffs generate >$250b in 2025?]: price=0.006, last=0.006, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:16:50,754 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.045, last=0.045, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:16:50,771 - sentinel_diag - INFO -   PredictionMarket [How much revenue will the U.S. raise from tariffs ]: price=0.002, last=0.002, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:16:50,775 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-02-24 13:21:50,887 - sentinel_diag - INFO - PredictionMarketSentinel: polling 4 topics
+2026-02-24 13:21:50,920 - sentinel_diag - INFO -   PredictionMarket [Fed decisions (Dec-Mar)]: price=0.955, last=0.955, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:21:50,936 - sentinel_diag - INFO -   PredictionMarket [Will tariffs generate >$250b in 2025?]: price=0.006, last=0.006, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:21:50,955 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.045, last=0.045, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:21:50,970 - sentinel_diag - INFO -   PredictionMarket [How much revenue will the U.S. raise from tariffs ]: price=0.002, last=0.002, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:21:50,975 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-02-24 13:26:51,062 - sentinel_diag - INFO - PredictionMarketSentinel: polling 4 topics
+2026-02-24 13:26:51,102 - sentinel_diag - INFO -   PredictionMarket [Fed decisions (Dec-Mar)]: price=0.955, last=0.955, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:26:51,121 - sentinel_diag - INFO -   PredictionMarket [Will tariffs generate >$250b in 2025?]: price=0.006, last=0.006, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:26:51,139 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.045, last=0.045, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:26:51,159 - sentinel_diag - INFO -   PredictionMarket [How much revenue will the U.S. raise from tariffs ]: price=0.002, last=0.002, delta=0.0%, threshold=8%, hwm=0
+2026-02-24 13:26:51,168 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
