@@ -16,7 +16,7 @@ def mock_config():
         'sentinels': {
             'x_sentiment': {
                 'model': 'grok-4-1-fast-reasoning',
-                'search_queries': ['coffee futures', 'arabica prices'],
+                'search_queries': ['coffee futures', 'arabica coffee market'],
                 'sentiment_threshold': 6.5,
                 'min_engagement': 5,
                 'volume_spike_multiplier': 2.0,
