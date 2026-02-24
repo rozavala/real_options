@@ -428,10 +428,16 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
 
     # Liquidity Filter: Check if the market spread is too wide relative to the theoretical price
     if net_theoretical_price > 0 and (market_spread / net_theoretical_price) > max_spread_pct:
+        from datetime import datetime, timezone
+        _spread_pct = market_spread / net_theoretical_price
+        _hour_utc = datetime.now(timezone.utc).hour
+        _contract_sym = chain.get('tradingClass', config.get('symbol', '?'))
         logging.warning(
             f"LIQUIDITY FILTER FAILED: Market spread ({market_spread:.2f}) is "
-            f"{(market_spread / net_theoretical_price):.1%} of theoretical price ({net_theoretical_price:.2f}), "
-            f"which exceeds the max of {max_spread_pct:.1%}. Aborting order."
+            f"{_spread_pct:.1%} of theoretical price ({net_theoretical_price:.2f}), "
+            f"which exceeds the max of {max_spread_pct:.1%}. Aborting order. "
+            f"[liquidity_metric: contract={_contract_sym}, expiry={exp_details.get('exp_date', '?')}, "
+            f"spread_pct={_spread_pct:.3f}, hour_utc={_hour_utc}]"
         )
         return None
 
