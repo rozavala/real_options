@@ -25,6 +25,7 @@ from dashboard_utils import (
     fetch_live_dashboard_data,
     get_config,
     _resolve_data_path,
+    _resolve_data_path_for,
     STRATEGY_ABBREVIATIONS
 )
 import numpy as np
@@ -135,7 +136,7 @@ strategy_filter = st.sidebar.multiselect(
 live_price = None
 if config:
     live_data = fetch_live_dashboard_data(config)
-    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    # Use page-level ticker from commodity selector (not config)
     live_price = live_data.get(f'{ticker}_Price')
 
 # Grade decisions
@@ -458,8 +459,8 @@ st.markdown("---")
 st.subheader("Regime-Specific Win Rate")
 st.caption("Does the system perform differently in different market conditions?")
 
-# Load decision_signals.csv for regime data
-_signals_path = _resolve_data_path("decision_signals.csv")
+# Load decision_signals.csv for regime data (explicit ticker for commodity-aware path)
+_signals_path = _resolve_data_path_for("decision_signals.csv", ticker)
 _regime_shown = False
 
 if os.path.exists(_signals_path):
@@ -800,7 +801,7 @@ st.markdown("---")
 # === FEEDBACK LOOP HEALTH ===
 st.subheader("🔄 Feedback Loop Health")
 
-structured_file = _resolve_data_path("agent_accuracy_structured.csv")
+structured_file = _resolve_data_path_for("agent_accuracy_structured.csv", ticker)
 
 if os.path.exists(structured_file):
     struct_df = pd.read_csv(structured_file)

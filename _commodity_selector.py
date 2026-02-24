@@ -41,7 +41,11 @@ def _commodity_label(ticker: str) -> str:
 
 
 def _reinit_data_dirs(ticker: str):
-    """Re-point module-level data directories for the selected commodity."""
+    """Re-point module-level data directories for the selected commodity.
+
+    Must cover every module with a set_data_dir() that the dashboard reads.
+    Mirrors the orchestrator's init sequence (orchestrator.py L4926-4938).
+    """
     data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', ticker)
 
     from trading_bot.decision_signals import set_data_dir as set_signals_dir
@@ -49,6 +53,27 @@ def _reinit_data_dirs(ticker: str):
 
     from trading_bot.brier_bridge import set_data_dir as set_brier_bridge_dir
     set_brier_bridge_dir(data_dir)
+
+    from trading_bot.state_manager import StateManager
+    StateManager.set_data_dir(data_dir)
+
+    from trading_bot.sentinel_stats import set_data_dir as set_stats_dir
+    set_stats_dir(data_dir)
+
+    from trading_bot.utils import set_data_dir as set_utils_dir
+    set_utils_dir(data_dir)
+
+    from trading_bot.brier_scoring import set_data_dir as set_brier_scoring_dir
+    set_brier_scoring_dir(data_dir)
+
+    from trading_bot.prompt_trace import set_data_dir as set_prompt_trace_dir
+    set_prompt_trace_dir(data_dir)
+
+    from trading_bot.router_metrics import set_data_dir as set_router_metrics_dir
+    set_router_metrics_dir(data_dir)
+
+    from trading_bot.task_tracker import set_data_dir as set_tracker_dir
+    set_tracker_dir(data_dir)
 
 
 def selected_commodity() -> str:

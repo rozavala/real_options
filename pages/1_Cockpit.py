@@ -34,6 +34,7 @@ from dashboard_utils import (
     _resolve_data_path
 )
 from trading_bot.calendars import is_trading_day
+from config.commodity_profiles import get_commodity_profile as get_profile_dataclass, parse_trading_hours
 
 
 def _parse_price_from_text(text: str, entry_price: float, min_price: float, max_price: float) -> float | None:
@@ -77,9 +78,9 @@ def extract_stop_price_from_triggers(
     if triggers is None:
         return None
 
-    # Get commodity-specific bounds (defaults to KC)
+    # Get commodity-specific bounds (permissive fallback for any commodity)
     profile = get_commodity_profile(config)
-    min_price, max_price = profile.get('stop_parse_range', [80, 800])
+    min_price, max_price = profile.get('stop_parse_range', [0, 100000])
 
     # === Dict format ===
     if isinstance(triggers, dict):
@@ -536,12 +537,24 @@ utc_now = datetime.now(timezone.utc)
 ny_tz = pytz.timezone('America/New_York')
 ny_now = utc_now.astimezone(ny_tz)
 
+# Load trading hours and exchange from the selected commodity profile
+try:
+    _clock_profile = get_profile_dataclass(ticker)
+    _open_time, _close_time = parse_trading_hours(_clock_profile.trading_hours_et)
+    _clock_exchange = _clock_profile.contract.exchange
+    _hours_label = _clock_profile.trading_hours_et
+except Exception:
+    from datetime import time as _dtime
+    _open_time, _close_time = _dtime(4, 15), _dtime(13, 30)
+    _clock_exchange = 'ICE'
+    _hours_label = "04:15-13:30"
+
 # Determine Market Status (check hours, weekday, AND holidays)
-market_open_ny = ny_now.replace(hour=3, minute=30, second=0, microsecond=0)
-market_close_ny = ny_now.replace(hour=14, minute=0, second=0, microsecond=0)
+market_open_ny = ny_now.replace(hour=_open_time.hour, minute=_open_time.minute, second=0, microsecond=0)
+market_close_ny = ny_now.replace(hour=_close_time.hour, minute=_close_time.minute, second=0, microsecond=0)
 is_weekday = ny_now.weekday() < 5
 is_within_hours = market_open_ny <= ny_now <= market_close_ny
-is_trading = is_trading_day(ny_now.date(), exchange='ICE')
+is_trading = is_trading_day(ny_now.date(), exchange=_clock_exchange)
 
 is_open = is_weekday and is_within_hours and is_trading
 
@@ -558,11 +571,11 @@ if not is_open:
     elif not is_within_hours:
         status_text += " (After Hours)"
     # Calculate "opens in" countdown to next trading day open
-    next_open = ny_now.replace(hour=3, minute=30, second=0, microsecond=0)
+    next_open = ny_now.replace(hour=_open_time.hour, minute=_open_time.minute, second=0, microsecond=0)
     if ny_now >= next_open:
         next_open += timedelta(days=1)
     # Advance to next trading day
-    while next_open.weekday() >= 5 or not is_trading_day(next_open.date(), exchange='ICE'):
+    while next_open.weekday() >= 5 or not is_trading_day(next_open.date(), exchange=_clock_exchange):
         next_open += timedelta(days=1)
     delta = next_open - ny_now
     total_mins = int(delta.total_seconds() // 60)
@@ -582,7 +595,7 @@ with clock_cols[1]:
     st.metric("New York Time (Market)", ny_now.strftime("%H:%M:%S"), help=ny_now.strftime("%A, %Y-%m-%d"))
 with clock_cols[2]:
     st.metric("Market Status", f"{status_color} {status_text}", delta=countdown_text, delta_color="off",
-              help="Trading Hours (ET): 03:30 - 14:00 (Mon-Fri)")
+              help=f"Trading Hours (ET): {_hours_label} (Mon-Fri)")
 
 st.markdown("---")
 
@@ -971,11 +984,10 @@ if config:
     with bench_cols[0]:
         st.metric("S&P 500", f"{benchmarks.get('SPY', 0):+.2f}%")
     with bench_cols[1]:
-        # Dynamic commodity from config
-        ticker = config.get('commodity', {}).get('ticker', 'KC')
-        name = config.get('commodity', {}).get('name', 'Coffee')
+        # Use page-level ticker from commodity selector (not config, which could be stale)
+        _bench_name = config.get('commodity', {}).get('name', ticker)
         yf_ticker = f"{ticker}=F"
-        st.metric(name, f"{benchmarks.get(yf_ticker, 0):+.2f}%")
+        st.metric(_bench_name, f"{benchmarks.get(yf_ticker, 0):+.2f}%")
 
     # Rolling Win Rate Sparkline
     st.markdown("---")
