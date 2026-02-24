@@ -995,8 +995,7 @@ if config:
         if _bi + 1 >= len(bench_cols):
             break
         with bench_cols[_bi + 1]:
-            _yf = f"{_bt}=F"
-            _pct = benchmarks.get(_yf, 0)
+            _pct = benchmarks.get(_bt, 0)
             # Highlight selected commodity
             _label = f"**{_bt}**" if _bt == ticker else _bt
             st.metric(_label, f"{_pct:+.2f}%")

@@ -216,6 +216,56 @@ def get_commodity_profile(config: dict = None) -> dict:
         }
 
 
+def resolve_yf_ticker(commodity_ticker: str) -> str:
+    """Resolve a commodity ticker to its active front-month Yahoo Finance ticker.
+
+    Uses the same DTE rules as the trading system to pick the contract
+    that actually has volume, avoiding Yahoo's broken continuous =F chart
+    which shows stale data during rollover periods.
+
+    Returns e.g. 'KCK26.NYB' instead of 'KC=F'.
+    Falls back to '{ticker}=F' if resolution fails.
+    """
+    try:
+        from config.commodity_profiles import get_commodity_profile as _get_cp
+        from datetime import datetime as _dt
+
+        cp = _get_cp(commodity_ticker)
+        min_dte = cp.min_dte
+        valid_months = cp.contract.contract_months
+        symbol = cp.contract.symbol
+
+        month_code_to_num = {
+            'F': 1, 'G': 2, 'H': 3, 'J': 4, 'K': 5, 'M': 6,
+            'N': 7, 'Q': 8, 'U': 9, 'V': 10, 'X': 11, 'Z': 12
+        }
+        today = _dt.now()
+        candidates = []
+        for year_offset in range(3):
+            year = today.year + year_offset
+            for mc in valid_months:
+                mn = month_code_to_num.get(mc)
+                if not mn:
+                    continue
+                try:
+                    approx_expiry = _dt(year, mn, 19)
+                except ValueError:
+                    continue
+                dte = (approx_expiry - today).days
+                if dte >= min_dte:
+                    candidates.append((dte, f"{symbol}{mc}{year % 100}"))
+
+        if candidates:
+            candidates.sort(key=lambda x: x[0])
+            suffix_map = {'ICE': 'NYB', 'NYBOT': 'NYB', 'NYMEX': 'NYM', 'COMEX': 'CMX', 'CME': 'CME'}
+            suffix = suffix_map.get(cp.contract.exchange, 'NYB')
+            return f"{candidates[0][1]}.{suffix}"
+    except Exception as e:
+        logger.warning(f"Front month resolution failed for {commodity_ticker}: {e}")
+
+    return f"{commodity_ticker}=F"
+
+
 @st.cache_data(ttl=60)
 def load_trade_data(ticker: str = None):
     """Loads and caches the consolidated trade ledger."""
@@ -1048,6 +1098,10 @@ def fetch_all_live_data(_config: dict) -> dict:
 def fetch_todays_benchmark_data(commodity_tickers: tuple = None):
     """Fetches today's performance for SPY and ALL active commodity futures from Yahoo Finance.
 
+    Returns dict keyed by display name: {'SPY': pct, 'KC': pct, 'CC': pct, ...}
+    Uses specific front-month contracts (e.g. KCK26.NYB) instead of Yahoo's
+    broken continuous =F chart which shows stale data during rollover periods.
+
     Args:
         commodity_tickers: Tuple of commodity tickers (e.g., ("KC", "CC", "NG")).
                           Tuple (not list) for Streamlit cache hashability.
@@ -1058,27 +1112,32 @@ def fetch_todays_benchmark_data(commodity_tickers: tuple = None):
             config = get_config()
             commodity_tickers = (config.get('commodity', {}).get('ticker', 'KC'),)
 
-        yf_tickers = ['SPY'] + [f"{t}=F" for t in commodity_tickers]
+        # Resolve front-month yfinance tickers and build a mapping back to display names
+        yf_to_display = {'SPY': 'SPY'}
+        for ct in commodity_tickers:
+            yf_to_display[resolve_yf_ticker(ct)] = ct
+        yf_tickers = list(yf_to_display.keys())
 
         data = yf.download(yf_tickers, period="5d", progress=False, auto_adjust=True)['Close']
         if data.empty:
             return {}
         changes = {}
-        for ticker in yf_tickers:
+        for yf_ticker in yf_tickers:
+            display_key = yf_to_display[yf_ticker]
             try:
-                if isinstance(data, pd.DataFrame) and ticker in data.columns:
-                    series = data[ticker].dropna()
+                if isinstance(data, pd.DataFrame) and yf_ticker in data.columns:
+                    series = data[yf_ticker].dropna()
+                elif len(yf_tickers) == 2 and isinstance(data, pd.Series):
+                    # yf.download with 2 tickers but only one has data
+                    series = data.dropna()
                 else:
-                    if len(yf_tickers) == 1:
-                        series = data.dropna()
-                    else:
-                        continue
+                    continue
                 if len(series) >= 2:
-                    changes[ticker] = ((series.iloc[-1] - series.iloc[-2]) / series.iloc[-2]) * 100
+                    changes[display_key] = ((series.iloc[-1] - series.iloc[-2]) / series.iloc[-2]) * 100
                 else:
-                    changes[ticker] = 0.0
+                    changes[display_key] = 0.0
             except (ValueError, TypeError, KeyError, IndexError):
-                changes[ticker] = 0.0
+                changes[display_key] = 0.0
         return changes
     except Exception:
         return {}
@@ -1091,7 +1150,7 @@ def fetch_benchmark_data(start_date, end_date):
         # Commodity-agnostic: derive ticker from config
         config = get_config()
         commodity_ticker = config.get('commodity', {}).get('ticker', 'KC')
-        yf_commodity = f"{commodity_ticker}=F"
+        yf_commodity = resolve_yf_ticker(commodity_ticker)
         tickers = ['SPY', yf_commodity]
 
         data = yf.download(
@@ -1104,6 +1163,9 @@ def fetch_benchmark_data(start_date, end_date):
         if data.empty:
             return pd.DataFrame()
         normalized = data.apply(lambda x: (x / x.dropna().iloc[0]) - 1) * 100
+        # Rename yf tickers to display names for consumer compatibility
+        rename_map = {yf_commodity: commodity_ticker}  # e.g. KCK26.NYB → KC
+        normalized = normalized.rename(columns=rename_map)
         return normalized
     except Exception:
         return pd.DataFrame()
