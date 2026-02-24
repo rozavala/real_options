@@ -186,3 +186,93 @@ async def test_news_sentinel_trigger():
             assert trigger.source == "NewsSentinel"
             assert trigger.payload['score'] == 9
             assert sentinel.model == 'test-model'
+
+
+# --- MacroContagionSentinel Tests ---
+
+@pytest.mark.asyncio
+async def test_macro_get_history_handles_yfinance_crash():
+    """_get_history returns empty DataFrame when yfinance raises internally."""
+    import pandas as pd
+    from trading_bot.sentinels import MacroContagionSentinel
+
+    config = {
+        'sentinels': {'macro_contagion': {}},
+        'symbol': 'KC',
+    }
+    with patch('trading_bot.sentinels.genai'):
+        sentinel = MacroContagionSentinel(config)
+
+    # Simulate yfinance internal crash (NoneType subscript error)
+    with patch.object(sentinel, '_get_history', wraps=sentinel._get_history):
+        import asyncio
+        loop = asyncio.get_running_loop()
+        with patch('asyncio.get_running_loop', return_value=loop):
+            with patch('yfinance.Ticker') as mock_ticker:
+                mock_ticker.return_value.history.side_effect = TypeError(
+                    "'NoneType' object is not subscriptable"
+                )
+                result = await sentinel._get_history("DX-Y.NYB")
+                assert isinstance(result, pd.DataFrame)
+                assert len(result) == 0
+
+
+@pytest.mark.asyncio
+async def test_macro_fed_policy_unwraps_json_array():
+    """check_fed_policy_shock handles Gemini returning a JSON array."""
+    from trading_bot.sentinels import MacroContagionSentinel
+
+    config = {
+        'sentinels': {'macro_contagion': {'policy_check_interval': 0}},
+        'symbol': 'KC',
+    }
+    with patch('trading_bot.sentinels.genai'):
+        sentinel = MacroContagionSentinel(config)
+    sentinel.last_policy_check = None
+
+    mock_response = MagicMock()
+    mock_response.text = '[{"shock_detected": false}]'
+    mock_response.usage_metadata = None
+
+    with patch.object(sentinel.client.aio.models, 'generate_content',
+                      new_callable=AsyncMock, return_value=mock_response), \
+         patch('trading_bot.sentinels.acquire_api_slot', new_callable=AsyncMock):
+        result = await sentinel.check_fed_policy_shock()
+        # Should NOT raise 'list has no attribute get' — should return None (no shock)
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_macro_contagion_skips_missing_tickers():
+    """check_cross_commodity_contagion skips tickers with no data."""
+    import pandas as pd
+    from trading_bot.sentinels import MacroContagionSentinel
+
+    config = {
+        'sentinels': {'macro_contagion': {}},
+        'symbol': 'KC',
+    }
+    with patch('trading_bot.sentinels.genai'):
+        sentinel = MacroContagionSentinel(config)
+
+    # Mock _get_history: return data for KC and gold, empty for delisted ticker
+    async def mock_history(ticker, period="5d", interval="1h"):
+        if ticker in ("KC=F", "GC=F", "ZW=F"):
+            dates = pd.date_range("2026-01-01", periods=5, freq="D")
+            return pd.DataFrame({"Close": [100, 101, 99, 102, 98]}, index=dates)
+        return pd.DataFrame()  # Simulate delisted ticker
+
+    with patch.object(sentinel, '_get_history', side_effect=mock_history):
+        # Force a specific basket including a bad ticker
+        sentinel.profile = MagicMock()
+        sentinel.profile.ticker = "KC"
+        sentinel.profile.name = "Coffee"
+        sentinel.profile.cross_commodity_basket = {
+            'gold': 'GC=F',
+            'wheat': 'ZW=F',
+            'coal': 'MTF=F',  # Will return empty
+        }
+        result = await sentinel.check_cross_commodity_contagion()
+        # Should complete without error (coal skipped, 3 tickers remain)
+        # Result is None because KC isn't correlating with gold > 0.7
+        assert result is None

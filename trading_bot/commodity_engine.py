@@ -130,7 +130,7 @@ class CommodityEngine:
         self._runtime = EngineRuntime(
             ticker=self.ticker,
             deduplicator=self._create_deduplicator(),
-            budget_guard=self.shared.budget_guard,
+            budget_guard=self._create_budget_guard(),
             drawdown_guard=self._create_drawdown_guard(),
             shared=self.shared,
         )
@@ -450,6 +450,11 @@ class CommodityEngine:
             'run_brier_reconciliation': orchestrator.run_brier_reconciliation,
             'sentinel_effectiveness_check': orchestrator.sentinel_effectiveness_check,
         }
+
+    def _create_budget_guard(self):
+        """Create a per-engine BudgetGuard that writes to data/{TICKER}/."""
+        from trading_bot.budget_guard import BudgetGuard
+        return BudgetGuard(self.config)
 
     def _create_deduplicator(self):
         """Create a per-engine TriggerDeduplicator."""

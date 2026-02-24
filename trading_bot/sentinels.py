@@ -2204,11 +2204,19 @@ class MacroContagionSentinel(Sentinel):
 
     async def _get_history(self, ticker_symbol, period="5d", interval="1h"):
         import yfinance as yf
+        import pandas as pd
         loop = asyncio.get_running_loop()
         def fetch():
             t = yf.Ticker(ticker_symbol)
-            return t.history(period=period, interval=interval)
-        return await loop.run_in_executor(None, fetch)
+            result = t.history(period=period, interval=interval)
+            if result is None:
+                return pd.DataFrame()
+            return result
+        try:
+            return await loop.run_in_executor(None, fetch)
+        except Exception as e:
+            logger.warning(f"yfinance fetch failed for {ticker_symbol}: {e}")
+            return pd.DataFrame()
 
     async def check_dxy_shock(self) -> Optional[Dict]:
         try:
@@ -2267,16 +2275,21 @@ class MacroContagionSentinel(Sentinel):
             for name, ticker in tickers.items():
                 hist = await self._get_history(ticker, period="5d", interval="1d")
                 if len(hist) < 2:
-                    return None
+                    logger.debug(f"Insufficient data for {name} ({ticker}), skipping from contagion check")
+                    continue
                 returns[name] = hist['Close'].pct_change().dropna()
+
+            # Need at least the own commodity + 2 basket members for meaningful correlation
+            if own_key not in returns or len(returns) < 3:
+                return None
 
             import pandas as pd
             df = pd.DataFrame(returns)
             corr = df.corr()
 
             # Dynamically compute correlations against the active commodity
-            precious_keys = [k for k in basket if k in ('gold', 'silver')]
-            grain_keys = [k for k in basket if k in ('wheat', 'soybeans', 'corn')]
+            precious_keys = [k for k in basket if k in ('gold', 'silver') and k in returns]
+            grain_keys = [k for k in basket if k in ('wheat', 'soybeans', 'corn') and k in returns]
 
             if precious_keys:
                 avg_precious_corr = sum(corr.loc[own_key, k] for k in precious_keys) / len(precious_keys)
@@ -2333,6 +2346,7 @@ class MacroContagionSentinel(Sentinel):
             If no significant shock, respond: {"shock_detected": false}
             """
 
+            await acquire_api_slot('gemini')
             response = await self.client.aio.models.generate_content(
                 model=self.model,
                 contents=prompt,
@@ -2357,6 +2371,10 @@ class MacroContagionSentinel(Sentinel):
             text = text.strip()
 
             result = json.loads(text)
+
+            # Gemini sometimes returns a JSON array instead of an object
+            if isinstance(result, list) and len(result) > 0 and isinstance(result[0], dict):
+                result = result[0]
 
             if result.get('shock_detected'):
                 return {
