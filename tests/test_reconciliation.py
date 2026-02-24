@@ -158,7 +158,7 @@ async def test_reconcile_council_history_pnl_calc(reconciliation_patches):
          patch('pandas.DataFrame.to_csv') as mock_to_csv, \
          patch('os.path.exists', side_effect=exists_side_effect):
 
-        await reconcile_council_history({'symbol': 'KC'}, ib=mock_ib)
+        await reconcile_council_history({'symbol': 'KC', 'exchange': 'NYBOT'}, ib=mock_ib)
 
         assert mock_csv_data.iloc[0]['exit_price'] == 145.0
         assert mock_csv_data.iloc[0]['pnl_realized'] == 5.0  # (150 - 145) for Short

@@ -20,7 +20,7 @@ class TestRiskManagement(unittest.TestCase):
     def test_manage_misaligned_positions(self):
         async def run_test():
             ib = AsyncMock()
-            config = {'symbol': 'KC', 'strategy': {}}
+            config = {'symbol': 'KC', 'exchange': 'NYBOT', 'strategy': {}}
             signal = {'prediction_type': 'DIRECTIONAL', 'direction': 'BULLISH'}
             future_contract = Future(conId=100, symbol='KC', lastTradeDateOrContractMonth='202512')
             leg1 = ComboLeg(conId=1, ratio=1, action='BUY', exchange='NYBOT')
@@ -47,7 +47,7 @@ class TestRiskManagement(unittest.TestCase):
     def test_manage_aligned_positions(self):
         async def run_test():
             ib = AsyncMock()
-            config = {'symbol': 'KC'}
+            config = {'symbol': 'KC', 'exchange': 'NYBOT'}
             signal = {'prediction_type': 'DIRECTIONAL', 'direction': 'BULLISH'}
             future_contract = Future(conId=100, symbol='KC', lastTradeDateOrContractMonth='202512')
             leg1 = ComboLeg(conId=1, ratio=1, action='BUY', exchange='NYBOT')
@@ -87,6 +87,8 @@ class TestRiskManagement(unittest.TestCase):
             ib.placeOrder.return_value = mock_trade
 
             config = {
+                'symbol': 'KC',
+                'exchange': 'NYBOT',
                 'notifications': {},
                 'risk_management': {
                     'stop_loss_pct': 0.20,

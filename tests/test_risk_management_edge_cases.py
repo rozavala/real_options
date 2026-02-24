@@ -39,6 +39,7 @@ class TestRiskManagementEdgeCases(unittest.TestCase):
             # Config
             config = {
                 'symbol': 'KC',
+                'exchange': 'NYBOT',
                 'notifications': {},
                 'risk_management': {
                     'stop_loss_max_risk_pct': 0.50,
@@ -93,6 +94,7 @@ class TestRiskManagementEdgeCases(unittest.TestCase):
 
             config = {
                 'symbol': 'KC',
+                'exchange': 'NYBOT',
                 'notifications': {},
                 'risk_management': {
                     'stop_loss_pct': 0.50,

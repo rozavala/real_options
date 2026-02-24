@@ -62,7 +62,7 @@ async def test_price_sentinel_no_trigger():
             mock_contract = MagicMock()
             mock_futures.return_value = [mock_contract]
 
-            config = {'sentinels': {'price': {'pct_change_threshold': 1.5}}}
+            config = {'sentinels': {'price': {'pct_change_threshold': 1.5}}, 'symbol': 'KC', 'exchange': 'NYBOT'}
             sentinel = PriceSentinel(config, mock_ib)
 
             trigger = await sentinel.check()
@@ -77,7 +77,7 @@ async def test_price_sentinel_market_closed():
         mock_now = datetime(2023, 10, 22, 14, 0, 0, tzinfo=timezone.utc) # Sunday
         mock_datetime.now.return_value = mock_now
 
-        config = {'sentinels': {'price': {'pct_change_threshold': 1.5}}}
+        config = {'sentinels': {'price': {'pct_change_threshold': 1.5}}, 'symbol': 'KC', 'exchange': 'NYBOT'}
         sentinel = PriceSentinel(config, mock_ib)
 
         trigger = await sentinel.check()

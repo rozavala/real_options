@@ -73,6 +73,10 @@ class CommodityEngine:
         config['data_dir'] = self.data_dir
         config['symbol'] = self.ticker
         config.setdefault('commodity', {})['ticker'] = self.ticker
+        # Inject exchange from commodity profile so all config.get('exchange')
+        # calls resolve correctly (NG→NYMEX, KC/CC→NYBOT).
+        from trading_bot.utils import get_ibkr_exchange
+        config['exchange'] = get_ibkr_exchange(config)
         # Primary commodity owns account-wide equity tracking (NetLiquidation).
         # Non-primary commodities skip equity snapshots to avoid duplicate data.
         if self.shared.active_commodities:
