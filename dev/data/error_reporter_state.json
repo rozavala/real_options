@@ -1,22 +1,22 @@
 {
   "version": 1,
-  "last_run": "2026-02-24T18:00:01.868032+00:00",
+  "last_run": "2026-02-24T19:00:01.705661+00:00",
   "log_offsets": {
     "/home/rodrigo/real_options/logs/dashboard.log": 85,
     "/home/rodrigo/real_options/logs/dashboard_cc.log": 3301,
     "/home/rodrigo/real_options/logs/dashboard_kc.log": 23087,
     "/home/rodrigo/real_options/logs/equity_logger.log": 763,
-    "/home/rodrigo/real_options/logs/error_reporter.log": 78456,
+    "/home/rodrigo/real_options/logs/error_reporter.log": 78742,
     "/home/rodrigo/real_options/logs/manual_test.log": 0,
     "/home/rodrigo/real_options/logs/orchestrator.log": 36249,
-    "/home/rodrigo/real_options/logs/orchestrator_cc.log": 13144,
+    "/home/rodrigo/real_options/logs/orchestrator_cc.log": 53330,
     "/home/rodrigo/real_options/logs/orchestrator_cc_service.log": 4717,
-    "/home/rodrigo/real_options/logs/orchestrator_kc.log": 14637,
+    "/home/rodrigo/real_options/logs/orchestrator_kc.log": 71750,
     "/home/rodrigo/real_options/logs/performance_analyzer.log": 0,
-    "/home/rodrigo/real_options/logs/sentinels.log": 120158,
+    "/home/rodrigo/real_options/logs/sentinels.log": 119587,
     "/home/rodrigo/real_options/logs/dashboard_sb.log": 514,
-    "/home/rodrigo/real_options/logs/orchestrator_multi.log": 132983,
-    "/home/rodrigo/real_options/logs/orchestrator_ng.log": 102224
+    "/home/rodrigo/real_options/logs/orchestrator_multi.log": 151732,
+    "/home/rodrigo/real_options/logs/orchestrator_ng.log": 24170
   },
   "reported_signatures": {
     "615e68d761b3545c117a547f9da0a715": {
@@ -87,6 +87,24 @@
       "count": 2,
       "first_seen": "2026-02-24 17:35:07,059",
       "last_seen": "2026-02-24 17:35:07,059",
+      "level": "ERROR"
+    },
+    "90f8a287d114f553433a1b359a49a1a1": {
+      "category": "uncategorized",
+      "fingerprint": "90f8a287d114f553433a1b359a49a1a1",
+      "sample_message": "Missing expected column in Flex Query report: 'TradePrice'\nTraceback (most recent call last):\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/pandas/core/indexes/base.py\", line 3812, in get_loc\n    return self._engine.get_loc(casted_key)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"pandas/_libs/index.pyx\", line 167, in pandas._libs.index.IndexEngine.get_loc\n  File \"pandas/_libs/index.pyx\", line 196, in pandas._libs.index.IndexEngine.get_loc\n  File \"pandas/_libs/hashtable_class_helper.pxi\", line 7088, in pandas._libs.hashtable.PyObjectHashTable.get_item\n  File \"pandas/_libs/hashtable_class_helper.pxi\", line 7096, in pandas._libs.hashtable.PyObjectHashTable.get_item\nKeyError: 'TradePrice'\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/home/<USER>/real_options/reconcile_trades.py\", line 597, in parse_flex_csv_to_df\n    df['TradePrice'] = pd.to_numeric(df['TradePrice'])\n                                     ~~^^^^^^^^^^^^^^\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/pandas/core/frame.py\", line 4113, in __getitem__\n    indexer = self.columns.get_loc(key)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/pandas/core/indexes/base.py\", line 3819, in get_loc\n    raise KeyError(key) from err\nKeyError: 'TradePrice'",
+      "count": 1,
+      "first_seen": "2026-02-24 18:38:10,690",
+      "last_seen": "2026-02-24 18:38:10,690",
+      "level": "ERROR"
+    },
+    "d98e3842fb6444d5aa88d03073341278": {
+      "category": "uncategorized",
+      "fingerprint": "d98e3842fb6444d5aa88d03073341278",
+      "sample_message": "Error 162, reqId 4: Historical Market Data Service error message:HMDS query returned no data: KCZ5@NYBOT Trades, contract: Contract(secType='FUT', conId=606234331, symbol='KC', lastTradeDateOrContractMonth='20251218', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCZ5', tradingClass='KC', includeExpired=True)",
+      "count": 1,
+      "first_seen": "2026-02-24 18:38:42,273",
+      "last_seen": "2026-02-24 18:38:42,273",
       "level": "ERROR"
     }
   }
