@@ -810,6 +810,37 @@ if task_data['available']:
         skipped = summary['skipped']
         upcoming = summary['upcoming']
 
+        # Palette UX Improvement: Next Up Countdown
+        upcoming_tasks = [t for t in task_data['tasks'] if t['status'] == 'upcoming']
+        if upcoming_tasks:
+            # Sort by time just in case
+            upcoming_tasks.sort(key=lambda x: x['time_et'])
+            next_task = upcoming_tasks[0]
+
+            # Calculate countdown
+            ny_tz = pytz.timezone('America/New_York')
+            now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
+
+            try:
+                task_time = datetime.strptime(next_task['time_et'], '%H:%M').time()
+                task_dt = now_ny.replace(hour=task_time.hour, minute=task_time.minute, second=0, microsecond=0)
+                if task_dt < now_ny:
+                    # Handle midnight wrap if any (unlikely for daily schedule)
+                    task_dt += timedelta(days=1)
+
+                delta = task_dt - now_ny
+                minutes_remaining = int(delta.total_seconds() / 60)
+
+                if minutes_remaining < 60:
+                    time_str = f"in {minutes_remaining} min"
+                else:
+                    h, m = divmod(minutes_remaining, 60)
+                    time_str = f"in {h}h {m}m"
+
+                st.info(f"🔜 **Next Up:** {next_task['label']} at {next_task['time_et']} ET ({time_str})")
+            except Exception:
+                pass
+
         # Progress bar
         progress = completed / total if total > 0 else 0
         st.progress(progress, text=f"{completed}/{total} tasks completed")
