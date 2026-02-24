@@ -1168,6 +1168,12 @@ async def check_and_recover_equity_data(config: dict) -> bool:
     from pathlib import Path
     import shutil
 
+    # Non-primary engines don't own equity data (account-wide metric).
+    # Skip staleness check to avoid spurious warnings.
+    is_primary = config.get('commodity', {}).get('is_primary', True)
+    if not is_primary:
+        return True
+
     data_dir = config.get('data_dir', 'data')
     equity_file = Path(os.path.join(data_dir, "daily_equity.csv"))
     max_staleness_hours = config.get('monitoring', {}).get('equity_max_staleness_hours', 24)
