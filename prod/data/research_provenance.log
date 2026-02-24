@@ -1252,3 +1252,156 @@ TASK: Re-evaluate your domain in light of this new information. | FACTS: 7
 2026-02-24 14:24:50,812 - QUERY: Search for 'Coffee futures technical analysis KCH7' and 'KCH7 support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'. | FACTS: 7
 2026-02-24 14:43:47,346 - QUERY: Investigate alert from PriceSentinel: Price moved 1.51% in last hour (Threshold: 1.5%). Details: {'contract': 'KCK6', 'change': 1.5064562410329945}. Analyze impact on Coffee (Arabica) prices. | FACTS: 6
 2026-02-24 16:03:41,083 - QUERY: Investigate alert from XSentimentSentinel: UNUSUAL X ACTIVITY SPIKE (28 posts). Details: {'sentiment_score': 4.73, 'confidence': 0.28, 'top_themes': ['Price declines from recent highs', 'Improved crop forecasts supporting lower prices', 'Historical price surges and climate concerns', 'Technical consolidation and pivot watch', 'Positive vertical integration in Nigerian robusta coffee'], 'post_volume': 28, 'volume_baseline': 5.0, 'volume_spike': True, 'query_results': [{'query': 'coffee futures', 'score': 5.0, 'volume': 0, 'confidence': 0.1, 'top_post': None}, {'query': 'arabica prices', 'score': 3.0, 'volume': 5, 'confidence': 0.7, 'top_post': '@Barchart Arabica futures down 23% from October highs. Spec longs unwinding...'}, {'query': 'KC futures', 'score': 5.0, 'volume': 0, 'confidence': 0.1, 'top_post': None}]}. Analyze impact on Coffee (Arabica) prices. | FACTS: 6
+2026-02-24 16:32:02,588 - QUERY: Investigate alert from MacroContagionSentinel: Fed Policy Shock: HAWKISH_PIVOT - FOMC minutes released on May 22 showed officials were more concerned about sticky inflation than previously thought, with 'various' participants mentioning a willingness to tighten policy further if risks to inflation materialize.. Details: {'type': 'FED_POLICY_SHOCK', 'policy_type': 'HAWKISH_PIVOT', 'summary': "FOMC minutes released on May 22 showed officials were more concerned about sticky inflation than previously thought, with 'various' participants mentioning a willingness to tighten policy further if risks to inflation materialize.", 'market_impact': "Bullish for USD as rate cut expectations are pushed further into late 2024; Bearish for Gold and Commodities as yields rise and the 'higher-for-longer' narrative gains momentum.", 'severity': 'CRITICAL'}. Analyze impact on Coffee (Arabica) prices. | FACTS: 7
+2026-02-24 16:33:09,368 - QUERY: Investigate alert from MacroContagionSentinel: Fed Policy Shock: HAWKISH_PIVOT - FOMC minutes released on May 22 showed officials were more concerned about sticky inflation than previously thought, with 'various' participants mentioning a willingness to tighten policy further if risks to inflation materialize.. Details: {'type': 'FED_POLICY_SHOCK', 'policy_type': 'HAWKISH_PIVOT', 'summary': "FOMC minutes released on May 22 showed officials were more concerned about sticky inflation than previously thought, with 'various' participants mentioning a willingness to tighten policy further if risks to inflation materialize.", 'market_impact': "Bullish for USD as rate cut expectations are pushed further into late 2024; Bearish for Gold and Commodities as yields rise and the 'higher-for-longer' narrative gains momentum.", 'severity': 'CRITICAL'}. Analyze impact on Coffee (Arabica) prices.
+NEW INSIGHT from MACRO:
+[EVIDENCE]: 1) [2026-02-19] FOMC minutes (Jan meeting) indicated some officials floated the possibility of interest-rate hikes if inflation stays above 2%. (TheStreet)
+2) [2026-02-20] Federal Reserve executed an emergency unscheduled 50 bps rate cut to 4.00-4.25%. (FCS API)
+3) [2026-02-23] May Arabica futures (KCK26) closed down 7.65 cents (-2.68%) at 278.05 cts/lb, a 15-month low. (Barchart / Nasdaq)
+4) [2026-02-23] Arabica hit a 15-month low as signs of a bumper Brazilian crop improved the global supply outlook. (Trading Economics)
+5) [2026-02-23] Minas Gerais received 62.8 mm of rain (138% of historical avg) for the week ended Feb 13, improving crop prospects. (Barchart / Somar Meteorologia)
+[ANALYSIS]: CRITIQUE OF PRIOR ANALYSIS
+1) Logical fallacies / reasoning risks:
+- Recency / over-weighting: It implicitly treats the emergency cut as the dominant macro signal even though the market’s commodity response could reflect risk-off dynamics, growth fear, or flight-to-quality that accompanied the cut. The analysis notes ambiguity but doesn’t explicitly consider that an emergency cut can be bearish for cyclical demand expectations.
+- Potential false dichotomy: Framing Fed signals as simply “hawkish vs dovish” may oversimplify; the minutes (dated after a prior meeting) and an emergency cut (reflecting new information) are not equivalent, contemporaneous policy stances.
+- Weak causal link to “macro backdrop”: The conclusion says Arabica weakness is “consistent with a bearish macro backdrop,” but the packet does not contain direct evidence of a macro-driven commodity selloff (e.g., USD index move, BRL move, risk sentiment, broad commodity complex performance). That statement risks suggestive causation without support.
+- Confirmation bias (mild): The narrative leans toward the supply explanation (which is supported), but then still tries to align the move with a broader hawkish-pivot framing despite limited macro transmission evidence in the packet.
+
+2) Source specificity vs vagueness:
+- Strength: The prior analysis did cite specific items and attributed them to named sources (TheStreet, FCS API, Barchart/Nasdaq, Trading Economics, Somar via Barchart).
+- Weakness: Where it discusses “USD/financial-conditions channel” and “potential support to commodities from the rate cut,” it does not cite any source from the packet demonstrating USD/BRL, DXY, or broader financial conditions—so those are reasonable inferences but remain unverified within the provided evidence.
+
+3) Sentiment tag justification:
+- BEARISH is justified for *Arabica price action and near-term narrative in this packet*: futures at a 15-month low and explicit reporting that improved Brazilian crop prospects boosted supply expectations.
+- However, BEARISH should be scoped: the evidence supports bearish sentiment on Arabica (near-term), not necessarily a generalized “macro bearish” conclusion.
+
+REVISED ANALYSIS (IMPROVED)
+The packet shows Arabica coffee turning lower into Feb 23, with May Arabica (KCK26) closing at 278.05 cts/lb, down 2.68% on the day and marking a 15-month low (Barchart/Nasdaq). Trading Economics attributes the decline to an improved global supply outlook driven by signs of a bumper Brazilian crop (Trading Economics). This supply-improvement story is reinforced by weather data: Minas Gerais rainfall of 62.8 mm (138% of normal) for the week ended Feb 13 is cited as supportive for crop prospects (Barchart/Somar).
+
+The Fed-related items in the packet are directionally mixed: minutes discussing a conditional hike possibility (TheStreet) are followed by an emergency 50 bps cut to 4.00–4.25% (FCS API). Without accompanying evidence on USD/BRL, DXY, or risk sentiment, the packet does not allow a defensible claim that FX or broad macro conditions were the primary driver of Arabica’s move. At most, the Fed sequence adds uncertainty about the macro/FX channel rather than clarifying it.
+
+Netting the evidence, the most directly supported explanation for Arabica weakness here is supply-side bearishness linked to Brazil crop expectations, with the price action (15-month low) consistent with that narrative. Macro policy signals are present but not sufficiently connected—within this evidence set—to quantify their impact on coffee pricing.
+[CONFIDENCE]: 0.65
+[SENTIMENT TAG]: [SENTIMENT: BEARISH]
+TASK: Re-evaluate your domain in light of this new information. | FACTS: 6
+2026-02-24 16:33:10,171 - QUERY: Investigate alert from MacroContagionSentinel: Fed Policy Shock: HAWKISH_PIVOT - FOMC minutes released on May 22 showed officials were more concerned about sticky inflation than previously thought, with 'various' participants mentioning a willingness to tighten policy further if risks to inflation materialize.. Details: {'type': 'FED_POLICY_SHOCK', 'policy_type': 'HAWKISH_PIVOT', 'summary': "FOMC minutes released on May 22 showed officials were more concerned about sticky inflation than previously thought, with 'various' participants mentioning a willingness to tighten policy further if risks to inflation materialize.", 'market_impact': "Bullish for USD as rate cut expectations are pushed further into late 2024; Bearish for Gold and Commodities as yields rise and the 'higher-for-longer' narrative gains momentum.", 'severity': 'CRITICAL'}. Analyze impact on Coffee (Arabica) prices.
+NEW INSIGHT from MACRO:
+[EVIDENCE]: 1) [2026-02-19] FOMC minutes (Jan meeting) indicated some officials floated the possibility of interest-rate hikes if inflation stays above 2%. (TheStreet)
+2) [2026-02-20] Federal Reserve executed an emergency unscheduled 50 bps rate cut to 4.00-4.25%. (FCS API)
+3) [2026-02-23] May Arabica futures (KCK26) closed down 7.65 cents (-2.68%) at 278.05 cts/lb, a 15-month low. (Barchart / Nasdaq)
+4) [2026-02-23] Arabica hit a 15-month low as signs of a bumper Brazilian crop improved the global supply outlook. (Trading Economics)
+5) [2026-02-23] Minas Gerais received 62.8 mm of rain (138% of historical avg) for the week ended Feb 13, improving crop prospects. (Barchart / Somar Meteorologia)
+[ANALYSIS]: CRITIQUE OF PRIOR ANALYSIS
+1) Logical fallacies / reasoning risks:
+- Recency / over-weighting: It implicitly treats the emergency cut as the dominant macro signal even though the market’s commodity response could reflect risk-off dynamics, growth fear, or flight-to-quality that accompanied the cut. The analysis notes ambiguity but doesn’t explicitly consider that an emergency cut can be bearish for cyclical demand expectations.
+- Potential false dichotomy: Framing Fed signals as simply “hawkish vs dovish” may oversimplify; the minutes (dated after a prior meeting) and an emergency cut (reflecting new information) are not equivalent, contemporaneous policy stances.
+- Weak causal link to “macro backdrop”: The conclusion says Arabica weakness is “consistent with a bearish macro backdrop,” but the packet does not contain direct evidence of a macro-driven commodity selloff (e.g., USD index move, BRL move, risk sentiment, broad commodity complex performance). That statement risks suggestive causation without support.
+- Confirmation bias (mild): The narrative leans toward the supply explanation (which is supported), but then still tries to align the move with a broader hawkish-pivot framing despite limited macro transmission evidence in the packet.
+
+2) Source specificity vs vagueness:
+- Strength: The prior analysis did cite specific items and attributed them to named sources (TheStreet, FCS API, Barchart/Nasdaq, Trading Economics, Somar via Barchart).
+- Weakness: Where it discusses “USD/financial-conditions channel” and “potential support to commodities from the rate cut,” it does not cite any source from the packet demonstrating USD/BRL, DXY, or broader financial conditions—so those are reasonable inferences but remain unverified within the provided evidence.
+
+3) Sentiment tag justification:
+- BEARISH is justified for *Arabica price action and near-term narrative in this packet*: futures at a 15-month low and explicit reporting that improved Brazilian crop prospects boosted supply expectations.
+- However, BEARISH should be scoped: the evidence supports bearish sentiment on Arabica (near-term), not necessarily a generalized “macro bearish” conclusion.
+
+REVISED ANALYSIS (IMPROVED)
+The packet shows Arabica coffee turning lower into Feb 23, with May Arabica (KCK26) closing at 278.05 cts/lb, down 2.68% on the day and marking a 15-month low (Barchart/Nasdaq). Trading Economics attributes the decline to an improved global supply outlook driven by signs of a bumper Brazilian crop (Trading Economics). This supply-improvement story is reinforced by weather data: Minas Gerais rainfall of 62.8 mm (138% of normal) for the week ended Feb 13 is cited as supportive for crop prospects (Barchart/Somar).
+
+The Fed-related items in the packet are directionally mixed: minutes discussing a conditional hike possibility (TheStreet) are followed by an emergency 50 bps cut to 4.00–4.25% (FCS API). Without accompanying evidence on USD/BRL, DXY, or risk sentiment, the packet does not allow a defensible claim that FX or broad macro conditions were the primary driver of Arabica’s move. At most, the Fed sequence adds uncertainty about the macro/FX channel rather than clarifying it.
+
+Netting the evidence, the most directly supported explanation for Arabica weakness here is supply-side bearishness linked to Brazil crop expectations, with the price action (15-month low) consistent with that narrative. Macro policy signals are present but not sufficiently connected—within this evidence set—to quantify their impact on coffee pricing.
+[CONFIDENCE]: 0.65
+[SENTIMENT TAG]: [SENTIMENT: BEARISH]
+TASK: Re-evaluate your domain in light of this new information. | FACTS: 8
+2026-02-24 16:33:15,321 - QUERY: Investigate alert from MacroContagionSentinel: Fed Policy Shock: HAWKISH_PIVOT - FOMC minutes released on May 22 showed officials were more concerned about sticky inflation than previously thought, with 'various' participants mentioning a willingness to tighten policy further if risks to inflation materialize.. Details: {'type': 'FED_POLICY_SHOCK', 'policy_type': 'HAWKISH_PIVOT', 'summary': "FOMC minutes released on May 22 showed officials were more concerned about sticky inflation than previously thought, with 'various' participants mentioning a willingness to tighten policy further if risks to inflation materialize.", 'market_impact': "Bullish for USD as rate cut expectations are pushed further into late 2024; Bearish for Gold and Commodities as yields rise and the 'higher-for-longer' narrative gains momentum.", 'severity': 'CRITICAL'}. Analyze impact on Coffee (Arabica) prices.
+NEW INSIGHT from MACRO:
+[EVIDENCE]: 1) [2026-02-19] FOMC minutes (Jan meeting) indicated some officials floated the possibility of interest-rate hikes if inflation stays above 2%. (TheStreet)
+2) [2026-02-20] Federal Reserve executed an emergency unscheduled 50 bps rate cut to 4.00-4.25%. (FCS API)
+3) [2026-02-23] May Arabica futures (KCK26) closed down 7.65 cents (-2.68%) at 278.05 cts/lb, a 15-month low. (Barchart / Nasdaq)
+4) [2026-02-23] Arabica hit a 15-month low as signs of a bumper Brazilian crop improved the global supply outlook. (Trading Economics)
+5) [2026-02-23] Minas Gerais received 62.8 mm of rain (138% of historical avg) for the week ended Feb 13, improving crop prospects. (Barchart / Somar Meteorologia)
+[ANALYSIS]: CRITIQUE OF PRIOR ANALYSIS
+1) Logical fallacies / reasoning risks:
+- Recency / over-weighting: It implicitly treats the emergency cut as the dominant macro signal even though the market’s commodity response could reflect risk-off dynamics, growth fear, or flight-to-quality that accompanied the cut. The analysis notes ambiguity but doesn’t explicitly consider that an emergency cut can be bearish for cyclical demand expectations.
+- Potential false dichotomy: Framing Fed signals as simply “hawkish vs dovish” may oversimplify; the minutes (dated after a prior meeting) and an emergency cut (reflecting new information) are not equivalent, contemporaneous policy stances.
+- Weak causal link to “macro backdrop”: The conclusion says Arabica weakness is “consistent with a bearish macro backdrop,” but the packet does not contain direct evidence of a macro-driven commodity selloff (e.g., USD index move, BRL move, risk sentiment, broad commodity complex performance). That statement risks suggestive causation without support.
+- Confirmation bias (mild): The narrative leans toward the supply explanation (which is supported), but then still tries to align the move with a broader hawkish-pivot framing despite limited macro transmission evidence in the packet.
+
+2) Source specificity vs vagueness:
+- Strength: The prior analysis did cite specific items and attributed them to named sources (TheStreet, FCS API, Barchart/Nasdaq, Trading Economics, Somar via Barchart).
+- Weakness: Where it discusses “USD/financial-conditions channel” and “potential support to commodities from the rate cut,” it does not cite any source from the packet demonstrating USD/BRL, DXY, or broader financial conditions—so those are reasonable inferences but remain unverified within the provided evidence.
+
+3) Sentiment tag justification:
+- BEARISH is justified for *Arabica price action and near-term narrative in this packet*: futures at a 15-month low and explicit reporting that improved Brazilian crop prospects boosted supply expectations.
+- However, BEARISH should be scoped: the evidence supports bearish sentiment on Arabica (near-term), not necessarily a generalized “macro bearish” conclusion.
+
+REVISED ANALYSIS (IMPROVED)
+The packet shows Arabica coffee turning lower into Feb 23, with May Arabica (KCK26) closing at 278.05 cts/lb, down 2.68% on the day and marking a 15-month low (Barchart/Nasdaq). Trading Economics attributes the decline to an improved global supply outlook driven by signs of a bumper Brazilian crop (Trading Economics). This supply-improvement story is reinforced by weather data: Minas Gerais rainfall of 62.8 mm (138% of normal) for the week ended Feb 13 is cited as supportive for crop prospects (Barchart/Somar).
+
+The Fed-related items in the packet are directionally mixed: minutes discussing a conditional hike possibility (TheStreet) are followed by an emergency 50 bps cut to 4.00–4.25% (FCS API). Without accompanying evidence on USD/BRL, DXY, or risk sentiment, the packet does not allow a defensible claim that FX or broad macro conditions were the primary driver of Arabica’s move. At most, the Fed sequence adds uncertainty about the macro/FX channel rather than clarifying it.
+
+Netting the evidence, the most directly supported explanation for Arabica weakness here is supply-side bearishness linked to Brazil crop expectations, with the price action (15-month low) consistent with that narrative. Macro policy signals are present but not sufficiently connected—within this evidence set—to quantify their impact on coffee pricing.
+[CONFIDENCE]: 0.65
+[SENTIMENT TAG]: [SENTIMENT: BEARISH]
+TASK: Re-evaluate your domain in light of this new information. | FACTS: 8
+2026-02-24 16:33:43,886 - QUERY: Investigate alert from MacroContagionSentinel: Fed Policy Shock: HAWKISH_PIVOT - FOMC minutes released on May 22 showed officials were more concerned about sticky inflation than previously thought, with 'various' participants mentioning a willingness to tighten policy further if risks to inflation materialize.. Details: {'type': 'FED_POLICY_SHOCK', 'policy_type': 'HAWKISH_PIVOT', 'summary': "FOMC minutes released on May 22 showed officials were more concerned about sticky inflation than previously thought, with 'various' participants mentioning a willingness to tighten policy further if risks to inflation materialize.", 'market_impact': "Bullish for USD as rate cut expectations are pushed further into late 2024; Bearish for Gold and Commodities as yields rise and the 'higher-for-longer' narrative gains momentum.", 'severity': 'CRITICAL'}. Analyze impact on Coffee (Arabica) prices.
+NEW INSIGHT from MACRO:
+[EVIDENCE]: 1) [2026-02-19] FOMC minutes (Jan meeting) indicated some officials floated the possibility of interest-rate hikes if inflation stays above 2%. (TheStreet)
+2) [2026-02-20] Federal Reserve executed an emergency unscheduled 50 bps rate cut to 4.00-4.25%. (FCS API)
+3) [2026-02-23] May Arabica futures (KCK26) closed down 7.65 cents (-2.68%) at 278.05 cts/lb, a 15-month low. (Barchart / Nasdaq)
+4) [2026-02-23] Arabica hit a 15-month low as signs of a bumper Brazilian crop improved the global supply outlook. (Trading Economics)
+5) [2026-02-23] Minas Gerais received 62.8 mm of rain (138% of historical avg) for the week ended Feb 13, improving crop prospects. (Barchart / Somar Meteorologia)
+[ANALYSIS]: CRITIQUE OF PRIOR ANALYSIS
+1) Logical fallacies / reasoning risks:
+- Recency / over-weighting: It implicitly treats the emergency cut as the dominant macro signal even though the market’s commodity response could reflect risk-off dynamics, growth fear, or flight-to-quality that accompanied the cut. The analysis notes ambiguity but doesn’t explicitly consider that an emergency cut can be bearish for cyclical demand expectations.
+- Potential false dichotomy: Framing Fed signals as simply “hawkish vs dovish” may oversimplify; the minutes (dated after a prior meeting) and an emergency cut (reflecting new information) are not equivalent, contemporaneous policy stances.
+- Weak causal link to “macro backdrop”: The conclusion says Arabica weakness is “consistent with a bearish macro backdrop,” but the packet does not contain direct evidence of a macro-driven commodity selloff (e.g., USD index move, BRL move, risk sentiment, broad commodity complex performance). That statement risks suggestive causation without support.
+- Confirmation bias (mild): The narrative leans toward the supply explanation (which is supported), but then still tries to align the move with a broader hawkish-pivot framing despite limited macro transmission evidence in the packet.
+
+2) Source specificity vs vagueness:
+- Strength: The prior analysis did cite specific items and attributed them to named sources (TheStreet, FCS API, Barchart/Nasdaq, Trading Economics, Somar via Barchart).
+- Weakness: Where it discusses “USD/financial-conditions channel” and “potential support to commodities from the rate cut,” it does not cite any source from the packet demonstrating USD/BRL, DXY, or broader financial conditions—so those are reasonable inferences but remain unverified within the provided evidence.
+
+3) Sentiment tag justification:
+- BEARISH is justified for *Arabica price action and near-term narrative in this packet*: futures at a 15-month low and explicit reporting that improved Brazilian crop prospects boosted supply expectations.
+- However, BEARISH should be scoped: the evidence supports bearish sentiment on Arabica (near-term), not necessarily a generalized “macro bearish” conclusion.
+
+REVISED ANALYSIS (IMPROVED)
+The packet shows Arabica coffee turning lower into Feb 23, with May Arabica (KCK26) closing at 278.05 cts/lb, down 2.68% on the day and marking a 15-month low (Barchart/Nasdaq). Trading Economics attributes the decline to an improved global supply outlook driven by signs of a bumper Brazilian crop (Trading Economics). This supply-improvement story is reinforced by weather data: Minas Gerais rainfall of 62.8 mm (138% of normal) for the week ended Feb 13 is cited as supportive for crop prospects (Barchart/Somar).
+
+The Fed-related items in the packet are directionally mixed: minutes discussing a conditional hike possibility (TheStreet) are followed by an emergency 50 bps cut to 4.00–4.25% (FCS API). Without accompanying evidence on USD/BRL, DXY, or risk sentiment, the packet does not allow a defensible claim that FX or broad macro conditions were the primary driver of Arabica’s move. At most, the Fed sequence adds uncertainty about the macro/FX channel rather than clarifying it.
+
+Netting the evidence, the most directly supported explanation for Arabica weakness here is supply-side bearishness linked to Brazil crop expectations, with the price action (15-month low) consistent with that narrative. Macro policy signals are present but not sufficiently connected—within this evidence set—to quantify their impact on coffee pricing.
+[CONFIDENCE]: 0.65
+[SENTIMENT TAG]: [SENTIMENT: BEARISH]
+TASK: Re-evaluate your domain in light of this new information. | FACTS: 6
+2026-02-24 16:39:39,086 - QUERY: Search for 'USD BRL exchange rate forecast' and 'Brazil Central Bank Selic rate outlook'. Determine if the BRL is trending to encourage farmer selling. | FACTS: 6
+2026-02-24 16:39:44,483 - QUERY: Search for 'current 10-day weather forecast Minas Gerais coffee zone' and 'NOAA Brazil precipitation anomaly'. Analyze if recent rains are beneficial for flowering or excessive. | FACTS: 5
+2026-02-24 16:39:46,250 - QUERY: Search for 'Red Sea shipping coffee delays', 'Brazil port of Santos wait times', and 'EUDR regulation delay latest news'. Determine if there are logistical bottlenecks. | FACTS: 6
+2026-02-24 16:39:57,055 - QUERY: Search for 'Cecafé Brazil coffee export report latest', 'Global container freight index rates', and 'Green coffee shipping manifest trends'. Analyze flow volume vs port capacity. | FACTS: 6
+2026-02-24 16:40:02,061 - QUERY: Search for 'ICE coffee certified stocks level news 2026' and 'ICO monthly coffee market report global supply'. Look for recent specific numbers in bags (e.g., 'ICE stocks rose to X bags'). Search for 'coffee forward curve structure' to detect 'Backwardation' or 'Contango'. | FACTS: 5
+2026-02-24 16:40:03,957 - QUERY: Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought. | FACTS: 5
+2026-02-24 16:40:17,674 - QUERY: Search for 'Coffee futures technical analysis KCK6' and 'KCK6 support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'. | FACTS: 5
+2026-02-24 16:40:27,469 - QUERY: Search for 'current 10-day weather forecast Minas Gerais coffee zone' and 'NOAA Brazil precipitation anomaly'. Analyze if recent rains are beneficial for flowering or excessive. | FACTS: 5
+2026-02-24 16:40:38,752 - QUERY: Search for 'Coffee Futures Implied Volatility Rank current' and 'KCK6 option volatility skew'. Determine if option premiums are cheap or expensive relative to historical volatility. | FACTS: 5
+2026-02-24 16:40:39,105 - QUERY: Search for 'USD BRL exchange rate forecast' and 'Brazil Central Bank Selic rate outlook'. Determine if the BRL is trending to encourage farmer selling. | FACTS: 5
+2026-02-24 16:40:42,825 - QUERY: Search for 'Red Sea shipping coffee delays', 'Brazil port of Santos wait times', and 'EUDR regulation delay latest news'. Determine if there are logistical bottlenecks. | FACTS: 6
+2026-02-24 16:40:56,950 - QUERY: Search for 'Cecafé Brazil coffee export report latest', 'Global container freight index rates', and 'Green coffee shipping manifest trends'. Analyze flow volume vs port capacity. | FACTS: 6
+2026-02-24 16:40:58,297 - QUERY: Search for 'ICE coffee certified stocks level news 2026' and 'ICO monthly coffee market report global supply'. Look for recent specific numbers in bags (e.g., 'ICE stocks rose to X bags'). Search for 'coffee forward curve structure' to detect 'Backwardation' or 'Contango'. | FACTS: 6
+2026-02-24 16:40:58,723 - QUERY: Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought. | FACTS: 5
+2026-02-24 16:41:23,533 - QUERY: Search for 'current 10-day weather forecast Minas Gerais coffee zone' and 'NOAA Brazil precipitation anomaly'. Analyze if recent rains are beneficial for flowering or excessive. | FACTS: 6
+2026-02-24 16:41:31,076 - QUERY: Search for 'Coffee Futures Implied Volatility Rank current' and 'KCN6 option volatility skew'. Determine if option premiums are cheap or expensive relative to historical volatility. | FACTS: 6
+2026-02-24 16:41:40,023 - QUERY: Search for 'USD BRL exchange rate forecast' and 'Brazil Central Bank Selic rate outlook'. Determine if the BRL is trending to encourage farmer selling. | FACTS: 6
+2026-02-24 16:41:50,488 - QUERY: Search for 'Red Sea shipping coffee delays', 'Brazil port of Santos wait times', and 'EUDR regulation delay latest news'. Determine if there are logistical bottlenecks. | FACTS: 6
+2026-02-24 16:41:57,396 - QUERY: Search for 'Coffee futures technical analysis KCN6' and 'KCN6 support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'. | FACTS: 1
+2026-02-24 16:42:04,460 - QUERY: Search for 'Cecafé Brazil coffee export report latest', 'Global container freight index rates', and 'Green coffee shipping manifest trends'. Analyze flow volume vs port capacity. | FACTS: 6
+2026-02-24 16:42:07,897 - QUERY: Search for 'ICE coffee certified stocks level news 2026' and 'ICO monthly coffee market report global supply'. Look for recent specific numbers in bags (e.g., 'ICE stocks rose to X bags'). Search for 'coffee forward curve structure' to detect 'Backwardation' or 'Contango'. | FACTS: 5
+2026-02-24 16:42:17,541 - QUERY: Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought. | FACTS: 5
+2026-02-24 16:42:22,475 - QUERY: Search for 'Coffee futures technical analysis KCU6' and 'KCU6 support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'. | FACTS: 5
+2026-02-24 16:42:50,515 - QUERY: Search for 'Coffee Futures Implied Volatility Rank current' and 'KCU6 option volatility skew'. Determine if option premiums are cheap or expensive relative to historical volatility. | FACTS: 6
+2026-02-24 16:43:06,888 - QUERY: Search for 'Coffee Futures Implied Volatility Rank current' and 'KCZ6 option volatility skew'. Determine if option premiums are cheap or expensive relative to historical volatility. | FACTS: 6
+2026-02-24 16:43:22,561 - QUERY: Search for 'Coffee futures technical analysis KCZ6' and 'KCZ6 support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'. | FACTS: 5
+2026-02-24 16:44:09,399 - QUERY: Search for 'Coffee futures technical analysis KCH7' and 'KCH7 support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'. | FACTS: 6
+2026-02-24 16:44:20,362 - QUERY: Search for 'Coffee Futures Implied Volatility Rank current' and 'KCH7 option volatility skew'. Determine if option premiums are cheap or expensive relative to historical volatility. | FACTS: 6
