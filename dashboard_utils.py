@@ -19,6 +19,7 @@ import yfinance as yf
 import sys
 import asyncio
 import warnings
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -1010,7 +1011,13 @@ def fetch_all_live_data(_config: dict) -> dict:
         async def _fetch_rest():
             # Wait for PnL data to arrive (parallel with other fetches)
             async def wait_pnl():
-                await asyncio.sleep(1.0)
+                # Poll for PnL data up to 2.0 seconds (20 x 0.1s)
+                # Returns early as soon as valid data is available
+                for _ in range(20):
+                    pnl_list = ib.pnl()
+                    if pnl_list and pnl_list[0].dailyPnL is not None and not math.isnan(pnl_list[0].dailyPnL):
+                        return pnl_list
+                    await asyncio.sleep(0.1)
                 return ib.pnl()
 
             # Launch parallel tasks with timeouts
@@ -1077,7 +1084,6 @@ def fetch_all_live_data(_config: dict) -> dict:
         # Process PnL
         if pnl_data:
             raw_pnl = pnl_data[0].dailyPnL
-            import math
             result['daily_pnl'] = 0.0 if (raw_pnl is None or math.isnan(raw_pnl)) else raw_pnl
 
     except Exception as e:
