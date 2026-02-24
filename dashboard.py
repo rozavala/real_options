@@ -395,7 +395,7 @@ if not equity_df.empty:
         from config import get_active_profile
         profile = get_active_profile(config) if config else None
         if profile:
-            benchmark_col = f"{profile.ticker}=F"
+            benchmark_col = profile.ticker
             if benchmark_col in benchmark_df.columns:
                 fig_bm.add_trace(go.Scatter(
                     x=benchmark_df.index,
