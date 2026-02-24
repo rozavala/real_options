@@ -921,7 +921,7 @@ def hours_until_weekly_close(config: dict = None) -> float:
     CLOSE_HOUR, CLOSE_MINUTE = get_effective_close_time(config)
 
     # Build holiday set
-    profile_exchange = config.get('exchange', 'ICE') if config else 'ICE'
+    profile_exchange = config.get('exchange', 'ICE') if config else 'ICE'  # Fallback needed: config may be None
     cal = get_exchange_calendar(profile_exchange)
 
     exchange_holidays = set()

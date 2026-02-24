@@ -33,6 +33,7 @@ def get_exchange_calendar(exchange: str) -> AbstractHolidayCalendar:
         'ICE': ICEHolidayCalendar,
         'NYBOT': ICEHolidayCalendar,
         'CME': USFederalHolidayCalendar,  # Approximation
+        'NYMEX': USFederalHolidayCalendar,  # CME Group
     }
     cal_class = calendars.get(exchange, USFederalHolidayCalendar)
     return cal_class()

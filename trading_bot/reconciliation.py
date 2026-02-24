@@ -139,7 +139,7 @@ def _calculate_actual_exit_time(entry_time: datetime, config: dict) -> datetime:
     entry_ny = entry_time.astimezone(ny_tz)
 
     # Build exchange holiday set
-    cal = get_exchange_calendar(config.get('exchange', 'ICE'))
+    cal = get_exchange_calendar(config['exchange'])
     entry_year = entry_ny.year
     exchange_holidays = set()
     for year in {entry_year, entry_year + 1}:
@@ -309,7 +309,7 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                 contract = Contract()
                 contract.symbol = config.get('symbol', 'KC')
                 contract.secType = 'FUT'
-                contract.exchange = config.get('exchange', 'NYBOT')
+                contract.exchange = config['exchange']
                 contract.currency = 'USD'
                 contract.lastTradeDateOrContractMonth = last_trade_date
                 contract.includeExpired = True

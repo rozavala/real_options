@@ -664,7 +664,7 @@ async def _validate_iron_condor(thesis: dict, config: dict, ib: IB, active_futur
         underlying_contract = Future(
             symbol=underlying_symbol,
             lastTradeDateOrContractMonth=contract_month,
-            exchange=config.get('exchange', 'NYBOT')
+            exchange=config['exchange']
         )
         try:
             await asyncio.wait_for(ib.qualifyContractsAsync(underlying_contract), timeout=15)
@@ -755,7 +755,7 @@ async def _validate_long_straddle(thesis: dict, position, config: dict, ib: IB, 
                     underlying_contract = Future(
                         symbol=underlying_symbol,
                         lastTradeDateOrContractMonth=contract_month,
-                        exchange=config.get('exchange', 'NYBOT')
+                        exchange=config['exchange']
                     )
                     try:
                         await asyncio.wait_for(ib.qualifyContractsAsync(underlying_contract), timeout=15)
@@ -1713,7 +1713,7 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
         active_futures_cache = {}
         try:
             symbol = config.get('symbol', 'KC')
-            exchange = config.get('exchange', 'NYBOT')
+            exchange = config['exchange']
 
             # === K1 FIX: Check cache validity before use ===
             cached_futures = active_futures_cache.get(symbol)
@@ -4914,6 +4914,9 @@ async def main(commodity_ticker: str = None):
     config['data_dir'] = data_dir
     config['symbol'] = ticker
     config.setdefault('commodity', {})['ticker'] = ticker
+    # Inject exchange from commodity profile (NG→NYMEX, KC/CC→NYBOT).
+    from trading_bot.utils import get_ibkr_exchange
+    config['exchange'] = get_ibkr_exchange(config)
     # is_primary is set by CommodityEngine._build_config() in multi-engine mode.
     # In legacy single-engine mode, it defaults to True (the guard default).
 

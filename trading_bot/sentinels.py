@@ -335,7 +335,7 @@ class PriceSentinel(Sentinel):
         self.sentinel_config = config.get('sentinels', {}).get('price', {})
         self.pct_change_threshold = self.sentinel_config.get('pct_change_threshold', 1.5)
         self.symbol = config.get('symbol', 'KC')
-        self.exchange = config.get('exchange', 'NYBOT')
+        self.exchange = config['exchange']
 
     async def check(self, cached_contract=None) -> Optional[SentinelTrigger]:
         # Guard: Check connection before doing anything

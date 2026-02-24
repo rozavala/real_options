@@ -841,7 +841,7 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
                             future_contract = Future(
                                 symbol=config.get('symbol', 'KC'),
                                 lastTradeDateOrContractMonth=contract_month,
-                                exchange=config.get('exchange', 'NYBOT')
+                                exchange=config['exchange']
                             )
                             # Define a quick fetch with timeout
                             async def _quick_fetch(c):
@@ -1856,7 +1856,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
         return
 
     from trading_bot.calendars import get_exchange_calendar
-    cal = get_exchange_calendar(config.get('exchange', 'ICE'))
+    cal = get_exchange_calendar(config['exchange'])
 
     # Check if today is Friday
     if weekday == 4:
@@ -1953,7 +1953,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
         # --- 3. Calculate trading day logic ---
         # M4 FIX: Use Exchange Holiday Calendar
-        cal = get_exchange_calendar(config.get('exchange', 'ICE'))
+        cal = get_exchange_calendar(config['exchange'])
         holidays = cal.holidays(start=date(date.today().year - 1, 1, 1), end=date.today()).to_pydatetime().tolist()
         today = datetime.now(timezone.utc).date()
         custom_bday = pd.offsets.CustomBusinessDay(holidays=holidays)

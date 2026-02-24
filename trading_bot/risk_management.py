@@ -377,7 +377,7 @@ async def _execute_risk_closure(ib: IB, config: dict, combo_legs: list, reason: 
         contract.symbol = config.get('symbol', 'KC')
         contract.secType = "BAG"
         contract.currency = "USD"
-        contract.exchange = config.get('exchange', 'NYBOT')
+        contract.exchange = config['exchange']
 
         combo_legs_list = []
         for leg_pos in combo_legs:
@@ -393,7 +393,7 @@ async def _execute_risk_closure(ib: IB, config: dict, combo_legs: list, reason: 
                 conId=leg_pos.contract.conId,
                 ratio=leg_qty,  # v3.1: Use actual position size
                 action=action,
-                exchange=config.get('exchange', 'NYBOT')
+                exchange=config['exchange']
             ))
 
         contract.comboLegs = combo_legs_list
