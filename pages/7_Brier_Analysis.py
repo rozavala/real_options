@@ -18,7 +18,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timezone, timedelta
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dashboard_utils import _resolve_data_path
+from dashboard_utils import _resolve_data_path_for
 
 st.set_page_config(layout="wide", page_title="Brier Analysis | Real Options")
 
@@ -32,9 +32,9 @@ st.caption("Agent prediction quality, calibration curves, and learning feedback"
 # === DATA LOADING ===
 
 @st.cache_data(ttl=120)
-def load_enhanced_brier():
+def load_enhanced_brier(ticker: str = "KC"):
     """Load enhanced Brier data from JSON."""
-    path = _resolve_data_path("enhanced_brier.json")
+    path = _resolve_data_path_for("enhanced_brier.json", ticker)
     if not os.path.exists(path):
         return None
     try:
@@ -45,9 +45,9 @@ def load_enhanced_brier():
 
 
 @st.cache_data(ttl=120)
-def load_structured_predictions():
+def load_structured_predictions(ticker: str = "KC"):
     """Load structured prediction CSV."""
-    path = _resolve_data_path("agent_accuracy_structured.csv")
+    path = _resolve_data_path_for("agent_accuracy_structured.csv", ticker)
     if not os.path.exists(path):
         return pd.DataFrame()
     try:
@@ -60,9 +60,9 @@ def load_structured_predictions():
 
 
 @st.cache_data(ttl=120)
-def load_legacy_accuracy():
+def load_legacy_accuracy(ticker: str = "KC"):
     """Load legacy accuracy CSV."""
-    path = _resolve_data_path("agent_accuracy.csv")
+    path = _resolve_data_path_for("agent_accuracy.csv", ticker)
     if not os.path.exists(path):
         return pd.DataFrame()
     try:
@@ -72,9 +72,9 @@ def load_legacy_accuracy():
 
 
 @st.cache_data(ttl=120)
-def load_weight_evolution():
+def load_weight_evolution(ticker: str = "KC"):
     """Load weight evolution CSV."""
-    path = _resolve_data_path('weight_evolution.csv')
+    path = _resolve_data_path_for('weight_evolution.csv', ticker)
     if not os.path.exists(path):
         return pd.DataFrame()
     try:
@@ -84,9 +84,9 @@ def load_weight_evolution():
 
 
 @st.cache_data(ttl=120)
-def load_decision_signals():
+def load_decision_signals(ticker: str = "KC"):
     """Load decision signals CSV for regime context."""
-    path = _resolve_data_path('decision_signals.csv')
+    path = _resolve_data_path_for('decision_signals.csv', ticker)
     if not os.path.exists(path):
         return pd.DataFrame()
     try:
@@ -108,9 +108,9 @@ except ImportError:
 # === SECTION 1: System Health Overview ===
 st.subheader("📊 Feedback Loop Overview")
 
-enhanced_data = load_enhanced_brier()
-struct_df = load_structured_predictions()
-legacy_df = load_legacy_accuracy()
+enhanced_data = load_enhanced_brier(ticker)
+struct_df = load_structured_predictions(ticker)
+legacy_df = load_legacy_accuracy(ticker)
 
 # Primary metrics
 if enhanced_data:
@@ -370,7 +370,7 @@ st.markdown("---")
 st.subheader("📈 Agent Influence Over Time")
 st.caption("Agents above 1.0 have earned more influence through accurate predictions. Below 1.0 means the system trusts them less.")
 
-weight_df = load_weight_evolution()
+weight_df = load_weight_evolution(ticker)
 
 if not weight_df.empty and len(weight_df) >= 5:
     available_agents = sorted(weight_df['agent'].unique())
@@ -477,8 +477,8 @@ st.subheader("🏆 Agent Accuracy by Market Regime")
 st.caption("Which agents perform best in each market condition?")
 
 try:
-    accuracy_df = load_legacy_accuracy()
-    signals_df = load_decision_signals()
+    accuracy_df = load_legacy_accuracy(ticker)
+    signals_df = load_decision_signals(ticker)
 
     _have_accuracy = not accuracy_df.empty and 'agent' in accuracy_df.columns and 'correct' in accuracy_df.columns
     _have_signals = not signals_df.empty and 'regime' in signals_df.columns

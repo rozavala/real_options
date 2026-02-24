@@ -1,5 +1,5 @@
 """
-Shared utilities for the Coffee Bot Real Options dashboard.
+Shared utilities for the Real Options Portfolio dashboard.
 Contains data loading, caching, and decision grading logic.
 """
 
@@ -167,14 +167,18 @@ def get_starting_capital(config: dict) -> float:
         profile.default_starting_capital if hasattr(profile, 'default_starting_capital') else 50000.0
     )
 
-@st.cache_data
+@st.cache_data(ttl=60)
 def get_config():
-    """Loads and caches the application configuration."""
+    """Loads and caches the application configuration.
+
+    TTL=60s ensures config refreshes after commodity switch even if
+    st.cache_data.clear() doesn't fully propagate. The load_config()
+    call reads COMMODITY_TICKER env var for commodity overrides.
+    """
     config = load_config()
     if config is None:
         st.error("Fatal: Could not load config.json.")
         return {}
-    # COMMODITY_TICKER override is now handled in load_config() itself
     return config
 
 

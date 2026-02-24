@@ -71,12 +71,19 @@ COLOR_MAP = {
     'NEUTRAL': '#888888', 'HOLD': '#888888',
 }
 
-# New constant for Month-specific colors (perpetual)
+# Month-specific colors for all 12 contract months (F-Z)
 MONTH_COLORS = {
-    'H': '#00CC96',  # March - Green
+    'F': '#19D3F3',  # Jan - Cyan
+    'G': '#B6E880',  # Feb - Lime
+    'H': '#00CC96',  # Mar - Green
+    'J': '#FF6692',  # Apr - Pink
     'K': '#636EFA',  # May - Blue
-    'N': '#EF553B',  # July - Red
+    'M': '#FECB52',  # Jun - Yellow
+    'N': '#EF553B',  # Jul - Red
+    'Q': '#FF97FF',  # Aug - Magenta
     'U': '#AB63FA',  # Sep - Purple
+    'V': '#00B5F7',  # Oct - Sky blue
+    'X': '#72B7B2',  # Nov - Teal
     'Z': '#FFA15A',  # Dec - Orange
 }
 
@@ -370,8 +377,9 @@ def get_contract_color(contract: str, default_color: str) -> str:
         return default_color
 
     clean = clean_contract_symbol(contract)
-    if clean and len(clean) >= 3:
-        month_code = clean[2]
+    sym_len = len(profile.contract.symbol)  # 2 for KC/CC/NG, dynamic for future tickers
+    if clean and len(clean) > sym_len:
+        month_code = clean[sym_len]
         return MONTH_COLORS.get(month_code, default_color)
 
     return default_color
