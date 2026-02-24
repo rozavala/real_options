@@ -1612,13 +1612,34 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                                     details['cap_reached_logged'] = True
                                     details['cap_reached_time'] = time.time()
 
-                    # FIX-003: Periodic status report for orders at cap (every 5 minutes)
+                    # FIX-003: Cap timeout + periodic status report
                     if details.get('cap_reached_logged', False):
                         time_at_cap = time.time() - details.get('cap_reached_time', time.time())
-                        if time_at_cap > 0 and int(time_at_cap) % 300 == 0:  # Every 5 minutes
+                        cap_timeout = tuning.get('cap_timeout_seconds', 600)
+
+                        # Cancel order if sitting at cap too long (market not converging)
+                        if time_at_cap >= cap_timeout:
+                            display = details.get('display_name', 'UNKNOWN')
+                            logger.warning(
+                                f"CAP TIMEOUT: Order {order_id} ({display}) "
+                                f"at cap {ceiling:.2f} for {int(time_at_cap/60)} min. "
+                                f"Cancelling (market not converging)."
+                            )
+                            try:
+                                ib.cancelOrder(trade.order)
+                                log_order_event(trade, "Cancelled", f"Cap timeout after {int(time_at_cap/60)} min")
+                            except Exception as e:
+                                logger.error(f"Failed to cancel order {order_id} on cap timeout: {e}")
+                            continue
+
+                        # Periodic status report every 5 minutes (debounced)
+                        minutes_at_cap = int(time_at_cap / 60)
+                        last_report_min = details.get('_last_cap_report_min', 0)
+                        if minutes_at_cap > 0 and minutes_at_cap % 5 == 0 and minutes_at_cap != last_report_min:
+                            details['_last_cap_report_min'] = minutes_at_cap
                             logger.info(
                                 f"Order {order_id} ({details.get('display_name', 'UNKNOWN')}): "
-                                f"Still at cap {ceiling:.2f} for {int(time_at_cap/60)} minutes. "
+                                f"Still at cap {ceiling:.2f} for {minutes_at_cap} minutes. "
                                 f"Current market: {trade.orderStatus.status}"
                             )
 

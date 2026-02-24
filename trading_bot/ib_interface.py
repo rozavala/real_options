@@ -311,11 +311,13 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
 
     qualified_legs = leg_contracts  # All modified in-place by qualifyContractsAsync
 
-    # 4. Price each leg theoretically and get live market spread
-    net_theoretical_price = 0.0
+    # 4. Fetch market data and price each leg theoretically
     combo_bid_price = 0.0
     combo_ask_price = 0.0
     iv_sources = []  # Track IV source per leg for mixed-source detection
+    leg_market_data = []  # Per-leg market data for IV consistency correction
+    leg_theo_prices = []  # Per-leg theoretical prices
+
     for i, q_leg in enumerate(qualified_legs):
         leg_action = legs_def[i][1]  # 'BUY' or 'SELL'
 
@@ -324,6 +326,7 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
             logging.error(f"Failed to get market data for {q_leg.localSymbol}. Aborting order.")
             return None
         iv_sources.append(market_data.get('iv_source', 'UNKNOWN'))
+        leg_market_data.append(market_data)
 
         # Calculate theoretical price using Black-Scholes
         pricing_result = price_option_black_scholes(
@@ -337,9 +340,8 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         if not pricing_result:
             logging.error(f"Failed to price leg {leg_action} {q_leg.localSymbol}. Aborting."); return None
 
-        price = pricing_result['price']
-        net_theoretical_price += price if leg_action == 'BUY' else -price
-        logging.info(f"  -> Leg Theoretical Price ({leg_action}): {q_leg.localSymbol} @ {price:.2f}")
+        leg_theo_prices.append(pricing_result['price'])
+        logging.info(f"  -> Leg Theoretical Price ({leg_action}): {q_leg.localSymbol} @ {pricing_result['price']:.2f}")
 
         # Aggregate combo bid/ask from live market data
         leg_bid = market_data['bid']
@@ -351,20 +353,65 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
             combo_bid_price -= leg_ask
             combo_ask_price -= leg_bid
 
+    # 4b. IV source consistency enforcement — correct fallback legs using IBKR IV
+    unique_sources = set(iv_sources)
+    if len(unique_sources) > 1 and 'FALLBACK' in unique_sources:
+        ibkr_ivs = [
+            leg_market_data[j]['implied_volatility']
+            for j in range(len(iv_sources))
+            if iv_sources[j] == 'IBKR'
+        ]
+        if ibkr_ivs:
+            consistent_iv = sum(ibkr_ivs) / len(ibkr_ivs)
+            logging.warning(
+                f"IV SOURCE MISMATCH CORRECTION: Mixed sources {iv_sources}. "
+                f"Re-pricing FALLBACK legs with IBKR-derived IV ({consistent_iv:.2%})."
+            )
+            for j in range(len(qualified_legs)):
+                if iv_sources[j] == 'FALLBACK':
+                    q_leg = qualified_legs[j]
+                    repriced = price_option_black_scholes(
+                        S=underlying_price,
+                        K=q_leg.strike,
+                        T=exp_details['days_to_exp'] / 365,
+                        r=leg_market_data[j]['risk_free_rate'],
+                        sigma=consistent_iv,
+                        option_type=q_leg.right
+                    )
+                    if repriced:
+                        old_price = leg_theo_prices[j]
+                        leg_theo_prices[j] = repriced['price']
+                        iv_sources[j] = 'IBKR_DERIVED'
+                        leg_market_data[j]['implied_volatility'] = consistent_iv
+                        leg_market_data[j]['iv_source'] = 'IBKR_DERIVED'
+                        leg_action = legs_def[j][1]
+                        logging.info(
+                            f"  -> Repriced leg {leg_action} {q_leg.localSymbol}: "
+                            f"{old_price:.2f} -> {repriced['price']:.2f} (IV: fallback -> {consistent_iv:.2%})"
+                        )
+        else:
+            logging.warning(
+                f"IV SOURCE MISMATCH: All legs on FALLBACK IV {iv_sources}. "
+                f"Proceeding with consistent (but possibly inaccurate) pricing."
+            )
+    elif len(unique_sources) > 1:
+        logging.warning(
+            f"IV SOURCE MISMATCH: Legs used mixed IV sources {iv_sources}. "
+            f"Theoretical pricing may be inconsistent."
+        )
+
+    # Calculate net theoretical price from (possibly corrected) per-leg prices
+    net_theoretical_price = 0.0
+    for j, price in enumerate(leg_theo_prices):
+        leg_action = legs_def[j][1]
+        net_theoretical_price += price if leg_action == 'BUY' else -price
+
     # 5. Add Liquidity Filter and Calculate Limit Price (Ceiling/Floor) and Initial Price (Start)
     tuning_params = config.get('strategy_tuning', {})
     max_spread_pct = tuning_params.get('max_liquidity_spread_percentage', 0.25)
     fixed_slippage = tuning_params.get('fixed_slippage_cents', 0.5)
     # NEW: Configurable ceiling aggression (0.0 = mid, 1.0 = full ask/bid)
     ceiling_aggression = tuning_params.get('ceiling_aggression_factor', 0.75)
-
-    # Mixed IV source warning: log when some legs use IBKR IV and others use fallback
-    unique_sources = set(iv_sources)
-    if len(unique_sources) > 1:
-        logging.warning(
-            f"IV SOURCE MISMATCH: Legs used mixed IV sources {iv_sources}. "
-            f"Theoretical pricing may be inconsistent."
-        )
 
     # Inverted spread guard: BUY spread should be a debit (positive theoretical),
     # SELL spread should be a credit (negative theoretical). When the sign is wrong,

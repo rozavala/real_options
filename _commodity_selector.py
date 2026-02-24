@@ -10,6 +10,14 @@ Renders a sidebar selectbox for commodity switching. On change:
 
 import streamlit as st
 import os
+import asyncio
+
+# Ensure event loop exists before any ib_insync import (via trading_bot.utils).
+# Streamlit runs pages in a thread that may lack an event loop.
+try:
+    asyncio.get_event_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
 
 from config.commodity_profiles import CommodityType
 

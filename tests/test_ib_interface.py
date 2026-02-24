@@ -245,11 +245,15 @@ class TestIbInterface(unittest.TestCase):
 
     @patch('trading_bot.ib_interface.price_option_black_scholes')
     @patch('trading_bot.ib_interface.get_option_market_data')
-    def test_inverted_spread_returns_none(self, mock_get_market_data, mock_price_bs):
+    def test_inverted_spread_corrected_by_iv_consistency(self, mock_get_market_data, mock_price_bs):
         """
-        Tests that a BUY spread with negative net theoretical (SELL leg priced
-        higher than BUY leg due to IV mismatch) is rejected before order creation.
+        Tests that a BUY spread with mixed IV sources (one FALLBACK, one IBKR)
+        triggers IV consistency correction. The FALLBACK leg gets repriced with
+        the IBKR IV, which should fix the inversion.
+
         Reproduces the CCK6 bug where IB rejected as 'riskless combination'.
+        Before the IV consistency fix, this returned None (inverted spread).
+        After the fix, the FALLBACK leg is repriced with IBKR IV, correcting the spread.
         """
         async def run_test():
             ib = AsyncMock()
@@ -260,19 +264,25 @@ class TestIbInterface(unittest.TestCase):
                 return list(contracts)
             ib.qualifyContractsAsync = AsyncMock(side_effect=qualify_side_effect)
 
-            # BUY leg IV=35% (fallback), SELL leg IV=57% (IBKR) → SELL leg priced higher
+            # BUY leg IV=35% (fallback), SELL leg IV=57% (IBKR)
             mock_get_market_data.side_effect = [
-                {'bid': 50.0, 'ask': 60.0, 'implied_volatility': 0.35, 'iv_source': 'FALLBACK', 'risk_free_rate': 0.05},
-                {'bid': 55.0, 'ask': 65.0, 'implied_volatility': 0.57, 'iv_source': 'IBKR', 'risk_free_rate': 0.05}
+                {'bid': 238.0, 'ask': 242.0, 'implied_volatility': 0.35, 'iv_source': 'FALLBACK', 'risk_free_rate': 0.05},
+                {'bid': 223.0, 'ask': 227.0, 'implied_volatility': 0.57, 'iv_source': 'IBKR', 'risk_free_rate': 0.05}
             ]
-            # BUY leg = 149.67, SELL leg = 225.36 → net = 149.67 - 225.36 = -75.69
-            mock_price_bs.side_effect = [{'price': 149.67}, {'price': 225.36}]
+            # Original: BUY=149.67 (fallback IV), SELL=225.36 (IBKR IV) → inverted
+            # Repriced: BUY=240.50 (IBKR-derived IV) → net = 240.50 - 225.36 = +15.14 (corrected)
+            mock_price_bs.side_effect = [
+                {'price': 149.67},  # BUY leg initial (fallback IV)
+                {'price': 225.36},  # SELL leg initial (IBKR IV)
+                {'price': 240.50},  # BUY leg repriced (IBKR-derived IV)
+            ]
 
             config = {
                 'symbol': 'CC',
+                'exchange': 'NYBOT',
                 'strategy': {'quantity': 1},
                 'strategy_tuning': {
-                    'max_liquidity_spread_percentage': 0.45,
+                    'max_liquidity_spread_percentage': 0.99,
                     'fixed_slippage_cents': 0.5
                 }
             }
@@ -286,7 +296,10 @@ class TestIbInterface(unittest.TestCase):
             }
 
             result = await create_combo_order_object(ib, config, strategy_def)
-            self.assertIsNone(result)
+            # IV consistency correction should fix the inversion — order should proceed
+            self.assertIsNotNone(result)
+            # Verify the repricing was called (3 BS calls: 2 original + 1 reprice)
+            self.assertEqual(mock_price_bs.call_count, 3)
 
         asyncio.run(run_test())
 
