@@ -264,7 +264,25 @@ _budget_guard_instance: Optional[BudgetGuard] = None
 
 
 def get_budget_guard(config: dict = None) -> Optional[BudgetGuard]:
-    """Get or create the singleton BudgetGuard instance."""
+    """Get the BudgetGuard for the current engine context, or the singleton.
+
+    In multi-engine mode, each CommodityEngine has its own BudgetGuard
+    stored in EngineRuntime (via ContextVar). This ensures per-commodity
+    cost tracking and state persistence to data/{TICKER}/budget_state.json.
+
+    Falls back to the module-level singleton for single-engine mode or
+    when called outside an engine context (e.g., during startup).
+    """
+    # Try per-engine instance first (multi-commodity mode)
+    try:
+        from trading_bot.data_dir_context import get_engine_runtime
+        rt = get_engine_runtime()
+        if rt and rt.budget_guard:
+            return rt.budget_guard
+    except (LookupError, ImportError):
+        pass
+
+    # Fallback to singleton (single-engine mode)
     global _budget_guard_instance
     if _budget_guard_instance is None and config is not None:
         _budget_guard_instance = BudgetGuard(config)

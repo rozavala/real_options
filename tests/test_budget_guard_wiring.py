@@ -273,3 +273,78 @@ async def test_budget_throttle_not_caught_by_gemini_fallback():
 
         with pytest.raises(BudgetThrottledError):
             await council._route_call(AgentRole.AGRONOMIST, "test prompt")
+
+
+# --- Per-Engine Budget Guard Isolation Tests ---
+
+def test_contextvar_budget_guard_preferred_over_singleton(tmp_path):
+    """get_budget_guard() returns per-engine instance when ContextVar is set."""
+    from trading_bot.data_dir_context import EngineRuntime, _engine_runtime
+
+    # Create two BudgetGuards with different data dirs
+    kc_dir = tmp_path / "KC"
+    cc_dir = tmp_path / "CC"
+    kc_dir.mkdir()
+    cc_dir.mkdir()
+
+    kc_config = {**MOCK_CONFIG, 'data_dir': str(kc_dir)}
+    cc_config = {**MOCK_CONFIG, 'data_dir': str(cc_dir)}
+
+    with patch.object(BudgetGuard, '_load_state'), \
+         patch.object(BudgetGuard, '_check_reset'):
+        kc_budget = BudgetGuard(kc_config)
+        cc_budget = BudgetGuard(cc_config)
+
+        # Set up ContextVar with CC's runtime
+        rt = EngineRuntime(ticker="CC", budget_guard=cc_budget)
+        token = _engine_runtime.set(rt)
+        try:
+            # get_budget_guard() should return CC's budget, not singleton
+            result = get_budget_guard()
+            assert result is cc_budget
+            assert result is not kc_budget
+        finally:
+            _engine_runtime.reset(token)
+
+
+def test_singleton_fallback_when_no_contextvar(tmp_path):
+    """get_budget_guard() falls back to singleton when no ContextVar set."""
+    from trading_bot.data_dir_context import _engine_runtime
+
+    # Ensure no ContextVar is set (reset_singleton fixture already cleared singleton)
+    kc_config = {**MOCK_CONFIG, 'data_dir': str(tmp_path)}
+
+    with patch.object(BudgetGuard, '_load_state'), \
+         patch.object(BudgetGuard, '_check_reset'):
+        bg = get_budget_guard(kc_config)
+        assert bg is not None
+        # Without ContextVar, should get the singleton
+        bg2 = get_budget_guard()
+        assert bg2 is bg
+
+
+def test_per_engine_budget_guard_writes_to_own_dir(tmp_path):
+    """Per-engine BudgetGuard saves state to its own data directory."""
+    kc_dir = tmp_path / "KC"
+    cc_dir = tmp_path / "CC"
+    kc_dir.mkdir()
+    cc_dir.mkdir()
+
+    kc_config = {**MOCK_CONFIG, 'data_dir': str(kc_dir)}
+    cc_config = {**MOCK_CONFIG, 'data_dir': str(cc_dir)}
+
+    kc_budget = BudgetGuard(kc_config)
+    cc_budget = BudgetGuard(cc_config)
+
+    kc_budget.record_cost(1.50, source="router/master")
+    cc_budget.record_cost(2.25, source="router/master")
+
+    assert (kc_dir / "budget_state.json").exists()
+    assert (cc_dir / "budget_state.json").exists()
+
+    import json
+    kc_state = json.loads((kc_dir / "budget_state.json").read_text())
+    cc_state = json.loads((cc_dir / "budget_state.json").read_text())
+
+    assert abs(kc_state['daily_spend'] - 1.50) < 0.01
+    assert abs(cc_state['daily_spend'] - 2.25) < 0.01
