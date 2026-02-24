@@ -1571,3 +1571,94 @@
 2026-02-24 14:29:23,183 - OrderManager - INFO - Adaptive Update for Order 137 (KC-P275.0+P270.0): 2.35 -> 2.4 (Cap/Floor: 2.9)
 2026-02-24 14:29:38,206 - OrderManager - INFO - Adaptive Update for Order 137 (KC-P275.0+P270.0): 2.4 -> 2.45 (Cap/Floor: 2.9)
 2026-02-24 14:29:53,225 - OrderManager - INFO - Adaptive Update for Order 137 (KC-P275.0+P270.0): 2.45 -> 2.5 (Cap/Floor: 2.9)
+2026-02-24 14:30:08,244 - OrderManager - INFO - Adaptive Update for Order 137 (KC-P275.0+P270.0): 2.5 -> 2.55 (Cap/Floor: 2.9)
+2026-02-24 14:30:23,265 - OrderManager - INFO - Adaptive Update for Order 137 (KC-P275.0+P270.0): 2.55 -> 2.6 (Cap/Floor: 2.9)
+2026-02-24 14:30:23,355 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=620, market_open=True, trading_day=True
+2026-02-24 14:30:38,285 - OrderManager - INFO - Order 137 (KC-P275.0+P270.0): Reached cap/floor at 2.90. Waiting for fill or timeout.
+2026-02-24 14:30:38,285 - OrderManager - INFO - Order 137 (KC-P275.0+P270.0): Still at cap 2.90 for 0 minutes. Current market: Submitted
+2026-02-24 14:35:24,643 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=625, market_open=True, trading_day=True
+2026-02-24 14:35:38,322 - OrderManager - INFO - Order 137 (KC-P275.0+P270.0): Still at cap 2.90 for 5 minutes. Current market: Submitted
+2026-02-24 14:40:38,604 - OrderManager - INFO - Order 137 (KC-P275.0+P270.0): Still at cap 2.90 for 10 minutes. Current market: Submitted
+2026-02-24 14:40:47,535 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=630, market_open=True, trading_day=True
+2026-02-24 14:43:48,473 - Orchestrator - INFO - PriceSentinel detected 1.6% move - triggering position audit
+2026-02-24 14:43:48,481 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 37% of average (Sev: 6)
+2026-02-24 14:43:48,484 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-24 14:43:48,487 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (PriceSentinel trigger (1.6% move)) ---
+2026-02-24 14:43:48,487 - trading_bot.connection_pool - INFO - Connecting IB (KC_audit) ID: 64 [REMOTE/PAPER]...
+2026-02-24 14:43:48,510 - trading_bot.state_manager - INFO - Logged sentinel event from PriceSentinel to history.
+2026-02-24 14:43:48,582 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by PriceSentinel: Price moved 1.61% in last hour (Threshold: 1.5%) (Cycle: KC-f5f6e89f)
+2026-02-24 14:43:48,789 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-24 14:43:48,883 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-24 14:43:48,883 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'xai', 'anthropic', 'gemini']
+2026-02-24 14:43:48,883 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'xai', 'anthropic', 'gemini'], 'diversity_score': 1.0}
+2026-02-24 14:43:48,890 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-24 14:43:48,899 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-02-24 14:43:49,434 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 492 created from CSV, 0 resolved from council_history
+2026-02-24 14:43:49,456 - trading_bot.enhanced_brier - INFO - Auto-orphaned 5 Enhanced Brier predictions older than 168h
+2026-02-24 14:43:49,457 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-24 14:43:49,457 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-24 14:43:49,457 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-24 14:43:49,457 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-24 14:43:49,457 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-24 14:43:49,457 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-24 14:43:49,460 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-24 14:43:49,464 - trading_bot.connection_pool - INFO - IB (KC_audit) connected successfully with ID 64
+2026-02-24 14:43:49,467 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-24 14:43:49,474 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-24 14:43:49,477 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
+2026-02-24 14:43:49,478 - Orchestrator - INFO - No open positions to audit.
+2026-02-24 14:43:49,480 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_audit)...
+2026-02-24 14:43:49,527 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-24 14:43:49,527 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-24 14:43:49,527 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-24 14:43:53,677 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-24 14:43:54,217 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=283.10, sma_200=330.905, regime=RANGE_BOUND, vol_5d=0.0149
+2026-02-24 14:43:54,217 - Orchestrator - INFO - Emergency market context: price=283.1, regime=RANGE_BOUND
+2026-02-24 14:43:54,217 - trading_bot.agents - INFO - Running Specialized Cycle triggered by PriceSentinel...
+2026-02-24 14:43:54,218 - trading_bot.agents - INFO - Routing to technical (Reason: Default routing)
+2026-02-24 14:43:54,218 - trading_bot.agents - INFO - Waking up technical...
+2026-02-24 14:43:54,491 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-24 14:43:54,492 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-24 14:44:21,360 - trading_bot.agents - WARNING - [technical] Output validation issues: ["Possible hallucination: 6 numbers not in grounded data: ['278.05', '285.08', '277.05']"]
+2026-02-24 14:44:21,360 - trading_bot.agents - WARNING - [technical] Validation issues: ["Possible hallucination: 6 numbers not in grounded data: ['278.05', '285.08', '277.05']"]
+2026-02-24 14:44:21,360 - trading_bot.heterogeneous_router - INFO - Cache INVALIDATED 1 entries for technical
+2026-02-24 14:44:21,731 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-24 14:44:40,289 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-24 14:44:40,298 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-02-24 14:44:40,850 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 501 created from CSV, 0 resolved from council_history
+2026-02-24 14:44:40,852 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.0 \u00d7 reliability=1.1 = 1.06", "macro": "domain=1.5 \u00d7 reliability=0.7 = 0.98", "geopolitical": "domain=1.0 \u00d7 reliability=0.9 = 0.90", "supply_chain": "domain=1.0 \u00d7 reliability=0.7 = 0.71", "inventory": "domain=1.0 \u00d7 reliability=0.8 = 0.81", "sentiment": "domain=2.0 \u00d7 reliability=1.2 = 2.33", "technical": "domain=4.5 \u00d7 reliability=1.1 = 5.03", "volatility": "domain=1.8 \u00d7 reliability=0.8 = 1.46"}
+2026-02-24 14:44:40,853 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.211, dominant=technical)
+2026-02-24 14:44:40,853 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "agronomist",\n    "direction": "NEUTRAL",\n    "confidence": 0.55,\n    "domain_weight": 1.0,\n    "reliability_mult": 1.06,\n    "staleness_weight": 1.0,\n    "age_hours": 0.3,\n    "final_weight": 1.06,\n    "contribution": 0.0\n  },\n  {\n    "agent": "macro",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.65,\n    "staleness_weight": 1.0,\n    "age_hours": 0.3,\n    "final_weight": 0.98,\n    "contribution": 0.0\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.9,\n    "staleness_weight": 1.0,\n    "age_hours": 0.3,\n    "final_weight": 0.9,\n    "contribution": 0.0\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BULLISH",\n    "confidence": 0.8,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.71,\n    "staleness_weight": 1.0,\n    "age_hours": 0.3,\n    "final_weight": 0.71,\n    "contribution": 0.567\n  },\n  {\n    "agent": "inventory",\n    "direction": "BEARISH",\n    "confidence": 0.55,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.81,\n    "staleness_weight": 1.0,\n    "age_hours": 0.3,\n    "final_weight": 0.81,\n    "contribution": -0.445\n  },\n  {\n    "agent": "sentiment",\n    "direction": "BULLISH",\n    "confidence": 0.65,\n    "domain_weight": 2.0,\n    "reliability_mult": 1.16,\n    "staleness_weight": 1.0,\n    "age_hours": 0.3,\n    "final_weight": 2.33,\n    "contribution": 1.512\n  },\n  {\n    "agent": "technical",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 4.5,\n    "reliability_mult": 1.12,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "final_weight": 5.03,\n    "contribution": -3.269\n  },\n  {\n    "agent": "volatility",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 1.75,\n    "reliability_mult": 0.83,\n    "staleness_weight": 1.0,\n    "age_hours": 0.3,\n    "final_weight": 1.46,\n    "contribution": -1.168\n  }\n]
+2026-02-24 14:45:39,117 - OrderManager - INFO - Order 137 (KC-P275.0+P270.0): Still at cap 2.90 for 15 minutes. Current market: Submitted
+2026-02-24 14:45:48,504 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=635, market_open=True, trading_day=True
+2026-02-24 14:45:53,809 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.8) | Catalyst: Coffee-specific 2026 Brazil supply expansion signals (Conab 
+2026-02-24 14:46:42,461 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. The trade fails the pre-mortem stress test on multiple dimensions simultaneously: (1) entry timing is catastrophically late — RSI 25.77 and near-empty speculative positioning mean the easy short is over; (2) the core thesis rests on a single category of evidence (crop forecasts) with no agronomic validation; (3) the one reliable real-time signal — persistent backwardation — directly contradicts the nearby bearish stance; (4) options are 4-5x overpriced for any spread or defined-risk structure. If bearish conviction exists, the correct action is to WAIT for either (a) a technical bounce toward 290-295 resistance to enter with better risk/reward and lower IV, or (b) confirmed certified stock rebuilding over multiple weeks that validates the supply-normalization thesis before the 2026 harvest arrives. Entering a bearish position on a broken-down, oversold market with hyper-expensive options, no agronomist input, and a crowded positioning profile is a risk-management failure regardless of whether the fundamental thesis eventually proves correct.
+2026-02-24 14:46:42,461 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-24 14:46:42,464 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-24 14:46:42,467 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-24 14:46:42,467 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-24 14:46:42,469 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-24 14:46:42,474 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-24 14:46:42,596 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-02-24 14:46:43,166 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 510 created from CSV, 0 resolved from council_history
+2026-02-24 14:46:43,218 - trading_bot.brier_bridge - WARNING - DEPRECATION: Legacy Brier system used 300 times. Will be removed after 2026-03-01 00:00:00+00:00
+2026-02-24 14:46:43,222 - Orchestrator - INFO - Emergency Cycle concluded with no action: BEARISH (VOLATILITY)
+2026-02-24 14:46:43,226 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-24 14:50:38,524 - OrderManager - INFO - Order 137 (KC-P275.0+P270.0): Still at cap 2.90 for 20 minutes. Current market: Submitted
+2026-02-24 14:50:48,651 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=640, market_open=True, trading_day=True
+2026-02-24 14:55:38,915 - OrderManager - INFO - Order 137 (KC-P275.0+P270.0): Still at cap 2.90 for 25 minutes. Current market: Submitted
+2026-02-24 14:55:48,831 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=645, market_open=True, trading_day=True
+2026-02-24 14:58:23,136 - OrderManager - WARNING - Monitoring loop timed out. Some orders may not be in a terminal state.
+2026-02-24 14:58:27,243 - OrderManager - WARNING - Order 137 (KC-P275.0+P270.0) TIMED OUT. Original Limit: 2.60. Final BAG: 2.02x2.99, V:0.0, L:N/A@14:58:23. Final LEGs: Leg KON6 P2.75: 22.21x22.73, V:0.0, L:N/A, Leg KON6 P2.7: 19.65x20.21, V:50.0, L:N/A
+2026-02-24 14:58:27,244 - OrderManager - INFO - Order 137 status update: PendingCancel
+2026-02-24 14:58:27,245 - OrderManager - WARNING - Cancelling orphaned catastrophe stop (order 138) for unfilled spread 137
+2026-02-24 14:58:27,420 - OrderManager - INFO - Order 137 status update: Cancelled
+2026-02-24 14:58:27,768 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-24 14:58:27,770 - OrderManager - INFO - --- Finished monitoring and cleanup. ---
+2026-02-24 14:58:27,771 - OrderManager - INFO - Order placement complete. Releasing event handlers.
+2026-02-24 14:58:27,771 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-02-24 14:58:30,772 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-02-24 14:58:30,772 - trading_bot.semantic_cache - INFO - CACHE INVALIDATED BY TICKER (KC): 1 entries removed
+2026-02-24 14:58:30,777 - Engine.KC - INFO - Next task 'signal_late' (Signal: Late) scheduled for 2026-02-24 16:39:00 UTC. Waiting for 1.67 hours.
+2026-02-24 14:58:49,899 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 36% of average (Sev: 6)
+2026-02-24 14:58:49,903 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
