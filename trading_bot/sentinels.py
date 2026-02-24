@@ -1908,10 +1908,16 @@ class PredictionMarketSentinel(Sentinel):
                 if not markets:
                     return None
 
-                # Find best market by liquidity
+                # Find best market by liquidity, but prefer the pinned
+                # sub-market to prevent phantom deltas when liquidity
+                # rankings shift between sub-markets of the same event.
+                pinned_market_id = kwargs.get('pinned_market_id')
                 best_market = None
                 best_liq = -1
                 best_vol = 0
+                pinned_market = None
+                pinned_liq = 0
+                pinned_vol = 0
                 for m in markets:
                     if not isinstance(m, dict):
                         continue
@@ -1919,6 +1925,15 @@ class PredictionMarketSentinel(Sentinel):
                         m_liq = float(m.get('liquidity', 0) or 0)
                     except (ValueError, TypeError):
                         continue
+                    m_id = m.get('conditionId') or m.get('id', '')
+                    # Track the pinned sub-market if it still exists
+                    if pinned_market_id and str(m_id) == str(pinned_market_id):
+                        pinned_market = m
+                        pinned_liq = m_liq
+                        try:
+                            pinned_vol = float(m.get('volume', 0) or 0)
+                        except (ValueError, TypeError):
+                            pinned_vol = 0
                     if m_liq > best_liq:
                         best_liq = m_liq
                         best_market = m
@@ -1927,19 +1942,31 @@ class PredictionMarketSentinel(Sentinel):
                         except (ValueError, TypeError):
                             best_vol = 0
 
-                if best_market is None:
+                # Prefer pinned sub-market if it meets minimum thresholds
+                if pinned_market and pinned_liq >= self.min_liquidity and pinned_vol >= self.min_volume:
+                    selected = pinned_market
+                    selected_liq = pinned_liq
+                    selected_vol = pinned_vol
+                else:
+                    selected = best_market
+                    selected_liq = best_liq
+                    selected_vol = best_vol
+
+                if selected is None:
                     return None
-                if best_liq < self.min_liquidity:
+                if selected_liq < self.min_liquidity:
                     return None
-                if best_vol < self.min_volume:
+                if selected_vol < self.min_volume:
                     return None
 
+                selected_id = selected.get('conditionId') or selected.get('id', '')
                 return {
                     'slug': event.get('slug'),
                     'title': event.get('title', ''),
-                    'market': best_market,
-                    'liquidity': best_liq,
-                    'volume': best_vol
+                    'market': selected,
+                    'market_id': str(selected_id),
+                    'liquidity': selected_liq,
+                    'volume': selected_vol
                 }
         except (aiohttp.ClientError, OSError) as e:
             logger.debug(f"Slug pin fetch failed for '{slug}': {e}")
@@ -2069,7 +2096,9 @@ class PredictionMarketSentinel(Sentinel):
                 market_data = None
 
                 if pinned_slug:
-                    market_data = await self._fetch_by_slug(pinned_slug)
+                    # Pass pinned market_id so _fetch_by_slug prefers the same sub-market
+                    _cached_market_id = self.state_cache.get(query, {}).get('market_id')
+                    market_data = await self._fetch_by_slug(pinned_slug, pinned_market_id=_cached_market_id)
                     if market_data:
                         # Validate pinned result still passes global excludes
                         if not self._passes_global_exclude_filter(market_data.get('title', '')):
@@ -2093,6 +2122,7 @@ class PredictionMarketSentinel(Sentinel):
                 self._topic_failure_counts[query] = 0
                 current_slug = market_data['slug']
                 current_title = market_data['title']
+                current_market_id = market_data.get('market_id', '')
                 try:
                     outcomes = market_data['market'].get('outcomePrices', [])
                     if isinstance(outcomes, str):
@@ -2105,11 +2135,22 @@ class PredictionMarketSentinel(Sentinel):
                     cached = self.state_cache[query]
                     last_slug = cached.get('slug')
                     last_price = cached.get('price', current_price)
+                    last_market_id = cached.get('market_id', '')
                     severity_hwm = cached.get('severity_hwm', 0)
                     hwm_timestamp = cached.get('hwm_timestamp')
                     if last_slug and last_slug != current_slug:
                         send_pushover_notification(self.config.get('notifications', {}), f"Market Rollover: {display_name}", f"Now tracking: {current_title[:50]}...", priority=-1)
-                        self.state_cache[query] = {'slug': current_slug, 'title': current_title, 'price': current_price, 'timestamp': datetime.now(timezone.utc).isoformat(), 'severity_hwm': 0, 'hwm_timestamp': None}
+                        self.state_cache[query] = {'slug': current_slug, 'title': current_title, 'market_id': current_market_id, 'price': current_price, 'timestamp': datetime.now(timezone.utc).isoformat(), 'severity_hwm': 0, 'hwm_timestamp': None}
+                        continue
+                    # Sub-market rotation within the same event (e.g., liquidity shifted
+                    # between "Cut-Pause-Pause" and "Other"). Reset baseline to avoid
+                    # phantom price deltas from comparing different sub-markets.
+                    if last_market_id and current_market_id and last_market_id != current_market_id:
+                        _sentinel_diag.info(
+                            f"  PredictionMarket [{display_name}]: sub-market rotation "
+                            f"({last_market_id} -> {current_market_id}), resetting baseline"
+                        )
+                        self.state_cache[query] = {'slug': current_slug, 'title': current_title, 'market_id': current_market_id, 'price': current_price, 'timestamp': datetime.now(timezone.utc).isoformat(), 'severity_hwm': 0, 'hwm_timestamp': None}
                         continue
                     if self._should_decay_hwm(hwm_timestamp):
                         severity_hwm = 0
@@ -2132,7 +2173,7 @@ class PredictionMarketSentinel(Sentinel):
                             cached['severity_hwm'] = current_severity
                             cached['hwm_timestamp'] = datetime.now(timezone.utc).isoformat()
                 if query not in self.state_cache: self.state_cache[query] = {'severity_hwm': 0, 'hwm_timestamp': None}
-                self.state_cache[query].update({'slug': current_slug, 'title': current_title, 'price': current_price, 'timestamp': datetime.now(timezone.utc).isoformat()})
+                self.state_cache[query].update({'slug': current_slug, 'title': current_title, 'market_id': current_market_id, 'price': current_price, 'timestamp': datetime.now(timezone.utc).isoformat()})
             except Exception as topic_error:
                 logger.warning(f"Error processing prediction market topic '{query}': {topic_error}")
                 continue

@@ -723,9 +723,9 @@ def _load_profile_from_json(path: str) -> CommodityProfile:
             historical_weekly_precip_mm=r.get('historical_weekly_precip_mm', 60.0),
             drought_threshold_mm=r.get('drought_threshold_mm', 30.0),
             flood_threshold_mm=r.get('flood_threshold_mm', 150.0),
-            flowering_months=r.get('flowering_months', [9, 10, 11]),
-            harvest_months=r.get('harvest_months', [5, 6, 7, 8]),
-            bean_filling_months=r.get('bean_filling_months', [12, 1, 2, 3]),
+            flowering_months=r.get('flowering_months', []),
+            harvest_months=r.get('harvest_months', []),
+            bean_filling_months=r.get('bean_filling_months', []),
 
             # Legacy/Optional
             planting_months=r.get('planting_months', []),
