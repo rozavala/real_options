@@ -599,6 +599,13 @@
           "session_pct": 0.5,
           "function": "run_position_audit_cycle",
           "label": "Audit: Mid-Session"
+        },
+        {
+          "id": "eia_storage_signal",
+          "session_pct": 0.29,
+          "function": "guarded_generate_orders",
+          "label": "Signal: EIA Storage Report",
+          "commodity_filter": "NG"
         }
       ],
       "pre_close_tasks": [
@@ -739,7 +746,8 @@
   },
   "active_commodities": [
     "KC",
-    "CC"
+    "CC",
+    "NG"
   ],
   "llm": {
     "max_concurrent_calls": 4
@@ -749,6 +757,18 @@
       "commodity": {
         "ticker": "CC",
         "name": "Cocoa"
+      },
+      "strategy": {
+        "quantity": 1
+      },
+      "risk_management": {
+        "max_open_positions": 3
+      }
+    },
+    "NG": {
+      "commodity": {
+        "ticker": "NG",
+        "name": "Natural Gas"
       },
       "strategy": {
         "quantity": 1
