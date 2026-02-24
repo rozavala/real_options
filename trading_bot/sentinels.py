@@ -1878,7 +1878,7 @@ class PredictionMarketSentinel(Sentinel):
 
         return False
 
-    async def _fetch_by_slug(self, slug: str) -> Optional[Dict[str, Any]]:
+    async def _fetch_by_slug(self, slug: str, **kwargs) -> Optional[Dict[str, Any]]:
         """
         Fetch a specific Polymarket event by slug.
         Used for slug pinning — avoids re-searching the API.
