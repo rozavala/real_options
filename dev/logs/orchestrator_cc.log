@@ -1093,3 +1093,47 @@
 2026-02-25 13:47:41,094 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=410, market_open=True, trading_day=True
 2026-02-25 13:52:41,918 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=415, market_open=True, trading_day=True
 2026-02-25 13:57:43,041 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=420, market_open=True, trading_day=True
+2026-02-25 14:02:44,372 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=425, market_open=True, trading_day=True
+2026-02-25 14:07:00,001 - Engine.CC - INFO - --- Running scheduled task: audit_mid_session [run_position_audit_cycle] ---
+2026-02-25 14:07:00,005 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-25 14:07:00,006 - trading_bot.connection_pool - INFO - Connecting IB (CC_audit) ID: 465 [REMOTE/PAPER]...
+2026-02-25 14:07:00,169 - trading_bot.connection_pool - INFO - IB (CC_audit) connected successfully with ID 465
+2026-02-25 14:07:00,174 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-25 14:07:00,186 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-25 14:07:00,250 - Orchestrator - WARNING - State sync discrepancy: IBKR has 0 positions but ledger shows 4 open
+2026-02-25 14:07:00,500 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 14:07:00,502 - Orchestrator - WARNING - Proceeding with audit despite 1 discrepancies. IBKR positions are source of truth.
+2026-02-25 14:07:00,506 - Orchestrator - INFO - No open positions to audit.
+2026-02-25 14:07:00,508 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_audit)...
+2026-02-25 14:07:03,515 - Engine.CC - INFO - Next task 'signal_mid' (Signal: Mid) scheduled for 2026-02-25 14:33:00 UTC. Waiting for 0.43 hours.
+2026-02-25 14:07:46,807 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=430, market_open=True, trading_day=True
+2026-02-25 14:11:48,741 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 48% of average (Sev: 5)
+2026-02-25 14:11:48,746 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-25 14:12:48,752 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=435, market_open=True, trading_day=True
+2026-02-25 14:17:51,032 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=440, market_open=True, trading_day=True
+2026-02-25 14:21:53,634 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 48% of average (Sev: 5)
+2026-02-25 14:21:53,639 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-25 14:22:53,648 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=445, market_open=True, trading_day=True
+2026-02-25 14:24:54,239 - Orchestrator - INFO - PriceSentinel detected 1.8% move - triggering position audit
+2026-02-25 14:24:54,249 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (PriceSentinel trigger (1.8% move)) ---
+2026-02-25 14:24:54,249 - trading_bot.connection_pool - INFO - Connecting IB (CC_audit) ID: 469 [REMOTE/PAPER]...
+2026-02-25 14:24:54,274 - trading_bot.state_manager - INFO - Logged sentinel event from PriceSentinel to history.
+2026-02-25 14:24:54,274 - trading_bot.drawdown_circuit_breaker - WARNING - Drawdown Status Changed: NORMAL -> PANIC (PNL: -5.92%)
+2026-02-25 14:24:54,565 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 14:24:54,568 - Orchestrator - WARNING - Drawdown Circuit Breaker ACTIVE (PANIC) - Skipping Emergency Cycle
+2026-02-25 14:24:54,570 - Orchestrator - INFO - Post-cycle debounce: 0s (gate-blocked (no debounce))
+2026-02-25 14:24:54,872 - trading_bot.connection_pool - INFO - IB (CC_audit) connected successfully with ID 469
+2026-02-25 14:24:54,877 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-25 14:24:54,888 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-25 14:24:54,903 - Orchestrator - WARNING - State sync discrepancy: IBKR has 0 positions but ledger shows 4 open
+2026-02-25 14:24:55,123 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 14:24:55,125 - Orchestrator - WARNING - Proceeding with audit despite 1 discrepancies. IBKR positions are source of truth.
+2026-02-25 14:24:55,129 - Orchestrator - INFO - No open positions to audit.
+2026-02-25 14:24:55,131 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_audit)...
+2026-02-25 14:25:18,892 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=7)
+2026-02-25 14:25:18,927 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
+2026-02-25 14:25:18,928 - Orchestrator - WARNING - Drawdown Circuit Breaker ACTIVE (PANIC) - Skipping Emergency Cycle
+2026-02-25 14:25:18,928 - Orchestrator - INFO - Post-cycle debounce: 0s (gate-blocked (no debounce))
+2026-02-25 14:27:19,016 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 50% of average (Sev: 5)
+2026-02-25 14:27:19,020 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-25 14:28:19,025 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=450, market_open=True, trading_day=True
