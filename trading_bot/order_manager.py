@@ -164,7 +164,10 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
     and the stop cleanup, the stop can linger as a GTC order and fill later,
     creating an untracked naked futures position.
 
-    This function runs at the start of each order batch as a safety net.
+    This function runs at the start of each order batch and during position
+    audits as a safety net. It does NOT filter by clientId because each IB
+    connection gets a randomized client ID, so stops from previous sessions
+    would be missed.
     """
     try:
         try:
@@ -175,22 +178,17 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
         if not open_orders:
             return
 
-        my_client_id = ib.client.clientId
         cancelled = 0
         for trade in open_orders:
             ref = trade.order.orderRef or ''
             if not ref.startswith('CATASTROPHE_'):
                 continue
-            if trade.order.clientId != my_client_id:
-                continue
-            # This is a catastrophe stop belonging to us — check if it's orphaned.
-            # An orphaned stop has no corresponding filled spread in live positions.
-            # Since we're at the START of a new batch, any lingering catastrophe stop
-            # from a previous batch means its spread either timed out or was cancelled.
+            # Any CATASTROPHE_ stop order still open is orphaned — its parent
+            # spread either timed out, was cancelled, or the bot restarted.
             logger.warning(
                 f"Cancelling orphaned catastrophe stop: order {trade.order.orderId} "
-                f"({trade.order.action} {trade.contract.localSymbol} @ "
-                f"{trade.order.auxPrice:.2f}), ref={ref}"
+                f"(client {trade.order.clientId}, {trade.order.action} "
+                f"{trade.contract.localSymbol} @ {trade.order.auxPrice:.2f}), ref={ref}"
             )
             ib.cancelOrder(trade.order)
             cancelled += 1
@@ -1630,6 +1628,35 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                                 log_order_event(trade, "Cancelled", f"Cap timeout after {int(time_at_cap/60)} min")
                             except Exception as e:
                                 logger.error(f"Failed to cancel order {order_id} on cap timeout: {e}")
+
+                            # Cancel companion catastrophe stop — the post-loop cleanup
+                            # at L1677 skips cancelled orders, so this is the only chance
+                            cat_stop = details.get('catastrophe_stop_trade')
+                            cat_cancelled = False
+                            if cat_stop:
+                                cat_status = cat_stop.orderStatus.status
+                                if cat_status not in {'Filled', 'Cancelled', 'ApiCancelled'}:
+                                    logger.warning(
+                                        f"Cancelling orphaned catastrophe stop (order {cat_stop.order.orderId}, "
+                                        f"status={cat_status}) for cap-timed-out spread {order_id}"
+                                    )
+                                    try:
+                                        ib.cancelOrder(cat_stop.order)
+                                        cat_cancelled = True
+                                    except Exception as e:
+                                        logger.error(f"Failed to cancel catastrophe stop {cat_stop.order.orderId}: {e}")
+                                else:
+                                    logger.info(f"Catastrophe stop {cat_stop.order.orderId} already terminal: {cat_status}")
+                                    cat_cancelled = True
+
+                            # Fallback: if Trade reference was stale/None, search by orderRef
+                            if not cat_cancelled and trade.order.orderRef:
+                                stop_ref = f"CATASTROPHE_{trade.order.orderRef}"
+                                logger.info(f"Attempting orderRef-based catastrophe stop cleanup: {stop_ref}")
+                                try:
+                                    await close_spread_with_protection_cleanup(ib, None, stop_ref)
+                                except Exception as e:
+                                    logger.warning(f"orderRef-based catastrophe cleanup failed: {e}")
                             continue
 
                         # Periodic status report every 5 minutes (debounced)
@@ -1724,12 +1751,28 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
                 # Cancel companion catastrophe stop if spread never filled
                 cat_stop = details.get('catastrophe_stop_trade')
-                if cat_stop and cat_stop.orderStatus.status not in OrderStatus.DoneStates:
-                    logger.warning(
-                        f"Cancelling orphaned catastrophe stop (order {cat_stop.order.orderId}) "
-                        f"for unfilled spread {trade.order.orderId}"
-                    )
-                    ib.cancelOrder(cat_stop.order)
+                cat_cancelled = False
+                if cat_stop:
+                    cat_status = cat_stop.orderStatus.status
+                    if cat_status not in {'Filled', 'Cancelled', 'ApiCancelled'}:
+                        logger.warning(
+                            f"Cancelling orphaned catastrophe stop (order {cat_stop.order.orderId}, "
+                            f"status={cat_status}) for unfilled spread {trade.order.orderId}"
+                        )
+                        ib.cancelOrder(cat_stop.order)
+                        cat_cancelled = True
+                    else:
+                        logger.info(f"Catastrophe stop {cat_stop.order.orderId} already terminal: {cat_status}")
+                        cat_cancelled = True  # Already done
+
+                # Fallback: if Trade reference was stale/None, search by orderRef
+                if not cat_cancelled and trade.order.orderRef:
+                    stop_ref = f"CATASTROPHE_{trade.order.orderRef}"
+                    logger.info(f"Attempting orderRef-based catastrophe stop cleanup: {stop_ref}")
+                    try:
+                        await close_spread_with_protection_cleanup(ib, None, stop_ref)
+                    except Exception as e:
+                        logger.warning(f"orderRef-based catastrophe cleanup failed: {e}")
 
                 # --- 4. Update Notification String (ENHANCED FOR ALL DATA) ---
                 price_info_notify = f"LMT: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "MKT"
