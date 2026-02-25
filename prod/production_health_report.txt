@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Wed Feb 25 14:00:03 UTC 2026
+Timestamp: Wed Feb 25 14:30:03 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  14:00:03 up 44 days, 20:23,  2 users,  load average: 0.06, 0.03, 0.00
+Uptime:  14:30:04 up 44 days, 20:53,  2 users,  load average: 0.22, 0.25, 0.14
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.8Gi       212Mi        32Mi       1.0Gi       1.0Gi
-Swap:          4.0Gi       895Mi       3.1Gi
+Mem:           3.8Gi       2.8Gi       265Mi        32Mi       981Mi       1.0Gi
+Swap:          4.0Gi       912Mi       3.1Gi
 
 === LOAD AVERAGE ===
-0.06 0.03 0.00 1/855 1456978
+0.22 0.25 0.14 1/884 1458027
 
 === PROCESS STATUS ===
 Trading processes:
-console  1203374  0.2 10.2 1972664 412568 ?      Ssl  Feb18  29:19 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1203374  0.2 10.4 1972664 418324 ?      Ssl  Feb18  30:20 /home/console/real_options/venv/bin/python -u orchestrator.py
 console  1452604  0.0  7.2 1352048 292244 ?      Sl   09:15   0:07 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1185121  0.3  7.7 2882900 309488 ?      Sl   Feb17  34:26 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1185121  0.3  7.7 2882900 309360 ?      Sl   Feb17  34:32 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,13 +36,13 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-02-25 12:11:06,652 - ib_insync.wrapper - ERROR - Error 162, reqId 6: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=725781074, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=285.0, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P2.85', tradingClass='KO')
-2026-02-25 12:11:12,841 - ib_insync.wrapper - ERROR - Error 162, reqId 13: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=673626481, symbol='KC', lastTradeDateOrContractMonth='20260612', strike=280.0, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KON6 P2.8', tradingClass='KO')
-2026-02-25 12:34:13,933 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
-2026-02-25 12:34:25,770 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
-2026-02-25 12:34:47,415 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
-2026-02-25 12:35:26,062 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
-2026-02-25 13:05:03,970 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
-2026-02-25 13:05:15,566 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
-2026-02-25 13:05:37,495 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
-2026-02-25 13:06:18,986 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 14:28:22,378 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 14:28:24,336 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 14:28:26,251 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 14:28:35,905 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 14:28:37,715 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 14:28:57,502 - trading_bot.heterogeneous_router - WARNING - openai/o3-2025-04-16 failed for technical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 14:28:59,346 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 14:29:01,622 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 14:29:17,355 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 14:29:29,138 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
