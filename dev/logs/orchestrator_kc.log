@@ -177,3 +177,50 @@
 2026-02-25 17:55:05,126 - Engine.KC - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-02-25 18:05:00 UTC. Waiting for 0.17 hours.
 2026-02-25 17:55:58,831 - Orchestrator - INFO - 2026-02-25 17:55:58,831 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
 2026-02-25 17:57:23,850 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=130, market_open=True, trading_day=True
+2026-02-25 18:02:25,144 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=135, market_open=True, trading_day=True
+2026-02-25 18:05:00,009 - Engine.KC - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-02-25 18:05:00,012 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-25 18:05:00,012 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 35 [REMOTE/PAPER]...
+2026-02-25 18:05:01,232 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 35
+2026-02-25 18:05:01,237 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-25 18:05:01,238 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-25 18:05:01,731 - OrderManager - INFO - Found 2 live position legs in the IB account.
+2026-02-25 18:05:01,732 - OrderManager - INFO -   Filtered to 0 positions with non-zero quantity (2 already closed/zero-qty excluded)
+2026-02-25 18:05:01,732 - OrderManager - INFO - All returned positions have zero quantity — nothing to close.
+2026-02-25 18:05:01,732 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-02-25 18:05:04,740 - Engine.KC - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-02-25 18:15:00 UTC. Waiting for 0.17 hours.
+2026-02-25 18:05:58,847 - Orchestrator - INFO - 2026-02-25 18:05:58,847 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-25 18:05:58,847 - Orchestrator - INFO - 2026-02-25 18:05:58,847 - root - INFO - Running Iron Condor thesis validation check...
+2026-02-25 18:05:58,872 - Orchestrator - INFO - 2026-02-25 18:05:58,871 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-25 18:05:58,968 - Orchestrator - INFO - 2026-02-25 18:05:58,967 - trading_bot.tms - INFO - TMS initialized at ./data/KC/tms
+2026-02-25 18:07:26,453 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=140, market_open=True, trading_day=True
+2026-02-25 18:07:26,678 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 29% of average
+2026-02-25 18:07:26,684 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-25 18:07:26,871 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 18:12:27,939 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=145, market_open=True, trading_day=True
+2026-02-25 18:15:00,001 - Engine.KC - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-02-25 18:15:00,006 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-02-25 18:15:00,007 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-02-25 18:15:00,007 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-25 18:15:00,007 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 36 [REMOTE/PAPER]...
+2026-02-25 18:15:01,056 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 36
+2026-02-25 18:15:01,062 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-25 18:15:01,064 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-25 18:15:01,353 - OrderManager - INFO - Found 2 live position legs in the IB account.
+2026-02-25 18:15:01,354 - OrderManager - INFO -   Filtered to 0 positions with non-zero quantity (2 already closed/zero-qty excluded)
+2026-02-25 18:15:01,354 - OrderManager - INFO - All returned positions have zero quantity — nothing to close.
+2026-02-25 18:15:01,354 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-02-25 18:15:04,362 - Engine.KC - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-02-25 18:25:00 UTC. Waiting for 0.17 hours.
+2026-02-25 18:15:59,110 - Orchestrator - INFO - 2026-02-25 18:15:59,100 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-25 18:17:29,228 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=150, market_open=True, trading_day=True
+2026-02-25 18:22:30,506 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=155, market_open=True, trading_day=True
+2026-02-25 18:25:00,008 - Engine.KC - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-02-25 18:25:00,011 - Orchestrator - INFO - --- Emergency Hard Close Check (T-45 min) ---
+2026-02-25 18:25:00,013 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 34 [REMOTE/PAPER]...
+2026-02-25 18:25:01,156 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 34
+2026-02-25 18:25:01,161 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-25 18:25:01,264 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
+2026-02-25 18:25:01,264 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-02-25 18:25:04,273 - Engine.KC - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-02-25 18:35:00 UTC. Waiting for 0.17 hours.
+2026-02-25 18:25:59,205 - Orchestrator - INFO - 2026-02-25 18:25:59,205 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-25 18:27:31,972 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=160, market_open=True, trading_day=True
