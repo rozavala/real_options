@@ -27304,3 +27304,1541 @@ VERDICT: NO—do not proceed with a naked/linear bearish expression into an over
 2026-02-25 16:25:40,733 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10620, market_open=True, trading_day=True
 2026-02-25 16:27:43,089 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 48% of average (Sev: 5)
 2026-02-25 16:27:43,094 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-25 16:30:43,568 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10625, market_open=True, trading_day=True
+2026-02-25 16:31:46,644 - Orchestrator - INFO - WeatherSentinel: trigger detected (source=WeatherSentinel, severity=7)
+2026-02-25 16:31:46,659 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-02-25 16:31:46,660 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: DROUGHT in Colombia Huila: 23.8mm (NEUTRAL, VEGETATIVE stage) (Cycle: KC-946ffc66)
+2026-02-25 16:31:47,000 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 16:31:47,010 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-25 16:31:47,132 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-25 16:31:47,132 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-25 16:31:47,132 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-25 16:31:47,137 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-25 16:31:47,148 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-25 16:31:47,866 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 612 created from CSV, 0 resolved from council_history
+2026-02-25 16:31:47,868 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-25 16:31:47,869 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-25 16:31:47,869 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-25 16:31:47,869 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-25 16:31:47,869 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-25 16:31:47,869 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-25 16:31:47,871 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-25 16:31:47,871 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-25 16:31:47,946 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-25 16:31:47,946 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-25 16:31:47,947 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-25 16:31:52,105 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-25 16:31:52,590 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=284.75, sma_200=330.54625, regime=RANGE_BOUND, vol_5d=0.0170
+2026-02-25 16:31:52,591 - Orchestrator - INFO - Emergency market context: price=284.75, regime=RANGE_BOUND
+2026-02-25 16:31:52,591 - trading_bot.semantic_cache - INFO - CACHE CROSS-SOURCE INVALIDATION: 1 entries removed for KCK6 (202605) (kept WeatherSentinel)
+2026-02-25 16:31:52,591 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
+2026-02-25 16:31:52,592 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
+2026-02-25 16:31:52,592 - trading_bot.agents - INFO - Waking up agronomist...
+2026-02-25 16:31:52,961 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-25 16:31:52,961 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-25 16:31:56,893 - Orchestrator - INFO - MacroContagionSentinel: trigger detected (source=MacroContagionSentinel, severity=9)
+2026-02-25 16:31:56,919 - trading_bot.state_manager - INFO - Logged sentinel event from MacroContagionSentinel to history.
+2026-02-25 16:31:56,919 - Orchestrator - WARNING - Emergency cycle for MacroContagionSentinel queued (Lock active).
+2026-02-25 16:33:19,856 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-25 16:33:19,859 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=3.0 \u00d7 reliability=0.7 = 2.20", "macro": "domain=1.0 \u00d7 reliability=0.6 = 0.54", "geopolitical": "domain=0.5 \u00d7 reliability=0.6 = 0.27", "supply_chain": "domain=1.5 \u00d7 reliability=1.2 = 1.65", "inventory": "domain=1.5 \u00d7 reliability=0.6 = 0.82", "sentiment": "domain=1.0 \u00d7 reliability=0.7 = 0.71", "technical": "domain=2.2 \u00d7 reliability=0.8 = 1.71", "volatility": "domain=1.4 \u00d7 reliability=0.8 = 0.98"}
+2026-02-25 16:33:19,859 - trading_bot.weighted_voting - INFO - Weighted Vote: BULLISH (score=0.233, dominant=agronomist)
+2026-02-25 16:33:19,860 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 3.0,
+    "reliability_mult": 0.73,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.2,
+    "contribution": 1.759
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.8,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.6,
+    "staleness_weight": 0.9,
+    "age_hours": 2.0,
+    "final_weight": 0.54,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.8,
+    "domain_weight": 0.5,
+    "reliability_mult": 0.61,
+    "staleness_weight": 0.9,
+    "age_hours": 2.0,
+    "final_weight": 0.27,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.22,
+    "staleness_weight": 0.9,
+    "age_hours": 2.0,
+    "final_weight": 1.65,
+    "contribution": 1.318
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.61,
+    "staleness_weight": 0.9,
+    "age_hours": 2.0,
+    "final_weight": 0.82,
+    "contribution": -0.534
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.0,
+    "reliability_mult": 0.71,
+    "staleness_weight": 1.0,
+    "age_hours": 0.4,
+    "final_weight": 0.71,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.85,
+    "staleness_weight": 0.9,
+    "age_hours": 2.0,
+    "final_weight": 1.71,
+    "contribution": -1.112
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 1.4,
+    "reliability_mult": 0.78,
+    "staleness_weight": 0.9,
+    "age_hours": 2.0,
+    "final_weight": 0.98,
+    "contribution": 0.636
+  }
+]
+2026-02-25 16:34:13,288 - openai._base_client - INFO - Retrying request to /chat/completions in 0.479065 seconds
+2026-02-25 16:34:14,131 - openai._base_client - INFO - Retrying request to /chat/completions in 0.843946 seconds
+2026-02-25 16:34:15,017 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:34:25,725 - openai._base_client - INFO - Retrying request to /chat/completions in 0.449187 seconds
+2026-02-25 16:34:26,247 - openai._base_client - INFO - Retrying request to /chat/completions in 0.971131 seconds
+2026-02-25 16:34:27,291 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:34:47,379 - openai._base_client - INFO - Retrying request to /chat/completions in 0.477696 seconds
+2026-02-25 16:34:48,230 - openai._base_client - INFO - Retrying request to /chat/completions in 0.868572 seconds
+2026-02-25 16:34:49,753 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:35:32,290 - Orchestrator - INFO - 2026-02-25 16:35:32,288 - root - INFO - Running Iron Condor thesis validation check...
+2026-02-25 16:35:32,299 - Orchestrator - INFO - 2026-02-25 16:35:32,297 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-25 16:35:34,140 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-5-20250929 for master after primary failure.
+2026-02-25 16:35:34,140 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:35:34,140 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil's record 66.2 million bag crop forecast combined with
+2026-02-25 16:35:34,141 - trading_bot.agents - INFO - Emergency consensus divergent: Master=BEARISH, Vote=BULLISH → half size
+2026-02-25 16:35:34,170 - Orchestrator - INFO - Emergency Decision: BEARISH (0.35)
+2026-02-25 16:35:34,170 - Orchestrator - INFO - EMERGENCY STRATEGY: DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BEARISH)
+2026-02-25 16:35:34,170 - trading_bot.strategy_router - INFO - STRATEGY (emergency): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BEARISH)
+2026-02-25 16:35:34,170 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-25 16:35:34,171 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-25 16:35:34,175 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → BEARISH (DIRECTIONAL/DIRECTIONAL)
+2026-02-25 16:35:34,175 - Orchestrator - INFO - Emergency Cycle ACTION: BEARISH (DIRECTIONAL)
+2026-02-25 16:35:34,176 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-25 16:35:34,176 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-25 16:35:45,791 - Orchestrator - WARNING - COMPLIANCE BLOCKED Emergency Trade: CRITICAL HALLUCINATION: The reasoning repeatedly cites specific data NOT found in any available evidence: (1) '200-day SMA at 330.55' and '13.9% below 200-day SMA' - the Technical report is marked STALE and its data is truncated/unavailable; (2) 'RSI at 27.74 (oversold)' - no RSI data appears in available reports; (3) 'WeatherSentinel data explicitly labels the event NEUTRAL in direction during the VEGETATIVE stage' - no WeatherSentinel report exists in the evidence; (4) 'Brazil 66.2M bag forecast (Conab)' - Supply Chain report is STALE with truncated data, this specific figure is not visible; (5) '+18,663 bag surge in pending stocks' - Inventory report is STALE and truncated, this specific number is not shown; (6) 'Santos 73% delay rates' - Geopolitical report is STALE/truncated, this figure is not visible; (7) 'SCFI -9.3% and Drewry WCI -1%' - not found in available evidence; (8) 'IV 38.86-51.19%' - Volatility report is STALE/truncated, these figures not visible; (9) 'March '26 at 281.15 vs March '28 at 244.95' - backwardation data not in available reports; (10) 'USD/BRL at 5.1532' and 'depreciation to 5.3492' - Macro report is STALE/truncated. The reasoning fabricates extensive quantitative claims from reports explicitly marked as unavailable or truncated. The only FRESH report is Agronomist (BULLISH 0.8 confidence citing critical drought) and partial Sentiment (NEUTRAL 0.65), yet decision goes BEARISH heavily relying on data from STALE/unavailable sources. This constitutes systematic hallucination of technical and fundamental data points.
+2026-02-25 16:35:46,024 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 16:35:46,038 - Orchestrator - INFO - Post-cycle debounce: 1800s (actionable trade)
+2026-02-25 16:35:46,041 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by MacroContagionSentinel: Fed Policy Shock: HAWKISH_PIVOT - FOMC Minutes released May 22 revealed that many officials questioned whether current interest rates were restrictive enough to cool inflation, with some participants expressing a willingness to tighten policy further if risks to inflation materialize. (Cycle: KC-a14b4088)
+2026-02-25 16:35:46,239 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 16:35:46,371 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-25 16:35:46,371 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-25 16:35:46,371 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-25 16:35:46,379 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-25 16:35:46,400 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-25 16:35:47,134 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 596 created from CSV, 0 resolved from council_history
+2026-02-25 16:35:47,136 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-25 16:35:47,137 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-25 16:35:47,137 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-25 16:35:47,137 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-25 16:35:47,138 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-25 16:35:47,138 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-25 16:35:47,140 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-25 16:35:47,141 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-25 16:35:47,205 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-25 16:35:47,205 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-25 16:35:47,206 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-25 16:35:51,336 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-25 16:35:51,716 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=284.20, sma_200=330.5435, regime=RANGE_BOUND, vol_5d=0.0171
+2026-02-25 16:35:51,717 - Orchestrator - INFO - Emergency market context: price=284.2, regime=RANGE_BOUND
+2026-02-25 16:35:51,717 - trading_bot.semantic_cache - INFO - CACHE CROSS-SOURCE INVALIDATION: 1 entries removed for KCK6 (202605) (kept MacroContagionSentinel)
+2026-02-25 16:35:51,718 - trading_bot.agents - INFO - Running Specialized Cycle triggered by MacroContagionSentinel...
+2026-02-25 16:35:51,718 - trading_bot.agents - INFO - Routing to macro (Reason: Matched: MacroContagionSentinel/policy)
+2026-02-25 16:35:51,719 - trading_bot.agents - INFO - Waking up macro...
+2026-02-25 16:35:52,192 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-25 16:35:52,193 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-25 16:36:01,168 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10630, market_open=True, trading_day=True
+2026-02-25 16:36:19,582 - openai._base_client - INFO - Retrying request to /chat/completions in 0.465947 seconds
+2026-02-25 16:36:20,277 - openai._base_client - INFO - Retrying request to /chat/completions in 0.982575 seconds
+2026-02-25 16:36:21,427 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:36:31,471 - openai._base_client - INFO - Retrying request to /chat/completions in 0.446609 seconds
+2026-02-25 16:36:31,962 - openai._base_client - INFO - Retrying request to /chat/completions in 0.832304 seconds
+2026-02-25 16:36:32,836 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:36:52,895 - openai._base_client - INFO - Retrying request to /chat/completions in 0.443157 seconds
+2026-02-25 16:36:53,363 - openai._base_client - INFO - Retrying request to /chat/completions in 0.827876 seconds
+2026-02-25 16:36:54,234 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for macro: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:37:21,813 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for macro after primary failure.
+2026-02-25 16:37:21,813 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:37:22,472 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-25 16:37:22,509 - openai._base_client - INFO - Retrying request to /chat/completions in 0.397467 seconds
+2026-02-25 16:37:22,932 - openai._base_client - INFO - Retrying request to /chat/completions in 0.839705 seconds
+2026-02-25 16:37:23,800 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:37:33,857 - openai._base_client - INFO - Retrying request to /chat/completions in 0.482461 seconds
+2026-02-25 16:37:34,414 - openai._base_client - INFO - Retrying request to /chat/completions in 0.767339 seconds
+2026-02-25 16:37:35,497 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:37:55,588 - openai._base_client - INFO - Retrying request to /chat/completions in 0.455248 seconds
+2026-02-25 16:37:56,082 - openai._base_client - INFO - Retrying request to /chat/completions in 0.955285 seconds
+2026-02-25 16:37:57,068 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for macro: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:38:16,554 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for macro after primary failure.
+2026-02-25 16:38:16,554 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:38:16,567 - trading_bot.agents - INFO - Cross-Cue Triggered: macro -> ['fundamentalist', 'geopolitical']
+2026-02-25 16:38:16,567 - trading_bot.agents - INFO - Waking up cued agents: ['geopolitical']
+2026-02-25 16:38:16,930 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-25 16:38:16,930 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-25 16:38:47,531 - openai._base_client - INFO - Retrying request to /chat/completions in 0.402001 seconds
+2026-02-25 16:38:48,008 - openai._base_client - INFO - Retrying request to /chat/completions in 0.935460 seconds
+2026-02-25 16:38:49,018 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:38:59,076 - openai._base_client - INFO - Retrying request to /chat/completions in 0.395163 seconds
+2026-02-25 16:38:59,517 - openai._base_client - INFO - Retrying request to /chat/completions in 0.780099 seconds
+2026-02-25 16:39:00,001 - Orchestrator - INFO - --- Running scheduled task: signal_late [guarded_generate_orders] ---
+2026-02-25 16:39:00,204 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-25 16:39:00,204 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-25 16:39:00,205 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-25 16:39:00,221 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-25 16:39:00,247 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-25 16:39:00,953 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 583 created from CSV, 0 resolved from council_history
+2026-02-25 16:39:00,954 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-25 16:39:00,955 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-25 16:39:00,955 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-25 16:39:00,955 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-25 16:39:00,955 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-25 16:39:00,958 - trading_bot.connection_pool - INFO - Connecting IB (drawdown_check) ID: 249...
+2026-02-25 16:39:01,032 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:39:01,313 - trading_bot.connection_pool - INFO - IB (drawdown_check) connected successfully with ID 249
+2026-02-25 16:39:01,421 - trading_bot.connection_pool - INFO - Disconnecting IB (drawdown_check)...
+2026-02-25 16:39:04,451 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-02-25 16:39:04,451 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-02-25 16:39:04,454 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 146...
+2026-02-25 16:39:04,763 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 146
+2026-02-25 16:39:04,768 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-25 16:39:04,769 - OrderManager - INFO - Connected to IB for signal generation (purpose: orchestrator_orders).
+2026-02-25 16:39:04,769 - OrderManager - INFO - Step 1: Generating structured signals via Council...
+2026-02-25 16:39:04,769 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
+2026-02-25 16:39:04,911 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-25 16:39:04,911 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-25 16:39:04,912 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-25 16:39:04,918 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-25 16:39:04,948 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-25 16:39:05,673 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 582 created from CSV, 0 resolved from council_history
+2026-02-25 16:39:05,674 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-25 16:39:05,675 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-25 16:39:05,675 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-25 16:39:05,675 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-25 16:39:05,675 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-25 16:39:05,675 - trading_bot.agents - INFO - Grounded data cache invalidated (0 entries cleared). Next cycle will perform fresh searches.
+2026-02-25 16:39:05,675 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-25 16:39:05,675 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-25 16:39:05,675 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-25 16:39:05,677 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-25 16:39:05,677 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-25 16:39:05,775 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-25 16:39:05,776 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-25 16:39:05,776 - trading_bot.market_data_provider - INFO - Building market context for 5 contracts...
+2026-02-25 16:39:05,776 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-25 16:39:05,777 - trading_bot.market_data_provider - INFO - Building market context for KCN6 (202607)...
+2026-02-25 16:39:05,777 - trading_bot.market_data_provider - INFO - Building market context for KCU6 (202609)...
+2026-02-25 16:39:06,491 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=284.35, sma_200=330.54425000000003, regime=RANGE_BOUND, vol_5d=0.0170
+2026-02-25 16:39:06,491 - trading_bot.market_data_provider - INFO - Building market context for KCZ6 (202612)...
+2026-02-25 16:39:06,590 - trading_bot.market_data_provider - INFO - Market context for KCN6 (202607): price=279.20, sma_200=320.8595, regime=RANGE_BOUND, vol_5d=0.0163
+2026-02-25 16:39:06,590 - trading_bot.market_data_provider - INFO - Building market context for KCH7 (202703)...
+2026-02-25 16:39:06,689 - trading_bot.market_data_provider - INFO - Market context for KCU6 (202609): price=274.90, sma_200=311.01525000000004, regime=RANGE_BOUND, vol_5d=0.0162
+2026-02-25 16:39:07,506 - trading_bot.market_data_provider - INFO - Market context for KCZ6 (202612): price=270.45, sma_200=303.39575, regime=RANGE_BOUND, vol_5d=0.0165
+2026-02-25 16:39:07,572 - trading_bot.market_data_provider - INFO - Market context for KCH7 (202703): price=267.10, sma_200=298.25425, regime=RANGE_BOUND, vol_5d=0.0164
+2026-02-25 16:39:07,573 - trading_bot.market_data_provider - INFO - Market context complete: 5/5 contracts successful
+2026-02-25 16:39:07,573 - trading_bot.signal_generator - INFO - Market context built for 5 contracts
+2026-02-25 16:39:07,573 - trading_bot.signal_generator - INFO - Convening Council for KCK6 (202605) (Cycle: KC-85a7cb91)...
+2026-02-25 16:39:07,573 - trading_bot.signal_generator - INFO - Convening Council for KCN6 (202607) (Cycle: KC-bb016667)...
+2026-02-25 16:39:07,573 - trading_bot.signal_generator - INFO - Convening Council for KCU6 (202609) (Cycle: KC-915e7f33)...
+2026-02-25 16:39:08,445 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-25 16:39:08,445 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-25 16:39:08,791 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-25 16:39:08,792 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-25 16:39:09,146 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-25 16:39:09,147 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-25 16:39:09,523 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-25 16:39:09,524 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-25 16:39:09,888 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-25 16:39:09,888 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-25 16:39:10,241 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-25 16:39:10,241 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-25 16:39:10,580 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-25 16:39:10,580 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-25 16:39:10,936 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-25 16:39:10,936 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-25 16:39:11,290 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-25 16:39:11,291 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-25 16:39:11,630 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-25 16:39:11,630 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-25 16:39:11,968 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-25 16:39:11,969 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-25 16:39:12,349 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-25 16:39:12,349 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-25 16:39:12,703 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-25 16:39:12,704 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-25 16:39:13,047 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-25 16:39:13,047 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-25 16:39:13,389 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-25 16:39:13,390 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-25 16:39:13,721 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-25 16:39:13,722 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-25 16:39:14,134 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-25 16:39:14,134 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-25 16:39:14,497 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-25 16:39:14,497 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-25 16:39:14,856 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-25 16:39:14,856 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-25 16:39:15,254 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-25 16:39:15,254 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-25 16:39:15,598 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-25 16:39:15,598 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-25 16:39:15,935 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-25 16:39:15,935 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-25 16:39:16,261 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-25 16:39:16,262 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-25 16:39:16,587 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-25 16:39:16,587 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-25 16:39:21,089 - openai._base_client - INFO - Retrying request to /chat/completions in 0.421392 seconds
+2026-02-25 16:39:21,538 - openai._base_client - INFO - Retrying request to /chat/completions in 0.970910 seconds
+2026-02-25 16:39:22,535 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for geopolitical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:39:31,440 - openai._base_client - INFO - Retrying request to /chat/completions in 0.482126 seconds
+2026-02-25 16:39:31,989 - openai._base_client - INFO - Retrying request to /chat/completions in 0.960208 seconds
+2026-02-25 16:39:33,002 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:39:42,007 - openai._base_client - INFO - Retrying request to /chat/completions in 0.400252 seconds
+2026-02-25 16:39:42,487 - openai._base_client - INFO - Retrying request to /chat/completions in 0.917092 seconds
+2026-02-25 16:39:43,057 - openai._base_client - INFO - Retrying request to /chat/completions in 0.486765 seconds
+2026-02-25 16:39:43,478 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:39:43,588 - openai._base_client - INFO - Retrying request to /chat/completions in 0.783137 seconds
+2026-02-25 16:39:44,418 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:39:44,825 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for geopolitical after primary failure.
+2026-02-25 16:39:44,826 - trading_bot.router_metrics - WARNING - Fallback event: geopolitical openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:39:44,829 - trading_bot.agents - WARNING - [geopolitical] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 9 bullish vs 4 bearish evidence words']
+2026-02-25 16:39:44,829 - trading_bot.agents - WARNING - [geopolitical] Validation issues: ['Direction-evidence mismatch: BEARISH call but 9 bullish vs 4 bearish evidence words']
+2026-02-25 16:39:44,829 - trading_bot.agents - INFO - [geopolitical] Confidence clamped: 0.85 → 0.31 (adjustment: 0.31)
+2026-02-25 16:39:45,340 - openai._base_client - INFO - Retrying request to /chat/completions in 0.445908 seconds
+2026-02-25 16:39:45,827 - openai._base_client - INFO - Retrying request to /chat/completions in 0.848296 seconds
+2026-02-25 16:39:46,702 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:39:53,556 - openai._base_client - INFO - Retrying request to /chat/completions in 0.434438 seconds
+2026-02-25 16:39:54,063 - openai._base_client - INFO - Retrying request to /chat/completions in 0.951331 seconds
+2026-02-25 16:39:55,050 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:39:56,742 - openai._base_client - INFO - Retrying request to /chat/completions in 0.452511 seconds
+2026-02-25 16:39:57,266 - openai._base_client - INFO - Retrying request to /chat/completions in 0.794555 seconds
+2026-02-25 16:39:58,114 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:04,509 - openai._base_client - INFO - Retrying request to /chat/completions in 0.472630 seconds
+2026-02-25 16:40:05,060 - openai._base_client - INFO - Retrying request to /chat/completions in 0.997831 seconds
+2026-02-25 16:40:06,128 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for macro: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:15,108 - openai._base_client - INFO - Retrying request to /chat/completions in 0.491554 seconds
+2026-02-25 16:40:15,671 - openai._base_client - INFO - Retrying request to /chat/completions in 0.982383 seconds
+2026-02-25 16:40:16,682 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for geopolitical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:18,201 - openai._base_client - INFO - Retrying request to /chat/completions in 0.412172 seconds
+2026-02-25 16:40:18,653 - openai._base_client - INFO - Retrying request to /chat/completions in 0.894739 seconds
+2026-02-25 16:40:19,588 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for geopolitical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:23,529 - openai._base_client - INFO - Retrying request to /chat/completions in 0.463491 seconds
+2026-02-25 16:40:24,021 - openai._base_client - INFO - Retrying request to /chat/completions in 0.784550 seconds
+2026-02-25 16:40:24,833 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:33,043 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for geopolitical after primary failure.
+2026-02-25 16:40:33,043 - trading_bot.router_metrics - WARNING - Fallback event: geopolitical openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:33,159 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-25 16:40:33,160 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=0.5 \u00d7 reliability=0.7 = 0.37", "macro": "domain=3.0 \u00d7 reliability=0.6 = 1.80", "geopolitical": "domain=2.0 \u00d7 reliability=0.6 = 1.22", "supply_chain": "domain=1.0 \u00d7 reliability=1.2 = 1.09", "inventory": "domain=0.5 \u00d7 reliability=0.6 = 0.27", "sentiment": "domain=2.0 \u00d7 reliability=0.7 = 1.42", "technical": "domain=2.2 \u00d7 reliability=0.8 = 1.70", "volatility": "domain=1.4 \u00d7 reliability=0.8 = 0.97"}
+2026-02-25 16:40:33,161 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.215, dominant=macro)
+2026-02-25 16:40:33,162 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 0.5,
+    "reliability_mult": 0.73,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.37,
+    "contribution": 0.293
+  },
+  {
+    "agent": "macro",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 3.0,
+    "reliability_mult": 0.6,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.8,
+    "contribution": -1.439
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.0,
+    "reliability_mult": 0.61,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.22,
+    "contribution": -0.978
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.0,
+    "reliability_mult": 1.22,
+    "staleness_weight": 0.89,
+    "age_hours": 2.1,
+    "final_weight": 1.09,
+    "contribution": 0.872
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 0.5,
+    "reliability_mult": 0.61,
+    "staleness_weight": 0.89,
+    "age_hours": 2.1,
+    "final_weight": 0.27,
+    "contribution": -0.177
+  },
+  {
+    "agent": "sentiment",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 2.0,
+    "reliability_mult": 0.71,
+    "staleness_weight": 1.0,
+    "age_hours": 0.5,
+    "final_weight": 1.42,
+    "contribution": 0.0
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.85,
+    "staleness_weight": 0.89,
+    "age_hours": 2.1,
+    "final_weight": 1.7,
+    "contribution": -1.104
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 1.4,
+    "reliability_mult": 0.78,
+    "staleness_weight": 0.89,
+    "age_hours": 2.1,
+    "final_weight": 0.97,
+    "contribution": 0.632
+  }
+]
+2026-02-25 16:40:34,873 - openai._base_client - INFO - Retrying request to /chat/completions in 0.472243 seconds
+2026-02-25 16:40:34,896 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for geopolitical after primary failure.
+2026-02-25 16:40:34,899 - trading_bot.router_metrics - WARNING - Fallback event: geopolitical openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:35,372 - openai._base_client - INFO - Retrying request to /chat/completions in 0.775059 seconds
+2026-02-25 16:40:35,392 - openai._base_client - INFO - Retrying request to /chat/completions in 0.385239 seconds
+2026-02-25 16:40:35,803 - openai._base_client - INFO - Retrying request to /chat/completions in 0.848333 seconds
+2026-02-25 16:40:36,213 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:36,676 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:46,732 - openai._base_client - INFO - Retrying request to /chat/completions in 0.480893 seconds
+2026-02-25 16:40:46,803 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for macro after primary failure.
+2026-02-25 16:40:46,804 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:47,241 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'sentiment', 'technical', 'geopolitical']
+2026-02-25 16:40:47,276 - openai._base_client - INFO - Retrying request to /chat/completions in 0.774497 seconds
+2026-02-25 16:40:47,288 - openai._base_client - INFO - Retrying request to /chat/completions in 0.382578 seconds
+2026-02-25 16:40:47,696 - openai._base_client - INFO - Retrying request to /chat/completions in 0.855833 seconds
+2026-02-25 16:40:48,125 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:48,603 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:56,409 - openai._base_client - INFO - Retrying request to /chat/completions in 0.377313 seconds
+2026-02-25 16:40:56,444 - openai._base_client - INFO - Retrying request to /chat/completions in 0.396645 seconds
+2026-02-25 16:40:56,827 - openai._base_client - INFO - Retrying request to /chat/completions in 0.822595 seconds
+2026-02-25 16:40:56,889 - openai._base_client - INFO - Retrying request to /chat/completions in 0.756889 seconds
+2026-02-25 16:40:57,698 - trading_bot.heterogeneous_router - WARNING - openai/o3-2025-04-16 failed for technical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:57,722 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:58,642 - openai._base_client - INFO - Retrying request to /chat/completions in 0.388903 seconds
+2026-02-25 16:40:59,074 - openai._base_client - INFO - Retrying request to /chat/completions in 0.769396 seconds
+2026-02-25 16:40:59,453 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-fast-non-reasoning for technical after primary failure.
+2026-02-25 16:40:59,454 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:40:59,901 - openai._base_client - INFO - Retrying request to /chat/completions in 0.463807 seconds
+2026-02-25 16:40:59,913 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:00,414 - openai._base_client - INFO - Retrying request to /chat/completions in 0.892139 seconds
+2026-02-25 16:41:01,373 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:03,828 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10635, market_open=True, trading_day=True
+2026-02-25 16:41:07,805 - openai._base_client - INFO - Retrying request to /chat/completions in 0.469154 seconds
+2026-02-25 16:41:08,196 - openai._base_client - INFO - Retrying request to /chat/completions in 0.428055 seconds
+2026-02-25 16:41:08,354 - openai._base_client - INFO - Retrying request to /chat/completions in 0.808076 seconds
+2026-02-25 16:41:08,715 - openai._base_client - INFO - Retrying request to /chat/completions in 0.813727 seconds
+2026-02-25 16:41:09,233 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:09,605 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for geopolitical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:11,431 - openai._base_client - INFO - Retrying request to /chat/completions in 0.388266 seconds
+2026-02-25 16:41:11,850 - openai._base_client - INFO - Retrying request to /chat/completions in 0.894310 seconds
+2026-02-25 16:41:12,823 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:13,466 - trading_bot.agents - WARNING - [agronomist] Output validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-25 16:41:13,466 - trading_bot.agents - WARNING - [agronomist] Validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-25 16:41:13,466 - trading_bot.agents - INFO - [agronomist] Confidence clamped: 0.95 → 0.65 (adjustment: 0.65)
+2026-02-25 16:41:14,219 - trading_bot.agents - WARNING - [volatility] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 6 bullish vs 0 bearish evidence words']
+2026-02-25 16:41:14,220 - trading_bot.agents - WARNING - [volatility] Validation issues: ['Direction-evidence mismatch: BEARISH call but 6 bullish vs 0 bearish evidence words']
+2026-02-25 16:41:19,973 - openai._base_client - INFO - Retrying request to /chat/completions in 0.436931 seconds
+2026-02-25 16:41:20,477 - openai._base_client - INFO - Retrying request to /chat/completions in 0.988576 seconds
+2026-02-25 16:41:21,537 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for macro: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:24,358 - openai._base_client - INFO - Retrying request to /chat/completions in 0.470690 seconds
+2026-02-25 16:41:24,896 - openai._base_client - INFO - Retrying request to /chat/completions in 0.840158 seconds
+2026-02-25 16:41:25,995 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:28,834 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for geopolitical after primary failure.
+2026-02-25 16:41:28,835 - trading_bot.router_metrics - WARNING - Fallback event: geopolitical openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:29,264 - openai._base_client - INFO - Retrying request to /chat/completions in 0.497166 seconds
+2026-02-25 16:41:29,810 - openai._base_client - INFO - Retrying request to /chat/completions in 0.963369 seconds
+2026-02-25 16:41:30,819 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for macro: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:32,862 - openai._base_client - INFO - Retrying request to /chat/completions in 0.391564 seconds
+2026-02-25 16:41:33,294 - openai._base_client - INFO - Retrying request to /chat/completions in 0.852886 seconds
+2026-02-25 16:41:34,219 - trading_bot.heterogeneous_router - WARNING - openai/o3-2025-04-16 failed for technical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:36,081 - openai._base_client - INFO - Retrying request to /chat/completions in 0.398823 seconds
+2026-02-25 16:41:36,527 - openai._base_client - INFO - Retrying request to /chat/completions in 0.865235 seconds
+2026-02-25 16:41:37,202 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-fast-non-reasoning for technical after primary failure.
+2026-02-25 16:41:37,203 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:37,463 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:39,297 - openai._base_client - INFO - Retrying request to /chat/completions in 0.429146 seconds
+2026-02-25 16:41:39,769 - openai._base_client - INFO - Retrying request to /chat/completions in 0.984110 seconds
+2026-02-25 16:41:40,067 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for macro after primary failure.
+2026-02-25 16:41:40,067 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:40,068 - trading_bot.signal_generator - INFO - Agent research complete for KCK6 (202605): 8/8 returned non-default results
+2026-02-25 16:41:40,068 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-25 16:41:40,069 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.5 \u00d7 reliability=0.7 = 1.10", "macro": "domain=1.5 \u00d7 reliability=0.6 = 0.90", "geopolitical": "domain=1.5 \u00d7 reliability=0.6 = 0.92", "supply_chain": "domain=1.5 \u00d7 reliability=1.2 = 1.83", "inventory": "domain=1.5 \u00d7 reliability=0.6 = 0.91", "sentiment": "domain=1.5 \u00d7 reliability=0.7 = 1.06", "technical": "domain=2.2 \u00d7 reliability=0.8 = 1.90", "volatility": "domain=1.0 \u00d7 reliability=0.8 = 0.82"}
+2026-02-25 16:41:40,069 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.221, dominant=supply_chain)
+2026-02-25 16:41:40,069 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.73,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.1,
+    "contribution": -0.88
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.6,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.9,
+    "contribution": 0.719
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.61,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.92,
+    "contribution": -0.733
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.22,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.83,
+    "contribution": 1.465
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.61,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.91,
+    "contribution": -0.73
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.71,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.06,
+    "contribution": -0.691
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.9,
+    "contribution": -1.236
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.55,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.78,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.82,
+    "contribution": 0.0
+  }
+]
+2026-02-25 16:41:40,806 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:50,895 - openai._base_client - INFO - Retrying request to /chat/completions in 0.399800 seconds
+2026-02-25 16:41:51,329 - openai._base_client - INFO - Retrying request to /chat/completions in 0.921505 seconds
+2026-02-25 16:41:52,281 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:53,088 - trading_bot.agents - WARNING - [sentiment] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 7 bullish vs 1 bearish evidence words']
+2026-02-25 16:41:53,090 - trading_bot.agents - WARNING - [sentiment] Validation issues: ['Direction-evidence mismatch: BEARISH call but 7 bullish vs 1 bearish evidence words']
+2026-02-25 16:41:53,092 - trading_bot.agents - INFO - [sentiment] Confidence clamped: 0.80 → 0.30 (adjustment: 0.30)
+2026-02-25 16:41:55,993 - openai._base_client - INFO - Retrying request to /chat/completions in 0.437384 seconds
+2026-02-25 16:41:56,480 - openai._base_client - INFO - Retrying request to /chat/completions in 0.870622 seconds
+2026-02-25 16:41:57,419 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:41:57,528 - openai._base_client - INFO - Retrying request to /chat/completions in 0.434903 seconds
+2026-02-25 16:41:57,992 - openai._base_client - INFO - Retrying request to /chat/completions in 0.972464 seconds
+2026-02-25 16:41:59,079 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for geopolitical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:07,477 - openai._base_client - INFO - Retrying request to /chat/completions in 0.448870 seconds
+2026-02-25 16:42:07,996 - openai._base_client - INFO - Retrying request to /chat/completions in 0.774987 seconds
+2026-02-25 16:42:08,841 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:12,343 - openai._base_client - INFO - Retrying request to /chat/completions in 0.416665 seconds
+2026-02-25 16:42:12,813 - openai._base_client - INFO - Retrying request to /chat/completions in 0.814606 seconds
+2026-02-25 16:42:13,671 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:16,725 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for macro after primary failure.
+2026-02-25 16:42:16,726 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:17,163 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-25 16:42:17,243 - openai._base_client - INFO - Retrying request to /chat/completions in 0.484055 seconds
+2026-02-25 16:42:17,797 - openai._base_client - INFO - Retrying request to /chat/completions in 0.936880 seconds
+2026-02-25 16:42:18,796 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:19,994 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for geopolitical after primary failure.
+2026-02-25 16:42:19,994 - trading_bot.router_metrics - WARNING - Fallback event: geopolitical openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:19,998 - trading_bot.agents - WARNING - [geopolitical] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 1 bearish evidence words']
+2026-02-25 16:42:19,998 - trading_bot.agents - WARNING - [geopolitical] Validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 1 bearish evidence words']
+2026-02-25 16:42:19,999 - trading_bot.agents - INFO - [geopolitical] Confidence clamped: 0.85 → 0.30 (adjustment: 0.30)
+2026-02-25 16:42:19,999 - trading_bot.observability - WARNING - Hallucination detected [LOW]: geopolitical - Port not in Coffee (Arabica) logistics hubs
+2026-02-25 16:42:20,558 - openai._base_client - INFO - Retrying request to /chat/completions in 0.444095 seconds
+2026-02-25 16:42:21,072 - openai._base_client - INFO - Retrying request to /chat/completions in 0.922323 seconds
+2026-02-25 16:42:22,040 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:28,833 - openai._base_client - INFO - Retrying request to /chat/completions in 0.410280 seconds
+2026-02-25 16:42:28,891 - openai._base_client - INFO - Retrying request to /chat/completions in 0.471617 seconds
+2026-02-25 16:42:29,317 - openai._base_client - INFO - Retrying request to /chat/completions in 0.986626 seconds
+2026-02-25 16:42:29,403 - openai._base_client - INFO - Retrying request to /chat/completions in 0.852116 seconds
+2026-02-25 16:42:30,321 - trading_bot.heterogeneous_router - WARNING - openai/o3-2025-04-16 failed for technical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:30,329 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:31,210 - trading_bot.agents - WARNING - [volatility] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 1 bearish evidence words']
+2026-02-25 16:42:31,210 - trading_bot.agents - WARNING - [volatility] Validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 1 bearish evidence words']
+2026-02-25 16:42:31,210 - trading_bot.agents - INFO - [volatility] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-25 16:42:32,064 - openai._base_client - INFO - Retrying request to /chat/completions in 0.407082 seconds
+2026-02-25 16:42:32,542 - openai._base_client - INFO - Retrying request to /chat/completions in 0.997774 seconds
+2026-02-25 16:42:32,589 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-fast-non-reasoning for technical after primary failure.
+2026-02-25 16:42:32,589 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:32,592 - trading_bot.agents - WARNING - [technical] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 7 bullish vs 1 bearish evidence words']
+2026-02-25 16:42:32,592 - trading_bot.agents - WARNING - [technical] Validation issues: ['Direction-evidence mismatch: BEARISH call but 7 bullish vs 1 bearish evidence words']
+2026-02-25 16:42:32,592 - trading_bot.agents - INFO - [technical] Confidence clamped: 0.75 → 0.30 (adjustment: 0.30)
+2026-02-25 16:42:34,153 - openai._base_client - INFO - Retrying request to /chat/completions in 0.388281 seconds
+2026-02-25 16:42:34,174 - openai._base_client - INFO - Retrying request to /chat/completions in 0.384883 seconds
+2026-02-25 16:42:34,208 - openai._base_client - INFO - Retrying request to /chat/completions in 0.452622 seconds
+2026-02-25 16:42:34,233 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:34,612 - openai._base_client - INFO - Retrying request to /chat/completions in 0.912023 seconds
+2026-02-25 16:42:34,634 - openai._base_client - INFO - Retrying request to /chat/completions in 0.843784 seconds
+2026-02-25 16:42:34,703 - openai._base_client - INFO - Retrying request to /chat/completions in 0.832707 seconds
+2026-02-25 16:42:35,380 - openai._base_client - INFO - Retrying request to /chat/completions in 0.483025 seconds
+2026-02-25 16:42:35,544 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:35,564 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:35,566 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:35,932 - openai._base_client - INFO - Retrying request to /chat/completions in 0.852433 seconds
+2026-02-25 16:42:36,825 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:45,621 - openai._base_client - INFO - Retrying request to /chat/completions in 0.405720 seconds
+2026-02-25 16:42:45,627 - openai._base_client - INFO - Retrying request to /chat/completions in 0.492312 seconds
+2026-02-25 16:42:45,629 - openai._base_client - INFO - Retrying request to /chat/completions in 0.443379 seconds
+2026-02-25 16:42:46,075 - openai._base_client - INFO - Retrying request to /chat/completions in 0.774328 seconds
+2026-02-25 16:42:46,099 - openai._base_client - INFO - Retrying request to /chat/completions in 0.974351 seconds
+2026-02-25 16:42:46,164 - openai._base_client - INFO - Retrying request to /chat/completions in 0.893282 seconds
+2026-02-25 16:42:46,902 - openai._base_client - INFO - Retrying request to /chat/completions in 0.494148 seconds
+2026-02-25 16:42:46,926 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:47,114 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:47,132 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:47,424 - openai._base_client - INFO - Retrying request to /chat/completions in 0.770842 seconds
+2026-02-25 16:42:48,264 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:48,329 - trading_bot.agents - WARNING - [agronomist] Output validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-25 16:42:48,330 - trading_bot.agents - WARNING - [agronomist] Validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-25 16:42:48,330 - trading_bot.agents - INFO - [agronomist] Confidence clamped: 0.95 → 0.55 (adjustment: 0.55)
+2026-02-25 16:42:50,402 - openai._base_client - INFO - Retrying request to /chat/completions in 0.470098 seconds
+2026-02-25 16:42:50,940 - openai._base_client - INFO - Retrying request to /chat/completions in 0.805112 seconds
+2026-02-25 16:42:51,790 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for macro: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:54,258 - openai._base_client - INFO - Retrying request to /chat/completions in 0.435552 seconds
+2026-02-25 16:42:54,761 - openai._base_client - INFO - Retrying request to /chat/completions in 0.820946 seconds
+2026-02-25 16:42:55,620 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for geopolitical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:57,801 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-5-20250929 for master after primary failure.
+2026-02-25 16:42:57,802 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:42:57,802 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Brazil's record 66.2M bag crop forecast (+17.2% YoY) combine
+2026-02-25 16:43:07,019 - openai._base_client - INFO - Retrying request to /chat/completions in 0.484394 seconds
+2026-02-25 16:43:07,159 - openai._base_client - INFO - Retrying request to /chat/completions in 0.381521 seconds
+2026-02-25 16:43:07,168 - openai._base_client - INFO - Retrying request to /chat/completions in 0.476695 seconds
+2026-02-25 16:43:07,546 - openai._base_client - INFO - Retrying request to /chat/completions in 0.838782 seconds
+2026-02-25 16:43:07,604 - openai._base_client - INFO - Retrying request to /chat/completions in 0.840707 seconds
+2026-02-25 16:43:07,690 - openai._base_client - INFO - Retrying request to /chat/completions in 0.816485 seconds
+2026-02-25 16:43:08,350 - openai._base_client - INFO - Retrying request to /chat/completions in 0.436490 seconds
+2026-02-25 16:43:08,462 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for geopolitical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:08,520 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for macro: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:08,572 - trading_bot.heterogeneous_router - WARNING - openai/o3-2025-04-16 failed for technical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:08,576 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for macro after primary failure.
+2026-02-25 16:43:08,576 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:08,864 - openai._base_client - INFO - Retrying request to /chat/completions in 0.886622 seconds
+2026-02-25 16:43:09,824 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:12,920 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for geopolitical after primary failure.
+2026-02-25 16:43:12,921 - trading_bot.router_metrics - WARNING - Fallback event: geopolitical openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:12,931 - openai._base_client - INFO - Retrying request to /chat/completions in 0.459906 seconds
+2026-02-25 16:43:13,013 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-fast-non-reasoning for technical after primary failure.
+2026-02-25 16:43:13,014 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:13,014 - trading_bot.signal_generator - INFO - Agent research complete for KCN6 (202607): 8/8 returned non-default results
+2026-02-25 16:43:13,014 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-25 16:43:13,015 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.9 = 1.97", "macro": "domain=1.5 \u00d7 reliability=0.5 = 0.73", "geopolitical": "domain=1.5 \u00d7 reliability=0.5 = 0.73", "supply_chain": "domain=1.5 \u00d7 reliability=1.1 = 1.65", "inventory": "domain=1.5 \u00d7 reliability=1.0 = 1.44", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.21", "technical": "domain=1.0 \u00d7 reliability=0.9 = 0.91", "volatility": "domain=2.2 \u00d7 reliability=0.6 = 1.44"}
+2026-02-25 16:43:13,015 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.198, dominant=agronomist)
+2026-02-25 16:43:13,015 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.88,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.97,
+    "contribution": -1.578
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.49,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.73,
+    "contribution": 0.586
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.49,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.73,
+    "contribution": -0.586
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.65,
+    "contribution": 1.318
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.96,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.44,
+    "contribution": -1.15
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.8,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.21,
+    "contribution": -0.784
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.87,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.91,
+    "contribution": -0.593
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.55,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.64,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.44,
+    "contribution": 0.79
+  }
+]
+2026-02-25 16:43:13,456 - openai._base_client - INFO - Retrying request to /chat/completions in 0.990070 seconds
+2026-02-25 16:43:14,488 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:20,284 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 2 bearish evidence words']
+2026-02-25 16:43:20,284 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 2 bearish evidence words']
+2026-02-25 16:43:20,284 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-25 16:43:24,527 - openai._base_client - INFO - Retrying request to /chat/completions in 0.386182 seconds
+2026-02-25 16:43:24,957 - openai._base_client - INFO - Retrying request to /chat/completions in 0.868029 seconds
+2026-02-25 16:43:25,897 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:32,099 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for macro after primary failure.
+2026-02-25 16:43:32,099 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:32,515 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-25 16:43:32,593 - openai._base_client - INFO - Retrying request to /chat/completions in 0.459033 seconds
+2026-02-25 16:43:33,136 - openai._base_client - INFO - Retrying request to /chat/completions in 0.979432 seconds
+2026-02-25 16:43:34,180 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:40,330 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED with directional short. The thesis suffers from three fatal flaws: (1) TIMING RISK — entering a bearish trade after a 19.75% monthly decline into RSI 27.74 with 51% IV is statistically selling lottery tickets to buyers; (2) CATALYST ASYMMETRY — the bearish case requires a 'non-event' (weather stays good, Santos delays resolve, Vietnam keeps exporting), while the bullish case has binary catalysts (port closure, weather shock, squeeze) that can trigger +10-20% moves in 24 hours; (3) POSITIONING TRAP — four agents converging bearish signals market saturation, not opportunity. ALTERNATIVE STRATEGY: If bearish conviction persists, execute a BEAR CALL SPREAD (sell 320 calls, buy 340 calls, 30 DTE) to exploit the 51% IV while capping upside risk from squeeze/weather events. This captures theta decay from expensive options while respecting the Spring 'explosive mean-reversion' risk the Bull warned about. The 14% gap below 200-day SMA (284.20 vs 330.54) means any bullish catalyst faces minimal resistance to 310+, making naked shorts suicidal. The Fed hawkish pivot is a valid macro headwind, but coffee is 70% consumed in emerging markets (Brazil, Vietnam, Indonesia) where USD strength actually INCREASES local-currency prices and incentivizes hoarding, the OPPOSITE of the thesis assumption. Final verdict: The trade has 0.7 confidence in the WRONG direction — it's a 0.7 confidence AVOID.
+2026-02-25 16:43:40,362 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-25 16:43:40,363 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-25 16:43:40,363 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-25 16:43:40,364 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-25 16:43:40,365 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-25 16:43:40,370 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-25 16:43:40,530 - trading_bot.brier_bridge - WARNING - DEPRECATION: Legacy Brier system used 1200 times. Will be removed after 2026-03-01 00:00:00+00:00
+2026-02-25 16:43:40,531 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (VOLATILITY)
+2026-02-25 16:43:40,533 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-25 16:43:41,587 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for geopolitical after primary failure.
+2026-02-25 16:43:41,587 - trading_bot.router_metrics - WARNING - Fallback event: geopolitical openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:41,589 - trading_bot.agents - WARNING - [geopolitical] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 9 bullish vs 0 bearish evidence words']
+2026-02-25 16:43:41,589 - trading_bot.agents - WARNING - [geopolitical] Validation issues: ['Direction-evidence mismatch: BEARISH call but 9 bullish vs 0 bearish evidence words']
+2026-02-25 16:43:41,589 - trading_bot.agents - INFO - [geopolitical] Confidence clamped: 0.85 → 0.30 (adjustment: 0.30)
+2026-02-25 16:43:41,590 - trading_bot.observability - WARNING - Hallucination detected [LOW]: geopolitical - Port not in Coffee (Arabica) logistics hubs
+2026-02-25 16:43:42,097 - openai._base_client - INFO - Retrying request to /chat/completions in 0.488899 seconds
+2026-02-25 16:43:42,652 - openai._base_client - INFO - Retrying request to /chat/completions in 0.956724 seconds
+2026-02-25 16:43:43,647 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:44,208 - openai._base_client - INFO - Retrying request to /chat/completions in 0.381685 seconds
+2026-02-25 16:43:44,627 - openai._base_client - INFO - Retrying request to /chat/completions in 0.826727 seconds
+2026-02-25 16:43:45,496 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:45,628 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-5-20250929 for master after primary failure.
+2026-02-25 16:43:45,629 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:45,630 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Convergence of record Brazilian harvest forecasts (66.2M-70.
+2026-02-25 16:43:45,630 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-25 16:43:45,630 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-25 16:43:45,978 - openai._base_client - INFO - Retrying request to /chat/completions in 0.490090 seconds
+2026-02-25 16:43:46,540 - openai._base_client - INFO - Retrying request to /chat/completions in 0.857928 seconds
+2026-02-25 16:43:47,465 - trading_bot.heterogeneous_router - WARNING - openai/o3-2025-04-16 failed for technical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:48,008 - trading_bot.signal_generator - INFO - Council Decision KCK6 (202605): BEARISH (0.7)
+2026-02-25 16:43:48,009 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-25 16:43:48,012 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-25 16:43:48,082 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=NEUTRAL)
+2026-02-25 16:43:48,082 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=NEUTRAL)
+2026-02-25 16:43:48,082 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCK6
+2026-02-25 16:43:48,082 - trading_bot.signal_generator - INFO - Convening Council for KCZ6 (202612) (Cycle: KC-980783b8)...
+2026-02-25 16:43:48,916 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-25 16:43:48,916 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-25 16:43:48,916 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-02-25 16:43:49,245 - trading_bot.agents - WARNING - [agronomist] Output validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-25 16:43:49,245 - trading_bot.agents - WARNING - [agronomist] Validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-25 16:43:49,245 - trading_bot.agents - INFO - [agronomist] Confidence clamped: 0.95 → 0.55 (adjustment: 0.55)
+2026-02-25 16:43:50,053 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-25 16:43:50,053 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-25 16:43:50,054 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-02-25 16:43:50,809 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-25 16:43:51,185 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-25 16:43:51,185 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-25 16:43:51,185 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-02-25 16:43:51,617 - trading_bot.agents - WARNING - [geopolitical] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 9 bullish vs 0 bearish evidence words']
+2026-02-25 16:43:51,617 - trading_bot.agents - WARNING - [geopolitical] Validation issues: ['Direction-evidence mismatch: BEARISH call but 9 bullish vs 0 bearish evidence words']
+2026-02-25 16:43:51,617 - trading_bot.agents - INFO - [geopolitical] Confidence clamped: 0.85 → 0.30 (adjustment: 0.30)
+2026-02-25 16:43:51,618 - trading_bot.observability - WARNING - Hallucination detected [LOW]: geopolitical - Port not in Coffee (Arabica) logistics hubs
+2026-02-25 16:43:52,368 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-25 16:43:52,368 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-25 16:43:52,368 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-02-25 16:43:53,453 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-25 16:43:53,454 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-25 16:43:53,454 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-02-25 16:43:53,788 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 2 bearish evidence words']
+2026-02-25 16:43:53,788 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 2 bearish evidence words']
+2026-02-25 16:43:53,789 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-25 16:43:54,501 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-25 16:43:54,502 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-25 16:43:54,502 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-02-25 16:43:55,624 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-25 16:43:55,624 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-25 16:43:55,961 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-25 16:43:55,961 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-25 16:43:55,971 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-fast-non-reasoning for technical after primary failure.
+2026-02-25 16:43:55,972 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:55,975 - trading_bot.agents - WARNING - [technical] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 2 bearish evidence words']
+2026-02-25 16:43:55,976 - trading_bot.agents - WARNING - [technical] Validation issues: ['Direction-evidence mismatch: BEARISH call but 8 bullish vs 2 bearish evidence words']
+2026-02-25 16:43:55,976 - trading_bot.agents - INFO - [technical] Confidence clamped: 0.75 → 0.30 (adjustment: 0.30)
+2026-02-25 16:43:56,445 - openai._base_client - INFO - Retrying request to /chat/completions in 0.478311 seconds
+2026-02-25 16:43:56,455 - openai._base_client - INFO - Retrying request to /chat/completions in 0.404706 seconds
+2026-02-25 16:43:56,465 - openai._base_client - INFO - Retrying request to /chat/completions in 0.452704 seconds
+2026-02-25 16:43:56,474 - openai._base_client - INFO - Retrying request to /chat/completions in 0.387121 seconds
+2026-02-25 16:43:56,931 - openai._base_client - INFO - Retrying request to /chat/completions in 0.778120 seconds
+2026-02-25 16:43:56,935 - openai._base_client - INFO - Retrying request to /chat/completions in 0.947284 seconds
+2026-02-25 16:43:56,942 - openai._base_client - INFO - Retrying request to /chat/completions in 0.938287 seconds
+2026-02-25 16:43:56,997 - openai._base_client - INFO - Retrying request to /chat/completions in 0.779471 seconds
+2026-02-25 16:43:57,751 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:57,816 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:57,910 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:57,955 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:43:58,766 - openai._base_client - INFO - Retrying request to /chat/completions in 0.466777 seconds
+2026-02-25 16:43:59,261 - openai._base_client - INFO - Retrying request to /chat/completions in 0.826854 seconds
+2026-02-25 16:44:00,113 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:05,580 - openai._base_client - INFO - Retrying request to /chat/completions in 0.404246 seconds
+2026-02-25 16:44:06,058 - openai._base_client - INFO - Retrying request to /chat/completions in 0.875532 seconds
+2026-02-25 16:44:07,007 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for macro: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:07,860 - openai._base_client - INFO - Retrying request to /chat/completions in 0.385140 seconds
+2026-02-25 16:44:07,987 - openai._base_client - INFO - Retrying request to /chat/completions in 0.431271 seconds
+2026-02-25 16:44:07,996 - openai._base_client - INFO - Retrying request to /chat/completions in 0.438150 seconds
+2026-02-25 16:44:08,283 - openai._base_client - INFO - Retrying request to /chat/completions in 0.983602 seconds
+2026-02-25 16:44:08,481 - openai._base_client - INFO - Retrying request to /chat/completions in 0.776802 seconds
+2026-02-25 16:44:08,487 - openai._base_client - INFO - Retrying request to /chat/completions in 0.782146 seconds
+2026-02-25 16:44:09,296 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:09,318 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:09,352 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:10,143 - openai._base_client - INFO - Retrying request to /chat/completions in 0.432635 seconds
+2026-02-25 16:44:10,645 - openai._base_client - INFO - Retrying request to /chat/completions in 0.777611 seconds
+2026-02-25 16:44:11,447 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:17,785 - openai._base_client - INFO - Retrying request to /chat/completions in 0.419058 seconds
+2026-02-25 16:44:18,277 - openai._base_client - INFO - Retrying request to /chat/completions in 0.776481 seconds
+2026-02-25 16:44:19,092 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for geopolitical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:21,240 - openai._base_client - INFO - Retrying request to /chat/completions in 0.474580 seconds
+2026-02-25 16:44:21,785 - openai._base_client - INFO - Retrying request to /chat/completions in 0.988533 seconds
+2026-02-25 16:44:22,843 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:27,565 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for macro after primary failure.
+2026-02-25 16:44:27,566 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:29,357 - openai._base_client - INFO - Retrying request to /chat/completions in 0.396259 seconds
+2026-02-25 16:44:29,393 - openai._base_client - INFO - Retrying request to /chat/completions in 0.462383 seconds
+2026-02-25 16:44:29,406 - openai._base_client - INFO - Retrying request to /chat/completions in 0.483788 seconds
+2026-02-25 16:44:29,797 - openai._base_client - INFO - Retrying request to /chat/completions in 0.860979 seconds
+2026-02-25 16:44:29,900 - openai._base_client - INFO - Retrying request to /chat/completions in 0.903666 seconds
+2026-02-25 16:44:29,969 - openai._base_client - INFO - Retrying request to /chat/completions in 0.899995 seconds
+2026-02-25 16:44:30,682 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for geopolitical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:30,830 - trading_bot.heterogeneous_router - WARNING - openai/o3-2025-04-16 failed for technical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:30,944 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for macro: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:31,476 - openai._base_client - INFO - Retrying request to /chat/completions in 0.388775 seconds
+2026-02-25 16:44:31,914 - openai._base_client - INFO - Retrying request to /chat/completions in 0.895274 seconds
+2026-02-25 16:44:32,490 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-fast-non-reasoning for technical after primary failure.
+2026-02-25 16:44:32,491 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:32,869 - openai._base_client - INFO - Retrying request to /chat/completions in 0.411676 seconds
+2026-02-25 16:44:32,881 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:33,352 - openai._base_client - INFO - Retrying request to /chat/completions in 0.977863 seconds
+2026-02-25 16:44:34,369 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:53,798 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for geopolitical after primary failure.
+2026-02-25 16:44:53,798 - trading_bot.router_metrics - WARNING - Fallback event: geopolitical openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:54,452 - openai._base_client - INFO - Retrying request to /chat/completions in 0.497406 seconds
+2026-02-25 16:44:55,025 - openai._base_client - INFO - Retrying request to /chat/completions in 0.928287 seconds
+2026-02-25 16:44:55,981 - trading_bot.heterogeneous_router - WARNING - openai/o3-2025-04-16 failed for technical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:57,805 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-fast-non-reasoning for technical after primary failure.
+2026-02-25 16:44:57,805 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:44:58,273 - trading_bot.tms - INFO - TMS: technical insight cues -> ['fundamentalist']
+2026-02-25 16:44:58,346 - openai._base_client - INFO - Retrying request to /chat/completions in 0.407214 seconds
+2026-02-25 16:44:58,795 - openai._base_client - INFO - Retrying request to /chat/completions in 0.838068 seconds
+2026-02-25 16:44:59,706 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:45:01,314 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for geopolitical after primary failure.
+2026-02-25 16:45:01,315 - trading_bot.router_metrics - WARNING - Fallback event: geopolitical openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:45:01,316 - trading_bot.signal_generator - INFO - Agent research complete for KCU6 (202609): 8/8 returned non-default results
+2026-02-25 16:45:01,316 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-25 16:45:01,319 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.9 = 1.97", "macro": "domain=1.5 \u00d7 reliability=0.5 = 0.73", "geopolitical": "domain=1.5 \u00d7 reliability=0.5 = 0.73", "supply_chain": "domain=1.5 \u00d7 reliability=1.1 = 1.65", "inventory": "domain=1.5 \u00d7 reliability=1.0 = 1.44", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.21", "technical": "domain=1.0 \u00d7 reliability=0.9 = 0.91", "volatility": "domain=2.2 \u00d7 reliability=0.6 = 1.44"}
+2026-02-25 16:45:01,319 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.104, dominant=agronomist)
+2026-02-25 16:45:01,319 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.88,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.97,
+    "contribution": -1.578
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.49,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.73,
+    "contribution": 0.586
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.49,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.73,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.65,
+    "contribution": 1.318
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.96,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.44,
+    "contribution": -1.15
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.8,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.21,
+    "contribution": -0.784
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.87,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.91,
+    "contribution": -0.593
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.64,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.44,
+    "contribution": 1.149
+  }
+]
+2026-02-25 16:45:02,263 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3-pro-preview for macro after primary failure.
+2026-02-25 16:45:02,263 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:45:04,142 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-5-20250929 for master after primary failure.
+2026-02-25 16:45:04,142 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:45:04,143 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Record 66.2 million bag Brazilian crop (+17.1% YoY) creating
+2026-02-25 16:45:04,143 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-25 16:45:04,143 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-25 16:45:06,141 - trading_bot.signal_generator - INFO - Council Decision KCN6 (202607): BEARISH (0.7)
+2026-02-25 16:45:06,142 - root - INFO - Logged council decision for KCN6 (202607)
+2026-02-25 16:45:06,148 - trading_bot.decision_signals - INFO - Decision signal logged: KCN6 (202607) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-25 16:45:06,250 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-25 16:45:06,250 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-25 16:45:06,250 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCN6
+2026-02-25 16:45:06,251 - trading_bot.signal_generator - INFO - Convening Council for KCH7 (202703) (Cycle: KC-a3835123)...
+2026-02-25 16:45:07,148 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-02-25 16:45:07,148 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-02-25 16:45:07,148 - trading_bot.agents - INFO - [agronomist] Using cached grounded data.
+2026-02-25 16:45:07,494 - trading_bot.agents - WARNING - [agronomist] Output validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-25 16:45:07,495 - trading_bot.agents - WARNING - [agronomist] Validation issues: ['Over-confidence: 0.95 with low evidence']
+2026-02-25 16:45:07,495 - trading_bot.agents - INFO - [agronomist] Confidence clamped: 0.95 → 0.55 (adjustment: 0.55)
+2026-02-25 16:45:08,285 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-25 16:45:08,285 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-25 16:45:08,286 - trading_bot.agents - INFO - [macro] Using cached grounded data.
+2026-02-25 16:45:09,146 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
+2026-02-25 16:45:09,516 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-02-25 16:45:09,517 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-02-25 16:45:09,517 - trading_bot.agents - INFO - [geopolitical] Using cached grounded data.
+2026-02-25 16:45:09,873 - trading_bot.agents - WARNING - [geopolitical] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 9 bullish vs 0 bearish evidence words']
+2026-02-25 16:45:09,873 - trading_bot.agents - WARNING - [geopolitical] Validation issues: ['Direction-evidence mismatch: BEARISH call but 9 bullish vs 0 bearish evidence words']
+2026-02-25 16:45:09,873 - trading_bot.agents - INFO - [geopolitical] Confidence clamped: 0.85 → 0.30 (adjustment: 0.30)
+2026-02-25 16:45:09,874 - trading_bot.observability - WARNING - Hallucination detected [LOW]: geopolitical - Port not in Coffee (Arabica) logistics hubs
+2026-02-25 16:45:10,598 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-02-25 16:45:10,598 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-02-25 16:45:10,599 - trading_bot.agents - INFO - [supply_chain] Using cached grounded data.
+2026-02-25 16:45:11,747 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-02-25 16:45:11,747 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-02-25 16:45:11,747 - trading_bot.agents - INFO - [inventory] Using cached grounded data.
+2026-02-25 16:45:12,106 - trading_bot.agents - WARNING - [inventory] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 2 bearish evidence words']
+2026-02-25 16:45:12,106 - trading_bot.agents - WARNING - [inventory] Validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 2 bearish evidence words']
+2026-02-25 16:45:12,106 - trading_bot.agents - INFO - [inventory] Confidence clamped: 0.90 → 0.30 (adjustment: 0.30)
+2026-02-25 16:45:12,867 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-25 16:45:12,868 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-25 16:45:12,869 - trading_bot.agents - INFO - [sentiment] Using cached grounded data.
+2026-02-25 16:45:13,980 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-25 16:45:13,980 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-25 16:45:14,332 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-02-25 16:45:14,332 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-02-25 16:45:14,410 - openai._base_client - INFO - Retrying request to /chat/completions in 0.386298 seconds
+2026-02-25 16:45:14,864 - openai._base_client - INFO - Retrying request to /chat/completions in 0.914128 seconds
+2026-02-25 16:45:15,804 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:45:35,844 - openai._base_client - INFO - Retrying request to /chat/completions in 0.387290 seconds
+2026-02-25 16:45:36,257 - openai._base_client - INFO - Retrying request to /chat/completions in 0.954448 seconds
+2026-02-25 16:45:37,242 - trading_bot.heterogeneous_router - WARNING - openai/o3-2025-04-16 failed for technical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:45:40,436 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-fast-non-reasoning for technical after primary failure.
+2026-02-25 16:45:40,436 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:45:40,437 - trading_bot.signal_generator - INFO - Agent research complete for KCZ6 (202612): 8/8 returned non-default results
+2026-02-25 16:45:40,437 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-25 16:45:40,439 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.9 = 1.97", "macro": "domain=1.5 \u00d7 reliability=0.5 = 0.73", "geopolitical": "domain=1.5 \u00d7 reliability=0.5 = 0.73", "supply_chain": "domain=1.5 \u00d7 reliability=1.1 = 1.65", "inventory": "domain=1.5 \u00d7 reliability=1.0 = 1.44", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.21", "technical": "domain=1.0 \u00d7 reliability=0.9 = 0.91", "volatility": "domain=2.2 \u00d7 reliability=0.6 = 1.44"}
+2026-02-25 16:45:40,440 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.126, dominant=agronomist)
+2026-02-25 16:45:40,440 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.88,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.97,
+    "contribution": -1.578
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.49,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.73,
+    "contribution": 0.586
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.49,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.73,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.65,
+    "contribution": 1.318
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.96,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.44,
+    "contribution": -1.15
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.8,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.21,
+    "contribution": -0.784
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.87,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.91,
+    "contribution": -0.593
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.64,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.44,
+    "contribution": 0.934
+  }
+]
+2026-02-25 16:45:55,954 - openai._base_client - INFO - Retrying request to /chat/completions in 0.391350 seconds
+2026-02-25 16:45:56,387 - openai._base_client - INFO - Retrying request to /chat/completions in 0.843622 seconds
+2026-02-25 16:45:57,256 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:46:01,845 - openai._base_client - INFO - Retrying request to /chat/completions in 0.383658 seconds
+2026-02-25 16:46:02,305 - openai._base_client - INFO - Retrying request to /chat/completions in 0.757080 seconds
+2026-02-25 16:46:03,092 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:46:05,880 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10640, market_open=True, trading_day=True
+2026-02-25 16:46:07,336 - openai._base_client - INFO - Retrying request to /chat/completions in 0.412190 seconds
+2026-02-25 16:46:07,819 - openai._base_client - INFO - Retrying request to /chat/completions in 0.894824 seconds
+2026-02-25 16:46:08,736 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:46:13,179 - openai._base_client - INFO - Retrying request to /chat/completions in 0.428340 seconds
+2026-02-25 16:46:13,677 - openai._base_client - INFO - Retrying request to /chat/completions in 0.833894 seconds
+2026-02-25 16:46:14,554 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:46:26,119 - openai._base_client - INFO - Retrying request to /chat/completions in 0.406708 seconds
+2026-02-25 16:46:26,598 - openai._base_client - INFO - Retrying request to /chat/completions in 0.901648 seconds
+2026-02-25 16:46:27,529 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:46:28,822 - openai._base_client - INFO - Retrying request to /chat/completions in 0.439244 seconds
+2026-02-25 16:46:29,304 - openai._base_client - INFO - Retrying request to /chat/completions in 0.929857 seconds
+2026-02-25 16:46:30,276 - trading_bot.heterogeneous_router - WARNING - openai/o3-2025-04-16 failed for technical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:46:32,468 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-fast-non-reasoning for technical after primary failure.
+2026-02-25 16:46:32,468 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:46:32,880 - openai._base_client - INFO - Retrying request to /chat/completions in 0.447972 seconds
+2026-02-25 16:46:33,403 - openai._base_client - INFO - Retrying request to /chat/completions in 0.906011 seconds
+2026-02-25 16:46:34,377 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:46:34,636 - openai._base_client - INFO - Retrying request to /chat/completions in 0.463158 seconds
+2026-02-25 16:46:35,141 - openai._base_client - INFO - Retrying request to /chat/completions in 0.923453 seconds
+2026-02-25 16:46:36,106 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:46:37,572 - openai._base_client - INFO - Retrying request to /chat/completions in 0.498209 seconds
+2026-02-25 16:46:38,096 - openai._base_client - INFO - Retrying request to /chat/completions in 0.847438 seconds
+2026-02-25 16:46:38,989 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:46:44,466 - openai._base_client - INFO - Retrying request to /chat/completions in 0.486985 seconds
+2026-02-25 16:46:45,026 - openai._base_client - INFO - Retrying request to /chat/completions in 0.778591 seconds
+2026-02-25 16:46:45,880 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:46:59,273 - openai._base_client - INFO - Retrying request to /chat/completions in 0.418265 seconds
+2026-02-25 16:46:59,741 - openai._base_client - INFO - Retrying request to /chat/completions in 0.852999 seconds
+2026-02-25 16:47:00,666 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:47:05,969 - openai._base_client - INFO - Retrying request to /chat/completions in 0.471807 seconds
+2026-02-25 16:47:06,465 - openai._base_client - INFO - Retrying request to /chat/completions in 0.860417 seconds
+2026-02-25 16:47:07,399 - trading_bot.heterogeneous_router - WARNING - openai/o3-2025-04-16 failed for technical: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:47:10,425 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-fast-non-reasoning for technical after primary failure.
+2026-02-25 16:47:10,426 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:47:10,426 - trading_bot.signal_generator - INFO - Agent research complete for KCH7 (202703): 8/8 returned non-default results
+2026-02-25 16:47:10,426 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-02-25 16:47:10,427 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=2.2 \u00d7 reliability=0.9 = 1.97", "macro": "domain=1.5 \u00d7 reliability=0.5 = 0.73", "geopolitical": "domain=1.5 \u00d7 reliability=0.5 = 0.73", "supply_chain": "domain=1.5 \u00d7 reliability=1.1 = 1.65", "inventory": "domain=1.5 \u00d7 reliability=1.0 = 1.44", "sentiment": "domain=1.5 \u00d7 reliability=0.8 = 1.21", "technical": "domain=1.0 \u00d7 reliability=0.9 = 0.91", "volatility": "domain=2.2 \u00d7 reliability=0.6 = 1.44"}
+2026-02-25 16:47:10,427 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.118, dominant=agronomist)
+2026-02-25 16:47:10,429 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.88,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.97,
+    "contribution": -1.578
+  },
+  {
+    "agent": "macro",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.49,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.73,
+    "contribution": 0.586
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.49,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.73,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.1,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.65,
+    "contribution": 1.318
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.96,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.44,
+    "contribution": -1.15
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.8,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.21,
+    "contribution": -0.784
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.87,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.91,
+    "contribution": -0.729
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.64,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.44,
+    "contribution": 1.149
+  }
+]
+2026-02-25 16:47:13,180 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-5-20250929 for master after primary failure.
+2026-02-25 16:47:13,181 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:47:13,182 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Fundamental oversupply convergence: Conab record 66.2 millio
+2026-02-25 16:47:13,182 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-25 16:47:13,182 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-25 16:47:18,591 - trading_bot.signal_generator - WARNING - COMPLIANCE BLOCKED KCU6 (202609): HALLUCINATION: The reasoning cites 'Current price at 274.90' and 'May ~285 vs Sep ~270' but the Market Context clearly states 'Current Price: 274.15'. The reasoning also references '200-day SMA of 311.02' when the Technical report explicitly states '200-day SMA for US Coffee C futures is explicitly valued at 308.80'. Additionally, the reasoning claims 'current price at 274.90 has already breached the September contract level of 270.35' but this contradicts the Technical report which states September 2026 (KCU26) settled at 270.35 while May is trading higher. These are fabricated numbers not found in any evidence.
+2026-02-25 16:47:18,793 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 16:47:18,795 - trading_bot.signal_generator - INFO - Council Decision KCU6 (202609): NEUTRAL (0.0)
+2026-02-25 16:47:18,797 - root - INFO - Logged council decision for KCU6 (202609)
+2026-02-25 16:47:18,800 - trading_bot.decision_signals - INFO - Decision signal logged: KCU6 (202609) → VOLATILITY (VOLATILITY/LONG_STRADDLE)
+2026-02-25 16:47:18,875 - trading_bot.signal_generator - INFO - STRATEGY SELECTED: LONG_STRADDLE | catalyst=None, conflict=0.64
+2026-02-25 16:47:18,875 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (scheduled): LONG_STRADDLE | catalyst=None, conflict=0.64
+2026-02-25 16:47:18,876 - trading_bot.signal_generator - INFO - Router decision: VOLATILITY/HIGH for KCU6
+2026-02-25 16:47:28,697 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-5-20250929 for master after primary failure.
+2026-02-25 16:47:28,697 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:47:28,698 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Pending grading stocks surge of 171,080 bags (37.7% increase
+2026-02-25 16:47:28,698 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-25 16:47:28,698 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-25 16:47:30,722 - trading_bot.signal_generator - INFO - Council Decision KCZ6 (202612): BEARISH (0.7)
+2026-02-25 16:47:30,724 - root - INFO - Logged council decision for KCZ6 (202612)
+2026-02-25 16:47:30,728 - trading_bot.decision_signals - INFO - Decision signal logged: KCZ6 (202612) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-25 16:47:30,807 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-25 16:47:30,808 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-25 16:47:30,808 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCZ6
+2026-02-25 16:47:56,467 - openai._base_client - INFO - Retrying request to /chat/completions in 0.388742 seconds
+2026-02-25 16:47:56,881 - openai._base_client - INFO - Retrying request to /chat/completions in 0.806957 seconds
+2026-02-25 16:47:57,715 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:48:07,772 - openai._base_client - INFO - Retrying request to /chat/completions in 0.414002 seconds
+2026-02-25 16:48:08,260 - openai._base_client - INFO - Retrying request to /chat/completions in 0.854735 seconds
+2026-02-25 16:48:09,154 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:48:29,250 - openai._base_client - INFO - Retrying request to /chat/completions in 0.479752 seconds
+2026-02-25 16:48:29,805 - openai._base_client - INFO - Retrying request to /chat/completions in 0.770232 seconds
+2026-02-25 16:48:30,732 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:49:10,217 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-5-20250929 for master after primary failure.
+2026-02-25 16:49:10,217 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 16:49:10,217 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Imminent inventory injection of 171,080 bags in pending grad
+2026-02-25 16:49:10,217 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=BEARISH → multiplier=1.0, adj_confidence=0.7
+2026-02-25 16:49:10,217 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-25 16:49:12,216 - trading_bot.signal_generator - INFO - Council Decision KCH7 (202703): BEARISH (0.7)
+2026-02-25 16:49:12,217 - root - INFO - Logged council decision for KCH7 (202703)
+2026-02-25 16:49:12,221 - trading_bot.decision_signals - INFO - Decision signal logged: KCH7 (202703) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-25 16:49:12,327 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-25 16:49:12,327 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-25 16:49:12,327 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCH7
+2026-02-25 16:49:12,335 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-02-25 16:49:12,335 - OrderManager - INFO - Generated 5 signals: [{'contract_month': '202605', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': "The debate hinges on whether the 30.8% export collapse represents genuine physical scarcity (Bull) or voluntary withholding that will reverse (Bear). The Bear case wins on three independent vectors: (1) SUPPLY RESOLUTION MECHANICS: The Inventory report shows 163,685 bags pending certification—a 36% surge relative to existing stocks—demonstrating that high prices are successfully attracting supply. Certified stocks built week-over-week (453,612 vs ~435k), contradicting the Bull's 'stable stocks' claim. The Agronomist's +20% production forecast and USDA's 70.6M bag projection create a structural overhang. (2) REGULATORY RELIEF: The Geopolitical report confirms EUDR delay to December 30, 2026, eliminating the 'rush to ship' urgency that previously justified scarcity premiums. This is a documented catalyst removal, not speculation. (3) EXPORT DYNAMICS: The Bear correctly identifies that the USD/BRL at 5.15 (strongest since May 2024) is driving producer hoarding, as evidenced by the Macro report's soybean parallel (33.9% sales lag due to 'stronger BRL'). The Supply Chain report's Santos bottleneck is real but localized; the Drewry Index at -31% YoY and CFI at -14% monthly prove global shipping capacity is abundant. Once BRL normalizes (likely given hawkish 15% Selic creating carry pressure), the export floodgates open into an already oversupplied market. The Bull's defense rests on backwardation signaling spot tightness, but the forward curve (Mar '26 @ 281.15 vs Mar '28 @ 244.95) is already pricing in the supply avalanche—this is contango-in-waiting, not sustained scarcity. The Technical report notes resistance at 282.90-284.85 has capped the current 285.89 level, while price remains 14.0% below the 200-day SMA at 330.54 in a RANGE_BOUND regime with 'Sell signals from longer-term averages.' Sentiment capitulation (managed money net long at just 2,220 lots, CFTC at 12,860 contracts) does create oversold conditions, but this is classic bear market distribution—falling open interest confirms long liquidation, not accumulation. The 24h change of -0.53% and 5-day trend of -0.49% show no panic, just grinding lower as fundamentals deteriorate. DECISION FRAMEWORK APPLICATION: (1) RESPECT THE TREND: The -0.53% 24h change does not trigger the < -1.5% technical liquidation threshold, but the sustained downtrend (5-day -0.49%, price 14.0% below 200-day SMA) confirms momentum is bearish. (2) PRICED IN CHECK: Not applicable; no bullish surge occurred. (3) HEGELIAN SYNTHESIS: The Bear's 'supply resolution' thesis is validated by four independent agents (Agronomist, Inventory, Geopolitical, Technical) reaching the same conclusion via different evidence pathways—record crops, pending certification surge, EUDR delay, and technical resistance. The Bull's 'port bottleneck' argument is undermined by the Macro report proving FX-driven hoarding, not infrastructure failure, is the root cause. (4) EVIDENCE COUNTING: Bear wins 6-to-3 on independent high-confidence signals (Agronomist 0.8, Geopolitical 0.8, Inventory 0.8, Supply Chain 0.8 for freight capacity, Technical 0.65, Sentiment 0.65 vs Bull's Macro 0.8, Supply Chain 0.8 for bottleneck, plus contested backwardation). (5) VOLATILITY COST: The Volatility report failed (technical error), so no downgrade required. Thesis remains PLAUSIBLE due to the structural nature of the supply build and regulatory relief, though the Bull's oversold technicals prevent upgrading to PROVEN—a short-covering rally remains possible before the fundamental weight reasserts. The market is in a RANGE_BOUND regime with MODERATE volatility (1.70%), not trending lower aggressively, suggesting distribution rather than collapse. The primary risk is a weather shock in Brazil (both sides acknowledge rainfall >200mm, though Agronomist notes this aids bean-filling more than destroys supply) or sudden USD/BRL collapse below 5.00, but neither has materialized. The Bear's case is grounded in documented supply expansion and catalyst removal, while the Bull relies on a bottleneck narrative that is contradicted by freight data and FX dynamics. [Consensus ALIGNED (Vote=BEARISH)]", 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.7, 'price': 284.35, 'sma_200': 330.54425000000003, 'expected_price': 284.35, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202607', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': "The Permabear presents the stronger evidence-based argument by correctly identifying the temporal vs. structural nature of competing forces. While the Permabull's farmer withholding thesis (BRL at 5.1550, exports down 30.8% YoY) is factually valid, the Bear correctly reframes this as a timing variable rather than a supply destroyer. The critical insight is that withholding merely shifts supply forward—it does not erase the 17.1% production increase. The Inventory Report's shadow inventory data (pending grading surging +7,395 bags daily) provides objective confirmation that coffee IS arriving at certification facilities despite low certified stock draws, validating the Bear's 'inevitable flood' thesis. The Bull's port congestion argument collapses under the Geopolitical Report's contradiction: Santos handled RECORD aggregate cargo (12.7M tonnes, +9.5% YoY), proving infrastructure is not systemically failing. The 55% vessel delay rate reflects farmer withholding reducing coffee-specific flows, not port incapacity. On technicals, the market regime is RANGE_BOUND at 279.20 (13.0% below 200-day SMA), with moderate 5-day volatility (1.63%)—this price action does NOT exhibit the explosive upside characteristic of acute delivery risk. If congestion were truly trapping supply, we would see backwardation widening and volatility spiking; instead, the market is consolidating near recent lows (277.15 on Feb 25), suggesting participants are positioning for downside. The Sentiment Report's speculator capitulation (net longs from 41,000 to 19,077 contracts, $2.7B liquidation) indicates institutional money is exiting long positions, not rotating. The Volatility Report's elevated IV (36.48%) with OTM call skew is the Bull's strongest technical point, but this reflects residual weather-risk premium from the prior rally, not new bullish conviction—classic late-stage exhaustion where the market overpays for tail protection in an oversupplied environment. Applying Decision Framework Rule 5: Volatility Analyst flags expensive options with BEARISH sentiment tag, requiring thesis_strength downgrade. The Bear's evidence count is superior: 6 independent agents (Agronomist, Geopolitical, Inventory, Sentiment, Technical, Supply Chain) all reach bearish conclusions via DIFFERENT pathways (weather, export data, inventory mechanics, positioning, price structure, logistics), versus the Bull's reliance on 2 pillars (BRL strength and port delays) that are interdependent. The 24h change of -0.55% and 5-day trend of -0.82% do not trigger Rule 1's technical liquidation threshold (<-1.5%), but combined with the price sitting 13% below the 200-day SMA, this confirms downtrend persistence rather than capitulation exhaustion. The Bull's acknowledged risks (full crop materialization, port resolution, further spec liquidation) are all high-probability base-case scenarios, not tail risks, further weakening their position. [Consensus ALIGNED (Vote=BEARISH)]", 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 279.2, 'sma_200': 320.8595, 'expected_price': 279.2, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202609', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Long Straddle: High conflict (0.64)', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.0, 'price': 274.9, 'sma_200': 311.01525000000004, 'expected_price': 274.9, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202612', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': "The debate centers on whether transient supply chain friction can overcome structural oversupply fundamentals. Applying the Decision Framework: (1) RESPECT THE TREND: The 24h change of -0.31% and 5-day trend of -1.04% show continued downward pressure, with price at 270.45 sitting 10.9% below the 200-day SMA of 303.40 in a RANGE_BOUND regime. This is not technical liquidation territory (>-1.5%), but the trend is clearly negative. (2) EVIDENCE COUNTING: The Bear presents three independent, high-confidence (0.80-0.85) arguments with convergent data—currency dynamics will accelerate harvest sales (not restrict them), falling freight costs contradict scarcity claims, and the pending inventory surge is irrefutable. The Bull counters with the same confidence levels but relies on timing arguments (withholding behavior, certification delays) that lack coffee-specific evidence. (3) HEGELIAN SYNTHESIS: The Bull's strongest point is the BRL appreciation creating a USD floor price via farmer withholding. However, the Bear correctly identifies a critical flaw—coffee harvest timing (Feb-Sep) means farmers will capitalize on current BRL strength by selling NOW, not later. The 10pp soybean sales lag is circumstantial, not causal proof for coffee. The Supply Chain report's 30.74% export drop is better explained by front-loaded 2025 sales (when prices were higher) than by scarcity. (4) VOLATILITY COST AWARENESS: The Volatility report flags 'expensive' option premiums (IV 36-38%) with a Put/Call ratio of 2.26, indicating extreme downside fear is already priced. Per the framework, this normally downgrades thesis strength, but the structural oversupply evidence (pending grading stocks, record crop) justifies maintaining PLAUSIBLE rather than dropping to SPECULATIVE. (5) CRITICAL INFLECTION POINT: The Inventory report's 171,080 bags in pending grading represents a 37.7% surge that will hit certified stocks imminently. Combined with Conab's 66.2M bag record crop and 9.2% YoY rise in global exports to 10.15M bags, the supply backdrop is overwhelmingly bearish. The current -10.95 cent backwardation reflects spot tightness that will evaporate once pending inventory certifies. The Bull's argument that 'certification delays sustain tightness' ignores the magnitude—171K bags is not a trickle, it's a flood. The technical picture confirms: RSI at 30 signals oversold conditions but NOT reversal (no bullish divergence or crossovers), and StoneX identifies downside targets at 261/265 if 275.65 support breaks. The Bear's freight rate argument is devastating—if genuine scarcity existed, the Drewry Index would be rising as buyers compete for shipping, not falling for six consecutive weeks to $1,919. The Bull's 'bottleneck creates scarcity premium' thesis collapses when freight costs decline 14-20% despite alleged congestion. VERDICT: The Bear wins on superior data alignment. The price at 270.45 in a RANGE_BOUND regime with moderate volatility rationally reflects the market pricing in structural oversupply. Bullish arguments rely on transient friction (logistics, currency withholding timing) that cannot overcome the imminent inventory avalanche and record crop projection. The RSI at 30 may trigger a short-term technical bounce, but the directional bias remains firmly bearish. [Consensus ALIGNED (Vote=BEARISH)]", 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 270.45, 'sma_200': 303.39575, 'expected_price': 270.45, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202703', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': "The debate centers on whether current logistical bottlenecks and BRL-driven farmer withholding constitute a genuine supply shock (Bull thesis) or a temporary friction masking an incoming surplus (Bear thesis). After synthesizing the evidence, the Bear argument demonstrates superior alignment with market structure and leading indicators.\n\nCRITICAL EVIDENCE ASSESSMENT:\n\n1. INVENTORY DYNAMICS (Bear advantage): The pending grading stock surge to 171,080 bags is a leading indicator of imminent certified inventory expansion. While the Bull correctly notes current backwardation (-10.95 cents) signals spot tightness, this structure is backward-looking. The Inventory analyst explicitly warns this volume represents 'a massive imminent injection' that will 'likely crush the backwardation structure.' This is not speculative—it's physical coffee already in the certification pipeline. Combined with Conab's record 66.2M bag projection and 9.2% YoY global export growth (ICO December data), the supply trajectory is unambiguously expansionary.\n\n2. BRL WITHHOLDING MECHANISM (Contested, leans Bear): The Macro report's BRL strength thesis (+11.18% YoY, 15% Selic) is mechanically sound—farmers receive fewer Reais per USD export, incentivizing inventory retention. However, the Bear's counter-argument is more pragmatic: the restrictive 15% Selic rate creates cash flow pressure that will eventually force monetization, especially as the record harvest matures. The Agronomist's weather data (138% historical rainfall in Minas Gerais, clearing trend from Feb 28) confirms optimal growing conditions that will translate to physical supply pressure. The withholding is a temporary equilibrium that breaks under financial stress.\n\n3. LOGISTICAL FRICTION VS DEMAND DESTRUCTION (Bear advantage): The Geopolitical and Supply_Chain reports document severe bottlenecks (Santos 'exhausted,' Mombasa forcing 8x air freight costs, 10.5% global fleet congested). The Bull interprets this as a bullish supply shock. The Bear's rebuttal is decisive: the EUDR delay to December 30, 2026 removes the regulatory catalyst that would justify paying premium logistics. Without urgent demand-side pull, high friction costs simply compress margins and discourage purchases—this is demand destruction, not scarcity premium. The Geopolitical analyst explicitly concludes 'NEUTRAL' sentiment because 'the market enters a high-cost, high-friction stasis rather than a rally.'\n\n4. MARKET DATA VALIDATION: Current price at 267.10 is 10.4% below the 200-day SMA (298.25), confirming a sustained downtrend. The -1.07% 5-day trend and -0.22% 24h change show continued weakness, not stabilization. The Sentiment report shows managed money reduced net longs to just 2,220 lots—institutions are exiting, not accumulating. The Technical analyst, despite noting oversold RSI/Stochastic divergence, concludes BEARISH sentiment because 'without a confirmed moving average crossover or demand-side catalysts, the oversupply outlook dominates.'\n\n5. VOLATILITY COST PENALTY (Critical constraint applied): The Volatility report explicitly states option premiums are 'expensive' relative to realized volatility. Per the Decision Framework Rule 5, this BEARISH volatility sentiment forces a downgrade in thesis strength. While multiple independent signals support the Bear case (Inventory, Agronomist, Technical, Sentiment all BEARISH with 0.65-0.8 confidence), the expensive options market reflects elevated uncertainty. This prevents elevation to 'PROVEN' and anchors the verdict at 'PLAUSIBLE.'\n\nEVIDENCE COUNTING: Four independent analysts (Agronomist, Inventory, Technical, Sentiment) reach BEARISH conclusions via different pathways—weather/crop fundamentals, inventory pipeline analysis, technical breakdown, and positioning data. The two BULLISH reports (Macro, Supply_Chain) and one NEUTRAL (Geopolitical) present valid observations but fail to address the timing mismatch: current bottlenecks are real, but the pending inventory surge and record crop will arrive in Q2 2026 regardless of BRL strength or port congestion.\n\nDEBATE VERDICT: The Bear wins on superior integration of leading indicators (pending stocks) versus lagging indicators (current backwardation), pragmatic assessment of withholding sustainability under cash flow pressure, and correct interpretation of logistical friction as demand-destructive absent the EUDR catalyst. The Bull's defense relies on current market structure (backwardation, export declines) that will reverse once pending stocks certify and harvest completes. [Consensus ALIGNED (Vote=BEARISH)]", 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 267.1, 'sma_200': 298.25425, 'expected_price': 267.1, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}]
+2026-02-25 16:49:12,335 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-25 16:49:12,337 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-25 16:49:12,337 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-25 16:49:12,399 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-25 16:49:12,399 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-25 16:49:12,400 - OrderManager - INFO - Skipping KCH7: Too deferred (385 days > 365 max)
+2026-02-25 16:49:12,400 - OrderManager - INFO - Date filter passed: 4/5 contracts within 365 days.
+2026-02-25 16:49:12,400 - OrderManager - INFO - Checking liquidity for 4 contracts (parallel)...
+2026-02-25 16:49:14,902 - OrderManager - INFO - Liquidity check cleanup complete.
+2026-02-25 16:49:14,903 - OrderManager - INFO - Volume filter passed: 4 liquid candidates proceeding to signal generation.
+2026-02-25 16:49:14,968 - OrderManager - INFO - Account Value for Sizing: $32,478.07
+2026-02-25 16:49:14,971 - OrderManager - INFO - L1 RECONCILED: Reset committed capital from $1,537.50 to $0.00
+2026-02-25 16:49:14,971 - OrderManager - INFO - Requesting snapshot market price for KCK6...
+2026-02-25 16:49:15,013 - OrderManager - INFO - Using bid/ask midpoint for KCK6: 283.425
+2026-02-25 16:49:15,014 - root - INFO - Fetching option chain for future KCK6...
+2026-02-25 16:49:15,058 - root - INFO - --- Defining BEARISH Spread for KCK6 ---
+2026-02-25 16:49:15,059 - root - WARNING - No strikes near 283.425 meet min OI threshold (10). Using closest strike 282.5 anyway.
+2026-02-25 16:49:15,059 - root - INFO - Identified ATM strike: 282.5 for underlying price 283.425
+2026-02-25 16:49:15,059 - root - WARNING - No strikes near 278.46119375 meet min OI threshold (10). Using closest strike 277.5 anyway.
+2026-02-25 16:49:15,059 - root - INFO - Defined Bear Put Spread legs: BUY 282.5P, SELL 277.5P
+2026-02-25 16:49:15,061 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.0) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.850)
+2026-02-25 16:49:15,061 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-25 16:49:15,339 - root - INFO - Fetching market data for option: KOK6 P2.825
+2026-02-25 16:49:17,341 - root - INFO - Using IBKR Model Greeks IV: 36.58%
+2026-02-25 16:49:17,345 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-25 16:49:17,345 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-25 16:49:17,347 - root - INFO - Theoretical price calculated for P @ 282.5: {'price': np.float64(13.1806), 'delta': np.float64(-0.4494), 'gamma': np.float64(0.011), 'vega': np.float64(38.9416), 'theta': np.float64(-0.1773)}
+2026-02-25 16:49:17,347 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 P2.825 @ 13.18
+2026-02-25 16:49:17,347 - root - INFO - Fetching market data for option: KOK6 P2.775
+2026-02-25 16:49:19,348 - root - INFO - Using IBKR Model Greeks IV: 36.71%
+2026-02-25 16:49:19,353 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-25 16:49:19,354 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-25 16:49:19,355 - root - INFO - Theoretical price calculated for P @ 277.5: {'price': np.float64(10.8797), 'delta': np.float64(-0.3946), 'gamma': np.float64(0.0107), 'vega': np.float64(37.88), 'theta': np.float64(-0.1715)}
+2026-02-25 16:49:19,355 - root - INFO -   -> Leg Theoretical Price (SELL): KOK6 P2.775 @ 10.88
+2026-02-25 16:49:19,356 - root - INFO - BUY Cap Calc: Theoretical=2.80, MarketAggressive=2.60 (aggression=0.75), Mid=2.36, Ask=2.69, Final Cap=2.65
+2026-02-25 16:49:19,356 - root - INFO - Net Theoretical: 2.30, Market Spread: 0.67
+2026-02-25 16:49:19,356 - root - INFO - Adaptive Strategy: Start @ 2.05, Cap/Floor @ 2.65
+2026-02-25 16:49:19,356 - root - INFO - Creating Limit Order for BUY 1 @ 2.05 (Adaptive Cap: 2.65).
+2026-02-25 16:49:19,356 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-02-25 16:49:19,356 - root - INFO - Assigned OrderRef: 171c5bc4-4e85-4995-bd09-572e6cbc7ea1
+2026-02-25 16:49:19,458 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $768.75 (premium paid)
+2026-02-25 16:49:19,459 - OrderManager - INFO - Capital tracking: Committed $768.75 | Remaining $31,709.32 | This order: $768.75
+2026-02-25 16:49:19,460 - OrderManager - INFO - Successfully queued order for KCK6.
+2026-02-25 16:49:19,460 - OrderManager - INFO - Requesting snapshot market price for KCN6...
+2026-02-25 16:49:19,670 - OrderManager - INFO - Using bid/ask midpoint for KCN6: 278.625
+2026-02-25 16:49:19,670 - root - INFO - Fetching option chain for future KCN6...
+2026-02-25 16:49:19,672 - root - INFO - --- Defining BEARISH Spread for KCN6 ---
+2026-02-25 16:49:19,673 - root - WARNING - No strikes near 278.625 meet min OI threshold (10). Using closest strike 277.5 anyway.
+2026-02-25 16:49:19,673 - root - INFO - Identified ATM strike: 277.5 for underlying price 278.625
+2026-02-25 16:49:19,673 - root - WARNING - No strikes near 273.52959375 meet min OI threshold (10). Using closest strike 272.5 anyway.
+2026-02-25 16:49:19,673 - root - INFO - Defined Bear Put Spread legs: BUY 277.5P, SELL 272.5P
+2026-02-25 16:49:19,675 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.2) * Heat(1.0) * Conviction(1.0) = 2 (raw: 1.020)
+2026-02-25 16:49:19,675 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-25 16:49:19,948 - root - INFO - Fetching market data for option: KON6 P2.775
+2026-02-25 16:49:21,951 - root - INFO - Using IBKR Model Greeks IV: 37.66%
+2026-02-25 16:49:21,958 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-25 16:49:21,958 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-25 16:49:21,960 - root - INFO - Theoretical price calculated for P @ 277.5: {'price': np.float64(20.3361), 'delta': np.float64(-0.4289), 'gamma': np.float64(0.0069), 'vega': np.float64(59.2236), 'theta': np.float64(-0.1195)}
+2026-02-25 16:49:21,961 - root - INFO -   -> Leg Theoretical Price (BUY): KON6 P2.775 @ 20.34
+2026-02-25 16:49:21,961 - root - INFO - Fetching market data for option: KON6 P2.725
+2026-02-25 16:49:23,964 - root - INFO - Using IBKR Model Greeks IV: 37.75%
+2026-02-25 16:49:23,969 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-25 16:49:23,969 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-25 16:49:23,971 - root - INFO - Theoretical price calculated for P @ 272.5: {'price': np.float64(17.9575), 'delta': np.float64(-0.3942), 'gamma': np.float64(0.0068), 'vega': np.float64(58.0554), 'theta': np.float64(-0.1164)}
+2026-02-25 16:49:23,972 - root - INFO -   -> Leg Theoretical Price (SELL): KON6 P2.725 @ 17.96
+2026-02-25 16:49:23,972 - root - INFO - BUY Cap Calc: Theoretical=2.85, MarketAggressive=2.80 (aggression=0.75), Mid=2.50, Ask=2.96, Final Cap=2.85
+2026-02-25 16:49:23,972 - root - INFO - Net Theoretical: 2.38, Market Spread: 0.92
+2026-02-25 16:49:23,972 - root - INFO - Adaptive Strategy: Start @ 2.05, Cap/Floor @ 2.85
+2026-02-25 16:49:23,972 - root - INFO - Creating Limit Order for BUY 2 @ 2.05 (Adaptive Cap: 2.85).
+2026-02-25 16:49:23,972 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-02-25 16:49:23,972 - root - INFO - Assigned OrderRef: f7d0cd71-ffe2-414d-8a08-8d308e396661
+2026-02-25 16:49:24,078 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $1,537.50 (premium paid)
+2026-02-25 16:49:24,079 - OrderManager - INFO - Capital tracking: Committed $2,306.25 | Remaining $30,171.82 | This order: $1,537.50
+2026-02-25 16:49:24,079 - OrderManager - INFO - Successfully queued order for KCN6.
+2026-02-25 16:49:24,080 - OrderManager - INFO - BLOCKED BY CONFIDENCE: 202609 — confidence 0.00 < threshold 0.60. Direction=VOLATILITY
+2026-02-25 16:49:24,080 - OrderManager - INFO - Requesting snapshot market price for KCZ6...
+2026-02-25 16:49:24,318 - OrderManager - INFO - Using bid/ask midpoint for KCZ6: 269.6
+2026-02-25 16:49:24,318 - root - INFO - Fetching option chain for future KCZ6...
+2026-02-25 16:49:24,321 - root - INFO - --- Defining BEARISH Spread for KCZ6 ---
+2026-02-25 16:49:24,322 - root - WARNING - No strikes near 269.6 meet min OI threshold (10). Using closest strike 270.0 anyway.
+2026-02-25 16:49:24,322 - root - INFO - Identified ATM strike: 270.0 for underlying price 269.6
+2026-02-25 16:49:24,322 - root - WARNING - No strikes near 266.1582 meet min OI threshold (10). Using closest strike 265.0 anyway.
+2026-02-25 16:49:24,322 - root - INFO - Defined Bear Put Spread legs: BUY 270.0P, SELL 265.0P
+2026-02-25 16:49:24,323 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.2) * Heat(1.0) * Conviction(1.0) = 2 (raw: 1.020)
+2026-02-25 16:49:24,323 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-25 16:49:24,639 - root - INFO - Fetching market data for option: KOZ6 P2.7
+2026-02-25 16:49:26,641 - root - INFO - Using IBKR Model Greeks IV: 35.66%
+2026-02-25 16:49:26,647 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-25 16:49:26,648 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-25 16:49:26,649 - root - INFO - Theoretical price calculated for P @ 270.0: {'price': np.float64(28.3546), 'delta': np.float64(-0.4051), 'gamma': np.float64(0.0048), 'vega': np.float64(88.1939), 'theta': np.float64(-0.0756)}
+2026-02-25 16:49:26,649 - root - INFO -   -> Leg Theoretical Price (BUY): KOZ6 P2.7 @ 28.35
+2026-02-25 16:49:26,649 - root - INFO - Fetching market data for option: KOZ6 P2.65
+2026-02-25 16:49:28,651 - root - INFO - Using IBKR Model Greeks IV: 35.63%
+2026-02-25 16:49:28,656 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-25 16:49:28,657 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-25 16:49:28,659 - root - INFO - Theoretical price calculated for P @ 265.0: {'price': np.float64(25.8392), 'delta': np.float64(-0.3812), 'gamma': np.float64(0.0047), 'vega': np.float64(86.7204), 'theta': np.float64(-0.0735)}
+2026-02-25 16:49:28,659 - root - INFO -   -> Leg Theoretical Price (SELL): KOZ6 P2.65 @ 25.84
+2026-02-25 16:49:28,659 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (7.78) is 309.3% of theoretical price (2.52), which exceeds the max of 45.0%. Aborting order.
+2026-02-25 16:49:28,659 - OrderManager - WARNING - No active future for signal month 202703.
+2026-02-25 16:49:28,660 - OrderManager - INFO - --- Order generation complete. 2 orders queued. ---
+2026-02-25 16:49:29,008 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 16:49:29,010 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-25 16:49:32,016 - OrderManager - INFO - --- Placing and monitoring 2 orders ---
+2026-02-25 16:49:32,016 - OrderManager - INFO - Processing 2 orders SEQUENTIALLY
+2026-02-25 16:49:32,016 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-25 16:49:32,016 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-25 16:49:32,017 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
+2026-02-25 16:49:32,019 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 142...
+2026-02-25 16:49:32,329 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 142
+2026-02-25 16:49:32,336 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-25 16:49:32,336 - OrderManager - INFO - Using pooled IB connection for order placement.
+2026-02-25 16:49:32,336 - OrderManager - INFO - Sorted orders by expiration proximity.
+2026-02-25 16:49:32,432 - OrderManager - INFO - Current Available Funds: $32,465.06 | Equity: $32,478.07
+2026-02-25 16:49:32,433 - OrderManager - INFO - Processing order 1/2: 
+2026-02-25 16:49:34,493 - ib_insync.wrapper - ERROR - Error 162, reqId 57: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=742750192, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=282.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P2.825', tradingClass='KO')
+2026-02-25 16:49:34,500 - trading_bot.compliance - INFO - Resolved underlying future: KCK6 (conId: 634760204)
+2026-02-25 16:49:34,619 - trading_bot.compliance - INFO - Volume from IB (KCK6): 242.0
+2026-02-25 16:49:34,619 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $768.75 (premium paid)
+2026-02-25 16:49:39,675 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
+2026-02-25 16:49:39,797 - OrderManager - INFO - Approved KC-P282.5+P277.5: Margin $884.18 | Remaining: $31,580.88
+2026-02-25 16:49:39,797 - OrderManager - INFO - Processing order 2/2: 
+2026-02-25 16:49:41,858 - ib_insync.wrapper - ERROR - Error 162, reqId 64: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=732945272, symbol='KC', lastTradeDateOrContractMonth='20260612', strike=277.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KON6 P2.775', tradingClass='KO')
+2026-02-25 16:49:41,862 - trading_bot.compliance - INFO - Resolved underlying future: KCN6 (conId: 646040490)
+2026-02-25 16:49:41,977 - trading_bot.compliance - INFO - Volume from IB (KCN6): 103.0
+2026-02-25 16:49:41,977 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $1,537.50 (premium paid)
+2026-02-25 16:49:48,018 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
+2026-02-25 16:49:48,171 - OrderManager - INFO - Approved KC-P277.5+P272.5: Margin $1,352.78 | Remaining: $30,228.10
+2026-02-25 16:49:48,172 - OrderManager - INFO - [OFF] WOULD PLACE BUY 1 KC-P282.5+P277.5 @ 2.05
+2026-02-25 16:49:48,414 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 16:49:48,416 - OrderManager - INFO - [OFF] WOULD PLACE BUY 2 KC-P277.5+P272.5 @ 2.05
+2026-02-25 16:49:48,655 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 16:49:48,656 - OrderManager - INFO - Order placement complete. Releasing event handlers.
+2026-02-25 16:49:48,657 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-25 16:49:51,660 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-02-25 16:49:51,660 - trading_bot.semantic_cache - INFO - CACHE INVALIDATED BY TICKER (KC): 1 entries removed
+2026-02-25 16:49:51,681 - Orchestrator - INFO - Next task 'audit_pre_close' (Audit: Pre-Close) scheduled for 2026-02-25 17:55:00 UTC. Waiting for 1.09 hours.
+2026-02-25 16:51:08,072 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10645, market_open=True, trading_day=True
+2026-02-25 16:56:10,056 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10650, market_open=True, trading_day=True
