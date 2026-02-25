@@ -134,6 +134,8 @@ TRANSIENT_PATTERNS: list[re.Pattern] = [
     re.compile(r"Connection refused", re.IGNORECASE),
     re.compile(r"completed orders request timed out", re.IGNORECASE),
     re.compile(r"API connection failed.*TimeoutError", re.IGNORECASE),
+    re.compile(r"connection failed.*Next retry backoff", re.IGNORECASE),
+    re.compile(r"Thesis cleanup failed", re.IGNORECASE),
     re.compile(r"client id.*already in use", re.IGNORECASE),
     # LLM provider transient errors (429 quota, 503 overloaded, 529)
     re.compile(r"RESOURCE_EXHAUSTED", re.IGNORECASE),
