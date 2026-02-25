@@ -956,6 +956,11 @@ def _find_position_id_for_contract(
     conId = position.contract.conId
     position_direction = 'BUY' if position.position > 0 else 'SELL'
 
+    # Guard: empty ledger or missing required columns
+    if trade_ledger.empty or 'position_id' not in trade_ledger.columns:
+        logger.debug(f"Trade ledger empty or missing 'position_id' column for {symbol}")
+        return None
+
     # Filter to matching symbol
     matches = trade_ledger[trade_ledger['local_symbol'] == symbol].copy()
 
@@ -968,7 +973,7 @@ def _find_position_id_for_contract(
         if 'conId' in matches.columns:
             conId_matches = matches[matches['conId'] == conId]
         else:
-            conId_matches = pd.DataFrame()
+            conId_matches = pd.DataFrame(columns=matches.columns)
 
         for pos_id in conId_matches['position_id'].unique():
             # Check if thesis is still active
@@ -1326,6 +1331,152 @@ async def _reconcile_orphaned_theses(
 
     except Exception as e:
         logger.error(f"Reconciliation failed (non-fatal): {e}")
+        return 0
+
+
+async def _reconcile_phantom_ledger_entries(
+    trade_ledger: pd.DataFrame,
+    tms: TransactiveMemory,
+    config: dict
+) -> int:
+    """
+    Identifies and zeroes out 'phantom' ledger entries — position_ids with
+    non-zero net quantity in the trade ledger but no matching IB position.
+
+    This happens when:
+    - An exit fill was confirmed by IB but the ledger write was interrupted
+    - Manual TWS close didn't propagate to the ledger
+    - Partial fills left residual quantities
+
+    Appends synthetic close rows to the CSV to zero out each phantom,
+    invalidates associated TMS theses, and sends a notification.
+
+    Returns the count of reconciled phantom entries.
+    """
+    from trading_bot.utils import TRADE_LEDGER_LOCK
+    try:
+        if trade_ledger.empty or 'position_id' not in trade_ledger.columns:
+            return 0
+
+        # 1. Find position_ids with non-zero net quantity
+        phantoms = []
+        for pos_id in trade_ledger['position_id'].unique():
+            pos_rows = trade_ledger[trade_ledger['position_id'] == pos_id]
+            for symbol in pos_rows['local_symbol'].unique():
+                symbol_rows = pos_rows[pos_rows['local_symbol'] == symbol]
+                net_qty = 0
+                for _, row in symbol_rows.iterrows():
+                    qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
+                    net_qty += qty
+                if net_qty != 0:
+                    phantoms.append({
+                        'position_id': pos_id,
+                        'local_symbol': symbol,
+                        'net_qty': net_qty,
+                    })
+
+        if not phantoms:
+            logger.debug("Phantom reconciliation: No phantom ledger entries found")
+            return 0
+
+        logger.warning(
+            f"Phantom reconciliation: Found {len(phantoms)} phantom ledger entries "
+            f"(non-zero net qty, no IB position): "
+            f"{[(p['position_id'], p['local_symbol'], p['net_qty']) for p in phantoms]}"
+        )
+
+        # 2. Build synthetic close rows and append to CSV
+        now_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        synthetic_rows = []
+        for phantom in phantoms:
+            # Reverse the net quantity: if net_qty > 0 (long), we SELL to close
+            close_action = 'SELL' if phantom['net_qty'] > 0 else 'BUY'
+            synthetic_rows.append({
+                'timestamp': now_str,
+                'position_id': phantom['position_id'],
+                'combo_id': phantom['position_id'],
+                'local_symbol': phantom['local_symbol'],
+                'action': close_action,
+                'quantity': abs(phantom['net_qty']),
+                'avg_fill_price': 0.0,
+                'strike': 'N/A',
+                'right': 'N/A',
+                'total_value_usd': 0.0,
+                'reason': 'PHANTOM_RECONCILIATION: synthetic close (no IB position)'
+            })
+
+        # Resolve ledger path
+        from trading_bot.utils import _get_data_dir
+        eff_dir = _get_data_dir()
+        if eff_dir:
+            ledger_path = os.path.join(eff_dir, 'trade_ledger.csv')
+        else:
+            ledger_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), 'trade_ledger.csv'
+            )
+
+        async with TRADE_LEDGER_LOCK:
+            try:
+                import csv
+                fieldnames = [
+                    'timestamp', 'position_id', 'combo_id', 'local_symbol',
+                    'action', 'quantity', 'avg_fill_price', 'strike', 'right',
+                    'total_value_usd', 'reason'
+                ]
+                try:
+                    file_exists_and_has_content = os.path.getsize(ledger_path) > 0
+                except OSError:
+                    file_exists_and_has_content = False
+
+                with open(ledger_path, 'a', newline='') as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    if not file_exists_and_has_content:
+                        writer.writeheader()
+                    writer.writerows(synthetic_rows)
+                logger.info(
+                    f"Phantom reconciliation: Wrote {len(synthetic_rows)} "
+                    f"synthetic close rows to ledger"
+                )
+            except Exception as e:
+                logger.error(f"Phantom reconciliation: Failed to write ledger: {e}")
+                return 0
+
+        # 3. Invalidate associated TMS theses
+        invalidated_ids = set()
+        for phantom in phantoms:
+            pid = phantom['position_id']
+            if pid not in invalidated_ids:
+                try:
+                    tms.invalidate_thesis(
+                        pid,
+                        "Phantom reconciliation: ledger had non-zero qty with no IB position"
+                    )
+                    invalidated_ids.add(pid)
+                    logger.info(f"Phantom reconciliation: Invalidated thesis {pid}")
+                except Exception as e:
+                    logger.error(
+                        f"Phantom reconciliation: Failed to invalidate {pid}: {e}"
+                    )
+
+        # 4. Notify
+        try:
+            summary = (
+                f"Phantom reconciliation: Zeroed out {len(phantoms)} ledger entries "
+                f"(non-zero qty, no IB position).\n"
+                f"Position IDs: {list(invalidated_ids)}"
+            )
+            send_pushover_notification(
+                config.get('notifications', {}),
+                "Phantom Ledger Reconciliation",
+                summary
+            )
+        except Exception:
+            pass  # Notification failure is non-fatal
+
+        return len(phantoms)
+
+    except Exception as e:
+        logger.error(f"Phantom reconciliation failed (non-fatal): {e}")
         return 0
 
 
@@ -1721,6 +1872,20 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
                     )
             except Exception as e:
                 logger.warning(f"Post-audit reconciliation failed (non-fatal): {e}")
+
+            # Reconcile: If ledger has non-zero entries but IB has no positions,
+            # zero them out with synthetic close rows
+            try:
+                phantom_count = await _reconcile_phantom_ledger_entries(
+                    trade_ledger, tms, config
+                )
+                if phantom_count > 0:
+                    logger.warning(
+                        f"Phantom reconciliation zeroed out {phantom_count} "
+                        f"ledger entries (IB has zero positions)"
+                    )
+            except Exception as e:
+                logger.warning(f"Phantom ledger reconciliation failed (non-fatal): {e}")
 
             return
 

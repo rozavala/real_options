@@ -403,6 +403,22 @@ def detect_market_regime_simple(volatility_report: str, price_change_pct: float)
     return "RANGE_BOUND"
 
 
+VOLATILITY_REGIMES = {'HIGH_VOLATILITY', 'TRENDING', 'RANGE_BOUND', 'UNKNOWN'}
+
+def harmonize_regime(raw_regime: str) -> str:
+    """Normalize regime labels to canonical vocabulary."""
+    if not raw_regime:
+        return 'UNKNOWN'
+    normalized = raw_regime.upper().strip().replace(' ', '_')
+    ALIAS_MAP = {
+        'HIGH_VOL': 'HIGH_VOLATILITY',
+        'LOW_VOL': 'RANGE_BOUND',
+        'VOLATILE': 'HIGH_VOLATILITY',
+        'MEAN_REVERTING': 'RANGE_BOUND',
+    }
+    return ALIAS_MAP.get(normalized, normalized if normalized in VOLATILITY_REGIMES else 'UNKNOWN')
+
+
 def get_regime_adjusted_weights(trigger_type: TriggerType, regime: str) -> dict:
     base_weights = DOMAIN_WEIGHTS.get(trigger_type, DOMAIN_WEIGHTS[TriggerType.SCHEDULED])
 

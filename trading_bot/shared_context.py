@@ -106,6 +106,8 @@ class PortfolioRiskGuard:
             self.config.get('data_dir_root', 'data'),
             'portfolio_risk_state.json'
         )
+        self._recovery_start = None
+        self._recovery_active = False
         self._load_state()
 
     # --- Persistence ---
@@ -126,6 +128,9 @@ class PortfolioRiskGuard:
                     self._positions_by_commodity = saved.get('positions', {})
                     self._margin_by_commodity = saved.get('margin', {})
                     self._status = saved.get('status', 'NORMAL')
+                    self._recovery_start = saved.get('recovery_start')
+                    if self._recovery_start:
+                        self._recovery_active = True
                     logger.info(
                         f"PortfolioRiskGuard loaded: {self._status}, "
                         f"equity=${self._current_equity:,.0f}, "
@@ -199,6 +204,8 @@ class PortfolioRiskGuard:
                 "date": datetime.now(timezone.utc).date().isoformat(),
                 "last_updated": datetime.now(timezone.utc).isoformat(),
             }
+            if self._recovery_start is not None:
+                state["recovery_start"] = self._recovery_start
             temp = self._state_file + ".tmp"
             with open(temp, 'w') as f:
                 json.dump(state, f, indent=2)
@@ -295,10 +302,57 @@ class PortfolioRiskGuard:
                     self._status = "HALT"
                 elif drawdown_pct >= dd_cfg.get('warning_pct', 1.5):
                     self._status = "WARNING"
-                # Only escalate, never de-escalate within day (match existing behavior)
+
+                # Recovery-aware escalation guard
+                recovery_pct = dd_cfg.get('recovery_pct', 3.0)
+                recovery_hold = dd_cfg.get('recovery_hold_minutes', 30)
                 status_priority = {"NORMAL": 0, "WARNING": 1, "HALT": 2, "PANIC": 3}
-                if status_priority.get(self._status, 0) < status_priority.get(prev, 0):
-                    self._status = prev  # Don't de-escalate
+
+                if prev in ("PANIC", "HALT"):
+                    if self._status == "PANIC" and prev != "PANIC":
+                        # Allow HALT→PANIC escalation
+                        self._recovery_start = None
+                        self._recovery_active = False
+                    elif drawdown_pct <= recovery_pct:
+                        # Drawdown improved below recovery threshold
+                        from datetime import datetime as _dt, timezone as _tz
+                        if self._recovery_start is None:
+                            self._recovery_start = _dt.now(_tz.utc).isoformat()
+                            self._recovery_active = False
+                            logger.info(f"PortfolioRiskGuard recovery timer started (drawdown {drawdown_pct:.2f}%)")
+                        else:
+                            recovery_start_dt = _dt.fromisoformat(self._recovery_start)
+                            elapsed = (_dt.now(_tz.utc) - recovery_start_dt).total_seconds() / 60
+                            if elapsed >= recovery_hold:
+                                self._status = "WARNING"
+                                self._recovery_start = None
+                                self._recovery_active = True  # Allow de-escalation this cycle
+                                logger.warning(f"PortfolioRiskGuard recovery: {prev} -> WARNING after {elapsed:.0f}min")
+                                try:
+                                    from notifications import send_pushover_notification
+                                    send_pushover_notification(
+                                        self.config.get('notifications', {}),
+                                        f"📈 Portfolio Recovery: {prev} → WARNING",
+                                        f"Portfolio drawdown improved to {drawdown_pct:.2f}%. Trading resumed with caution."
+                                    )
+                                except Exception:
+                                    pass
+                        if not self._recovery_active:
+                            self._status = prev  # Hold during observation
+                    else:
+                        # Still in drawdown territory - reset recovery timer
+                        if self._recovery_start is not None:
+                            self._recovery_start = None
+                            self._recovery_active = False
+                            logger.info("PortfolioRiskGuard recovery timer reset (drawdown worsened)")
+                        self._status = prev
+                elif status_priority.get(self._status, 0) < status_priority.get(prev, 0):
+                    if not self._recovery_active:
+                        self._status = prev
+
+                # Reset recovery_active flag after use
+                if self._recovery_active and self._status == "WARNING":
+                    self._recovery_active = False
 
             self._persist()
 
