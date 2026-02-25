@@ -38,6 +38,12 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 -   **`.jules/` Directory:** Store agent-level knowledge and architectural notes here.
 -   **Readiness Check:** Use `verify_system_readiness.py` to diagnose system state.
 
+## Learning & Optimization
+
+-   **Prompt Optimization (DSPy):** The system uses `trading_bot/dspy_optimizer.py` to optimize agent prompts. This offline process analyzes `council_history.csv` to find effective few-shot examples (BootstrapFewShot) that improve reasoning accuracy.
+-   **Trade Journal:** Every closed trade triggers a post-mortem analysis (`trading_bot/trade_journal.py`). This generates a "Key Lesson" which is stored in TMS and retrieved via **Reflexion** during future cycles to prevent repeating mistakes.
+-   **Reflexion:** Agents query the TMS for past mistakes ("Self-Critique") before finalizing their analysis.
+
 ## Operational Procedures
 
 -   **Backtesting:** Use `backtesting/` directory.
