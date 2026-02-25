@@ -941,6 +941,11 @@ if price_df is not None and not price_df.empty:
                 plot_df['candle_low'] * 0.997
             )
 
+            # Clip signal positions to visible price range so outliers can't stretch the Y-axis
+            price_floor = price_df['Low'].min() * 0.995
+            price_ceil = price_df['High'].max() * 1.005
+            plot_df['y_pos'] = plot_df['y_pos'].clip(lower=price_floor, upper=price_ceil)
+
             plot_df['text_pos'] = np.where(
                 plot_df['marker_symbol'] == 'triangle-up',
                 "top center",
@@ -1267,7 +1272,9 @@ if price_df is not None and not price_df.empty:
         row=2, col=1
     )
 
-    # Row 1 Y-axis - CRITICAL: Set explicit range to prevent candlestick disappearing on short lookbacks
+    # Row 1 Y-axis - Set explicit range from price data only.
+    # autorange=False is critical: without it, Plotly can stretch the axis to
+    # accommodate outlier signal markers that fall outside the price range.
     if not price_df.empty:
         y_min = price_df['Low'].min()
         y_max = price_df['High'].max()
@@ -1277,6 +1284,7 @@ if price_df is not None and not price_df.empty:
         fig.update_yaxes(
             title_text=f"Price ({profile.name})",
             range=[y_min - y_buffer, y_max + y_buffer],
+            autorange=False,
             row=1, col=1
         )
     else:
