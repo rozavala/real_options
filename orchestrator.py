@@ -81,6 +81,17 @@ _STARTUP_DISCOVERY_TIME = 0  # Set to time.time() after successful startup topic
 _SYSTEM_SHUTDOWN = False
 _brier_zero_resolution_streak = 0
 
+# IB startup grace — suppress ERROR logging for IB failures during first 2 minutes
+_IB_BOOT_TIME = None
+_IB_STARTUP_GRACE_SECONDS = 120
+
+
+def _in_ib_startup_grace() -> bool:
+    """True during the first 2 minutes after boot (IB Gateway may be starting)."""
+    if _IB_BOOT_TIME is None:
+        return False
+    return (time_module.time() - _IB_BOOT_TIME) < _IB_STARTUP_GRACE_SECONDS
+
 def is_system_shutdown() -> bool:
     """Check if the system has entered end-of-day shutdown."""
     return _SYSTEM_SHUTDOWN
@@ -1144,7 +1155,10 @@ async def cleanup_orphaned_theses(config: dict):
         return cleaned
 
     except Exception as e:
-        logger.error(f"Thesis cleanup failed: {e}")
+        if _in_ib_startup_grace():
+            logger.warning(f"Thesis cleanup skipped (IB not ready at startup): {e}")
+        else:
+            logger.error(f"Thesis cleanup failed: {e}")
         return 0
     finally:
         if ib is not None:
@@ -1570,7 +1584,10 @@ async def _reconcile_state_stores(
         try:
             all_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
         except asyncio.TimeoutError:
-            logger.error("reqPositionsAsync timed out (30s) in state reconciliation")
+            if _in_ib_startup_grace():
+                logger.warning("reqPositionsAsync timed out (30s) in state reconciliation (startup)")
+            else:
+                logger.error("reqPositionsAsync timed out (30s) in state reconciliation")
             all_positions = ib.positions()  # Fall back to cached if timeout
         symbol = config.get('symbol', 'KC')
         ib_positions = [
@@ -1628,7 +1645,10 @@ async def _reconcile_state_stores(
         return results
 
     except Exception as e:
-        logger.error(f"State reconciliation failed: {e}")
+        if _in_ib_startup_grace():
+            logger.warning(f"State reconciliation skipped (startup): {e}")
+        else:
+            logger.error(f"State reconciliation failed: {e}")
         results['reconciled'] = False
         results['discrepancies'].append(f"Reconciliation error: {e}")
         return results
@@ -1672,7 +1692,10 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
         try:
             all_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
         except asyncio.TimeoutError:
-            logger.error("reqPositionsAsync timed out (30s) in position audit, treating as empty")
+            if _in_ib_startup_grace():
+                logger.warning("reqPositionsAsync timed out (30s) in position audit (startup)")
+            else:
+                logger.error("reqPositionsAsync timed out (30s) in position audit, treating as empty")
             all_positions = []
         live_positions = [p for p in all_positions if p.position != 0 and p.contract.symbol == commodity_symbol]
         if not live_positions:
@@ -4961,6 +4984,9 @@ async def main(commodity_ticker: str = None):
     set_var_data_dir(os.path.dirname(data_dir))  # data/{ticker}/ → data/
     set_boot_time()
 
+    global _IB_BOOT_TIME
+    _IB_BOOT_TIME = time_module.time()
+
     global GLOBAL_DEDUPLICATOR
     GLOBAL_DEDUPLICATOR = TriggerDeduplicator(
         state_file=os.path.join(data_dir, 'deduplicator_state.json')
@@ -5244,5 +5270,6 @@ if __name__ == "__main__":
     else:
         # Default: --multi (MasterOrchestrator)
         setup_logging(log_file="logs/orchestrator_multi.log")
+        _IB_BOOT_TIME = time_module.time()
         from trading_bot.master_orchestrator import main as master_main
         asyncio.run(master_main())
