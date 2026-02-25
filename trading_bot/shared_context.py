@@ -100,6 +100,7 @@ class PortfolioRiskGuard:
     _positions_by_commodity: Dict[str, int] = field(default_factory=dict)
     _margin_by_commodity: Dict[str, float] = field(default_factory=dict)
     _status: str = "NORMAL"  # NORMAL, WARNING, HALT, PANIC
+    _state_date: str = ""    # ISO date of current state — triggers daily reset on mismatch
 
     def __post_init__(self):
         self._state_file = os.path.join(
@@ -128,6 +129,7 @@ class PortfolioRiskGuard:
                     self._positions_by_commodity = saved.get('positions', {})
                     self._margin_by_commodity = saved.get('margin', {})
                     self._status = saved.get('status', 'NORMAL')
+                    self._state_date = current_date
                     self._recovery_start = saved.get('recovery_start')
                     if self._recovery_start:
                         self._recovery_active = True
@@ -139,6 +141,7 @@ class PortfolioRiskGuard:
                     return
                 else:
                     logger.info("PortfolioRiskGuard state is from previous day, resetting.")
+                    self._state_date = current_date
             except Exception as e:
                 logger.warning(f"Failed to load portfolio risk state: {e}")
 
@@ -278,9 +281,35 @@ class PortfolioRiskGuard:
 
             return True, "Approved"
 
+    def _reset_daily(self):
+        """Reset intraday state when the date rolls over (in-memory check, no file I/O).
+
+        Called at the top of update_equity() inside the lock. Compares _state_date
+        against current UTC date. On mismatch: resets status, PnL, recovery timer,
+        and sets _starting_equity from prior _current_equity.
+        """
+        from datetime import datetime as _dt, timezone as _tz
+        today = _dt.now(_tz.utc).date().isoformat()
+        if self._state_date and self._state_date != today:
+            prev_status = self._status
+            self._status = "NORMAL"
+            self._daily_pnl = 0.0
+            self._recovery_start = None
+            self._recovery_active = False
+            if self._current_equity > 0:
+                self._starting_equity = self._current_equity
+                self._peak_equity = self._current_equity
+            logger.info(
+                f"PortfolioRiskGuard daily reset: {prev_status} → NORMAL "
+                f"(date {self._state_date} → {today}), "
+                f"starting_equity=${self._starting_equity:,.2f}"
+            )
+        self._state_date = today
+
     async def update_equity(self, equity: float, daily_pnl: float):
         """Update account equity from IB. Called by Master-level equity service."""
         async with self._lock:
+            self._reset_daily()
             self._current_equity = equity
             self._daily_pnl = daily_pnl
             if equity > self._peak_equity:
