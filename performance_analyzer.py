@@ -40,7 +40,12 @@ def _load_archive_file(filepath: str, mtime: float) -> pd.DataFrame:
     Cached loader for archive files.
     The mtime argument ensures that if the file changes, we reload it.
     """
-    return pd.read_csv(filepath)
+    df = pd.read_csv(filepath)
+    if 'timestamp' in df.columns:
+        df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+    if 'total_value_usd' in df.columns:
+        df['total_value_usd'] = pd.to_numeric(df['total_value_usd'], errors='coerce')
+    return df
 
 
 def get_trade_ledger_df(data_dir: str = None):
@@ -58,7 +63,15 @@ def get_trade_ledger_df(data_dir: str = None):
 
     if os.path.exists(ledger_path):
         logger.info(f"Loading main trade ledger: {os.path.basename(ledger_path)}")
-        dataframes.append(pd.read_csv(ledger_path))
+        try:
+            df = pd.read_csv(ledger_path)
+            if 'timestamp' in df.columns:
+                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+            if 'total_value_usd' in df.columns:
+                df['total_value_usd'] = pd.to_numeric(df['total_value_usd'], errors='coerce')
+            dataframes.append(df)
+        except Exception as e:
+            logger.warning(f"Failed to load main ledger: {e}")
     else:
         logger.debug("Main trade_ledger.csv not found. This is normal for new installations.")
 
@@ -91,10 +104,6 @@ def get_trade_ledger_df(data_dir: str = None):
         return pd.DataFrame(columns=['timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity', 'reason'])
 
     full_ledger = pd.concat(dataframes, ignore_index=True)
-    full_ledger['timestamp'] = pd.to_datetime(full_ledger['timestamp'])
-
-    # Coerce P&L column to numeric, turning any non-numeric values into NaN
-    full_ledger['total_value_usd'] = pd.to_numeric(full_ledger['total_value_usd'], errors='coerce')
 
     logger.info(f"Consolidated a total of {len(full_ledger)} trade records.")
     return full_ledger.sort_values(by='timestamp').reset_index(drop=True)
