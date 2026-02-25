@@ -1,8 +1,13 @@
 """
 Price data providers for the trading system.
 
-Primary: Databento (licensed ICE/CME exchange data)
-Fallback: yfinance (unofficial Yahoo Finance scraper)
+Architecture: yfinance-first, Databento gap-fill, disk cache.
+
+1. yfinance (free) fetches the full range
+2. Gap detection compares against exchange-specific trading calendar
+3. Missing dates are filled from persistent disk cache (parquet)
+4. Only truly uncached missing dates hit Databento (licensed, ~$500/GB ICE)
+5. Databento results are cached to disk — each missing day is paid for once, ever
 
 Module-level TTL cache prevents redundant API calls within a session.
 """
@@ -11,8 +16,8 @@ import os
 import time as _time
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Tuple
+from datetime import date, datetime, timedelta
+from typing import List, Optional, Dict, Tuple
 
 import pandas as pd
 import pytz
@@ -236,6 +241,14 @@ class DatabentoPriceProvider(PriceDataProvider):
         ohlcv_cols = [c for c in ['Open', 'High', 'Low', 'Close', 'Volume'] if c in df.columns]
         df = df[ohlcv_cols]
 
+        # Filter zero-price bars (ICE emits non-trading period bars with OHLCV = 0)
+        if 'Open' in df.columns and 'Close' in df.columns:
+            before = len(df)
+            df = df[(df['Open'] > 0) & (df['Close'] > 0)]
+            dropped = before - len(df)
+            if dropped > 0:
+                logger.debug(f"Databento: filtered {dropped} zero-price bars")
+
         # Resample if needed (5m/15m/30m from 1m bars)
         if resample_freq:
             df = df.resample(resample_freq).agg({
@@ -362,12 +375,80 @@ class YFinancePriceProvider(PriceDataProvider):
 
 
 # =============================================================================
+# DISK CACHE (per-day parquet files — pay Databento once per missing day)
+# =============================================================================
+
+_DISK_CACHE_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'databento_cache',
+)
+
+
+def _disk_cache_path(ticker: str, timeframe: str, dt: date) -> str:
+    return os.path.join(
+        _DISK_CACHE_DIR, f"{ticker.upper()}_{timeframe}_{dt.isoformat()}.parquet",
+    )
+
+
+def _load_from_disk_cache(ticker: str, timeframe: str, dt: date) -> Optional[pd.DataFrame]:
+    path = _disk_cache_path(ticker, timeframe, dt)
+    if os.path.exists(path):
+        try:
+            df = pd.read_parquet(path)
+            if not df.empty:
+                return df
+        except Exception as e:
+            logger.debug(f"Disk cache read error for {path}: {e}")
+    return None
+
+
+def _save_to_disk_cache(ticker: str, timeframe: str, dt: date, df: pd.DataFrame):
+    if df.empty:
+        return
+    os.makedirs(_DISK_CACHE_DIR, exist_ok=True)
+    path = _disk_cache_path(ticker, timeframe, dt)
+    try:
+        df.to_parquet(path)
+    except Exception as e:
+        logger.debug(f"Disk cache write error for {path}: {e}")
+
+
+# =============================================================================
+# GAP DETECTION
+# =============================================================================
+
+def _find_missing_trading_days(
+    df: Optional[pd.DataFrame], exchange: str, lookback_days: int,
+) -> List[date]:
+    """Compare actual dates in df against expected trading days."""
+    from trading_bot.calendars import is_trading_day
+
+    today = datetime.now(NY_TZ).date()
+    start_date = today - timedelta(days=lookback_days + 3)
+
+    expected: List[date] = []
+    d = start_date
+    while d < today:  # Only completed days (exclude today)
+        if is_trading_day(d, exchange):
+            expected.append(d)
+        d += timedelta(days=1)
+
+    if df is not None and not df.empty:
+        actual_dates = set(df.index.date)
+    else:
+        actual_dates = set()
+
+    missing = [d for d in expected if d not in actual_dates]
+    return sorted(missing)
+
+
+# =============================================================================
 # PUBLIC API
 # =============================================================================
 
 _databento_provider: Optional[DatabentoPriceProvider] = None
 _yfinance_provider: Optional[YFinancePriceProvider] = None
 _last_source: str = "none"
+_last_gap_fill_count: int = 0
 
 
 def get_price_data(
@@ -378,71 +459,147 @@ def get_price_data(
     lookback_days: int = 3,
 ) -> Optional[pd.DataFrame]:
     """
-    Fetch OHLCV price data with caching and automatic fallback.
+    Fetch OHLCV price data: yfinance primary, Databento gap-fill.
 
-    Primary: Databento (if DATABENTO_API_KEY is set)
-    Fallback: yfinance
+    1. In-memory TTL cache (5 min)
+    2. yfinance (free) for full range
+    3. Gap detection against exchange trading calendar
+    4. Disk cache for previously-fetched Databento days
+    5. Databento API only for truly uncached missing dates
+    6. Merge, deduplicate, sort
 
     Returns DataFrame with DatetimeIndex (NY tz) and OHLCV columns, or None.
     """
-    global _databento_provider, _yfinance_provider, _last_source
+    global _databento_provider, _yfinance_provider, _last_source, _last_gap_fill_count
 
-    # Check cache first
+    # 1. In-memory TTL cache
     key = _cache_key(ticker, exchange, contract, timeframe, lookback_days)
     cached = _cache_get(key)
     if cached is not None:
         logger.debug(f"Cache hit for {ticker}/{contract}/{timeframe}")
         return cached
 
-    # Try Databento first
-    if os.environ.get('DATABENTO_API_KEY'):
-        if _databento_provider is None:
-            _databento_provider = DatabentoPriceProvider()
-        try:
-            df = _databento_provider.fetch_ohlcv(
-                ticker, exchange, contract, timeframe, lookback_days,
-            )
-            if df is not None and not df.empty:
-                _cache_set(key, df)
-                _last_source = "databento"
-                return df
-            logger.warning(
-                f"Databento returned empty for {ticker}/{contract}, "
-                f"falling back to yfinance"
-            )
-        except Exception as e:
-            logger.warning(
-                f"Databento failed for {ticker}/{contract}: {e}, "
-                f"falling back to yfinance"
-            )
-
-    # Fallback to yfinance
+    # 2. yfinance first (free)
     if _yfinance_provider is None:
         _yfinance_provider = YFinancePriceProvider()
+
+    yf_df = None
     try:
-        df = _yfinance_provider.fetch_ohlcv(
+        yf_df = _yfinance_provider.fetch_ohlcv(
             ticker, exchange, contract, timeframe, lookback_days,
         )
-        if df is not None and not df.empty:
-            _cache_set(key, df)
-            _last_source = "yfinance"
-            return df
     except Exception as e:
-        logger.warning(f"yfinance also failed for {ticker}/{contract}: {e}")
+        logger.warning(f"yfinance failed for {ticker}/{contract}: {e}")
 
-    _last_source = "none"
-    return None
+    # 3. Gap detection
+    missing_days = _find_missing_trading_days(yf_df, exchange, lookback_days)
+
+    if not missing_days:
+        # No gaps — return yfinance data directly (zero cost)
+        if yf_df is not None and not yf_df.empty:
+            _cache_set(key, yf_df)
+            _last_source = "yfinance"
+            _last_gap_fill_count = 0
+            return yf_df
+
+    # 4 + 5. Fill gaps from disk cache, then Databento
+    gap_frames: List[pd.DataFrame] = []
+    uncached_missing: List[date] = []
+
+    for d in missing_days:
+        disk_df = _load_from_disk_cache(ticker, timeframe, d)
+        if disk_df is not None:
+            gap_frames.append(disk_df)
+        else:
+            uncached_missing.append(d)
+
+    # 5. Databento API — only for truly uncached missing dates
+    if uncached_missing and os.environ.get('DATABENTO_API_KEY'):
+        if _databento_provider is None:
+            _databento_provider = DatabentoPriceProvider()
+
+        api_start = min(uncached_missing)
+        api_end = max(uncached_missing) + timedelta(days=1)
+        api_lookback = (api_end - api_start).days
+
+        logger.info(
+            f"Databento gap-fill: {len(uncached_missing)} uncached days "
+            f"({api_start} to {max(uncached_missing)}) for {ticker}"
+        )
+
+        try:
+            db_df = _databento_provider.fetch_ohlcv(
+                ticker, exchange, contract, timeframe, api_lookback,
+            )
+            if db_df is not None and not db_df.empty:
+                # Cache each day separately to disk
+                for d in uncached_missing:
+                    day_mask = db_df.index.date == d
+                    day_df = db_df[day_mask]
+                    if not day_df.empty:
+                        _save_to_disk_cache(ticker, timeframe, d, day_df)
+                gap_frames.append(db_df)
+        except Exception as e:
+            logger.warning(f"Databento gap-fill failed for {ticker}: {e}")
+
+    # 6. Merge all frames
+    all_frames = [f for f in [yf_df] + gap_frames if f is not None and not f.empty]
+
+    if not all_frames:
+        # yfinance failed and no gap-fill available — try Databento as sole source
+        if os.environ.get('DATABENTO_API_KEY'):
+            if _databento_provider is None:
+                _databento_provider = DatabentoPriceProvider()
+            try:
+                df = _databento_provider.fetch_ohlcv(
+                    ticker, exchange, contract, timeframe, lookback_days,
+                )
+                if df is not None and not df.empty:
+                    _cache_set(key, df)
+                    _last_source = "databento"
+                    _last_gap_fill_count = 0
+                    return df
+            except Exception as e:
+                logger.warning(f"Databento sole-source also failed: {e}")
+
+        _last_source = "none"
+        _last_gap_fill_count = 0
+        return None
+
+    if len(all_frames) == 1:
+        merged = all_frames[0]
+    else:
+        merged = pd.concat(all_frames)
+        merged = merged[~merged.index.duplicated(keep='last')]
+        merged = merged.sort_index()
+
+    _cache_set(key, merged)
+    filled = len(missing_days) - len(uncached_missing) + (
+        len(uncached_missing) if gap_frames else 0
+    )
+    _last_gap_fill_count = filled if gap_frames else 0
+
+    if gap_frames:
+        _last_source = "yfinance+databento"
+    elif yf_df is not None and not yf_df.empty:
+        _last_source = "yfinance"
+    else:
+        _last_source = "databento"
+
+    return merged
 
 
 def get_data_source_label() -> str:
     """
     Return a label indicating which data source was last used.
 
-    For dashboard display (e.g., "Databento" or "yfinance (fallback)").
+    For dashboard display.
     """
-    labels = {
-        "databento": "Databento (licensed exchange data)",
-        "yfinance": "yfinance (fallback)",
-        "none": "No data source available",
-    }
-    return labels.get(_last_source, _last_source)
+    if _last_source == "yfinance":
+        return "yfinance (free)"
+    elif _last_source == "yfinance+databento":
+        n = _last_gap_fill_count
+        return f"yfinance + Databento gap-fill ({n} day{'s' if n != 1 else ''})"
+    elif _last_source == "databento":
+        return "Databento (licensed)"
+    return "No data source available"
