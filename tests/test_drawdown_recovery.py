@@ -396,3 +396,52 @@ class TestPortfolioRiskGuardRecovery:
 
         assert guard._status == "HALT"  # Still holding
         assert guard._recovery_start is not None  # Timer still running
+
+    @pytest.mark.asyncio
+    async def test_daily_reset_via_update_equity(self, tmp_path):
+        """PortfolioRiskGuard should reset PANIC→NORMAL on date rollover."""
+        from trading_bot.shared_context import PortfolioRiskGuard
+
+        data_dir = str(tmp_path)
+        config = {
+            'data_dir_root': data_dir,
+            'drawdown_circuit_breaker': {
+                'enabled': True,
+                'warning_pct': 1.5,
+                'halt_pct': 2.5,
+                'panic_pct': 4.0,
+                'recovery_pct': 3.0,
+                'recovery_hold_minutes': 30,
+            },
+            'notifications': {'enabled': False},
+        }
+
+        # Pre-write state from "yesterday"
+        yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).date().isoformat()
+        state_file = os.path.join(data_dir, 'portfolio_risk_state.json')
+        os.makedirs(data_dir, exist_ok=True)
+        state = {
+            "status": "PANIC",
+            "peak_equity": 100000,
+            "current_equity": 95000,
+            "starting_equity": 100000,
+            "daily_pnl": -5000,
+            "positions": {"KC": 2},
+            "margin": {"KC": 3000},
+            "date": yesterday,
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "recovery_start": (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat(),
+        }
+        with open(state_file, 'w') as f:
+            json.dump(state, f)
+
+        # Guard loads but sees stale date → bootstraps, _state_date empty
+        guard = PortfolioRiskGuard(config=config)
+
+        # Simulate first equity update of the new day
+        # _reset_daily() should fire inside update_equity(), resetting to NORMAL
+        await guard.update_equity(95000, 0)
+
+        assert guard._status != "PANIC", "PANIC should not persist across day boundary"
+        assert guard._recovery_start is None, "Recovery timer should clear on daily reset"
+        assert guard._state_date == datetime.now(timezone.utc).date().isoformat()

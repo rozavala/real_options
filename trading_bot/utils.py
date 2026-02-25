@@ -687,41 +687,13 @@ def log_council_decision(decision_data):
 
     file_path = os.path.join(council_data_dir, "council_history.csv")
 
-    # UPDATED SCHEMA v2: Added weighted voting fields
-    fieldnames = [
-        "cycle_id",  # NEW: Deterministic foreign key for prediction matching
-        "timestamp", "contract", "entry_price",
-        "meteorologist_sentiment", "meteorologist_summary",
-        "macro_sentiment", "macro_summary",
-        "geopolitical_sentiment", "geopolitical_summary",
-        "fundamentalist_sentiment", "fundamentalist_summary",
-        "sentiment_sentiment", "sentiment_summary",
-        "technical_sentiment", "technical_summary",
-        "volatility_sentiment", "volatility_summary",
-        "master_decision", "master_confidence", "master_reasoning",
-        "prediction_type",
-        "volatility_level",
-        "strategy_type",
-        "compliance_approved",
-        "exit_price", "exit_timestamp", "pnl_realized", "actual_trend_direction",
-        "volatility_outcome",
-        # NEW COLUMNS (v2)
-        "vote_breakdown",     # JSON string of agent contributions
-        "dominant_agent",     # Agent with highest contribution
-        "weighted_score",     # Final weighted score (-1 to 1)
-        "trigger_type",       # What triggered the decision (scheduled, weather, news, etc.)
-        "schedule_id",        # Schedule task ID (signal_early, signal_euro, etc.)
-        # NEW COLUMNS (v3 — Judge & Jury Protocol)
-        "thesis_strength",        # SPECULATIVE / PLAUSIBLE / PROVEN
-        "primary_catalyst",       # Single most important driver
-        "conviction_multiplier",  # 0.5 / 0.75 / 1.0 from consensus sensor
-        "dissent_acknowledged",   # Strongest counter-argument Master chose to override
-        # NEW COLUMNS (v4 — VaR & Compliance observability)
-        "compliance_reason",      # Why compliance approved/vetoed
-        "var_utilization",        # Portfolio VaR utilization at decision time
-        "var_dampener",           # VaR dampener multiplier applied
-        "risk_briefing_injected", # Whether risk briefing was injected into prompts
-    ]
+    # Schema defined in schema.py — single source of truth
+    from trading_bot.schema import (
+        COUNCIL_HISTORY_FIELDNAMES,
+        COUNCIL_HISTORY_BACKFILL_DEFAULTS,
+        backfill_missing_columns,
+    )
+    fieldnames = COUNCIL_HISTORY_FIELDNAMES
 
     # Free-text fields that may contain LLM output — sanitize for CSV formula injection
     _TEXT_FIELDS = {
@@ -760,14 +732,59 @@ def log_council_decision(decision_data):
     except ImportError:
         logging.warning("Could not import CouncilHistoryRow for validation — skipping schema check")
 
-    # === APPEND NEW ROW ===
-    file_exists = os.path.exists(file_path)
+    # === APPEND NEW ROW (with auto-migration) ===
     try:
-        with open(file_path, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
-            if not file_exists:
+        if not os.path.exists(file_path):
+            # Brand-new file — write header + row
+            with open(file_path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
                 writer.writeheader()
-            writer.writerow(row_data)
+                writer.writerow(row_data)
+        else:
+            # Check existing header against canonical schema
+            with open(file_path, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                existing_header = next(reader, None) or []
+
+            if existing_header != list(fieldnames):
+                # Schema drift detected — rewrite entire file atomically
+                missing = set(fieldnames) - set(existing_header)
+                extra = set(existing_header) - set(fieldnames)
+                logging.warning(
+                    f"council_history.csv schema drift detected. "
+                    f"Missing columns: {missing or 'none'}, "
+                    f"Extra columns: {extra or 'none'}. "
+                    f"Auto-migrating {file_path}"
+                )
+                # Read all existing rows using old header
+                with open(file_path, 'r', newline='', encoding='utf-8') as f:
+                    old_reader = csv.DictReader(f)
+                    existing_rows = list(old_reader)
+
+                # Backfill missing columns on each row
+                for old_row in existing_rows:
+                    backfill_missing_columns(old_row)
+
+                # Write to temp file with canonical header, then atomic replace
+                tmp_path = file_path + ".migrate.tmp"
+                with open(tmp_path, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
+                    writer.writeheader()
+                    writer.writerows(existing_rows)
+                    writer.writerow(row_data)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_path, file_path)
+                logging.info(
+                    f"Auto-migrated council_history.csv: "
+                    f"{len(existing_rows)} rows + 1 new, "
+                    f"{len(missing)} columns added"
+                )
+            else:
+                # Header matches — simple append
+                with open(file_path, 'a', newline='', encoding='utf-8') as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
+                    writer.writerow(row_data)
         logging.info(f"Logged council decision for {row_data.get('contract', 'Unknown')}")
     except Exception as e:
         logging.error(f"Failed to log council decision: {e}")

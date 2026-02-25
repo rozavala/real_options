@@ -7,6 +7,80 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+# =============================================================================
+# Council History CSV Schema — Single Source of Truth
+# =============================================================================
+# Both log_council_decision() and migration scripts import from here.
+# When adding columns: update ONLY this list + add backfill defaults.
+# =============================================================================
+
+COUNCIL_HISTORY_FIELDNAMES = [
+    "cycle_id", "timestamp", "contract", "entry_price",
+    "meteorologist_sentiment", "meteorologist_summary",
+    "macro_sentiment", "macro_summary",
+    "geopolitical_sentiment", "geopolitical_summary",
+    "fundamentalist_sentiment", "fundamentalist_summary",
+    "sentiment_sentiment", "sentiment_summary",
+    "technical_sentiment", "technical_summary",
+    "volatility_sentiment", "volatility_summary",
+    "master_decision", "master_confidence", "master_reasoning",
+    "prediction_type", "volatility_level", "strategy_type",
+    "compliance_approved",
+    "exit_price", "exit_timestamp", "pnl_realized", "actual_trend_direction",
+    "volatility_outcome",
+    # v2 — weighted voting
+    "vote_breakdown", "dominant_agent", "weighted_score",
+    "trigger_type", "schedule_id",
+    # v3 — Judge & Jury
+    "thesis_strength", "primary_catalyst", "conviction_multiplier", "dissent_acknowledged",
+    # v4 — VaR & Compliance observability
+    "compliance_reason", "var_utilization", "var_dampener", "risk_briefing_injected",
+]
+
+# Semantically honest defaults for backfilling old rows on schema migration.
+# Key principle: empty string = "not measured / didn't exist yet"
+#                specific value = known correct pre-feature-era default
+COUNCIL_HISTORY_BACKFILL_DEFAULTS = {
+    # v2 columns
+    "vote_breakdown": "",
+    "dominant_agent": "",
+    "weighted_score": "",
+    "trigger_type": "",
+    "schedule_id": "",
+    # v3 columns
+    "thesis_strength": "",
+    "primary_catalyst": "",
+    "conviction_multiplier": "",
+    "dissent_acknowledged": "",
+    # v4 columns
+    "compliance_reason": "",
+    "var_utilization": "",
+    "var_dampener": "1.0",
+    "risk_briefing_injected": "False",
+}
+
+
+def backfill_missing_columns(row: dict, fieldnames: list = None, defaults: dict = None) -> dict:
+    """Ensure a row dict has all canonical columns, filling missing ones with defaults.
+
+    Args:
+        row: The existing row dict (modified in place and returned).
+        fieldnames: Column list. Defaults to COUNCIL_HISTORY_FIELDNAMES.
+        defaults: Default values dict. Defaults to COUNCIL_HISTORY_BACKFILL_DEFAULTS.
+
+    Returns:
+        The row dict with all missing fields populated.
+    """
+    if fieldnames is None:
+        fieldnames = COUNCIL_HISTORY_FIELDNAMES
+    if defaults is None:
+        defaults = COUNCIL_HISTORY_BACKFILL_DEFAULTS
+
+    for field in fieldnames:
+        if field not in row or row[field] is None:
+            row[field] = defaults.get(field, "")
+    return row
+
 
 def _safe_float(value, default: float = 0.0) -> float:
     """Safely convert a value to float, returning default on failure."""
