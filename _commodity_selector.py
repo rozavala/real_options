@@ -109,6 +109,7 @@ def selected_commodity() -> str:
         available,
         index=available.index(current) if current in available else 0,
         format_func=_commodity_label,
+        help="Switch between different commodity portfolios. Changing this will update all charts, data tables, and metrics on this page to reflect the selected commodity."
     )
 
     if selected != current:
