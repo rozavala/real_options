@@ -403,5 +403,52 @@ class TestPositionMappingNew(unittest.TestCase):
         self.assertIsNotNone(result)
 
 
+class TestPositionIdEdgeCases(unittest.TestCase):
+    """
+    Tests for edge cases in _find_position_id_for_contract.
+    P1 fix: guard against empty/missing-column DataFrames.
+    """
+
+    def test_find_position_id_missing_column(self):
+        """Trade ledger without 'position_id' column should return None, not KeyError."""
+        mock_position = MagicMock()
+        mock_position.contract.localSymbol = "KCH6 C350"
+        mock_position.contract.conId = 12345
+        mock_position.position = 1
+
+        # DataFrame with data but missing the 'position_id' column
+        trade_ledger = pd.DataFrame({
+            'local_symbol': ['KCH6 C350'],
+            'action': ['BUY'],
+            'quantity': [1],
+        })
+
+        result = _find_position_id_for_contract(mock_position, trade_ledger)
+        self.assertIsNone(result)
+
+    def test_find_position_id_no_conId_column(self):
+        """Ledger without 'conId' column should fall through to direction match, not crash."""
+        mock_position = MagicMock()
+        mock_position.contract.localSymbol = "KCH6 C350"
+        mock_position.contract.conId = 12345
+        mock_position.position = 1
+
+        # Has position_id but no conId column
+        trade_ledger = pd.DataFrame({
+            'local_symbol': ['KCH6 C350', 'KCH6 P340'],
+            'position_id': ['POS_001', 'POS_002'],
+            'action': ['BUY', 'BUY'],
+            'quantity': [1, 1],
+            'timestamp': [datetime.now(), datetime.now()]
+        })
+
+        tms = MagicMock()
+        tms.retrieve_thesis.return_value = {'active': True}
+
+        result = _find_position_id_for_contract(mock_position, trade_ledger, tms=tms)
+        # Should still find POS_001 via direction/FIFO matching (Strategy 2)
+        self.assertEqual(result, 'POS_001')
+
+
 if __name__ == '__main__':
     unittest.main()

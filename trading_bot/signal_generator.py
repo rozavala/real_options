@@ -18,7 +18,7 @@ from trading_bot.decision_signals import log_decision_signal
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager # Import StateManager
 from trading_bot.compliance import ComplianceGuardian
-from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type, TriggerType, detect_market_regime_simple
+from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type, TriggerType, detect_market_regime_simple, harmonize_regime
 from trading_bot.heterogeneous_router import CriticalRPCError
 from trading_bot.confidence_utils import parse_confidence
 from trading_bot.cycle_id import generate_cycle_id
@@ -700,7 +700,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     final_direction_log = final_data["action"]
                     # v7.0 SAFETY: Match execution path default
                     vol_sentiment_log = agent_data.get('volatility_sentiment', 'BEARISH')
-                    regime_log = regime_for_voting if regime_for_voting != 'UNKNOWN' else market_ctx.get('regime', 'UNKNOWN')
+                    regime_log = harmonize_regime(regime_for_voting if regime_for_voting != 'UNKNOWN' else market_ctx.get('regime', 'UNKNOWN'))
 
                     if final_direction_log == 'NEUTRAL':
                         agent_conflict_score_log = calculate_agent_conflict(agent_data, mode="scheduled")
@@ -776,7 +776,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                         "vote_breakdown": json.dumps(weighted_result.get('vote_breakdown', [])),
                         "dominant_agent": weighted_result.get('dominant_agent', 'Unknown'),
                         "weighted_score": weighted_result.get('weighted_score', 0.0),
-                        "trigger_type": weighted_result.get('trigger_type', 'scheduled'),
+                        "trigger_type": str(weighted_result.get('trigger_type', 'SCHEDULED')).upper(),
                         "schedule_id": schedule_id or '',
 
                         # [E.1] VaR observability

@@ -1503,7 +1503,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
         # --- Monitoring Loop ---
         start_time = time.time()
-        monitoring_duration = 1800  # 30 minutes
+        monitoring_duration = config.get('strategy_tuning', {}).get('monitoring_duration_seconds', 1800)
         PRICE_TOLERANCE = 0.001  # $0.001 tolerance for floating point comparison
 
         logger.info(f"Monitoring orders for up to {monitoring_duration / 60} minutes...")

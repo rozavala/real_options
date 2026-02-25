@@ -30,6 +30,9 @@ class DrawdownGuard:
         self.warning_pct = self.config.get('warning_pct', 1.5)
         self.halt_pct = self.config.get('halt_pct', 2.5)
         self.panic_pct = self.config.get('panic_pct', 4.0)
+        self.recovery_pct = self.config.get('recovery_pct', 3.0)
+        self.recovery_hold_minutes = self.config.get('recovery_hold_minutes', 30)
+        self._recovery_start = None
         data_dir = config.get('data_dir', 'data')
         # Always use per-commodity data_dir; ignore any legacy state_file in sub-config
         self.state_file = os.path.join(data_dir, 'drawdown_state.json')
@@ -55,6 +58,7 @@ class DrawdownGuard:
                     current_date = datetime.now(timezone.utc).date().isoformat()
                     if saved_date == current_date:
                         self.state = saved
+                        self._recovery_start = saved.get('recovery_start')
                         logger.info(f"Loaded drawdown state: {self.state['status']} ({self.state['current_drawdown_pct']:.2f}%)")
                     else:
                         logger.info("Saved drawdown state is old. Starting fresh.")
@@ -65,6 +69,10 @@ class DrawdownGuard:
         try:
             # Create dir if needed
             os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
+            if self._recovery_start is not None:
+                self.state['recovery_start'] = self._recovery_start
+            elif 'recovery_start' in self.state:
+                del self.state['recovery_start']
             self.state['last_updated'] = datetime.now(timezone.utc).isoformat()
             temp_path = self.state_file + ".tmp"
             with open(temp_path, 'w') as f:
@@ -78,6 +86,7 @@ class DrawdownGuard:
         current_date = datetime.now(timezone.utc).date().isoformat()
         if self.state['date'] != current_date:
             logger.info("Resetting DrawdownGuard for new day.")
+            self._recovery_start = None
             self.state = {
                 "status": "NORMAL",
                 "current_drawdown_pct": 0.0,
@@ -147,14 +156,38 @@ class DrawdownGuard:
             else:
                 new_status = "NORMAL"
 
-            # State Transition Logic (Escalation only, manual reset required for de-escalation usually,
-            # but let's allow auto-recovery from WARNING. HALT/PANIC should stick?)
-            # Prompt says "Reset daily at market open". So HALT persists for day.
-
-            if prev_status == "PANIC":
-                new_status = "PANIC" # Stick
-            elif prev_status == "HALT" and new_status != "PANIC":
-                new_status = "HALT" # Stick unless worsening
+            # Recovery-aware escalation logic
+            if prev_status in ("PANIC", "HALT"):
+                if new_status == "PANIC" and prev_status != "PANIC":
+                    # Allow HALT→PANIC escalation
+                    self._recovery_start = None
+                elif abs(drawdown_pct) <= self.recovery_pct:
+                    # Drawdown improved below recovery threshold
+                    if self._recovery_start is None:
+                        self._recovery_start = datetime.now(timezone.utc).isoformat()
+                        logger.info(f"Recovery timer started (drawdown {drawdown_pct:.2f}%, threshold {self.recovery_pct}%)")
+                        new_status = prev_status  # Hold current status during observation
+                    else:
+                        recovery_start_dt = datetime.fromisoformat(self._recovery_start)
+                        elapsed_minutes = (datetime.now(timezone.utc) - recovery_start_dt).total_seconds() / 60
+                        if elapsed_minutes >= self.recovery_hold_minutes:
+                            new_status = "WARNING"
+                            self._recovery_start = None
+                            logger.warning(f"Recovery complete: {prev_status} -> WARNING after {elapsed_minutes:.0f}min sustained improvement")
+                            send_pushover_notification(
+                                self.notification_config,
+                                f"📈 Recovery: {prev_status} → WARNING",
+                                f"Drawdown improved to {drawdown_pct:.2f}% (held {elapsed_minutes:.0f}min). Trading resumed with caution."
+                            )
+                        else:
+                            logger.info(f"Recovery in progress: {elapsed_minutes:.0f}/{self.recovery_hold_minutes}min")
+                            new_status = prev_status  # Hold during observation
+                else:
+                    # Still in drawdown territory - reset recovery timer
+                    if self._recovery_start is not None:
+                        logger.info(f"Recovery timer reset (drawdown worsened to {drawdown_pct:.2f}%)")
+                        self._recovery_start = None
+                    new_status = prev_status  # Stick at current level
 
             if new_status != prev_status:
                 logger.warning(f"Drawdown Status Changed: {prev_status} -> {new_status} (PNL: {drawdown_pct:.2f}%)")
