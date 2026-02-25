@@ -25649,3 +25649,160 @@ VERDICT: NO—do not proceed with a naked/linear bearish expression into an over
 2026-02-25 12:47:51,571 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10405, market_open=True, trading_day=True
 2026-02-25 12:52:52,978 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10410, market_open=True, trading_day=True
 2026-02-25 12:57:54,398 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10415, market_open=True, trading_day=True
+2026-02-25 13:02:55,318 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10420, market_open=True, trading_day=True
+2026-02-25 13:03:20,849 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=6)
+2026-02-25 13:03:20,888 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
+2026-02-25 13:03:20,889 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by XSentimentSentinel: UNUSUAL X ACTIVITY SPIKE (30 posts) (Cycle: KC-447b7962)
+2026-02-25 13:03:21,074 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 13:03:21,084 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-25 13:03:21,211 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-25 13:03:21,211 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-25 13:03:21,211 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-25 13:03:21,218 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-25 13:03:21,231 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-25 13:03:21,890 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 545 created from CSV, 0 resolved from council_history
+2026-02-25 13:03:21,892 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-25 13:03:21,893 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-25 13:03:21,893 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-25 13:03:21,893 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-25 13:03:21,893 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-25 13:03:21,893 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-25 13:03:21,895 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-25 13:03:21,895 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-25 13:03:22,005 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-25 13:03:22,005 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-25 13:03:22,006 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-25 13:03:26,493 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-25 13:03:26,980 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=284.55, sma_200=330.54525, regime=RANGE_BOUND, vol_5d=0.0170
+2026-02-25 13:03:26,981 - Orchestrator - INFO - Emergency market context: price=284.55, regime=RANGE_BOUND
+2026-02-25 13:03:26,981 - trading_bot.semantic_cache - INFO - CACHE CROSS-SOURCE INVALIDATION: 1 entries removed for KCK6 (202605) (kept XSentimentSentinel)
+2026-02-25 13:03:26,981 - trading_bot.agents - INFO - Running Specialized Cycle triggered by XSentimentSentinel...
+2026-02-25 13:03:26,982 - trading_bot.agents - INFO - Routing to sentiment (Reason: Matched: XSentimentSentinel/spike)
+2026-02-25 13:03:26,983 - trading_bot.agents - INFO - Waking up sentiment...
+2026-02-25 13:03:27,350 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-25 13:03:27,350 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-25 13:04:05,195 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-25 13:04:05,197 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.5 \u00d7 reliability=0.7 = 1.10", "macro": "domain=1.5 \u00d7 reliability=0.6 = 0.90", "geopolitical": "domain=1.5 \u00d7 reliability=0.6 = 0.92", "supply_chain": "domain=1.5 \u00d7 reliability=1.2 = 1.83", "inventory": "domain=1.5 \u00d7 reliability=0.6 = 0.91", "sentiment": "domain=1.5 \u00d7 reliability=0.7 = 1.06", "technical": "domain=2.2 \u00d7 reliability=0.8 = 1.90", "volatility": "domain=1.0 \u00d7 reliability=0.8 = 0.82"}
+2026-02-25 13:04:05,198 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.205, dominant=supply_chain)
+2026-02-25 13:04:05,200 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.73,
+    "staleness_weight": 1.0,
+    "age_hours": 0.5,
+    "final_weight": 1.1,
+    "contribution": -0.88
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.6,
+    "staleness_weight": 1.0,
+    "age_hours": 0.9,
+    "final_weight": 0.9,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.61,
+    "staleness_weight": 1.0,
+    "age_hours": 0.9,
+    "final_weight": 0.92,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.22,
+    "staleness_weight": 1.0,
+    "age_hours": 0.9,
+    "final_weight": 1.83,
+    "contribution": 1.465
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.61,
+    "staleness_weight": 1.0,
+    "age_hours": 0.9,
+    "final_weight": 0.91,
+    "contribution": -0.594
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.71,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.06,
+    "contribution": -0.691
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.85,
+    "staleness_weight": 1.0,
+    "age_hours": 0.9,
+    "final_weight": 1.9,
+    "contribution": -1.236
+  },
+  {
+    "agent": "volatility",
+    "direction": "NEUTRAL",
+    "confidence": 0.55,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.78,
+    "staleness_weight": 1.0,
+    "age_hours": 0.9,
+    "final_weight": 0.82,
+    "contribution": 0.0
+  }
+]
+2026-02-25 13:05:02,278 - openai._base_client - INFO - Retrying request to /chat/completions in 0.486362 seconds
+2026-02-25 13:05:02,840 - openai._base_client - INFO - Retrying request to /chat/completions in 0.906678 seconds
+2026-02-25 13:05:03,970 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 13:05:14,293 - openai._base_client - INFO - Retrying request to /chat/completions in 0.393615 seconds
+2026-02-25 13:05:14,743 - openai._base_client - INFO - Retrying request to /chat/completions in 0.754218 seconds
+2026-02-25 13:05:15,566 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 13:05:35,727 - openai._base_client - INFO - Retrying request to /chat/completions in 0.473094 seconds
+2026-02-25 13:05:36,478 - openai._base_client - INFO - Retrying request to /chat/completions in 0.966905 seconds
+2026-02-25 13:05:37,495 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 13:06:18,984 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-5-20250929 for master after primary failure.
+2026-02-25 13:06:18,986 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 13:06:18,991 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Record Brazilian crop (66.2M bags, +17.2% YoY) converging wi
+2026-02-25 13:06:53,101 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED WITH DIRECTIONAL SHORT. The trade conflates 'structurally bearish over 6-12 months' (valid thesis: record Brazilian crop) with 'tactically bearish now' (invalid setup: oversold technicals, near-term export tightness, range-bound regime, crowded positioning, BRL wildcard). Superior alternatives: (1) WAIT for proof that May-July crop is actually flowing to market and BRL weakens, THEN enter short on a technical breakdown below 250¢ support; (2) Structure a RANGE TRADE: sell rallies near 285¢ resistance, cover bounces near 265¢ support, acknowledge the regime; (3) If conviction on Brazilian surplus is high, use far-dated put spreads (Sep-Dec 2026) to capture the eventual move while surviving near-term volatility. The 0.7 confidence is aspirational, not justified - honest confidence given timing risk and regime structure should be 0.4-0.5 at best. The market is telling us 'not yet' through oversold signals, range structure, and logistics chaos; we must listen.
+2026-02-25 13:06:53,154 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-25 13:06:53,158 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-25 13:06:53,160 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-25 13:06:53,160 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-25 13:06:53,162 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-25 13:06:53,166 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-25 13:06:53,355 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (VOLATILITY)
+2026-02-25 13:06:53,366 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-25 13:08:23,313 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10425, market_open=True, trading_day=True
+2026-02-25 13:13:24,720 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10430, market_open=True, trading_day=True
+2026-02-25 13:15:25,799 - root - INFO - Fetching 1 active futures contracts for KC on NYBOT...
+2026-02-25 13:15:25,801 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-25 13:15:25,801 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-25 13:15:25,877 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-25 13:15:25,877 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-25 13:15:25,877 - Orchestrator - INFO - Refreshed contract cache: KCK6
+2026-02-25 13:18:25,927 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10435, market_open=True, trading_day=True
+2026-02-25 13:23:27,085 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10440, market_open=True, trading_day=True
+2026-02-25 13:28:28,219 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10445, market_open=True, trading_day=True
