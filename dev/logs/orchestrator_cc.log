@@ -109,3 +109,33 @@
 2026-02-25 16:23:50,064 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 40% of average (Sev: 5)
 2026-02-25 16:23:50,068 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
 2026-02-25 16:26:50,590 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=40, market_open=True, trading_day=True
+2026-02-25 16:31:52,819 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=45, market_open=True, trading_day=True
+2026-02-25 16:32:53,163 - Orchestrator - INFO - PriceSentinel detected 1.6% move - triggering position audit
+2026-02-25 16:32:53,178 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (PriceSentinel trigger (1.6% move)) ---
+2026-02-25 16:32:53,179 - trading_bot.connection_pool - INFO - Connecting IB (CC_audit) ID: 467 [REMOTE/PAPER]...
+2026-02-25 16:32:53,205 - trading_bot.state_manager - INFO - Logged sentinel event from PriceSentinel to history.
+2026-02-25 16:32:53,206 - Orchestrator - WARNING - Drawdown Circuit Breaker ACTIVE (PANIC) - Skipping Emergency Cycle
+2026-02-25 16:32:53,206 - Orchestrator - INFO - Post-cycle debounce: 0s (gate-blocked (no debounce))
+2026-02-25 16:32:53,567 - trading_bot.connection_pool - INFO - IB (CC_audit) connected successfully with ID 467
+2026-02-25 16:32:53,572 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-25 16:32:53,686 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-25 16:32:53,743 - Orchestrator - WARNING - State sync discrepancy: IBKR has 0 positions but ledger shows 4 open
+2026-02-25 16:32:54,037 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 16:32:54,039 - Orchestrator - WARNING - Proceeding with audit despite 1 discrepancies. IBKR positions are source of truth.
+2026-02-25 16:32:54,043 - Orchestrator - INFO - No open positions to audit.
+2026-02-25 16:32:54,045 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_audit)...
+2026-02-25 16:34:54,548 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 25% of average
+2026-02-25 16:34:54,554 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-25 16:34:54,734 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 16:36:54,757 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=50, market_open=True, trading_day=True
+2026-02-25 16:41:54,902 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=55, market_open=True, trading_day=True
+2026-02-25 16:44:55,037 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 49% of average (Sev: 5)
+2026-02-25 16:44:55,041 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-25 16:45:00,001 - Engine.CC - INFO - --- Running scheduled task: signal_late [guarded_generate_orders] ---
+2026-02-25 16:45:00,006 - Orchestrator - WARNING - Signal cycle BLOCKED by PortfolioRiskGuard: Portfolio circuit breaker: PANIC
+2026-02-25 16:45:00,016 - Engine.CC - INFO - Next task 'audit_pre_close' (Audit: Pre-Close) scheduled for 2026-02-25 17:55:00 UTC. Waiting for 1.17 hours.
+2026-02-25 16:46:55,059 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=60, market_open=True, trading_day=True
+2026-02-25 16:51:55,217 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=65, market_open=True, trading_day=True
+2026-02-25 16:51:55,223 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 38% of average (Sev: 6)
+2026-02-25 16:51:55,229 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-25 16:56:55,370 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=70, market_open=True, trading_day=True
