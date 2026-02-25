@@ -1676,6 +1676,13 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
         ib = await IBConnectionPool.get_connection("audit", config)
         configure_market_data_type(ib)
 
+        # Safety net: Cancel any orphaned catastrophe stops from previous sessions
+        try:
+            from trading_bot.order_manager import _cancel_orphaned_catastrophe_stops
+            await _cancel_orphaned_catastrophe_stops(ib, config)
+        except Exception as e:
+            logger.warning(f"Catastrophe stop cleanup in audit failed (non-fatal): {e}")
+
         # === L5 FIX: Reconcile state stores before audit ===
         trade_ledger = get_trade_ledger_df()
         tms = TransactiveMemory()
