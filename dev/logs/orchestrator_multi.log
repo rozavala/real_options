@@ -1043,3 +1043,113 @@
 2026-02-25 18:56:05,837 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
 2026-02-25 18:56:05,843 - Engine.KC - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-26 08:30:00 UTC. Waiting for 13.57 hours.
 2026-02-25 18:56:32,489 - Orchestrator - INFO - Shutdown: Gracefully disengaging Microstructure Sentinel
+2026-02-25 19:05:00,013 - Engine.NG - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-02-25 19:05:00,016 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-25 19:05:00,017 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1238 [REMOTE/PAPER]...
+2026-02-25 19:05:00,343 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1238
+2026-02-25 19:05:00,349 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-25 19:05:00,349 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-25 19:05:00,451 - OrderManager - INFO - Found 2 live position legs in the IB account.
+2026-02-25 19:05:00,452 - OrderManager - INFO -   Filtered to 0 positions with non-zero quantity (2 already closed/zero-qty excluded)
+2026-02-25 19:05:00,452 - OrderManager - INFO - All returned positions have zero quantity — nothing to close.
+2026-02-25 19:05:00,452 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-02-25 19:05:03,461 - Engine.NG - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-02-25 19:15:00 UTC. Waiting for 0.17 hours.
+2026-02-25 19:15:00,018 - Engine.NG - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-02-25 19:15:00,022 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-02-25 19:15:00,022 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-02-25 19:15:00,022 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-25 19:15:00,023 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1238 [REMOTE/PAPER]...
+2026-02-25 19:15:00,389 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1238
+2026-02-25 19:15:00,394 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-25 19:15:00,395 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-25 19:15:00,497 - OrderManager - INFO - Found 2 live position legs in the IB account.
+2026-02-25 19:15:00,497 - OrderManager - INFO -   Filtered to 0 positions with non-zero quantity (2 already closed/zero-qty excluded)
+2026-02-25 19:15:00,497 - OrderManager - INFO - All returned positions have zero quantity — nothing to close.
+2026-02-25 19:15:00,497 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-02-25 19:15:03,506 - Engine.NG - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-02-25 19:25:00 UTC. Waiting for 0.17 hours.
+2026-02-25 19:20:59,373 - trading_bot.master_orchestrator - INFO - === Running post-close reconciliation ===
+2026-02-25 19:20:59,373 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
+2026-02-25 19:20:59,642 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-25 19:21:09,644 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-25 19:21:09,766 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-25 19:21:09,795 - EquityLogger - INFO - Preserving 7 local equity records not present in Flex Query.
+2026-02-25 19:21:09,802 - EquityLogger - INFO - Successfully synced 15 equity records to data/KC/daily_equity.csv.
+2026-02-25 19:21:09,802 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
+2026-02-25 19:21:09,803 - EquityLogger - INFO - Connecting to IB at 100.102.50.16:4002 with clientId 5947...
+2026-02-25 19:21:10,023 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-25 19:21:10,180 - EquityLogger - INFO - Fetched NetLiquidation: $37,246.46
+2026-02-25 19:21:10,187 - EquityLogger - INFO - Updated data/KC/daily_equity.csv with value $37,246.46
+2026-02-25 19:21:13,192 - EquityLogger - INFO - Disconnected from IB.
+2026-02-25 19:21:13,193 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-02-25 19:21:13,193 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-02-25 19:21:13,381 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-25 19:21:23,386 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-25 19:21:23,527 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-25 19:21:23,531 - TradeReconciler - INFO - Parsed 48 executions from the Flex Query report.
+2026-02-25 19:21:23,555 - TradeReconciler - INFO - Successfully processed 48 trades into the reconciliation DataFrame.
+2026-02-25 19:21:23,556 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-02-25 19:21:23,760 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-25 19:21:33,762 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-25 19:21:33,903 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-25 19:21:33,905 - TradeReconciler - INFO - Parsed 4 executions from the Flex Query report.
+2026-02-25 19:21:33,916 - TradeReconciler - INFO - Successfully processed 4 trades into the reconciliation DataFrame.
+2026-02-25 19:21:33,918 - TradeReconciler - INFO - Consolidated to 52 unique trades from all reports.
+2026-02-25 19:21:33,919 - TradeReconciler - INFO - Found 8 archived ledger files.
+2026-02-25 19:21:33,935 - TradeReconciler - INFO - Consolidated a total of 52 trades from all ledgers.
+2026-02-25 19:21:33,938 - TradeReconciler - INFO - Filtered IB trades from 52 to 52 records within the last 90 days.
+2026-02-25 19:21:33,939 - TradeReconciler - INFO - Filtered local ledger from 52 to 52 records within the last 90 days.
+2026-02-25 19:21:34,028 - TradeReconciler - INFO - Reconciliation complete. Found 0 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
+2026-02-25 19:21:34,029 - TradeReconciler - INFO - No discrepancies found. The local ledger is perfectly in sync with the IB report.
+2026-02-25 19:21:34,030 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-02-25 19:21:34,030 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-02-25 19:21:35,040 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-25 19:21:45,043 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-25 19:21:45,178 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-25 19:21:45,180 - TradeReconciler - INFO - Parsed 48 executions from the Flex Query report.
+2026-02-25 19:21:45,193 - TradeReconciler - INFO - Successfully processed 48 trades into the reconciliation DataFrame.
+2026-02-25 19:21:45,193 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-02-25 19:21:45,412 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-25 19:21:55,413 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-25 19:21:55,522 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-25 19:21:55,525 - TradeReconciler - INFO - Parsed 4 executions from the Flex Query report.
+2026-02-25 19:21:55,549 - TradeReconciler - INFO - Successfully processed 4 trades into the reconciliation DataFrame.
+2026-02-25 19:21:55,552 - TradeReconciler - INFO - Consolidated to 52 unique trades from all reports.
+2026-02-25 19:21:55,553 - TradeReconciler - INFO - Found 0 archived ledger files.
+2026-02-25 19:21:55,553 - TradeReconciler - WARNING - No trade ledger data found.
+2026-02-25 19:21:55,554 - TradeReconciler - WARNING - Local trade ledger is empty. All fetched IB trades will be considered missing.
+2026-02-25 19:21:55,556 - TradeReconciler - INFO - Filtered IB trades from 52 to 52 records within the last 90 days.
+2026-02-25 19:21:55,556 - TradeReconciler - WARNING - Local ledger is empty. All IB trades will be marked as missing.
+2026-02-25 19:21:55,557 - TradeReconciler - INFO - Discrepancies found. Writing to output files.
+2026-02-25 19:21:55,561 - TradeReconciler - INFO - Successfully wrote 52 missing trade(s) to 'data/CC/archive_ledger/trade_ledger_missing_trades.csv'.
+2026-02-25 19:21:55,562 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-02-25 19:21:55,562 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-02-25 19:21:55,762 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-25 19:22:05,773 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-25 19:22:05,919 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-25 19:22:05,921 - TradeReconciler - INFO - Parsed 48 executions from the Flex Query report.
+2026-02-25 19:22:05,932 - TradeReconciler - INFO - Successfully processed 48 trades into the reconciliation DataFrame.
+2026-02-25 19:22:05,932 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-02-25 19:22:06,112 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-25 19:22:16,115 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-25 19:22:16,227 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-25 19:22:16,229 - TradeReconciler - INFO - Parsed 4 executions from the Flex Query report.
+2026-02-25 19:22:16,244 - TradeReconciler - INFO - Successfully processed 4 trades into the reconciliation DataFrame.
+2026-02-25 19:22:16,246 - TradeReconciler - INFO - Consolidated to 52 unique trades from all reports.
+2026-02-25 19:22:16,247 - TradeReconciler - INFO - Found 1 archived ledger files.
+2026-02-25 19:22:16,251 - TradeReconciler - INFO - Consolidated a total of 48 trades from all ledgers.
+2026-02-25 19:22:16,253 - TradeReconciler - INFO - Filtered IB trades from 52 to 52 records within the last 90 days.
+2026-02-25 19:22:16,253 - TradeReconciler - INFO - Filtered local ledger from 48 to 48 records within the last 90 days.
+2026-02-25 19:22:16,332 - TradeReconciler - INFO - Reconciliation complete. Found 4 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
+2026-02-25 19:22:16,333 - TradeReconciler - INFO - Discrepancies found. Writing to output files.
+2026-02-25 19:22:16,336 - TradeReconciler - INFO - Successfully wrote 4 missing trade(s) to 'data/NG/archive_ledger/trade_ledger_missing_trades.csv'.
+2026-02-25 19:22:16,336 - trading_bot.data_dir_context - INFO - Engine data_dir set to: data/KC
+2026-02-25 19:22:16,363 - trading_bot.master_orchestrator - ERROR - Post-close Brier reconciliation failed: Error tokenizing data. C error: Expected 39 fields in line 198, saw 43\n
+2026-02-25 19:22:16,363 - trading_bot.master_orchestrator - INFO - === Post-close reconciliation complete ===
+2026-02-25 19:25:00,011 - Engine.NG - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-02-25 19:25:00,015 - Orchestrator - INFO - --- Emergency Hard Close Check (T-45 min) ---
+2026-02-25 19:25:00,015 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1239 [REMOTE/PAPER]...
+2026-02-25 19:25:00,418 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1239
+2026-02-25 19:25:00,423 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-25 19:25:00,526 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
+2026-02-25 19:25:00,527 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-02-25 19:25:03,538 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-02-25 19:35:00 UTC. Waiting for 0.17 hours.
