@@ -1,22 +1,22 @@
 {
   "version": 1,
-  "last_run": "2026-02-25T13:00:01.544696+00:00",
+  "last_run": "2026-02-25T14:00:01.837275+00:00",
   "log_offsets": {
     "/home/rodrigo/real_options/logs/dashboard.log": 1549,
     "/home/rodrigo/real_options/logs/dashboard_cc.log": 3301,
     "/home/rodrigo/real_options/logs/dashboard_kc.log": 23087,
     "/home/rodrigo/real_options/logs/equity_logger.log": 763,
-    "/home/rodrigo/real_options/logs/error_reporter.log": 84103,
+    "/home/rodrigo/real_options/logs/error_reporter.log": 84480,
     "/home/rodrigo/real_options/logs/manual_test.log": 0,
     "/home/rodrigo/real_options/logs/orchestrator.log": 36249,
-    "/home/rodrigo/real_options/logs/orchestrator_cc.log": 201771,
+    "/home/rodrigo/real_options/logs/orchestrator_cc.log": 203761,
     "/home/rodrigo/real_options/logs/orchestrator_cc_service.log": 4717,
-    "/home/rodrigo/real_options/logs/orchestrator_kc.log": 217379,
+    "/home/rodrigo/real_options/logs/orchestrator_kc.log": 228021,
     "/home/rodrigo/real_options/logs/performance_analyzer.log": 0,
-    "/home/rodrigo/real_options/logs/sentinels.log": 312351,
+    "/home/rodrigo/real_options/logs/sentinels.log": 335862,
     "/home/rodrigo/real_options/logs/dashboard_sb.log": 514,
-    "/home/rodrigo/real_options/logs/orchestrator_multi.log": 443227,
-    "/home/rodrigo/real_options/logs/orchestrator_ng.log": 13807
+    "/home/rodrigo/real_options/logs/orchestrator_multi.log": 460626,
+    "/home/rodrigo/real_options/logs/orchestrator_ng.log": 17086
   },
   "reported_signatures": {
     "615e68d761b3545c117a547f9da0a715": {
@@ -66,6 +66,15 @@
       "count": 2,
       "first_seen": "2026-02-25 09:15:34,466",
       "last_seen": "2026-02-25 09:15:34,466",
+      "level": "ERROR"
+    },
+    "8e9e03a062afa7242417902daa95879c": {
+      "category": "uncategorized",
+      "fingerprint": "8e9e03a062afa7242417902daa95879c",
+      "sample_message": "Position Audit Cycle failed: 'position_id'\nTraceback (most recent call last):\n  File \"/home/<USER>/real_options/orchestrator.py\", line 1729, in run_position_audit_cycle\n    position_groups = _group_positions_by_thesis(live_positions, trade_ledger, tms)\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/<USER>/real_options/orchestrator.py\", line 1357, in _group_positions_by_thesis\n    position_id = _find_position_id_for_contract(pos, trade_ledger, tms)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/<USER>/real_options/orchestrator.py\", line 973, in _find_position_id_for_contract\n    for pos_id in conId_matches['position_id'].unique():\n                  ~~~~~~~~~~~~~^^^^^^^^^^^^^^^\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/pandas/core/frame.py\", line 4113, in __getitem__\n    indexer = self.columns.get_loc(key)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/pandas/core/indexes/range.py\", line 417, in get_loc\n    raise KeyError(key)\nKeyError: 'position_id'",
+      "count": 2,
+      "first_seen": "2026-02-25 13:52:01,821",
+      "last_seen": "2026-02-25 13:52:01,821",
       "level": "ERROR"
     }
   }
