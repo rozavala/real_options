@@ -1153,3 +1153,234 @@
 2026-02-25 19:25:00,526 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
 2026-02-25 19:25:00,527 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
 2026-02-25 19:25:03,538 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-02-25 19:35:00 UTC. Waiting for 0.17 hours.
+2026-02-25 19:35:00,017 - Engine.NG - INFO - --- Running scheduled task: log_equity_snapshot [log_equity_snapshot] ---
+2026-02-25 19:35:00,021 - EquityLogger - INFO - Equity snapshot skipped (non-primary engine).
+2026-02-25 19:35:00,027 - Engine.NG - INFO - Next task 'reconcile_and_analyze' (Reconcile & Analyze) scheduled for 2026-02-25 19:38:00 UTC. Waiting for 0.05 hours.
+2026-02-25 19:38:00,017 - Engine.NG - INFO - --- Running scheduled task: reconcile_and_analyze [reconcile_and_analyze] ---
+2026-02-25 19:38:00,020 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-02-25 19:38:00,021 - EquityLogger - INFO - Equity sync skipped (non-primary engine).
+2026-02-25 19:38:00,021 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-02-25 19:38:00,021 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-02-25 19:38:00,024 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-25 19:38:00,024 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-02-25 19:38:00,268 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-25 19:38:10,270 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-25 19:38:10,391 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-25 19:38:10,396 - TradeReconciler - INFO - Parsed 48 executions from the Flex Query report.
+2026-02-25 19:38:10,417 - TradeReconciler - INFO - Successfully processed 48 trades into the reconciliation DataFrame.
+2026-02-25 19:38:10,417 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-02-25 19:38:10,627 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-25 19:38:20,635 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-25 19:38:20,834 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-25 19:38:20,837 - TradeReconciler - INFO - Parsed 4 executions from the Flex Query report.
+2026-02-25 19:38:20,849 - TradeReconciler - INFO - Successfully processed 4 trades into the reconciliation DataFrame.
+2026-02-25 19:38:20,852 - TradeReconciler - INFO - Consolidated to 52 unique trades from all reports.
+2026-02-25 19:38:20,853 - TradeReconciler - INFO - Found 8 archived ledger files.
+2026-02-25 19:38:20,869 - TradeReconciler - INFO - Consolidated a total of 52 trades from all ledgers.
+2026-02-25 19:38:20,871 - TradeReconciler - INFO - Filtered IB trades from 52 to 52 records within the last 90 days.
+2026-02-25 19:38:20,872 - TradeReconciler - INFO - Filtered local ledger from 52 to 52 records within the last 90 days.
+2026-02-25 19:38:20,963 - TradeReconciler - INFO - Reconciliation complete. Found 0 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
+2026-02-25 19:38:20,964 - TradeReconciler - INFO - No discrepancies found. The local ledger is perfectly in sync with the IB report.
+2026-02-25 19:38:20,964 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
+2026-02-25 19:38:20,966 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-02-25 19:38:21,196 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-25 19:38:31,202 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-25 19:38:31,337 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-25 19:38:31,341 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
+2026-02-25 19:38:31,342 - TradeReconciler - WARNING - No trade ledger data found.
+2026-02-25 19:38:31,349 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-02-25 19:38:31,350 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-02-25 19:38:31,899 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-25 19:38:31,949 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-24 16:38:16.393977+00:00: NGK26 (202604) (NEUTRAL)
+2026-02-25 19:38:31,950 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Wed 19:38 UTC → actual Wed 16:00 UTC (weekly close policy)
+2026-02-25 19:38:32,551 - trading_bot.reconciliation - INFO - CONDOR WIN: 1.27% move within 1.50% threshold. P&L: 0.03
+2026-02-25 19:38:32,556 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.91 -> Exit 2.87 (1.27% move) | Strategy: IRON_CONDOR | Outcome: STAYED_FLAT | P&L: 0.0291
+2026-02-25 19:38:32,556 - trading_bot.heterogeneous_router - INFO - CIRCUIT BREAKER: openai cooldown expired, re-enabling
+2026-02-25 19:38:33,445 - openai._base_client - INFO - Retrying request to /chat/completions in 0.483501 seconds
+2026-02-25 19:38:34,886 - openai._base_client - INFO - Retrying request to /chat/completions in 0.759852 seconds
+2026-02-25 19:38:35,723 - trading_bot.heterogeneous_router - ERROR - CIRCUIT BREAKER: openai tripped for 1.0h — Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/doc
+2026-02-25 19:38:35,723 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for trade_analyst: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 19:39:01,647 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3.1-pro-preview for trade_analyst after primary failure.
+2026-02-25 19:39:01,648 - trading_bot.router_metrics - WARNING - Fallback event: trade_analyst openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-25 19:39:02,281 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) WIN ($0.03)
+2026-02-25 19:39:02,282 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual STAYED_FLAT -> CORRECT
+2026-02-25 19:39:02,432 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-24 17:18:38.342286+00:00: NGK26 (202604) (BEARISH)
+2026-02-25 19:39:02,433 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Wed 20:18 UTC → actual Wed 16:00 UTC (weekly close policy)
+2026-02-25 19:39:02,623 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-25 19:39:03,132 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGK26 (202604)
+2026-02-25 19:39:03,133 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.92 -> Exit 2.87 (1.64% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.0480
+2026-02-25 19:39:27,108 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3.1-pro-preview for trade_analyst after primary failure.
+2026-02-25 19:39:27,109 - trading_bot.router_metrics - WARNING - Fallback event: trade_analyst openai -> gemini. Reason: openai quota exhausted (circuit breaker)
+2026-02-25 19:39:27,616 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) WIN ($0.05)
+2026-02-25 19:39:27,617 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-25 19:39:27,746 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-24 17:19:52.483416+00:00: NGM26 (202605) (BEARISH)
+2026-02-25 19:39:27,746 - trading_bot.reconciliation - INFO - Exit time adjusted for NGM26 (202605): default Wed 20:19 UTC → actual Wed 16:00 UTC (weekly close policy)
+2026-02-25 19:39:27,947 - trading_bot.reconciliation - INFO - Reconciled NGM26 (202605): Entry 3.09 -> Exit 2.89 (6.44% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.1990
+2026-02-25 19:39:43,492 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3.1-pro-preview for trade_analyst after primary failure.
+2026-02-25 19:39:43,493 - trading_bot.router_metrics - WARNING - Fallback event: trade_analyst openai -> gemini. Reason: openai quota exhausted (circuit breaker)
+2026-02-25 19:39:44,026 - trading_bot.trade_journal - INFO - Trade journal entry created: NGM26 (202605) WIN ($0.20)
+2026-02-25 19:39:44,026 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-25 19:39:44,157 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-24 17:20:39.717001+00:00: NGN26 (202606) (BEARISH)
+2026-02-25 19:39:44,157 - trading_bot.reconciliation - INFO - Exit time adjusted for NGN26 (202606): default Wed 20:20 UTC → actual Wed 16:00 UTC (weekly close policy)
+2026-02-25 19:39:44,352 - trading_bot.reconciliation - INFO - Reconciled NGN26 (202606): Entry 3.37 -> Exit 3.07 (8.90% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.3000
+2026-02-25 19:40:00,599 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3.1-pro-preview for trade_analyst after primary failure.
+2026-02-25 19:40:00,601 - trading_bot.router_metrics - WARNING - Fallback event: trade_analyst openai -> gemini. Reason: openai quota exhausted (circuit breaker)
+2026-02-25 19:40:01,103 - trading_bot.trade_journal - INFO - Trade journal entry created: NGN26 (202606) WIN ($0.30)
+2026-02-25 19:40:01,104 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-25 19:40:01,226 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-24 17:21:16.178630+00:00: NGQ26 (202607) (BEARISH)
+2026-02-25 19:40:01,226 - trading_bot.reconciliation - INFO - Exit time adjusted for NGQ26 (202607): default Wed 20:21 UTC → actual Wed 16:00 UTC (weekly close policy)
+2026-02-25 19:40:01,412 - trading_bot.reconciliation - INFO - Reconciled NGQ26 (202607): Entry 3.44 -> Exit 3.36 (2.41% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.0830
+2026-02-25 19:40:14,954 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3.1-pro-preview for trade_analyst after primary failure.
+2026-02-25 19:40:14,955 - trading_bot.router_metrics - WARNING - Fallback event: trade_analyst openai -> gemini. Reason: openai quota exhausted (circuit breaker)
+2026-02-25 19:40:15,453 - trading_bot.trade_journal - INFO - Trade journal entry created: NGQ26 (202607) WIN ($0.08)
+2026-02-25 19:40:15,453 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-25 19:40:15,580 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-24 17:22:30.187839+00:00: NGU26 (202608) (BEARISH)
+2026-02-25 19:40:15,581 - trading_bot.reconciliation - INFO - Exit time adjusted for NGU26 (202608): default Wed 20:22 UTC → actual Wed 16:00 UTC (weekly close policy)
+2026-02-25 19:40:15,763 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-25 19:40:16,229 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on NGU26 (202608)
+2026-02-25 19:40:16,238 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-25 19:40:16,675 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGU26 (202608)
+2026-02-25 19:40:16,682 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-25 19:40:17,122 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGU26 (202608)
+2026-02-25 19:40:17,123 - trading_bot.reconciliation - INFO - Reconciled NGU26 (202608): Entry 3.43 -> Exit 3.43 (0.12% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.0040
+2026-02-25 19:40:32,406 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3.1-pro-preview for trade_analyst after primary failure.
+2026-02-25 19:40:32,406 - trading_bot.router_metrics - WARNING - Fallback event: trade_analyst openai -> gemini. Reason: openai quota exhausted (circuit breaker)
+2026-02-25 19:40:32,916 - trading_bot.trade_journal - INFO - Trade journal entry created: NGU26 (202608) LOSS ($-0.00)
+2026-02-25 19:40:32,916 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-25 19:40:33,045 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-24 17:39:33.023104+00:00: NGK26 (202604) (NEUTRAL)
+2026-02-25 19:40:33,046 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Wed 20:39 UTC → actual Wed 16:00 UTC (weekly close policy)
+2026-02-25 19:40:33,211 - trading_bot.reconciliation - INFO - CONDOR WIN: 1.13% move within 1.50% threshold. P&L: 0.03
+2026-02-25 19:40:33,212 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.91 -> Exit 2.88 (1.13% move) | Strategy: IRON_CONDOR | Outcome: STAYED_FLAT | P&L: 0.0291
+2026-02-25 19:40:45,724 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3.1-pro-preview for trade_analyst after primary failure.
+2026-02-25 19:40:45,725 - trading_bot.router_metrics - WARNING - Fallback event: trade_analyst openai -> gemini. Reason: openai quota exhausted (circuit breaker)
+2026-02-25 19:40:46,217 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) WIN ($0.03)
+2026-02-25 19:40:46,218 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual STAYED_FLAT -> CORRECT
+2026-02-25 19:40:46,346 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-24 18:11:27.774026+00:00: NGK26 (202604) (NEUTRAL)
+2026-02-25 19:40:46,347 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Wed 21:11 UTC → actual Wed 16:00 UTC (weekly close policy)
+2026-02-25 19:40:46,516 - trading_bot.reconciliation - INFO - CONDOR WIN: 0.42% move within 1.50% threshold. P&L: 0.03
+2026-02-25 19:40:46,517 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.89 -> Exit 2.88 (0.42% move) | Strategy: IRON_CONDOR | Outcome: STAYED_FLAT | P&L: 0.0289
+2026-02-25 19:41:05,212 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3.1-pro-preview for trade_analyst after primary failure.
+2026-02-25 19:41:05,213 - trading_bot.router_metrics - WARNING - Fallback event: trade_analyst openai -> gemini. Reason: openai quota exhausted (circuit breaker)
+2026-02-25 19:41:05,583 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) WIN ($0.03)
+2026-02-25 19:41:05,584 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual STAYED_FLAT -> CORRECT
+2026-02-25 19:41:05,809 - trading_bot.reconciliation - INFO - Successfully updated council_history.csv with reconciliation results.
+2026-02-25 19:41:08,814 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-02-25 19:41:08,815 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-02-25 19:41:08,815 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_missing_trades.csv
+2026-02-25 19:41:08,821 - PerformanceAnalyzer - INFO - Consolidated a total of 4 trade records.
+2026-02-25 19:41:08,828 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-02-25 19:41:09,384 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $37,246.46
+2026-02-25 19:41:11,392 - PerformanceAnalyzer - INFO - Successfully fetched 4 execution(s) for today from IB.
+2026-02-25 19:41:15,082 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-02-25 19:41:15,420 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-25 19:41:15,670 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
+2026-02-25 19:41:15,672 - root - INFO - 'trade_ledger.csv' not found, no action taken.
+2026-02-25 19:41:15,678 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-25 19:41:15,679 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=59
+2026-02-25 19:41:15,679 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-02-25 19:41:15,680 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-02-25 19:41:15,685 - Engine.NG - INFO - Next task 'brier_reconciliation' (Brier Reconciliation) scheduled for 2026-02-25 19:50:00 UTC. Waiting for 0.15 hours.
+2026-02-25 19:50:00,007 - Engine.NG - INFO - --- Running scheduled task: brier_reconciliation [run_brier_reconciliation] ---
+2026-02-25 19:50:00,022 - trading_bot.brier_reconciliation - INFO - Found 63 pending predictions
+2026-02-25 19:50:00,023 - trading_bot.brier_reconciliation - INFO - Total council decisions: 12
+2026-02-25 19:50:00,025 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 8/12
+2026-02-25 19:50:00,065 - trading_bot.brier_reconciliation - INFO - ==================================================
+2026-02-25 19:50:00,066 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
+2026-02-25 19:50:00,066 - trading_bot.brier_reconciliation - INFO -   Total predictions:            63
+2026-02-25 19:50:00,066 - trading_bot.brier_reconciliation - INFO -   Resolved:                     61 (+61 new)
+2026-02-25 19:50:00,066 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      2 (potential: 2)
+2026-02-25 19:50:00,066 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        0 (+0 new)
+2026-02-25 19:50:00,066 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     97% (excl. orphans)
+2026-02-25 19:50:00,066 - trading_bot.brier_reconciliation - INFO - ==================================================
+2026-02-25 19:50:00,067 - trading_bot.brier_reconciliation - INFO - Match gap stats (minutes): min=0.0, max=0.0, mean=0.0, median=0.0
+2026-02-25 19:50:00,067 - trading_bot.brier_reconciliation - INFO - Running reconciliation could unlock up to 2 more predictions
+2026-02-25 19:50:00,069 - trading_bot.brier_reconciliation - INFO - Saved updated /home/rodrigo/real_options/data/NG/agent_accuracy_structured.csv
+2026-02-25 19:50:00,077 - trading_bot.brier_reconciliation - INFO - Appended 61 rows to /home/rodrigo/real_options/data/NG/agent_accuracy.csv
+2026-02-25 19:50:00,077 - Orchestrator - INFO - Brier reconciliation complete: 61 predictions resolved
+2026-02-25 19:50:00,078 - trading_bot.enhanced_brier - INFO - Loaded 88 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
+2026-02-25 19:50:00,084 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-181e5125): BEARISH vs BEARISH, Brier=0.0200
+2026-02-25 19:50:00,084 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-181e5125): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,084 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-181e5125): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,084 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-181e5125): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,084 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-181e5125): BULLISH vs BEARISH, Brier=0.3179
+2026-02-25 19:50:00,084 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-181e5125): BEARISH vs BEARISH, Brier=0.0612
+2026-02-25 19:50:00,084 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-181e5125): BEARISH vs BEARISH, Brier=0.0612
+2026-02-25 19:50:00,085 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-181e5125): BEARISH vs BEARISH, Brier=0.1012
+2026-02-25 19:50:00,085 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-181e5125): BEARISH vs BEARISH, Brier=0.0200
+2026-02-25 19:50:00,085 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-dbff33ba): BEARISH vs BEARISH, Brier=0.0612
+2026-02-25 19:50:00,085 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-dbff33ba): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,085 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-dbff33ba): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,085 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-dbff33ba): BULLISH vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,085 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-dbff33ba): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-25 19:50:00,085 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-dbff33ba): BEARISH vs BEARISH, Brier=0.0612
+2026-02-25 19:50:00,085 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-dbff33ba): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,086 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-dbff33ba): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,086 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-dbff33ba): BEARISH vs BEARISH, Brier=0.0200
+2026-02-25 19:50:00,086 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-f8679432): BEARISH vs BEARISH, Brier=0.0200
+2026-02-25 19:50:00,086 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-f8679432): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,086 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-f8679432): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,086 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-f8679432): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-25 19:50:00,086 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-f8679432): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-25 19:50:00,086 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-f8679432): BEARISH vs BEARISH, Brier=0.0612
+2026-02-25 19:50:00,086 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-f8679432): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,087 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-f8679432): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-25 19:50:00,087 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-f8679432): BEARISH vs BEARISH, Brier=0.0200
+2026-02-25 19:50:00,087 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-947ce809): BEARISH vs BEARISH, Brier=0.0200
+2026-02-25 19:50:00,087 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-947ce809): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,087 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-947ce809): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,087 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-947ce809): BULLISH vs BEARISH, Brier=0.4867
+2026-02-25 19:50:00,087 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-947ce809): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-25 19:50:00,087 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-947ce809): BEARISH vs BEARISH, Brier=0.0612
+2026-02-25 19:50:00,087 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-947ce809): BEARISH vs BEARISH, Brier=0.0612
+2026-02-25 19:50:00,088 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-947ce809): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,088 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-947ce809): BEARISH vs BEARISH, Brier=0.0200
+2026-02-25 19:50:00,088 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-862b3924): BEARISH vs BULLISH, Brier=0.4867
+2026-02-25 19:50:00,088 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-862b3924): BEARISH vs BULLISH, Brier=0.3779
+2026-02-25 19:50:00,088 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-862b3924): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-25 19:50:00,088 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-862b3924): NEUTRAL vs BULLISH, Brier=0.4867
+2026-02-25 19:50:00,088 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-862b3924): NEUTRAL vs BULLISH, Brier=0.3179
+2026-02-25 19:50:00,088 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-862b3924): BEARISH vs BULLISH, Brier=0.4867
+2026-02-25 19:50:00,088 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-862b3924): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-25 19:50:00,089 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-862b3924): NEUTRAL vs BULLISH, Brier=0.4867
+2026-02-25 19:50:00,089 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-862b3924): BEARISH vs BULLISH, Brier=0.4867
+2026-02-25 19:50:00,089 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-6773ab08): BEARISH vs BEARISH, Brier=0.1012
+2026-02-25 19:50:00,089 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-6773ab08): BEARISH vs BEARISH, Brier=0.0200
+2026-02-25 19:50:00,089 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-6773ab08): BEARISH vs BEARISH, Brier=0.0612
+2026-02-25 19:50:00,089 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-6773ab08): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,089 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-6773ab08): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-25 19:50:00,089 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-6773ab08): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-25 19:50:00,090 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-6773ab08): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,090 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-6773ab08): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-25 19:50:00,090 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-5cc51eef): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,090 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-5cc51eef): BEARISH vs BEARISH, Brier=0.0200
+2026-02-25 19:50:00,090 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-5cc51eef): BEARISH vs BEARISH, Brier=0.0612
+2026-02-25 19:50:00,090 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-5cc51eef): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,090 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-5cc51eef): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-25 19:50:00,090 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-5cc51eef): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-25 19:50:00,090 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-5cc51eef): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-25 19:50:00,091 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-5cc51eef): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-25 19:50:00,105 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 61 resolved from CSV, 0 created from CSV, 0 resolved from council_history
+2026-02-25 19:50:00,122 - Orchestrator - INFO - Brier reconciliation: 61 predictions resolved today
+2026-02-25 19:50:00,123 - Orchestrator - INFO - Running feedback loop health check...
+2026-02-25 19:50:00,129 - Orchestrator - INFO - Feedback Loop Health: 2/63 PENDING (0 orphans excluded, resolution rate: 97%)
+2026-02-25 19:50:00,130 - Orchestrator - INFO - Enhanced Brier Health: 9 agents tracked, 61 total resolved predictions
+2026-02-25 19:50:00,130 - Orchestrator - INFO - Feedback loop health check complete.
+2026-02-25 19:50:00,136 - Engine.NG - INFO - Next task 'sentinel_effectiveness' (Sentinel Effectiveness Check) scheduled for 2026-02-25 19:53:00 UTC. Waiting for 0.05 hours.
+2026-02-25 19:53:00,016 - Engine.NG - INFO - --- Running scheduled task: sentinel_effectiveness [sentinel_effectiveness_check] ---
+2026-02-25 19:53:00,020 - Orchestrator - INFO - --- Sentinel Effectiveness Check ---
+2026-02-25 19:53:00,188 - Orchestrator - INFO - Sentinel effectiveness OK: weekly change -5.5%, alerts: 12, sentinel trades: 2
+2026-02-25 19:53:00,195 - Engine.NG - INFO - Next task 'eod_shutdown' (End-of-Day Shutdown) scheduled for 2026-02-25 19:56:00 UTC. Waiting for 0.05 hours.
+2026-02-25 19:56:00,018 - Engine.NG - INFO - --- Running scheduled task: eod_shutdown [cancel_and_stop_monitoring] ---
+2026-02-25 19:56:00,021 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
+2026-02-25 19:56:00,021 - Orchestrator - INFO - System shutdown flag SET — no new trades or emergency cycles will be processed
+2026-02-25 19:56:00,021 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
+2026-02-25 19:56:00,023 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1239 [REMOTE/PAPER]...
+2026-02-25 19:56:00,385 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1239
+2026-02-25 19:56:00,391 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-25 19:56:00,392 - OrderManager - INFO - Connected to IB for canceling open orders (purpose: orchestrator_orders).
+2026-02-25 19:56:00,494 - OrderManager - INFO - No open orders found to cancel.
+2026-02-25 19:56:00,495 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-02-25 19:56:03,499 - Orchestrator - WARNING - Monitoring process is not running or has already terminated.
+2026-02-25 19:56:03,736 - Orchestrator - INFO - Connection pool released — no stale connections for Gateway restart
+2026-02-25 19:56:03,736 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
+2026-02-25 19:56:03,741 - Engine.NG - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-26 13:15:00 UTC. Waiting for 17.32 hours.
