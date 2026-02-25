@@ -2199,6 +2199,7 @@ class MacroContagionSentinel(Sentinel):
         self.sentinel_config = config.get('sentinels', {}).get('MacroContagionSentinel', {})
         self.dxy_threshold_1d = 0.01  # 1% daily move
         self.dxy_threshold_2d = 0.02  # 2% two-day move
+        self.min_correlation_obs = self.sentinel_config.get('min_correlation_observations', 5)
         self.last_dxy_value = None
         self.last_dxy_timestamp = None
         self.policy_check_interval = 86400  # Check policy news once per day
@@ -2314,7 +2315,7 @@ class MacroContagionSentinel(Sentinel):
 
             returns = {}
             for name, ticker in tickers.items():
-                hist = await self._get_history(ticker, period="5d", interval="1d")
+                hist = await self._get_history(ticker, period="10d", interval="1d")
                 if len(hist) < 2:
                     logger.debug(f"Insufficient data for {name} ({ticker}), skipping from contagion check")
                     continue
@@ -2326,6 +2327,17 @@ class MacroContagionSentinel(Sentinel):
 
             import pandas as pd
             df = pd.DataFrame(returns)
+
+            # Guard: correlation from <N observations is statistically degenerate
+            # (2 points always give +/-1.0, 3-4 are extremely noisy)
+            n_obs = len(df.dropna())
+            if n_obs < self.min_correlation_obs:
+                _sentinel_diag.info(
+                    f"MacroContagionSentinel: contagion check skipped for {profile.name}: "
+                    f"only {n_obs} return observations (min {self.min_correlation_obs} required)"
+                )
+                return None
+
             corr = df.corr()
 
             # Dynamically compute correlations against the active commodity
