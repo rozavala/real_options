@@ -16,7 +16,6 @@ import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
-import yfinance as yf
 from datetime import datetime, timedelta, time
 import sys
 import os
@@ -28,6 +27,7 @@ import re
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import load_council_history, grade_decision_quality
 from trading_bot.timestamps import parse_ts_column
+from trading_bot.data_providers import get_data_source_label
 from config import get_active_profile
 from dashboard_utils import get_config
 
@@ -473,22 +473,52 @@ with st.sidebar:
 # === DATA FUNCTIONS ===
 
 @st.cache_data(ttl=300)
-def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
+def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m",
+                                  commodity_ticker=None, exchange=None,
+                                  contract=None, lookback_days=3):
     """
-    Fetches historical OHLC data from yfinance, converted to NY Time.
+    Fetches historical OHLC data, converted to NY Time.
+
+    Primary path: Databento (when commodity_ticker/exchange provided and API key set)
+    Fallback: yfinance
 
     Args:
-        ticker: yfinance ticker (e.g., 'KC=F' or 'KCH26.NYB')
-        period: lookback period
-        interval: candle interval
+        ticker: yfinance ticker (e.g., 'KC=F' or 'KCH26.NYB') — used for yfinance fallback
+        period: lookback period (yfinance format, e.g., '1mo')
+        interval: candle interval (e.g., '5m', '1h', '1d')
+        commodity_ticker: e.g., 'KC', 'NG' — enables Databento path
+        exchange: e.g., 'ICE', 'NYMEX' — enables Databento path
+        contract: e.g., 'FRONT_MONTH', 'KCH26' — passed to Databento
+        lookback_days: number of days to fetch — used by Databento
 
     Returns:
-        DataFrame with OHLC data, or None if fetch failed
+        DataFrame with OHLC data in NY timezone, or None if fetch failed
     """
     import logging
 
+    # Path 1: Databento (when commodity info provided)
+    if commodity_ticker and exchange:
+        try:
+            from trading_bot.data_providers import get_price_data
+            df = get_price_data(
+                commodity_ticker, exchange,
+                contract or 'FRONT_MONTH',
+                interval, lookback_days,
+            )
+            if df is not None and not df.empty:
+                return df
+            logging.getLogger(__name__).warning(
+                f"Databento returned empty for {commodity_ticker}/{contract}, trying yfinance"
+            )
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                f"Databento path failed: {e}, trying yfinance"
+            )
+
+    # Path 2: yfinance (legacy fallback)
     try:
-        # Suppress yfinance error logging temporarily
+        import yfinance as yf
+
         yf_logger = logging.getLogger('yfinance')
         original_level = yf_logger.level
         yf_logger.setLevel(logging.CRITICAL)
@@ -496,7 +526,6 @@ def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
         try:
             df = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=True)
         finally:
-            # Restore original logging level
             yf_logger.setLevel(original_level)
 
         if df.empty:
@@ -747,50 +776,29 @@ with st.spinner(f"Loading {get_contract_display_name(selected_contract)} data...
     elif lookback_days <= 59: yf_period = "2mo"
     else: yf_period = "2y"
 
-    # Fetch price data for selected contract
-    price_df = fetch_price_history_extended(ticker=yf_ticker, period=yf_period, interval=timeframe)
+    # Fetch price data for selected contract (Databento primary, yfinance fallback)
+    price_df = fetch_price_history_extended(
+        ticker=yf_ticker, period=yf_period, interval=timeframe,
+        commodity_ticker=profile.contract.symbol, exchange=profile.contract.exchange,
+        contract=selected_contract, lookback_days=lookback_days,
+    )
 
     # Fallback: If specific contract has no data, try continuous front month
     if price_df is None or price_df.empty:
         continuous_ticker = f'{profile.contract.symbol}=F'
         if yf_ticker != continuous_ticker:
             # Resolved FRONT_MONTH or specific contract had no data — try continuous contract
-            st.warning(f"⚠️ No price data for `{yf_ticker}`. Falling back to `{continuous_ticker}`.")
-            price_df = fetch_price_history_extended(ticker=continuous_ticker, period=yf_period, interval=timeframe)
+            st.warning(f"⚠️ No price data for `{yf_ticker}`. Falling back to continuous contract.")
+            price_df = fetch_price_history_extended(
+                ticker=continuous_ticker, period=yf_period, interval=timeframe,
+                commodity_ticker=profile.contract.symbol, exchange=profile.contract.exchange,
+                contract='FRONT_MONTH', lookback_days=lookback_days,
+            )
             actual_ticker_display = "Front Month (Fallback)"
         else:
             actual_ticker_display = None
     else:
         actual_ticker_display = get_contract_display_name(selected_contract)
-
-    # Backfill intraday gaps with daily candles so signals on missing dates still appear.
-    # yfinance sometimes has 1d data for dates where 5m data is unavailable.
-    if price_df is not None and not price_df.empty and timeframe in ('5m', '15m', '30m', '1h'):
-        daily_df = fetch_price_history_extended(ticker=yf_ticker, period=yf_period, interval='1d')
-        if daily_df is not None and not daily_df.empty:
-            intraday_dates = set(price_df.index.date)
-            daily_dates = set(daily_df.index.date)
-            missing = daily_dates - intraday_dates
-            if missing:
-                # Insert daily candles at market open time for each missing date
-                try:
-                    from config.commodity_profiles import parse_trading_hours
-                    _open_time, _ = parse_trading_hours(profile.contract.trading_hours_et)
-                except Exception:
-                    _open_time = time(4, 0)
-                ny_tz = pytz.timezone('America/New_York')
-                fill_rows = []
-                for row_ts, row_data in daily_df.iterrows():
-                    if row_ts.date() in missing:
-                        # Place the daily candle at market open time
-                        open_dt = ny_tz.localize(datetime.combine(row_ts.date(), _open_time))
-                        fill_row = row_data.copy()
-                        fill_row.name = open_dt
-                        fill_rows.append(fill_row)
-                if fill_rows:
-                    fill_df = pd.DataFrame(fill_rows)
-                    price_df = pd.concat([price_df, fill_df]).sort_index()
-                    price_df = price_df[~price_df.index.duplicated(keep='first')]
 
     council_df = load_council_history(ticker=ticker)
 
@@ -984,6 +992,8 @@ if price_df is not None and not price_df.empty:
             st.metric("Low", f"${low:{_price_fmt}}")
         with summary_cols[3]:
             st.metric("Range", f"${high - low:{_price_fmt}}")
+
+    st.caption(f"Data source: {get_data_source_label()}")
 
     # === DRAW CHARTS ===
     # CRITICAL: Plotly go.Candlestick fails to render in make_subplots when

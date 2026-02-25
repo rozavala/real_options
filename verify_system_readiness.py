@@ -434,6 +434,47 @@ async def check_compliance_volume(config: dict) -> CheckResult:
         return CheckResult("Compliance Volume (Expiry Trap)", CheckStatus.FAIL, "Compliance test failed", str(e))
 
 # ============================================================================
+# CHECK 5b: DATABENTO CONNECTIVITY
+# ============================================================================
+
+@timed_check
+async def check_databento() -> CheckResult:
+    """
+    Test Databento API connectivity.
+
+    Returns WARN (not FAIL) if key is missing or package not installed,
+    since Databento is a premium data source with yfinance fallback.
+    """
+    try:
+        import databento as db
+    except ImportError:
+        return CheckResult(
+            "Databento", CheckStatus.WARN,
+            "Package not installed (pip install databento)"
+        )
+
+    key = os.environ.get('DATABENTO_API_KEY', '')
+    if not key:
+        return CheckResult(
+            "Databento", CheckStatus.WARN,
+            "DATABENTO_API_KEY not set (yfinance fallback active)"
+        )
+
+    try:
+        client = db.Historical(key=key)
+        info = client.metadata.get_dataset_range(dataset="IFUS.IMPACT")
+        start = getattr(info, 'start', None) or str(info)[:10]
+        return CheckResult(
+            "Databento", CheckStatus.PASS,
+            f"Connected | IFUS.IMPACT available (from {start})"
+        )
+    except Exception as e:
+        return CheckResult(
+            "Databento", CheckStatus.WARN,
+            f"API error (yfinance fallback active): {e}"
+        )
+
+# ============================================================================
 # CHECK 6: YFINANCE FALLBACK
 # ============================================================================
 
@@ -873,6 +914,7 @@ async def run_diagnostics(
             report.checks.append(CheckResult("IBKR", CheckStatus.SKIP, "Skipped by user"))
 
         # 4. FALLBACKS
+        report.checks.append(await check_databento())
         report.checks.append(await check_yfinance())
 
         # 5. SENTINELS
