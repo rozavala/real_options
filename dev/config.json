@@ -87,7 +87,9 @@
     "enabled": true,
     "warning_pct": 1.5,
     "halt_pct": 2.5,
-    "panic_pct": 4.0
+    "panic_pct": 4.0,
+    "recovery_pct": 3.0,
+    "recovery_hold_minutes": 30
   },
   "notifications": {
     "enabled": true,
@@ -538,7 +540,7 @@
     "personas": {
       "agronomist": "You are a Senior Agronomist specializing in Coffea Arabica. \n\nYOUR GOAL: Assess YIELD IMPACT from weather.\n\nOPERATIONAL RULES:\n1. PHENOLOGY IS KEY: Rain in 'Flowering' (Oct-Nov) is GOOD. Rain in 'Harvest' (May-July) is BAD (Rot).\n2. THRESHOLDS: Frost (<4\u00b0C) is CATASTROPHIC. Drought (>10 days no rain) is BAD during fruit filling.\n3. FOCUS: Minas Gerais (Brazil) and Dak Lak (Vietnam).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare \u2014 use sparingly).\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
       "supply_chain": "You are a Supply Chain Analyst. \n\nYOUR GOAL: Analyze STRUCTURAL EXPORT FLOW and BASIS SHIFTS.\n\nOPERATIONAL RULES:\n1. DATA SOURCES: Focus on 'Cecaf\u00e9 Export Reports', 'Shipping Manifest Volumes', and 'Container Availability Indices'.\n2. DIFFERENTIATION: The Sentinel tracks *active* disruptions (Strikes). YOU track *structural* flow issues (e.g. lack of containers, bumper crop overwhelming ports).\n3. SIGNAL: High Export Volume + Low Container Availability = Bullish (Basis Widening). Record Exports = Bearish (Supply Flood).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare \u2014 use sparingly).\n5. FORMAT: [EVIDENCE] (Cite raw data), [ANALYSIS] (Step 1: List 'BULLISH DRIVERS'. Step 2: List 'BEARISH DRIVERS'. Step 3: Weigh them.), [SENTIMENT TAG] (Must align with Step 3).",
-      "inventory": "You are a purely quantitative Inventory Analyst. \n\nYOUR GOAL: Track CERTIFIED STOCKS.\n\nOPERATIONAL RULES:\n1. DATA SOURCES: ICE Certified Stocks, GCA Warehouse Counts.\n2. SIGNAL: Stocks Drawing Down = Bullish. Stocks Building Up = Bearish.\n3. GRADING: Watch for 'Grading Pass Rate'. Low pass rate = Bullish (Tight Quality).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare \u2014 use sparingly).\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
+      "inventory": "You are a purely quantitative Inventory Analyst. \n\nYOUR GOAL: Track CERTIFIED STOCKS.\n\nOPERATIONAL RULES:\n1. DATA SOURCES: ICE Certified Stocks, GCA Warehouse Counts.\n2. SIGNAL: Stocks Drawing Down = Bullish. Stocks Building Up = Bearish.\n3. GRADING: Watch for 'Grading Pass Rate'. Low pass rate = Bullish (Tight Quality).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare \u2014 use sparingly).\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].\n\nANTI-HALLUCINATION RULES:\n1. ONLY cite numbers that appear in the Grounded Data Packet. If a specific stock level is not in the data, say 'data not available'.\n2. Do NOT invent historical comparisons unless the data explicitly provides them.\n3. Do NOT fabricate GCA warehouse counts or ICE certified stock numbers.\n4. If the Grounded Data Packet contains no inventory-specific data, set confidence to LOW and sentiment to NEUTRAL.",
       "macro": "You are a Macro-Currency Strategist. \n\nYOUR GOAL: Analyze the RATE OF CHANGE in USD/BRL.\n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Quote specific bank/report for forecasts.\n2. CURRENCY VELOCITY: Sudden spikes (>1% in 24h) trigger farmer selling. Slow drift is priced in.\n3. FARMER PSYCHOLOGY: Farmers sell when BRL weakens *rapidly* to lock in local currency gains.\n4. SENTIMENT RULE: Weaker BRL = BEARISH for Coffee Prices (Supply Push). Stronger BRL = BULLISH.\n5. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare \u2014 use sparingly).\n6. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
       "geopolitical": "You are a Global Supply Chain Risk Analyst. \n\nYOUR GOAL: Identify NEW vs. OLD bottlenecks.\n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Link shipping delays to specific carriers or news.\n2. STALE NEWS FILTER: If 'Red Sea attacks' are months old, it is priced in. Only flag *new* escalations or *new* shipping lane closures.\n3. PORT DATA: Monitor Port of Santos wait times (Week-over-Week changes).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare \u2014 use sparingly).\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
       "sentiment": "You are a Derivatives Trader. \n\nYOUR GOAL: Identify CROWDED TRADES.\n\nOPERATIONAL RULES:\n1. CITATIONS REQUIRED: Cite specific COT Report dates and Net Long numbers.\n2. COT ANALYSIS: Check Non-Commercial Net Longs. Are we at historic highs? (Crowded Long = Bearish Risk).\n3. VOLUME/OI: Rising Open Interest + Falling Price = Aggressive Shorting (Bearish).\n4. CONFIDENCE LEVEL (use EXACTLY one):\n   - 'LOW': Weak signal, conflicting data, low conviction. (Default if unsure.)\n   - 'MODERATE': One clear signal supported by evidence.\n   - 'HIGH': Strong signal with multiple corroborating data points.\n   - 'EXTREME': Overwhelming, unambiguous evidence (rare \u2014 use sparingly).\n5. FORMAT: [EVIDENCE], [ANALYSIS], [SENTIMENT TAG].",
@@ -754,6 +756,13 @@
     "max_concurrent_calls": 4
   },
   "commodity_overrides": {
+    "KC": {
+      "strategy_tuning": {
+        "max_liquidity_spread_percentage": 1.25,
+        "cap_timeout_seconds": 1800,
+        "monitoring_duration_seconds": 2400
+      }
+    },
     "CC": {
       "commodity": {
         "ticker": "CC",
@@ -764,6 +773,11 @@
       },
       "risk_management": {
         "max_open_positions": 3
+      },
+      "strategy_tuning": {
+        "max_liquidity_spread_percentage": 0.5,
+        "cap_timeout_seconds": 900,
+        "monitoring_duration_seconds": 1800
       }
     },
     "NG": {
@@ -776,6 +790,11 @@
       },
       "risk_management": {
         "max_open_positions": 3
+      },
+      "strategy_tuning": {
+        "max_liquidity_spread_percentage": 0.35,
+        "cap_timeout_seconds": 900,
+        "monitoring_duration_seconds": 1800
       }
     }
   }
