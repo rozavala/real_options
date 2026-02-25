@@ -56,6 +56,43 @@ def _get_commodity_meta(ticker: str) -> dict:
     except Exception:
         return {"name": ticker, "emoji": "\U0001f4ca"}
 
+def _relative_time(ts) -> str:
+    """Format a timestamp as a human-readable relative time string."""
+    try:
+        if isinstance(ts, str):
+            ts = pd.Timestamp(ts)
+
+        # Standardize to UTC-aware datetime
+        if ts.tzinfo is None:
+            # Assume UTC if naive (matching original logic)
+            if hasattr(ts, 'tz_localize'):
+                ts = ts.tz_localize('UTC')
+            else:
+                # Fallback for standard datetime
+                ts = ts.replace(tzinfo=timezone.utc)
+        else:
+            # Convert to UTC if aware
+            if hasattr(ts, 'tz_convert'):
+                ts = ts.tz_convert('UTC')
+            else:
+                ts = ts.astimezone(timezone.utc)
+
+        now = datetime.now(timezone.utc)
+        delta = now - ts
+        seconds = delta.total_seconds()
+        if seconds < 60:
+            return "just now"
+        elif seconds < 3600:
+            return f"{int(seconds // 60)}m ago"
+        elif seconds < 86400:
+            return f"{int(seconds // 3600)}h ago"
+        elif seconds < 172800:
+            return "yesterday"
+        else:
+            return f"{int(seconds // 86400)}d ago"
+    except Exception:
+        return "N/A"
+
 st.title("\U0001f4ca Real Options Portfolio")
 
 # =====================================================================
@@ -73,12 +110,15 @@ for idx, ticker in enumerate(active_commodities):
 
     with health_cols[idx]:
         if status == "ONLINE":
+            pulse_ts = hb.get('orchestrator_last_pulse')
+            pulse_str = _relative_time(pulse_ts)
+
             st.metric(
                 f"{meta['emoji']} {meta['name']} ({ticker})",
                 "Online",
-                delta="Healthy",
+                delta=f"Pulse: {pulse_str}",
                 delta_color="normal",
-                help=f"The orchestrator for {meta['name']} is running and recently updated its heartbeat."
+                help=f"The orchestrator for {meta['name']} is running.\nLast pulse: {pulse_ts}"
             )
         elif status == "STALE":
             st.metric(
@@ -481,24 +521,6 @@ try:
 
         display_cols = []
         if "timestamp" in graded_merged.columns:
-            now = datetime.now(timezone.utc)
-
-            def _relative_time(ts):
-                try:
-                    if hasattr(ts, "tzinfo") and ts.tzinfo is None:
-                        import pytz
-                        ts = pytz.utc.localize(ts)
-                    delta = now - ts
-                    hours = delta.total_seconds() / 3600
-                    if hours < 1:
-                        return f"{int(delta.total_seconds() / 60)}m ago"
-                    elif hours < 24:
-                        return f"{int(hours)}h ago"
-                    else:
-                        return f"{int(hours / 24)}d ago"
-                except Exception:
-                    return "?"
-
             graded_merged["Time"] = graded_merged["timestamp"].apply(_relative_time)
             display_cols.append("Time")
 
