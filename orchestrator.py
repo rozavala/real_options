@@ -1143,8 +1143,13 @@ async def cleanup_orphaned_theses(config: dict):
 
         return cleaned
 
+    except (ConnectionError, OSError, asyncio.TimeoutError) as e:
+        # IB Gateway unavailable — expected in DEV without a running gateway.
+        # Log at WARNING so it doesn't pollute the error report.
+        logger.warning(f"Thesis cleanup skipped: IB unavailable ({type(e).__name__}: {e})")
+        return 0
     except Exception as e:
-        logger.error(f"Thesis cleanup failed: {e}")
+        logger.error(f"Thesis cleanup failed: {e}", exc_info=True)
         return 0
     finally:
         if ib is not None:
