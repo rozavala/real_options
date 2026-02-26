@@ -45,6 +45,39 @@ from dashboard_utils import (
 
 config = get_config()
 
+def _relative_time(ts) -> str:
+    """Format a timestamp as a human-readable relative time string."""
+    try:
+        if ts is None:
+            return "Never"
+        if isinstance(ts, str):
+            ts = pd.Timestamp(ts)
+
+        # Standardize to UTC-aware datetime
+        if not hasattr(ts, 'tzinfo') or ts.tzinfo is None:
+            import pytz
+            ts = pytz.utc.localize(ts)
+        elif hasattr(ts, 'tz_convert'):
+            ts = ts.tz_convert('UTC')
+
+        now = datetime.now(timezone.utc)
+        delta = now - ts
+        seconds = delta.total_seconds()
+        if seconds < 0:
+            return "just now"
+        if seconds < 60:
+            return f"{int(seconds)}s ago"
+        elif seconds < 3600:
+            return f"{int(seconds // 60)}m ago"
+        elif seconds < 86400:
+            return f"{int(seconds // 3600)}h ago"
+        elif seconds < 172800:
+            return "yesterday"
+        else:
+            return f"{int(seconds // 86400)}d ago"
+    except Exception:
+        return "N/A"
+
 def _get_commodity_meta(ticker: str) -> dict:
     """Build display metadata from CommodityProfile — no hardcoded dict."""
     from _commodity_selector import _TICKER_EMOJI, _TYPE_EMOJI
@@ -70,32 +103,26 @@ for idx, ticker in enumerate(active_commodities):
     meta = _get_commodity_meta(ticker)
     hb = get_system_heartbeat_for_commodity(ticker)
     status = hb["orchestrator_status"]
+    last_pulse = hb.get("orchestrator_last_pulse")
+
+    # Format status with semantic icon and relative pulse time
+    status_icon = "🟢" if status == "ONLINE" else "🟡" if status == "STALE" else "🔴"
+    pulse_delta = f"Pulse: {_relative_time(last_pulse)}" if last_pulse else "No pulse"
 
     with health_cols[idx]:
-        if status == "ONLINE":
-            st.metric(
-                f"{meta['emoji']} {meta['name']} ({ticker})",
-                "Online",
-                delta="Healthy",
-                delta_color="normal",
-                help=f"The orchestrator for {meta['name']} is running and recently updated its heartbeat."
+        st.metric(
+            f"{meta['emoji']} {meta['name']} ({ticker})",
+            f"{status_icon} {status.title()}",
+            delta=pulse_delta,
+            delta_color="off",
+            help=(
+                f"Status of the {meta['name']} orchestrator engine.\n\n"
+                f"**Last Pulse:** {last_pulse if last_pulse else 'Never'}\n"
+                "**Green:** Log updated within 10 minutes\n"
+                "**Yellow:** Log stale (check logs)\n"
+                "**Red:** Engine process not found"
             )
-        elif status == "STALE":
-            st.metric(
-                f"{meta['emoji']} {meta['name']} ({ticker})",
-                "Stale",
-                delta="Check logs",
-                delta_color="off",
-                help=f"The orchestrator for {meta['name']} has not updated its heartbeat recently. Check logs for issues."
-            )
-        else:
-            st.metric(
-                f"{meta['emoji']} {meta['name']} ({ticker})",
-                "Offline",
-                delta="Down",
-                delta_color="inverse",
-                help=f"The orchestrator for {meta['name']} is not running."
-            )
+        )
 
 # =====================================================================
 # SECTION 2: Financial Summary — NLV, Daily P&L, Portfolio VaR
@@ -481,24 +508,6 @@ try:
 
         display_cols = []
         if "timestamp" in graded_merged.columns:
-            now = datetime.now(timezone.utc)
-
-            def _relative_time(ts):
-                try:
-                    if hasattr(ts, "tzinfo") and ts.tzinfo is None:
-                        import pytz
-                        ts = pytz.utc.localize(ts)
-                    delta = now - ts
-                    hours = delta.total_seconds() / 3600
-                    if hours < 1:
-                        return f"{int(delta.total_seconds() / 60)}m ago"
-                    elif hours < 24:
-                        return f"{int(hours)}h ago"
-                    else:
-                        return f"{int(hours / 24)}d ago"
-                except Exception:
-                    return "?"
-
             graded_merged["Time"] = graded_merged["timestamp"].apply(_relative_time)
             display_cols.append("Time")
 
