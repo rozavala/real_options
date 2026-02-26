@@ -298,6 +298,58 @@ class TestRoundToTickDynamic:
         result = round_to_tick(17.98, action='BUY')
         assert result == 17.95
 
+    def test_round_to_tick_floating_point_precision_buy(self):
+        """Regression: floor(2.30/0.05) was 45 not 46 due to floating-point.
+
+        This caused KC adaptive walks to get stuck at 2.25 when ceiling was 2.70.
+        The walk would compute proposed_price=2.30, but round_to_tick returned 2.25,
+        making the walk think it had reached the cap.
+        """
+        # These specific prices hit the floor(x/0.05) < x/0.05 floating-point edge
+        assert round_to_tick(2.30, 0.05, 'BUY') == 2.30
+        assert round_to_tick(2.40, 0.05, 'BUY') == 2.40
+        assert round_to_tick(2.55, 0.05, 'BUY') == 2.55
+        assert round_to_tick(2.65, 0.05, 'BUY') == 2.65
+
+    def test_round_to_tick_floating_point_precision_sell(self):
+        """Regression: ceil(x/0.05) floating-point edge for SELL direction."""
+        assert round_to_tick(2.30, 0.05, 'SELL') == 2.30
+        assert round_to_tick(2.40, 0.05, 'SELL') == 2.40
+        assert round_to_tick(2.55, 0.05, 'SELL') == 2.55
+        assert round_to_tick(2.65, 0.05, 'SELL') == 2.65
+
+    def test_round_to_tick_walk_simulation_reaches_ceiling(self):
+        """Regression: Simulates a full KC adaptive walk to verify it reaches ceiling.
+
+        Before the fix, the walk got stuck at 2.25 (step 11 of ~20) because
+        round_to_tick(2.30, 0.05, 'BUY') returned 2.25 due to floating-point.
+        """
+        import math
+        current = 1.70
+        ceiling = 2.70
+        TICK_SIZE = 0.05
+        adaptive_pct = 0.04
+        target_steps = 10
+        PRICE_TOLERANCE = TICK_SIZE * 0.1
+
+        steps = 0
+        while current < ceiling and steps < 50:
+            remaining_gap = abs(ceiling - current)
+            gap_step = remaining_gap / max(target_steps, 1)
+            pct_step = abs(current) * adaptive_pct
+            step = max(min(gap_step, pct_step), TICK_SIZE)
+            proposed = current + step
+            new_price = round_to_tick(proposed, TICK_SIZE, 'BUY')
+            new_price = min(new_price, ceiling)
+
+            if abs(new_price - current) > PRICE_TOLERANCE:
+                steps += 1
+                current = new_price
+            else:
+                break
+
+        assert current >= ceiling, f"Walk stuck at {current:.2f}, ceiling was {ceiling:.2f}"
+
 
 class TestLedgerDivisor:
     """Tests for commodity-aware price divisor in log_trade_to_ledger."""
