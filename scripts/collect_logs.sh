@@ -20,11 +20,14 @@ TICKER="${COMMODITY_TICKER:-KC}"
 TICKER_LOWER=$(echo "$TICKER" | tr '[:upper:]' '[:lower:]')
 DATA_DIR="$REPO_DIR/data/$TICKER"
 
-# All commodity tickers to collect (KC always, CC if data dir exists)
-ALL_TICKERS=("KC")
-if [ -d "$REPO_DIR/data/CC" ]; then
-    ALL_TICKERS+=("CC")
-fi
+# All commodity tickers to collect — auto-discovered from data/ directories
+ALL_TICKERS=()
+for _dir in "$REPO_DIR"/data/*/; do
+    [ -d "$_dir" ] || continue
+    _tk=$(basename "$_dir")
+    [[ "$_tk" =~ ^[A-Z]{2,4}$ ]] && ALL_TICKERS+=("$_tk")
+done
+[ ${#ALL_TICKERS[@]} -eq 0 ] && ALL_TICKERS=("KC")
 WORKTREE_DIR="/tmp/coffee-bot-logs-worktree"
 
 echo "Coffee Bot Log Collection"
