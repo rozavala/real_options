@@ -2348,7 +2348,7 @@ async def reconcile_and_notify(config: dict):
     """Runs the trade reconciliation and sends a notification if discrepancies are found."""
     logger.info("--- Starting trade reconciliation ---")
     try:
-        missing_df, superfluous_df = await run_reconciliation()
+        missing_df, superfluous_df = await run_reconciliation(config=config)
 
         if not missing_df.empty or not superfluous_df.empty:
             logger.warning("Trade reconciliation found discrepancies.")
