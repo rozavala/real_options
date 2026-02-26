@@ -140,7 +140,7 @@ async def reconcile_active_positions(config: dict):
 
     # 2. Get Local Active Positions
     # Load full ledger first to check for recent trades
-    full_ledger = get_trade_ledger_df()
+    full_ledger = get_trade_ledger_df(config.get('data_dir'))
     local_positions = get_local_active_positions(full_ledger)
 
     # 3. Exclude symbols traded recently (last 24 hours)
@@ -188,7 +188,7 @@ async def reconcile_active_positions(config: dict):
         # Send Notification
         send_pushover_notification(
             config.get('notifications', {}),
-            "Position Reconciliation Alert",
+            f"Position Reconciliation Alert [{ticker}]",
             message
         )
     else:

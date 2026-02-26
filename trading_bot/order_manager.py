@@ -213,9 +213,10 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
 
         if cancelled > 0:
             from notifications import send_pushover_notification
+            ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
             send_pushover_notification(
                 config.get('notifications', {}),
-                "⚠️ Orphaned Catastrophe Stops Cancelled",
+                f"⚠️ Orphaned Catastrophe Stops Cancelled [{ticker}]",
                 f"Cancelled {cancelled} orphaned catastrophe stop order(s) "
                 f"from a previous session. These were left behind when their "
                 f"parent spread orders timed out without filling.",
@@ -2665,10 +2666,11 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
         else:
             message = "\n".join(message_parts)
 
+        ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
         if is_weekly_close:
-            notification_title = f"Weekly Market Close Report: P&L ${total_pnl:,.2f}"
+            notification_title = f"Weekly Market Close Report [{ticker}]: P&L ${total_pnl:,.2f}"
         else:
-            notification_title = f"Stale Position Close Report: P&L ${total_pnl:,.2f}"
+            notification_title = f"Stale Position Close Report [{ticker}]: P&L ${total_pnl:,.2f}"
 
         send_pushover_notification(config.get('notifications', {}), notification_title, message)
 

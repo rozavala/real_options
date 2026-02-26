@@ -1465,9 +1465,10 @@ async def _reconcile_phantom_ledger_entries(
                 f"(non-zero qty, no IB position).\n"
                 f"Position IDs: {list(invalidated_ids)}"
             )
+            ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
             send_pushover_notification(
                 config.get('notifications', {}),
-                "Phantom Ledger Reconciliation",
+                f"Phantom Ledger Reconciliation [{ticker}]",
                 summary
             )
         except Exception:
@@ -2359,9 +2360,10 @@ async def reconcile_and_notify(config: dict):
                 message += f"Found {len(superfluous_df)} superfluous trades in the local ledger.\n"
             message += "Check the `archive_ledger` directory for details."
 
+            ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
             send_pushover_notification(
                 config.get('notifications', {}),
-                "Trade Reconciliation Alert",
+                f"Trade Reconciliation Alert [{ticker}]",
                 message
             )
         else:
