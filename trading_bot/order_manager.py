@@ -1724,7 +1724,23 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     f"    Filled @ {avg_fill_price:.2f} (qty {int(trade.order.totalQuantity)})"
                 )
                 filled_orders.append(fill_line)
-            
+
+                # Cancel companion catastrophe stop — spread filled, stop is no longer needed
+                cat_stop = details.get('catastrophe_stop_trade')
+                if cat_stop:
+                    cat_status = cat_stop.orderStatus.status
+                    if cat_status not in {'Filled', 'Cancelled', 'ApiCancelled'}:
+                        logger.info(
+                            f"Cancelling catastrophe stop (order {cat_stop.order.orderId}) "
+                            f"for filled spread {order_id}"
+                        )
+                        try:
+                            ib.cancelOrder(cat_stop.order)
+                        except Exception as e:
+                            logger.error(f"Failed to cancel catastrophe stop {cat_stop.order.orderId}: {e}")
+                    else:
+                        logger.debug(f"Catastrophe stop {cat_stop.order.orderId} already terminal: {cat_status}")
+
             elif details['status'] not in OrderStatus.DoneStates:
                 
                 # --- 1. Get FINAL BAG (Spread) Market Data with a robust polling loop ---
