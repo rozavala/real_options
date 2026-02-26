@@ -195,6 +195,16 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
             if ticker and getattr(trade.contract, 'symbol', '') != ticker:
                 skipped_other += 1
                 continue
+            # Skip orders already in terminal/inactive states — these are
+            # phantom GTC orders that IB Gateway reports but IBKR has already
+            # expired. Attempting to cancel them yields Error 10147.
+            status = getattr(trade.orderStatus, 'status', '')
+            if status in ('Cancelled', 'Inactive', 'ApiCancelled', 'Filled'):
+                logger.debug(
+                    f"Skipping phantom catastrophe stop: order {trade.order.orderId} "
+                    f"(status={status}), ref={ref}"
+                )
+                continue
             # This commodity's CATASTROPHE_ stop is orphaned — its parent
             # spread either timed out, was cancelled, or the bot restarted.
             logger.warning(
@@ -213,9 +223,10 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
 
         if cancelled > 0:
             from notifications import send_pushover_notification
+            ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
             send_pushover_notification(
                 config.get('notifications', {}),
-                "⚠️ Orphaned Catastrophe Stops Cancelled",
+                f"⚠️ Orphaned Catastrophe Stops Cancelled [{ticker}]",
                 f"Cancelled {cancelled} orphaned catastrophe stop order(s) "
                 f"from a previous session. These were left behind when their "
                 f"parent spread orders timed out without filling.",
@@ -1724,7 +1735,23 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     f"    Filled @ {avg_fill_price:.2f} (qty {int(trade.order.totalQuantity)})"
                 )
                 filled_orders.append(fill_line)
-            
+
+                # Cancel companion catastrophe stop — spread filled, stop is no longer needed
+                cat_stop = details.get('catastrophe_stop_trade')
+                if cat_stop:
+                    cat_status = cat_stop.orderStatus.status
+                    if cat_status not in {'Filled', 'Cancelled', 'ApiCancelled'}:
+                        logger.info(
+                            f"Cancelling catastrophe stop (order {cat_stop.order.orderId}) "
+                            f"for filled spread {order_id}"
+                        )
+                        try:
+                            ib.cancelOrder(cat_stop.order)
+                        except Exception as e:
+                            logger.error(f"Failed to cancel catastrophe stop {cat_stop.order.orderId}: {e}")
+                    else:
+                        logger.debug(f"Catastrophe stop {cat_stop.order.orderId} already terminal: {cat_status}")
+
             elif details['status'] not in OrderStatus.DoneStates:
                 
                 # --- 1. Get FINAL BAG (Spread) Market Data with a robust polling loop ---
@@ -1868,8 +1895,8 @@ def get_trade_ledger_df(data_dir: str = None):
     This function is now robust to historical ledgers that may be missing
     the 'position_id' column, using 'combo_id' as a fallback.
     """
-    from trading_bot.utils import _data_dir as utils_data_dir
-    effective_dir = data_dir or utils_data_dir
+    from trading_bot.utils import _get_data_dir
+    effective_dir = data_dir or _get_data_dir()
     if effective_dir:
         ledger_path = os.path.join(effective_dir, 'trade_ledger.csv')
         archive_dir = os.path.join(effective_dir, 'archive_ledger')
@@ -2020,14 +2047,18 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
         logger.info(f"Found {len(live_positions)} live position legs in the IB account.")
 
-        non_zero_positions = [p for p in live_positions if p.position != 0]
-        if len(non_zero_positions) != len(live_positions):
-            logger.info(
-                f"  Filtered to {len(non_zero_positions)} positions with non-zero quantity "
-                f"({len(live_positions) - len(non_zero_positions)} already closed/zero-qty excluded)"
-            )
+        # Filter to this commodity only (prevent cross-engine contamination)
+        commodity_symbol = config.get('symbol', config.get('commodity', {}).get('ticker', 'KC'))
+        non_zero_positions = [
+            p for p in live_positions
+            if p.position != 0 and p.contract.symbol == commodity_symbol
+        ]
+        logger.info(
+            f"  Filtered to {len(non_zero_positions)} {commodity_symbol} positions with non-zero quantity "
+            f"(from {len(live_positions)} total across all commodities)"
+        )
         if not non_zero_positions:
-            logger.info("All returned positions have zero quantity — nothing to close.")
+            logger.info(f"No open {commodity_symbol} positions to close.")
             return
 
         # --- 2. Load trade ledger to get historical data (open dates) ---
@@ -2645,10 +2676,11 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
         else:
             message = "\n".join(message_parts)
 
+        ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
         if is_weekly_close:
-            notification_title = f"Weekly Market Close Report: P&L ${total_pnl:,.2f}"
+            notification_title = f"Weekly Market Close Report [{ticker}]: P&L ${total_pnl:,.2f}"
         else:
-            notification_title = f"Stale Position Close Report: P&L ${total_pnl:,.2f}"
+            notification_title = f"Stale Position Close Report [{ticker}]: P&L ${total_pnl:,.2f}"
 
         send_pushover_notification(config.get('notifications', {}), notification_title, message)
 

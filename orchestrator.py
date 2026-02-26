@@ -1465,9 +1465,10 @@ async def _reconcile_phantom_ledger_entries(
                 f"(non-zero qty, no IB position).\n"
                 f"Position IDs: {list(invalidated_ids)}"
             )
+            ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
             send_pushover_notification(
                 config.get('notifications', {}),
-                "Phantom Ledger Reconciliation",
+                f"Phantom Ledger Reconciliation [{ticker}]",
                 summary
             )
         except Exception:
@@ -1748,12 +1749,15 @@ async def _reconcile_state_stores(
         results['ibkr_positions'] = len(ib_positions)
 
         # 2. Count open positions in ledger
-        if not trade_ledger.empty and 'position_id' in trade_ledger.columns:
-            # Group by position_id and check net quantity
-            for pos_id in trade_ledger['position_id'].unique():
-                pos_entries = trade_ledger[trade_ledger['position_id'] == pos_id]
+        # Group by local_symbol (individual contract), NOT position_id.
+        # Spread trades have BUY+SELL legs under the same position_id that
+        # net to zero — grouping by position_id makes open spreads look closed.
+        # IBKR counts each contract leg as a separate position, so we must too.
+        if not trade_ledger.empty and 'local_symbol' in trade_ledger.columns:
+            for sym in trade_ledger['local_symbol'].unique():
+                sym_entries = trade_ledger[trade_ledger['local_symbol'] == sym]
                 net_qty = 0
-                for _, row in pos_entries.iterrows():
+                for _, row in sym_entries.iterrows():
                     qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
                     net_qty += qty
                 if net_qty != 0:
@@ -2359,9 +2363,10 @@ async def reconcile_and_notify(config: dict):
                 message += f"Found {len(superfluous_df)} superfluous trades in the local ledger.\n"
             message += "Check the `archive_ledger` directory for details."
 
+            ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
             send_pushover_notification(
                 config.get('notifications', {}),
-                "Trade Reconciliation Alert",
+                f"Trade Reconciliation Alert [{ticker}]",
                 message
             )
         else:
