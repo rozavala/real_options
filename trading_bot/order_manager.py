@@ -168,6 +168,10 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
     audits as a safety net. It does NOT filter by clientId because each IB
     connection gets a randomized client ID, so stops from previous sessions
     would be missed.
+
+    In multi-engine mode, it DOES filter by contract symbol so each engine
+    only cleans up its own commodity's orphaned stops. Without this filter,
+    Engine A would cancel Engine B's legitimate active catastrophe stops.
     """
     try:
         try:
@@ -178,12 +182,20 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
         if not open_orders:
             return
 
+        # Only cancel stops for THIS engine's commodity
+        ticker = config.get('commodity', {}).get('ticker', '')
+
         cancelled = 0
+        skipped_other = 0
         for trade in open_orders:
             ref = trade.order.orderRef or ''
             if not ref.startswith('CATASTROPHE_'):
                 continue
-            # Any CATASTROPHE_ stop order still open is orphaned — its parent
+            # Skip stops belonging to other commodities' engines
+            if ticker and getattr(trade.contract, 'symbol', '') != ticker:
+                skipped_other += 1
+                continue
+            # This commodity's CATASTROPHE_ stop is orphaned — its parent
             # spread either timed out, was cancelled, or the bot restarted.
             logger.warning(
                 f"Cancelling orphaned catastrophe stop: order {trade.order.orderId} "
@@ -192,6 +204,12 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
             )
             ib.cancelOrder(trade.order)
             cancelled += 1
+
+        if skipped_other > 0:
+            logger.info(
+                f"Catastrophe stop cleanup: skipped {skipped_other} stop(s) "
+                f"belonging to other commodities"
+            )
 
         if cancelled > 0:
             from notifications import send_pushover_notification
