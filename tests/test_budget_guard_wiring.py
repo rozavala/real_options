@@ -86,9 +86,19 @@ def test_calculate_api_cost_zero_tokens():
 def test_calculate_api_cost_gemini_flash():
     """Gemini Flash model matched by substring."""
     cost = calculate_api_cost("gemini-3-flash-preview", 10000, 5000)
-    # gemini-3-flash-preview: input=0.00010/1k, output=0.00040/1k
-    # (10000/1000)*0.00010 + (5000/1000)*0.00040 = 0.001 + 0.002 = 0.003
-    assert abs(cost - 0.003) < 0.0001
+    # gemini-3-flash-preview: input=0.00050/1k, output=0.00300/1k
+    # (10000/1000)*0.00050 + (5000/1000)*0.00300 = 0.005 + 0.015 = 0.020
+    assert abs(cost - 0.020) < 0.0001
+
+
+def test_calculate_api_cost_mini_not_overcharged():
+    """gpt-4o-mini must match its own rate, not gpt-4o (longest match wins)."""
+    cost_mini = calculate_api_cost("gpt-4o-mini", 1000, 500)
+    cost_4o = calculate_api_cost("gpt-4o", 1000, 500)
+    # gpt-4o-mini: (1/1)*0.00015 + (0.5/1)*0.00060 = 0.00015 + 0.00030 = 0.00045
+    # gpt-4o:      (1/1)*0.00250 + (0.5/1)*0.01000 = 0.00250 + 0.00500 = 0.00750
+    assert abs(cost_mini - 0.00045) < 0.0001, f"gpt-4o-mini overcharged: {cost_mini}"
+    assert cost_mini < cost_4o, "gpt-4o-mini should be cheaper than gpt-4o"
 
 
 # --- Singleton Factory Tests ---

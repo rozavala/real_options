@@ -78,6 +78,8 @@ class BudgetGuard:
         self._budget_hit = False
         self._warning_sent = False
         self._x_api_calls = 0
+        self._x_api_cost = 0.0
+        self._x_api_cost_per_call = self._load_x_api_pricing()
 
         self._load_state()
         self._check_reset()
@@ -94,6 +96,7 @@ class BudgetGuard:
                     self._budget_hit = data.get('budget_hit', False)
                     self._warning_sent = data.get('warning_sent', False)
                     self._x_api_calls = data.get('x_api_calls', 0)
+                    self._x_api_cost = data.get('x_api_cost', 0.0)
             except Exception as e:
                 logger.warning(f"Failed to load budget state: {e}")
 
@@ -108,6 +111,7 @@ class BudgetGuard:
                 'budget_hit': self._budget_hit,
                 'warning_sent': self._warning_sent,
                 'x_api_calls': self._x_api_calls,
+                'x_api_cost': self._x_api_cost,
             }
             temp_path = str(self.state_file) + ".tmp"
             with open(temp_path, 'w') as f:
@@ -118,25 +122,29 @@ class BudgetGuard:
 
     def _archive_daily_costs(self):
         """Append yesterday's costs to llm_daily_costs.csv before resetting."""
-        if self._daily_spend <= 0 and self._request_count == 0:
+        if self._daily_spend <= 0 and self._request_count == 0 and self._x_api_calls == 0:
             return  # Nothing to archive
 
         try:
+            self._costs_csv.parent.mkdir(parents=True, exist_ok=True)
             write_header = not self._costs_csv.exists()
             with open(self._costs_csv, 'a', newline='') as f:
                 writer = csv.writer(f)
                 if write_header:
-                    writer.writerow(['date', 'total_usd', 'request_count', 'cost_by_source', 'x_api_calls'])
+                    writer.writerow(['date', 'total_usd', 'request_count', 'cost_by_source',
+                                     'x_api_calls', 'x_api_cost_usd'])
                 writer.writerow([
                     self._last_reset_date,
                     round(self._daily_spend, 4),
                     self._request_count,
                     json.dumps(self._cost_by_source),
                     self._x_api_calls,
+                    round(self._x_api_cost, 4),
                 ])
             logger.info(
                 f"Archived daily LLM costs for {self._last_reset_date}: "
-                f"${self._daily_spend:.2f}, {self._request_count} requests"
+                f"${self._daily_spend:.2f}, {self._request_count} requests, "
+                f"{self._x_api_calls} X API calls (${self._x_api_cost:.4f})"
             )
         except Exception as e:
             logger.error(f"Failed to archive daily costs: {e}")
@@ -152,6 +160,7 @@ class BudgetGuard:
             self._budget_hit = False
             self._warning_sent = False
             self._x_api_calls = 0
+            self._x_api_cost = 0.0
             self._last_reset_date = today
             self._save_state()
             logger.info(f"Budget guard reset for {today}. Limit: ${self.daily_budget:.2f}")
@@ -237,10 +246,22 @@ class BudgetGuard:
         return max(0.0, self.daily_budget - self._daily_spend)
 
     def record_x_api_call(self):
-        """Record an X/Twitter API call (separate from LLM spend)."""
+        """Record an X/Twitter API call with cost estimate (separate from LLM spend)."""
         self._check_reset()
         self._x_api_calls += 1
+        self._x_api_cost += self._x_api_cost_per_call
         self._save_state()
+
+    @staticmethod
+    def _load_x_api_pricing() -> float:
+        """Load X API per-call cost from api_costs.json."""
+        cost_file = Path(__file__).parent.parent / "config" / "api_costs.json"
+        try:
+            with open(cost_file, 'r') as f:
+                data = json.load(f)
+            return data.get('x_api', {}).get('cost_per_call', 0.0)
+        except Exception:
+            return 0.0
 
     def get_status(self) -> dict:
         """Get current budget status for dashboard display."""
@@ -255,6 +276,7 @@ class BudgetGuard:
             'cost_by_source': dict(self._cost_by_source),
             'request_count': self._request_count,
             'x_api_calls': self._x_api_calls,
+            'x_api_cost': self._x_api_cost,
         }
 
 
@@ -315,12 +337,16 @@ def calculate_api_cost(model_name: str, input_tokens: int, output_tokens: int) -
     costs = _load_cost_config()
     model_lower = model_name.lower()
 
-    # Find best matching model key
+    # Find longest matching model key (prevents "gpt-4o" matching "gpt-4o-mini")
     model_cost = costs.get('default', {'input': 0.001, 'output': 0.002})
+    best_key = None
+    best_len = 0
     for key in costs:
-        if key != 'default' and key in model_lower:
-            model_cost = costs[key]
-            break
+        if key != 'default' and key in model_lower and len(key) > best_len:
+            best_key = key
+            best_len = len(key)
+    if best_key:
+        model_cost = costs[best_key]
 
     if isinstance(model_cost, dict):
         return (input_tokens / 1000) * model_cost.get('input', 0.001) + \
