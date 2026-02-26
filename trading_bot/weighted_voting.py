@@ -743,17 +743,16 @@ async def calculate_weighted_decision(
         import asyncio
         import os
 
-        def _write_weight_csv(vote_breakdown_snapshot, trigger_str, regime_str):
-            """Sync CSV writer — runs in thread pool."""
+        def _write_weight_csv(vote_breakdown_snapshot, trigger_str, regime_str, data_dir):
+            """Sync CSV writer — runs in thread pool.
+
+            IMPORTANT: data_dir must be captured in the calling coroutine and passed
+            explicitly. ContextVars are NOT copied to run_in_executor threads.
+            """
             import csv
             from datetime import datetime, timezone
 
-            try:
-                from trading_bot.data_dir_context import get_engine_data_dir
-                _eff_dir = get_engine_data_dir()
-            except LookupError:
-                _eff_dir = _data_dir or os.path.join('data', os.environ.get('COMMODITY_TICKER', 'KC'))
-            weight_csv = os.path.join(_eff_dir, 'weight_evolution.csv')
+            weight_csv = os.path.join(data_dir, 'weight_evolution.csv')
             file_exists = os.path.exists(weight_csv)
 
             # Ensure directory exists
@@ -787,6 +786,13 @@ async def calculate_weighted_decision(
         # Snapshot vote_breakdown (list of dicts is safe to pass to thread)
         trigger_str = trigger_type.value if hasattr(trigger_type, 'value') else str(trigger_type)
 
+        # Capture data_dir from ContextVar NOW (in the coroutine), not in the thread
+        try:
+            from trading_bot.data_dir_context import get_engine_data_dir
+            _eff_dir = get_engine_data_dir()
+        except LookupError:
+            _eff_dir = _data_dir or os.path.join('data', os.environ.get('COMMODITY_TICKER', 'KC'))
+
         # Fire-and-forget: don't await — CSV write must never block voting
         loop = asyncio.get_event_loop()
         loop.run_in_executor(
@@ -794,7 +800,8 @@ async def calculate_weighted_decision(
             _write_weight_csv,
             list(vote_breakdown),  # Defensive copy
             trigger_str,
-            regime
+            regime,
+            _eff_dir,
         )
     except Exception as e:
         logger.warning(f"Weight evolution tracking failed (non-fatal): {e}")
