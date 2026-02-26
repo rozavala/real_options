@@ -202,6 +202,33 @@ class TestPortfolioUX(unittest.TestCase):
         for metric, found in found_metrics.items():
             self.assertTrue(found, f"Could not find metric '{metric}' in pages/9_Portfolio.py")
 
+class TestUtilitiesUX(unittest.TestCase):
+    def test_utilities_safety_interlocks(self):
+        """Verify that high-impact buttons in pages/5_Utilities.py have safety interlocks."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '5_Utilities.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        target_buttons = ["🚀 Collect Logs", "💰 Force Equity Sync", "🚀 Run System Validation"]
+        found_buttons = {b: False for b in target_buttons}
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'button':
+                if not node.args:
+                    continue
+
+                label = None
+                if isinstance(node.args[0], ast.Constant):
+                    label = node.args[0].value
+
+                if label in found_buttons:
+                    found_buttons[label] = True
+                    has_disabled = any(kw.arg == 'disabled' for kw in node.keywords)
+                    self.assertTrue(has_disabled, f"Button '{label}' is missing safety interlock (disabled attribute)")
+
+        for button, found in found_buttons.items():
+            self.assertTrue(found, f"Could not find button '{button}' in pages/5_Utilities.py")
+
 
 if __name__ == '__main__':
     unittest.main()
