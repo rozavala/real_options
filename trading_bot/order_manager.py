@@ -195,6 +195,16 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
             if ticker and getattr(trade.contract, 'symbol', '') != ticker:
                 skipped_other += 1
                 continue
+            # Skip orders already in terminal/inactive states — these are
+            # phantom GTC orders that IB Gateway reports but IBKR has already
+            # expired. Attempting to cancel them yields Error 10147.
+            status = getattr(trade.orderStatus, 'status', '')
+            if status in ('Cancelled', 'Inactive', 'ApiCancelled', 'Filled'):
+                logger.debug(
+                    f"Skipping phantom catastrophe stop: order {trade.order.orderId} "
+                    f"(status={status}), ref={ref}"
+                )
+                continue
             # This commodity's CATASTROPHE_ stop is orphaned — its parent
             # spread either timed out, was cancelled, or the bot restarted.
             logger.warning(
