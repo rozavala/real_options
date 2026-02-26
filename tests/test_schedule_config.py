@@ -112,8 +112,8 @@ def test_build_schedule_session_mode():
         'schedule': {
             'mode': 'session',
             'session_template': {
-                'signal_count': 4,
-                'signal_start_pct': 0.05,
+                'signal_count': 3,
+                'signal_start_pct': 0.15,
                 'signal_end_pct': 0.80,
                 'cutoff_before_close_minutes': 78,
                 'pre_open_tasks': [
@@ -130,11 +130,11 @@ def test_build_schedule_session_mode():
         }
     }
     result = build_schedule(config)
-    assert len(result) == 7  # 1 pre-open + 4 signals + 1 pre-close + 1 post-close
+    assert len(result) == 6  # 1 pre-open + 3 signals + 1 pre-close + 1 post-close
     ids = [t.id for t in result]
     assert 'start_monitoring' in ids
     assert 'signal_open' in ids
-    assert 'signal_late' in ids
+    assert 'signal_mid' in ids
     assert 'emergency_hard_close' in ids
     assert 'eod_shutdown' in ids
     # All times should be within a reasonable day range
