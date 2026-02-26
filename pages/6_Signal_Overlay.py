@@ -897,8 +897,9 @@ if price_df is not None and not price_df.empty:
         price_idx.columns = ['candle_timestamp']
 
         # Dynamic tolerance: tighter for intraday, wider for daily
-        # Daily candles sit at midnight ET — signals arrive 3-14h later during market hours
-        _tolerance_map = {'5m': 'minutes=30', '15m': 'minutes=30', '30m': 'hours=2', '1h': 'hours=2', '1d': 'hours=20'}
+        # Yahoo 5m data often starts 30-75 min after ICE market open (4:15 ET),
+        # so early signals need ~90 min tolerance. Daily candles sit at midnight ET.
+        _tolerance_map = {'5m': 'minutes=90', '15m': 'minutes=90', '30m': 'hours=2', '1h': 'hours=2', '1d': 'hours=20'}
         _tol_str = _tolerance_map.get(timeframe, 'hours=4')
         _tol = pd.Timedelta(**{_tol_str.split('=')[0]: int(_tol_str.split('=')[1])})
 
