@@ -316,16 +316,16 @@ if vote_breakdown_raw and pd.notna(vote_breakdown_raw) and str(vote_breakdown_ra
             # Metrics row
             metric_cols = st.columns(4)
             with metric_cols[0]:
-                st.metric("Dominant Agent", row.get('dominant_agent', 'Unknown'))
+                st.metric("Dominant Agent", row.get('dominant_agent', 'Unknown'), help="The agent with the highest individual contribution to the final decision.")
             with metric_cols[1]:
                 ws = row.get('weighted_score', 0)
-                st.metric("Weighted Score", f"{float(ws):.4f}" if ws else "N/A")
+                st.metric("Weighted Score", f"{float(ws):.4f}" if ws else "N/A", help="Aggregated score (-1 to +1) representing the Council's final conviction.")
             with metric_cols[2]:
                 active = len([v for v in vote_data if v.get('direction') != 'NEUTRAL'])
-                st.metric("Active Voters", f"{active}/{len(vote_data)}")
+                st.metric("Active Voters", f"{active}/{len(vote_data)}", help="Number of agents who cast a non-NEUTRAL vote.")
             with metric_cols[3]:
                 trigger = row.get('trigger_type', 'scheduled')
-                st.metric("Trigger", trigger.replace('_', ' ').title())
+                st.metric("Trigger", trigger.replace('_', ' ').title(), help="Event that initiated this Council session (e.g., Scheduled, Price Alert).")
         else:
             st.info("ℹ️ Vote breakdown is empty for this decision")
 
@@ -473,12 +473,12 @@ with master_cols[1]:
         confidence = 0.0
     else:
         confidence = float(confidence)
-    st.metric("Confidence", f"{confidence:.1%}")
+    st.metric("Confidence", f"{confidence:.1%}", help="Master Strategist's self-reported confidence (0-100%) in the decision.")
 
 with master_cols[2]:
     approved = row.get('compliance_approved', True)
     status = "✅ Approved" if approved else "❌ Vetoed"
-    st.metric("Compliance", status)
+    st.metric("Compliance", status, help="Risk check status. 'Vetoed' means the decision violated risk limits.")
 
 with master_cols[3]:
     conviction = row.get('conviction_multiplier', 'N/A')
@@ -486,11 +486,11 @@ with master_cols[3]:
         try:
             conv_val = round(float(conviction), 2)
             conv_label = {1.0: "✅ Aligned", 0.75: "⚠️ Partial", 0.70: "🔻 Divergent", 0.65: "🔻 Divergent", 0.5: "🔻 Divergent"}.get(conv_val, f"{conv_val:.2f}")
-            st.metric("Consensus", conv_label)
+            st.metric("Consensus", conv_label, help="Alignment multiplier (0.5-1.0). Higher alignment between agents enables larger position sizing.")
         except (ValueError, TypeError):
-            st.metric("Consensus", "N/A")
+            st.metric("Consensus", "N/A", help="Alignment multiplier (0.5-1.0). Higher alignment between agents enables larger position sizing.")
     else:
-        st.metric("Consensus", "N/A")
+        st.metric("Consensus", "N/A", help="Alignment multiplier (0.5-1.0). Higher alignment between agents enables larger position sizing.")
 
 # Reasoning
 st.markdown("**Master Reasoning:**")
