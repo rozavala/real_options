@@ -1014,12 +1014,18 @@ def round_to_tick(price: float, tick_size: float = None, action: str = 'BUY', co
     # Domain safety: prevent division by zero
     tick_size = max(tick_size, 1e-6)
 
+    # Floating-point epsilon: price/tick_size can produce values like 45.9999999
+    # instead of 46.0, causing floor() to round DOWN incorrectly (e.g., 2.30 -> 2.25
+    # for tick=0.05). A tiny epsilon nudge corrects this without affecting true
+    # sub-tick prices. See: KC walks stuck at 2.25 when ceiling was 2.70.
+    epsilon = tick_size * 1e-9
+
     if action == 'BUY':
         # Round down for buys (don't overpay)
-        val = math.floor(price / tick_size) * tick_size
+        val = math.floor((price + epsilon) / tick_size) * tick_size
     else:
         # Round up for sells (don't undersell)
-        val = math.ceil(price / tick_size) * tick_size
+        val = math.ceil((price - epsilon) / tick_size) * tick_size
 
     # Dynamic precision based on tick_size (e.g., 0.05→2, 0.001→3)
     precision = max(0, -int(math.floor(math.log10(tick_size))))
