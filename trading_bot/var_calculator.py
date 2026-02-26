@@ -387,6 +387,47 @@ class PortfolioVaRCalculator:
                     dollar_multiplier=multiplier,
                 ))
 
+        # For option symbols with no FUT position in portfolio, fetch
+        # the underlying future price so we can reprice with Black-Scholes.
+        if option_items:
+            missing_syms = {
+                item.contract.symbol for item in option_items
+            } - set(underlying_price_map.keys())
+            if missing_syms:
+                logger.info(
+                    f"VaR: Fetching underlying prices for option-only symbols: {missing_syms}"
+                )
+                # Build symbol→exchange from option contracts' own metadata
+                sym_exchange = {}
+                for item in option_items:
+                    s = item.contract.symbol
+                    if s in missing_syms and s not in sym_exchange:
+                        sym_exchange[s] = (
+                            item.contract.exchange
+                            or item.contract.primaryExchange
+                            or 'SMART'
+                        )
+                for sym in missing_syms:
+                    try:
+                        from ib_insync import Future
+                        exchange = sym_exchange.get(sym, 'SMART')
+                        fut = Future(symbol=sym, exchange=exchange)
+                        qualified = await ib.qualifyContractsAsync(fut)
+                        if qualified:
+                            ticker = ib.reqMktData(qualified[0], '', False, False)
+                            await asyncio.sleep(2)  # Brief wait for price
+                            price = ticker.marketPrice()
+                            ib.cancelMktData(ticker.contract)
+                            if price and not _is_nan(price) and price > 0:
+                                underlying_price_map[sym] = price
+                                logger.info(f"VaR: Fetched underlying price for {sym}: {price}")
+                            else:
+                                logger.warning(f"VaR: No valid price for {sym} underlying future")
+                        else:
+                            logger.warning(f"VaR: Could not qualify future for {sym}")
+                    except Exception as e:
+                        logger.warning(f"VaR: Failed to fetch underlying for {sym}: {e}")
+
         # Batched IV fetch for all options simultaneously
         if option_items:
             iv_map = await self._batch_fetch_iv(ib, option_items, config)
@@ -457,6 +498,10 @@ class PortfolioVaRCalculator:
 
         for item in option_items:
             c = item.contract
+            # IB Gateway can return portfolio contracts with primaryExchange
+            # but empty exchange — reqMktData requires exchange to be set.
+            if not c.exchange and c.primaryExchange:
+                c.exchange = c.primaryExchange
             try:
                 t = ib.reqMktData(c, "106", False, False)  # 106 = implied vol
                 tickers.append((c.conId, t))
