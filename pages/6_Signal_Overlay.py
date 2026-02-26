@@ -534,13 +534,19 @@ def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m",
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        # Standardize to UTC then convert to NY
+        # Standardize timezone to NY
+        # Note: Yahoo daily candles arrive as tz-naive midnight timestamps.
+        # These represent calendar dates, NOT midnight UTC — localizing as UTC
+        # would shift them to 7 PM ET previous day, breaking signal alignment.
+        # Intraday candles from Yahoo/Databento DO carry UTC semantics.
         if df.index.tz is None:
-            df.index = df.index.tz_localize('UTC')
+            if timeframe == '1d':
+                df.index = df.index.tz_localize('America/New_York')
+            else:
+                df.index = df.index.tz_localize('UTC')
+                df.index = df.index.tz_convert('America/New_York')
         else:
-            df.index = df.index.tz_convert('UTC')
-
-        df.index = df.index.tz_convert('America/New_York')
+            df.index = df.index.tz_convert('America/New_York')
 
         # Clean: dedupe and sort
         df = df[~df.index.duplicated(keep='last')]
@@ -891,7 +897,8 @@ if price_df is not None and not price_df.empty:
         price_idx.columns = ['candle_timestamp']
 
         # Dynamic tolerance: tighter for intraday, wider for daily
-        _tolerance_map = {'5m': 'minutes=30', '15m': 'minutes=30', '30m': 'hours=2', '1h': 'hours=2', '1d': 'hours=4'}
+        # Daily candles sit at midnight ET — signals arrive 3-14h later during market hours
+        _tolerance_map = {'5m': 'minutes=30', '15m': 'minutes=30', '30m': 'hours=2', '1h': 'hours=2', '1d': 'hours=20'}
         _tol_str = _tolerance_map.get(timeframe, 'hours=4')
         _tol = pd.Timedelta(**{_tol_str.split('=')[0]: int(_tol_str.split('=')[1])})
 
