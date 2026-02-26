@@ -25,7 +25,7 @@ import sys
 import tempfile
 import urllib.error
 import urllib.request
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -234,6 +234,32 @@ def sanitize_message(message: str) -> str:
     for pattern, replacement in _SANITIZE_RULES:
         result = pattern.sub(replacement, result)
     return result
+
+
+def wrap_in_code_block(text: str) -> str:
+    """Wraps text in a Markdown code block, adapting the fence length to avoid collisions.
+
+    Prevents Markdown injection where a log message containing '```' would close
+    the code block prematurely.
+    """
+    if not text:
+        return "```\n```"
+
+    # Find the longest sequence of backticks in the text
+    max_ticks = 0
+    current_ticks = 0
+    for char in text:
+        if char == '`':
+            current_ticks += 1
+        else:
+            max_ticks = max(max_ticks, current_ticks)
+            current_ticks = 0
+    max_ticks = max(max_ticks, current_ticks)
+
+    # Use a fence length one greater than the max found, min 3
+    fence_len = max(3, max_ticks + 1)
+    fence = "`" * fence_len
+    return f"{fence}\n{text}\n{fence}"
 
 
 # ---------------------------------------------------------------------------
@@ -491,9 +517,7 @@ def format_critical_issue(sig: ErrorSignature, env_name: str = "DEV", env_label:
 
 ### Sample Log Entry
 
-```
-{sig.sample_message}
-```
+{wrap_in_code_block(sig.sample_message)}
 
 ### Impact
 
@@ -526,7 +550,11 @@ def format_summary_issue(
         cat_count = sum(s.count for s in cat_sigs)
         lines = [f"### `{cat}` — {cat_count} occurrences\n"]
         for sig in sorted(cat_sigs, key=lambda s: -s.count)[:5]:
-            lines.append(f"- **{sig.count}x** `{_truncate(sig.sample_message, 100)}`")
+            # Use wrap_in_code_block for summary line if it contains backticks,
+            # otherwise inline code is cleaner. But inline code `...` breaks if message has backticks.
+            # Simplified: escape backticks in the inline summary for safety.
+            safe_msg = sig.sample_message.replace("`", "'")
+            lines.append(f"- **{sig.count}x** `{_truncate(safe_msg, 100)}`")
         sections.append("\n".join(lines))
 
     body = f"""## Daily Error Summary — {date_str}
@@ -697,7 +725,6 @@ def run_pipeline(config: dict, dry_run: bool = False) -> int:
     max_normal = er_config.get("max_issues_per_day", 3)
     max_critical = er_config.get("max_critical_issues_per_day", 5)
     summary_threshold = er_config.get("daily_summary_threshold", 5)
-    default_labels = er_config.get("default_labels", ["automated", "error-report"])
 
     # Environment detection (set in .env on each droplet)
     env_name = os.getenv("ENV_NAME", "DEV").upper()

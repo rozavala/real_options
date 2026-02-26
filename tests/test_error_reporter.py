@@ -2,12 +2,10 @@
 
 import json
 import os
-import tempfile
+import urllib.error
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 # Import from scripts directory
 import sys
@@ -17,7 +15,6 @@ from error_reporter import (
     ErrorSignature,
     GitHubIssueCreator,
     LockFile,
-    LogEntry,
     check_rate_limit,
     classify_error,
     compute_fingerprint,
@@ -428,6 +425,27 @@ class TestFormatIssues:
         assert "llm_api" in body
         assert "daily-summary" in labels
 
+    def test_markdown_injection(self):
+        """Test that log messages with triple backticks are safely wrapped."""
+        msg = "Error: ```\n<script>alert(1)</script>\n```"
+        sig = ErrorSignature(
+            category="parse_error",
+            fingerprint="fp1",
+            sample_message=msg,
+            count=1,
+            first_seen="2026-02-16",
+            last_seen="2026-02-16",
+            level="ERROR",
+        )
+        title, body, labels = format_critical_issue(sig)
+
+        # Should be wrapped in 4 backticks (fence scaler logic)
+        assert "````" in body
+        assert msg in body
+        # Ensure the raw script tag doesn't appear outside our expected message block
+        # (Naive check: just ensure the body contains the safe fence)
+        assert "````\nError: ```" in body
+
 
 # ---------------------------------------------------------------------------
 # State persistence tests
@@ -613,6 +631,3 @@ class TestRecordIssueCreated:
         record_issue_created(state, "fp1", "trading_execution", 99, 24, is_critical=True)
         assert state["daily_counters"]["critical_issues_created"] == 1
         assert state["daily_counters"]["issues_created"] == 0
-
-
-import urllib.error
