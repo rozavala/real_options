@@ -83,6 +83,8 @@ graph TD
 4.  **Semantic Cache (`trading_bot/semantic_cache.py`):** Caches Council decisions based on market state vectors. Prevents redundant LLM calls.
 5.  **Transactive Memory System (`trading_bot/tms.py`):** ChromaDB-based vector store for "institutional memory" across cycles.
 6.  **Brier Bridge (`trading_bot/brier_bridge.py`):** Tracks agent accuracy using an Enhanced Probabilistic Brier Score system to weight agent opinions dynamically.
+7.  **DSPy Optimizer (`trading_bot/dspy_optimizer.py`):** Offline pipeline that refines agent prompts using historical feedback (BootstrapFewShot).
+8.  **Automated Trade Journal (`trading_bot/trade_journal.py`):** Generates structured post-mortem narratives for every closed trade, stored in TMS for future learning.
 
 ### Tier 1: Sentinels (`trading_bot/sentinels.py`)
 Lightweight monitors that scan 24/7 for specific triggers.
