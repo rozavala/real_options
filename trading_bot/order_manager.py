@@ -185,7 +185,7 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
         # Only cancel stops for THIS engine's commodity
         ticker = config.get('commodity', {}).get('ticker', '')
 
-        cancelled = 0
+        to_cancel = []
         skipped_other = 0
         for trade in open_orders:
             ref = trade.order.orderRef or ''
@@ -195,25 +195,11 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
             if ticker and getattr(trade.contract, 'symbol', '') != ticker:
                 skipped_other += 1
                 continue
-            # Skip orders already in terminal/inactive states — these are
-            # phantom GTC orders that IB Gateway reports but IBKR has already
-            # expired. Attempting to cancel them yields Error 10147.
+            # Skip orders already in terminal states
             status = getattr(trade.orderStatus, 'status', '')
             if status in ('Cancelled', 'Inactive', 'ApiCancelled', 'Filled'):
-                logger.debug(
-                    f"Skipping phantom catastrophe stop: order {trade.order.orderId} "
-                    f"(status={status}), ref={ref}"
-                )
                 continue
-            # This commodity's CATASTROPHE_ stop is orphaned — its parent
-            # spread either timed out, was cancelled, or the bot restarted.
-            logger.warning(
-                f"Cancelling orphaned catastrophe stop: order {trade.order.orderId} "
-                f"(client {trade.order.clientId}, {trade.order.action} "
-                f"{trade.contract.localSymbol} @ {trade.order.auxPrice:.2f}), ref={ref}"
-            )
-            ib.cancelOrder(trade.order)
-            cancelled += 1
+            to_cancel.append(trade)
 
         if skipped_other > 0:
             logger.info(
@@ -221,13 +207,47 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
                 f"belonging to other commodities"
             )
 
-        if cancelled > 0:
+        if not to_cancel:
+            return
+
+        # Fire cancel requests
+        for trade in to_cancel:
+            ref = trade.order.orderRef or ''
+            logger.info(
+                f"Cancelling orphaned catastrophe stop: order {trade.order.orderId} "
+                f"(client {trade.order.clientId}, {trade.order.action} "
+                f"{trade.contract.localSymbol} @ {trade.order.auxPrice:.2f}), ref={ref}"
+            )
+            ib.cancelOrder(trade.order)
+
+        # Wait briefly for cancel confirmations / Error 10147 callbacks
+        await asyncio.sleep(2)
+
+        # Count how many actually reached a terminal state
+        confirmed = 0
+        phantom = 0
+        for trade in to_cancel:
+            status = getattr(trade.orderStatus, 'status', '')
+            if status in ('Cancelled', 'ApiCancelled'):
+                confirmed += 1
+            else:
+                # Still 'Submitted' after cancel attempt → phantom GTC order
+                # (IBKR expired it but Gateway cache is stale, Error 10147)
+                phantom += 1
+
+        if phantom > 0:
+            logger.info(
+                f"Catastrophe stop cleanup: {phantom} phantom GTC order(s) "
+                f"not found on IBKR (stale Gateway cache, harmless)"
+            )
+
+        if confirmed > 0:
             from notifications import send_pushover_notification
             ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
             send_pushover_notification(
                 config.get('notifications', {}),
                 f"⚠️ Orphaned Catastrophe Stops Cancelled [{ticker}]",
-                f"Cancelled {cancelled} orphaned catastrophe stop order(s) "
+                f"Cancelled {confirmed} orphaned catastrophe stop order(s) "
                 f"from a previous session. These were left behind when their "
                 f"parent spread orders timed out without filling.",
                 priority=1
