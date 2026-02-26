@@ -1242,8 +1242,9 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
         if candidates.any():
             bullish = graded_df['master_decision'] == 'BULLISH'
             bearish = graded_df['master_decision'] == 'BEARISH'
-            up = graded_df['actual_trend_direction'] == 'UP'
-            down = graded_df['actual_trend_direction'] == 'DOWN'
+            # Reconciliation stores BULLISH/BEARISH (not UP/DOWN)
+            up = graded_df['actual_trend_direction'].isin(['UP', 'BULLISH'])
+            down = graded_df['actual_trend_direction'].isin(['DOWN', 'BEARISH'])
 
             graded_df.loc[candidates & bullish & up, 'outcome'] = 'WIN'
             graded_df.loc[candidates & bullish & down, 'outcome'] = 'LOSS'
