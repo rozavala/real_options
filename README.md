@@ -160,7 +160,7 @@ streamlit run dashboard.py
 ### Configuration
 -   **`config.json`**: Primary configuration (model registry, thresholds, sentinel intervals).
 -   **`commodity_overrides`**: Per-commodity config overrides in `config.json` (e.g., `commodity_overrides.CC`).
--   **`ACTIVE_COMMODITIES`**: Comma-separated list of tickers in `.env` or config (default: `KC,CC`).
+-   **`ACTIVE_COMMODITIES`**: Comma-separated list of tickers in `.env` or config (default: `KC,CC,NG`).
 
 ### Deployment
 ```bash
