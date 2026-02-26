@@ -94,16 +94,19 @@ else:
 # =====================================================================
 # SECTION 1b: X/Twitter API Usage
 # =====================================================================
+st.markdown("---")
+st.subheader("X (Twitter) API Usage")
+
 x_api_calls = budget.get('x_api_calls', 0) if budget else 0
-if x_api_calls > 0:
-    st.markdown("---")
-    st.subheader("X (Twitter) API Usage")
-    col1, col2 = st.columns(2)
-    col1.metric("API Calls Today", str(x_api_calls))
-    col2.caption(
-        "X API calls are counted but not included in the LLM budget. "
-        "These use the X Bearer Token (separate billing)."
-    )
+x_api_cost = budget.get('x_api_cost', 0.0) if budget else 0.0
+
+col1, col2, col3 = st.columns(3)
+col1.metric("API Calls Today", str(x_api_calls))
+col2.metric("Estimated Cost Today", f"${x_api_cost:.4f}")
+col3.caption(
+    "X Bearer API costs are tracked separately from LLM spend. "
+    "Per-call rate is configured in config/api_costs.json."
+)
 
 
 # =====================================================================
@@ -280,6 +283,52 @@ if not costs_df.empty and 'date' in costs_df.columns and 'total_usd' in costs_df
     if 'request_count' in costs_df.columns:
         with st.expander("Request Volume"):
             st.bar_chart(costs_df.set_index('date')['request_count'])
+
+    # X API usage trend
+    if 'x_api_calls' in costs_df.columns:
+        st.markdown("---")
+        st.subheader("X (Twitter) API History")
+
+        x_cols = ['x_api_calls']
+        if 'x_api_cost_usd' in costs_df.columns:
+            costs_df['x_api_cost_usd'] = pd.to_numeric(costs_df['x_api_cost_usd'], errors='coerce').fillna(0)
+            x_cols.append('x_api_cost_usd')
+
+        costs_df['x_api_calls'] = pd.to_numeric(costs_df['x_api_calls'], errors='coerce').fillna(0)
+
+        if costs_df['x_api_calls'].sum() > 0:
+            fig_x = go.Figure()
+            fig_x.add_trace(go.Bar(
+                x=costs_df['date'],
+                y=costs_df['x_api_calls'],
+                name='X API Calls',
+                marker_color='#00acee',
+            ))
+
+            if 'x_api_cost_usd' in costs_df.columns:
+                fig_x.add_trace(go.Scatter(
+                    x=costs_df['date'],
+                    y=costs_df['x_api_cost_usd'],
+                    name='X API Cost ($)',
+                    yaxis='y2',
+                    mode='lines+markers',
+                    line=dict(color='#EF553B', width=2),
+                    marker=dict(size=5),
+                ))
+                fig_x.update_layout(
+                    yaxis2=dict(title='Cost (USD)', overlaying='y', side='right'),
+                )
+
+            fig_x.update_layout(
+                yaxis_title='API Calls',
+                xaxis_title='Date',
+                height=350,
+                margin=dict(t=20, b=40),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02),
+            )
+            st.plotly_chart(fig_x, use_container_width=True)
+        else:
+            st.info("No X API calls recorded in the historical data yet.")
 else:
     st.info(
         "No daily cost history yet. History accumulates after the first midnight UTC reset "
