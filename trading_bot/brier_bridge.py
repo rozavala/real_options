@@ -240,21 +240,22 @@ def get_calibration_data(agent: str = None) -> Dict:
 
 # === PRIVATE HELPERS ===
 
-_enhanced_tracker = None
+# Per-engine tracker registry (keyed by data_dir to prevent cross-contamination)
+_enhanced_trackers: dict = {}  # data_dir → EnhancedBrierTracker
 _enhanced_tracker_data_dir = None
 
 
 def set_data_dir(data_dir: str):
     """Set data directory and force tracker recreation on next access."""
-    global _enhanced_tracker_data_dir, _enhanced_tracker
+    global _enhanced_tracker_data_dir
     _enhanced_tracker_data_dir = data_dir
-    _enhanced_tracker = None  # Force recreation with new path
+    _enhanced_trackers.pop(data_dir, None)  # Force recreation for this data_dir
     logger.info(f"BrierBridge data_dir set to: {data_dir}")
 
 
 def _get_enhanced_tracker(data_dir: str = None):
-    """Lazy singleton for EnhancedBrierTracker. Recreates if data_dir changes."""
-    global _enhanced_tracker, _enhanced_tracker_data_dir
+    """Per-engine EnhancedBrierTracker. Uses data_dir-keyed registry for isolation."""
+    global _enhanced_tracker_data_dir
     # ContextVar > explicit arg > module global
     if data_dir is None:
         try:
@@ -262,28 +263,26 @@ def _get_enhanced_tracker(data_dir: str = None):
             data_dir = get_engine_data_dir()
         except LookupError:
             pass
-    effective_dir = data_dir or _enhanced_tracker_data_dir
-    if _enhanced_tracker is not None and effective_dir == _enhanced_tracker_data_dir:
-        return _enhanced_tracker
+    effective_dir = data_dir or _enhanced_tracker_data_dir or ""
+    if effective_dir in _enhanced_trackers:
+        return _enhanced_trackers[effective_dir]
     try:
         from trading_bot.enhanced_brier import EnhancedBrierTracker
         if effective_dir:
             import os
             data_path = os.path.join(effective_dir, "enhanced_brier.json")
-            _enhanced_tracker = EnhancedBrierTracker(data_path=data_path)
+            _enhanced_trackers[effective_dir] = EnhancedBrierTracker(data_path=data_path)
         else:
-            _enhanced_tracker = EnhancedBrierTracker()
-        _enhanced_tracker_data_dir = effective_dir
+            _enhanced_trackers[effective_dir] = EnhancedBrierTracker()
     except Exception as e:
         logger.error(f"Failed to initialize EnhancedBrierTracker: {e}")
         return None
-    return _enhanced_tracker
+    return _enhanced_trackers[effective_dir]
 
 
 def reset_enhanced_tracker():
-    """Reset singleton (call after resolving predictions)."""
-    global _enhanced_tracker
-    _enhanced_tracker = None
+    """Reset all tracker instances (call after resolving predictions)."""
+    _enhanced_trackers.clear()
 
 
 def _confidence_to_probs(

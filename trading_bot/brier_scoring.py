@@ -367,35 +367,39 @@ class BrierScoreTracker:
 
         return diagnostics
 
-# Singleton
-_tracker: Optional[BrierScoreTracker] = None
+# Per-engine tracker registry (keyed by data_dir to prevent cross-contamination)
+_trackers: dict = {}  # data_dir → BrierScoreTracker
 _data_dir: Optional[str] = None
+# Legacy compat alias (tests that reference _tracker directly)
+_tracker: Optional[BrierScoreTracker] = None
 
 
 def set_data_dir(data_dir: str):
     """Set data directory for the Brier tracker singleton."""
     global _data_dir, _tracker
     _data_dir = data_dir
-    _tracker = None  # Force recreation with new path
+    _trackers.pop(data_dir, None)  # Force recreation for this data_dir
+    _tracker = None  # Legacy compat
     logger.info(f"BrierScoring data_dir set to: {data_dir}")
 
 
 def get_brier_tracker(data_dir: str = None) -> BrierScoreTracker:
     global _tracker
-    if _tracker is None:
-        # ContextVar > explicit arg > module global
-        if data_dir is None:
-            try:
-                from trading_bot.data_dir_context import get_engine_data_dir
-                data_dir = get_engine_data_dir()
-            except LookupError:
-                pass
-        effective_dir = data_dir or _data_dir
+    # ContextVar > explicit arg > module global
+    if data_dir is None:
+        try:
+            from trading_bot.data_dir_context import get_engine_data_dir
+            data_dir = get_engine_data_dir()
+        except LookupError:
+            pass
+    effective_dir = data_dir or _data_dir or ""
+    if effective_dir not in _trackers:
         if effective_dir:
-            _tracker = BrierScoreTracker(history_file=os.path.join(effective_dir, "agent_accuracy.csv"))
+            _trackers[effective_dir] = BrierScoreTracker(history_file=os.path.join(effective_dir, "agent_accuracy.csv"))
         else:
-            _tracker = BrierScoreTracker()
-    return _tracker
+            _trackers[effective_dir] = BrierScoreTracker()
+    _tracker = _trackers[effective_dir]  # Legacy compat
+    return _trackers[effective_dir]
 
 def resolve_pending_predictions(council_history_path: str = None, data_dir: str = None) -> List[int]:
     """
@@ -635,9 +639,10 @@ def _cycle_aware_resolve(
 
 
 def _reset_tracker_singleton():
-    """Reset the global BrierScoreTracker so it reloads from disk."""
+    """Reset all BrierScoreTracker instances so they reload from disk."""
     global _tracker
     try:
+        _trackers.clear()
         _tracker = None
         logger.info("Reset BrierScoreTracker singleton — will reload on next access")
     except Exception:
