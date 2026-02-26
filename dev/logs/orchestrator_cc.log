@@ -1230,3 +1230,128 @@
 2026-02-26 13:46:11,995 - Orchestrator - INFO - Refreshed contract cache: CCK6
 2026-02-26 13:51:12,130 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=435, market_open=True, trading_day=True
 2026-02-26 13:56:12,284 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=440, market_open=True, trading_day=True
+2026-02-26 14:01:12,651 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=445, market_open=True, trading_day=True
+2026-02-26 14:03:14,134 - trading_bot.rate_limiter - INFO - Rate limiter: 6 requests queued, waiting 2.4s for next slot
+2026-02-26 14:03:26,140 - trading_bot.rate_limiter - INFO - Rate limiter: 8 requests queued, waiting 2.4s for next slot
+2026-02-26 14:03:44,135 - trading_bot.rate_limiter - WARNING - Rate limiter: Timeout after 30.0s
+2026-02-26 14:03:44,136 - trading_bot.rate_limiter - WARNING - Rate limit timeout for xai after 30.0s
+2026-02-26 14:03:55,638 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=7)
+2026-02-26 14:03:55,676 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
+2026-02-26 14:03:55,677 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by XSentimentSentinel: EXTREMELY BEARISH X sentiment (score: 2.1/10) (Cycle: CC-1e48b58c)
+2026-02-26 14:03:55,952 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 14:03:55,961 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-26 14:03:56,054 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-26 14:03:56,055 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'openai', 'anthropic']
+2026-02-26 14:03:56,055 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'gemini', 'openai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-26 14:03:56,060 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-26 14:03:56,069 - trading_bot.enhanced_brier - INFO - Loaded 888 predictions from /home/rodrigo/real_options/data/CC/enhanced_brier.json
+2026-02-26 14:03:56,163 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 2 created from CSV, 0 resolved from council_history
+2026-02-26 14:03:56,164 - trading_bot.agents - INFO - Loaded commodity profile: Cocoa
+2026-02-26 14:03:56,164 - trading_bot.observability - INFO - HallucinationDetector initialized for Cocoa: 4 port tokens, 6 producer tokens
+2026-02-26 14:03:56,164 - trading_bot.observability - INFO - ObservabilityHub initialized for Cocoa
+2026-02-26 14:03:56,165 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-26 14:03:56,165 - trading_bot.agents - INFO - Trading Council initialized for Cocoa. Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-26 14:03:56,165 - root - INFO - Fetching 2 active futures contracts for CC on NYBOT...
+2026-02-26 14:03:56,167 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-26 14:03:56,246 - root - INFO - Skipping contract CCH6 (Exp: 20260316): Expires < 45 days.
+2026-02-26 14:03:56,247 - root - INFO - Found 9 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-26 14:03:56,248 - Orchestrator - INFO - Targeting contract: CCK6 (202605)
+2026-02-26 14:04:00,370 - trading_bot.market_data_provider - INFO - Building market context for CCK6 (202605)...
+2026-02-26 14:04:00,955 - trading_bot.market_data_provider - INFO - Market context for CCK6 (202605): price=3059.00, sma_200=6413.835, regime=RANGE_BOUND, vol_5d=0.0212
+2026-02-26 14:04:00,955 - Orchestrator - INFO - Emergency market context: price=3059.0, regime=RANGE_BOUND
+2026-02-26 14:04:00,956 - trading_bot.agents - INFO - Running Specialized Cycle triggered by XSentimentSentinel...
+2026-02-26 14:04:00,956 - trading_bot.agents - INFO - Routing to sentiment (Reason: Matched: XSentimentSentinel/bearish)
+2026-02-26 14:04:00,956 - trading_bot.agents - INFO - Waking up sentiment...
+2026-02-26 14:04:01,261 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-26 14:04:01,261 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-26 14:04:37,945 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-26 14:04:37,947 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.5 \u00d7 reliability=0.8 = 1.15", "macro": "domain=1.5 \u00d7 reliability=0.8 = 1.08", "geopolitical": "domain=1.5 \u00d7 reliability=0.7 = 0.98", "supply_chain": "domain=1.5 \u00d7 reliability=0.5 = 0.77", "inventory": "domain=1.5 \u00d7 reliability=0.7 = 1.07", "sentiment": "domain=1.5 \u00d7 reliability=0.9 = 1.35", "technical": "domain=2.2 \u00d7 reliability=1.0 = 2.13", "volatility": "domain=1.0 \u00d7 reliability=0.8 = 0.83"}
+2026-02-26 14:04:37,948 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.589, dominant=technical)
+2026-02-26 14:04:37,948 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "agronomist",\n    "direction": "NEUTRAL",\n    "confidence": 0.55,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.79,\n    "staleness_weight": 0.96,\n    "age_hours": 1.4,\n    "final_weight": 1.15,\n    "contribution": 0.0\n  },\n  {\n    "agent": "macro",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.75,\n    "staleness_weight": 0.96,\n    "age_hours": 1.4,\n    "final_weight": 1.08,\n    "contribution": -0.867\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "NEUTRAL",\n    "confidence": 0.55,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.68,\n    "staleness_weight": 0.96,\n    "age_hours": 1.4,\n    "final_weight": 0.98,\n    "contribution": 0.0\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.53,\n    "staleness_weight": 0.96,\n    "age_hours": 1.4,\n    "final_weight": 0.77,\n    "contribution": -0.502\n  },\n  {\n    "agent": "inventory",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.74,\n    "staleness_weight": 0.96,\n    "age_hours": 1.4,\n    "final_weight": 1.07,\n    "contribution": -0.697\n  },\n  {\n    "agent": "sentiment",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.9,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "final_weight": 1.35,\n    "contribution": -1.076\n  },\n  {\n    "agent": "technical",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 2.25,\n    "reliability_mult": 0.98,\n    "staleness_weight": 0.96,\n    "age_hours": 1.4,\n    "final_weight": 2.13,\n    "contribution": -1.705\n  },\n  {\n    "agent": "volatility",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 1.0499999999999998,\n    "reliability_mult": 0.82,\n    "staleness_weight": 0.96,\n    "age_hours": 1.4,\n    "final_weight": 0.83,\n    "contribution": -0.667\n  }\n]
+2026-02-26 14:06:26,199 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-6 for master after primary failure.
+2026-02-26 14:06:26,200 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: openai quota exhausted (circuit breaker)
+2026-02-26 14:06:26,200 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PROVEN (conf=0.9) | Catalyst: Structural global surplus of 287,000 MT combined with ICE ce
+2026-02-26 14:06:56,127 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=450, market_open=True, trading_day=True
+2026-02-26 14:07:00,003 - Engine.CC - INFO - --- Running scheduled task: audit_mid_session [run_position_audit_cycle] ---
+2026-02-26 14:07:00,007 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-26 14:07:00,007 - trading_bot.connection_pool - INFO - Connecting IB (CC_audit) ID: 469 [REMOTE/PAPER]...
+2026-02-26 14:07:00,363 - trading_bot.connection_pool - INFO - IB (CC_audit) connected successfully with ID 469
+2026-02-26 14:07:00,367 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-26 14:07:00,478 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-26 14:07:00,525 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
+2026-02-26 14:07:00,529 - Orchestrator - INFO - No open positions to audit.
+2026-02-26 14:07:00,531 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_audit)...
+2026-02-26 14:07:02,592 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED IN CURRENT FORM. The trade contains a potentially fatal internal data contradiction (200-day SMA cited as $6,413.84 in reasoning vs. $3,730.77 in the technical agent's actual evidence), which undermines the single most emphatic claim about trend magnitude. Beyond this error, the trade exhibits textbook crowded-short characteristics: 0.9 confidence, near-unanimous agent consensus, X sentiment spike confirming public awareness, and a framework override of its own volatility safeguard. The bearish structural case is likely CORRECT directionally over a 30-90 day horizon, but entering a leveraged short position on a contract that has already fallen 66% YoY, with $55.66% IV, crowded institutional shorts, and two failed agent reports creating genuine geopolitical and agronomic data gaps, violates basic risk-adjusted entry discipline. If the trade MUST be expressed, reduce size by 60%, use defined-risk structures only (despite elevated premiums), and wait for either: (a) a technical dead-cat bounce to $3,200-3,300 for a better short entry, or (b) confirmation that the Ivory Coast farmgate price cut has been officially announced — removing the last plausible near-term bullish catalyst. The confidence of 0.9 is not justified when the framework's own volatility rule was manually overridden and a key supporting statistic contains a likely data error.
+2026-02-26 14:07:02,593 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-26 14:07:02,595 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-26 14:07:02,595 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-26 14:07:02,595 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-26 14:07:02,597 - root - INFO - Logged council decision for CCK6 (202605)
+2026-02-26 14:07:02,600 - trading_bot.decision_signals - INFO - Decision signal logged: CCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-26 14:07:02,752 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (VOLATILITY)
+2026-02-26 14:07:02,755 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-26 14:07:03,539 - Engine.CC - INFO - Next task 'signal_mid' (Signal: Mid) scheduled for 2026-02-26 14:33:00 UTC. Waiting for 0.43 hours.
+2026-02-26 14:11:57,391 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=455, market_open=True, trading_day=True
+2026-02-26 14:16:58,689 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=460, market_open=True, trading_day=True
+2026-02-26 14:16:58,800 - Orchestrator - INFO - PriceSentinel detected 1.7% move - triggering position audit
+2026-02-26 14:16:58,811 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (PriceSentinel trigger (1.7% move)) ---
+2026-02-26 14:16:58,811 - trading_bot.connection_pool - INFO - Connecting IB (CC_audit) ID: 469 [REMOTE/PAPER]...
+2026-02-26 14:16:58,837 - trading_bot.state_manager - INFO - Logged sentinel event from PriceSentinel to history.
+2026-02-26 14:16:58,838 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by PriceSentinel: Price moved -1.70% in last hour (Threshold: 1.5%) (Cycle: CC-dc8ba89e)
+2026-02-26 14:16:59,152 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 14:16:59,239 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-26 14:16:59,239 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'openai', 'anthropic']
+2026-02-26 14:16:59,239 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'gemini', 'openai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-26 14:16:59,245 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-26 14:16:59,464 - trading_bot.enhanced_brier - INFO - Loaded 896 predictions from /home/rodrigo/real_options/data/CC/enhanced_brier.json
+2026-02-26 14:16:59,534 - trading_bot.agents - INFO - Loaded commodity profile: Cocoa
+2026-02-26 14:16:59,534 - trading_bot.observability - INFO - HallucinationDetector initialized for Cocoa: 4 port tokens, 6 producer tokens
+2026-02-26 14:16:59,534 - trading_bot.observability - INFO - ObservabilityHub initialized for Cocoa
+2026-02-26 14:16:59,535 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-26 14:16:59,535 - trading_bot.agents - INFO - Trading Council initialized for Cocoa. Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-26 14:16:59,535 - root - INFO - Fetching 2 active futures contracts for CC on NYBOT...
+2026-02-26 14:16:59,537 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-26 14:16:59,605 - root - INFO - Skipping contract CCH6 (Exp: 20260316): Expires < 45 days.
+2026-02-26 14:16:59,606 - root - INFO - Found 9 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-26 14:16:59,606 - Orchestrator - INFO - Targeting contract: CCK6 (202605)
+2026-02-26 14:17:00,015 - trading_bot.connection_pool - INFO - IB (CC_audit) connected successfully with ID 469
+2026-02-26 14:17:00,019 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-26 14:17:00,321 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-26 14:17:00,557 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
+2026-02-26 14:17:00,560 - Orchestrator - INFO - No open positions to audit.
+2026-02-26 14:17:00,561 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_audit)...
+2026-02-26 14:17:03,730 - trading_bot.market_data_provider - INFO - Building market context for CCK6 (202605)...
+2026-02-26 14:17:04,312 - trading_bot.market_data_provider - INFO - Market context for CCK6 (202605): price=3014.00, sma_200=6413.61, regime=TRENDING, vol_5d=0.0219
+2026-02-26 14:17:04,312 - Orchestrator - INFO - Emergency market context: price=3014.0, regime=TRENDING
+2026-02-26 14:17:04,313 - trading_bot.semantic_cache - INFO - CACHE CROSS-SOURCE INVALIDATION: 1 entries removed for CCK6 (202605) (kept PriceSentinel)
+2026-02-26 14:17:04,313 - trading_bot.agents - INFO - Running Specialized Cycle triggered by PriceSentinel...
+2026-02-26 14:17:04,314 - trading_bot.agents - INFO - Routing to technical (Reason: Default routing)
+2026-02-26 14:17:04,314 - trading_bot.agents - INFO - Waking up technical...
+2026-02-26 14:17:04,628 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-02-26 14:17:04,629 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-02-26 14:17:25,081 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-fast-non-reasoning for technical after primary failure.
+2026-02-26 14:17:25,081 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: openai quota exhausted (circuit breaker)
+2026-02-26 14:17:30,337 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-fast-non-reasoning for technical after primary failure.
+2026-02-26 14:17:30,339 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> xai. Reason: openai quota exhausted (circuit breaker)
+2026-02-26 14:17:30,466 - trading_bot.weighted_voting - INFO - Market Regime Detected: TRENDING
+2026-02-26 14:17:30,467 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.0 \u00d7 reliability=0.8 = 0.75", "macro": "domain=2.2 \u00d7 reliability=0.8 = 1.59", "geopolitical": "domain=1.5 \u00d7 reliability=0.7 = 0.96", "supply_chain": "domain=1.0 \u00d7 reliability=0.5 = 0.50", "inventory": "domain=1.0 \u00d7 reliability=0.7 = 0.70", "sentiment": "domain=2.0 \u00d7 reliability=0.9 = 1.79", "technical": "domain=3.0 \u00d7 reliability=1.0 = 2.95", "volatility": "domain=2.5 \u00d7 reliability=0.8 = 1.94"}
+2026-02-26 14:17:30,468 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.622, dominant=technical)
+2026-02-26 14:17:30,469 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "agronomist",\n    "direction": "NEUTRAL",\n    "confidence": 0.55,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.79,\n    "staleness_weight": 0.94,\n    "age_hours": 1.6,\n    "final_weight": 0.75,\n    "contribution": 0.0\n  },\n  {\n    "agent": "macro",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 2.25,\n    "reliability_mult": 0.75,\n    "staleness_weight": 0.94,\n    "age_hours": 1.6,\n    "final_weight": 1.59,\n    "contribution": -1.271\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "NEUTRAL",\n    "confidence": 0.55,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.68,\n    "staleness_weight": 0.94,\n    "age_hours": 1.6,\n    "final_weight": 0.96,\n    "contribution": 0.0\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.53,\n    "staleness_weight": 0.94,\n    "age_hours": 1.6,\n    "final_weight": 0.5,\n    "contribution": -0.327\n  },\n  {\n    "agent": "inventory",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.74,\n    "staleness_weight": 0.94,\n    "age_hours": 1.6,\n    "final_weight": 0.7,\n    "contribution": -0.454\n  },\n  {\n    "agent": "sentiment",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 2.0,\n    "reliability_mult": 0.9,\n    "staleness_weight": 1.0,\n    "age_hours": 0.2,\n    "final_weight": 1.79,\n    "contribution": -1.435\n  },\n  {\n    "agent": "technical",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 3.0,\n    "reliability_mult": 0.98,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "final_weight": 2.95,\n    "contribution": -1.917\n  },\n  {\n    "agent": "volatility",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 2.5,\n    "reliability_mult": 0.82,\n    "staleness_weight": 0.94,\n    "age_hours": 1.6,\n    "final_weight": 1.94,\n    "contribution": -1.552\n  }\n]
+2026-02-26 14:18:51,443 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-6 for master after primary failure.
+2026-02-26 14:18:51,443 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: openai quota exhausted (circuit breaker)
+2026-02-26 14:18:51,443 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.8) | Catalyst: Ivory Coast farmgate price capitulation (64-71% cut to 800-1
+2026-02-26 14:19:00,679 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 48% of average (Sev: 5)
+2026-02-26 14:19:00,683 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-26 14:19:23,319 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED in current form. The pre-mortem reveals three distinct failure modes, each independently capable of catastrophic loss: (1) a supply shock in an already crowded short, (2) a consensus-unwind in a maximum-bearish-sentiment environment with 55.66% IV, and (3) mean-reversion buying by physical end-users at multi-decade value levels. The core analytical error is CONFLUENCE BIAS — six bearish signals were treated as six independent data points, but they are largely co-dependent, all downstream of the same single variable: the 287,000 MT surplus projection from StoneX. If that number is wrong, revised, or front-run by market participants, all six 'independent' signals reverse simultaneously. Additionally, CROWDED TRADE RISK is severe: entering a short when XSentiment is 2.06/10, funds are already net short -15,906 contracts, and prices are down 66% YoY means the asymmetric risk is to the UPSIDE, not downside. The volatility cost rule was acknowledged but insufficiently weighted — at 55.66% IV, the options market is explicitly pricing a high probability of a violent directional move in either direction, and shorting into this environment requires the bear case to ACCELERATE materially just to overcome theta and premium decay. If proceeding at all, position size must be reduced by minimum 60% from normal sizing, hard stops must be set at 8-10% above entry, and the trade must be structured as a defined-risk options position (put spread) rather than outright futures short to cap the loss from a short-squeeze scenario. The confidence of 0.8 on the original thesis reflects analytical overconfidence in a structurally crowded, mean-reversion-prone, high-IV environment.
+2026-02-26 14:19:23,321 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-26 14:19:23,323 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=TRENDING
+2026-02-26 14:19:23,323 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=TRENDING
+2026-02-26 14:19:23,323 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-26 14:19:23,325 - root - INFO - Logged council decision for CCK6 (202605)
+2026-02-26 14:19:23,329 - trading_bot.decision_signals - INFO - Decision signal logged: CCK6 (202605) → NEUTRAL (DIRECTIONAL/NONE)
+2026-02-26 14:19:23,486 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-02-26 14:19:23,490 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-26 14:22:00,835 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=465, market_open=True, trading_day=True
+2026-02-26 14:27:01,078 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=470, market_open=True, trading_day=True
+2026-02-26 14:29:01,220 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 32% of average (Sev: 6)
+2026-02-26 14:29:01,224 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
