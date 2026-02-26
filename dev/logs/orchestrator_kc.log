@@ -148,3 +148,69 @@
 2026-02-26 17:55:02,077 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_audit)...
 2026-02-26 17:55:05,083 - Engine.KC - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-02-26 18:05:00 UTC. Waiting for 0.17 hours.
 2026-02-26 17:57:12,503 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=True, trading_day=True
+2026-02-26 18:01:57,611 - Orchestrator - INFO - 2026-02-26 18:01:57,611 - root - INFO - --- Risk Monitor: Checking 3 combo position(s) ---
+2026-02-26 18:01:57,611 - Orchestrator - INFO - 2026-02-26 18:01:57,611 - root - INFO - Combo 2 Legs on LNEM6 P3000: PnL=$-44.58 | Capture: -7.3% | Risk Used: -14.6%
+2026-02-26 18:01:57,612 - Orchestrator - INFO - 2026-02-26 18:01:57,611 - root - INFO - Combo 2 Legs on LNEN6 P3250: PnL=$-91.57 | Capture: -7.3% | Risk Used: -14.5%
+2026-02-26 18:01:57,612 - Orchestrator - INFO - 2026-02-26 18:01:57,611 - root - INFO - Combo 2 Legs on LNEK6 P2800: PnL=$-44.30 | Capture: -7.0% | Risk Used: -14.1%
+2026-02-26 18:02:14,724 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_open=True, trading_day=True
+2026-02-26 18:05:00,016 - Engine.KC - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-02-26 18:05:00,018 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-26 18:05:00,029 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 39 [REMOTE/PAPER]...
+2026-02-26 18:05:00,254 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 39
+2026-02-26 18:05:00,258 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-26 18:05:00,258 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-26 18:05:00,747 - OrderManager - INFO - Found 8 live position legs in the IB account.
+2026-02-26 18:05:00,748 - OrderManager - INFO -   Filtered to 6 positions with non-zero quantity (2 already closed/zero-qty excluded)
+2026-02-26 18:05:00,762 - OrderManager - INFO - Reconstruction: LNEM6 P3000 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
+2026-02-26 18:05:00,763 - OrderManager - INFO - Reconstruction: LNEN6 P3250 | Trade Date: 2026-02-26 | Age: 1 | Qty: 2.0
+2026-02-26 18:05:00,764 - OrderManager - INFO - Reconstruction: LNEK6 P2800 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
+2026-02-26 18:05:00,765 - OrderManager - INFO - Reconstruction: LNEM6 P2950 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
+2026-02-26 18:05:00,767 - OrderManager - INFO - Reconstruction: LNEN6 P3300 | Trade Date: 2026-02-26 | Age: 1 | Qty: 2.0
+2026-02-26 18:05:00,768 - OrderManager - INFO - Reconstruction: LNEK6 P2850 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
+2026-02-26 18:05:00,973 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 18:05:00,975 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-02-26 18:05:03,981 - Engine.KC - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-02-26 18:15:00 UTC. Waiting for 0.17 hours.
+2026-02-26 18:07:16,989 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_open=True, trading_day=True
+2026-02-26 18:11:57,631 - Orchestrator - INFO - 2026-02-26 18:11:57,631 - root - INFO - --- Risk Monitor: Checking 3 combo position(s) ---
+2026-02-26 18:11:57,632 - Orchestrator - INFO - 2026-02-26 18:11:57,631 - root - INFO - Combo 2 Legs on LNEM6 P3000: PnL=$-45.60 | Capture: -7.5% | Risk Used: -15.0%
+2026-02-26 18:11:57,632 - Orchestrator - INFO - 2026-02-26 18:11:57,631 - root - INFO - Combo 2 Legs on LNEN6 P3250: PnL=$-90.74 | Capture: -7.2% | Risk Used: -14.4%
+2026-02-26 18:11:57,632 - Orchestrator - INFO - 2026-02-26 18:11:57,632 - root - INFO - Combo 2 Legs on LNEK6 P2800: PnL=$-46.67 | Capture: -7.4% | Risk Used: -14.8%
+2026-02-26 18:12:18,946 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_open=True, trading_day=True
+2026-02-26 18:15:00,017 - Engine.KC - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-02-26 18:15:00,020 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-02-26 18:15:00,020 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-02-26 18:15:00,020 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-26 18:15:00,030 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 37 [REMOTE/PAPER]...
+2026-02-26 18:15:01,145 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 37
+2026-02-26 18:15:01,152 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-26 18:15:01,153 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-26 18:15:01,483 - OrderManager - INFO - Found 8 live position legs in the IB account.
+2026-02-26 18:15:01,483 - OrderManager - INFO -   Filtered to 6 positions with non-zero quantity (2 already closed/zero-qty excluded)
+2026-02-26 18:15:01,498 - OrderManager - INFO - Reconstruction: LNEM6 P3000 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
+2026-02-26 18:15:01,500 - OrderManager - INFO - Reconstruction: LNEN6 P3250 | Trade Date: 2026-02-26 | Age: 1 | Qty: 2.0
+2026-02-26 18:15:01,501 - OrderManager - INFO - Reconstruction: LNEK6 P2800 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
+2026-02-26 18:15:01,502 - OrderManager - INFO - Reconstruction: LNEM6 P2950 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
+2026-02-26 18:15:01,503 - OrderManager - INFO - Reconstruction: LNEN6 P3300 | Trade Date: 2026-02-26 | Age: 1 | Qty: 2.0
+2026-02-26 18:15:01,504 - OrderManager - INFO - Reconstruction: LNEK6 P2850 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
+2026-02-26 18:15:01,840 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 18:15:01,843 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-02-26 18:15:04,850 - Engine.KC - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-02-26 18:25:00 UTC. Waiting for 0.17 hours.
+2026-02-26 18:17:21,132 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=25, market_open=True, trading_day=True
+2026-02-26 18:17:21,354 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 37% of average (Sev: 6)
+2026-02-26 18:17:21,360 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-26 18:21:57,650 - Orchestrator - INFO - 2026-02-26 18:21:57,649 - root - INFO - --- Risk Monitor: Checking 3 combo position(s) ---
+2026-02-26 18:21:57,650 - Orchestrator - INFO - 2026-02-26 18:21:57,650 - root - INFO - Combo 2 Legs on LNEM6 P3000: PnL=$-45.78 | Capture: -7.5% | Risk Used: -15.0%
+2026-02-26 18:21:57,650 - Orchestrator - INFO - 2026-02-26 18:21:57,650 - root - INFO - Combo 2 Legs on LNEN6 P3250: PnL=$-95.46 | Capture: -7.6% | Risk Used: -15.2%
+2026-02-26 18:21:57,650 - Orchestrator - INFO - 2026-02-26 18:21:57,650 - root - INFO - Combo 2 Legs on LNEK6 P2800: PnL=$-43.92 | Capture: -7.0% | Risk Used: -14.0%
+2026-02-26 18:22:23,360 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=30, market_open=True, trading_day=True
+2026-02-26 18:25:00,001 - Engine.KC - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-02-26 18:25:00,006 - Orchestrator - INFO - --- Emergency Hard Close Check (T-45 min) ---
+2026-02-26 18:25:00,009 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 39 [REMOTE/PAPER]...
+2026-02-26 18:25:00,535 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 39
+2026-02-26 18:25:00,540 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-26 18:25:01,131 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
+2026-02-26 18:25:01,131 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-02-26 18:25:04,138 - Engine.KC - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-02-26 18:35:00 UTC. Waiting for 0.17 hours.
+2026-02-26 18:26:25,664 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 37% of average (Sev: 6)
+2026-02-26 18:26:25,670 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-26 18:27:25,679 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=35, market_open=True, trading_day=True
