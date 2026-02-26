@@ -397,21 +397,29 @@ class PortfolioVaRCalculator:
                 logger.info(
                     f"VaR: Fetching underlying prices for option-only symbols: {missing_syms}"
                 )
-                # Build symbol→exchange from option contracts' own metadata
-                sym_exchange = {}
+                # Build symbol→(exchange, nearest_expiry) from option contracts
+                sym_info: dict[str, tuple[str, str]] = {}
                 for item in option_items:
                     s = item.contract.symbol
-                    if s in missing_syms and s not in sym_exchange:
-                        sym_exchange[s] = (
-                            item.contract.exchange
-                            or item.contract.primaryExchange
-                            or 'SMART'
-                        )
+                    exchange = (
+                        item.contract.exchange
+                        or item.contract.primaryExchange
+                        or 'SMART'
+                    )
+                    expiry = item.contract.lastTradeDateOrContractMonth or ''
+                    # Extract YYYYMM from option expiry for underlying future
+                    expiry_month = expiry[:6] if len(expiry) >= 6 else ''
+                    if s in missing_syms:
+                        if s not in sym_info or expiry_month < sym_info[s][1]:
+                            sym_info[s] = (exchange, expiry_month)
                 for sym in missing_syms:
                     try:
                         from ib_insync import Future
-                        exchange = sym_exchange.get(sym, 'SMART')
-                        fut = Future(symbol=sym, exchange=exchange)
+                        exchange, expiry_month = sym_info.get(sym, ('SMART', ''))
+                        fut = Future(
+                            symbol=sym, exchange=exchange,
+                            lastTradeDateOrContractMonth=expiry_month,
+                        )
                         qualified = await ib.qualifyContractsAsync(fut)
                         if qualified:
                             ticker = ib.reqMktData(qualified[0], '', False, False)
