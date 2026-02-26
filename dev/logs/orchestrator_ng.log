@@ -900,3 +900,46 @@ google.genai.errors.ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'messa
 2026-02-26 14:26:41,660 - OrderManager - INFO - Order 47 (NG-P3.3+P3.25): Reached cap/floor at 0.03. Waiting for fill or timeout.
 2026-02-26 14:26:46,672 - OrderManager - INFO - Order 33 (NG-P2.85+P2.8): Reached cap/floor at 0.03. Waiting for fill or timeout.
 2026-02-26 14:26:51,681 - OrderManager - INFO - Order 40 (NG-P3.0+P2.95): Reached cap/floor at 0.03. Waiting for fill or timeout.
+2026-02-26 14:30:05,809 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=470, market_open=True, trading_day=True
+2026-02-26 14:31:07,336 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 41% of average (Sev: 5)
+2026-02-26 14:31:07,339 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-26 14:31:42,589 - OrderManager - INFO - Order 47 (NG-P3.3+P3.25): Still at cap 0.03 for 5 minutes. Current market: Submitted
+2026-02-26 14:31:47,593 - OrderManager - INFO - Order 33 (NG-P2.85+P2.8): Still at cap 0.03 for 5 minutes. Current market: Submitted
+2026-02-26 14:31:52,600 - OrderManager - INFO - Order 40 (NG-P3.0+P2.95): Still at cap 0.03 for 5 minutes. Current market: Submitted
+2026-02-26 14:35:14,596 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=475, market_open=True, trading_day=True
+2026-02-26 14:36:45,615 - OrderManager - INFO - Order 47 (NG-P3.3+P3.25): Still at cap 0.03 for 10 minutes. Current market: Submitted
+2026-02-26 14:36:47,618 - OrderManager - INFO - Order 33 (NG-P2.85+P2.8): Still at cap 0.03 for 10 minutes. Current market: Submitted
+2026-02-26 14:36:52,625 - OrderManager - INFO - Order 40 (NG-P3.0+P2.95): Still at cap 0.03 for 10 minutes. Current market: Submitted
+2026-02-26 14:38:17,100 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 31% of average (Sev: 6)
+2026-02-26 14:38:17,105 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-26 14:40:17,344 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=480, market_open=True, trading_day=True
+2026-02-26 14:41:42,389 - OrderManager - WARNING - CAP TIMEOUT: Order 47 (NG-P3.3+P3.25) at cap 0.03 for 15 min. Cancelling (market not converging).
+2026-02-26 14:41:42,390 - OrderManager - INFO - Order 47 status update: PendingCancel
+2026-02-26 14:41:42,390 - OrderManager - WARNING - Cancelling orphaned catastrophe stop (order 48, status=PreSubmitted) for cap-timed-out spread 47
+2026-02-26 14:41:42,467 - OrderManager - INFO - Order 47 status update: Cancelled
+2026-02-26 14:41:47,396 - OrderManager - WARNING - CAP TIMEOUT: Order 33 (NG-P2.85+P2.8) at cap 0.03 for 15 min. Cancelling (market not converging).
+2026-02-26 14:41:47,396 - OrderManager - INFO - Order 33 status update: PendingCancel
+2026-02-26 14:41:47,397 - OrderManager - WARNING - Cancelling orphaned catastrophe stop (order 34, status=PreSubmitted) for cap-timed-out spread 33
+2026-02-26 14:41:47,472 - OrderManager - INFO - Order 33 status update: Cancelled
+2026-02-26 14:41:52,402 - OrderManager - WARNING - CAP TIMEOUT: Order 40 (NG-P3.0+P2.95) at cap 0.03 for 15 min. Cancelling (market not converging).
+2026-02-26 14:41:52,404 - OrderManager - INFO - Order 40 status update: PendingCancel
+2026-02-26 14:41:52,404 - OrderManager - WARNING - Cancelling orphaned catastrophe stop (order 41, status=PreSubmitted) for cap-timed-out spread 40
+2026-02-26 14:41:52,477 - OrderManager - INFO - Order 40 status update: Cancelled
+2026-02-26 14:41:53,405 - OrderManager - INFO - All orders have reached a terminal state. Concluding monitoring.
+2026-02-26 14:41:53,594 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 14:41:53,596 - OrderManager - INFO - --- Finished monitoring and cleanup. ---
+2026-02-26 14:41:53,597 - OrderManager - INFO - Order placement complete. Releasing event handlers.
+2026-02-26 14:41:53,598 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-02-26 14:41:56,599 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-02-26 14:41:56,600 - trading_bot.semantic_cache - INFO - CACHE INVALIDATED BY TICKER (NG): 1 entries removed
+2026-02-26 14:41:56,606 - Engine.NG - INFO - Next task 'eia_storage_signal' (Signal: EIA Storage Report) scheduled for 2026-02-26 15:35:00 UTC. Waiting for 0.88 hours.
+2026-02-26 14:45:19,568 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=485, market_open=True, trading_day=True
+2026-02-26 14:45:21,151 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 25% of average
+2026-02-26 14:45:21,157 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-26 14:45:21,359 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 14:50:22,304 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=490, market_open=True, trading_day=True
+2026-02-26 14:53:24,605 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 29% of average
+2026-02-26 14:53:24,606 - Orchestrator - INFO - MicrostructureSentinel cooldown active until 2026-02-26 15:15:21.362252. Skipping.
+2026-02-26 14:55:24,845 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=495, market_open=True, trading_day=True
+2026-02-26 14:58:26,853 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 30% of average
+2026-02-26 14:58:26,853 - Orchestrator - INFO - MicrostructureSentinel cooldown active until 2026-02-26 15:15:21.362252. Skipping.
