@@ -1342,6 +1342,10 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             logger.warning(f"Invalid tick size ({TICK_SIZE}), falling back to 0.05")
             TICK_SIZE = 0.05
 
+        # Dynamic decimal precision for log messages (NG=3, KC=2, CC=0)
+        import math as _math
+        _price_decimals = max(2, -int(_math.floor(_math.log10(TICK_SIZE)))) if TICK_SIZE > 0 else 2
+
         # --- PLACEMENT LOOP (ENHANCED LOGGING & NOTIFICATIONS) ---
         for contract, order, decision_data in orders_to_place:
             
@@ -1376,7 +1380,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             leg_state_for_log = ", ".join(leg_state_strings)
 
             # --- 3. Create Enhanced Log and Place Order ---
-            price_info_log = f"Limit: {order.lmtPrice:.2f}" if order.orderType == "LMT" else "Market Order"
+            price_info_log = f"Limit: {order.lmtPrice:.{_price_decimals}f}" if order.orderType == "LMT" else "Market Order"
             display_name = _get_order_display_name(contract, strategy_def=decision_data.get('strategy_def'))
             market_state_message = (
                 f"Placing Order for {display_name}. {price_info_log}. "
@@ -1495,7 +1499,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             }
 
             # --- 5. Build Notification String (ENHANCED FOR ALL DATA) ---
-            price_info_notify = f"LMT: {order.lmtPrice:.2f}" if order.orderType == "LMT" else "MKT"
+            price_info_notify = f"LMT: {order.lmtPrice:.{_price_decimals}f}" if order.orderType == "LMT" else "MKT"
             # Use the rich display_name (e.g. KC-P295.0+P290.0) instead of generic _describe_bag
             direction = decision_data.get('direction', '?') if isinstance(decision_data, dict) else '?'
             confidence = decision_data.get('confidence', '?') if isinstance(decision_data, dict) else '?'
@@ -1522,7 +1526,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         # --- Monitoring Loop ---
         start_time = time.time()
         monitoring_duration = config.get('strategy_tuning', {}).get('monitoring_duration_seconds', 1800)
-        PRICE_TOLERANCE = 0.001  # $0.001 tolerance for floating point comparison
+        # Tolerance must be smaller than the tick size to avoid blocking 1-tick walks.
+        # NG tick=0.001 was equal to the old hardcoded 0.001, killing all walks.
+        PRICE_TOLERANCE = TICK_SIZE * 0.1
 
         logger.info(f"Monitoring orders for up to {monitoring_duration / 60} minutes...")
         while time.time() - start_time < monitoring_duration:
@@ -1624,7 +1630,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                                 # Price at or very near cap/floor - log once then stop checking
                                 if not details.get('cap_reached_logged', False):
                                     stored_display_name = details.get('display_name', trade.contract.localSymbol or 'UNKNOWN')
-                                    logger.info(f"Order {order_id} ({stored_display_name}): Reached cap/floor at {ceiling:.2f}. Waiting for fill or timeout.")
+                                    logger.info(f"Order {order_id} ({stored_display_name}): Reached cap/floor at {ceiling:.{_price_decimals}f}. Waiting for fill or timeout.")
                                     details['cap_reached_logged'] = True
                                     details['cap_reached_time'] = time.time()
 
@@ -1638,7 +1644,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                             display = details.get('display_name', 'UNKNOWN')
                             logger.warning(
                                 f"CAP TIMEOUT: Order {order_id} ({display}) "
-                                f"at cap {ceiling:.2f} for {int(time_at_cap/60)} min. "
+                                f"at cap {ceiling:.{_price_decimals}f} for {int(time_at_cap/60)} min. "
                                 f"Cancelling (market not converging)."
                             )
                             try:
@@ -1684,7 +1690,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                             details['_last_cap_report_min'] = minutes_at_cap
                             logger.info(
                                 f"Order {order_id} ({details.get('display_name', 'UNKNOWN')}): "
-                                f"Still at cap {ceiling:.2f} for {minutes_at_cap} minutes. "
+                                f"Still at cap {ceiling:.{_price_decimals}f} for {minutes_at_cap} minutes. "
                                 f"Current market: {trade.orderStatus.status}"
                             )
 
@@ -1704,7 +1710,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             # Check the new 'is_filled' flag which confirms all legs are filled
             if details.get('is_filled', False):
                 # --- Build Enhanced Fill Notification ---
-                price_info = f"LMT: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "MKT"
+                price_info = f"LMT: {trade.order.lmtPrice:.{_price_decimals}f}" if trade.order.orderType == "LMT" else "MKT"
 
                 # Use the official avgFillPrice from the parent trade status, which is correct for both combos and single legs
                 avg_fill_price = trade.orderStatus.avgFillPrice
@@ -1754,7 +1760,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 final_leg_state_for_log = ", ".join(final_leg_state_strings)
 
                 # --- 3. Create Enhanced Log and Cancel Order ---
-                price_info_log = f"Original Limit: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "Original Order: MKT"
+                price_info_log = f"Original Limit: {trade.order.lmtPrice:.{_price_decimals}f}" if trade.order.orderType == "LMT" else "Original Order: MKT"
                 stored_display_name = details.get('display_name', 'UNKNOWN')
                 log_message = (
                     f"Order {trade.order.orderId} ({stored_display_name}) TIMED OUT. "
@@ -1793,7 +1799,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                         logger.warning(f"orderRef-based catastrophe cleanup failed: {e}")
 
                 # --- 4. Update Notification String (ENHANCED FOR ALL DATA) ---
-                price_info_notify = f"LMT: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "MKT"
+                price_info_notify = f"LMT: {trade.order.lmtPrice:.{_price_decimals}f}" if trade.order.orderType == "LMT" else "MKT"
                 stored_display_name = details.get('display_name', trade.contract.localSymbol or 'UNKNOWN')
                 dd = details.get('decision_data', {}) or {}
                 cancel_direction = dd.get('direction', '')
