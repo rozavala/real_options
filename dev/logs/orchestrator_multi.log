@@ -1,658 +1,300 @@
-2026-02-26 19:21:46,666 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-26 19:21:46,667 - trading_bot.master_orchestrator - INFO - MasterOrchestrator starting with commodities: ['KC', 'CC', 'NG']
-2026-02-26 19:21:46,667 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-02-26 19:21:46,667 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'anthropic', 'xai', 'gemini']
-2026-02-26 19:21:46,668 - trading_bot.shared_context - INFO - PortfolioRiskGuard loaded: NORMAL, equity=$37,062, positions={}
-2026-02-26 19:21:46,670 - trading_bot.master_orchestrator - INFO - Staggering engine startup: waiting 2.5s before [CC]
-2026-02-26 19:21:46,670 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,671 - Engine.KC - INFO - =============================================
-2026-02-26 19:21:46,671 - Engine.KC - INFO - === Starting CommodityEngine [KC] ===
-2026-02-26 19:21:46,671 - Engine.KC - INFO - =============================================
-2026-02-26 19:21:46,671 - Engine.KC - INFO - Data directory: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,671 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,671 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,671 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,671 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,671 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,672 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,672 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/KC/tms
-2026-02-26 19:21:46,672 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,672 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,672 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,672 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,673 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/KC/research_provenance.log
-2026-02-26 19:21:46,673 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,686 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,686 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/KC
-2026-02-26 19:21:46,689 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
-2026-02-26 19:21:46,690 - trading_bot.data_dir_context - INFO - EngineRuntime set for [KC]
-2026-02-26 19:21:46,690 - Engine.KC - WARNING - ============================================================
-2026-02-26 19:21:46,690 - Engine.KC - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
-2026-02-26 19:21:46,690 - Engine.KC - WARNING -   Client IDs: DEV range (10-79)
-2026-02-26 19:21:46,690 - Engine.KC - WARNING -   Trading Mode: LIVE
-2026-02-26 19:21:46,690 - Engine.KC - WARNING - ============================================================
-2026-02-26 19:21:46,690 - Engine.KC - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-26 19:21:46,690 - Engine.KC - INFO - Drawdown Guard initialized.
-2026-02-26 19:21:46,690 - Engine.KC - INFO - Expiry filter window: 45-365 DTE
-2026-02-26 19:21:46,801 - Engine.KC - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-26 19:21:46,802 - Orchestrator - INFO - Built session schedule: 17 tasks for KC (04:15-13:30 ET)
-2026-02-26 19:21:46,802 - Engine.KC - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
-2026-02-26 19:21:46,805 - Engine.KC - WARNING - LATE START DETECTED: 17 scheduled tasks already passed:\n  - 03:30 ET: start_monitoring\n  - 03:31 ET: process_deferred_triggers\n  - 04:00 ET: cleanup_orphaned_theses\n  - 04:42 ET: signal_open\n  - 07:01 ET: signal_early\n  - 08:52 ET: audit_mid_session\n  - 09:20 ET: signal_mid\n  - 11:39 ET: signal_late\n  - 12:55 ET: audit_pre_close\n  - 13:05 ET: close_stale_primary\n  - 13:15 ET: close_stale_fallback\n  - 13:25 ET: emergency_hard_close\n  - 13:35 ET: log_equity_snapshot\n  - 13:38 ET: reconcile_and_analyze\n  - 13:50 ET: brier_reconciliation\n  - 13:53 ET: sentinel_effectiveness\n  - 13:56 ET: eod_shutdown
-2026-02-26 19:21:46,806 - Orchestrator - INFO - --- Recovery: Evaluating 17 missed tasks ---
-2026-02-26 19:21:46,806 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
-2026-02-26 19:21:46,806 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
-2026-02-26 19:21:46,807 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 04:00 ET)
-2026-02-26 19:21:46,807 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
-2026-02-26 19:21:46,807 - trading_bot.connection_pool - INFO - Connecting IB (KC_cleanup) ID: 86 [REMOTE/PAPER]...
-2026-02-26 19:21:47,207 - trading_bot.connection_pool - INFO - IB (KC_cleanup) connected successfully with ID 86
-2026-02-26 19:21:47,227 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-26 19:21:47,309 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-02-26 19:21:47,405 - Orchestrator - INFO - Thesis cleanup: no orphans found
-2026-02-26 19:21:47,405 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_cleanup)...
-2026-02-26 19:21:49,173 - trading_bot.master_orchestrator - INFO - Staggering engine startup: waiting 2.5s before [NG]
-2026-02-26 19:21:49,174 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,174 - Engine.CC - INFO - =============================================
-2026-02-26 19:21:49,174 - Engine.CC - INFO - === Starting CommodityEngine [CC] ===
-2026-02-26 19:21:49,174 - Engine.CC - INFO - =============================================
-2026-02-26 19:21:49,175 - Engine.CC - INFO - Data directory: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,175 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,175 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,175 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,175 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,176 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,176 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,176 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/CC/tms
-2026-02-26 19:21:49,177 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,177 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,177 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,177 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,177 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/CC/research_provenance.log
-2026-02-26 19:21:49,177 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,177 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,177 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/CC
-2026-02-26 19:21:49,178 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
-2026-02-26 19:21:49,178 - trading_bot.data_dir_context - INFO - EngineRuntime set for [CC]
-2026-02-26 19:21:49,179 - Engine.CC - WARNING - ============================================================
-2026-02-26 19:21:49,179 - Engine.CC - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
-2026-02-26 19:21:49,179 - Engine.CC - WARNING -   Client IDs: DEV range (10-79)
-2026-02-26 19:21:49,179 - Engine.CC - WARNING -   Trading Mode: LIVE
-2026-02-26 19:21:49,179 - Engine.CC - WARNING - ============================================================
-2026-02-26 19:21:49,179 - Engine.CC - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-26 19:21:49,180 - Engine.CC - INFO - Drawdown Guard initialized.
-2026-02-26 19:21:49,180 - Engine.CC - INFO - Expiry filter window: 45-365 DTE
-2026-02-26 19:21:49,181 - Engine.CC - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-26 19:21:49,182 - Orchestrator - INFO - Built session schedule: 17 tasks for CC (04:45-13:30 ET)
-2026-02-26 19:21:49,182 - Engine.CC - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
-2026-02-26 19:21:49,184 - Engine.CC - WARNING - LATE START DETECTED: 17 scheduled tasks already passed:\n  - 04:00 ET: start_monitoring\n  - 04:01 ET: process_deferred_triggers\n  - 04:30 ET: cleanup_orphaned_theses\n  - 05:11 ET: signal_open\n  - 07:22 ET: signal_early\n  - 09:07 ET: audit_mid_session\n  - 09:33 ET: signal_mid\n  - 11:45 ET: signal_late\n  - 12:55 ET: audit_pre_close\n  - 13:05 ET: close_stale_primary\n  - 13:15 ET: close_stale_fallback\n  - 13:25 ET: emergency_hard_close\n  - 13:35 ET: log_equity_snapshot\n  - 13:38 ET: reconcile_and_analyze\n  - 13:50 ET: brier_reconciliation\n  - 13:53 ET: sentinel_effectiveness\n  - 13:56 ET: eod_shutdown
-2026-02-26 19:21:49,186 - Orchestrator - INFO - --- Recovery: Evaluating 17 missed tasks ---
-2026-02-26 19:21:49,186 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
-2026-02-26 19:21:49,186 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
-2026-02-26 19:21:49,186 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 04:30 ET)
-2026-02-26 19:21:49,186 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
-2026-02-26 19:21:49,188 - trading_bot.connection_pool - INFO - Connecting IB (CC_cleanup) ID: 485 [REMOTE/PAPER]...
-2026-02-26 19:21:49,544 - trading_bot.connection_pool - INFO - IB (CC_cleanup) connected successfully with ID 485
-2026-02-26 19:21:49,552 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-26 19:21:49,562 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
-2026-02-26 19:21:49,735 - Orchestrator - INFO - Thesis cleanup: no orphans found
-2026-02-26 19:21:49,736 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_cleanup)...
-2026-02-26 19:21:50,410 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
-2026-02-26 19:21:51,675 - trading_bot.master_orchestrator - INFO - Master services started: equity (every 300s), macro (daily 6:00 ET), post-close (daily after market)
-2026-02-26 19:21:51,676 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,676 - Engine.NG - INFO - =============================================
-2026-02-26 19:21:51,676 - Engine.NG - INFO - === Starting CommodityEngine [NG] ===
-2026-02-26 19:21:51,676 - Engine.NG - INFO - =============================================
-2026-02-26 19:21:51,676 - Engine.NG - INFO - Data directory: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,676 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,677 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,677 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,677 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,677 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,677 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,678 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:21:51,678 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,678 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,678 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,678 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,678 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/NG/research_provenance.log
-2026-02-26 19:21:51,678 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,678 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,678 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/NG
-2026-02-26 19:21:51,679 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (-0.47%)
-2026-02-26 19:21:51,679 - trading_bot.data_dir_context - INFO - EngineRuntime set for [NG]
-2026-02-26 19:21:51,679 - Engine.NG - WARNING - ============================================================
-2026-02-26 19:21:51,680 - Engine.NG - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
-2026-02-26 19:21:51,680 - Engine.NG - WARNING -   Client IDs: DEV range (10-79)
-2026-02-26 19:21:51,680 - Engine.NG - WARNING -   Trading Mode: LIVE
-2026-02-26 19:21:51,680 - Engine.NG - WARNING - ============================================================
-2026-02-26 19:21:51,680 - Engine.NG - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-26 19:21:51,680 - Engine.NG - INFO - Drawdown Guard initialized.
-2026-02-26 19:21:51,680 - Engine.NG - INFO - Expiry filter window: 14-180 DTE
-2026-02-26 19:21:51,683 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-02-26 19:21:51,686 - Orchestrator - INFO - Processing 1 deferred triggers from overnight
-2026-02-26 19:21:51,686 - trading_bot.connection_pool - INFO - Connecting IB (NG_deferred) ID: 1297 [REMOTE/PAPER]...
-2026-02-26 19:21:51,687 - trading_bot.master_orchestrator - INFO - Equity service started
-2026-02-26 19:21:51,688 - trading_bot.master_orchestrator - INFO - Macro research service started
-2026-02-26 19:21:51,688 - trading_bot.master_orchestrator - INFO - Macro research service: next run at 2026-02-27 06:00 ET (15.6h from now)
-2026-02-26 19:21:51,688 - trading_bot.master_orchestrator - INFO - Post-close service started
-2026-02-26 19:21:51,690 - trading_bot.master_orchestrator - INFO - === Running post-close reconciliation ===
-2026-02-26 19:21:51,690 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
-2026-02-26 19:21:51,888 - trading_bot.connection_pool - INFO - IB (NG_deferred) connected successfully with ID 1297
-2026-02-26 19:21:51,894 - Orchestrator - INFO - XSentimentSentinel cooldown active until 2026-02-26 19:26:06.498992. Skipping.
-2026-02-26 19:21:51,894 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): XSentimentSentinel
-2026-02-26 19:21:51,894 - Orchestrator - INFO - Deferred triggers complete: 0 processed, 1 skipped, 0 rejected (contaminated)
-2026-02-26 19:21:51,894 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_deferred)...
-2026-02-26 19:21:51,911 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-02-26 19:21:52,744 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
-2026-02-26 19:21:54,898 - Orchestrator - INFO - Built session schedule: 18 tasks for NG (09:00-14:30 ET)
-2026-02-26 19:21:54,898 - Engine.NG - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
-2026-02-26 19:21:54,901 - Engine.NG - WARNING - LATE START DETECTED: 12 scheduled tasks already passed:\n  - 08:15 ET: start_monitoring\n  - 08:16 ET: process_deferred_triggers\n  - 08:45 ET: cleanup_orphaned_theses\n  - 09:16 ET: signal_open\n  - 10:35 ET: eia_storage_signal\n  - 10:39 ET: signal_early\n  - 11:45 ET: audit_mid_session\n  - 12:01 ET: signal_mid\n  - 13:24 ET: signal_late\n  - 13:55 ET: audit_pre_close\n  - 14:05 ET: close_stale_primary\n  - 14:15 ET: close_stale_fallback
-2026-02-26 19:21:54,904 - Orchestrator - INFO - --- Recovery: Evaluating 12 missed tasks ---
-2026-02-26 19:21:54,904 - Orchestrator - INFO - 🔄 RECOVERY: Running missed start_monitoring [start_monitoring] (was scheduled 08:15 ET)
-2026-02-26 19:21:54,904 - Orchestrator - INFO - System shutdown flag CLEARED — new trading day beginning
-2026-02-26 19:21:54,906 - Orchestrator - INFO - --- Starting position monitoring process ---
-2026-02-26 19:21:54,908 - Orchestrator - INFO - Successfully started position monitor with PID: 2685631
-2026-02-26 19:21:54,909 - Orchestrator - INFO - Started position monitoring service.
-2026-02-26 19:21:54,914 - Orchestrator - INFO - ✅ RECOVERY: start_monitoring completed
-2026-02-26 19:21:56,413 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:21:56,413 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:21:56,413 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_mid_session — market closed
-2026-02-26 19:21:56,413 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:21:56,413 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: signal_late — market closed
-2026-02-26 19:21:56,414 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_pre_close — market closed
-2026-02-26 19:21:56,414 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_primary — market closed
-2026-02-26 19:21:56,414 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_fallback — market closed
-2026-02-26 19:21:56,414 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
-2026-02-26 19:21:56,414 - Orchestrator - INFO - ✅ ALREADY RAN: log_equity_snapshot completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:21:56,414 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:21:56,415 - Orchestrator - INFO - 🔄 RECOVERY: Running missed brier_reconciliation [run_brier_reconciliation] (was scheduled 13:50 ET)
-2026-02-26 19:21:56,492 - trading_bot.brier_reconciliation - INFO - Found 205 pending predictions
-2026-02-26 19:21:56,493 - trading_bot.brier_reconciliation - INFO - Total council decisions: 262
-2026-02-26 19:21:56,500 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 233/262
-2026-02-26 19:21:56,570 - trading_bot.brier_reconciliation - INFO - ==================================================
-2026-02-26 19:21:56,571 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
-2026-02-26 19:21:56,571 - trading_bot.brier_reconciliation - INFO -   Total predictions:            1731
-2026-02-26 19:21:56,571 - trading_bot.brier_reconciliation - INFO -   Resolved:                     1521 (+0 new)
-2026-02-26 19:21:56,571 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      205 (potential: 205)
-2026-02-26 19:21:56,571 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        5 (+0 new)
-2026-02-26 19:21:56,571 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     88% (excl. orphans)
-2026-02-26 19:21:56,572 - trading_bot.brier_reconciliation - INFO - ==================================================
-2026-02-26 19:21:56,572 - trading_bot.brier_reconciliation - INFO - Running reconciliation could unlock up to 205 more predictions
-2026-02-26 19:21:56,572 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
-2026-02-26 19:21:56,585 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
-2026-02-26 19:21:58,184 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 731 created from CSV, 0 resolved from council_history
-2026-02-26 19:21:58,263 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.30, geopolitical: 0.12, inventory: 0.29, macro: 0.04, master_decision: 0.37, sentiment: 0.54, supply_chain: 0.65, technical: 0.29, volatility: 0.27}
-2026-02-26 19:21:58,513 - Orchestrator - INFO - Brier reconciliation: 795 predictions resolved today
-2026-02-26 19:21:58,513 - Orchestrator - INFO - Running feedback loop health check...
-2026-02-26 19:21:58,523 - Orchestrator - INFO - Feedback Loop Health: 205/1726 PENDING (5 orphans excluded, resolution rate: 88%)
-2026-02-26 19:21:58,526 - Orchestrator - INFO - Enhanced Brier Health: 9 agents tracked, 1526 total resolved predictions
-2026-02-26 19:21:58,526 - Orchestrator - INFO - Feedback loop health check complete.
-2026-02-26 19:21:58,530 - Orchestrator - INFO - ✅ RECOVERY: brier_reconciliation completed
-2026-02-26 19:21:58,746 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:21:58,746 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:21:58,746 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_mid_session — market closed
-2026-02-26 19:21:58,746 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:21:58,746 - Orchestrator - INFO - ✅ ALREADY RAN: signal_late completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:21:58,746 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_pre_close — market closed
-2026-02-26 19:21:58,747 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_primary — market closed
-2026-02-26 19:21:58,747 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_fallback — market closed
-2026-02-26 19:21:58,747 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
-2026-02-26 19:21:58,747 - Orchestrator - INFO - ✅ ALREADY RAN: log_equity_snapshot completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:21:58,747 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:21:58,747 - Orchestrator - INFO - 🔄 RECOVERY: Running missed brier_reconciliation [run_brier_reconciliation] (was scheduled 13:50 ET)
-2026-02-26 19:21:58,783 - trading_bot.brier_reconciliation - INFO - Found 158 pending predictions
-2026-02-26 19:21:58,785 - trading_bot.brier_reconciliation - INFO - Total council decisions: 95
-2026-02-26 19:21:58,789 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 73/95
-2026-02-26 19:21:58,843 - trading_bot.brier_reconciliation - INFO - ==================================================
-2026-02-26 19:21:58,844 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
-2026-02-26 19:21:58,844 - trading_bot.brier_reconciliation - INFO -   Total predictions:            522
-2026-02-26 19:21:58,844 - trading_bot.brier_reconciliation - INFO -   Resolved:                     364 (+0 new)
-2026-02-26 19:21:58,844 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      158 (potential: 158)
-2026-02-26 19:21:58,844 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        0 (+0 new)
-2026-02-26 19:21:58,844 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     70% (excl. orphans)
-2026-02-26 19:21:58,845 - trading_bot.brier_reconciliation - INFO - ==================================================
-2026-02-26 19:21:58,845 - trading_bot.brier_reconciliation - INFO - Running reconciliation could unlock up to 158 more predictions
-2026-02-26 19:21:58,845 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
-2026-02-26 19:21:58,855 - trading_bot.enhanced_brier - INFO - Loaded 961 predictions from /home/rodrigo/real_options/data/CC/enhanced_brier.json
-2026-02-26 19:21:58,986 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.58, geopolitical: 0.00, inventory: 0.70, macro: 0.50, master_decision: 0.58, sentiment: 0.59, supply_chain: 0.50, technical: 0.57, volatility: 0.63}
-2026-02-26 19:21:59,118 - Orchestrator - INFO - Brier reconciliation: 104 predictions resolved today
-2026-02-26 19:21:59,118 - Orchestrator - INFO - Running feedback loop health check...
-2026-02-26 19:21:59,127 - Orchestrator - INFO - Feedback Loop Health: 158/522 PENDING (0 orphans excluded, resolution rate: 70%)
-2026-02-26 19:21:59,130 - Orchestrator - INFO - Enhanced Brier Health: 10 agents tracked, 608 total resolved predictions
-2026-02-26 19:21:59,130 - Orchestrator - INFO - Feedback loop health check complete.
-2026-02-26 19:21:59,134 - Orchestrator - INFO - ✅ RECOVERY: brier_reconciliation completed
-2026-02-26 19:21:59,512 - Orchestrator - INFO - 2026-02-26 19:21:59,512 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-26 19:21:59,514 - Orchestrator - INFO - 2026-02-26 19:21:59,512 - __main__ - INFO - Position monitor connection attempt 1/5...
-2026-02-26 19:21:59,514 - Orchestrator - INFO - 2026-02-26 19:21:59,514 - trading_bot.connection_pool - INFO - Connecting IB (monitor) ID: 31 [REMOTE/PAPER]...
-2026-02-26 19:21:59,833 - Orchestrator - INFO - 2026-02-26 19:21:59,833 - trading_bot.connection_pool - INFO - IB (monitor) connected successfully with ID 31
-2026-02-26 19:21:59,838 - Orchestrator - INFO - 2026-02-26 19:21:59,838 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-26 19:21:59,839 - Orchestrator - INFO - 2026-02-26 19:21:59,838 - __main__ - INFO - Position monitor connected and watching open positions.
-2026-02-26 19:21:59,839 - Orchestrator - INFO - 2026-02-26 19:21:59,838 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
-2026-02-26 19:21:59,839 - Orchestrator - INFO - 2026-02-26 19:21:59,838 - root - INFO - Order status and execution event handlers registered.
-2026-02-26 19:21:59,963 - Orchestrator - INFO - 2026-02-26 19:21:59,963 - root - INFO - --- Risk Monitor: Checking 3 combo position(s) ---
-2026-02-26 19:22:00,917 - Orchestrator - INFO - 🔄 RECOVERY: Running missed process_deferred_triggers [process_deferred_triggers] (was scheduled 08:16 ET)
-2026-02-26 19:22:00,919 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-02-26 19:22:00,919 - Orchestrator - INFO - No deferred triggers to process.
-2026-02-26 19:22:00,922 - Orchestrator - INFO - ✅ RECOVERY: process_deferred_triggers completed
-2026-02-26 19:22:01,912 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-02-26 19:22:01,966 - Orchestrator - INFO - 2026-02-26 19:22:01,965 - root - INFO - Combo 2 Legs on LNEM6 P3000: PnL=$-45.28 | Capture: -7.4% | Risk Used: -14.9%
-2026-02-26 19:22:01,967 - Orchestrator - INFO - 2026-02-26 19:22:01,966 - root - INFO - Combo 2 Legs on LNEN6 P3250: PnL=$-97.10 | Capture: -7.7% | Risk Used: -15.4%
-2026-02-26 19:22:01,967 - Orchestrator - INFO - 2026-02-26 19:22:01,966 - root - INFO - Combo 2 Legs on LNEK6 P2800: PnL=$-52.86 | Capture: -8.4% | Risk Used: -16.8%
-2026-02-26 19:22:02,739 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-02-26 19:22:02,747 - EquityLogger - INFO - Preserving 7 local equity records not present in Flex Query.
-2026-02-26 19:22:02,752 - EquityLogger - INFO - Successfully synced 16 equity records to data/KC/daily_equity.csv.
-2026-02-26 19:22:02,752 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
-2026-02-26 19:22:02,753 - EquityLogger - INFO - Connecting to IB at 100.102.50.16:4002 with clientId 9499...
-2026-02-26 19:22:02,912 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-26 19:22:03,070 - EquityLogger - INFO - Fetched NetLiquidation: $37,051.22
-2026-02-26 19:22:03,077 - EquityLogger - INFO - Updated data/KC/daily_equity.csv with value $37,051.22
-2026-02-26 19:22:04,532 - Orchestrator - INFO - ✅ ALREADY RAN: sentinel_effectiveness completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:22:04,533 - Orchestrator - INFO - ✅ ALREADY RAN: eod_shutdown completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:22:04,533 - Orchestrator - INFO - System restarted with 17 missed tasks.\n✅ 2 recovered | ⏭️ 8 skipped | ✔️ 7 already ran
-2026-02-26 19:22:04,835 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-26 19:22:05,116 - Engine.KC - INFO - Running TopicDiscoveryAgent on startup...
-2026-02-26 19:22:05,174 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-02-26 19:22:05,176 - Orchestrator - INFO - ✅ ALREADY RAN: sentinel_effectiveness completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:22:05,177 - Orchestrator - INFO - ✅ ALREADY RAN: eod_shutdown completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:22:05,177 - Orchestrator - INFO - System restarted with 17 missed tasks.\n✅ 2 recovered | ⏭️ 7 skipped | ✔️ 8 already ran
-2026-02-26 19:22:05,510 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-26 19:22:05,512 - Engine.CC - INFO - Running TopicDiscoveryAgent on startup...
-2026-02-26 19:22:05,546 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-02-26 19:22:06,078 - EquityLogger - INFO - Disconnected from IB.
-2026-02-26 19:22:06,078 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
-2026-02-26 19:22:06,078 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
-2026-02-26 19:22:06,262 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-02-26 19:22:06,923 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 08:45 ET)
-2026-02-26 19:22:06,924 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
-2026-02-26 19:22:06,925 - trading_bot.connection_pool - INFO - Connecting IB (NG_cleanup) ID: 1286 [REMOTE/PAPER]...
-2026-02-26 19:22:07,242 - trading_bot.connection_pool - INFO - IB (NG_cleanup) connected successfully with ID 1286
-2026-02-26 19:22:07,251 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-26 19:22:07,267 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:22:07,329 - Orchestrator - INFO - Reconciliation: All 3 active theses have matching IB positions ✓
-2026-02-26 19:22:07,330 - Orchestrator - INFO - Thesis cleanup: no orphans found
-2026-02-26 19:22:07,330 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_cleanup)...
-2026-02-26 19:22:10,335 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
-2026-02-26 19:22:16,263 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-02-26 19:22:16,339 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:22:16,340 - Orchestrator - INFO - ✅ ALREADY RAN: eia_storage_signal completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:22:16,340 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:22:16,340 - Orchestrator - INFO - 🔄 RECOVERY: Running missed audit_mid_session [run_position_audit_cycle] (was scheduled 11:45 ET)
-2026-02-26 19:22:16,341 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
-2026-02-26 19:22:16,344 - trading_bot.connection_pool - INFO - Connecting IB (NG_audit) ID: 1266 [REMOTE/PAPER]...
-2026-02-26 19:22:16,395 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-02-26 19:22:16,400 - TradeReconciler - INFO - Parsed 52 executions from the Flex Query report.
-2026-02-26 19:22:16,417 - TradeReconciler - INFO - Successfully processed 52 trades into the reconciliation DataFrame.
-2026-02-26 19:22:16,417 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
-2026-02-26 19:22:16,595 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-02-26 19:22:16,661 - trading_bot.connection_pool - INFO - IB (NG_audit) connected successfully with ID 1266
-2026-02-26 19:22:16,665 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-26 19:22:16,775 - OrderManager - INFO - Catastrophe stop cleanup: skipped 1 stop(s) belonging to other commodities
-2026-02-26 19:22:16,775 - OrderManager - INFO - Cancelling orphaned catastrophe stop: order 249 (client 1238, BUY NGN26 @ 3.40), ref=CATASTROPHE_8386a2a1-9fa8-40f0-b77b-196bb84ddbec
-2026-02-26 19:22:16,776 - OrderManager - INFO - Cancelling orphaned catastrophe stop: order 242 (client 1238, BUY NGM26 @ 3.10), ref=CATASTROPHE_34778437-9ac8-4fd5-b205-eb763467516d
-2026-02-26 19:22:16,777 - OrderManager - INFO - Cancelling orphaned catastrophe stop: order 235 (client 1238, BUY NGK26 @ 2.90), ref=CATASTROPHE_e587d9b6-4695-4191-a0fa-2b187ab01fb4
-2026-02-26 19:22:16,777 - OrderManager - INFO - Cancelling orphaned catastrophe stop: order 201 (client 1234, BUY NGM26 @ 3.10), ref=CATASTROPHE_ab113cd8-887f-4a08-bd35-b29ed5c11fdc
-2026-02-26 19:22:16,777 - OrderManager - INFO - Cancelling orphaned catastrophe stop: order 194 (client 1234, BUY NGK26 @ 2.90), ref=CATASTROPHE_9163a5e9-f584-4c7e-9f55-2dd44a0d77f5
-2026-02-26 19:22:16,778 - ib_insync.wrapper - ERROR - Error 10147, reqId 249: OrderId 249 that needs to be cancelled is not found.
-2026-02-26 19:22:16,820 - ib_insync.wrapper - ERROR - Error 10147, reqId 242: OrderId 242 that needs to be cancelled is not found.
-2026-02-26 19:22:16,820 - ib_insync.wrapper - ERROR - Error 10147, reqId 235: OrderId 235 that needs to be cancelled is not found.
-2026-02-26 19:22:16,879 - ib_insync.wrapper - ERROR - Error 10147, reqId 201: OrderId 201 that needs to be cancelled is not found.
-2026-02-26 19:22:16,979 - ib_insync.wrapper - ERROR - Error 10147, reqId 194: OrderId 194 that needs to be cancelled is not found.
-2026-02-26 19:22:18,779 - OrderManager - INFO - Catastrophe stop cleanup: 5 phantom GTC order(s) not found on IBKR (stale Gateway cache, harmless)
-2026-02-26 19:22:18,790 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:22:18,805 - Orchestrator - WARNING - State sync discrepancy: IBKR has 6 positions but TMS has 3 active theses
-2026-02-26 19:22:19,041 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-26 19:22:19,042 - Orchestrator - WARNING - Proceeding with audit despite 1 discrepancies. IBKR positions are source of truth.
-2026-02-26 19:22:19,059 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:22:19,176 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-02-26 19:22:19,176 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'anthropic', 'xai', 'gemini']
-2026-02-26 19:22:19,176 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'anthropic', 'xai', 'gemini'], 'diversity_score': 1.0}
-2026-02-26 19:22:19,182 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:22:19,186 - trading_bot.enhanced_brier - INFO - Loaded 389 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
-2026-02-26 19:22:19,276 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.86, geopolitical: 0.00, inventory: 0.00, macro: 0.29, master_decision: 0.27, sentiment: 0.71, supply_chain: 0.00, technical: 0.29, volatility: 0.14}
-2026-02-26 19:22:19,277 - trading_bot.agents - INFO - Loaded commodity profile: Natural Gas (Henry Hub)
-2026-02-26 19:22:19,277 - trading_bot.observability - INFO - HallucinationDetector initialized for Natural Gas (Henry Hub): 12 port tokens, 16 producer tokens
-2026-02-26 19:22:19,277 - trading_bot.observability - INFO - ObservabilityHub initialized for Natural Gas (Henry Hub)
-2026-02-26 19:22:19,277 - trading_bot.agents - INFO - Observability Hub initialized.
-2026-02-26 19:22:19,277 - trading_bot.agents - INFO - Trading Council initialized for Natural Gas (Henry Hub). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
-2026-02-26 19:22:19,308 - Orchestrator - INFO - Grouped 6 IB positions into 3 thesis groups
-2026-02-26 19:22:19,308 - Orchestrator - INFO - Refreshing active futures cache
-2026-02-26 19:22:19,308 - root - INFO - Fetching 5 active futures contracts for NG on NYMEX...
-2026-02-26 19:22:19,311 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-26 19:22:19,473 - root - INFO - Skipping contract NGH26 (Exp: 20260225): Expires < 45 days.
-2026-02-26 19:22:19,473 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
-2026-02-26 19:22:19,475 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 5.
-2026-02-26 19:22:19,476 - root - INFO - Combo 2 Legs on LNEM6 P3000: PnL=$-45.28 | Capture: -23.2% | Risk Used: -14.9%
-2026-02-26 19:22:19,476 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
-2026-02-26 19:22:19,481 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-26 19:22:19,641 - root - INFO - Skipping contract NGH26 (Exp: 20260225): Expires < 45 days.
-2026-02-26 19:22:19,641 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
-2026-02-26 19:22:19,643 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-02-26 19:22:21,662 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:22:22,118 - root - INFO - Combo 2 Legs on LNEN6 P3250: PnL=$-97.10 | Capture: -26.2% | Risk Used: -15.4%
-2026-02-26 19:22:22,119 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
-2026-02-26 19:22:22,122 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-26 19:22:22,149 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
-2026-02-26 19:22:22,154 - Engine.CC - INFO - Startup TopicDiscovery: 4 topics, No changes
-2026-02-26 19:22:22,154 - Engine.CC - INFO - Staggering sentinel startup by 15s (engine #1)
-2026-02-26 19:22:22,179 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-02-26 19:22:22,184 - Engine.KC - INFO - Startup TopicDiscovery: 4 topics, No changes
-2026-02-26 19:22:22,186 - Engine.KC - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-27 08:30:00 UTC. Waiting for 13.13 hours.
-2026-02-26 19:22:22,186 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-26 19:22:22,587 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-02-26 19:22:22,601 - root - INFO - Skipping contract NGH26 (Exp: 20260225): Expires < 45 days.
-2026-02-26 19:22:22,601 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
-2026-02-26 19:22:22,608 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-02-26 19:22:24,625 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:22:25,089 - root - INFO - Combo 2 Legs on LNEK6 P2800: PnL=$-52.86 | Capture: -28.5% | Risk Used: -16.8%
-2026-02-26 19:22:25,090 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
-2026-02-26 19:22:25,092 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-26 19:22:25,273 - root - INFO - Skipping contract NGH26 (Exp: 20260225): Expires < 45 days.
-2026-02-26 19:22:25,280 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
-2026-02-26 19:22:25,282 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-02-26 19:22:26,004 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-02-26 19:22:26,597 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-02-26 19:22:26,713 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-02-26 19:22:26,715 - TradeReconciler - INFO - Parsed 6 executions from the Flex Query report.
-2026-02-26 19:22:26,726 - TradeReconciler - INFO - Successfully processed 6 trades into the reconciliation DataFrame.
-2026-02-26 19:22:26,729 - TradeReconciler - INFO - Consolidated to 58 unique trades from all reports.
-2026-02-26 19:22:26,730 - TradeReconciler - INFO - Filtered IB trades by commodity KC (prefixes ('KC', 'KO')): 58 -> 52
-2026-02-26 19:22:26,730 - TradeReconciler - INFO - Found 9 archived ledger files.
-2026-02-26 19:22:26,750 - TradeReconciler - INFO - Consolidated a total of 64 trades from all ledgers.
-2026-02-26 19:22:26,752 - TradeReconciler - INFO - Filtered IB trades from 52 to 52 records within the last 90 days.
-2026-02-26 19:22:26,753 - TradeReconciler - INFO - Filtered local ledger from 64 to 64 records within the last 90 days.
-2026-02-26 19:22:26,835 - TradeReconciler - INFO - Reconciliation complete. Found 0 trade(s) missing from local ledger. Found 12 superfluous trade(s) in local ledger.
-2026-02-26 19:22:26,836 - TradeReconciler - INFO - Discrepancies found. Writing to output files.
-2026-02-26 19:22:26,838 - TradeReconciler - INFO - Successfully wrote 12 superfluous local trade(s) to 'data/KC/archive_ledger/superfluous_local_trades.csv'.
-2026-02-26 19:22:26,838 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
-2026-02-26 19:22:26,839 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
-2026-02-26 19:22:27,022 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-02-26 19:22:27,511 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:22:27,959 - Orchestrator - INFO - Reconciliation: All 3 active theses have matching IB positions ✓
-2026-02-26 19:22:27,959 - Orchestrator - INFO - Position audit complete. All theses remain valid.
-2026-02-26 19:22:27,959 - trading_bot.var_calculator - INFO - VaR: Fetching underlying prices for option-only symbols: {'NG'}
-2026-02-26 19:22:28,071 - ib_insync.ib - WARNING - Ambiguous contract: Future(symbol='NG', exchange='NYMEX'), possibles are [Contract(secType='FUT', conId=269459992, symbol='NG', lastTradeDateOrContractMonth='20261229', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF27', tradingClass='NG'), Contract(secType='FUT', conId=269459997, symbol='NG', lastTradeDateOrContractMonth='20271229', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF28', tradingClass='NG'), Contract(secType='FUT', conId=269460001, symbol='NG', lastTradeDateOrContractMonth='20281227', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF29', tradingClass='NG'), Contract(secType='FUT', conId=269460011, symbol='NG', lastTradeDateOrContractMonth='20270127', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG27', tradingClass='NG'), Contract(secType='FUT', conId=269460014, symbol='NG', lastTradeDateOrContractMonth='20280127', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG28', tradingClass='NG'), Contract(secType='FUT', conId=269460016, symbol='NG', lastTradeDateOrContractMonth='20290129', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG29', tradingClass='NG'), Contract(secType='FUT', conId=269460021, symbol='NG', lastTradeDateOrContractMonth='20260225', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH26', tradingClass='NG'), Contract(secType='FUT', conId=269460026, symbol='NG', lastTradeDateOrContractMonth='20270224', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH27', tradingClass='NG'), Contract(secType='FUT', conId=269460031, symbol='NG', lastTradeDateOrContractMonth='20280225', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH28', tradingClass='NG'), Contract(secType='FUT', conId=269460034, symbol='NG', lastTradeDateOrContractMonth='20290226', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH29', tradingClass='NG'), Contract(secType='FUT', conId=269460039, symbol='NG', lastTradeDateOrContractMonth='20260327', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ26', tradingClass='NG'), Contract(secType='FUT', conId=269460040, symbol='NG', lastTradeDateOrContractMonth='20270329', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ27', tradingClass='NG'), Contract(secType='FUT', conId=269460045, symbol='NG', lastTradeDateOrContractMonth='20280329', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ28', tradingClass='NG'), Contract(secType='FUT', conId=269460051, symbol='NG', lastTradeDateOrContractMonth='20290327', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ29', tradingClass='NG'), Contract(secType='FUT', conId=269460054, symbol='NG', lastTradeDateOrContractMonth='20260428', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK26', tradingClass='NG'), Contract(secType='FUT', conId=269460057, symbol='NG', lastTradeDateOrContractMonth='20270428', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK27', tradingClass='NG'), Contract(secType='FUT', conId=269460060, symbol='NG', lastTradeDateOrContractMonth='20280426', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK28', tradingClass='NG'), Contract(secType='FUT', conId=269460064, symbol='NG', lastTradeDateOrContractMonth='20290426', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK29', tradingClass='NG'), Contract(secType='FUT', conId=269460069, symbol='NG', lastTradeDateOrContractMonth='20260527', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM26', tradingClass='NG'), Contract(secType='FUT', conId=269460074, symbol='NG', lastTradeDateOrContractMonth='20270526', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM27', tradingClass='NG'), Contract(secType='FUT', conId=269460079, symbol='NG', lastTradeDateOrContractMonth='20280526', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM28', tradingClass='NG'), Contract(secType='FUT', conId=269460081, symbol='NG', lastTradeDateOrContractMonth='20290529', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM29', tradingClass='NG'), Contract(secType='FUT', conId=269460091, symbol='NG', lastTradeDateOrContractMonth='20260626', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN26', tradingClass='NG'), Contract(secType='FUT', conId=269460094, symbol='NG', lastTradeDateOrContractMonth='20270628', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN27', tradingClass='NG'), Contract(secType='FUT', conId=269460097, symbol='NG', lastTradeDateOrContractMonth='20280628', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN28', tradingClass='NG'), Contract(secType='FUT', conId=269460100, symbol='NG', lastTradeDateOrContractMonth='20290627', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN29', tradingClass='NG'), Contract(secType='FUT', conId=269460110, symbol='NG', lastTradeDateOrContractMonth='20260729', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ26', tradingClass='NG'), Contract(secType='FUT', conId=269460112, symbol='NG', lastTradeDateOrContractMonth='20270728', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ27', tradingClass='NG'), Contract(secType='FUT', conId=269460117, symbol='NG', lastTradeDateOrContractMonth='20280727', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ28', tradingClass='NG'), Contract(secType='FUT', conId=269460122, symbol='NG', lastTradeDateOrContractMonth='20290727', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ29', tradingClass='NG'), Contract(secType='FUT', conId=269460131, symbol='NG', lastTradeDateOrContractMonth='20260827', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU26', tradingClass='NG'), Contract(secType='FUT', conId=269460134, symbol='NG', lastTradeDateOrContractMonth='20270827', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU27', tradingClass='NG'), Contract(secType='FUT', conId=269460137, symbol='NG', lastTradeDateOrContractMonth='20280829', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU28', tradingClass='NG'), Contract(secType='FUT', conId=269460140, symbol='NG', lastTradeDateOrContractMonth='20290829', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU29', tradingClass='NG'), Contract(secType='FUT', conId=269460151, symbol='NG', lastTradeDateOrContractMonth='20260928', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV26', tradingClass='NG'), Contract(secType='FUT', conId=269460152, symbol='NG', lastTradeDateOrContractMonth='20270928', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV27', tradingClass='NG'), Contract(secType='FUT', conId=269460157, symbol='NG', lastTradeDateOrContractMonth='20280927', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV28', tradingClass='NG'), Contract(secType='FUT', conId=269460160, symbol='NG', lastTradeDateOrContractMonth='20290926', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV29', tradingClass='NG'), Contract(secType='FUT', conId=269460170, symbol='NG', lastTradeDateOrContractMonth='20261028', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX26', tradingClass='NG'), Contract(secType='FUT', conId=269460175, symbol='NG', lastTradeDateOrContractMonth='20271027', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX27', tradingClass='NG'), Contract(secType='FUT', conId=269460177, symbol='NG', lastTradeDateOrContractMonth='20281027', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX28', tradingClass='NG'), Contract(secType='FUT', conId=269460180, symbol='NG', lastTradeDateOrContractMonth='20291029', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX29', tradingClass='NG'), Contract(secType='FUT', conId=269460190, symbol='NG', lastTradeDateOrContractMonth='20261125', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ26', tradingClass='NG'), Contract(secType='FUT', conId=269460194, symbol='NG', lastTradeDateOrContractMonth='20271126', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ27', tradingClass='NG'), Contract(secType='FUT', conId=269460199, symbol='NG', lastTradeDateOrContractMonth='20281128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ28', tradingClass='NG'), Contract(secType='FUT', conId=269460200, symbol='NG', lastTradeDateOrContractMonth='20291128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ29', tradingClass='NG'), Contract(secType='FUT', conId=297807326, symbol='NG', lastTradeDateOrContractMonth='20291227', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF30', tradingClass='NG'), Contract(secType='FUT', conId=297807356, symbol='NG', lastTradeDateOrContractMonth='20300129', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG30', tradingClass='NG'), Contract(secType='FUT', conId=297807365, symbol='NG', lastTradeDateOrContractMonth='20300226', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH30', tradingClass='NG'), Contract(secType='FUT', conId=297807375, symbol='NG', lastTradeDateOrContractMonth='20300327', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ30', tradingClass='NG'), Contract(secType='FUT', conId=297807380, symbol='NG', lastTradeDateOrContractMonth='20300426', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK30', tradingClass='NG'), Contract(secType='FUT', conId=297807390, symbol='NG', lastTradeDateOrContractMonth='20300529', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM30', tradingClass='NG'), Contract(secType='FUT', conId=297807394, symbol='NG', lastTradeDateOrContractMonth='20300626', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN30', tradingClass='NG'), Contract(secType='FUT', conId=297807400, symbol='NG', lastTradeDateOrContractMonth='20300729', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ30', tradingClass='NG'), Contract(secType='FUT', conId=297807405, symbol='NG', lastTradeDateOrContractMonth='20300828', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU30', tradingClass='NG'), Contract(secType='FUT', conId=297807414, symbol='NG', lastTradeDateOrContractMonth='20300926', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV30', tradingClass='NG'), Contract(secType='FUT', conId=297807417, symbol='NG', lastTradeDateOrContractMonth='20301029', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX30', tradingClass='NG'), Contract(secType='FUT', conId=297807425, symbol='NG', lastTradeDateOrContractMonth='20301126', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ30', tradingClass='NG'), Contract(secType='FUT', conId=343601085, symbol='NG', lastTradeDateOrContractMonth='20301227', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF31', tradingClass='NG'), Contract(secType='FUT', conId=343601211, symbol='NG', lastTradeDateOrContractMonth='20310129', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG31', tradingClass='NG'), Contract(secType='FUT', conId=343601228, symbol='NG', lastTradeDateOrContractMonth='20310226', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH31', tradingClass='NG'), Contract(secType='FUT', conId=343601249, symbol='NG', lastTradeDateOrContractMonth='20310327', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ31', tradingClass='NG'), Contract(secType='FUT', conId=343601280, symbol='NG', lastTradeDateOrContractMonth='20310428', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK31', tradingClass='NG'), Contract(secType='FUT', conId=343601300, symbol='NG', lastTradeDateOrContractMonth='20310528', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM31', tradingClass='NG'), Contract(secType='FUT', conId=343601325, symbol='NG', lastTradeDateOrContractMonth='20310626', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN31', tradingClass='NG'), Contract(secType='FUT', conId=343601334, symbol='NG', lastTradeDateOrContractMonth='20310729', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ31', tradingClass='NG'), Contract(secType='FUT', conId=343601355, symbol='NG', lastTradeDateOrContractMonth='20310827', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU31', tradingClass='NG'), Contract(secType='FUT', conId=343601365, symbol='NG', lastTradeDateOrContractMonth='20310926', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV31', tradingClass='NG'), Contract(secType='FUT', conId=343601385, symbol='NG', lastTradeDateOrContractMonth='20311029', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX31', tradingClass='NG'), Contract(secType='FUT', conId=343601400, symbol='NG', lastTradeDateOrContractMonth='20311125', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ31', tradingClass='NG'), Contract(secType='FUT', conId=393119154, symbol='NG', lastTradeDateOrContractMonth='20311229', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF32', tradingClass='NG'), Contract(secType='FUT', conId=393119159, symbol='NG', lastTradeDateOrContractMonth='20320128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG32', tradingClass='NG'), Contract(secType='FUT', conId=393119160, symbol='NG', lastTradeDateOrContractMonth='20320225', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH32', tradingClass='NG'), Contract(secType='FUT', conId=393119165, symbol='NG', lastTradeDateOrContractMonth='20320329', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ32', tradingClass='NG'), Contract(secType='FUT', conId=393119168, symbol='NG', lastTradeDateOrContractMonth='20320428', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK32', tradingClass='NG'), Contract(secType='FUT', conId=393119173, symbol='NG', lastTradeDateOrContractMonth='20320526', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM32', tradingClass='NG'), Contract(secType='FUT', conId=393119178, symbol='NG', lastTradeDateOrContractMonth='20320628', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN32', tradingClass='NG'), Contract(secType='FUT', conId=393119183, symbol='NG', lastTradeDateOrContractMonth='20320728', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ32', tradingClass='NG'), Contract(secType='FUT', conId=393119185, symbol='NG', lastTradeDateOrContractMonth='20320827', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU32', tradingClass='NG'), Contract(secType='FUT', conId=393119188, symbol='NG', lastTradeDateOrContractMonth='20320928', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV32', tradingClass='NG'), Contract(secType='FUT', conId=393119195, symbol='NG', lastTradeDateOrContractMonth='20321027', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX32', tradingClass='NG'), Contract(secType='FUT', conId=393119198, symbol='NG', lastTradeDateOrContractMonth='20321126', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ32', tradingClass='NG'), Contract(secType='FUT', conId=457291568, symbol='NG', lastTradeDateOrContractMonth='20330127', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG33', tradingClass='NG'), Contract(secType='FUT', conId=457291573, symbol='NG', lastTradeDateOrContractMonth='20330727', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ33', tradingClass='NG'), Contract(secType='FUT', conId=457291578, symbol='NG', lastTradeDateOrContractMonth='20330628', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN33', tradingClass='NG'), Contract(secType='FUT', conId=457291583, symbol='NG', lastTradeDateOrContractMonth='20330329', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ33', tradingClass='NG'), Contract(secType='FUT', conId=457291586, symbol='NG', lastTradeDateOrContractMonth='20321229', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF33', tradingClass='NG'), Contract(secType='FUT', conId=457291591, symbol='NG', lastTradeDateOrContractMonth='20330928', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV33', tradingClass='NG'), Contract(secType='FUT', conId=457291592, symbol='NG', lastTradeDateOrContractMonth='20331128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ33', tradingClass='NG'), Contract(secType='FUT', conId=457291597, symbol='NG', lastTradeDateOrContractMonth='20330526', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM33', tradingClass='NG'), Contract(secType='FUT', conId=457291603, symbol='NG', lastTradeDateOrContractMonth='20330829', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU33', tradingClass='NG'), Contract(secType='FUT', conId=457291606, symbol='NG', lastTradeDateOrContractMonth='20330224', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH33', tradingClass='NG'), Contract(secType='FUT', conId=457291609, symbol='NG', lastTradeDateOrContractMonth='20331027', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX33', tradingClass='NG'), Contract(secType='FUT', conId=457291612, symbol='NG', lastTradeDateOrContractMonth='20330427', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK33', tradingClass='NG'), Contract(secType='FUT', conId=529016963, symbol='NG', lastTradeDateOrContractMonth='20341027', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX34', tradingClass='NG'), Contract(secType='FUT', conId=529016966, symbol='NG', lastTradeDateOrContractMonth='20341128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ34', tradingClass='NG'), Contract(secType='FUT', conId=529016969, symbol='NG', lastTradeDateOrContractMonth='20340727', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ34', tradingClass='NG'), Contract(secType='FUT', conId=529016972, symbol='NG', lastTradeDateOrContractMonth='20340927', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV34', tradingClass='NG'), Contract(secType='FUT', conId=529016978, symbol='NG', lastTradeDateOrContractMonth='20331228', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF34', tradingClass='NG'), Contract(secType='FUT', conId=529016983, symbol='NG', lastTradeDateOrContractMonth='20340329', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ34', tradingClass='NG'), Contract(secType='FUT', conId=529016984, symbol='NG', lastTradeDateOrContractMonth='20340224', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH34', tradingClass='NG'), Contract(secType='FUT', conId=529016989, symbol='NG', lastTradeDateOrContractMonth='20340628', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN34', tradingClass='NG'), Contract(secType='FUT', conId=529016993, symbol='NG', lastTradeDateOrContractMonth='20340127', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG34', tradingClass='NG'), Contract(secType='FUT', conId=529016996, symbol='NG', lastTradeDateOrContractMonth='20340526', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM34', tradingClass='NG'), Contract(secType='FUT', conId=529017003, symbol='NG', lastTradeDateOrContractMonth='20340829', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU34', tradingClass='NG'), Contract(secType='FUT', conId=529017006, symbol='NG', lastTradeDateOrContractMonth='20340426', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK34', tradingClass='NG'), Contract(secType='FUT', conId=600394670, symbol='NG', lastTradeDateOrContractMonth='20341227', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF35', tradingClass='NG'), Contract(secType='FUT', conId=600394672, symbol='NG', lastTradeDateOrContractMonth='20351029', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX35', tradingClass='NG'), Contract(secType='FUT', conId=600394677, symbol='NG', lastTradeDateOrContractMonth='20350829', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU35', tradingClass='NG'), Contract(secType='FUT', conId=600394682, symbol='NG', lastTradeDateOrContractMonth='20350727', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ35', tradingClass='NG'), Contract(secType='FUT', conId=600394687, symbol='NG', lastTradeDateOrContractMonth='20350926', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV35', tradingClass='NG'), Contract(secType='FUT', conId=600394690, symbol='NG', lastTradeDateOrContractMonth='20351128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ35', tradingClass='NG'), Contract(secType='FUT', conId=600394695, symbol='NG', lastTradeDateOrContractMonth='20350627', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN35', tradingClass='NG'), Contract(secType='FUT', conId=600394696, symbol='NG', lastTradeDateOrContractMonth='20350328', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ35', tradingClass='NG'), Contract(secType='FUT', conId=600394701, symbol='NG', lastTradeDateOrContractMonth='20350129', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG35', tradingClass='NG'), Contract(secType='FUT', conId=600394707, symbol='NG', lastTradeDateOrContractMonth='20350529', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM35', tradingClass='NG'), Contract(secType='FUT', conId=600394710, symbol='NG', lastTradeDateOrContractMonth='20350426', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK35', tradingClass='NG'), Contract(secType='FUT', conId=600394713, symbol='NG', lastTradeDateOrContractMonth='20350226', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH35', tradingClass='NG'), Contract(secType='FUT', conId=668447096, symbol='NG', lastTradeDateOrContractMonth='20360729', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ36', tradingClass='NG'), Contract(secType='FUT', conId=668447101, symbol='NG', lastTradeDateOrContractMonth='20360327', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ36', tradingClass='NG'), Contract(secType='FUT', conId=668447106, symbol='NG', lastTradeDateOrContractMonth='20351227', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF36', tradingClass='NG'), Contract(secType='FUT', conId=668447111, symbol='NG', lastTradeDateOrContractMonth='20360227', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH36', tradingClass='NG'), Contract(secType='FUT', conId=668447112, symbol='NG', lastTradeDateOrContractMonth='20360528', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM36', tradingClass='NG'), Contract(secType='FUT', conId=668447117, symbol='NG', lastTradeDateOrContractMonth='20360428', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK36', tradingClass='NG'), Contract(secType='FUT', conId=668447123, symbol='NG', lastTradeDateOrContractMonth='20360129', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG36', tradingClass='NG'), Contract(secType='FUT', conId=668447126, symbol='NG', lastTradeDateOrContractMonth='20360926', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV36', tradingClass='NG'), Contract(secType='FUT', conId=668447129, symbol='NG', lastTradeDateOrContractMonth='20361125', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ36', tradingClass='NG'), Contract(secType='FUT', conId=668447132, symbol='NG', lastTradeDateOrContractMonth='20360626', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN36', tradingClass='NG'), Contract(secType='FUT', conId=668447136, symbol='NG', lastTradeDateOrContractMonth='20360827', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU36', tradingClass='NG'), Contract(secType='FUT', conId=668447141, symbol='NG', lastTradeDateOrContractMonth='20361029', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX36', tradingClass='NG'), Contract(secType='FUT', conId=744665663, symbol='NG', lastTradeDateOrContractMonth='20370128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG37', tradingClass='NG'), Contract(secType='FUT', conId=744665666, symbol='NG', lastTradeDateOrContractMonth='20370928', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV37', tradingClass='NG'), Contract(secType='FUT', conId=744665671, symbol='NG', lastTradeDateOrContractMonth='20371028', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX37', tradingClass='NG'), Contract(secType='FUT', conId=744665672, symbol='NG', lastTradeDateOrContractMonth='20370827', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU37', tradingClass='NG'), Contract(secType='FUT', conId=744665677, symbol='NG', lastTradeDateOrContractMonth='20370729', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ37', tradingClass='NG'), Contract(secType='FUT', conId=744665683, symbol='NG', lastTradeDateOrContractMonth='20370225', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH37', tradingClass='NG'), Contract(secType='FUT', conId=744665686, symbol='NG', lastTradeDateOrContractMonth='20361229', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF37', tradingClass='NG'), Contract(secType='FUT', conId=744665689, symbol='NG', lastTradeDateOrContractMonth='20370626', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN37', tradingClass='NG'), Contract(secType='FUT', conId=744665692, symbol='NG', lastTradeDateOrContractMonth='20370527', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM37', tradingClass='NG'), Contract(secType='FUT', conId=744665696, symbol='NG', lastTradeDateOrContractMonth='20370428', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK37', tradingClass='NG'), Contract(secType='FUT', conId=744665701, symbol='NG', lastTradeDateOrContractMonth='20370327', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ37', tradingClass='NG'), Contract(secType='FUT', conId=744665706, symbol='NG', lastTradeDateOrContractMonth='20371125', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ37', tradingClass='NG'), Contract(secType='FUT', conId=834270161, symbol='NG', lastTradeDateOrContractMonth='20380727', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ38', tradingClass='NG'), Contract(secType='FUT', conId=834270164, symbol='NG', lastTradeDateOrContractMonth='20381026', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX38', tradingClass='NG'), Contract(secType='FUT', conId=834270171, symbol='NG', lastTradeDateOrContractMonth='20380826', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU38', tradingClass='NG'), Contract(secType='FUT', conId=834270174, symbol='NG', lastTradeDateOrContractMonth='20380525', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM38', tradingClass='NG'), Contract(secType='FUT', conId=834270178, symbol='NG', lastTradeDateOrContractMonth='20380427', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK38', tradingClass='NG'), Contract(secType='FUT', conId=834270183, symbol='NG', lastTradeDateOrContractMonth='20380126', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG38', tradingClass='NG'), Contract(secType='FUT', conId=834270184, symbol='NG', lastTradeDateOrContractMonth='20381125', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ38', tradingClass='NG'), Contract(secType='FUT', conId=834270189, symbol='NG', lastTradeDateOrContractMonth='20371229', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF38', tradingClass='NG'), Contract(secType='FUT', conId=834270195, symbol='NG', lastTradeDateOrContractMonth='20380223', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH38', tradingClass='NG'), Contract(secType='FUT', conId=834270198, symbol='NG', lastTradeDateOrContractMonth='20380627', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN38', tradingClass='NG'), Contract(secType='FUT', conId=834270201, symbol='NG', lastTradeDateOrContractMonth='20380328', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ38', tradingClass='NG'), Contract(secType='FUT', conId=834270204, symbol='NG', lastTradeDateOrContractMonth='20380927', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV38', tradingClass='NG')]
-2026-02-26 19:22:28,080 - trading_bot.var_calculator - WARNING - VaR: Could not qualify future for NG
-2026-02-26 19:22:28,683 - trading_bot.var_calculator - WARNING - No underlying future price for LNEK6 P2800 (symbol=NG) — excluded from VaR
-2026-02-26 19:22:28,684 - trading_bot.var_calculator - WARNING - No underlying future price for LNEK6 P2850 (symbol=NG) — excluded from VaR
-2026-02-26 19:22:28,684 - trading_bot.var_calculator - WARNING - No underlying future price for LNEM6 P2950 (symbol=NG) — excluded from VaR
-2026-02-26 19:22:28,684 - trading_bot.var_calculator - WARNING - No underlying future price for LNEM6 P3000 (symbol=NG) — excluded from VaR
-2026-02-26 19:22:28,684 - trading_bot.var_calculator - WARNING - No underlying future price for LNEN6 P3250 (symbol=NG) — excluded from VaR
-2026-02-26 19:22:28,685 - trading_bot.var_calculator - WARNING - No underlying future price for LNEN6 P3300 (symbol=NG) — excluded from VaR
-2026-02-26 19:22:28,686 - Orchestrator - INFO - Post-audit VaR: 95%=0.00% ($0), positions=0
-2026-02-26 19:22:28,687 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_audit)...
-2026-02-26 19:22:31,693 - Orchestrator - INFO - ✅ RECOVERY: audit_mid_session completed
-2026-02-26 19:22:37,023 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-02-26 19:22:37,155 - Engine.CC - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-27 09:00:00 UTC. Waiting for 13.62 hours.
-2026-02-26 19:22:37,155 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-26 19:22:37,500 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-02-26 19:22:37,511 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-02-26 19:22:37,514 - TradeReconciler - INFO - Parsed 52 executions from the Flex Query report.
-2026-02-26 19:22:37,527 - TradeReconciler - INFO - Successfully processed 52 trades into the reconciliation DataFrame.
-2026-02-26 19:22:37,528 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
-2026-02-26 19:22:37,687 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-02-26 19:22:37,694 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:22:37,695 - Orchestrator - INFO - ✅ ALREADY RAN: signal_late completed earlier today (before restart). Skipping re-execution.
-2026-02-26 19:22:37,697 - Orchestrator - INFO - 🔄 RECOVERY: Running missed audit_pre_close [run_position_audit_cycle] (was scheduled 13:55 ET)
-2026-02-26 19:22:37,698 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
-2026-02-26 19:22:37,698 - trading_bot.connection_pool - INFO - Connecting IB (NG_audit) ID: 1265 [REMOTE/PAPER]...
-2026-02-26 19:22:38,017 - trading_bot.connection_pool - INFO - IB (NG_audit) connected successfully with ID 1265
-2026-02-26 19:22:38,022 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-26 19:22:38,129 - OrderManager - INFO - Catastrophe stop cleanup: skipped 1 stop(s) belonging to other commodities
-2026-02-26 19:22:38,130 - OrderManager - INFO - Cancelling orphaned catastrophe stop: order 249 (client 1238, BUY NGN26 @ 3.40), ref=CATASTROPHE_8386a2a1-9fa8-40f0-b77b-196bb84ddbec
-2026-02-26 19:22:38,131 - OrderManager - INFO - Cancelling orphaned catastrophe stop: order 242 (client 1238, BUY NGM26 @ 3.10), ref=CATASTROPHE_34778437-9ac8-4fd5-b205-eb763467516d
-2026-02-26 19:22:38,131 - OrderManager - INFO - Cancelling orphaned catastrophe stop: order 235 (client 1238, BUY NGK26 @ 2.90), ref=CATASTROPHE_e587d9b6-4695-4191-a0fa-2b187ab01fb4
-2026-02-26 19:22:38,132 - OrderManager - INFO - Cancelling orphaned catastrophe stop: order 201 (client 1234, BUY NGM26 @ 3.10), ref=CATASTROPHE_ab113cd8-887f-4a08-bd35-b29ed5c11fdc
-2026-02-26 19:22:38,133 - OrderManager - INFO - Cancelling orphaned catastrophe stop: order 194 (client 1234, BUY NGK26 @ 2.90), ref=CATASTROPHE_9163a5e9-f584-4c7e-9f55-2dd44a0d77f5
-2026-02-26 19:22:38,133 - ib_insync.wrapper - ERROR - Error 10147, reqId 249: OrderId 249 that needs to be cancelled is not found.
-2026-02-26 19:22:38,232 - ib_insync.wrapper - ERROR - Error 10147, reqId 242: OrderId 242 that needs to be cancelled is not found.
-2026-02-26 19:22:38,332 - ib_insync.wrapper - ERROR - Error 10147, reqId 235: OrderId 235 that needs to be cancelled is not found.
-2026-02-26 19:22:38,433 - ib_insync.wrapper - ERROR - Error 10147, reqId 201: OrderId 201 that needs to be cancelled is not found.
-2026-02-26 19:22:38,535 - ib_insync.wrapper - ERROR - Error 10147, reqId 194: OrderId 194 that needs to be cancelled is not found.
-2026-02-26 19:22:39,764 - trading_bot.rate_limiter - INFO - Rate limiter: 6 requests queued, waiting 2.4s for next slot
-2026-02-26 19:22:40,134 - OrderManager - INFO - Catastrophe stop cleanup: 5 phantom GTC order(s) not found on IBKR (stale Gateway cache, harmless)
-2026-02-26 19:22:40,145 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:22:40,155 - Orchestrator - WARNING - State sync discrepancy: IBKR has 6 positions but TMS has 3 active theses
-2026-02-26 19:22:40,343 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-26 19:22:40,347 - Orchestrator - WARNING - Proceeding with audit despite 1 discrepancies. IBKR positions are source of truth.
-2026-02-26 19:22:40,362 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:22:40,461 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-02-26 19:22:40,461 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'anthropic', 'xai', 'gemini']
-2026-02-26 19:22:40,461 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'anthropic', 'xai', 'gemini'], 'diversity_score': 1.0}
-2026-02-26 19:22:40,468 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:22:40,472 - trading_bot.enhanced_brier - INFO - Loaded 389 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
-2026-02-26 19:22:40,532 - trading_bot.agents - INFO - Loaded commodity profile: Natural Gas (Henry Hub)
-2026-02-26 19:22:40,532 - trading_bot.observability - INFO - HallucinationDetector initialized for Natural Gas (Henry Hub): 12 port tokens, 16 producer tokens
-2026-02-26 19:22:40,533 - trading_bot.observability - INFO - ObservabilityHub initialized for Natural Gas (Henry Hub)
-2026-02-26 19:22:40,533 - trading_bot.agents - INFO - Observability Hub initialized.
-2026-02-26 19:22:40,533 - trading_bot.agents - INFO - Trading Council initialized for Natural Gas (Henry Hub). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
-2026-02-26 19:22:40,554 - Orchestrator - INFO - Grouped 6 IB positions into 3 thesis groups
-2026-02-26 19:22:40,554 - Orchestrator - INFO - Refreshing active futures cache
-2026-02-26 19:22:40,555 - root - INFO - Fetching 5 active futures contracts for NG on NYMEX...
-2026-02-26 19:22:40,557 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-26 19:22:40,705 - root - INFO - Skipping contract NGH26 (Exp: 20260225): Expires < 45 days.
-2026-02-26 19:22:40,705 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
-2026-02-26 19:22:40,707 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 5.
-2026-02-26 19:22:40,708 - root - INFO - Combo 2 Legs on LNEM6 P3000: PnL=$-45.28 | Capture: -23.2% | Risk Used: -14.9%
-2026-02-26 19:22:40,708 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
-2026-02-26 19:22:40,711 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-26 19:22:40,902 - root - INFO - Skipping contract NGH26 (Exp: 20260225): Expires < 45 days.
-2026-02-26 19:22:40,902 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
-2026-02-26 19:22:40,904 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-02-26 19:22:42,919 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:22:43,368 - root - INFO - Combo 2 Legs on LNEN6 P3250: PnL=$-97.10 | Capture: -26.2% | Risk Used: -15.4%
-2026-02-26 19:22:43,368 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
-2026-02-26 19:22:43,372 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-26 19:22:43,517 - root - INFO - Skipping contract NGH26 (Exp: 20260225): Expires < 45 days.
-2026-02-26 19:22:43,518 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
-2026-02-26 19:22:43,520 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-02-26 19:22:45,535 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:22:45,922 - root - INFO - Combo 2 Legs on LNEK6 P2800: PnL=$-52.86 | Capture: -28.5% | Risk Used: -16.8%
-2026-02-26 19:22:45,923 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
-2026-02-26 19:22:45,927 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-26 19:22:46,056 - root - INFO - Skipping contract NGH26 (Exp: 20260225): Expires < 45 days.
-2026-02-26 19:22:46,056 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
-2026-02-26 19:22:46,060 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-02-26 19:22:47,688 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-02-26 19:22:47,803 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-02-26 19:22:47,809 - TradeReconciler - INFO - Parsed 6 executions from the Flex Query report.
-2026-02-26 19:22:47,827 - TradeReconciler - INFO - Successfully processed 6 trades into the reconciliation DataFrame.
-2026-02-26 19:22:47,829 - TradeReconciler - INFO - Consolidated to 58 unique trades from all reports.
-2026-02-26 19:22:47,830 - TradeReconciler - INFO - Filtered IB trades by commodity KC (prefixes ('KC', 'KO')): 58 -> 52
-2026-02-26 19:22:47,830 - TradeReconciler - INFO - Found 1 archived ledger files.
-2026-02-26 19:22:47,833 - TradeReconciler - INFO - Consolidated a total of 12 trades from all ledgers.
-2026-02-26 19:22:47,834 - TradeReconciler - INFO - Filtered IB trades from 52 to 52 records within the last 90 days.
-2026-02-26 19:22:47,835 - TradeReconciler - INFO - Filtered local ledger from 12 to 12 records within the last 90 days.
-2026-02-26 19:22:47,869 - TradeReconciler - INFO - Reconciliation complete. Found 52 trade(s) missing from local ledger. Found 12 superfluous trade(s) in local ledger.
-2026-02-26 19:22:47,871 - TradeReconciler - INFO - Discrepancies found. Writing to output files.
-2026-02-26 19:22:47,875 - TradeReconciler - INFO - Successfully wrote 52 missing trade(s) to 'data/CC/archive_ledger/trade_ledger_missing_trades.csv'.
-2026-02-26 19:22:47,877 - TradeReconciler - INFO - Successfully wrote 12 superfluous local trade(s) to 'data/CC/archive_ledger/superfluous_local_trades.csv'.
-2026-02-26 19:22:47,877 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
-2026-02-26 19:22:47,877 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
-2026-02-26 19:22:48,060 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-02-26 19:22:48,073 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:22:48,478 - Orchestrator - INFO - Reconciliation: All 3 active theses have matching IB positions ✓
-2026-02-26 19:22:48,478 - Orchestrator - INFO - Position audit complete. All theses remain valid.
-2026-02-26 19:22:48,479 - trading_bot.var_calculator - INFO - VaR: Fetching underlying prices for option-only symbols: {'NG'}
-2026-02-26 19:22:48,604 - ib_insync.ib - WARNING - Ambiguous contract: Future(symbol='NG', exchange='NYMEX'), possibles are [Contract(secType='FUT', conId=269459992, symbol='NG', lastTradeDateOrContractMonth='20261229', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF27', tradingClass='NG'), Contract(secType='FUT', conId=269459997, symbol='NG', lastTradeDateOrContractMonth='20271229', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF28', tradingClass='NG'), Contract(secType='FUT', conId=269460001, symbol='NG', lastTradeDateOrContractMonth='20281227', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF29', tradingClass='NG'), Contract(secType='FUT', conId=269460011, symbol='NG', lastTradeDateOrContractMonth='20270127', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG27', tradingClass='NG'), Contract(secType='FUT', conId=269460014, symbol='NG', lastTradeDateOrContractMonth='20280127', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG28', tradingClass='NG'), Contract(secType='FUT', conId=269460016, symbol='NG', lastTradeDateOrContractMonth='20290129', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG29', tradingClass='NG'), Contract(secType='FUT', conId=269460021, symbol='NG', lastTradeDateOrContractMonth='20260225', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH26', tradingClass='NG'), Contract(secType='FUT', conId=269460026, symbol='NG', lastTradeDateOrContractMonth='20270224', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH27', tradingClass='NG'), Contract(secType='FUT', conId=269460031, symbol='NG', lastTradeDateOrContractMonth='20280225', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH28', tradingClass='NG'), Contract(secType='FUT', conId=269460034, symbol='NG', lastTradeDateOrContractMonth='20290226', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH29', tradingClass='NG'), Contract(secType='FUT', conId=269460039, symbol='NG', lastTradeDateOrContractMonth='20260327', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ26', tradingClass='NG'), Contract(secType='FUT', conId=269460040, symbol='NG', lastTradeDateOrContractMonth='20270329', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ27', tradingClass='NG'), Contract(secType='FUT', conId=269460045, symbol='NG', lastTradeDateOrContractMonth='20280329', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ28', tradingClass='NG'), Contract(secType='FUT', conId=269460051, symbol='NG', lastTradeDateOrContractMonth='20290327', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ29', tradingClass='NG'), Contract(secType='FUT', conId=269460054, symbol='NG', lastTradeDateOrContractMonth='20260428', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK26', tradingClass='NG'), Contract(secType='FUT', conId=269460057, symbol='NG', lastTradeDateOrContractMonth='20270428', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK27', tradingClass='NG'), Contract(secType='FUT', conId=269460060, symbol='NG', lastTradeDateOrContractMonth='20280426', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK28', tradingClass='NG'), Contract(secType='FUT', conId=269460064, symbol='NG', lastTradeDateOrContractMonth='20290426', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK29', tradingClass='NG'), Contract(secType='FUT', conId=269460069, symbol='NG', lastTradeDateOrContractMonth='20260527', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM26', tradingClass='NG'), Contract(secType='FUT', conId=269460074, symbol='NG', lastTradeDateOrContractMonth='20270526', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM27', tradingClass='NG'), Contract(secType='FUT', conId=269460079, symbol='NG', lastTradeDateOrContractMonth='20280526', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM28', tradingClass='NG'), Contract(secType='FUT', conId=269460081, symbol='NG', lastTradeDateOrContractMonth='20290529', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM29', tradingClass='NG'), Contract(secType='FUT', conId=269460091, symbol='NG', lastTradeDateOrContractMonth='20260626', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN26', tradingClass='NG'), Contract(secType='FUT', conId=269460094, symbol='NG', lastTradeDateOrContractMonth='20270628', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN27', tradingClass='NG'), Contract(secType='FUT', conId=269460097, symbol='NG', lastTradeDateOrContractMonth='20280628', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN28', tradingClass='NG'), Contract(secType='FUT', conId=269460100, symbol='NG', lastTradeDateOrContractMonth='20290627', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN29', tradingClass='NG'), Contract(secType='FUT', conId=269460110, symbol='NG', lastTradeDateOrContractMonth='20260729', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ26', tradingClass='NG'), Contract(secType='FUT', conId=269460112, symbol='NG', lastTradeDateOrContractMonth='20270728', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ27', tradingClass='NG'), Contract(secType='FUT', conId=269460117, symbol='NG', lastTradeDateOrContractMonth='20280727', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ28', tradingClass='NG'), Contract(secType='FUT', conId=269460122, symbol='NG', lastTradeDateOrContractMonth='20290727', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ29', tradingClass='NG'), Contract(secType='FUT', conId=269460131, symbol='NG', lastTradeDateOrContractMonth='20260827', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU26', tradingClass='NG'), Contract(secType='FUT', conId=269460134, symbol='NG', lastTradeDateOrContractMonth='20270827', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU27', tradingClass='NG'), Contract(secType='FUT', conId=269460137, symbol='NG', lastTradeDateOrContractMonth='20280829', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU28', tradingClass='NG'), Contract(secType='FUT', conId=269460140, symbol='NG', lastTradeDateOrContractMonth='20290829', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU29', tradingClass='NG'), Contract(secType='FUT', conId=269460151, symbol='NG', lastTradeDateOrContractMonth='20260928', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV26', tradingClass='NG'), Contract(secType='FUT', conId=269460152, symbol='NG', lastTradeDateOrContractMonth='20270928', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV27', tradingClass='NG'), Contract(secType='FUT', conId=269460157, symbol='NG', lastTradeDateOrContractMonth='20280927', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV28', tradingClass='NG'), Contract(secType='FUT', conId=269460160, symbol='NG', lastTradeDateOrContractMonth='20290926', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV29', tradingClass='NG'), Contract(secType='FUT', conId=269460170, symbol='NG', lastTradeDateOrContractMonth='20261028', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX26', tradingClass='NG'), Contract(secType='FUT', conId=269460175, symbol='NG', lastTradeDateOrContractMonth='20271027', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX27', tradingClass='NG'), Contract(secType='FUT', conId=269460177, symbol='NG', lastTradeDateOrContractMonth='20281027', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX28', tradingClass='NG'), Contract(secType='FUT', conId=269460180, symbol='NG', lastTradeDateOrContractMonth='20291029', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX29', tradingClass='NG'), Contract(secType='FUT', conId=269460190, symbol='NG', lastTradeDateOrContractMonth='20261125', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ26', tradingClass='NG'), Contract(secType='FUT', conId=269460194, symbol='NG', lastTradeDateOrContractMonth='20271126', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ27', tradingClass='NG'), Contract(secType='FUT', conId=269460199, symbol='NG', lastTradeDateOrContractMonth='20281128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ28', tradingClass='NG'), Contract(secType='FUT', conId=269460200, symbol='NG', lastTradeDateOrContractMonth='20291128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ29', tradingClass='NG'), Contract(secType='FUT', conId=297807326, symbol='NG', lastTradeDateOrContractMonth='20291227', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF30', tradingClass='NG'), Contract(secType='FUT', conId=297807356, symbol='NG', lastTradeDateOrContractMonth='20300129', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG30', tradingClass='NG'), Contract(secType='FUT', conId=297807365, symbol='NG', lastTradeDateOrContractMonth='20300226', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH30', tradingClass='NG'), Contract(secType='FUT', conId=297807375, symbol='NG', lastTradeDateOrContractMonth='20300327', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ30', tradingClass='NG'), Contract(secType='FUT', conId=297807380, symbol='NG', lastTradeDateOrContractMonth='20300426', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK30', tradingClass='NG'), Contract(secType='FUT', conId=297807390, symbol='NG', lastTradeDateOrContractMonth='20300529', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM30', tradingClass='NG'), Contract(secType='FUT', conId=297807394, symbol='NG', lastTradeDateOrContractMonth='20300626', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN30', tradingClass='NG'), Contract(secType='FUT', conId=297807400, symbol='NG', lastTradeDateOrContractMonth='20300729', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ30', tradingClass='NG'), Contract(secType='FUT', conId=297807405, symbol='NG', lastTradeDateOrContractMonth='20300828', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU30', tradingClass='NG'), Contract(secType='FUT', conId=297807414, symbol='NG', lastTradeDateOrContractMonth='20300926', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV30', tradingClass='NG'), Contract(secType='FUT', conId=297807417, symbol='NG', lastTradeDateOrContractMonth='20301029', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX30', tradingClass='NG'), Contract(secType='FUT', conId=297807425, symbol='NG', lastTradeDateOrContractMonth='20301126', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ30', tradingClass='NG'), Contract(secType='FUT', conId=343601085, symbol='NG', lastTradeDateOrContractMonth='20301227', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF31', tradingClass='NG'), Contract(secType='FUT', conId=343601211, symbol='NG', lastTradeDateOrContractMonth='20310129', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG31', tradingClass='NG'), Contract(secType='FUT', conId=343601228, symbol='NG', lastTradeDateOrContractMonth='20310226', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH31', tradingClass='NG'), Contract(secType='FUT', conId=343601249, symbol='NG', lastTradeDateOrContractMonth='20310327', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ31', tradingClass='NG'), Contract(secType='FUT', conId=343601280, symbol='NG', lastTradeDateOrContractMonth='20310428', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK31', tradingClass='NG'), Contract(secType='FUT', conId=343601300, symbol='NG', lastTradeDateOrContractMonth='20310528', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM31', tradingClass='NG'), Contract(secType='FUT', conId=343601325, symbol='NG', lastTradeDateOrContractMonth='20310626', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN31', tradingClass='NG'), Contract(secType='FUT', conId=343601334, symbol='NG', lastTradeDateOrContractMonth='20310729', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ31', tradingClass='NG'), Contract(secType='FUT', conId=343601355, symbol='NG', lastTradeDateOrContractMonth='20310827', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU31', tradingClass='NG'), Contract(secType='FUT', conId=343601365, symbol='NG', lastTradeDateOrContractMonth='20310926', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV31', tradingClass='NG'), Contract(secType='FUT', conId=343601385, symbol='NG', lastTradeDateOrContractMonth='20311029', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX31', tradingClass='NG'), Contract(secType='FUT', conId=343601400, symbol='NG', lastTradeDateOrContractMonth='20311125', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ31', tradingClass='NG'), Contract(secType='FUT', conId=393119154, symbol='NG', lastTradeDateOrContractMonth='20311229', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF32', tradingClass='NG'), Contract(secType='FUT', conId=393119159, symbol='NG', lastTradeDateOrContractMonth='20320128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG32', tradingClass='NG'), Contract(secType='FUT', conId=393119160, symbol='NG', lastTradeDateOrContractMonth='20320225', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH32', tradingClass='NG'), Contract(secType='FUT', conId=393119165, symbol='NG', lastTradeDateOrContractMonth='20320329', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ32', tradingClass='NG'), Contract(secType='FUT', conId=393119168, symbol='NG', lastTradeDateOrContractMonth='20320428', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK32', tradingClass='NG'), Contract(secType='FUT', conId=393119173, symbol='NG', lastTradeDateOrContractMonth='20320526', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM32', tradingClass='NG'), Contract(secType='FUT', conId=393119178, symbol='NG', lastTradeDateOrContractMonth='20320628', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN32', tradingClass='NG'), Contract(secType='FUT', conId=393119183, symbol='NG', lastTradeDateOrContractMonth='20320728', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ32', tradingClass='NG'), Contract(secType='FUT', conId=393119185, symbol='NG', lastTradeDateOrContractMonth='20320827', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU32', tradingClass='NG'), Contract(secType='FUT', conId=393119188, symbol='NG', lastTradeDateOrContractMonth='20320928', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV32', tradingClass='NG'), Contract(secType='FUT', conId=393119195, symbol='NG', lastTradeDateOrContractMonth='20321027', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX32', tradingClass='NG'), Contract(secType='FUT', conId=393119198, symbol='NG', lastTradeDateOrContractMonth='20321126', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ32', tradingClass='NG'), Contract(secType='FUT', conId=457291568, symbol='NG', lastTradeDateOrContractMonth='20330127', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG33', tradingClass='NG'), Contract(secType='FUT', conId=457291573, symbol='NG', lastTradeDateOrContractMonth='20330727', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ33', tradingClass='NG'), Contract(secType='FUT', conId=457291578, symbol='NG', lastTradeDateOrContractMonth='20330628', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN33', tradingClass='NG'), Contract(secType='FUT', conId=457291583, symbol='NG', lastTradeDateOrContractMonth='20330329', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ33', tradingClass='NG'), Contract(secType='FUT', conId=457291586, symbol='NG', lastTradeDateOrContractMonth='20321229', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF33', tradingClass='NG'), Contract(secType='FUT', conId=457291591, symbol='NG', lastTradeDateOrContractMonth='20330928', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV33', tradingClass='NG'), Contract(secType='FUT', conId=457291592, symbol='NG', lastTradeDateOrContractMonth='20331128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ33', tradingClass='NG'), Contract(secType='FUT', conId=457291597, symbol='NG', lastTradeDateOrContractMonth='20330526', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM33', tradingClass='NG'), Contract(secType='FUT', conId=457291603, symbol='NG', lastTradeDateOrContractMonth='20330829', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU33', tradingClass='NG'), Contract(secType='FUT', conId=457291606, symbol='NG', lastTradeDateOrContractMonth='20330224', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH33', tradingClass='NG'), Contract(secType='FUT', conId=457291609, symbol='NG', lastTradeDateOrContractMonth='20331027', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX33', tradingClass='NG'), Contract(secType='FUT', conId=457291612, symbol='NG', lastTradeDateOrContractMonth='20330427', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK33', tradingClass='NG'), Contract(secType='FUT', conId=529016963, symbol='NG', lastTradeDateOrContractMonth='20341027', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX34', tradingClass='NG'), Contract(secType='FUT', conId=529016966, symbol='NG', lastTradeDateOrContractMonth='20341128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ34', tradingClass='NG'), Contract(secType='FUT', conId=529016969, symbol='NG', lastTradeDateOrContractMonth='20340727', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ34', tradingClass='NG'), Contract(secType='FUT', conId=529016972, symbol='NG', lastTradeDateOrContractMonth='20340927', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV34', tradingClass='NG'), Contract(secType='FUT', conId=529016978, symbol='NG', lastTradeDateOrContractMonth='20331228', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF34', tradingClass='NG'), Contract(secType='FUT', conId=529016983, symbol='NG', lastTradeDateOrContractMonth='20340329', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ34', tradingClass='NG'), Contract(secType='FUT', conId=529016984, symbol='NG', lastTradeDateOrContractMonth='20340224', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH34', tradingClass='NG'), Contract(secType='FUT', conId=529016989, symbol='NG', lastTradeDateOrContractMonth='20340628', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN34', tradingClass='NG'), Contract(secType='FUT', conId=529016993, symbol='NG', lastTradeDateOrContractMonth='20340127', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG34', tradingClass='NG'), Contract(secType='FUT', conId=529016996, symbol='NG', lastTradeDateOrContractMonth='20340526', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM34', tradingClass='NG'), Contract(secType='FUT', conId=529017003, symbol='NG', lastTradeDateOrContractMonth='20340829', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU34', tradingClass='NG'), Contract(secType='FUT', conId=529017006, symbol='NG', lastTradeDateOrContractMonth='20340426', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK34', tradingClass='NG'), Contract(secType='FUT', conId=600394670, symbol='NG', lastTradeDateOrContractMonth='20341227', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF35', tradingClass='NG'), Contract(secType='FUT', conId=600394672, symbol='NG', lastTradeDateOrContractMonth='20351029', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX35', tradingClass='NG'), Contract(secType='FUT', conId=600394677, symbol='NG', lastTradeDateOrContractMonth='20350829', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU35', tradingClass='NG'), Contract(secType='FUT', conId=600394682, symbol='NG', lastTradeDateOrContractMonth='20350727', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ35', tradingClass='NG'), Contract(secType='FUT', conId=600394687, symbol='NG', lastTradeDateOrContractMonth='20350926', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV35', tradingClass='NG'), Contract(secType='FUT', conId=600394690, symbol='NG', lastTradeDateOrContractMonth='20351128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ35', tradingClass='NG'), Contract(secType='FUT', conId=600394695, symbol='NG', lastTradeDateOrContractMonth='20350627', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN35', tradingClass='NG'), Contract(secType='FUT', conId=600394696, symbol='NG', lastTradeDateOrContractMonth='20350328', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ35', tradingClass='NG'), Contract(secType='FUT', conId=600394701, symbol='NG', lastTradeDateOrContractMonth='20350129', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG35', tradingClass='NG'), Contract(secType='FUT', conId=600394707, symbol='NG', lastTradeDateOrContractMonth='20350529', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM35', tradingClass='NG'), Contract(secType='FUT', conId=600394710, symbol='NG', lastTradeDateOrContractMonth='20350426', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK35', tradingClass='NG'), Contract(secType='FUT', conId=600394713, symbol='NG', lastTradeDateOrContractMonth='20350226', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH35', tradingClass='NG'), Contract(secType='FUT', conId=668447096, symbol='NG', lastTradeDateOrContractMonth='20360729', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ36', tradingClass='NG'), Contract(secType='FUT', conId=668447101, symbol='NG', lastTradeDateOrContractMonth='20360327', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ36', tradingClass='NG'), Contract(secType='FUT', conId=668447106, symbol='NG', lastTradeDateOrContractMonth='20351227', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF36', tradingClass='NG'), Contract(secType='FUT', conId=668447111, symbol='NG', lastTradeDateOrContractMonth='20360227', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH36', tradingClass='NG'), Contract(secType='FUT', conId=668447112, symbol='NG', lastTradeDateOrContractMonth='20360528', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM36', tradingClass='NG'), Contract(secType='FUT', conId=668447117, symbol='NG', lastTradeDateOrContractMonth='20360428', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK36', tradingClass='NG'), Contract(secType='FUT', conId=668447123, symbol='NG', lastTradeDateOrContractMonth='20360129', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG36', tradingClass='NG'), Contract(secType='FUT', conId=668447126, symbol='NG', lastTradeDateOrContractMonth='20360926', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV36', tradingClass='NG'), Contract(secType='FUT', conId=668447129, symbol='NG', lastTradeDateOrContractMonth='20361125', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ36', tradingClass='NG'), Contract(secType='FUT', conId=668447132, symbol='NG', lastTradeDateOrContractMonth='20360626', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN36', tradingClass='NG'), Contract(secType='FUT', conId=668447136, symbol='NG', lastTradeDateOrContractMonth='20360827', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU36', tradingClass='NG'), Contract(secType='FUT', conId=668447141, symbol='NG', lastTradeDateOrContractMonth='20361029', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX36', tradingClass='NG'), Contract(secType='FUT', conId=744665663, symbol='NG', lastTradeDateOrContractMonth='20370128', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG37', tradingClass='NG'), Contract(secType='FUT', conId=744665666, symbol='NG', lastTradeDateOrContractMonth='20370928', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV37', tradingClass='NG'), Contract(secType='FUT', conId=744665671, symbol='NG', lastTradeDateOrContractMonth='20371028', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX37', tradingClass='NG'), Contract(secType='FUT', conId=744665672, symbol='NG', lastTradeDateOrContractMonth='20370827', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU37', tradingClass='NG'), Contract(secType='FUT', conId=744665677, symbol='NG', lastTradeDateOrContractMonth='20370729', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ37', tradingClass='NG'), Contract(secType='FUT', conId=744665683, symbol='NG', lastTradeDateOrContractMonth='20370225', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH37', tradingClass='NG'), Contract(secType='FUT', conId=744665686, symbol='NG', lastTradeDateOrContractMonth='20361229', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF37', tradingClass='NG'), Contract(secType='FUT', conId=744665689, symbol='NG', lastTradeDateOrContractMonth='20370626', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN37', tradingClass='NG'), Contract(secType='FUT', conId=744665692, symbol='NG', lastTradeDateOrContractMonth='20370527', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM37', tradingClass='NG'), Contract(secType='FUT', conId=744665696, symbol='NG', lastTradeDateOrContractMonth='20370428', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK37', tradingClass='NG'), Contract(secType='FUT', conId=744665701, symbol='NG', lastTradeDateOrContractMonth='20370327', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ37', tradingClass='NG'), Contract(secType='FUT', conId=744665706, symbol='NG', lastTradeDateOrContractMonth='20371125', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ37', tradingClass='NG'), Contract(secType='FUT', conId=834270161, symbol='NG', lastTradeDateOrContractMonth='20380727', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGQ38', tradingClass='NG'), Contract(secType='FUT', conId=834270164, symbol='NG', lastTradeDateOrContractMonth='20381026', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGX38', tradingClass='NG'), Contract(secType='FUT', conId=834270171, symbol='NG', lastTradeDateOrContractMonth='20380826', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGU38', tradingClass='NG'), Contract(secType='FUT', conId=834270174, symbol='NG', lastTradeDateOrContractMonth='20380525', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGM38', tradingClass='NG'), Contract(secType='FUT', conId=834270178, symbol='NG', lastTradeDateOrContractMonth='20380427', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK38', tradingClass='NG'), Contract(secType='FUT', conId=834270183, symbol='NG', lastTradeDateOrContractMonth='20380126', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGG38', tradingClass='NG'), Contract(secType='FUT', conId=834270184, symbol='NG', lastTradeDateOrContractMonth='20381125', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGZ38', tradingClass='NG'), Contract(secType='FUT', conId=834270189, symbol='NG', lastTradeDateOrContractMonth='20371229', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGF38', tradingClass='NG'), Contract(secType='FUT', conId=834270195, symbol='NG', lastTradeDateOrContractMonth='20380223', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGH38', tradingClass='NG'), Contract(secType='FUT', conId=834270198, symbol='NG', lastTradeDateOrContractMonth='20380627', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGN38', tradingClass='NG'), Contract(secType='FUT', conId=834270201, symbol='NG', lastTradeDateOrContractMonth='20380328', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGJ38', tradingClass='NG'), Contract(secType='FUT', conId=834270204, symbol='NG', lastTradeDateOrContractMonth='20380927', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGV38', tradingClass='NG')]
-2026-02-26 19:22:48,615 - trading_bot.var_calculator - WARNING - VaR: Could not qualify future for NG
-2026-02-26 19:22:48,917 - trading_bot.var_calculator - WARNING - No underlying future price for LNEK6 P2800 (symbol=NG) — excluded from VaR
-2026-02-26 19:22:48,917 - trading_bot.var_calculator - WARNING - No underlying future price for LNEK6 P2850 (symbol=NG) — excluded from VaR
-2026-02-26 19:22:48,918 - trading_bot.var_calculator - WARNING - No underlying future price for LNEM6 P2950 (symbol=NG) — excluded from VaR
-2026-02-26 19:22:48,918 - trading_bot.var_calculator - WARNING - No underlying future price for LNEM6 P3000 (symbol=NG) — excluded from VaR
-2026-02-26 19:22:48,918 - trading_bot.var_calculator - WARNING - No underlying future price for LNEN6 P3250 (symbol=NG) — excluded from VaR
-2026-02-26 19:22:48,918 - trading_bot.var_calculator - WARNING - No underlying future price for LNEN6 P3300 (symbol=NG) — excluded from VaR
-2026-02-26 19:22:48,920 - Orchestrator - INFO - Post-audit VaR: 95%=0.00% ($0), positions=0
-2026-02-26 19:22:48,921 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_audit)...
-2026-02-26 19:22:48,988 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=6)
-2026-02-26 19:22:48,991 - trading_bot.state_manager - INFO - Queued deferred trigger from XSentimentSentinel
-2026-02-26 19:22:48,991 - Orchestrator - INFO - Deferred XSentimentSentinel trigger for market open
-2026-02-26 19:22:51,926 - Orchestrator - INFO - ✅ RECOVERY: audit_pre_close completed
-2026-02-26 19:22:57,929 - Orchestrator - INFO - 🔄 RECOVERY: Running missed close_stale_primary [close_stale_positions] (was scheduled 14:05 ET)
-2026-02-26 19:22:57,929 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
-2026-02-26 19:22:57,944 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1237 [REMOTE/PAPER]...
-2026-02-26 19:22:58,061 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-02-26 19:22:58,071 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1237
-2026-02-26 19:22:58,075 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-26 19:22:58,076 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
-2026-02-26 19:22:58,191 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-02-26 19:22:58,195 - TradeReconciler - INFO - Parsed 52 executions from the Flex Query report.
-2026-02-26 19:22:58,210 - TradeReconciler - INFO - Successfully processed 52 trades into the reconciliation DataFrame.
-2026-02-26 19:22:58,211 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
-2026-02-26 19:22:58,242 - OrderManager - INFO - Found 8 live position legs in the IB account.
-2026-02-26 19:22:58,242 - OrderManager - INFO -   Filtered to 6 NG positions with non-zero quantity (from 8 total across all commodities)
-2026-02-26 19:22:58,259 - OrderManager - INFO - Reconstruction: LNEM6 P3000 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
-2026-02-26 19:22:58,261 - OrderManager - INFO - Reconstruction: LNEN6 P3250 | Trade Date: 2026-02-26 | Age: 1 | Qty: 2.0
-2026-02-26 19:22:58,262 - OrderManager - INFO - Reconstruction: LNEK6 P2800 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
-2026-02-26 19:22:58,263 - OrderManager - INFO - Reconstruction: LNEM6 P2950 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
-2026-02-26 19:22:58,264 - OrderManager - INFO - Reconstruction: LNEN6 P3300 | Trade Date: 2026-02-26 | Age: 1 | Qty: 2.0
-2026-02-26 19:22:58,265 - OrderManager - INFO - Reconstruction: LNEK6 P2850 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
-2026-02-26 19:22:58,486 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-26 19:22:58,488 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
-2026-02-26 19:23:00,109 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-02-26 19:23:01,496 - Orchestrator - INFO - ✅ RECOVERY: close_stale_primary completed
-2026-02-26 19:23:07,497 - Orchestrator - INFO - 🔄 RECOVERY: Running missed close_stale_fallback [close_stale_positions_fallback] (was scheduled 14:15 ET)
-2026-02-26 19:23:07,498 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
-2026-02-26 19:23:07,498 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
-2026-02-26 19:23:07,498 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
-2026-02-26 19:23:07,511 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1236 [REMOTE/PAPER]...
-2026-02-26 19:23:07,770 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1236
-2026-02-26 19:23:07,777 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-26 19:23:07,777 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
-2026-02-26 19:23:07,823 - OrderManager - INFO - Found 8 live position legs in the IB account.
-2026-02-26 19:23:07,823 - OrderManager - INFO -   Filtered to 6 NG positions with non-zero quantity (from 8 total across all commodities)
-2026-02-26 19:23:07,850 - OrderManager - INFO - Reconstruction: LNEM6 P3000 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
-2026-02-26 19:23:07,852 - OrderManager - INFO - Reconstruction: LNEN6 P3250 | Trade Date: 2026-02-26 | Age: 1 | Qty: 2.0
-2026-02-26 19:23:07,853 - OrderManager - INFO - Reconstruction: LNEK6 P2800 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
-2026-02-26 19:23:07,856 - OrderManager - INFO - Reconstruction: LNEM6 P2950 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
-2026-02-26 19:23:07,859 - OrderManager - INFO - Reconstruction: LNEN6 P3300 | Trade Date: 2026-02-26 | Age: 1 | Qty: 2.0
-2026-02-26 19:23:07,862 - OrderManager - INFO - Reconstruction: LNEK6 P2850 | Trade Date: 2026-02-26 | Age: 1 | Qty: 1.0
-2026-02-26 19:23:08,080 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-26 19:23:08,081 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
-2026-02-26 19:23:10,112 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-02-26 19:23:10,220 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-02-26 19:23:10,224 - TradeReconciler - INFO - Parsed 6 executions from the Flex Query report.
-2026-02-26 19:23:10,237 - TradeReconciler - INFO - Successfully processed 6 trades into the reconciliation DataFrame.
-2026-02-26 19:23:10,241 - TradeReconciler - INFO - Consolidated to 58 unique trades from all reports.
-2026-02-26 19:23:10,242 - TradeReconciler - INFO - Filtered IB trades by commodity KC (prefixes ('KC', 'KO')): 58 -> 52
-2026-02-26 19:23:10,244 - TradeReconciler - INFO - Loaded 6 trades from the main ledger.
-2026-02-26 19:23:10,244 - TradeReconciler - INFO - Found 0 archived ledger files.
-2026-02-26 19:23:10,246 - TradeReconciler - INFO - Consolidated a total of 6 trades from all ledgers.
-2026-02-26 19:23:10,247 - TradeReconciler - INFO - Filtered IB trades from 52 to 52 records within the last 90 days.
-2026-02-26 19:23:10,248 - TradeReconciler - INFO - Filtered local ledger from 6 to 6 records within the last 90 days.
-2026-02-26 19:23:10,289 - TradeReconciler - INFO - Reconciliation complete. Found 52 trade(s) missing from local ledger. Found 6 superfluous trade(s) in local ledger.
-2026-02-26 19:23:10,295 - TradeReconciler - INFO - Discrepancies found. Writing to output files.
-2026-02-26 19:23:10,298 - TradeReconciler - INFO - Successfully wrote 52 missing trade(s) to 'data/NG/archive_ledger/trade_ledger_missing_trades.csv'.
-2026-02-26 19:23:10,300 - TradeReconciler - INFO - Successfully wrote 6 superfluous local trade(s) to 'data/NG/archive_ledger/superfluous_local_trades.csv'.
-2026-02-26 19:23:10,301 - trading_bot.data_dir_context - INFO - Engine data_dir set to: data/KC
-2026-02-26 19:23:10,361 - trading_bot.brier_reconciliation - INFO - Found 205 pending predictions
-2026-02-26 19:23:10,362 - trading_bot.brier_reconciliation - INFO - Total council decisions: 262
-2026-02-26 19:23:10,371 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 233/262
-2026-02-26 19:23:10,421 - trading_bot.brier_reconciliation - INFO - ==================================================
-2026-02-26 19:23:10,421 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
-2026-02-26 19:23:10,421 - trading_bot.brier_reconciliation - INFO -   Total predictions:            1731
-2026-02-26 19:23:10,421 - trading_bot.brier_reconciliation - INFO -   Resolved:                     1521 (+0 new)
-2026-02-26 19:23:10,421 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      205 (potential: 205)
-2026-02-26 19:23:10,422 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        5 (+0 new)
-2026-02-26 19:23:10,422 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     88% (excl. orphans)
-2026-02-26 19:23:10,422 - trading_bot.brier_reconciliation - INFO - ==================================================
-2026-02-26 19:23:10,422 - trading_bot.brier_reconciliation - INFO - Running reconciliation could unlock up to 205 more predictions
-2026-02-26 19:23:10,422 - trading_bot.master_orchestrator - INFO - Brier reconciliation [KC]: 0 resolved
-2026-02-26 19:23:10,422 - trading_bot.data_dir_context - INFO - Engine data_dir set to: data/CC
-2026-02-26 19:23:10,451 - trading_bot.brier_reconciliation - INFO - Found 158 pending predictions
-2026-02-26 19:23:10,451 - trading_bot.brier_reconciliation - INFO - Total council decisions: 95
-2026-02-26 19:23:10,456 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 73/95
-2026-02-26 19:23:10,493 - trading_bot.brier_reconciliation - INFO - ==================================================
-2026-02-26 19:23:10,494 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
-2026-02-26 19:23:10,494 - trading_bot.brier_reconciliation - INFO -   Total predictions:            522
-2026-02-26 19:23:10,494 - trading_bot.brier_reconciliation - INFO -   Resolved:                     364 (+0 new)
-2026-02-26 19:23:10,494 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      158 (potential: 158)
-2026-02-26 19:23:10,494 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        0 (+0 new)
-2026-02-26 19:23:10,494 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     70% (excl. orphans)
-2026-02-26 19:23:10,494 - trading_bot.brier_reconciliation - INFO - ==================================================
-2026-02-26 19:23:10,494 - trading_bot.brier_reconciliation - INFO - Running reconciliation could unlock up to 158 more predictions
-2026-02-26 19:23:10,494 - trading_bot.master_orchestrator - INFO - Brier reconciliation [CC]: 0 resolved
-2026-02-26 19:23:10,494 - trading_bot.data_dir_context - INFO - Engine data_dir set to: data/NG
-2026-02-26 19:23:10,516 - trading_bot.brier_reconciliation - INFO - Found 289 pending predictions
-2026-02-26 19:23:10,517 - trading_bot.brier_reconciliation - INFO - Total council decisions: 46
-2026-02-26 19:23:10,520 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 8/46
-2026-02-26 19:23:10,589 - trading_bot.brier_reconciliation - INFO - ==================================================
-2026-02-26 19:23:10,589 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
-2026-02-26 19:23:10,589 - trading_bot.brier_reconciliation - INFO -   Total predictions:            350
-2026-02-26 19:23:10,589 - trading_bot.brier_reconciliation - INFO -   Resolved:                     61 (+0 new)
-2026-02-26 19:23:10,589 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      289 (potential: 289)
-2026-02-26 19:23:10,590 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        0 (+0 new)
-2026-02-26 19:23:10,590 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     17% (excl. orphans)
-2026-02-26 19:23:10,590 - trading_bot.brier_reconciliation - INFO - ==================================================
-2026-02-26 19:23:10,590 - trading_bot.brier_reconciliation - INFO - Running reconciliation could unlock up to 289 more predictions
-2026-02-26 19:23:10,590 - trading_bot.master_orchestrator - INFO - Brier reconciliation [NG]: 0 resolved
-2026-02-26 19:23:10,590 - trading_bot.master_orchestrator - INFO - === Post-close reconciliation complete ===
-2026-02-26 19:23:11,089 - Orchestrator - INFO - ✅ RECOVERY: close_stale_fallback completed
-2026-02-26 19:23:15,164 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=7)
-2026-02-26 19:23:15,168 - trading_bot.state_manager - INFO - Queued deferred trigger from XSentimentSentinel
-2026-02-26 19:23:15,168 - Orchestrator - INFO - Deferred XSentimentSentinel trigger for market open
-2026-02-26 19:23:17,091 - Orchestrator - INFO - System restarted with 12 missed tasks.\n✅ 7 recovered | ⏭️ 0 skipped | ✔️ 5 already ran
-2026-02-26 19:23:17,324 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-26 19:23:17,326 - Engine.NG - INFO - Running TopicDiscoveryAgent on startup...
-2026-02-26 19:23:17,359 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-02-26 19:23:26,443 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:23:26,446 - Engine.NG - INFO - Startup TopicDiscovery: 4 topics, No changes
-2026-02-26 19:23:26,446 - Engine.NG - INFO - Staggering sentinel startup by 30s (engine #2)
-2026-02-26 19:23:56,452 - Engine.NG - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-02-26 19:25:00 UTC. Waiting for 0.02 hours.
-2026-02-26 19:23:56,452 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-26 19:23:56,804 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
-2026-02-26 19:23:56,804 - trading_bot.connection_pool - INFO - Connecting IB (NG_sentinel) ID: 1217 [REMOTE/PAPER]...
-2026-02-26 19:23:56,805 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-02-26 19:23:56,927 - trading_bot.connection_pool - INFO - IB (NG_sentinel) connected successfully with ID 1217
-2026-02-26 19:23:56,932 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-26 19:23:56,932 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
-2026-02-26 19:23:56,932 - Orchestrator - INFO - SENTINEL SAFETY NET: First market-open transition — processing deferred triggers
-2026-02-26 19:23:56,934 - Orchestrator - INFO - --- Processing Deferred Triggers ---
-2026-02-26 19:23:56,934 - Orchestrator - INFO - No deferred triggers to process.
-2026-02-26 19:23:56,935 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
-2026-02-26 19:23:56,938 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-02-26 19:23:57,056 - root - INFO - Skipping contract NGH26 (Exp: 20260225): Expires < 45 days.
-2026-02-26 19:23:57,056 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
-2026-02-26 19:23:57,058 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-02-26 19:23:57,059 - Orchestrator - INFO - Refreshed contract cache: NGK26
-2026-02-26 19:23:57,059 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-02-26 19:23:57,060 - trading_bot.connection_pool - INFO - Connecting IB (NG_microstructure) ID: 1257 [REMOTE/PAPER]...
-2026-02-26 19:23:57,372 - trading_bot.connection_pool - INFO - IB (NG_microstructure) connected successfully with ID 1257
-2026-02-26 19:23:57,378 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-26 19:24:25,617 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=7)
-2026-02-26 19:24:25,617 - Orchestrator - INFO - XSentimentSentinel cooldown active until 2026-02-26 19:26:06.498992. Skipping.
-2026-02-26 19:25:00,001 - Engine.NG - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
-2026-02-26 19:25:00,004 - Orchestrator - INFO - --- Emergency Hard Close Check (T-45 min) ---
-2026-02-26 19:25:00,005 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1236 [REMOTE/PAPER]...
-2026-02-26 19:25:00,321 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1236
-2026-02-26 19:25:00,327 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-02-26 19:25:00,430 - Orchestrator - WARNING - 🚨 EMERGENCY HARD CLOSE: 6 positions still open at T-45! Closing with MARKET orders (slippage accepted).
-2026-02-26 19:25:00,660 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-26 19:25:01,669 - Orchestrator - INFO - L3: Protective close at 0.2540 (last: 0.2600, cap: 2.0%)
-2026-02-26 19:25:01,670 - Orchestrator - INFO - Emergency close: SELL 1.0 LNEM6 P3000
-2026-02-26 19:25:02,672 - Orchestrator - INFO - Emergency fill: LNEM6 P3000 @ 0.268
-2026-02-26 19:25:03,679 - Orchestrator - INFO - L3: Protective close at 0.3270 (last: 0.3210, cap: 2.0%)
-2026-02-26 19:25:03,679 - Orchestrator - INFO - Emergency close: BUY 2.0 LNEN6 P3250
-2026-02-26 19:25:04,681 - Orchestrator - INFO - Emergency fill: LNEN6 P3250 @ 0.307
-2026-02-26 19:25:05,685 - Orchestrator - INFO - L3: Protective close at 0.2240 (last: 0.2200, cap: 2.0%)
-2026-02-26 19:25:05,686 - Orchestrator - INFO - Emergency close: BUY 1.0 LNEK6 P2800
-2026-02-26 19:25:06,687 - Orchestrator - INFO - Emergency fill: LNEK6 P2800 @ 0.209
-2026-02-26 19:25:07,692 - Orchestrator - INFO - L3: Protective close at 0.2390 (last: 0.2350, cap: 2.0%)
-2026-02-26 19:25:07,693 - Orchestrator - INFO - Emergency close: BUY 1.0 LNEM6 P2950
-2026-02-26 19:26:07,779 - Orchestrator - ERROR - Emergency close incomplete: LNEM6 P2950
-2026-02-26 19:26:08,783 - Orchestrator - WARNING - L3: No price for LNEN6 P3300, using market order
-2026-02-26 19:26:08,784 - Orchestrator - INFO - Emergency close: SELL 2.0 LNEN6 P3300
-2026-02-26 19:26:09,786 - Orchestrator - INFO - Emergency fill: LNEN6 P3300 @ 0.333
-2026-02-26 19:26:10,792 - Orchestrator - INFO - L3: Protective close at 0.2110 (last: 0.2160, cap: 2.0%)
-2026-02-26 19:26:10,793 - Orchestrator - INFO - Emergency close: SELL 1.0 LNEK6 P2850
-2026-02-26 19:26:11,794 - Orchestrator - INFO - Emergency fill: LNEK6 P2850 @ 0.234
-2026-02-26 19:26:11,795 - Orchestrator - INFO - Emergency hard close: 5 closed, 1 failed
-2026-02-26 19:26:12,047 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-26 19:26:12,057 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-26 19:26:12,100 - trading_bot.tms - INFO - TMS: Invalidated thesis for e587d9b6-4695-4191-a0fa-2b187ab01fb4: Emergency hard close sweep
-2026-02-26 19:26:12,135 - trading_bot.tms - INFO - TMS: Invalidated thesis for 34778437-9ac8-4fd5-b205-eb763467516d: Emergency hard close sweep
-2026-02-26 19:26:12,173 - trading_bot.tms - INFO - TMS: Invalidated thesis for 8386a2a1-9fa8-40f0-b77b-196bb84ddbec: Emergency hard close sweep
-2026-02-26 19:26:12,174 - Orchestrator - WARNING - Emergency hard close: Swept 3 active theses
-2026-02-26 19:26:12,174 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
-2026-02-26 19:26:15,184 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-02-26 19:35:00 UTC. Waiting for 0.15 hours.
-2026-02-26 19:26:50,715 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=False, trading_day=True
-2026-02-26 19:27:15,889 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=False, trading_day=True
-2026-02-26 19:28:26,890 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=True, trading_day=True
+2026-02-26 19:49:18,428 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-26 19:49:18,428 - trading_bot.master_orchestrator - INFO - MasterOrchestrator starting with commodities: ['KC', 'CC', 'NG']
+2026-02-26 19:49:18,428 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-26 19:49:18,429 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'anthropic', 'xai', 'openai']
+2026-02-26 19:49:18,430 - trading_bot.shared_context - INFO - PortfolioRiskGuard loaded: NORMAL, equity=$37,062, positions={}
+2026-02-26 19:49:18,432 - trading_bot.master_orchestrator - INFO - Staggering engine startup: waiting 2.5s before [CC]
+2026-02-26 19:49:18,432 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,432 - Engine.KC - INFO - =============================================
+2026-02-26 19:49:18,432 - Engine.KC - INFO - === Starting CommodityEngine [KC] ===
+2026-02-26 19:49:18,432 - Engine.KC - INFO - =============================================
+2026-02-26 19:49:18,433 - Engine.KC - INFO - Data directory: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,433 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,433 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,433 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,433 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,433 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,433 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,433 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/KC/tms
+2026-02-26 19:49:18,433 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,434 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,434 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,434 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,435 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/KC/research_provenance.log
+2026-02-26 19:49:18,435 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,438 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,438 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/KC
+2026-02-26 19:49:18,442 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
+2026-02-26 19:49:18,442 - trading_bot.data_dir_context - INFO - EngineRuntime set for [KC]
+2026-02-26 19:49:18,442 - Engine.KC - WARNING - ============================================================
+2026-02-26 19:49:18,442 - Engine.KC - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
+2026-02-26 19:49:18,442 - Engine.KC - WARNING -   Client IDs: DEV range (10-79)
+2026-02-26 19:49:18,442 - Engine.KC - WARNING -   Trading Mode: LIVE
+2026-02-26 19:49:18,442 - Engine.KC - WARNING - ============================================================
+2026-02-26 19:49:18,442 - Engine.KC - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-26 19:49:18,442 - Engine.KC - INFO - Drawdown Guard initialized.
+2026-02-26 19:49:18,442 - Engine.KC - INFO - Expiry filter window: 45-365 DTE
+2026-02-26 19:49:18,551 - Engine.KC - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-26 19:49:18,552 - Orchestrator - INFO - Built session schedule: 17 tasks for KC (04:15-13:30 ET)
+2026-02-26 19:49:18,552 - Engine.KC - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
+2026-02-26 19:49:18,557 - Engine.KC - WARNING - LATE START DETECTED: 17 scheduled tasks already passed:\n  - 03:30 ET: start_monitoring\n  - 03:31 ET: process_deferred_triggers\n  - 04:00 ET: cleanup_orphaned_theses\n  - 04:42 ET: signal_open\n  - 07:01 ET: signal_early\n  - 08:52 ET: audit_mid_session\n  - 09:20 ET: signal_mid\n  - 11:39 ET: signal_late\n  - 12:55 ET: audit_pre_close\n  - 13:05 ET: close_stale_primary\n  - 13:15 ET: close_stale_fallback\n  - 13:25 ET: emergency_hard_close\n  - 13:35 ET: log_equity_snapshot\n  - 13:38 ET: reconcile_and_analyze\n  - 13:50 ET: brier_reconciliation\n  - 13:53 ET: sentinel_effectiveness\n  - 13:56 ET: eod_shutdown
+2026-02-26 19:49:18,559 - Orchestrator - INFO - --- Recovery: Evaluating 17 missed tasks ---
+2026-02-26 19:49:18,559 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
+2026-02-26 19:49:18,559 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
+2026-02-26 19:49:18,559 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 04:00 ET)
+2026-02-26 19:49:18,559 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-26 19:49:18,560 - trading_bot.connection_pool - INFO - Connecting IB (KC_cleanup) ID: 86 [REMOTE/PAPER]...
+2026-02-26 19:49:18,977 - trading_bot.connection_pool - INFO - IB (KC_cleanup) connected successfully with ID 86
+2026-02-26 19:49:18,997 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-26 19:49:19,086 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-26 19:49:19,199 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-26 19:49:19,200 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_cleanup)...
+2026-02-26 19:49:20,934 - trading_bot.master_orchestrator - INFO - Staggering engine startup: waiting 2.5s before [NG]
+2026-02-26 19:49:20,935 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,935 - Engine.CC - INFO - =============================================
+2026-02-26 19:49:20,935 - Engine.CC - INFO - === Starting CommodityEngine [CC] ===
+2026-02-26 19:49:20,935 - Engine.CC - INFO - =============================================
+2026-02-26 19:49:20,935 - Engine.CC - INFO - Data directory: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,935 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,935 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,936 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,936 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,936 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,936 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,936 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/CC/tms
+2026-02-26 19:49:20,936 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,936 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,936 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,937 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,937 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/CC/research_provenance.log
+2026-02-26 19:49:20,937 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,937 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,937 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/CC
+2026-02-26 19:49:20,938 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
+2026-02-26 19:49:20,938 - trading_bot.data_dir_context - INFO - EngineRuntime set for [CC]
+2026-02-26 19:49:20,938 - Engine.CC - WARNING - ============================================================
+2026-02-26 19:49:20,938 - Engine.CC - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
+2026-02-26 19:49:20,938 - Engine.CC - WARNING -   Client IDs: DEV range (10-79)
+2026-02-26 19:49:20,938 - Engine.CC - WARNING -   Trading Mode: LIVE
+2026-02-26 19:49:20,938 - Engine.CC - WARNING - ============================================================
+2026-02-26 19:49:20,938 - Engine.CC - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-26 19:49:20,938 - Engine.CC - INFO - Drawdown Guard initialized.
+2026-02-26 19:49:20,938 - Engine.CC - INFO - Expiry filter window: 45-365 DTE
+2026-02-26 19:49:20,940 - Engine.CC - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-26 19:49:20,940 - Orchestrator - INFO - Built session schedule: 17 tasks for CC (04:45-13:30 ET)
+2026-02-26 19:49:20,940 - Engine.CC - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
+2026-02-26 19:49:20,943 - Engine.CC - WARNING - LATE START DETECTED: 17 scheduled tasks already passed:\n  - 04:00 ET: start_monitoring\n  - 04:01 ET: process_deferred_triggers\n  - 04:30 ET: cleanup_orphaned_theses\n  - 05:11 ET: signal_open\n  - 07:22 ET: signal_early\n  - 09:07 ET: audit_mid_session\n  - 09:33 ET: signal_mid\n  - 11:45 ET: signal_late\n  - 12:55 ET: audit_pre_close\n  - 13:05 ET: close_stale_primary\n  - 13:15 ET: close_stale_fallback\n  - 13:25 ET: emergency_hard_close\n  - 13:35 ET: log_equity_snapshot\n  - 13:38 ET: reconcile_and_analyze\n  - 13:50 ET: brier_reconciliation\n  - 13:53 ET: sentinel_effectiveness\n  - 13:56 ET: eod_shutdown
+2026-02-26 19:49:20,944 - Orchestrator - INFO - --- Recovery: Evaluating 17 missed tasks ---
+2026-02-26 19:49:20,944 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
+2026-02-26 19:49:20,945 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
+2026-02-26 19:49:20,945 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 04:30 ET)
+2026-02-26 19:49:20,945 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-26 19:49:20,945 - trading_bot.connection_pool - INFO - Connecting IB (CC_cleanup) ID: 482 [REMOTE/PAPER]...
+2026-02-26 19:49:21,070 - trading_bot.connection_pool - INFO - IB (CC_cleanup) connected successfully with ID 482
+2026-02-26 19:49:21,077 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-26 19:49:21,089 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-26 19:49:21,314 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-26 19:49:21,314 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_cleanup)...
+2026-02-26 19:49:22,205 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-26 19:49:23,435 - trading_bot.master_orchestrator - INFO - Master services started: equity (every 300s), macro (daily 6:00 ET), post-close (daily after market)
+2026-02-26 19:49:23,436 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,436 - Engine.NG - INFO - =============================================
+2026-02-26 19:49:23,436 - Engine.NG - INFO - === Starting CommodityEngine [NG] ===
+2026-02-26 19:49:23,436 - Engine.NG - INFO - =============================================
+2026-02-26 19:49:23,436 - Engine.NG - INFO - Data directory: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,436 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,436 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,437 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,437 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,437 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,437 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,437 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/NG/tms
+2026-02-26 19:49:23,437 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,437 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,437 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,438 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,439 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/NG/research_provenance.log
+2026-02-26 19:49:23,440 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,440 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,440 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/NG
+2026-02-26 19:49:23,441 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (-0.47%)
+2026-02-26 19:49:23,441 - trading_bot.data_dir_context - INFO - EngineRuntime set for [NG]
+2026-02-26 19:49:23,441 - Engine.NG - WARNING - ============================================================
+2026-02-26 19:49:23,441 - Engine.NG - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
+2026-02-26 19:49:23,441 - Engine.NG - WARNING -   Client IDs: DEV range (10-79)
+2026-02-26 19:49:23,441 - Engine.NG - WARNING -   Trading Mode: LIVE
+2026-02-26 19:49:23,441 - Engine.NG - WARNING - ============================================================
+2026-02-26 19:49:23,441 - Engine.NG - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-26 19:49:23,441 - Engine.NG - INFO - Drawdown Guard initialized.
+2026-02-26 19:49:23,442 - Engine.NG - INFO - Expiry filter window: 14-180 DTE
+2026-02-26 19:49:23,443 - Engine.NG - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-26 19:49:23,444 - Orchestrator - INFO - Built session schedule: 18 tasks for NG (09:00-14:30 ET)
+2026-02-26 19:49:23,444 - Engine.NG - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
+2026-02-26 19:49:23,447 - Engine.NG - WARNING - LATE START DETECTED: 15 scheduled tasks already passed:\n  - 08:15 ET: start_monitoring\n  - 08:16 ET: process_deferred_triggers\n  - 08:45 ET: cleanup_orphaned_theses\n  - 09:16 ET: signal_open\n  - 10:35 ET: eia_storage_signal\n  - 10:39 ET: signal_early\n  - 11:45 ET: audit_mid_session\n  - 12:01 ET: signal_mid\n  - 13:24 ET: signal_late\n  - 13:55 ET: audit_pre_close\n  - 14:05 ET: close_stale_primary\n  - 14:15 ET: close_stale_fallback\n  - 14:25 ET: emergency_hard_close\n  - 14:35 ET: log_equity_snapshot\n  - 14:38 ET: reconcile_and_analyze
+2026-02-26 19:49:23,449 - Orchestrator - INFO - --- Recovery: Evaluating 15 missed tasks ---
+2026-02-26 19:49:23,449 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
+2026-02-26 19:49:23,449 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
+2026-02-26 19:49:23,449 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 08:45 ET)
+2026-02-26 19:49:23,449 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-26 19:49:23,450 - trading_bot.connection_pool - INFO - Connecting IB (NG_cleanup) ID: 1283 [REMOTE/PAPER]...
+2026-02-26 19:49:23,450 - trading_bot.master_orchestrator - INFO - Equity service started
+2026-02-26 19:49:23,452 - trading_bot.master_orchestrator - INFO - Macro research service started
+2026-02-26 19:49:23,452 - trading_bot.master_orchestrator - INFO - Macro research service: next run at 2026-02-27 06:00 ET (15.2h from now)
+2026-02-26 19:49:23,452 - trading_bot.master_orchestrator - INFO - Post-close service started
+2026-02-26 19:49:23,766 - trading_bot.connection_pool - INFO - IB (NG_cleanup) connected successfully with ID 1283
+2026-02-26 19:49:23,774 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-26 19:49:23,789 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-26 19:49:23,892 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-26 19:49:23,892 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_cleanup)...
+2026-02-26 19:49:24,318 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-26 19:49:26,898 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-02-26 19:49:28,207 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:28,207 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:28,207 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_mid_session — market closed
+2026-02-26 19:49:28,207 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:28,208 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: signal_late — market closed
+2026-02-26 19:49:28,208 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_pre_close — market closed
+2026-02-26 19:49:28,208 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_primary — market closed
+2026-02-26 19:49:28,209 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_fallback — market closed
+2026-02-26 19:49:28,209 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
+2026-02-26 19:49:28,209 - Orchestrator - INFO - ✅ ALREADY RAN: log_equity_snapshot completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:28,209 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:28,209 - Orchestrator - INFO - 🔄 RECOVERY: Running missed brier_reconciliation [run_brier_reconciliation] (was scheduled 13:50 ET)
+2026-02-26 19:49:28,269 - trading_bot.brier_reconciliation - INFO - Found 205 pending predictions
+2026-02-26 19:49:28,270 - trading_bot.brier_reconciliation - INFO - Total council decisions: 262
+2026-02-26 19:49:28,277 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 233/262
+2026-02-26 19:49:28,339 - trading_bot.brier_reconciliation - INFO - ==================================================
+2026-02-26 19:49:28,339 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
+2026-02-26 19:49:28,339 - trading_bot.brier_reconciliation - INFO -   Total predictions:            1731
+2026-02-26 19:49:28,340 - trading_bot.brier_reconciliation - INFO -   Resolved:                     1521 (+0 new)
+2026-02-26 19:49:28,340 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      205 (potential: 205)
+2026-02-26 19:49:28,340 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        5 (+0 new)
+2026-02-26 19:49:28,340 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     88% (excl. orphans)
+2026-02-26 19:49:28,340 - trading_bot.brier_reconciliation - INFO - ==================================================
+2026-02-26 19:49:28,340 - trading_bot.brier_reconciliation - INFO - Running reconciliation could unlock up to 205 more predictions
+2026-02-26 19:49:28,341 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-02-26 19:49:28,352 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-02-26 19:49:29,107 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 731 created from CSV, 0 resolved from council_history
+2026-02-26 19:49:29,132 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.30, geopolitical: 0.12, inventory: 0.29, macro: 0.04, master_decision: 0.37, sentiment: 0.54, supply_chain: 0.65, technical: 0.29, volatility: 0.27}
+2026-02-26 19:49:29,370 - Orchestrator - INFO - Brier reconciliation: 983 predictions resolved today
+2026-02-26 19:49:29,371 - Orchestrator - INFO - Running feedback loop health check...
+2026-02-26 19:49:29,379 - Orchestrator - INFO - Feedback Loop Health: 205/1726 PENDING (5 orphans excluded, resolution rate: 88%)
+2026-02-26 19:49:29,382 - Orchestrator - INFO - Enhanced Brier Health: 9 agents tracked, 1526 total resolved predictions
+2026-02-26 19:49:29,383 - Orchestrator - INFO - Feedback loop health check complete.
+2026-02-26 19:49:29,387 - Orchestrator - INFO - ✅ RECOVERY: brier_reconciliation completed
+2026-02-26 19:49:30,320 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:30,320 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:30,320 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_mid_session — market closed
+2026-02-26 19:49:30,320 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:30,321 - Orchestrator - INFO - ✅ ALREADY RAN: signal_late completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:30,321 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_pre_close — market closed
+2026-02-26 19:49:30,321 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_primary — market closed
+2026-02-26 19:49:30,321 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_fallback — market closed
+2026-02-26 19:49:30,321 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
+2026-02-26 19:49:30,321 - Orchestrator - INFO - ✅ ALREADY RAN: log_equity_snapshot completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:30,321 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:30,322 - Orchestrator - INFO - 🔄 RECOVERY: Running missed brier_reconciliation [run_brier_reconciliation] (was scheduled 13:50 ET)
+2026-02-26 19:49:30,361 - trading_bot.brier_reconciliation - INFO - Found 158 pending predictions
+2026-02-26 19:49:30,362 - trading_bot.brier_reconciliation - INFO - Total council decisions: 95
+2026-02-26 19:49:30,371 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 73/95
+2026-02-26 19:49:30,408 - trading_bot.brier_reconciliation - INFO - ==================================================
+2026-02-26 19:49:30,409 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
+2026-02-26 19:49:30,409 - trading_bot.brier_reconciliation - INFO -   Total predictions:            522
+2026-02-26 19:49:30,409 - trading_bot.brier_reconciliation - INFO -   Resolved:                     364 (+0 new)
+2026-02-26 19:49:30,409 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      158 (potential: 158)
+2026-02-26 19:49:30,409 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        0 (+0 new)
+2026-02-26 19:49:30,409 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     70% (excl. orphans)
+2026-02-26 19:49:30,409 - trading_bot.brier_reconciliation - INFO - ==================================================
+2026-02-26 19:49:30,409 - trading_bot.brier_reconciliation - INFO - Running reconciliation could unlock up to 158 more predictions
+2026-02-26 19:49:30,410 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-02-26 19:49:30,418 - trading_bot.enhanced_brier - INFO - Loaded 961 predictions from /home/rodrigo/real_options/data/CC/enhanced_brier.json
+2026-02-26 19:49:30,514 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.58, geopolitical: 0.00, inventory: 0.70, macro: 0.50, master_decision: 0.58, sentiment: 0.59, supply_chain: 0.50, technical: 0.57, volatility: 0.63}
+2026-02-26 19:49:30,598 - Orchestrator - INFO - Brier reconciliation: 104 predictions resolved today
+2026-02-26 19:49:30,598 - Orchestrator - INFO - Running feedback loop health check...
+2026-02-26 19:49:30,605 - Orchestrator - INFO - Feedback Loop Health: 158/522 PENDING (0 orphans excluded, resolution rate: 70%)
+2026-02-26 19:49:30,607 - Orchestrator - INFO - Enhanced Brier Health: 10 agents tracked, 608 total resolved predictions
+2026-02-26 19:49:30,607 - Orchestrator - INFO - Feedback loop health check complete.
+2026-02-26 19:49:30,610 - Orchestrator - INFO - ✅ RECOVERY: brier_reconciliation completed
+2026-02-26 19:49:32,902 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:32,903 - Orchestrator - INFO - ✅ ALREADY RAN: eia_storage_signal completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:32,903 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:32,903 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_mid_session — market closed
+2026-02-26 19:49:32,903 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:32,904 - Orchestrator - INFO - ✅ ALREADY RAN: signal_late completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:32,904 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_pre_close — market closed
+2026-02-26 19:49:32,904 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_primary — market closed
+2026-02-26 19:49:32,904 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_fallback — market closed
+2026-02-26 19:49:32,904 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
+2026-02-26 19:49:32,904 - Orchestrator - INFO - ✅ ALREADY RAN: log_equity_snapshot completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:32,905 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:32,905 - Orchestrator - INFO - System restarted with 15 missed tasks.\n✅ 1 recovered | ⏭️ 7 skipped | ✔️ 7 already ran
+2026-02-26 19:49:33,105 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 19:49:33,481 - Engine.NG - INFO - Running TopicDiscoveryAgent on startup...
+2026-02-26 19:49:33,537 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-26 19:49:35,389 - Orchestrator - INFO - ✅ ALREADY RAN: sentinel_effectiveness completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:35,389 - Orchestrator - INFO - ✅ ALREADY RAN: eod_shutdown completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:35,389 - Orchestrator - INFO - System restarted with 17 missed tasks.\n✅ 2 recovered | ⏭️ 8 skipped | ✔️ 7 already ran
+2026-02-26 19:49:35,571 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 19:49:35,573 - Engine.KC - INFO - Running TopicDiscoveryAgent on startup...
+2026-02-26 19:49:35,604 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-26 19:49:36,612 - Orchestrator - INFO - ✅ ALREADY RAN: sentinel_effectiveness completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:36,613 - Orchestrator - INFO - ✅ ALREADY RAN: eod_shutdown completed earlier today (before restart). Skipping re-execution.
+2026-02-26 19:49:36,613 - Orchestrator - INFO - System restarted with 17 missed tasks.\n✅ 2 recovered | ⏭️ 7 skipped | ✔️ 8 already ran
+2026-02-26 19:49:36,833 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 19:49:36,834 - Engine.CC - INFO - Running TopicDiscoveryAgent on startup...
+2026-02-26 19:49:36,865 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-26 19:49:50,100 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-26 19:49:50,103 - Engine.KC - INFO - Startup TopicDiscovery: 4 topics, No changes
+2026-02-26 19:49:50,106 - Engine.KC - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-27 08:30:00 UTC. Waiting for 12.67 hours.
+2026-02-26 19:49:50,106 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-26 19:49:50,432 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-26 19:49:50,459 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-02-26 19:49:50,462 - Engine.CC - INFO - Startup TopicDiscovery: 4 topics, No changes
+2026-02-26 19:49:50,462 - Engine.CC - INFO - Staggering sentinel startup by 15s (engine #1)
+2026-02-26 19:49:50,470 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-26 19:49:50,472 - Engine.NG - INFO - Startup TopicDiscovery: 4 topics, No changes
+2026-02-26 19:49:50,473 - Engine.NG - INFO - Staggering sentinel startup by 30s (engine #2)
+2026-02-26 19:49:53,263 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-02-26 19:50:05,465 - Engine.CC - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-27 09:00:00 UTC. Waiting for 13.17 hours.
+2026-02-26 19:50:05,466 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-26 19:50:05,802 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-26 19:50:06,290 - asyncio - ERROR - Unclosed client session\nclient_session: <aiohttp.client.ClientSession object at 0x74324716e120>
+2026-02-26 19:50:12,066 - trading_bot.rate_limiter - INFO - Rate limiter: 6 requests queued, waiting 2.4s for next slot
+2026-02-26 19:50:17,550 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=6)
+2026-02-26 19:50:17,552 - trading_bot.state_manager - INFO - Queued deferred trigger from XSentimentSentinel
+2026-02-26 19:50:17,552 - Orchestrator - INFO - Deferred XSentimentSentinel trigger for market open
+2026-02-26 19:50:20,474 - Engine.NG - INFO - Next task 'sentinel_effectiveness' (Sentinel Effectiveness Check) scheduled for 2026-02-26 19:53:00 UTC. Waiting for 0.04 hours.
+2026-02-26 19:50:20,475 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-26 19:50:20,859 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-26 19:50:23,127 - trading_bot.rate_limiter - INFO - Rate limiter: 6 requests queued, waiting 2.4s for next slot
+2026-02-26 19:50:48,220 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=7)
+2026-02-26 19:50:48,224 - trading_bot.state_manager - INFO - Queued deferred trigger from XSentimentSentinel
+2026-02-26 19:50:48,224 - Orchestrator - INFO - Deferred XSentimentSentinel trigger for market open
+2026-02-26 19:50:49,846 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=7)
+2026-02-26 19:50:49,849 - trading_bot.state_manager - INFO - Queued deferred trigger from XSentimentSentinel
+2026-02-26 19:50:49,849 - Orchestrator - INFO - Deferred XSentimentSentinel trigger for market open
+2026-02-26 19:53:00,010 - Engine.NG - INFO - --- Running scheduled task: sentinel_effectiveness [sentinel_effectiveness_check] ---
+2026-02-26 19:53:00,013 - Orchestrator - INFO - --- Sentinel Effectiveness Check ---
+2026-02-26 19:53:00,085 - Orchestrator - INFO - Sentinel effectiveness OK: weekly change -5.3%, alerts: 18, sentinel trades: 2
+2026-02-26 19:53:00,090 - Engine.NG - INFO - Next task 'eod_shutdown' (End-of-Day Shutdown) scheduled for 2026-02-26 19:56:00 UTC. Waiting for 0.05 hours.
+2026-02-26 19:54:19,390 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=False, trading_day=True
+2026-02-26 19:54:48,881 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=False, trading_day=True
+2026-02-26 19:54:50,310 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=False, trading_day=True
+2026-02-26 19:56:00,010 - Engine.NG - INFO - --- Running scheduled task: eod_shutdown [cancel_and_stop_monitoring] ---
+2026-02-26 19:56:00,013 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
+2026-02-26 19:56:00,013 - Orchestrator - INFO - System shutdown flag SET — no new trades or emergency cycles will be processed
+2026-02-26 19:56:00,014 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
+2026-02-26 19:56:00,015 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1236 [REMOTE/PAPER]...
+2026-02-26 19:56:00,339 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1236
+2026-02-26 19:56:00,342 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-26 19:56:00,343 - OrderManager - INFO - Connected to IB for canceling open orders (purpose: orchestrator_orders).
+2026-02-26 19:56:00,448 - OrderManager - INFO - Skipped 6 orders belonging to other client IDs.
+2026-02-26 19:56:00,449 - OrderManager - INFO - Found 1 open orders to cancel (clientId=1236).
+2026-02-26 19:56:00,449 - OrderManager - INFO - Cancelled order ID 62.
+2026-02-26 19:56:00,650 - OrderManager - INFO - --- Finished canceling 1 orders ---
+2026-02-26 19:56:00,972 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 19:56:00,974 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-02-26 19:56:03,976 - Orchestrator - WARNING - Monitoring process is not running or has already terminated.
+2026-02-26 19:56:04,178 - Orchestrator - INFO - Connection pool released — no stale connections for Gateway restart
+2026-02-26 19:56:04,179 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
+2026-02-26 19:56:04,185 - Engine.NG - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-27 13:15:00 UTC. Waiting for 17.32 hours.
