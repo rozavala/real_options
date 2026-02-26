@@ -71,7 +71,9 @@ def get_trade_ledger_df(data_dir: str = None):
                 df['total_value_usd'] = pd.to_numeric(df['total_value_usd'], errors='coerce')
             dataframes.append(df)
         except Exception as e:
-            logger.warning(f"Failed to load main ledger: {e}")
+            # Main ledger failure is critical - log error and propagate
+            logger.error(f"Failed to load main ledger {ledger_path}: {e}")
+            raise
     else:
         logger.debug("Main trade_ledger.csv not found. This is normal for new installations.")
 
@@ -448,7 +450,8 @@ async def analyze_performance(config: dict) -> dict | None:
             logger.info("Loading daily_equity.csv for equity curve.")
             equity_df = pd.read_csv(equity_file)
             if not equity_df.empty:
-                equity_df['timestamp'] = pd.to_datetime(equity_df['timestamp'])
+                # Use utc=True for consistency with ledger parsing
+                equity_df['timestamp'] = pd.to_datetime(equity_df['timestamp'], utc=True)
                 equity_df = equity_df.sort_values('timestamp')
                 starting_capital = equity_df.iloc[0]['total_value_usd']
                 logger.info(f"Dynamic Starting Capital from History: ${starting_capital:,.2f}")
