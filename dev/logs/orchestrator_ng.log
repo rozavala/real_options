@@ -247,3 +247,95 @@
 2026-02-26 18:24:00,219 - Orchestrator - INFO - Order generation BLOCKED: Past daily cutoff (13:12 ET)
 2026-02-26 18:24:00,226 - Engine.NG - INFO - Next task 'audit_pre_close' (Audit: Pre-Close) scheduled for 2026-02-26 18:55:00 UTC. Waiting for 0.52 hours.
 2026-02-26 18:27:51,325 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=35, market_open=True, trading_day=True
+2026-02-26 18:32:52,593 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=40, market_open=True, trading_day=True
+2026-02-26 18:37:53,841 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=45, market_open=True, trading_day=True
+2026-02-26 18:42:56,116 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=50, market_open=True, trading_day=True
+2026-02-26 18:47:58,322 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=55, market_open=True, trading_day=True
+2026-02-26 18:53:02,165 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=60, market_open=True, trading_day=True
+2026-02-26 18:55:00,002 - Engine.NG - INFO - --- Running scheduled task: audit_pre_close [run_position_audit_cycle] ---
+2026-02-26 18:55:00,005 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-26 18:55:00,006 - trading_bot.connection_pool - INFO - Connecting IB (NG_audit) ID: 1264 [REMOTE/PAPER]...
+2026-02-26 18:55:00,323 - trading_bot.connection_pool - INFO - IB (NG_audit) connected successfully with ID 1264
+2026-02-26 18:55:00,327 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-26 18:55:00,336 - OrderManager - WARNING - Cancelling orphaned catastrophe stop: order 249 (client 1238, BUY NGN26 @ 3.40), ref=CATASTROPHE_8386a2a1-9fa8-40f0-b77b-196bb84ddbec
+2026-02-26 18:55:00,337 - OrderManager - WARNING - Cancelling orphaned catastrophe stop: order 242 (client 1238, BUY NGM26 @ 3.10), ref=CATASTROPHE_34778437-9ac8-4fd5-b205-eb763467516d
+2026-02-26 18:55:00,337 - OrderManager - WARNING - Cancelling orphaned catastrophe stop: order 235 (client 1238, BUY NGK26 @ 2.90), ref=CATASTROPHE_e587d9b6-4695-4191-a0fa-2b187ab01fb4
+2026-02-26 18:55:00,338 - OrderManager - WARNING - Cancelling orphaned catastrophe stop: order 201 (client 1234, BUY NGM26 @ 3.10), ref=CATASTROPHE_ab113cd8-887f-4a08-bd35-b29ed5c11fdc
+2026-02-26 18:55:00,338 - OrderManager - WARNING - Cancelling orphaned catastrophe stop: order 194 (client 1234, BUY NGK26 @ 2.90), ref=CATASTROPHE_9163a5e9-f584-4c7e-9f55-2dd44a0d77f5
+2026-02-26 18:55:00,338 - OrderManager - INFO - Catastrophe stop cleanup: skipped 1 stop(s) belonging to other commodities
+2026-02-26 18:55:00,585 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 18:55:00,604 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-26 18:55:00,605 - ib_insync.wrapper - ERROR - Error 10147, reqId 249: OrderId 249 that needs to be cancelled is not found.
+2026-02-26 18:55:00,606 - ib_insync.wrapper - ERROR - Error 10147, reqId 242: OrderId 242 that needs to be cancelled is not found.
+2026-02-26 18:55:00,606 - ib_insync.wrapper - ERROR - Error 10147, reqId 235: OrderId 235 that needs to be cancelled is not found.
+2026-02-26 18:55:00,606 - ib_insync.wrapper - ERROR - Error 10147, reqId 201: OrderId 201 that needs to be cancelled is not found.
+2026-02-26 18:55:00,606 - ib_insync.wrapper - ERROR - Error 10147, reqId 194: OrderId 194 that needs to be cancelled is not found.
+2026-02-26 18:55:00,663 - Orchestrator - WARNING - State sync discrepancy: IBKR has 6 positions but ledger shows 0 open
+2026-02-26 18:55:00,664 - Orchestrator - WARNING - State sync discrepancy: IBKR has 6 positions but TMS has 3 active theses
+2026-02-26 18:55:00,853 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 18:55:00,855 - Orchestrator - WARNING - Proceeding with audit despite 2 discrepancies. IBKR positions are source of truth.
+2026-02-26 18:55:00,865 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-26 18:55:00,957 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-26 18:55:00,957 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'openai', 'xai', 'anthropic']
+2026-02-26 18:55:00,958 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'openai', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-26 18:55:00,964 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-26 18:55:00,968 - trading_bot.enhanced_brier - INFO - Loaded 389 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
+2026-02-26 18:55:01,024 - trading_bot.agents - INFO - Loaded commodity profile: Natural Gas (Henry Hub)
+2026-02-26 18:55:01,024 - trading_bot.observability - INFO - HallucinationDetector initialized for Natural Gas (Henry Hub): 12 port tokens, 16 producer tokens
+2026-02-26 18:55:01,025 - trading_bot.observability - INFO - ObservabilityHub initialized for Natural Gas (Henry Hub)
+2026-02-26 18:55:01,025 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-26 18:55:01,025 - trading_bot.agents - INFO - Trading Council initialized for Natural Gas (Henry Hub). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-26 18:55:01,057 - Orchestrator - INFO - Grouped 6 IB positions into 3 thesis groups
+2026-02-26 18:55:01,057 - Orchestrator - INFO - Refreshing active futures cache
+2026-02-26 18:55:01,059 - root - INFO - Fetching 5 active futures contracts for NG on NYMEX...
+2026-02-26 18:55:01,064 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-26 18:55:01,226 - root - INFO - Skipping contract NGH26 (Exp: 20260225): Expires < 45 days.
+2026-02-26 18:55:01,227 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-02-26 18:55:01,228 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-26 18:55:01,230 - root - INFO - Combo 2 Legs on LNEM6 P3000: PnL=$-50.87 | Capture: -26.1% | Risk Used: -16.7%
+2026-02-26 18:55:01,230 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
+2026-02-26 18:55:01,233 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-26 18:55:01,373 - root - INFO - Skipping contract NGH26 (Exp: 20260225): Expires < 45 days.
+2026-02-26 18:55:01,373 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-02-26 18:55:01,376 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-26 18:55:03,435 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-26 18:55:03,756 - root - INFO - Combo 2 Legs on LNEN6 P3250: PnL=$-90.66 | Capture: -24.5% | Risk Used: -14.4%
+2026-02-26 18:55:03,757 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
+2026-02-26 18:55:03,760 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-26 18:55:03,887 - root - INFO - Skipping contract NGH26 (Exp: 20260225): Expires < 45 days.
+2026-02-26 18:55:03,887 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-02-26 18:55:03,889 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-26 18:55:05,950 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-26 18:55:06,356 - root - INFO - Combo 2 Legs on LNEK6 P2800: PnL=$-46.70 | Capture: -25.2% | Risk Used: -14.8%
+2026-02-26 18:55:06,357 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
+2026-02-26 18:55:06,362 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-26 18:55:06,487 - root - INFO - Skipping contract NGH26 (Exp: 20260225): Expires < 45 days.
+2026-02-26 18:55:06,487 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-02-26 18:55:06,489 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-26 18:55:08,509 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-26 18:55:08,877 - Orchestrator - INFO - Reconciliation: All 3 active theses have matching IB positions ✓
+2026-02-26 18:55:08,877 - Orchestrator - INFO - Position audit complete. All theses remain valid.
+2026-02-26 18:55:08,881 - ib_insync.wrapper - ERROR - Error 321, reqId 260: Error validating request.-'bO' : cause - Please enter exchange, contract: FuturesOption(conId=628405103, symbol='NG', lastTradeDateOrContractMonth='20260427', strike=2.8, right='P', multiplier='10000', primaryExchange='NYMEX', currency='USD', localSymbol='LNEK6 P2800', tradingClass='LNE')
+2026-02-26 18:55:08,923 - ib_insync.wrapper - ERROR - Error 321, reqId 261: Error validating request.-'bO' : cause - Please enter exchange, contract: FuturesOption(conId=628405170, symbol='NG', lastTradeDateOrContractMonth='20260427', strike=2.85, right='P', multiplier='10000', primaryExchange='NYMEX', currency='USD', localSymbol='LNEK6 P2850', tradingClass='LNE')
+2026-02-26 18:55:08,981 - ib_insync.wrapper - ERROR - Error 321, reqId 262: Error validating request.-'bO' : cause - Please enter exchange, contract: FuturesOption(conId=634031121, symbol='NG', lastTradeDateOrContractMonth='20260526', strike=2.95, right='P', multiplier='10000', primaryExchange='NYMEX', currency='USD', localSymbol='LNEM6 P2950', tradingClass='LNE')
+2026-02-26 18:55:09,081 - ib_insync.wrapper - ERROR - Error 321, reqId 263: Error validating request.-'bO' : cause - Please enter exchange, contract: FuturesOption(conId=440685364, symbol='NG', lastTradeDateOrContractMonth='20260526', strike=3.0, right='P', multiplier='10000', primaryExchange='NYMEX', currency='USD', localSymbol='LNEM6 P3000', tradingClass='LNE')
+2026-02-26 18:55:09,181 - ib_insync.wrapper - ERROR - Error 321, reqId 264: Error validating request.-'bO' : cause - Please enter exchange, contract: FuturesOption(conId=372745059, symbol='NG', lastTradeDateOrContractMonth='20260625', strike=3.25, right='P', multiplier='10000', primaryExchange='NYMEX', currency='USD', localSymbol='LNEN6 P3250', tradingClass='LNE')
+2026-02-26 18:55:09,281 - ib_insync.wrapper - ERROR - Error 321, reqId 265: Error validating request.-'bO' : cause - Please enter exchange, contract: FuturesOption(conId=639847704, symbol='NG', lastTradeDateOrContractMonth='20260625', strike=3.3, right='P', multiplier='10000', primaryExchange='NYMEX', currency='USD', localSymbol='LNEN6 P3300', tradingClass='LNE')
+2026-02-26 18:55:13,990 - trading_bot.var_calculator - WARNING - IV fetch timed out after 5.0s — 6/6 tickers still pending
+2026-02-26 18:55:13,992 - trading_bot.var_calculator - WARNING - IV unavailable for LNEK6 P2800 (conId=628405103) — using fallback IV=0.55
+2026-02-26 18:55:13,992 - trading_bot.var_calculator - WARNING - No underlying future price for LNEK6 P2800 (symbol=NG) — excluded from VaR
+2026-02-26 18:55:13,992 - trading_bot.var_calculator - WARNING - IV unavailable for LNEK6 P2850 (conId=628405170) — using fallback IV=0.55
+2026-02-26 18:55:13,993 - trading_bot.var_calculator - WARNING - No underlying future price for LNEK6 P2850 (symbol=NG) — excluded from VaR
+2026-02-26 18:55:13,994 - trading_bot.var_calculator - WARNING - IV unavailable for LNEM6 P2950 (conId=634031121) — using fallback IV=0.55
+2026-02-26 18:55:13,994 - trading_bot.var_calculator - WARNING - No underlying future price for LNEM6 P2950 (symbol=NG) — excluded from VaR
+2026-02-26 18:55:13,994 - trading_bot.var_calculator - WARNING - IV unavailable for LNEM6 P3000 (conId=440685364) — using fallback IV=0.55
+2026-02-26 18:55:13,994 - trading_bot.var_calculator - WARNING - No underlying future price for LNEM6 P3000 (symbol=NG) — excluded from VaR
+2026-02-26 18:55:13,995 - trading_bot.var_calculator - WARNING - IV unavailable for LNEN6 P3250 (conId=372745059) — using fallback IV=0.55
+2026-02-26 18:55:13,995 - trading_bot.var_calculator - WARNING - No underlying future price for LNEN6 P3250 (symbol=NG) — excluded from VaR
+2026-02-26 18:55:13,995 - trading_bot.var_calculator - WARNING - IV unavailable for LNEN6 P3300 (conId=639847704) — using fallback IV=0.55
+2026-02-26 18:55:13,998 - trading_bot.var_calculator - WARNING - No underlying future price for LNEN6 P3300 (symbol=NG) — excluded from VaR
+2026-02-26 18:55:14,000 - Orchestrator - INFO - Post-audit VaR: 95%=0.00% ($0), positions=0
+2026-02-26 18:55:14,001 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_audit)...
+2026-02-26 18:55:17,013 - Engine.NG - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-02-26 19:05:00 UTC. Waiting for 0.16 hours.
+2026-02-26 18:56:04,059 - Orchestrator - INFO - Shutdown: Gracefully disengaging Microstructure Sentinel
+2026-02-26 18:56:04,060 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_microstructure)...
