@@ -33366,3 +33366,288 @@ VERDICT: NO—do not proceed with a naked/linear bearish expression into an over
 2026-02-26 14:29:22,724 - openai._base_client - INFO - Retrying request to /chat/completions in 0.438754 seconds
 2026-02-26 14:29:23,210 - openai._base_client - INFO - Retrying request to /chat/completions in 0.897505 seconds
 2026-02-26 14:29:24,182 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-26 14:30:11,079 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-5-20250929 for master after primary failure.
+2026-02-26 14:30:11,079 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-26 14:30:11,080 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Structural supply expansion (Conab's record 66.2M bag foreca
+2026-02-26 14:30:11,080 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=NEUTRAL → multiplier=1.0, adj_confidence=0.7
+2026-02-26 14:30:11,080 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-02-26 14:30:13,033 - trading_bot.signal_generator - INFO - Council Decision KCH7 (202703): BEARISH (0.7)
+2026-02-26 14:30:13,036 - root - INFO - Logged council decision for KCH7 (202703)
+2026-02-26 14:30:13,041 - trading_bot.decision_signals - INFO - Decision signal logged: KCH7 (202703) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-02-26 14:30:13,108 - trading_bot.brier_bridge - WARNING - DEPRECATION: Legacy Brier system used 1400 times. Will be removed after 2026-03-01 00:00:00+00:00
+2026-02-26 14:30:13,138 - trading_bot.signal_generator - INFO - STRATEGY: Directional spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-26 14:30:13,138 - trading_bot.strategy_router - INFO - STRATEGY (scheduled): DIRECTIONAL spread (thesis=PLAUSIBLE, vol=BULLISH)
+2026-02-26 14:30:13,139 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for KCH7
+2026-02-26 14:30:13,152 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-02-26 14:30:13,152 - OrderManager - INFO - Generated 5 signals: [{'contract_month': '202605', 'prediction_type': 'VOLATILITY', 'level': 'HIGH', 'direction': 'VOLATILITY', 'reason': 'Long Straddle: High conflict (0.64)', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.0, 'price': 283.6, 'sma_200': 330.16650000000004, 'expected_price': 283.6, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202607', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': "The Bear wins this debate on evidence quality and logical coherence. Five independent agents (Agronomist, Inventory, Sentiment, Technical, Geopolitical) converge on bearish conclusions through DIFFERENT analytical lenses, creating a multi-factor case that the 23% monthly decline to 278.70 reflects fundamental repricing rather than capitulation. The critical flaw in the Bull's argument is treating backwardation and port congestion as predictive signals when the Inventory Report proves physical coffee IS arriving at delivery points at accelerating velocity—certified stocks rose 4.6% in one week despite the supposed bottleneck. If Santos were truly choking supply, we would not see 171,080 bags pending grading. The Bull correctly identifies that the Containerized Freight Index drop (14.16% monthly) decouples from local Brazilian constraints, but misinterprets this: it means global shipping is EASING while Brazilian infrastructure operates near but not over capacity (85-90% utilization with manageable 2-day waits per Geopolitical Report). This is a supply release, not a sustained choke point. The Agronomist's high-confidence (0.8) analysis validates Conab's record crop with optimal bean-filling rain (138% historical average in Minas Gerais) followed by a forecasted drying trend for maturation—the best-case agronomic scenario. The Sentiment Report's data on Managed Money net long collapsing to just 2,220 lots (down 1,336 in one week) with open interest plunging 33,676 contracts reveals speculative capitulation, not a squeezed market poised to rally. The Technical Report's 'Strong Sell' summary and price 13.0% below the 200-day SMA (320.52) in a RANGE_BOUND regime suggests consolidation within a downtrend, not an oversold bounce setup—the neutral RSI at 54.951 confirms no extreme that would trigger automatic mean reversion. The Volatility Analyst's bullish call on high IV (37.99%) as a sell-premium opportunity is creative but contradicted by the fundamental weight: backwardation reflects old-crop depletion being replaced by new-crop abundance, a transitional structure that collapses as harvest accelerates. The Bull's BRL floor argument (1.75-year highs, exporter hoarding) is undermined by the Macro Report's own data showing soybean sales lagging (36% vs 50% average) due to forward-selling caution, NOT fundamental strength—and the 12-month USD/BRL forecast to 4.97 signals structural BRL appreciation that will eventually force producer selling into a record harvest with storage constraints (localized Juiz de Fora calamities at 350% rainfall average highlight quality degradation risks that incentivize rapid monetization). The 24h change of -0.55% and 5-day trend of -0.98% are mild, not indicative of technical liquidation panic, but in a RANGE_BOUND regime this sideways drift below key moving averages is bearish price action. The Volatility Analyst's high IV constitutes expensive options per Decision Framework Rule 5, but the overwhelming convergence of supply evidence (4 agents at 0.8 confidence bearish, multiple independent factors) justifies maintaining PLAUSIBLE rather than downgrading to SPECULATIVE. The Bear's strongest evidence is the Inventory/Supply-Chain data contradiction: if the bottleneck were real and sustained, inventories would be falling, not surging. The Bull's failure to reconcile this central fact is fatal to the scarcity thesis. [Consensus ALIGNED (Vote=BEARISH)]", 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 278.7, 'sma_200': 320.5215, 'expected_price': 278.7, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202609', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': "The debate centers on whether logistics friction and FX-driven farmer withholding can sustain a bullish case against Brazil's record harvest fundamentals. After weighing the evidence quality, the Bear's structural supply argument proves more durable than the Bull's transient bottleneck thesis. KEY DECISION FACTORS: (1) RESPECT THE TREND: Current price at 274.15 sits 11.8% below the 200-day SMA of 310.74 in a RANGE_BOUND regime with MODERATE 1.62% volatility. The 24h change of -0.42% and 5-day trend of -0.92% show grinding bearish momentum without panic capitulation—this is a controlled descent pricing in oversupply, not a washout bottoming process. The market's refusal to rally despite logistics headlines is itself bearish evidence. (2) EVIDENCE QUALITY COUNT: The Bear presents multiple INDEPENDENT convergent signals: Agronomist confirms 330mm rainfall (85% above average) validating Conab's 66.2M bag forecast through meteorological data (Somar/Inmet), not just production estimates. Inventory shows Pending Grading surged +7,395 bags to 171,080—a quantified 'wall of supply' entering certification. Macro identifies the 7-percentage-point farmer sales gap (36% vs 43%) as a COILED SPRING that will release when BRL weakens post-March Selic cuts. Sentiment confirms light speculative positioning (12,860 net longs, already reduced by 758 contracts) eliminates short-squeeze fuel. Technical shows price below 200-day SMA with resistance wall at 277.65-283.05. These are five independent desks reaching bearish conclusions through DIFFERENT data streams (weather, inventory flows, currency policy, positioning, price structure). (3) BULL'S TEMPORAL FLAW: The Bull's logistics case (602k bags/month backlog, -30.74% YoY exports, Santos congestion) is REAL but TRANSIENT. The Geopolitical desk itself notes the soy surge driving Santos volumes (+79.6% YoY) is seasonal—Q1 harvest peak. The Containerized Freight Index already dropped 14.16% in 30 days, signaling easing transport costs that will accelerate once port clears. The Bull fails to explain why logistics bottlenecks would persist THROUGH the arrival of 66.2 million bags—infrastructure adapts, soy clears, and the harvest flood follows. The -30.74% export decline is a LAGGING indicator of current chaos, not a forward signal of sustained scarcity. (4) FX WITHHOLDING REVERSAL: The Macro desk's analysis is critical here—current USD/BRL at 5.1258 creates farmer discipline NOW, but the Central Bank's explicit signal of Selic cuts starting March 2026 sets up a policy-driven BRL depreciation that will make dollar sales irresistible. The 7ppt sales gap represents deferred volume that will hit the market exactly when harvest supplies peak. The Bull's 'gradual sales' assumption ignores the binary nature of farmer psychology when currency crosses profitability thresholds. (5) VOLATILITY COST AWARENESS: The Volatility desk reports IV at 37.50% with Put/Call Ratio at 1.34, which the Bull frames as 'panic peak for mean-reversion.' However, per Decision Framework Rule 5, expensive options in a bearish trend should DOWNGRADE conviction unless overwhelming evidence justifies higher risk. The Bear correctly identifies that IV spike reflects structural uncertainty about harvest timing and logistics resolution, not a capitulation bottom—price at a 15-month low after a -23% MoM decline with light positioning (12,860 net longs) shows gradual liquidation, not panic washout. The Technical desk's RSI/Stochastic divergence suggests potential for a SHORT-TERM bounce to 277-280 resistance, but backwardation structure (Mar'26 281.15 vs Mar'28 244.95) actually prices FUTURE oversupply, not current scarcity—the curve is telling traders to sell forward rallies. (6) PRICED-IN CHECK: The market regime is RANGE_BOUND with MODERATE volatility despite logistics headlines dominating news flow. If the supply shock were genuinely bullish, we'd see HIGH volatility and breakout momentum. Instead, the 1.62% 5-day volatility and -0.42%/-0.92% drift pattern suggest the market is IGNORING the logistics noise and focusing on the harvest fundamentals. The 11.8% discount to the 200-day SMA is appropriate pricing for a commodity entering oversupply, not a value opportunity. BEAR'S WINNING ARGUMENT: The synthesis of Agronomist (weather validation), Inventory (pending supply), Macro (policy-driven FX reversal), and Sentiment (light positioning) creates a PLAUSIBLE bearish thesis with multiple independent confirmation points. The Bull's logistics case is a single-pillar argument (port congestion) that depends on infrastructure failing to adapt—a low-probability outcome over a 6-month horizon to September delivery. THESIS STRENGTH JUSTIFICATION: Downgraded from PROVEN to PLAUSIBLE due to: (1) Volatility desk's expensive options (IV 37.50%) per Rule 5, and (2) acknowledged risk that Santos congestion could persist longer than expected if soy exports remain elevated. However, the preponderance of independent evidence (5 desks with different data reaching bearish conclusions) keeps this above SPECULATIVE. [Consensus ALIGNED (Vote=NEUTRAL)]", 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 274.15, 'sma_200': 310.73775, 'expected_price': 274.15, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202612', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': "The debate centers on whether logistical bottlenecks create genuine scarcity or merely delay an inevitable supply flood. I judge the Bear's argument more grounded in forward-looking catalysts that align with current market positioning. CRITICAL EVIDENCE ASSESSMENT: (1) AGRONOMIC REALITY: The Agronomist provides hard meteorological data—330mm February rainfall in Lavras (85% above average)—that validates Conab's record 66.2M bag forecast (+17.2% YoY). This is not speculative; it's measured precipitation during the bean-filling stage. The Bull dismisses this as 'hype,' but the Bear correctly identifies this as the foundational supply driver. (2) LOGISTICAL FRICTION vs. STRUCTURAL SHIFT: The Bull's core thesis rests on 602k bags/month trapped by 55% vessel delays at Santos. However, the Bear makes a compelling counter: the Containerized Freight Index already fell 14.16% over 30 days, and Santos handled record volumes (12.7M tonnes in Jan, +9.5% YoY). The port proved it can absorb surges during the soy export boom (79.6% increase). The delays are real but *temporary*—a dam before a flood, not a permanent constraint. The Bull's claim of 'iron grip' logistics ignores that infrastructure is already demonstrating capacity under stress. (3) THE BRL POLICY PIVOT: This is where the Bear's thesis gains decisive weight. The Macro report explicitly states the Central Bank will begin cutting the 15% Selic rate in March. Historically, Brazilian rate cuts weaken the Real. The current USD/BRL at 5.1258 has farmers withholding (36% vs 43% sales), but this withholding is *price-elastic*. A weaker Real will flip local-currency incentives, releasing the 7-percentage-point sales deficit into the export market precisely as the record harvest arrives. The Bull argues cuts will be 'gradual,' but even modest BRL depreciation unlocks supply—this is a unidirectional catalyst. (4) INVENTORY PIPELINE: The Inventory report shows Pending Grading surged +7,395 bags to 171,080. The Bull dismisses this as irrelevant because certified stocks drew down daily, but this ignores the *pipeline dynamic*: pending stocks are pre-certified supply entering the market within weeks. Combined with the 9.2% YoY rise in global exports (Dec 2025) and the ICO Composite's -2.6% decline (Jan 2026), the data shows supply is already overwhelming demand at the margin. (5) BACKWARDATION MISREAD: The Bull's strongest card is the Mar'26-Mar'28 backwardation (281.15 vs 244.95), arguing it proves physical tightness. The Bear counters that backwardation can persist during oversupply transitions when futures reprice abundance faster than spot. I side with the Bear here: the market is in a RANGE_BOUND regime (not a squeeze), speculators reduced net longs to 12,860 contracts (CFTC), and prices hit a 15-month low. Backwardation in this context signals trapped late longs, not scarcity—especially with 171k bags entering certification. (6) MARKET REALITY CHECK DISCIPLINE: The -0.85% 24h and -1.49% 5-day moves are not catastrophic, but they confirm continued weakness. The price at 268.30 is 11.5% below the 200-day SMA in a RANGE_BOUND regime with MODERATE volatility (1.68%). This is not an oversold V-bottom setup; it's a grinding bear trend with episodic relief rallies. The Bull's 'generational entry' claim lacks supporting demand catalysts—the EUDR delay removed the primary 2026 demand driver. VOLATILITY COST CONSTRAINT: The Volatility Analyst flags 'expensive' IV at ~40.46% with a BULLISH tag, advocating for selling volatility. However, under Decision Framework Rule 5, expensive options paired with a BEARISH structural outlook demands I DOWNGRADE thesis strength. The Bull's case relies on a volatility-driven short squeeze, but expensive vol means the market is already pricing rebound risk—this is not a hidden catalyst. I downgrade from PROVEN to PLAUSIBLE, as the supply convergence is clear but timing is uncertain given the logistical noise. EVIDENCE COUNTING: Bear has 5 independent lines of evidence (rainfall data, freight normalization, BRL policy, inventory pipeline, speculator capitulation) vs. Bull's 3 (port delays, backwardation, farmer withholding). The Bear's evidence is forward-looking and catalyst-driven; the Bull's is backward-looking and relies on conditions already eroding. SYNTHESIS: The market is repricing a supply glut in slow motion. The logistical bottlenecks that trapped exports in January are easing (freight costs down, Santos proving capacity), while the record Brazilian crop is validated by hard agronomic data. The impending Selic rate cuts will trigger a BRL-driven supply release from farmers currently withholding, flooding a market where demand has been capped by the EUDR delay. The backwardation and port delays are real but insufficient to override the convergence of these bearish catalysts. The -1.49% 5-day trend and 11.5% discount to the 200-day SMA confirm the market is already discounting this reality, not overreacting. VERDICT: The Bear presented a more robust, forward-looking thesis grounded in measurable catalysts (rainfall, policy pivot, freight normalization). The Bull's case is defensible but relies on temporary frictions that are visibly eroding. In a RANGE_BOUND regime with expensive volatility, the path of least resistance is lower. [Consensus ALIGNED (Vote=BEARISH)]", 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 268.3, 'sma_200': 303.156, 'expected_price': 268.3, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202703', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': "The debate centers on whether temporary logistics bottlenecks create genuine physical tightness or merely mask an incoming supply tsunami. I judge the Bear's argument superior on three grounds:\n\n1. LEADING VS LAGGING INDICATORS: The Bull relies heavily on January export data (-30.74% YoY) and current vessel delays (55% delay rate, 602k bags/month trapped) as evidence of supply constraints. However, these are backward-looking snapshots that the market has already priced—evidenced by the current price at 265.80 sitting 10.8% below the 200-day SMA of 298.05. The Bear correctly identifies forward catalysts: Lavras receiving 330mm of rain (85% above average) directly validates Conab's record crop projection, while the Central Bank's explicit signal to cut the 15% Selic rate starting March will weaken BRL and incentivize the release of withheld inventory. The 7 percentage point gap in farmer sales (36% vs 43% historical) represents substantial latent supply awaiting currency depreciation.\n\n2. INVENTORY DYNAMICS CONTRADICT TIGHTNESS NARRATIVE: The Bull cites backwardation (Mar 2026 at 281.15 vs Mar 2028 at 244.95) as proof of physical tightness, but this is undermined by hard data: Pending Grading stocks surged +7,395 bags to 171,080 bags—a literal pipeline of supply entering the exchange. While certified stocks drew modestly (-1,808 daily to 453,612), the Pending Grading increase is 4x larger, signaling the 'wall of supply' is building, not depleting. The Bull's claim that this supply will be 'absorbed by demand' lacks evidence, especially with EUDR delayed to December 2026 removing near-term buying urgency.\n\n3. MARKET STRUCTURE SIGNALS BEARISH EQUILIBRIUM: The Bull frames the RANGE_BOUND regime with MODERATE 5-day volatility (1.64%) as an 'oversold mean-reversion setup,' but this interpretation ignores critical context. In a genuine physical squeeze, we would expect volatility expansion and aggressive buying—yet the market remains subdued with a negligible 24h change of -0.64% and a modest 5-day decline of -1.26%. This is not capitulation; it's orderly distribution. The Containerized Freight Index declining 14.16% over 30 days signals easing global logistics costs, contradicting the Bull's 'permanent' bottleneck thesis. CMA CGM's Cape of Good Hope routing (40-45 day transits) is a long-term reality, yes, but it's a known factor, not a new shock.\n\n4. EVIDENCE COUNTING FAVORS BEARS: Four of seven desk reports (Agronomist, Inventory, Sentiment, Technical) explicitly tagged BEARISH, with Macro and Geopolitical at NEUTRAL. Only Supply Chain and Volatility lean bullish, and the Volatility desk's bullish tag is qualified as a 'contrarian mean-reversion play' with 0.65 confidence—the lowest of all reports. The Bear's thesis has broader evidentiary support across independent analyst verticals.\n\n5. RESPECT THE TREND (CRITICAL RULE): The 24h change of -0.64% does not trigger the '<-1.5% Technical Liquidation' threshold, but the 5-day trend of -1.26% combined with the price being 10.8% below the 200-day SMA demonstrates sustained selling pressure. The Bull's argument requires believing that this trend will reverse despite no new bullish catalyst materializing—EUDR is delayed, BRL strength is temporary (Selic cuts loom), and the record crop is confirmed by meteorological data.\n\nTHE BULL'S STRONGEST POINT—and the reason this is PLAUSIBLE rather than PROVEN—is the persistence of backwardation and the 55% vessel delay rate creating near-term friction. The Santos port saturation (yard utilization 63-77%) is real and could extend supply constraints for weeks. However, this is a tactical delay, not a strategic shift. The 602k bags/month trapped is meaningful but represents only ~9% of the projected 66.2M bag crop—a temporary blockage in a much larger pipeline.\n\nVOLATILITY COST AWARENESS: The Volatility desk notes IV is 'at the lower end of the 52-week range,' which ordinarily would support bullish positioning. However, this 'cheap' premium environment exists because the market consensus has shifted bearish (reflected in the -23% month-over-month decline to 15-month lows). Underpriced volatility is not a buy signal when the underlying trend is deteriorating; it simply means the market sees limited upside catalysts. Per Rule 5, I do not downgrade thesis_strength here because the bearish case does not rely on volatility positioning—it's grounded in fundamental supply data.\n\nCONCLUSION: The Bear wins on the quality of forward-looking evidence. The Bull's thesis conflates current friction with future fundamentals, treating lagging logistics data as if it negates the agronomic reality of record rainfall and production forecasts. The market is rationally pricing oversupply, not irrationally panicking. The 265.80 price level in a RANGE_BOUND regime with declining momentum is a distribution zone, not a value floor. [Consensus ALIGNED (Vote=NEUTRAL)]", 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 265.8, 'sma_200': 298.05475, 'expected_price': 265.8, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}]
+2026-02-26 14:30:13,152 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-02-26 14:30:13,156 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-26 14:30:13,157 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-26 14:30:13,257 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-26 14:30:13,258 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-02-26 14:30:13,258 - OrderManager - INFO - Skipping KCH7: Too deferred (384 days > 365 max)
+2026-02-26 14:30:13,258 - OrderManager - INFO - Date filter passed: 4/5 contracts within 365 days.
+2026-02-26 14:30:13,259 - OrderManager - INFO - Checking liquidity for 4 contracts (parallel)...
+2026-02-26 14:30:13,725 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=11940, market_open=True, trading_day=True
+2026-02-26 14:30:15,762 - OrderManager - INFO - Liquidity check cleanup complete.
+2026-02-26 14:30:15,762 - OrderManager - INFO - Volume filter passed: 4 liquid candidates proceeding to signal generation.
+2026-02-26 14:30:15,831 - OrderManager - INFO - Account Value for Sizing: $32,479.25
+2026-02-26 14:30:15,834 - OrderManager - INFO - L1 RECONCILED: Reset committed capital from $768.75 to $0.00
+2026-02-26 14:30:15,834 - OrderManager - INFO - BLOCKED BY CONFIDENCE: 202605 — confidence 0.00 < threshold 0.60. Direction=VOLATILITY
+2026-02-26 14:30:15,835 - OrderManager - INFO - Requesting snapshot market price for KCN6...
+2026-02-26 14:30:16,121 - OrderManager - INFO - Using bid/ask midpoint for KCN6: 278.1
+2026-02-26 14:30:16,121 - root - INFO - Fetching option chain for future KCN6...
+2026-02-26 14:30:16,124 - root - INFO - --- Defining BEARISH Spread for KCN6 ---
+2026-02-26 14:30:16,125 - root - WARNING - No strikes near 278.1 meet min OI threshold (10). Using closest strike 277.5 anyway.
+2026-02-26 14:30:16,125 - root - INFO - Identified ATM strike: 277.5 for underlying price 278.1
+2026-02-26 14:30:16,125 - root - WARNING - No strikes near 273.537075 meet min OI threshold (10). Using closest strike 272.5 anyway.
+2026-02-26 14:30:16,126 - root - INFO - Defined Bear Put Spread legs: BUY 277.5P, SELL 272.5P
+2026-02-26 14:30:16,127 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.2) * Heat(1.0) * Conviction(1.0) = 2 (raw: 1.020)
+2026-02-26 14:30:16,127 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-26 14:30:16,362 - root - INFO - Fetching market data for option: KON6 P2.775
+2026-02-26 14:30:18,365 - root - INFO - Using IBKR Model Greeks IV: 37.53%
+2026-02-26 14:30:18,370 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-26 14:30:18,370 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-26 14:30:18,372 - root - INFO - Theoretical price calculated for P @ 277.5: {'price': np.float64(20.3948), 'delta': np.float64(-0.4328), 'gamma': np.float64(0.007), 'vega': np.float64(58.9384), 'theta': np.float64(-0.1198)}
+2026-02-26 14:30:18,373 - root - INFO -   -> Leg Theoretical Price (BUY): KON6 P2.775 @ 20.39
+2026-02-26 14:30:18,373 - root - INFO - Fetching market data for option: KON6 P2.725
+2026-02-26 14:30:20,375 - root - INFO - Using IBKR Model Greeks IV: 37.61%
+2026-02-26 14:30:20,383 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-26 14:30:20,383 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-26 14:30:20,386 - root - INFO - Theoretical price calculated for P @ 272.5: {'price': np.float64(17.9969), 'delta': np.float64(-0.3978), 'gamma': np.float64(0.0068), 'vega': np.float64(57.8162), 'theta': np.float64(-0.1167)}
+2026-02-26 14:30:20,387 - root - INFO -   -> Leg Theoretical Price (SELL): KON6 P2.725 @ 18.00
+2026-02-26 14:30:20,387 - root - INFO - BUY Cap Calc: Theoretical=2.85, MarketAggressive=2.90 (aggression=0.75), Mid=2.53, Ask=3.03, Final Cap=2.90
+2026-02-26 14:30:20,387 - root - INFO - Net Theoretical: 2.40, Market Spread: 1.00
+2026-02-26 14:30:20,387 - root - INFO - Adaptive Strategy: Start @ 2.05, Cap/Floor @ 2.90
+2026-02-26 14:30:20,387 - root - INFO - Creating Limit Order for BUY 2 @ 2.05 (Adaptive Cap: 2.90).
+2026-02-26 14:30:20,387 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-02-26 14:30:20,388 - root - INFO - Assigned OrderRef: 5af21731-e885-496f-98c3-41dd06298757
+2026-02-26 14:30:20,393 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $1,537.50 (premium paid)
+2026-02-26 14:30:20,393 - OrderManager - INFO - Capital tracking: Committed $1,537.50 | Remaining $30,941.75 | This order: $1,537.50
+2026-02-26 14:30:20,393 - OrderManager - INFO - Successfully queued order for KCN6.
+2026-02-26 14:30:20,394 - OrderManager - INFO - Requesting snapshot market price for KCU6...
+2026-02-26 14:30:20,709 - OrderManager - INFO - Using bid/ask midpoint for KCU6: 273.575
+2026-02-26 14:30:20,709 - root - INFO - Fetching option chain for future KCU6...
+2026-02-26 14:30:20,752 - root - INFO - --- Defining BEARISH Spread for KCU6 ---
+2026-02-26 14:30:20,754 - root - WARNING - No strikes near 273.575 meet min OI threshold (10). Using closest strike 272.5 anyway.
+2026-02-26 14:30:20,754 - root - INFO - Identified ATM strike: 272.5 for underlying price 273.575
+2026-02-26 14:30:20,755 - root - WARNING - No strikes near 268.60155625 meet min OI threshold (10). Using closest strike 267.5 anyway.
+2026-02-26 14:30:20,755 - root - INFO - Defined Bear Put Spread legs: BUY 272.5P, SELL 267.5P
+2026-02-26 14:30:20,756 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.2) * Heat(1.0) * Conviction(1.0) = 2 (raw: 1.020)
+2026-02-26 14:30:20,757 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-26 14:30:20,990 - root - INFO - Fetching market data for option: KOU6 P2.725
+2026-02-26 14:30:22,991 - root - INFO - Using IBKR Model Greeks IV: 37.43%
+2026-02-26 14:30:22,996 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-26 14:30:22,996 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-26 14:30:22,997 - root - INFO - Theoretical price calculated for P @ 272.5: {'price': np.float64(24.4799), 'delta': np.float64(-0.4147), 'gamma': np.float64(0.0056), 'vega': np.float64(72.56), 'theta': np.float64(-0.0955)}
+2026-02-26 14:30:22,997 - root - INFO -   -> Leg Theoretical Price (BUY): KOU6 P2.725 @ 24.48
+2026-02-26 14:30:22,998 - root - INFO - Fetching market data for option: KOU6 P2.675
+2026-02-26 14:30:24,999 - root - INFO - Using IBKR Model Greeks IV: 37.40%
+2026-02-26 14:30:25,006 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-26 14:30:25,006 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-26 14:30:25,008 - root - INFO - Theoretical price calculated for P @ 267.5: {'price': np.float64(22.0027), 'delta': np.float64(-0.3866), 'gamma': np.float64(0.0055), 'vega': np.float64(71.2426), 'theta': np.float64(-0.0928)}
+2026-02-26 14:30:25,008 - root - INFO -   -> Leg Theoretical Price (SELL): KOU6 P2.675 @ 22.00
+2026-02-26 14:30:25,008 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (3.98) is 160.7% of theoretical price (2.48), which exceeds the max of 45.0%. Aborting order.
+2026-02-26 14:30:25,009 - OrderManager - INFO - Requesting snapshot market price for KCZ6...
+2026-02-26 14:30:25,286 - OrderManager - INFO - Using bid/ask midpoint for KCZ6: 268.85
+2026-02-26 14:30:25,286 - root - INFO - Fetching option chain for future KCZ6...
+2026-02-26 14:30:25,289 - root - INFO - --- Defining BEARISH Spread for KCZ6 ---
+2026-02-26 14:30:25,290 - root - WARNING - No strikes near 268.85 meet min OI threshold (10). Using closest strike 270.0 anyway.
+2026-02-26 14:30:25,290 - root - INFO - Identified ATM strike: 270.0 for underlying price 268.85
+2026-02-26 14:30:25,290 - root - WARNING - No strikes near 266.1688875 meet min OI threshold (10). Using closest strike 265.0 anyway.
+2026-02-26 14:30:25,290 - root - INFO - Defined Bear Put Spread legs: BUY 270.0P, SELL 265.0P
+2026-02-26 14:30:25,292 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.85) * Vol(1.2) * Heat(1.0) * Conviction(1.0) = 2 (raw: 1.020)
+2026-02-26 14:30:25,292 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-02-26 14:30:25,526 - root - INFO - Fetching market data for option: KOZ6 P2.7
+2026-02-26 14:30:27,528 - root - INFO - Using IBKR Model Greeks IV: 35.60%
+2026-02-26 14:30:27,533 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-26 14:30:27,533 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-26 14:30:27,536 - root - INFO - Theoretical price calculated for P @ 270.0: {'price': np.float64(28.5612), 'delta': np.float64(-0.4089), 'gamma': np.float64(0.0048), 'vega': np.float64(87.9834), 'theta': np.float64(-0.0756)}
+2026-02-26 14:30:27,536 - root - INFO -   -> Leg Theoretical Price (BUY): KOZ6 P2.7 @ 28.56
+2026-02-26 14:30:27,536 - root - INFO - Fetching market data for option: KOZ6 P2.65
+2026-02-26 14:30:29,537 - root - INFO - Using IBKR Model Greeks IV: 35.57%
+2026-02-26 14:30:29,542 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-26 14:30:29,543 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-26 14:30:29,546 - root - INFO - Theoretical price calculated for P @ 265.0: {'price': np.float64(26.0331), 'delta': np.float64(-0.3849), 'gamma': np.float64(0.0047), 'vega': np.float64(86.5609), 'theta': np.float64(-0.0736)}
+2026-02-26 14:30:29,546 - root - INFO -   -> Leg Theoretical Price (SELL): KOZ6 P2.65 @ 26.03
+2026-02-26 14:30:29,547 - root - WARNING - LIQUIDITY FILTER FAILED: Market spread (7.32) is 289.5% of theoretical price (2.53), which exceeds the max of 45.0%. Aborting order.
+2026-02-26 14:30:29,547 - OrderManager - WARNING - No active future for signal month 202703.
+2026-02-26 14:30:29,547 - OrderManager - INFO - --- Order generation complete. 1 orders queued. ---
+2026-02-26 14:30:29,779 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 14:30:29,782 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-26 14:30:32,784 - OrderManager - INFO - --- Placing and monitoring 1 orders ---
+2026-02-26 14:30:32,785 - OrderManager - INFO - Processing 1 orders SEQUENTIALLY
+2026-02-26 14:30:32,785 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-26 14:30:32,785 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-26 14:30:32,786 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%)
+2026-02-26 14:30:32,786 - trading_bot.connection_pool - INFO - Connecting IB (orchestrator_orders) ID: 149...
+2026-02-26 14:30:33,235 - trading_bot.connection_pool - INFO - IB (orchestrator_orders) connected successfully with ID 149
+2026-02-26 14:30:33,248 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-02-26 14:30:33,249 - OrderManager - INFO - Using pooled IB connection for order placement.
+2026-02-26 14:30:33,249 - OrderManager - INFO - Sorted orders by expiration proximity.
+2026-02-26 14:30:33,444 - OrderManager - INFO - Current Available Funds: $32,465.06 | Equity: $32,479.25
+2026-02-26 14:30:33,446 - OrderManager - INFO - Processing order 1/1: 
+2026-02-26 14:30:35,508 - ib_insync.wrapper - ERROR - Error 162, reqId 26: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=732945272, symbol='KC', lastTradeDateOrContractMonth='20260612', strike=277.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KON6 P2.775', tradingClass='KO')
+2026-02-26 14:30:35,517 - trading_bot.compliance - INFO - Resolved underlying future: KCN6 (conId: 646040490)
+2026-02-26 14:30:35,631 - trading_bot.compliance - INFO - Volume from IB (KCN6): 69.0
+2026-02-26 14:30:35,633 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $1,537.50 (premium paid)
+2026-02-26 14:30:39,477 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
+2026-02-26 14:30:39,599 - OrderManager - INFO - Approved KC-P277.5+P272.5: Margin $1,333.21 | Remaining: $31,131.85
+2026-02-26 14:30:39,599 - OrderManager - INFO - [OFF] WOULD PLACE BUY 2 KC-P277.5+P272.5 @ 2.05
+2026-02-26 14:30:39,826 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 14:30:39,829 - OrderManager - INFO - Order placement complete. Releasing event handlers.
+2026-02-26 14:30:39,829 - trading_bot.connection_pool - INFO - Disconnecting IB (orchestrator_orders)...
+2026-02-26 14:30:42,833 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-02-26 14:30:42,833 - trading_bot.semantic_cache - INFO - CACHE INVALIDATED BY TICKER (KC): 1 entries removed
+2026-02-26 14:30:42,843 - Orchestrator - INFO - Next task 'signal_late' (Signal: Late) scheduled for 2026-02-26 16:39:00 UTC. Waiting for 2.14 hours.
+2026-02-26 14:32:45,135 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=6)
+2026-02-26 14:32:45,177 - trading_bot.state_manager - INFO - Logged sentinel event from XSentimentSentinel to history.
+2026-02-26 14:32:45,178 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by XSentimentSentinel: UNUSUAL X ACTIVITY SPIKE (36 posts) (Cycle: KC-ffc2b395)
+2026-02-26 14:32:45,418 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-26 14:32:45,430 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-26 14:32:45,572 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-02-26 14:32:45,573 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'gemini', 'xai', 'anthropic']
+2026-02-26 14:32:45,573 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'gemini', 'xai', 'anthropic'], 'diversity_score': 1.0}
+2026-02-26 14:32:45,579 - trading_bot.tms - INFO - TMS initialized at ./data/tms
+2026-02-26 14:32:45,591 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from ./data/enhanced_brier.json
+2026-02-26 14:32:46,614 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 806 created from CSV, 0 resolved from council_history
+2026-02-26 14:32:46,616 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-26 14:32:46,617 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-26 14:32:46,617 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-26 14:32:46,617 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-26 14:32:46,617 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3-pro-preview, Master: gemini-3-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-26 14:32:46,617 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-26 14:32:46,619 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-02-26 14:32:46,619 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-02-26 14:32:46,684 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-26 14:32:46,685 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-26 14:32:46,685 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-26 14:32:50,812 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-26 14:32:51,305 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=282.85, sma_200=330.16275, regime=RANGE_BOUND, vol_5d=0.0173
+2026-02-26 14:32:51,306 - Orchestrator - INFO - Emergency market context: price=282.85, regime=RANGE_BOUND
+2026-02-26 14:32:51,306 - trading_bot.agents - INFO - Running Specialized Cycle triggered by XSentimentSentinel...
+2026-02-26 14:32:51,307 - trading_bot.agents - INFO - Routing to sentiment (Reason: Matched: XSentimentSentinel/spike)
+2026-02-26 14:32:51,307 - trading_bot.agents - INFO - Waking up sentiment...
+2026-02-26 14:32:51,750 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-02-26 14:32:51,751 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-02-26 14:33:12,383 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-26 14:33:12,384 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.5 \u00d7 reliability=0.4 = 0.59", "macro": "domain=1.5 \u00d7 reliability=0.6 = 0.84", "geopolitical": "domain=1.5 \u00d7 reliability=0.6 = 0.85", "supply_chain": "domain=1.5 \u00d7 reliability=1.4 = 2.03", "inventory": "domain=1.5 \u00d7 reliability=0.5 = 0.72", "sentiment": "domain=1.5 \u00d7 reliability=0.5 = 0.75", "technical": "domain=2.2 \u00d7 reliability=0.7 = 1.54", "volatility": "domain=1.0 \u00d7 reliability=0.8 = 0.88"}
+2026-02-26 14:33:12,385 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=-0.070, dominant=supply_chain)
+2026-02-26 14:33:12,385 - trading_bot.weighted_voting - INFO - Vote Breakdown: [
+  {
+    "agent": "agronomist",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.4,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.59,
+    "contribution": -0.475
+  },
+  {
+    "agent": "macro",
+    "direction": "NEUTRAL",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.56,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.84,
+    "contribution": 0.0
+  },
+  {
+    "agent": "geopolitical",
+    "direction": "NEUTRAL",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.57,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.85,
+    "contribution": 0.0
+  },
+  {
+    "agent": "supply_chain",
+    "direction": "BULLISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 1.36,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 2.03,
+    "contribution": 1.626
+  },
+  {
+    "agent": "inventory",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.48,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.72,
+    "contribution": -0.576
+  },
+  {
+    "agent": "sentiment",
+    "direction": "BEARISH",
+    "confidence": 0.65,
+    "domain_weight": 1.5,
+    "reliability_mult": 0.5,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.75,
+    "contribution": -0.487
+  },
+  {
+    "agent": "technical",
+    "direction": "BEARISH",
+    "confidence": 0.8,
+    "domain_weight": 2.25,
+    "reliability_mult": 0.68,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 1.54,
+    "contribution": -1.231
+  },
+  {
+    "agent": "volatility",
+    "direction": "BULLISH",
+    "confidence": 0.65,
+    "domain_weight": 1.0499999999999998,
+    "reliability_mult": 0.84,
+    "staleness_weight": 1.0,
+    "age_hours": 0.0,
+    "final_weight": 0.88,
+    "contribution": 0.57
+  }
+]
+2026-02-26 14:34:11,582 - openai._base_client - INFO - Retrying request to /chat/completions in 0.472666 seconds
+2026-02-26 14:34:12,102 - openai._base_client - INFO - Retrying request to /chat/completions in 0.997846 seconds
+2026-02-26 14:34:13,125 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-26 14:34:23,185 - openai._base_client - INFO - Retrying request to /chat/completions in 0.465595 seconds
+2026-02-26 14:34:23,722 - openai._base_client - INFO - Retrying request to /chat/completions in 0.875562 seconds
+2026-02-26 14:34:24,787 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-26 14:34:44,873 - openai._base_client - INFO - Retrying request to /chat/completions in 0.488048 seconds
+2026-02-26 14:34:45,406 - openai._base_client - INFO - Retrying request to /chat/completions in 0.841675 seconds
+2026-02-26 14:34:46,504 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-26 14:35:22,647 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-5-20250929 for master after primary failure.
+2026-02-26 14:35:22,648 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-26 14:35:22,649 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.7) | Catalyst: Record Brazilian harvest forecast (66.2M bags, +17.2% YoY) c
+2026-02-26 14:35:47,997 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=11945, market_open=True, trading_day=True
+2026-02-26 14:35:52,354 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. The trade relies on three unproven assumptions: (1) Santos logistics will normalize despite operating at 63-77% yard capacity with soy competition, (2) Brazilian Central Bank will cut rates in March 2026 with sufficient magnitude to weaken BRL and unlock farmer sales, and (3) the market has not already priced in the 66.2M bag harvest via the 23% monthly decline. The weighted voting consensus is NEUTRAL (-0.070 score, 0.55 confidence), NOT bearish, with the dominant agent (supply_chain) actually BULLISH. Four of six desks tagged bearish, but two critical desks (volatility, supply_chain) identified structural bullish catalysts we rationalized away. The confidence level of 0.7 is unjustified given the PLAUSIBLE (not PROVEN) thesis strength admission and the explicit acknowledgment that 'Santos congestion could theoretically worsen.' At 15-month lows with backwardation, RSI divergence, and cheap IV, the risk/reward asymmetry favors waiting for confirmation of (a) March rate cut announcement, (b) April export data showing acceleration, or (c) technical breakdown below 280 support. Entering a bearish position now is SELLING THE BOTTOM with catalysts that may not materialize for 30-60 days, exposing the trade to headline risk (weather shock, export halt, spec short squeeze) with limited downside capture remaining after a 23% crash.
+2026-02-26 14:35:52,395 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-26 14:35:52,397 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-26 14:35:52,398 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-26 14:35:52,398 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-26 14:35:52,400 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-26 14:35:52,404 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-26 14:35:52,614 - Orchestrator - INFO - Emergency Cycle concluded with no action: BULLISH (VOLATILITY)
+2026-02-26 14:35:52,617 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-26 14:40:50,366 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=11950, market_open=True, trading_day=True
+2026-02-26 14:45:53,215 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=11955, market_open=True, trading_day=True
+2026-02-26 14:49:55,892 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 41% of average (Sev: 5)
+2026-02-26 14:49:55,899 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-26 14:50:55,913 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=11960, market_open=True, trading_day=True
+2026-02-26 14:55:58,158 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=11965, market_open=True, trading_day=True
