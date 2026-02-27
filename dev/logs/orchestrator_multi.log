@@ -1675,3 +1675,123 @@
 2026-02-27 13:27:22,694 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=295, market_open=True, trading_day=True
 2026-02-27 13:27:38,865 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=295, market_open=True, trading_day=True
 2026-02-27 13:28:26,317 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=300, market_open=False, trading_day=True
+2026-02-27 13:30:22,885 - Orchestrator - WARNING - MICROSTRUCTURE CRITICAL: Flash Crash Risk: Spread 4.8 std devs above mean
+2026-02-27 13:30:22,924 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-27 13:30:22,925 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by MicrostructureSentinel: Flash Crash Risk: Spread 4.8 std devs above mean (Cycle: KC-cc0fc71d)
+2026-02-27 13:30:23,258 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-27 13:30:23,405 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-02-27 13:30:23,406 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['anthropic', 'gemini', 'xai', 'openai']
+2026-02-27 13:30:23,407 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['anthropic', 'gemini', 'xai', 'openai'], 'diversity_score': 1.0}
+2026-02-27 13:30:23,419 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-27 13:30:23,431 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-02-27 13:30:24,486 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 788 created from CSV, 0 resolved from council_history
+2026-02-27 13:30:24,489 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-02-27 13:30:24,490 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-02-27 13:30:24,491 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-02-27 13:30:24,491 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-02-27 13:30:24,491 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-02-27 13:30:24,492 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-02-27 13:30:24,497 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-27 13:30:24,570 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-02-27 13:30:24,571 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-02-27 13:30:24,571 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-02-27 13:30:26,845 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-27 13:30:29,067 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-02-27 13:30:29,567 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=279.55, sma_200=329.82325, regime=RANGE_BOUND, vol_5d=0.0180
+2026-02-27 13:30:29,567 - Orchestrator - INFO - Emergency market context: price=279.55, regime=RANGE_BOUND
+2026-02-27 13:30:29,568 - trading_bot.semantic_cache - INFO - CACHE CROSS-SOURCE INVALIDATION: 1 entries removed for KCK6 (202605) (kept MicrostructureSentinel)
+2026-02-27 13:30:29,568 - trading_bot.agents - INFO - Running Specialized Cycle triggered by MicrostructureSentinel...
+2026-02-27 13:30:29,570 - trading_bot.agents - INFO - Routing to macro (Reason: Default routing)
+2026-02-27 13:30:29,571 - trading_bot.agents - INFO - Waking up macro...
+2026-02-27 13:30:30,259 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-02-27 13:30:30,259 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-02-27 13:31:40,000 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3.1-pro-preview for macro after primary failure.
+2026-02-27 13:31:40,001 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: openai quota exhausted (circuit breaker)
+2026-02-27 13:31:40,459 - trading_bot.heterogeneous_router - INFO - CIRCUIT BREAKER: openai cooldown expired, re-enabling
+2026-02-27 13:31:41,457 - openai._base_client - INFO - Retrying request to /chat/completions in 0.443513 seconds
+2026-02-27 13:31:42,790 - openai._base_client - INFO - Retrying request to /chat/completions in 0.785675 seconds
+2026-02-27 13:31:44,540 - trading_bot.heterogeneous_router - ERROR - CIRCUIT BREAKER: openai tripped for 1.0h — Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/doc
+2026-02-27 13:31:44,541 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for macro: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-27 13:32:22,912 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=300, market_open=True, trading_day=True
+2026-02-27 13:32:39,046 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=300, market_open=True, trading_day=True
+2026-02-27 13:32:39,084 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3.1-pro-preview for macro after primary failure.
+2026-02-27 13:32:39,084 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-02-27 13:32:39,204 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-02-27 13:32:39,205 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=0.5 \u00d7 reliability=1.1 = 0.53", "macro": "domain=1.0 \u00d7 reliability=0.7 = 0.65", "geopolitical": "domain=0.5 \u00d7 reliability=0.9 = 0.39", "supply_chain": "domain=0.5 \u00d7 reliability=0.7 = 0.31", "inventory": "domain=1.0 \u00d7 reliability=0.8 = 0.71", "sentiment": "domain=1.5 \u00d7 reliability=1.2 = 1.52", "technical": "domain=3.8 \u00d7 reliability=1.1 = 3.66", "volatility": "domain=2.1 \u00d7 reliability=0.8 = 1.53"}
+2026-02-27 13:32:39,206 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.423, dominant=technical)
+2026-02-27 13:32:39,207 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "agronomist",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 0.5,\n    "reliability_mult": 1.06,\n    "staleness_weight": 1.0,\n    "age_hours": 1.0,\n    "final_weight": 0.53,\n    "contribution": -0.425\n  },\n  {\n    "agent": "macro",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.65,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "final_weight": 0.65,\n    "contribution": -0.522\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "BULLISH",\n    "confidence": 0.8,\n    "domain_weight": 0.5,\n    "reliability_mult": 0.9,\n    "staleness_weight": 0.87,\n    "age_hours": 2.3,\n    "final_weight": 0.39,\n    "contribution": 0.316\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BULLISH",\n    "confidence": 0.8,\n    "domain_weight": 0.5,\n    "reliability_mult": 0.71,\n    "staleness_weight": 0.87,\n    "age_hours": 2.3,\n    "final_weight": 0.31,\n    "contribution": 0.247\n  },\n  {\n    "agent": "inventory",\n    "direction": "BEARISH",\n    "confidence": 0.55,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.81,\n    "staleness_weight": 0.87,\n    "age_hours": 2.3,\n    "final_weight": 0.71,\n    "contribution": -0.388\n  },\n  {\n    "agent": "sentiment",\n    "direction": "BULLISH",\n    "confidence": 0.65,\n    "domain_weight": 1.5,\n    "reliability_mult": 1.16,\n    "staleness_weight": 0.87,\n    "age_hours": 2.3,\n    "final_weight": 1.52,\n    "contribution": 0.99\n  },\n  {\n    "agent": "technical",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 3.75,\n    "reliability_mult": 1.12,\n    "staleness_weight": 0.87,\n    "age_hours": 2.3,\n    "final_weight": 3.66,\n    "contribution": -2.926\n  },\n  {\n    "agent": "volatility",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 2.0999999999999996,\n    "reliability_mult": 0.83,\n    "staleness_weight": 0.87,\n    "age_hours": 2.3,\n    "final_weight": 1.53,\n    "contribution": -1.223\n  }\n]
+2026-02-27 13:33:27,681 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=305, market_open=False, trading_day=True
+2026-02-27 13:34:23,142 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-6 for master after primary failure.
+2026-02-27 13:34:23,142 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: openai quota exhausted (circuit breaker)
+2026-02-27 13:34:23,142 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.8) | Catalyst: Record global supply pipeline (Conab 66.2M bag Brazil crop +
+2026-02-27 13:35:21,355 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED with this trade as structured. The confluence of (1) entry at 15-month support with severity-9/10 microstructure anomaly, (2) IV at 3.9x historical volatility making directional options prohibitively expensive, (3) RSI 30 oversold at key technical inflection, (4) 33.65-cent backwardation signaling genuine near-term physical tightness, and (5) a crowded, exhausted bearish trend already down 15% YTD — creates asymmetric catastrophic downside for new short entries. The bearish FUNDAMENTAL thesis for H2 2026 may be entirely correct, but this is the WRONG ENTRY POINT and the WRONG TIMEFRAME. If conviction exists: (A) Wait for a technical bounce to 290-295 to enter short with better risk/reward; (B) Use defined-risk structures only (bear call spreads) given IV regime; (C) Size at 25% of normal given flash crash microstructure risk; (D) Require a confirmed break BELOW 278.00 with volume confirmation before initiating. The analysis correctly identified the bearish thesis but failed to distinguish between 'the thesis is right' and 'this is the right moment to enter.' Those are different questions, and right now the answer to the second question is NO.
+2026-02-27 13:35:21,391 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-02-27 13:35:21,392 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-27 13:35:21,393 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-02-27 13:35:21,393 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-02-27 13:35:21,394 - root - INFO - Logged council decision for KCK6 (202605)
+2026-02-27 13:35:21,399 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-02-27 13:35:21,546 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (VOLATILITY)
+2026-02-27 13:35:21,550 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-02-27 13:35:26,550 - Orchestrator - INFO - 2026-02-27 13:35:26,549 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-27 13:35:27,339 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-27 13:37:24,066 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=305, market_open=True, trading_day=True
+2026-02-27 13:37:39,206 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=305, market_open=True, trading_day=True
+2026-02-27 13:38:27,716 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=310, market_open=False, trading_day=True
+2026-02-27 13:40:27,865 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-27 13:42:25,158 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=310, market_open=True, trading_day=True
+2026-02-27 13:42:39,359 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=310, market_open=True, trading_day=True
+2026-02-27 13:43:27,749 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=315, market_open=False, trading_day=True
+2026-02-27 13:45:00,002 - Engine.NG - INFO - --- Running scheduled task: cleanup_orphaned_theses [cleanup_orphaned_theses] ---
+2026-02-27 13:45:00,007 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-02-27 13:45:00,008 - trading_bot.connection_pool - INFO - Connecting IB (NG_cleanup) ID: 1284 [REMOTE/PAPER]...
+2026-02-27 13:45:00,366 - trading_bot.connection_pool - INFO - IB (NG_cleanup) connected successfully with ID 1284
+2026-02-27 13:45:00,381 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 13:45:00,394 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-02-27 13:45:00,394 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_cleanup)...
+2026-02-27 13:45:03,403 - Engine.NG - INFO - Next task 'signal_open' (Signal: Open) scheduled for 2026-02-27 15:06:00 UTC. Waiting for 1.35 hours.
+2026-02-27 13:45:26,582 - Orchestrator - INFO - 2026-02-27 13:45:26,582 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-27 13:45:28,391 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-27 13:45:39,395 - root - INFO - Fetching 1 active futures contracts for CC on NYBOT...
+2026-02-27 13:45:39,399 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-02-27 13:45:39,472 - root - INFO - Skipping contract CCH6 (Exp: 20260316): Expires < 45 days.
+2026-02-27 13:45:39,472 - root - INFO - Found 9 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-02-27 13:45:39,472 - Orchestrator - INFO - Refreshed contract cache: CCK6
+2026-02-27 13:47:26,281 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=315, market_open=True, trading_day=True
+2026-02-27 13:47:39,585 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=315, market_open=True, trading_day=True
+2026-02-27 13:48:27,782 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=320, market_open=False, trading_day=True
+2026-02-27 13:50:28,727 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-27 13:52:00,003 - Engine.KC - INFO - --- Running scheduled task: audit_mid_session [run_position_audit_cycle] ---
+2026-02-27 13:52:00,007 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-27 13:52:00,009 - trading_bot.connection_pool - INFO - Connecting IB (KC_audit) ID: 67 [REMOTE/PAPER]...
+2026-02-27 13:52:00,511 - trading_bot.connection_pool - INFO - IB (KC_audit) connected successfully with ID 67
+2026-02-27 13:52:00,516 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-27 13:52:00,622 - OrderManager - INFO - Catastrophe stop cleanup: skipped 2 stop(s) belonging to other commodities
+2026-02-27 13:52:00,623 - OrderManager - INFO - Cancelling orphaned catastrophe stop: order 138 (client 35, BUY KCN6 @ 285.55), ref=CATASTROPHE_38a77db1-0162-4887-a60c-e0cfbe1f621a
+2026-02-27 13:52:00,625 - ib_insync.wrapper - ERROR - Error 10147, reqId 138: OrderId 138 that needs to be cancelled is not found.
+2026-02-27 13:52:02,626 - OrderManager - INFO - Catastrophe stop cleanup: 1 phantom GTC order(s) not found on IBKR (stale Gateway cache, harmless)
+2026-02-27 13:52:02,660 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-02-27 13:52:02,684 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
+2026-02-27 13:52:02,688 - Orchestrator - INFO - No open positions to audit.
+2026-02-27 13:52:02,712 - Orchestrator - WARNING - Phantom reconciliation: Found 10 phantom ledger entries (non-zero net qty, no IB position): [('83a08625-78cd-4716-91da-c3f2b8e66d83', 'KOH6 P3.35', -1.0), ('83a08625-78cd-4716-91da-c3f2b8e66d83', 'KOH6 C3.5', 1.0), ('da7f4ad0-2f3f-45af-a014-9461a33f56e4', 'KOH6 C3.5', -1.0), ('da7f4ad0-2f3f-45af-a014-9461a33f56e4', 'KOH6 P3.35', 1.0), ('KCK6_20260220;042112_KCK6', 'KCK6', 1.0), ('KCK6_20260220;121424_KCK6', 'KCK6', -1.0), ('KCK6_20260225;073633_KCK6', 'KCK6', 1.0), ('KCN6_20260225;073836_KCN6', 'KCN6', 1.0), ('KCN6_20260225;102541_KCN6', 'KCN6', -1.0), ('KCK6_20260225;102602_KCK6', 'KCK6', -1.0)]
+2026-02-27 13:52:02,713 - Orchestrator - INFO - Phantom reconciliation: Wrote 10 synthetic close rows to ledger
+2026-02-27 13:52:02,714 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis 83a08625-78cd-4716-91da-c3f2b8e66d83
+2026-02-27 13:52:02,715 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis da7f4ad0-2f3f-45af-a014-9461a33f56e4
+2026-02-27 13:52:02,716 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis KCK6_20260220;042112_KCK6
+2026-02-27 13:52:02,717 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis KCK6_20260220;121424_KCK6
+2026-02-27 13:52:02,718 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis KCK6_20260225;073633_KCK6
+2026-02-27 13:52:02,719 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis KCN6_20260225;073836_KCN6
+2026-02-27 13:52:02,719 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis KCN6_20260225;102541_KCN6
+2026-02-27 13:52:02,720 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis KCK6_20260225;102602_KCK6
+2026-02-27 13:52:03,025 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-27 13:52:03,027 - Orchestrator - WARNING - Phantom reconciliation zeroed out 10 ledger entries (IB has zero positions)
+2026-02-27 13:52:03,028 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_audit)...
+2026-02-27 13:52:06,035 - Engine.KC - INFO - Next task 'signal_early' (Signal: Early) scheduled for 2026-02-27 14:59:00 UTC. Waiting for 1.11 hours.
+2026-02-27 13:52:27,442 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=320, market_open=True, trading_day=True
+2026-02-27 13:52:39,739 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=320, market_open=True, trading_day=True
+2026-02-27 13:53:27,810 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=325, market_open=False, trading_day=True
+2026-02-27 13:55:26,674 - Orchestrator - INFO - 2026-02-27 13:55:26,674 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-27 13:55:29,057 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-27 13:57:28,297 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=325, market_open=True, trading_day=True
+2026-02-27 13:57:39,895 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=325, market_open=True, trading_day=True
+2026-02-27 13:58:27,845 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=330, market_open=False, trading_day=True
