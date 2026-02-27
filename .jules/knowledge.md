@@ -19,7 +19,7 @@ Sentinels are lightweight monitors that observe external data sources and trigge
 - **MicrostructureSentinel:** Monitors order book depth and flow toxicity.
 
 ### Tier 2: Specialist Analysts (The Council)
-When a sentinel triggers, a Council of specialized AI agents is convened via the **Heterogeneous Router**.
+When a sentinel triggers or a scheduled cycle runs, a Council of specialized AI agents is convened via the **Heterogeneous Router**.
 - **Agronomist:** Evaluates crop conditions and weather impacts.
 - **Macro Economist:** Assesses global economic trends and currency impacts.
 - **Fundamentalist:** Focuses on supply/demand balance and inventory reports.
@@ -60,6 +60,6 @@ The system uses a **Transactive Memory System (TMS)** powered by ChromaDB. This 
 ## Operational Cycles
 
 1. **Emergency Cycle:** Triggered by a Sentinel. Fast-tracked through the council for immediate action.
-2. **Scheduled Cycle:** Runs at specific times (e.g., 9:00 AM ET) to generate daily orders.
+2. **Scheduled Cycle:** Runs 3 times per session (at 20%, 62%, and 80% of session duration) to generate daily orders.
 3. **Position Audit Cycle:** Regularly reviews open positions against their original entry thesis to decide on early exits.
 4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day.

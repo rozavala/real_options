@@ -45,7 +45,7 @@ bash scripts/run_migrations.sh
 - MacroContagionSentinel, FundamentalRegimeSentinel
 - Detect events and trigger emergency or scheduled trading cycles
 
-**Tier 2 - Specialist Analysts** (triggered by sentinels, defined in `trading_bot/agents.py`):
+**Tier 2 - Specialist Analysts** (triggered by sentinels or scheduled cycles, defined in `trading_bot/agents.py`):
 - Agronomist, Macro Economist, Fundamentalist, Technical Analyst
 - Volatility Analyst, Geopolitical Analyst, Sentiment Analyst
 - Each uses research prompts defined in `config.json` under `gemini.personas`
@@ -113,7 +113,9 @@ real_options/
 │   ├── 4_Financials.py          # ROI, equity curve, strategy performance
 │   ├── 5_Utilities.py           # Log analysis, manual overrides
 │   ├── 6_Signal_Overlay.py      # Price action vs signals, trade forensics
-│   └── 7_Brier_Analysis.py      # Prediction accuracy, agent scoring
+│   ├── 7_Brier_Analysis.py      # Prediction accuracy, agent scoring
+│   ├── 8_LLM_Monitor.py         # Cost tracking, provider health, latency
+│   └── 9_Portfolio.py           # Cross-commodity risk, VaR, engine health
 │
 ├── config/                      # Configuration system
 │   ├── commodity_profiles.py    # Extensible commodity profiles (CommodityProfile dataclass)
