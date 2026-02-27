@@ -4718,19 +4718,21 @@ def _build_session_schedule(config: dict) -> list:
         dt = open_dt + timedelta(minutes=entry['offset_minutes'])
         _add_task(entry['id'], dt.time(), entry['function'], entry.get('label', entry['id']))
 
-    # 2. Signal generation: evenly distributed between start_pct and end_pct
-    signal_count = tmpl.get('signal_count', 4)
-    start_pct = tmpl.get('signal_start_pct', 0.05)
-    end_pct = tmpl.get('signal_end_pct', 0.80)
-
+    # 2. Signal generation: explicit pcts or evenly distributed between start/end
     signal_names = ['signal_open', 'signal_early', 'signal_mid', 'signal_late', 'signal_5']
     signal_labels = ['Signal: Open', 'Signal: Early', 'Signal: Mid', 'Signal: Late', 'Signal: 5']
 
-    if signal_count == 1:
-        pcts = [start_pct]
+    if 'signal_pcts' in tmpl:
+        pcts = tmpl['signal_pcts']
     else:
-        step = (end_pct - start_pct) / (signal_count - 1)
-        pcts = [start_pct + i * step for i in range(signal_count)]
+        signal_count = tmpl.get('signal_count', 4)
+        start_pct = tmpl.get('signal_start_pct', 0.05)
+        end_pct = tmpl.get('signal_end_pct', 0.80)
+        if signal_count == 1:
+            pcts = [start_pct]
+        else:
+            step = (end_pct - start_pct) / (signal_count - 1)
+            pcts = [start_pct + i * step for i in range(signal_count)]
 
     for i, pct in enumerate(pcts):
         dt = open_dt + timedelta(minutes=session_minutes * pct)

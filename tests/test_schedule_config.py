@@ -112,9 +112,7 @@ def test_build_schedule_session_mode():
         'schedule': {
             'mode': 'session',
             'session_template': {
-                'signal_count': 3,
-                'signal_start_pct': 0.15,
-                'signal_end_pct': 0.80,
+                'signal_pcts': [0.20, 0.62, 0.80],
                 'cutoff_before_close_minutes': 78,
                 'pre_open_tasks': [
                     {'id': 'start_monitoring', 'offset_minutes': -45, 'function': 'start_monitoring', 'label': 'Start'},
@@ -171,8 +169,12 @@ def test_default_schedule_matches_config():
     if mode == 'session':
         # Session mode: validate session_template structure
         tmpl = schedule_cfg['session_template']
-        assert tmpl['signal_count'] >= 1
-        assert 0 <= tmpl['signal_start_pct'] < tmpl['signal_end_pct'] <= 1.0
+        if 'signal_pcts' in tmpl:
+            assert len(tmpl['signal_pcts']) >= 1
+            assert all(0 <= p <= 1.0 for p in tmpl['signal_pcts'])
+        else:
+            assert tmpl['signal_count'] >= 1
+            assert 0 <= tmpl['signal_start_pct'] < tmpl['signal_end_pct'] <= 1.0
         assert tmpl['cutoff_before_close_minutes'] > 0
 
         # All task groups must have valid function names
