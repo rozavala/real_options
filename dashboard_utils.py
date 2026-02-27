@@ -2176,7 +2176,7 @@ def load_llm_daily_costs(ticker: str = None) -> pd.DataFrame:
     if not os.path.exists(path):
         return pd.DataFrame()
     try:
-        df = pd.read_csv(path)
+        df = pd.read_csv(path, on_bad_lines='warn')
         if 'date' in df.columns:
             df['date'] = pd.to_datetime(df['date'])
         return df
