@@ -1,22 +1,22 @@
 {
   "version": 1,
-  "last_run": "2026-02-27T03:00:01.626375+00:00",
+  "last_run": "2026-02-27T13:00:01.874529+00:00",
   "log_offsets": {
-    "/home/rodrigo/real_options/logs/dashboard.log": 4139,
+    "/home/rodrigo/real_options/logs/dashboard.log": 85,
     "/home/rodrigo/real_options/logs/dashboard_cc.log": 3301,
     "/home/rodrigo/real_options/logs/dashboard_kc.log": 23087,
     "/home/rodrigo/real_options/logs/equity_logger.log": 763,
-    "/home/rodrigo/real_options/logs/error_reporter.log": 95624,
+    "/home/rodrigo/real_options/logs/error_reporter.log": 98725,
     "/home/rodrigo/real_options/logs/manual_test.log": 0,
     "/home/rodrigo/real_options/logs/orchestrator.log": 36249,
-    "/home/rodrigo/real_options/logs/orchestrator_cc.log": 14396,
+    "/home/rodrigo/real_options/logs/orchestrator_cc.log": 112391,
     "/home/rodrigo/real_options/logs/orchestrator_cc_service.log": 4717,
-    "/home/rodrigo/real_options/logs/orchestrator_kc.log": 14603,
+    "/home/rodrigo/real_options/logs/orchestrator_kc.log": 151085,
     "/home/rodrigo/real_options/logs/performance_analyzer.log": 0,
-    "/home/rodrigo/real_options/logs/sentinels.log": 82515,
+    "/home/rodrigo/real_options/logs/sentinels.log": 238410,
     "/home/rodrigo/real_options/logs/dashboard_sb.log": 514,
-    "/home/rodrigo/real_options/logs/orchestrator_multi.log": 45251,
-    "/home/rodrigo/real_options/logs/orchestrator_ng.log": 14396
+    "/home/rodrigo/real_options/logs/orchestrator_multi.log": 287997,
+    "/home/rodrigo/real_options/logs/orchestrator_ng.log": 11773
   },
   "reported_signatures": {
     "615e68d761b3545c117a547f9da0a715": {
@@ -42,274 +42,18 @@
       "reported_at": "2026-02-25T02:00:03.597070+00:00",
       "issue_number": 1057,
       "cooldown_until": "2026-02-26T02:00:03.597070+00:00"
+    },
+    "2b1ae4f572118022c6fb8819604a3b79": {
+      "category": "daily_summary",
+      "reported_at": "2026-02-27T12:00:03.877596+00:00",
+      "issue_number": 1100,
+      "cooldown_until": "2026-02-28T12:00:03.877596+00:00"
     }
   },
   "daily_counters": {
-    "date": "2026-02-25",
+    "date": "2026-02-27",
     "issues_created": 1,
     "critical_issues_created": 0
   },
-  "accumulated_errors": {
-    "62e08eff3ba909e7fc65dba0167033d2": {
-      "category": "uncategorized",
-      "fingerprint": "62e08eff3ba909e7fc65dba0167033d2",
-      "sample_message": "Failed to fetch Equity Flex Query report.",
-      "count": 1,
-      "first_seen": "2026-02-26 05:34:47,367",
-      "last_seen": "2026-02-26 05:34:47,367",
-      "level": "ERROR"
-    },
-    "85b67391b5c4f59c99cba36483c2a0d9": {
-      "category": "uncategorized",
-      "fingerprint": "85b67391b5c4f59c99cba36483c2a0d9",
-      "sample_message": "Error 10197, reqId 9: No market data during competing live session",
-      "count": 2,
-      "first_seen": "2026-02-25 09:15:34,466",
-      "last_seen": "2026-02-25 09:15:34,466",
-      "level": "ERROR"
-    },
-    "8e9e03a062afa7242417902daa95879c": {
-      "category": "uncategorized",
-      "fingerprint": "8e9e03a062afa7242417902daa95879c",
-      "sample_message": "Position Audit Cycle failed: 'position_id'\nTraceback (most recent call last):\n  File \"/home/<USER>/real_options/orchestrator.py\", line 1729, in run_position_audit_cycle\n    position_groups = _group_positions_by_thesis(live_positions, trade_ledger, tms)\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/<USER>/real_options/orchestrator.py\", line 1357, in _group_positions_by_thesis\n    position_id = _find_position_id_for_contract(pos, trade_ledger, tms)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/<USER>/real_options/orchestrator.py\", line 973, in _find_position_id_for_contract\n    for pos_id in conId_matches['position_id'].unique():\n                  ~~~~~~~~~~~~~^^^^^^^^^^^^^^^\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/pandas/core/frame.py\", line 4113, in __getitem__\n    indexer = self.columns.get_loc(key)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/pandas/core/indexes/range.py\", line 417, in get_loc\n    raise KeyError(key)\nKeyError: 'position_id'",
-      "count": 2,
-      "first_seen": "2026-02-25 13:52:01,821",
-      "last_seen": "2026-02-25 13:52:01,821",
-      "level": "ERROR"
-    },
-    "52d848f479d5fcf7f8f26d6a15ac68b6": {
-      "category": "data_integrity",
-      "fingerprint": "52d848f479d5fcf7f8f26d6a15ac68b6",
-      "sample_message": "Brier reconciliation failed (non-fatal): Error tokenizing data. C error: Expected 39 fields in line 62, saw 43\\n",
-      "count": 2,
-      "first_seen": "2026-02-25 22:01:00,047",
-      "last_seen": "2026-02-25 22:01:00,047",
-      "level": "ERROR"
-    },
-    "d98e3842fb6444d5aa88d03073341278": {
-      "category": "uncategorized",
-      "fingerprint": "d98e3842fb6444d5aa88d03073341278",
-      "sample_message": "Error 162, reqId 4: Historical Market Data Service error message:HMDS query returned no data: KCZ5@NYBOT Trades, contract: Contract(secType='FUT', conId=606234331, symbol='KC', lastTradeDateOrContractMonth='20251218', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCZ5', tradingClass='KC', includeExpired=True)",
-      "count": 2,
-      "first_seen": "2026-02-26 18:39:13,569",
-      "last_seen": "2026-02-26 18:39:13,569",
-      "level": "ERROR"
-    },
-    "cb8c0c9f0f8bf154e74f57d05f7bbdee": {
-      "category": "data_integrity",
-      "fingerprint": "cb8c0c9f0f8bf154e74f57d05f7bbdee",
-      "sample_message": "Brier reconciliation failed (non-fatal): Error tokenizing data. C error: Expected 39 fields in line 198, saw 43\\n",
-      "count": 2,
-      "first_seen": "2026-02-25 22:00:57,601",
-      "last_seen": "2026-02-25 22:00:57,601",
-      "level": "ERROR"
-    },
-    "f2f1da41117bfa76c54acf7a097f2368": {
-      "category": "data_integrity",
-      "fingerprint": "f2f1da41117bfa76c54acf7a097f2368",
-      "sample_message": "Post-close Brier reconciliation failed: Error tokenizing data. C error: Expected 39 fields in line 198, saw 43\\n",
-      "count": 1,
-      "first_seen": "2026-02-25 19:22:16,363",
-      "last_seen": "2026-02-25 19:22:16,363",
-      "level": "ERROR"
-    },
-    "5d367a5d2e5e7b3e13213436e8f4a7c4": {
-      "category": "uncategorized",
-      "fingerprint": "5d367a5d2e5e7b3e13213436e8f4a7c4",
-      "sample_message": "Error 10147, reqId 156: OrderId 156 that needs to be cancelled is not found.",
-      "count": 2,
-      "first_seen": "2026-02-26 10:19:44,848",
-      "last_seen": "2026-02-26 10:19:44,848",
-      "level": "ERROR"
-    },
-    "5500f5047e1ac923e1fb85dfed199ff0": {
-      "category": "uncategorized",
-      "fingerprint": "5500f5047e1ac923e1fb85dfed199ff0",
-      "sample_message": "Error 10147, reqId 189: OrderId 189 that needs to be cancelled is not found.",
-      "count": 2,
-      "first_seen": "2026-02-26 12:42:05,913",
-      "last_seen": "2026-02-26 12:42:05,913",
-      "level": "ERROR"
-    },
-    "6febb4c74ceee1e5a79baaa464a8445a": {
-      "category": "uncategorized",
-      "fingerprint": "6febb4c74ceee1e5a79baaa464a8445a",
-      "sample_message": "Error 10147, reqId 182: OrderId 182 that needs to be cancelled is not found.",
-      "count": 2,
-      "first_seen": "2026-02-26 12:42:05,914",
-      "last_seen": "2026-02-26 12:42:05,914",
-      "level": "ERROR"
-    },
-    "220fb839f1f2c2629555e01223c40dc2": {
-      "category": "uncategorized",
-      "fingerprint": "220fb839f1f2c2629555e01223c40dc2",
-      "sample_message": "Failed to fetch history for context:",
-      "count": 2,
-      "first_seen": "2026-02-26 12:10:08,832",
-      "last_seen": "2026-02-26 12:10:08,832",
-      "level": "ERROR"
-    },
-    "a0935e211d9b9540b2a615c0acd95c1c": {
-      "category": "uncategorized",
-      "fingerprint": "a0935e211d9b9540b2a615c0acd95c1c",
-      "sample_message": "Error 10147, reqId 138: OrderId 138 that needs to be cancelled is not found.",
-      "count": 4,
-      "first_seen": "2026-02-26 17:52:13,801",
-      "last_seen": "2026-02-26 17:55:01,599",
-      "level": "ERROR"
-    },
-    "dc5a5a1c79e2db24c036105dfcb5a506": {
-      "category": "uncategorized",
-      "fingerprint": "dc5a5a1c79e2db24c036105dfcb5a506",
-      "sample_message": "Error 10147, reqId 48: OrderId 48 that needs to be cancelled is not found.",
-      "count": 4,
-      "first_seen": "2026-02-26 14:40:09,295",
-      "last_seen": "2026-02-26 14:40:09,295",
-      "level": "ERROR"
-    },
-    "bc09a8e4cbfcb953b84776d16758a4fa": {
-      "category": "uncategorized",
-      "fingerprint": "bc09a8e4cbfcb953b84776d16758a4fa",
-      "sample_message": "Error 10147, reqId 41: OrderId 41 that needs to be cancelled is not found.",
-      "count": 4,
-      "first_seen": "2026-02-26 14:40:09,295",
-      "last_seen": "2026-02-26 14:40:09,295",
-      "level": "ERROR"
-    },
-    "92b90be3530c3f5e772bd4a6c374f2af": {
-      "category": "uncategorized",
-      "fingerprint": "92b90be3530c3f5e772bd4a6c374f2af",
-      "sample_message": "Error 10147, reqId 34: OrderId 34 that needs to be cancelled is not found.",
-      "count": 4,
-      "first_seen": "2026-02-26 14:40:09,307",
-      "last_seen": "2026-02-26 14:40:09,307",
-      "level": "ERROR"
-    },
-    "fa45a544009c058d1bce4c4c8730454e": {
-      "category": "uncategorized",
-      "fingerprint": "fa45a544009c058d1bce4c4c8730454e",
-      "sample_message": "Error 10147, reqId 249: OrderId 249 that needs to be cancelled is not found.",
-      "count": 2,
-      "first_seen": "2026-02-26 18:55:00,605",
-      "last_seen": "2026-02-26 18:55:00,605",
-      "level": "ERROR"
-    },
-    "2f2cd75548702d5dd01f9e2a5773ec4d": {
-      "category": "uncategorized",
-      "fingerprint": "2f2cd75548702d5dd01f9e2a5773ec4d",
-      "sample_message": "Error 10147, reqId 242: OrderId 242 that needs to be cancelled is not found.",
-      "count": 2,
-      "first_seen": "2026-02-26 18:55:00,606",
-      "last_seen": "2026-02-26 18:55:00,606",
-      "level": "ERROR"
-    },
-    "6a0be620826755cd6d3e72413ba96f5a": {
-      "category": "uncategorized",
-      "fingerprint": "6a0be620826755cd6d3e72413ba96f5a",
-      "sample_message": "Error 10147, reqId 235: OrderId 235 that needs to be cancelled is not found.",
-      "count": 2,
-      "first_seen": "2026-02-26 18:55:00,606",
-      "last_seen": "2026-02-26 18:55:00,606",
-      "level": "ERROR"
-    },
-    "5490b988165f206df8f24fbbfc6fb0d6": {
-      "category": "uncategorized",
-      "fingerprint": "5490b988165f206df8f24fbbfc6fb0d6",
-      "sample_message": "Error 10147, reqId 201: OrderId 201 that needs to be cancelled is not found.",
-      "count": 2,
-      "first_seen": "2026-02-26 18:55:00,606",
-      "last_seen": "2026-02-26 18:55:00,606",
-      "level": "ERROR"
-    },
-    "60d367eef5f466a997465f47e7c85063": {
-      "category": "uncategorized",
-      "fingerprint": "60d367eef5f466a997465f47e7c85063",
-      "sample_message": "Error 10147, reqId 194: OrderId 194 that needs to be cancelled is not found.",
-      "count": 2,
-      "first_seen": "2026-02-26 18:55:00,606",
-      "last_seen": "2026-02-26 18:55:00,606",
-      "level": "ERROR"
-    },
-    "53eb70623140b4ecffce5cc8cf5c75d4": {
-      "category": "uncategorized",
-      "fingerprint": "53eb70623140b4ecffce5cc8cf5c75d4",
-      "sample_message": "Error 321, reqId 260: Error validating request.-'bO' : cause - Please enter exchange, contract: FuturesOption(conId=628405103, symbol='NG', lastTradeDateOrContractMonth='20260427', strike=<PRICE>, right='P', multiplier='10000', primaryExchange='NYMEX', currency='USD', localSymbol='LNEK6 P2800', tradingClass='LNE')",
-      "count": 2,
-      "first_seen": "2026-02-26 18:55:08,881",
-      "last_seen": "2026-02-26 18:55:08,881",
-      "level": "ERROR"
-    },
-    "519a2dac5dc16e8082b5ed6e750707b7": {
-      "category": "uncategorized",
-      "fingerprint": "519a2dac5dc16e8082b5ed6e750707b7",
-      "sample_message": "Error 321, reqId 261: Error validating request.-'bO' : cause - Please enter exchange, contract: FuturesOption(conId=628405170, symbol='NG', lastTradeDateOrContractMonth='20260427', strike=<PRICE>, right='P', multiplier='10000', primaryExchange='NYMEX', currency='USD', localSymbol='LNEK6 P2850', tradingClass='LNE')",
-      "count": 2,
-      "first_seen": "2026-02-26 18:55:08,923",
-      "last_seen": "2026-02-26 18:55:08,923",
-      "level": "ERROR"
-    },
-    "df3d9b655b7b8e045925a588e254567e": {
-      "category": "uncategorized",
-      "fingerprint": "df3d9b655b7b8e045925a588e254567e",
-      "sample_message": "Error 321, reqId 262: Error validating request.-'bO' : cause - Please enter exchange, contract: FuturesOption(conId=634031121, symbol='NG', lastTradeDateOrContractMonth='20260526', strike=<PRICE>, right='P', multiplier='10000', primaryExchange='NYMEX', currency='USD', localSymbol='LNEM6 P2950', tradingClass='LNE')",
-      "count": 2,
-      "first_seen": "2026-02-26 18:55:08,981",
-      "last_seen": "2026-02-26 18:55:08,981",
-      "level": "ERROR"
-    },
-    "6c7545c9a4da11497873b13d506ada88": {
-      "category": "uncategorized",
-      "fingerprint": "6c7545c9a4da11497873b13d506ada88",
-      "sample_message": "Error 321, reqId 263: Error validating request.-'bO' : cause - Please enter exchange, contract: FuturesOption(conId=440685364, symbol='NG', lastTradeDateOrContractMonth='20260526', strike=<PRICE>, right='P', multiplier='10000', primaryExchange='NYMEX', currency='USD', localSymbol='LNEM6 P3000', tradingClass='LNE')",
-      "count": 2,
-      "first_seen": "2026-02-26 18:55:09,081",
-      "last_seen": "2026-02-26 18:55:09,081",
-      "level": "ERROR"
-    },
-    "4e0f54fdb59113bd29c5a25d40178dbb": {
-      "category": "uncategorized",
-      "fingerprint": "4e0f54fdb59113bd29c5a25d40178dbb",
-      "sample_message": "Error 321, reqId 264: Error validating request.-'bO' : cause - Please enter exchange, contract: FuturesOption(conId=372745059, symbol='NG', lastTradeDateOrContractMonth='20260625', strike=<PRICE>, right='P', multiplier='10000', primaryExchange='NYMEX', currency='USD', localSymbol='LNEN6 P3250', tradingClass='LNE')",
-      "count": 2,
-      "first_seen": "2026-02-26 18:55:09,181",
-      "last_seen": "2026-02-26 18:55:09,181",
-      "level": "ERROR"
-    },
-    "28151c89c70b51e1c589c06e0009dca8": {
-      "category": "uncategorized",
-      "fingerprint": "28151c89c70b51e1c589c06e0009dca8",
-      "sample_message": "Error 321, reqId 265: Error validating request.-'bO' : cause - Please enter exchange, contract: FuturesOption(conId=639847704, symbol='NG', lastTradeDateOrContractMonth='20260625', strike=<PRICE>, right='P', multiplier='10000', primaryExchange='NYMEX', currency='USD', localSymbol='LNEN6 P3300', tradingClass='LNE')",
-      "count": 2,
-      "first_seen": "2026-02-26 18:55:09,281",
-      "last_seen": "2026-02-26 18:55:09,281",
-      "level": "ERROR"
-    },
-    "d39bff62f113c23ebbfad6e1ce9687c1": {
-      "category": "uncategorized",
-      "fingerprint": "d39bff62f113c23ebbfad6e1ce9687c1",
-      "sample_message": "Error reading CSV data: Error tokenizing data. C error: Expected 1 fields in line 35, saw 6\\n",
-      "count": 2,
-      "first_seen": "2026-02-26 18:38:10,488",
-      "last_seen": "2026-02-26 18:38:10,488",
-      "level": "ERROR"
-    },
-    "eaeca2a218d4ca90ce16be59e17a63ec": {
-      "category": "uncategorized",
-      "fingerprint": "eaeca2a218d4ca90ce16be59e17a63ec",
-      "sample_message": "Unclosed client session\\nclient_session: <aiohttp.client.ClientSession object at 0x74324716e120>",
-      "count": 2,
-      "first_seen": "2026-02-26 19:50:06,290",
-      "last_seen": "2026-02-26 19:50:06,290",
-      "level": "ERROR"
-    },
-    "505d36f5b8f45fdb078d813e685e7682": {
-      "category": "uncategorized",
-      "fingerprint": "505d36f5b8f45fdb078d813e685e7682",
-      "sample_message": "Weather fetch failed for C\u00f4te d'Ivoire: Cannot connect to host api.open-meteo.com:443 ssl:default [None]",
-      "count": 1,
-      "first_seen": "2026-02-26 19:50:06,228",
-      "last_seen": "2026-02-26 19:50:06,228",
-      "level": "ERROR"
-    }
-  }
+  "accumulated_errors": {}
 }

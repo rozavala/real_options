@@ -1,119 +1,101 @@
-2026-02-27 00:31:49,425 - Engine.NG - INFO - =============================================
-2026-02-27 00:31:49,425 - Engine.NG - INFO - === Starting CommodityEngine [NG] ===
-2026-02-27 00:31:49,426 - Engine.NG - INFO - =============================================
-2026-02-27 00:31:49,426 - Engine.NG - INFO - Data directory: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,426 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,426 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,426 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,426 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,426 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,426 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,427 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/NG/tms
-2026-02-27 00:31:49,427 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,427 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,427 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,427 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,427 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/NG/research_provenance.log
-2026-02-27 00:31:49,427 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,427 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,427 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/NG
-2026-02-27 00:31:49,428 - Orchestrator - INFO - Deduplicator metrics stale (last reset: 2026-02-26), resetting counters
-2026-02-27 00:31:49,428 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
-2026-02-27 00:31:49,428 - trading_bot.data_dir_context - INFO - EngineRuntime set for [NG]
-2026-02-27 00:31:49,428 - Engine.NG - WARNING - ============================================================
-2026-02-27 00:31:49,428 - Engine.NG - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
-2026-02-27 00:31:49,428 - Engine.NG - WARNING -   Client IDs: DEV range (10-79)
-2026-02-27 00:31:49,428 - Engine.NG - WARNING -   Trading Mode: LIVE
-2026-02-27 00:31:49,429 - Engine.NG - WARNING - ============================================================
-2026-02-27 00:31:49,429 - Engine.NG - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-02-27 00:31:49,429 - Engine.NG - INFO - Drawdown Guard initialized.
-2026-02-27 00:31:49,429 - Engine.NG - INFO - Expiry filter window: 14-180 DTE
-2026-02-27 00:31:49,431 - Engine.NG - INFO - Market Closed. Deferred triggers will remain queued.
-2026-02-27 00:31:49,431 - Orchestrator - INFO - Built session schedule: 16 tasks for NG (09:00-14:30 ET)
-2026-02-27 00:31:49,431 - Engine.NG - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
-2026-02-27 00:31:49,434 - Engine.NG - WARNING - LATE START DETECTED: 16 scheduled tasks already passed:\n  - 08:15 ET: start_monitoring\n  - 08:16 ET: process_deferred_triggers\n  - 08:45 ET: cleanup_orphaned_theses\n  - 10:06 ET: signal_open\n  - 11:45 ET: audit_mid_session\n  - 12:24 ET: signal_early\n  - 13:24 ET: signal_mid\n  - 13:55 ET: audit_pre_close\n  - 14:05 ET: close_stale_primary\n  - 14:15 ET: close_stale_fallback\n  - 14:25 ET: emergency_hard_close\n  - 14:35 ET: log_equity_snapshot\n  - 14:38 ET: reconcile_and_analyze\n  - 14:50 ET: brier_reconciliation\n  - 14:53 ET: sentinel_effectiveness\n  - 14:56 ET: eod_shutdown
-2026-02-27 00:31:49,437 - Orchestrator - INFO - --- Recovery: Evaluating 16 missed tasks ---
-2026-02-27 00:31:49,437 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
-2026-02-27 00:31:49,437 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
-2026-02-27 00:31:49,438 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 08:45 ET)
-2026-02-27 00:31:49,438 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
-2026-02-27 00:31:49,439 - trading_bot.connection_pool - INFO - Connecting IB (NG_cleanup) ID: 1286 [REMOTE/PAPER]...
-2026-02-27 00:31:49,765 - trading_bot.connection_pool - INFO - IB (NG_cleanup) connected successfully with ID 1286
-2026-02-27 00:31:49,773 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-02-27 00:31:49,784 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-27 00:31:49,838 - Orchestrator - INFO - Thesis cleanup: no orphans found
-2026-02-27 00:31:49,838 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_cleanup)...
-2026-02-27 00:31:52,845 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
-2026-02-27 00:31:58,849 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
-2026-02-27 00:31:58,849 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_mid_session — market closed
-2026-02-27 00:31:58,850 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
-2026-02-27 00:31:58,850 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
-2026-02-27 00:31:58,850 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_pre_close — market closed
-2026-02-27 00:31:58,850 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_primary — market closed
-2026-02-27 00:31:58,850 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_fallback — market closed
-2026-02-27 00:31:58,851 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
-2026-02-27 00:31:58,852 - Orchestrator - INFO - ✅ ALREADY RAN: log_equity_snapshot completed earlier today (before restart). Skipping re-execution.
-2026-02-27 00:31:58,852 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
-2026-02-27 00:31:58,853 - Orchestrator - INFO - 🔄 RECOVERY: Running missed brier_reconciliation [run_brier_reconciliation] (was scheduled 14:50 ET)
-2026-02-27 00:31:58,878 - trading_bot.brier_reconciliation - INFO - Found 287 pending predictions
-2026-02-27 00:31:58,879 - trading_bot.brier_reconciliation - INFO - Total council decisions: 46
-2026-02-27 00:31:58,882 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 12/46
-2026-02-27 00:31:58,946 - trading_bot.brier_reconciliation - INFO - ==================================================
-2026-02-27 00:31:58,946 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
-2026-02-27 00:31:58,946 - trading_bot.brier_reconciliation - INFO -   Total predictions:            350
-2026-02-27 00:31:58,946 - trading_bot.brier_reconciliation - INFO -   Resolved:                     63 (+0 new)
-2026-02-27 00:31:58,946 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      287 (potential: 287)
-2026-02-27 00:31:58,947 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        0 (+0 new)
-2026-02-27 00:31:58,947 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     18% (excl. orphans)
-2026-02-27 00:31:58,947 - trading_bot.brier_reconciliation - INFO - ==================================================
-2026-02-27 00:31:58,947 - trading_bot.brier_reconciliation - INFO - Running reconciliation could unlock up to 287 more predictions
-2026-02-27 00:31:58,947 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
-2026-02-27 00:31:58,950 - trading_bot.enhanced_brier - INFO - Loaded 389 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
-2026-02-27 00:31:59,028 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.86, geopolitical: 0.00, inventory: 0.00, macro: 0.29, master_decision: 0.27, sentiment: 0.66, supply_chain: 0.00, technical: 0.29, volatility: 0.14}
-2026-02-27 00:31:59,081 - Orchestrator - WARNING - Brier stall: 301 pending, 0 resolved today (streak: 1 days)
-2026-02-27 00:31:59,081 - Orchestrator - INFO - Running feedback loop health check...
-2026-02-27 00:31:59,086 - Orchestrator - INFO - Feedback Loop Health: 287/350 PENDING (0 orphans excluded, resolution rate: 18%)
-2026-02-27 00:31:59,089 - Orchestrator - INFO - Enhanced Brier Health: 9 agents tracked, 88 total resolved predictions
-2026-02-27 00:31:59,089 - Orchestrator - INFO - Feedback loop health check complete.
-2026-02-27 00:31:59,092 - Orchestrator - INFO - ✅ RECOVERY: brier_reconciliation completed
-2026-02-27 00:32:05,094 - Orchestrator - INFO - ✅ ALREADY RAN: sentinel_effectiveness completed earlier today (before restart). Skipping re-execution.
-2026-02-27 00:32:05,094 - Orchestrator - INFO - ✅ ALREADY RAN: eod_shutdown completed earlier today (before restart). Skipping re-execution.
-2026-02-27 00:32:05,094 - Orchestrator - INFO - System restarted with 16 missed tasks.\n✅ 2 recovered | ⏭️ 7 skipped | ✔️ 7 already ran
-2026-02-27 00:32:05,290 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-02-27 00:32:05,291 - Engine.NG - INFO - Running TopicDiscoveryAgent on startup...
-2026-02-27 00:32:05,323 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-02-27 00:32:17,549 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-02-27 00:32:17,550 - Engine.NG - INFO - Startup TopicDiscovery: 4 topics, No changes
-2026-02-27 00:32:17,551 - Engine.NG - INFO - Staggering sentinel startup by 30s (engine #2)
-2026-02-27 00:32:47,561 - Engine.NG - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-27 13:15:00 UTC. Waiting for 12.70 hours.
-2026-02-27 00:32:47,561 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-02-27 00:32:47,919 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-02-27 00:36:50,770 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=False, trading_day=True
-2026-02-27 00:41:50,803 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_open=False, trading_day=True
-2026-02-27 00:46:50,835 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_open=False, trading_day=True
-2026-02-27 00:51:50,875 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_open=False, trading_day=True
-2026-02-27 00:56:50,908 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=25, market_open=False, trading_day=True
-2026-02-27 01:01:50,938 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=30, market_open=False, trading_day=True
-2026-02-27 01:06:51,064 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=35, market_open=False, trading_day=True
-2026-02-27 01:11:51,093 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=40, market_open=False, trading_day=True
-2026-02-27 01:16:51,123 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=45, market_open=False, trading_day=True
-2026-02-27 01:21:51,153 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=50, market_open=False, trading_day=True
-2026-02-27 01:26:51,182 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=55, market_open=False, trading_day=True
-2026-02-27 01:31:51,208 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=60, market_open=False, trading_day=True
-2026-02-27 01:36:51,330 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=65, market_open=False, trading_day=True
-2026-02-27 01:41:51,362 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=70, market_open=False, trading_day=True
-2026-02-27 01:46:51,392 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=75, market_open=False, trading_day=True
-2026-02-27 01:51:51,422 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=80, market_open=False, trading_day=True
-2026-02-27 01:56:51,451 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=85, market_open=False, trading_day=True
-2026-02-27 02:01:51,479 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=90, market_open=False, trading_day=True
-2026-02-27 02:06:51,661 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=95, market_open=False, trading_day=True
-2026-02-27 02:11:51,728 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=100, market_open=False, trading_day=True
-2026-02-27 02:16:51,772 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=105, market_open=False, trading_day=True
-2026-02-27 02:21:51,804 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=110, market_open=False, trading_day=True
-2026-02-27 02:26:51,839 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=115, market_open=False, trading_day=True
-2026-02-27 02:31:51,869 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=120, market_open=False, trading_day=True
-2026-02-27 02:36:57,319 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=125, market_open=False, trading_day=True
-2026-02-27 02:41:57,373 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=130, market_open=False, trading_day=True
-2026-02-27 02:46:57,420 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=135, market_open=False, trading_day=True
-2026-02-27 02:51:57,472 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=140, market_open=False, trading_day=True
-2026-02-27 02:56:57,522 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=145, market_open=False, trading_day=True
+2026-02-27 08:27:59,812 - Engine.NG - INFO - =============================================
+2026-02-27 08:27:59,812 - Engine.NG - INFO - === Starting CommodityEngine [NG] ===
+2026-02-27 08:27:59,813 - Engine.NG - INFO - =============================================
+2026-02-27 08:27:59,813 - Engine.NG - INFO - Data directory: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,813 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,813 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,813 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,813 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,814 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,814 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,814 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/NG/tms
+2026-02-27 08:27:59,815 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,815 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,815 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,815 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,815 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/NG/research_provenance.log
+2026-02-27 08:27:59,816 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,816 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,816 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/NG
+2026-02-27 08:27:59,817 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
+2026-02-27 08:27:59,818 - trading_bot.data_dir_context - INFO - EngineRuntime set for [NG]
+2026-02-27 08:27:59,818 - Engine.NG - WARNING - ============================================================
+2026-02-27 08:27:59,818 - Engine.NG - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
+2026-02-27 08:27:59,818 - Engine.NG - WARNING -   Client IDs: DEV range (10-79)
+2026-02-27 08:27:59,818 - Engine.NG - WARNING -   Trading Mode: LIVE
+2026-02-27 08:27:59,818 - Engine.NG - WARNING - ============================================================
+2026-02-27 08:27:59,819 - Engine.NG - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-02-27 08:27:59,819 - Engine.NG - INFO - Drawdown Guard initialized.
+2026-02-27 08:27:59,820 - Engine.NG - INFO - Expiry filter window: 14-180 DTE
+2026-02-27 08:27:59,822 - Engine.NG - INFO - Market Closed. Deferred triggers will remain queued.
+2026-02-27 08:27:59,822 - Orchestrator - INFO - Built session schedule: 16 tasks for NG (09:00-14:30 ET)
+2026-02-27 08:27:59,823 - Engine.NG - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
+2026-02-27 08:27:59,826 - Engine.NG - INFO - Running TopicDiscoveryAgent on startup...
+2026-02-27 08:27:59,878 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-02-27 08:28:13,021 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-02-27 08:28:13,036 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 08:28:13,159 - Engine.NG - INFO - Startup TopicDiscovery: 4 topics, No changes
+2026-02-27 08:28:13,159 - Engine.NG - INFO - Staggering sentinel startup by 30s (engine #2)
+2026-02-27 08:28:43,171 - Engine.NG - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-02-27 13:15:00 UTC. Waiting for 4.77 hours.
+2026-02-27 08:28:43,172 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-02-27 08:28:43,536 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-02-27 08:32:46,596 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_open=False, trading_day=True
+2026-02-27 08:37:46,675 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_open=False, trading_day=True
+2026-02-27 08:42:46,759 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_open=False, trading_day=True
+2026-02-27 08:47:46,818 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_open=False, trading_day=True
+2026-02-27 08:52:46,886 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=25, market_open=False, trading_day=True
+2026-02-27 08:57:46,960 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=30, market_open=False, trading_day=True
+2026-02-27 09:02:47,142 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=35, market_open=False, trading_day=True
+2026-02-27 09:07:47,221 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=40, market_open=False, trading_day=True
+2026-02-27 09:12:47,295 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=45, market_open=False, trading_day=True
+2026-02-27 09:17:47,375 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=50, market_open=False, trading_day=True
+2026-02-27 09:22:47,423 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=55, market_open=False, trading_day=True
+2026-02-27 09:27:47,476 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=60, market_open=False, trading_day=True
+2026-02-27 09:32:47,600 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=65, market_open=False, trading_day=True
+2026-02-27 09:37:47,637 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=70, market_open=False, trading_day=True
+2026-02-27 09:42:47,679 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=75, market_open=False, trading_day=True
+2026-02-27 09:47:47,747 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=80, market_open=False, trading_day=True
+2026-02-27 09:52:47,804 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=85, market_open=False, trading_day=True
+2026-02-27 09:57:47,846 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=90, market_open=False, trading_day=True
+2026-02-27 10:02:48,908 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=95, market_open=False, trading_day=True
+2026-02-27 10:07:48,942 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=100, market_open=False, trading_day=True
+2026-02-27 10:12:48,985 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=105, market_open=False, trading_day=True
+2026-02-27 10:17:49,026 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=110, market_open=False, trading_day=True
+2026-02-27 10:22:49,065 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=115, market_open=False, trading_day=True
+2026-02-27 10:27:49,095 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=120, market_open=False, trading_day=True
+2026-02-27 10:32:50,708 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=125, market_open=False, trading_day=True
+2026-02-27 10:37:50,749 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=130, market_open=False, trading_day=True
+2026-02-27 10:42:50,802 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=135, market_open=False, trading_day=True
+2026-02-27 10:47:50,873 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=140, market_open=False, trading_day=True
+2026-02-27 10:52:50,928 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=145, market_open=False, trading_day=True
+2026-02-27 10:57:50,972 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=150, market_open=False, trading_day=True
+2026-02-27 11:02:52,316 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=155, market_open=False, trading_day=True
+2026-02-27 11:07:52,351 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=160, market_open=False, trading_day=True
+2026-02-27 11:12:52,386 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=165, market_open=False, trading_day=True
+2026-02-27 11:17:52,416 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=170, market_open=False, trading_day=True
+2026-02-27 11:22:52,442 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=175, market_open=False, trading_day=True
+2026-02-27 11:27:52,468 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=180, market_open=False, trading_day=True
+2026-02-27 11:29:10,302 - Orchestrator - INFO - XSentimentSentinel: trigger detected (severity=7)
+2026-02-27 11:29:10,304 - trading_bot.state_manager - INFO - Queued deferred trigger from XSentimentSentinel
+2026-02-27 11:29:10,305 - Orchestrator - INFO - Deferred XSentimentSentinel trigger for market open
+2026-02-27 11:33:16,552 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=185, market_open=False, trading_day=True
+2026-02-27 11:38:16,585 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=190, market_open=False, trading_day=True
+2026-02-27 11:43:16,616 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=195, market_open=False, trading_day=True
+2026-02-27 11:48:16,642 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=200, market_open=False, trading_day=True
+2026-02-27 11:53:16,670 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=205, market_open=False, trading_day=True
+2026-02-27 11:58:16,708 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=210, market_open=False, trading_day=True
+2026-02-27 12:03:17,754 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=215, market_open=False, trading_day=True
+2026-02-27 12:08:17,783 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=220, market_open=False, trading_day=True
+2026-02-27 12:13:17,829 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=225, market_open=False, trading_day=True
+2026-02-27 12:18:17,862 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=230, market_open=False, trading_day=True
+2026-02-27 12:23:17,896 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=235, market_open=False, trading_day=True
+2026-02-27 12:28:17,934 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=240, market_open=False, trading_day=True
+2026-02-27 12:29:19,377 - Orchestrator - INFO - WeatherSentinel: trigger detected (source=WeatherSentinel, severity=7)
+2026-02-27 12:29:19,385 - trading_bot.state_manager - INFO - Queued deferred trigger from WeatherSentinel
+2026-02-27 12:29:19,385 - Orchestrator - INFO - Deferred WeatherSentinel trigger for market open
+2026-02-27 12:33:24,848 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=245, market_open=False, trading_day=True
+2026-02-27 12:38:24,877 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=250, market_open=False, trading_day=True
+2026-02-27 12:43:24,906 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=255, market_open=False, trading_day=True
+2026-02-27 12:48:24,950 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=260, market_open=False, trading_day=True
+2026-02-27 12:53:24,985 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=265, market_open=False, trading_day=True
+2026-02-27 12:58:25,032 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=270, market_open=False, trading_day=True
