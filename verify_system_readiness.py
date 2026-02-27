@@ -968,11 +968,20 @@ async def main():
             print_result(check)
 
         if report.is_ready:
-            print(f"\n✅ SYSTEM READY ({report.pass_count} Passed)")
+            if report.warn_count > 0:
+                print(f"\n⚠️ SYSTEM READY WITH WARNINGS ({report.pass_count} Passed, {report.warn_count} Warnings)")
+            else:
+                print(f"\n✅ SYSTEM READY ({report.pass_count} Passed)")
         else:
             print(f"\n❌ SYSTEM FAILURE ({report.fail_count} Failed)")
 
-    sys.exit(0 if report.is_ready else 1)
+    # Exit codes: 0=all pass, 2=pass with warnings, 1=failures
+    if report.fail_count > 0:
+        sys.exit(1)
+    elif report.warn_count > 0:
+        sys.exit(2)
+    else:
+        sys.exit(0)
 
 if __name__ == "__main__":
     asyncio.run(main())

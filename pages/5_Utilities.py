@@ -504,7 +504,131 @@ with diag_cols[2]:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 5: State Management
+# SECTION 5: System Health Digest
+# ==============================================================================
+st.subheader("📋 System Health Digest")
+st.markdown("""
+Generate a comprehensive health assessment that synthesizes ~15 data files per commodity
+into a single JSON report. Covers feedback loops, agent calibration, sentinel efficiency,
+risk rails, decision traces, portfolio trends, and a composite health score.
+**Read-only** — no IB connections, no LLM calls.
+""")
+
+digest_cols = st.columns([2, 1])
+
+with digest_cols[0]:
+    if st.button("📋 Generate Health Digest", type="primary", width='stretch',
+                 help="Generates a comprehensive system health report from current data files (~5s). Safe to run anytime."):
+        with st.spinner("Generating System Health Digest..."):
+            try:
+                from trading_bot.system_digest import generate_system_digest
+                digest = generate_system_digest(config)
+
+                if digest:
+                    # Health score banner
+                    health = digest.get('system_health_score', {})
+                    overall = health.get('overall')
+                    if overall is not None:
+                        if overall >= 0.75:
+                            st.success(f"System Health: **{overall:.2f}/1.00** — Healthy")
+                        elif overall >= 0.50:
+                            st.warning(f"System Health: **{overall:.2f}/1.00** — Degraded")
+                        else:
+                            st.error(f"System Health: **{overall:.2f}/1.00** — Critical")
+
+                    # Health score components
+                    components = health.get('components', {})
+                    if components:
+                        comp_cols = st.columns(4)
+                        labels = {
+                            'feedback_health': ('Feedback', '🔄'),
+                            'prediction_accuracy': ('Prediction', '🎯'),
+                            'execution_quality': ('Execution', '⚡'),
+                            'sentinel_efficiency': ('Sentinels', '📡'),
+                        }
+                        for i, (key, (label, icon)) in enumerate(labels.items()):
+                            with comp_cols[i]:
+                                val = components.get(key)
+                                st.metric(f"{icon} {label}", f"{val:.2f}" if val is not None else "N/A")
+
+                    # Executive summary
+                    st.info(f"**Summary:** {digest.get('executive_summary', 'N/A')}")
+
+                    # Improvement opportunities
+                    opportunities = digest.get('improvement_opportunities', [])
+                    if opportunities:
+                        high = [o for o in opportunities if o['priority'] == 'HIGH']
+                        medium = [o for o in opportunities if o['priority'] == 'MEDIUM']
+                        if high:
+                            for o in high:
+                                st.error(f"**HIGH** [{o['component']}] {o['observation']}")
+                        if medium:
+                            for o in medium:
+                                st.warning(f"**MEDIUM** [{o['component']}] {o['observation']}")
+
+                    # Per-commodity details
+                    for t, block in digest.get('commodities', {}).items():
+                        if block.get('status') == 'no_data_directory':
+                            continue
+                        with st.expander(f"**{t}** — Details"):
+                            cog = block.get('cognitive_layer', {})
+                            regime = block.get('regime_context', {}).get('regime', 'UNKNOWN')
+                            st.write(f"**Decisions today:** {cog.get('decisions_today', 0)} | **Regime:** {regime}")
+
+                            fb = block.get('feedback_loop', {})
+                            st.write(f"**Feedback loop:** {fb.get('status', 'N/A')} (resolution rate: {fb.get('resolution_rate', 'N/A')})")
+
+                            freshness = block.get('data_freshness', {})
+                            st.write(f"**Data freshness:** {freshness.get('status', 'N/A')} ({freshness.get('stale_count', 0)} stale)")
+
+                            traces = block.get('decision_traces', [])
+                            if traces:
+                                st.write(f"**Last {len(traces)} decisions:**")
+                                for trace in traces:
+                                    direction = trace.get('direction', '?')
+                                    conf = trace.get('confidence')
+                                    strategy = trace.get('strategy', '')
+                                    conf_str = f" ({conf:.0%})" if conf else ""
+                                    st.caption(f"  {trace.get('timestamp', '')[:16]} — {direction}{conf_str} → {strategy}")
+
+                    # Full JSON in expander
+                    with st.expander("📄 Full Digest JSON"):
+                        st.json(digest)
+
+                    st.caption(f"Digest ID: `{digest.get('digest_id', 'N/A')}` | Schema v{digest.get('schema_version', '?')}")
+                else:
+                    st.error("❌ Digest generation returned None — check orchestrator logs")
+
+            except Exception as e:
+                st.error(f"❌ Digest generation failed: {str(e)}")
+                with st.expander("View Error Details"):
+                    st.code(traceback.format_exc())
+
+with digest_cols[1]:
+    # Show last digest if available
+    st.markdown("**Last Digest**")
+    try:
+        digest_path = _resolve_data_path("system_health_digest.json")
+        if os.path.exists(digest_path):
+            mtime = os.path.getmtime(digest_path)
+            st.caption(f"🕒 {datetime.fromtimestamp(mtime, tz=timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+            with open(digest_path, 'r') as f:
+                last_digest = json.load(f)
+            score = last_digest.get('system_health_score', {}).get('overall')
+            if score is not None:
+                st.metric("Health Score", f"{score:.2f}")
+            opps = last_digest.get('improvement_opportunities', [])
+            high_count = sum(1 for o in opps if o.get('priority') == 'HIGH')
+            st.metric("Issues", f"{high_count} HIGH / {len(opps)} total")
+        else:
+            st.caption("No previous digest found")
+    except Exception:
+        st.caption("Could not load last digest")
+
+st.markdown("---")
+
+# ==============================================================================
+# SECTION 6: State Management (renumbered from 5)
 # ==============================================================================
 st.subheader("📁 State Management")
 
@@ -560,7 +684,7 @@ with state_cols[1]:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 6: System Validation
+# SECTION 7: System Validation
 # ==============================================================================
 st.subheader("🔍 System Validation")
 st.markdown("""
@@ -674,7 +798,7 @@ if run_validation:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 7: Data Reconciliation
+# SECTION 8: Data Reconciliation
 # ==============================================================================
 st.subheader("🔄 Data Reconciliation")
 st.markdown("""
@@ -757,7 +881,6 @@ recon_names = {
     'council_history': 'Council History',
     'trade_ledger': 'Trade Ledger',
     'positions': 'Active Positions',
-    'equity': 'Equity History',
     'brier': 'Brier Scores',
 }
 last_run_cols = st.columns(len(recon_names))
@@ -898,39 +1021,10 @@ asyncio.run(main())
             except Exception as e:
                 st.error(f"Error: {str(e)}")
 
-# --- Equity Sync (Legacy/Subprocess) ---
+# --- Equity Sync (reference to Section 3) ---
 with recon_row2[1]:
-    st.markdown("**💰 Equity History (Subprocess)**")
-    st.caption("Sync equity data from IBKR Flex Query (Legacy)")
-
-    if st.button("🔄 Sync Equity Data", width='stretch', key="recon_equity", help="Sync equity history from IBKR Flex Query (~30s).", disabled=not confirm_recon):
-        with st.spinner("Syncing equity data from Flex Query..."):
-            try:
-                result = subprocess.run(
-                    [sys.executable, "equity_logger.py", "--sync"],
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                )
-
-                raw_output = (result.stdout + result.stderr).strip()
-                if result.returncode == 0:
-                    _save_recon_timestamp('equity')
-                    summary = _parse_recon_summary(raw_output)
-                    st.success(f"Equity synced: {summary}")
-                    st.cache_data.clear()
-                    with st.expander("View Full Output"):
-                        st.code(raw_output or "No output")
-                else:
-                    st.error("❌ Sync failed")
-                    with st.expander("View Error"):
-                        st.code(raw_output or "No output")
-
-            except subprocess.TimeoutExpired:
-                st.error("Sync timed out (60s)")
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
+    st.markdown("**💰 Equity History**")
+    st.caption("Use **Force Equity Sync** in Manual Trading Operations above")
 
 recon_row3 = st.columns(2)
 
@@ -1026,7 +1120,7 @@ with st.expander("ℹ️ About Reconciliation Processes"):
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 8: Cache Management
+# SECTION 9: Cache Management
 # ==============================================================================
 st.subheader("🗑️ Cache Management")
 st.markdown("Clear cached data to force fresh data loads from sources.")
@@ -1050,7 +1144,7 @@ with cache_cols[1]:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 9: System Info
+# SECTION 10: System Info
 # ==============================================================================
 st.subheader("ℹ️ System Information")
 
@@ -1093,7 +1187,7 @@ else:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 10: Sentinel Statistics
+# SECTION 11: Sentinel Statistics
 # ==============================================================================
 st.subheader("🛡️ Sentinel Statistics")
 
