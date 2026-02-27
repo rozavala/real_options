@@ -221,6 +221,12 @@ if [ -f "$REPO_DIR/state.json" ]; then
     cp "$REPO_DIR/state.json" "$DEST_DIR/"
 fi
 
+# === SYSTEM HEALTH DIGEST ===
+if [ -f "$REPO_DIR/data/system_health_digest.json" ]; then
+    echo "Copying system_health_digest.json..."
+    cp "$REPO_DIR/data/system_health_digest.json" "$DEST_DIR/"
+fi
+
 # === PERFORMANCE FILES ===
 if [ -f "$REPO_DIR/daily_performance.png" ]; then
     echo "Copying daily_performance.png..."
