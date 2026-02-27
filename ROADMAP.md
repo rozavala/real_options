@@ -42,7 +42,7 @@
 | F.5 Prediction Market Integration | **Done.** `PredictionMarketSentinel` overhauled with Gamma API. `TopicDiscoveryAgent` automates topic finding using Claude Haiku (dynamic interest areas, LLM relevance filtering). Integrated with TMS for zombie position protection. |
 | E.3 Liquidity-Aware Execution | **Done.** `order_manager.py:check_liquidity_conditions()` — pre-execution bid/ask depth analysis, BAG combo leg liquidity aggregation, per-order spread logging. Remaining VWAP/TWAP only matters at much larger position sizes ($500K+). |
 | G.6 3rd Commodity (NG) | **Done.** Natural Gas (NG) launched Feb 27. Commodity profile created, systemd service installed, data dirs initialized. Running live alongside KC and CC. |
-| **Schedule Optimization** | **Done.** Reduced signal frequency from 4 to 3 cycles per session (15%, 47.5%, 80%) to eliminate illiquid pre-open window and reduce cost. |
+| **Schedule Optimization** | **Done.** Reduced signal frequency from 4 to 3 cycles per session (20%, 62%, 80%) to eliminate illiquid pre-open window and reduce cost. |
 
 ---
 
