@@ -848,21 +848,21 @@ if task_data['available']:
         # Summary metrics
         ts_cols = st.columns(5)
         with ts_cols[0]:
-            st.metric("Total Tasks", total)
+            st.metric("Total Tasks", total, help="Total number of tasks scheduled for today.")
         with ts_cols[1]:
-            st.metric("Completed", f"✅ {completed}")
+            st.metric("Completed", f"✅ {completed}", help="Tasks successfully executed today.")
         with ts_cols[2]:
             if overdue > 0:
-                st.metric("Overdue", f"⚠️ {overdue}")
+                st.metric("Overdue", f"⚠️ {overdue}", help="Tasks that missed their scheduled time window.")
             else:
-                st.metric("Overdue", "0")
+                st.metric("Overdue", "0", help="Tasks that missed their scheduled time window.")
         with ts_cols[3]:
             if skipped > 0:
-                st.metric("Skipped", f"⏭️ {skipped}")
+                st.metric("Skipped", f"⏭️ {skipped}", help="Tasks skipped (e.g., due to market conditions or system state).")
             else:
-                st.metric("Skipped", "0")
+                st.metric("Skipped", "0", help="Tasks skipped (e.g., due to market conditions or system state).")
         with ts_cols[4]:
-            st.metric("Upcoming", f"⏳ {upcoming}")
+            st.metric("Upcoming", f"⏳ {upcoming}", help="Tasks yet to be executed today.")
 
         # Task timeline table
         STATUS_ICONS = {
@@ -1148,7 +1148,7 @@ if active_theses:
     thesis_cols = st.columns(4)
 
     with thesis_cols[0]:
-        st.metric("Active Positions", len(active_theses))
+        st.metric("Active Positions", len(active_theses), help="Number of currently active positions.")
 
     with thesis_cols[1]:
         # Count by strategy
@@ -1157,17 +1157,17 @@ if active_theses:
             s = t['strategy_type']
             strategy_counts[s] = strategy_counts.get(s, 0) + 1
         dominant = max(strategy_counts.items(), key=lambda x: x[1])[0] if strategy_counts else 'None'
-        st.metric("Dominant Strategy", dominant.replace('_', ' ').title())
+        st.metric("Dominant Strategy", dominant.replace('_', ' ').title(), help="The most common strategy among active positions.")
 
     with thesis_cols[2]:
         # Average age
         avg_age = sum(t['age_hours'] for t in active_theses) / len(active_theses)
-        st.metric("Avg Position Age", f"{avg_age:.1f}h")
+        st.metric("Avg Position Age", f"{avg_age:.1f}h", help="Average time elapsed since positions were opened.")
 
     with thesis_cols[3]:
         # Average confidence
         avg_conf = sum(t['confidence'] for t in active_theses) / len(active_theses)
-        st.metric("Avg Entry Confidence", f"{avg_conf:.0%}")
+        st.metric("Avg Entry Confidence", f"{avg_conf:.0%}", help="Average Council confidence score across all active positions.")
 
     st.markdown("")
 

@@ -20,7 +20,6 @@ from dashboard_utils import (
     get_config,
     grade_decision_quality
 )
-import numpy as np
 
 st.set_page_config(layout="wide", page_title="Trade Analytics | Real Options")
 
@@ -52,7 +51,7 @@ with metric_cols[0]:
         trade_count = council_df['pnl_realized'].notna().sum()
     else:
         trade_count = 0
-    st.metric("Total Trades", trade_count)
+    st.metric("Total Trades", trade_count, help="Total number of reconciled trades with P&L data.")
 
 with metric_cols[1]:
     # Calculate win rate from council history
@@ -60,11 +59,11 @@ with metric_cols[1]:
         reconciled = council_df[pd.notna(council_df['pnl_realized'])]
         if not reconciled.empty:
             win_rate = (reconciled['pnl_realized'] > 0).mean() * 100
-            st.metric("Win Rate", f"{win_rate:.1f}%")
+            st.metric("Win Rate", f"{win_rate:.1f}%", help="Percentage of reconciled trades that resulted in a positive P&L.")
         else:
-            st.metric("Win Rate", "N/A")
+            st.metric("Win Rate", "N/A", help="Needs reconciled trade data to calculate.")
     else:
-        st.metric("Win Rate", "N/A")
+        st.metric("Win Rate", "N/A", help="Needs reconciled trade data to calculate.")
 
 with metric_cols[2]:
     # Sum realized P&L from reconciled trades
@@ -191,19 +190,19 @@ if 'prediction_type' in council_df.columns:
     with col1:
         dir_data = type_perf.loc['DIRECTIONAL'] if 'DIRECTIONAL' in type_perf.index else None
         if dir_data is not None:
-            st.metric("Directional P&L", f"${dir_data['Total P&L']:,.2f}")
+            st.metric("Directional P&L", f"${dir_data['Total P&L']:,.2f}", help="Total P&L from directional trades (Bull Call / Bear Put Spreads).")
             st.caption(f"{int(dir_data['Trade Count'])} trades | Avg: ${dir_data['Avg P&L']:,.2f}")
         else:
-            st.metric("Directional P&L", "$0.00")
+            st.metric("Directional P&L", "$0.00", help="Total P&L from directional trades (Bull Call / Bear Put Spreads).")
             st.caption("No directional trades yet")
 
     with col2:
         vol_data = type_perf.loc['VOLATILITY'] if 'VOLATILITY' in type_perf.index else None
         if vol_data is not None:
-            st.metric("Volatility P&L", f"${vol_data['Total P&L']:,.2f}")
+            st.metric("Volatility P&L", f"${vol_data['Total P&L']:,.2f}", help="Total P&L from volatility trades (Long Straddle / Iron Condor).")
             st.caption(f"{int(vol_data['Trade Count'])} trades | Avg: ${vol_data['Avg P&L']:,.2f}")
         else:
-            st.metric("Volatility P&L", "$0.00")
+            st.metric("Volatility P&L", "$0.00", help="Total P&L from volatility trades (Long Straddle / Iron Condor).")
             st.caption("No volatility trades yet")
 else:
     st.info("No trade type data available.")
