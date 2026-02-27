@@ -20,6 +20,7 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 -   **Compliance (`trading_bot/compliance.py`):** Enforces risk limits and "dead checks".
 -   **Portfolio Risk Guard (`trading_bot/var_calculator.py`):** Calculates portfolio-wide VaR (95%/99%) and runs the **AI Risk Agent** for narrative analysis and stress testing.
 -   **TMS (`trading_bot/tms.py`):** Transactive Memory System for institutional memory.
+-   **System Health Digest (`trading_bot/system_digest.py`):** Generates a daily JSON health summary post-close without interacting with IB or making live LLM calls.
 
 ## Infrastructure Agents
 
@@ -31,6 +32,7 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 ## LLM Routing & Caching
 
 -   **Routing:** Agents must use `HeterogeneousRouter`. Do not call LLM APIs directly unless authorized (e.g., Sentinels with specific provider needs).
+-   **Provider Preferences:** Geopolitical Analyst uses Gemini Pro; Trade Analyst uses xAI.
 -   **Caching:** Be aware of `SemanticCache`. Fresh triggers bypass cache via specific flags.
 
 ## Knowledge Generation
@@ -48,3 +50,4 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 
 -   **Backtesting:** Use `backtesting/` directory.
 -   **Dashboard:** Streamlit dashboard (`dashboard.py`) is the primary interface.
+-   **UI Safety Interlocks:** Any high-impact UI actions (e.g., in Streamlit dashboard) must be protected by a confirmation checkbox.

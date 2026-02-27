@@ -19,3 +19,6 @@
 ## 2025-02-27 - Streamlit State Caching
 **Learning:** Streamlit reruns the entire script on every interaction, leading to redundant disk I/O if files are read directly in widgets. Reading `state.json` multiple times per render (for different components) multiplies latency. Caching the file read with a short TTL (e.g. 2s) batches these reads within a single render cycle while maintaining near-real-time freshness.
 **Action:** Centralize state loading in `dashboard_utils.py` with `@st.cache_data(ttl=2)` instead of direct file access in individual components.
+## 2025-02-27 - Streamlit Safety Interlocks
+**Learning:** High-impact utility operations (like log collection or system validation) in the dashboard risk accidental execution.
+**Action:** Implement the "Safety Interlock" pattern using `st.checkbox` for confirmation before enabling execution buttons for critical operations.

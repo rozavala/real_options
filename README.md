@@ -85,6 +85,7 @@ graph TD
 6.  **Brier Bridge (`trading_bot/brier_bridge.py`):** Tracks agent accuracy using an Enhanced Probabilistic Brier Score system to weight agent opinions dynamically.
 7.  **DSPy Optimizer (`trading_bot/dspy_optimizer.py`):** Offline pipeline that refines agent prompts using historical feedback (BootstrapFewShot).
 8.  **Automated Trade Journal (`trading_bot/trade_journal.py`):** Generates structured post-mortem narratives for every closed trade, stored in TMS for future learning.
+9.  **System Health Digest (`trading_bot/system_digest.py`):** Generates a daily post-close JSON summary of system health, agent calibration, and error telemetry (pure read-only).
 
 ### Tier 1: Sentinels (`trading_bot/sentinels.py`)
 Lightweight monitors that scan 24/7 for specific triggers.

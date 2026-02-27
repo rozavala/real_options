@@ -63,3 +63,4 @@ The system uses a **Transactive Memory System (TMS)** powered by ChromaDB. This 
 2. **Scheduled Cycle:** Runs 3 times per session (at 20%, 62%, and 80% of session duration) to generate daily orders.
 3. **Position Audit Cycle:** Regularly reviews open positions against their original entry thesis to decide on early exits.
 4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day.
+5. **System Health Digest Cycle:** Generates a comprehensive post-close summary of system health without external API calls.
