@@ -46,7 +46,7 @@ class TestCaching(unittest.TestCase):
 
         # Verify cache file was created
         cache_dir = os.path.join(self.test_data_dir, "yf_cache")
-        cache_file = os.path.join(cache_dir, f"{ticker}_{period}.csv")
+        cache_file = os.path.join(cache_dir, f"{ticker.replace('=', '').replace('^', '')}_{period}.csv")
         self.assertTrue(os.path.exists(cache_file))
 
         # 2. Second call immediately - should NOT trigger download (cache hit)
@@ -68,7 +68,7 @@ class TestCaching(unittest.TestCase):
         self.assertEqual(mock_download.call_count, 1)
 
         # Manually age the file (set mtime to 25 hours ago)
-        cache_file = os.path.join(self.test_data_dir, "yf_cache", f"{ticker}_{period}.csv")
+        cache_file = os.path.join(self.test_data_dir, "yf_cache", f"{ticker.replace('=', '').replace('^', '')}_{period}.csv")
         old_time = time.time() - (25 * 3600)
         os.utime(cache_file, (old_time, old_time))
 

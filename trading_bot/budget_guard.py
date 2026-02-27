@@ -120,6 +120,9 @@ class BudgetGuard:
         except Exception as e:
             logger.error(f"Failed to save budget state: {e}")
 
+    _COSTS_HEADER = ['date', 'total_usd', 'request_count', 'cost_by_source',
+                      'x_api_calls', 'x_api_cost_usd']
+
     def _archive_daily_costs(self):
         """Append yesterday's costs to llm_daily_costs.csv before resetting."""
         if self._daily_spend <= 0 and self._request_count == 0 and self._x_api_calls == 0:
@@ -127,12 +130,29 @@ class BudgetGuard:
 
         try:
             self._costs_csv.parent.mkdir(parents=True, exist_ok=True)
-            write_header = not self._costs_csv.exists()
+            write_header = not self._costs_csv.exists() or self._costs_csv.stat().st_size == 0
+
+            # Check for header schema mismatch (e.g., column added after file created)
+            if not write_header and self._costs_csv.exists():
+                with open(self._costs_csv, 'r') as f:
+                    existing_header = f.readline().strip().replace('\r', '')
+                expected_header = ','.join(self._COSTS_HEADER)
+                if existing_header != expected_header:
+                    logger.warning(
+                        f"Cost CSV header mismatch — migrating: "
+                        f"'{existing_header}' → '{expected_header}'"
+                    )
+                    # Re-read full file, fix header, rewrite
+                    with open(self._costs_csv, 'r') as f:
+                        lines = f.readlines()
+                    lines[0] = expected_header + '\n'
+                    with open(self._costs_csv, 'w', newline='') as f:
+                        f.writelines(lines)
+
             with open(self._costs_csv, 'a', newline='') as f:
                 writer = csv.writer(f)
                 if write_header:
-                    writer.writerow(['date', 'total_usd', 'request_count', 'cost_by_source',
-                                     'x_api_calls', 'x_api_cost_usd'])
+                    writer.writerow(self._COSTS_HEADER)
                 writer.writerow([
                     self._last_reset_date,
                     round(self._daily_spend, 4),
