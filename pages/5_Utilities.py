@@ -53,9 +53,11 @@ Collect and archive logs to the centralized logs branch for analysis and debuggi
 This captures orchestrator logs, dashboard logs, state files, and trading data.
 """)
 
+confirm_collect = st.checkbox("I confirm I want to collect logs", key="confirm_collect")
 if st.button(
     "🚀 Collect Logs",
     type="primary",
+    disabled=not confirm_collect,
     help="Triggers the log collection script to archive system logs, state files, and trading data for analysis."
 ):
     with st.spinner(f"Collecting {current_env} logs..."):
@@ -370,8 +372,10 @@ with manual_cols2[1]:
     st.info("ℹ️ **Sync Equity Data**")
     st.caption("Forces fresh equity sync from IB Flex Query")
 
+    confirm_sync = st.checkbox("I confirm I want to force equity sync", key="confirm_sync")
     if st.button(
         "💰 Force Equity Sync",
+        disabled=not confirm_sync,
         help="Manually triggers a fresh equity data pull from Interactive Brokers Flex Query reports."
     ):
         if not config:
@@ -567,7 +571,8 @@ This validates the entire architecture from sentinels to council to order execut
 validation_cols = st.columns([2, 1])
 
 with validation_cols[0]:
-    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch', help="Run preflight checks on all system components (~30s in quick mode, ~2min full).")
+    confirm_val = st.checkbox("I confirm I want to run system validation", key="confirm_val")
+    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch', disabled=not confirm_val, help="Run preflight checks on all system components (~30s in quick mode, ~2min full).")
 
 with validation_cols[1]:
     json_output = st.checkbox("JSON Output", value=False)
