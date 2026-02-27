@@ -3756,3 +3756,745 @@
 2026-02-27 19:25:00,378 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
 2026-02-27 19:25:00,378 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
 2026-02-27 19:25:03,388 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-02-27 19:35:00 UTC. Waiting for 0.17 hours.
+2026-02-27 19:35:00,002 - Engine.NG - INFO - --- Running scheduled task: log_equity_snapshot [log_equity_snapshot] ---
+2026-02-27 19:35:00,006 - EquityLogger - INFO - Equity snapshot skipped (non-primary engine).
+2026-02-27 19:35:00,012 - Engine.NG - INFO - Next task 'reconcile_and_analyze' (Reconcile & Analyze) scheduled for 2026-02-27 19:38:00 UTC. Waiting for 0.05 hours.
+2026-02-27 19:38:00,003 - Engine.NG - INFO - --- Running scheduled task: reconcile_and_analyze [reconcile_and_analyze] ---
+2026-02-27 19:38:00,007 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-02-27 19:38:00,007 - EquityLogger - INFO - Equity sync skipped (non-primary engine).
+2026-02-27 19:38:00,007 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-02-27 19:38:00,007 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-02-27 19:38:00,008 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-02-27 19:38:00,263 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-27 19:38:10,273 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-27 19:38:10,403 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-27 19:38:10,407 - TradeReconciler - INFO - Parsed 64 executions from the Flex Query report.
+2026-02-27 19:38:10,430 - TradeReconciler - INFO - Successfully processed 64 trades into the reconciliation DataFrame.
+2026-02-27 19:38:10,430 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-02-27 19:38:10,620 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-27 19:38:20,622 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-27 19:38:20,750 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-27 19:38:20,753 - TradeReconciler - INFO - Parsed 2 executions from the Flex Query report.
+2026-02-27 19:38:20,767 - TradeReconciler - INFO - Successfully processed 2 trades into the reconciliation DataFrame.
+2026-02-27 19:38:20,770 - TradeReconciler - INFO - Consolidated to 66 unique trades from all reports.
+2026-02-27 19:38:20,771 - TradeReconciler - INFO - Filtered IB trades by commodity NG (prefixes ('NG', 'LNE')): 66 -> 14
+2026-02-27 19:38:20,773 - TradeReconciler - INFO - Loaded 12 trades from the main ledger.
+2026-02-27 19:38:20,773 - TradeReconciler - INFO - Found 3 archived ledger files.
+2026-02-27 19:38:20,784 - TradeReconciler - INFO - Consolidated a total of 76 trades from all ledgers.
+2026-02-27 19:38:20,785 - TradeReconciler - INFO - Filtered IB trades from 14 to 14 records within the last 90 days.
+2026-02-27 19:38:20,786 - TradeReconciler - INFO - Filtered local ledger from 76 to 76 records within the last 90 days.
+2026-02-27 19:38:20,809 - TradeReconciler - INFO - Reconciliation complete. Found 2 trade(s) missing from local ledger. Found 64 superfluous trade(s) in local ledger.
+2026-02-27 19:38:20,811 - TradeReconciler - INFO - Discrepancies found. Writing to output files.
+2026-02-27 19:38:20,814 - TradeReconciler - INFO - Successfully wrote 2 missing trade(s) to '/home/rodrigo/real_options/data/NG/archive_ledger/trade_ledger_missing_trades.csv'.
+2026-02-27 19:38:20,817 - TradeReconciler - INFO - Successfully wrote 64 superfluous local trade(s) to '/home/rodrigo/real_options/data/NG/archive_ledger/superfluous_local_trades.csv'.
+2026-02-27 19:38:20,818 - Orchestrator - WARNING - Trade reconciliation found discrepancies.
+2026-02-27 19:38:21,117 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-27 19:38:21,120 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-02-27 19:38:21,322 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-02-27 19:38:31,325 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-02-27 19:38:31,461 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-02-27 19:38:31,463 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
+2026-02-27 19:38:31,467 - TradeReconciler - INFO - Loaded 12 trades from the main ledger.
+2026-02-27 19:38:31,467 - TradeReconciler - INFO - Found 3 archived ledger files.
+2026-02-27 19:38:31,475 - TradeReconciler - INFO - Consolidated a total of 26 trades from all ledgers.
+2026-02-27 19:38:31,481 - TradeReconciler - INFO - Skipping reconciliation for recently traded symbols: {'LNEN6 P3300', 'LNEN6 P3250', 'LNEK6 P2850', 'LNEM6 P3000', 'LNEM6 P2950', 'LNEK6 P2800', 'NGK26'}
+2026-02-27 19:38:31,486 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-02-27 19:38:31,487 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-02-27 19:38:31,720 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:38:31,745 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 14:09:30.433599+00:00: NGK26 (202604) (NEUTRAL)
+2026-02-27 19:38:31,746 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 17:09 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:38:32,300 - trading_bot.reconciliation - INFO - CONDOR WIN: 0.95% move within 1.50% threshold. P&L: 0.03
+2026-02-27 19:38:32,310 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:38:32,786 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGK26 (202604)
+2026-02-27 19:38:32,787 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.83 -> Exit 2.86 (0.95% move) | Strategy: IRON_CONDOR | Outcome: STAYED_FLAT | P&L: 0.0283
+2026-02-27 19:38:40,320 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) WIN ($0.03)
+2026-02-27 19:38:40,321 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual STAYED_FLAT -> CORRECT
+2026-02-27 19:38:40,445 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 14:21:48.704974+00:00: NGM26 (202605) (BEARISH)
+2026-02-27 19:38:40,446 - trading_bot.reconciliation - INFO - Exit time adjusted for NGM26 (202605): default Fri 17:21 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:38:40,628 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:38:41,051 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGM26 (202605)
+2026-02-27 19:38:41,064 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:38:41,570 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGM26 (202605)
+2026-02-27 19:38:41,570 - trading_bot.reconciliation - INFO - Reconciled NGM26 (202605): Entry 3.00 -> Exit 2.88 (3.93% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.1180
+2026-02-27 19:38:48,933 - trading_bot.trade_journal - INFO - Trade journal entry created: NGM26 (202605) WIN ($0.12)
+2026-02-27 19:38:48,934 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:38:49,070 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 14:21:54.949611+00:00: NGN26 (202606) (BEARISH)
+2026-02-27 19:38:49,070 - trading_bot.reconciliation - INFO - Exit time adjusted for NGN26 (202606): default Fri 17:21 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:38:49,238 - trading_bot.reconciliation - INFO - Reconciled NGN26 (202606): Entry 3.29 -> Exit 3.07 (6.81% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.2240
+2026-02-27 19:38:57,492 - trading_bot.trade_journal - INFO - Trade journal entry created: NGN26 (202606) WIN ($0.22)
+2026-02-27 19:38:57,493 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:38:57,636 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 14:22:03.574107+00:00: NGK26 (202604) (BEARISH)
+2026-02-27 19:38:57,637 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 17:22 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:38:57,821 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:38:58,423 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGK26 (202604)
+2026-02-27 19:38:58,435 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:38:59,048 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGK26 (202604)
+2026-02-27 19:38:59,065 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:38:59,591 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGK26 (202604)
+2026-02-27 19:38:59,600 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:39:00,156 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on NGK26 (202604)
+2026-02-27 19:39:00,169 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:39:00,822 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGK26 (202604)
+2026-02-27 19:39:00,823 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.82 -> Exit 2.86 (1.28% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.0360
+2026-02-27 19:39:12,053 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) LOSS ($-0.04)
+2026-02-27 19:39:12,054 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-27 19:39:12,187 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 14:24:42.388296+00:00: NGQ26 (202607) (BEARISH)
+2026-02-27 19:39:12,188 - trading_bot.reconciliation - INFO - Exit time adjusted for NGQ26 (202607): default Fri 17:24 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:39:12,355 - trading_bot.reconciliation - INFO - Reconciled NGQ26 (202607): Entry 3.38 -> Exit 3.34 (1.09% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.0370
+2026-02-27 19:39:22,671 - trading_bot.trade_journal - INFO - Trade journal entry created: NGQ26 (202607) WIN ($0.04)
+2026-02-27 19:39:22,671 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:39:22,801 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 14:25:08.383769+00:00: NGU26 (202608) (BEARISH)
+2026-02-27 19:39:22,803 - trading_bot.reconciliation - INFO - Exit time adjusted for NGU26 (202608): default Fri 17:25 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:39:22,982 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:39:23,399 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on NGU26 (202608)
+2026-02-27 19:39:23,407 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:39:23,889 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGU26 (202608)
+2026-02-27 19:39:23,896 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:39:24,351 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on NGU26 (202608)
+2026-02-27 19:39:24,351 - trading_bot.reconciliation - INFO - Reconciled NGU26 (202608): Entry 3.41 -> Exit 3.42 (0.32% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.0110
+2026-02-27 19:39:34,951 - trading_bot.trade_journal - INFO - Trade journal entry created: NGU26 (202608) LOSS ($-0.01)
+2026-02-27 19:39:34,952 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-27 19:39:35,079 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 15:26:14.379939+00:00: NGK26 (202604) (NEUTRAL)
+2026-02-27 19:39:35,079 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 18:26 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:39:35,253 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:39:35,685 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGK26 (202604)
+2026-02-27 19:39:35,685 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.82 -> Exit 2.86 (1.28% move) | Strategy: NONE | Outcome: BULLISH | P&L: 0.0000
+2026-02-27 19:39:53,104 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) FLAT ($0.00)
+2026-02-27 19:39:53,105 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BULLISH
+2026-02-27 19:39:53,234 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 15:38:52.236227+00:00: NGK26 (202604) (BEARISH)
+2026-02-27 19:39:53,235 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 18:38 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:39:53,410 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:39:53,895 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on NGK26 (202604)
+2026-02-27 19:39:53,897 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.85 -> Exit 2.86 (0.21% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.0060
+2026-02-27 19:40:02,496 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) LOSS ($-0.01)
+2026-02-27 19:40:02,497 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-27 19:40:02,633 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 15:39:46.613819+00:00: NGM26 (202605) (BEARISH)
+2026-02-27 19:40:02,634 - trading_bot.reconciliation - INFO - Exit time adjusted for NGM26 (202605): default Fri 18:39 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:40:02,817 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:40:03,527 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGM26 (202605)
+2026-02-27 19:40:03,528 - trading_bot.reconciliation - INFO - Reconciled NGM26 (202605): Entry 3.03 -> Exit 2.88 (4.95% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.1500
+2026-02-27 19:40:10,985 - trading_bot.trade_journal - INFO - Trade journal entry created: NGM26 (202605) WIN ($0.15)
+2026-02-27 19:40:10,987 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:40:11,112 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 15:41:14.686472+00:00: NGN26 (202606) (BEARISH)
+2026-02-27 19:40:11,113 - trading_bot.reconciliation - INFO - Exit time adjusted for NGN26 (202606): default Fri 18:41 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:40:11,295 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:40:11,823 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGN26 (202606)
+2026-02-27 19:40:11,824 - trading_bot.reconciliation - INFO - Reconciled NGN26 (202606): Entry 3.31 -> Exit 3.07 (7.37% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.2440
+2026-02-27 19:40:19,416 - trading_bot.trade_journal - INFO - Trade journal entry created: NGN26 (202606) WIN ($0.24)
+2026-02-27 19:40:19,416 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:40:19,544 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 15:42:10.285925+00:00: NGQ26 (202607) (BEARISH)
+2026-02-27 19:40:19,544 - trading_bot.reconciliation - INFO - Exit time adjusted for NGQ26 (202607): default Fri 18:42 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:40:19,730 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:40:20,167 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGQ26 (202607)
+2026-02-27 19:40:20,168 - trading_bot.reconciliation - INFO - Reconciled NGQ26 (202607): Entry 3.39 -> Exit 3.34 (1.45% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.0490
+2026-02-27 19:40:25,714 - trading_bot.trade_journal - INFO - Trade journal entry created: NGQ26 (202607) WIN ($0.05)
+2026-02-27 19:40:25,715 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:40:25,837 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 15:48:30.680109+00:00: NGM26 (202605) (BEARISH)
+2026-02-27 19:40:25,838 - trading_bot.reconciliation - INFO - Exit time adjusted for NGM26 (202605): default Fri 18:48 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:40:26,014 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:40:26,511 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGM26 (202605)
+2026-02-27 19:40:26,512 - trading_bot.reconciliation - INFO - Reconciled NGM26 (202605): Entry 3.03 -> Exit 2.88 (4.95% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.1500
+2026-02-27 19:40:34,239 - trading_bot.trade_journal - INFO - Trade journal entry created: NGM26 (202605) WIN ($0.15)
+2026-02-27 19:40:34,240 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:40:34,382 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 15:49:06.040610+00:00: NGK26 (202604) (BEARISH)
+2026-02-27 19:40:34,382 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 18:49 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:40:34,559 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:40:35,063 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGK26 (202604)
+2026-02-27 19:40:35,071 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:40:35,487 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGK26 (202604)
+2026-02-27 19:40:35,487 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.84 -> Exit 2.85 (0.53% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.0150
+2026-02-27 19:40:45,146 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) LOSS ($-0.02)
+2026-02-27 19:40:45,146 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-27 19:40:45,273 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 15:49:30.435864+00:00: NGN26 (202606) (BEARISH)
+2026-02-27 19:40:45,274 - trading_bot.reconciliation - INFO - Exit time adjusted for NGN26 (202606): default Fri 18:49 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:40:45,453 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:40:45,871 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGN26 (202606)
+2026-02-27 19:40:45,880 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:40:46,334 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGN26 (202606)
+2026-02-27 19:40:46,345 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:40:46,739 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGN26 (202606)
+2026-02-27 19:40:46,740 - trading_bot.reconciliation - INFO - Reconciled NGN26 (202606): Entry 3.31 -> Exit 3.06 (7.40% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.2450
+2026-02-27 19:40:52,384 - trading_bot.trade_journal - INFO - Trade journal entry created: NGN26 (202606) WIN ($0.25)
+2026-02-27 19:40:52,385 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:40:52,509 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 15:51:28.281376+00:00: NGQ26 (202607) (BEARISH)
+2026-02-27 19:40:52,509 - trading_bot.reconciliation - INFO - Exit time adjusted for NGQ26 (202607): default Fri 18:51 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:40:52,686 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:40:53,102 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGQ26 (202607)
+2026-02-27 19:40:53,110 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:40:53,491 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGQ26 (202607)
+2026-02-27 19:40:53,499 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:40:53,938 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGQ26 (202607)
+2026-02-27 19:40:53,939 - trading_bot.reconciliation - INFO - Reconciled NGQ26 (202607): Entry 3.39 -> Exit 3.34 (1.42% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.0480
+2026-02-27 19:41:02,988 - trading_bot.trade_journal - INFO - Trade journal entry created: NGQ26 (202607) WIN ($0.05)
+2026-02-27 19:41:02,988 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:41:03,119 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 15:52:15.845234+00:00: NGU26 (202608) (BEARISH)
+2026-02-27 19:41:03,119 - trading_bot.reconciliation - INFO - Exit time adjusted for NGU26 (202608): default Fri 18:52 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:41:03,299 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:03,849 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on NGU26 (202608)
+2026-02-27 19:41:03,859 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:04,530 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGU26 (202608)
+2026-02-27 19:41:04,540 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:05,037 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGU26 (202608)
+2026-02-27 19:41:05,050 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:05,495 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on NGU26 (202608)
+2026-02-27 19:41:05,495 - trading_bot.reconciliation - INFO - Reconciled NGU26 (202608): Entry 3.38 -> Exit 3.42 (1.21% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.0410
+2026-02-27 19:41:16,612 - trading_bot.trade_journal - INFO - Trade journal entry created: NGU26 (202608) LOSS ($-0.04)
+2026-02-27 19:41:16,613 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-27 19:41:16,743 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 16:12:56.218934+00:00: NGK26 (202604) (BEARISH)
+2026-02-27 19:41:16,744 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 19:12 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:41:16,925 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:17,450 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on NGK26 (202604)
+2026-02-27 19:41:17,459 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:17,914 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGK26 (202604)
+2026-02-27 19:41:17,920 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:18,410 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGK26 (202604)
+2026-02-27 19:41:18,411 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.85 -> Exit 2.85 (0.18% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.0050
+2026-02-27 19:41:28,377 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) LOSS ($-0.00)
+2026-02-27 19:41:28,378 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-27 19:41:28,501 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 16:14:06.426319+00:00: NGM26 (202605) (BEARISH)
+2026-02-27 19:41:28,502 - trading_bot.reconciliation - INFO - Exit time adjusted for NGM26 (202605): default Fri 19:14 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:41:28,674 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:29,076 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGM26 (202605)
+2026-02-27 19:41:29,077 - trading_bot.reconciliation - INFO - Reconciled NGM26 (202605): Entry 3.03 -> Exit 2.88 (4.95% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.1500
+2026-02-27 19:41:35,402 - trading_bot.trade_journal - INFO - Trade journal entry created: NGM26 (202605) WIN ($0.15)
+2026-02-27 19:41:35,402 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:41:35,527 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 16:16:06.521901+00:00: NGQ26 (202607) (BEARISH)
+2026-02-27 19:41:35,528 - trading_bot.reconciliation - INFO - Exit time adjusted for NGQ26 (202607): default Fri 19:16 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:41:35,702 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:36,161 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGQ26 (202607)
+2026-02-27 19:41:36,167 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:36,571 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGQ26 (202607)
+2026-02-27 19:41:36,572 - trading_bot.reconciliation - INFO - Reconciled NGQ26 (202607): Entry 3.39 -> Exit 3.34 (1.42% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.0480
+2026-02-27 19:41:43,098 - trading_bot.trade_journal - INFO - Trade journal entry created: NGQ26 (202607) WIN ($0.05)
+2026-02-27 19:41:43,099 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:41:43,225 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 16:16:51.524893+00:00: NGU26 (202608) (BEARISH)
+2026-02-27 19:41:43,225 - trading_bot.reconciliation - INFO - Exit time adjusted for NGU26 (202608): default Fri 19:16 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:41:43,518 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:43,952 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on NGU26 (202608)
+2026-02-27 19:41:43,959 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:44,496 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGU26 (202608)
+2026-02-27 19:41:44,506 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:45,024 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGU26 (202608)
+2026-02-27 19:41:45,035 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:45,581 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGU26 (202608)
+2026-02-27 19:41:45,581 - trading_bot.reconciliation - INFO - Reconciled NGU26 (202608): Entry 3.38 -> Exit 3.42 (1.21% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.0410
+2026-02-27 19:41:52,856 - trading_bot.trade_journal - INFO - Trade journal entry created: NGU26 (202608) LOSS ($-0.04)
+2026-02-27 19:41:52,857 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-27 19:41:52,989 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 16:18:17.308836+00:00: NGN26 (202606) (BEARISH)
+2026-02-27 19:41:52,989 - trading_bot.reconciliation - INFO - Exit time adjusted for NGN26 (202606): default Fri 19:18 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:41:53,166 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:53,678 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGN26 (202606)
+2026-02-27 19:41:53,688 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:41:54,157 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGN26 (202606)
+2026-02-27 19:41:54,158 - trading_bot.reconciliation - INFO - Reconciled NGN26 (202606): Entry 3.31 -> Exit 3.06 (7.40% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.2450
+2026-02-27 19:41:59,363 - trading_bot.trade_journal - INFO - Trade journal entry created: NGN26 (202606) WIN ($0.25)
+2026-02-27 19:41:59,363 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:41:59,504 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 16:39:54.402027+00:00: NGK26 (202604) (NEUTRAL)
+2026-02-27 19:41:59,505 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 19:39 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:41:59,693 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:00,183 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on NGK26 (202604)
+2026-02-27 19:42:00,193 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:00,735 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGK26 (202604)
+2026-02-27 19:42:00,746 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:01,171 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGK26 (202604)
+2026-02-27 19:42:01,178 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:01,595 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGK26 (202604)
+2026-02-27 19:42:01,595 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.83 -> Exit 2.85 (0.88% move) | Strategy: NONE | Outcome: BULLISH | P&L: 0.0000
+2026-02-27 19:42:13,210 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) FLAT ($0.00)
+2026-02-27 19:42:13,211 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BULLISH
+2026-02-27 19:42:13,338 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 17:04:34.938907+00:00: NGK26 (202604) (BEARISH)
+2026-02-27 19:42:13,339 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 20:04 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:42:13,521 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:13,932 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on NGK26 (202604)
+2026-02-27 19:42:13,939 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:14,314 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGK26 (202604)
+2026-02-27 19:42:14,323 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:14,756 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGK26 (202604)
+2026-02-27 19:42:14,763 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:15,137 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGK26 (202604)
+2026-02-27 19:42:15,146 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:15,546 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on NGK26 (202604)
+2026-02-27 19:42:15,546 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.82 -> Exit 2.86 (1.28% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.0360
+2026-02-27 19:42:27,412 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) LOSS ($-0.04)
+2026-02-27 19:42:27,414 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-27 19:42:27,548 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 17:06:05.652857+00:00: NGM26 (202605) (BEARISH)
+2026-02-27 19:42:27,549 - trading_bot.reconciliation - INFO - Exit time adjusted for NGM26 (202605): default Fri 20:06 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:42:27,734 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:28,159 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGM26 (202605)
+2026-02-27 19:42:28,160 - trading_bot.reconciliation - INFO - Reconciled NGM26 (202605): Entry 3.01 -> Exit 2.88 (4.32% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.1300
+2026-02-27 19:42:35,517 - trading_bot.trade_journal - INFO - Trade journal entry created: NGM26 (202605) WIN ($0.13)
+2026-02-27 19:42:35,517 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:42:35,659 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 17:06:57.943557+00:00: NGN26 (202606) (BEARISH)
+2026-02-27 19:42:35,660 - trading_bot.reconciliation - INFO - Exit time adjusted for NGN26 (202606): default Fri 20:06 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:42:35,880 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:36,458 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGN26 (202606)
+2026-02-27 19:42:36,468 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:37,080 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGN26 (202606)
+2026-02-27 19:42:37,081 - trading_bot.reconciliation - INFO - Reconciled NGN26 (202606): Entry 3.30 -> Exit 3.07 (7.09% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.2340
+2026-02-27 19:42:42,161 - trading_bot.trade_journal - INFO - Trade journal entry created: NGN26 (202606) WIN ($0.23)
+2026-02-27 19:42:42,164 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:42:42,291 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 17:07:01.491292+00:00: NGQ26 (202607) (BEARISH)
+2026-02-27 19:42:42,291 - trading_bot.reconciliation - INFO - Exit time adjusted for NGQ26 (202607): default Fri 20:07 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:42:42,464 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:42,979 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGQ26 (202607)
+2026-02-27 19:42:42,980 - trading_bot.reconciliation - INFO - Reconciled NGQ26 (202607): Entry 3.38 -> Exit 3.34 (1.12% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.0380
+2026-02-27 19:42:52,559 - trading_bot.trade_journal - INFO - Trade journal entry created: NGQ26 (202607) WIN ($0.04)
+2026-02-27 19:42:52,560 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:42:52,684 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 17:08:14.362362+00:00: NGU26 (202608) (BEARISH)
+2026-02-27 19:42:52,684 - trading_bot.reconciliation - INFO - Exit time adjusted for NGU26 (202608): default Fri 20:08 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:42:52,860 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:53,410 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on NGU26 (202608)
+2026-02-27 19:42:53,420 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:54,083 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGU26 (202608)
+2026-02-27 19:42:54,090 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:54,611 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGU26 (202608)
+2026-02-27 19:42:54,619 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:42:55,171 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on NGU26 (202608)
+2026-02-27 19:42:55,173 - trading_bot.reconciliation - INFO - Reconciled NGU26 (202608): Entry 3.37 -> Exit 3.42 (1.51% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.0510
+2026-02-27 19:43:03,875 - trading_bot.trade_journal - INFO - Trade journal entry created: NGU26 (202608) LOSS ($-0.05)
+2026-02-27 19:43:03,875 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-27 19:43:04,018 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 17:18:12.937721+00:00: NGK26 (202604) (BEARISH)
+2026-02-27 19:43:04,018 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 20:18 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:43:04,192 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:04,646 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on NGK26 (202604)
+2026-02-27 19:43:04,655 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:05,223 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGK26 (202604)
+2026-02-27 19:43:05,230 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:05,746 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGK26 (202604)
+2026-02-27 19:43:05,752 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:06,251 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on NGK26 (202604)
+2026-02-27 19:43:06,252 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.83 -> Exit 2.85 (0.88% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.0250
+2026-02-27 19:43:15,774 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) LOSS ($-0.02)
+2026-02-27 19:43:15,774 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-27 19:43:15,916 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 17:18:40.141168+00:00: NGM26 (202605) (BEARISH)
+2026-02-27 19:43:15,917 - trading_bot.reconciliation - INFO - Exit time adjusted for NGM26 (202605): default Fri 20:18 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:43:16,102 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:16,661 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGM26 (202605)
+2026-02-27 19:43:16,662 - trading_bot.reconciliation - INFO - Reconciled NGM26 (202605): Entry 3.02 -> Exit 2.88 (4.67% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.1410
+2026-02-27 19:43:22,461 - trading_bot.trade_journal - INFO - Trade journal entry created: NGM26 (202605) WIN ($0.14)
+2026-02-27 19:43:22,462 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:43:22,612 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 17:20:33.177551+00:00: NGN26 (202606) (BEARISH)
+2026-02-27 19:43:22,612 - trading_bot.reconciliation - INFO - Exit time adjusted for NGN26 (202606): default Fri 20:20 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:43:22,788 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:23,340 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGN26 (202606)
+2026-02-27 19:43:23,347 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:23,778 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGN26 (202606)
+2026-02-27 19:43:23,778 - trading_bot.reconciliation - INFO - Reconciled NGN26 (202606): Entry 3.31 -> Exit 3.07 (7.37% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.2440
+2026-02-27 19:43:29,837 - trading_bot.trade_journal - INFO - Trade journal entry created: NGN26 (202606) WIN ($0.24)
+2026-02-27 19:43:29,838 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:43:29,967 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 17:20:52.466833+00:00: NGU26 (202608) (BEARISH)
+2026-02-27 19:43:29,968 - trading_bot.reconciliation - INFO - Exit time adjusted for NGU26 (202608): default Fri 20:20 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:43:30,145 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:30,648 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on NGU26 (202608)
+2026-02-27 19:43:30,655 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:31,211 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGU26 (202608)
+2026-02-27 19:43:31,219 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:31,759 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGU26 (202608)
+2026-02-27 19:43:31,767 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:32,298 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on NGU26 (202608)
+2026-02-27 19:43:32,298 - trading_bot.reconciliation - INFO - Reconciled NGU26 (202608): Entry 3.37 -> Exit 3.42 (1.51% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BULLISH | P&L: -0.0510
+2026-02-27 19:43:40,044 - trading_bot.trade_journal - INFO - Trade journal entry created: NGU26 (202608) LOSS ($-0.05)
+2026-02-27 19:43:40,045 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BULLISH
+2026-02-27 19:43:40,171 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 17:22:15.012512+00:00: NGQ26 (202607) (BEARISH)
+2026-02-27 19:43:40,173 - trading_bot.reconciliation - INFO - Exit time adjusted for NGQ26 (202607): default Fri 20:22 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:43:40,349 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:40,980 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGQ26 (202607)
+2026-02-27 19:43:40,986 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:41,542 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGQ26 (202607)
+2026-02-27 19:43:41,542 - trading_bot.reconciliation - INFO - Reconciled NGQ26 (202607): Entry 3.39 -> Exit 3.34 (1.42% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.0480
+2026-02-27 19:43:48,539 - trading_bot.trade_journal - INFO - Trade journal entry created: NGQ26 (202607) WIN ($0.05)
+2026-02-27 19:43:48,540 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
+2026-02-27 19:43:48,686 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 17:31:11.637739+00:00: NGK26 (202604) (NEUTRAL)
+2026-02-27 19:43:48,686 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 20:31 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:43:48,862 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:49,362 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on NGK26 (202604)
+2026-02-27 19:43:49,369 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:49,953 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGK26 (202604)
+2026-02-27 19:43:49,966 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:50,460 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGK26 (202604)
+2026-02-27 19:43:50,469 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:50,881 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGK26 (202604)
+2026-02-27 19:43:50,888 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:43:51,330 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on NGK26 (202604)
+2026-02-27 19:43:51,331 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.83 -> Exit 2.85 (0.88% move) | Strategy: NONE | Outcome: BULLISH | P&L: 0.0000
+2026-02-27 19:44:10,073 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) FLAT ($0.00)
+2026-02-27 19:44:10,074 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BULLISH
+2026-02-27 19:44:10,206 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-02-26 17:56:52.237942+00:00: NGK26 (202604) (NEUTRAL)
+2026-02-27 19:44:10,206 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 20:56 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-02-27 19:44:10,386 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:44:10,807 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on NGK26 (202604)
+2026-02-27 19:44:10,817 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:44:11,204 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGK26 (202604)
+2026-02-27 19:44:11,212 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:44:11,620 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGK26 (202604)
+2026-02-27 19:44:11,625 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:44:11,996 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGK26 (202604)
+2026-02-27 19:44:12,003 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:44:12,435 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on NGK26 (202604)
+2026-02-27 19:44:12,435 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.83 -> Exit 2.86 (0.92% move) | Strategy: NONE | Outcome: BULLISH | P&L: 0.0000
+2026-02-27 19:44:27,845 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) FLAT ($0.00)
+2026-02-27 19:44:27,846 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BULLISH
+2026-02-27 19:44:27,974 - trading_bot.reconciliation - INFO - Successfully updated council_history.csv with reconciliation results.
+2026-02-27 19:44:30,977 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-02-27 19:44:30,978 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-02-27 19:44:30,978 - PerformanceAnalyzer - INFO - Loading main trade ledger: trade_ledger.csv
+2026-02-27 19:44:30,983 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260226_v2.csv
+2026-02-27 19:44:30,988 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260226_194006.csv
+2026-02-27 19:44:30,993 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_missing_trades.csv
+2026-02-27 19:44:30,997 - PerformanceAnalyzer - INFO - Consolidated a total of 26 trade records.
+2026-02-27 19:44:31,001 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-02-27 19:44:31,416 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $36,903.60
+2026-02-27 19:44:33,426 - PerformanceAnalyzer - INFO - Successfully fetched 2 execution(s) for today from IB.
+2026-02-27 19:44:37,022 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-02-27 19:44:37,365 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-27 19:44:37,575 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
+2026-02-27 19:44:37,579 - root - INFO - Successfully archived 'trade_ledger.csv' to '/home/rodrigo/real_options/data/NG/archive_ledger/trade_ledger_20260227_194437.csv'
+2026-02-27 19:44:37,596 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 19:44:37,599 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=425
+2026-02-27 19:44:37,600 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-02-27 19:44:37,600 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-02-27 19:44:37,607 - Engine.NG - INFO - Next task 'brier_reconciliation' (Brier Reconciliation) scheduled for 2026-02-27 19:50:00 UTC. Waiting for 0.09 hours.
+2026-02-27 19:50:00,016 - Engine.NG - INFO - --- Running scheduled task: brier_reconciliation [run_brier_reconciliation] ---
+2026-02-27 19:50:00,044 - trading_bot.brier_reconciliation - INFO - Found 287 pending predictions
+2026-02-27 19:50:00,045 - trading_bot.brier_reconciliation - INFO - Total council decisions: 46
+2026-02-27 19:50:00,049 - trading_bot.brier_reconciliation - INFO - Reconciled council decisions: 46/46
+2026-02-27 19:50:00,208 - trading_bot.brier_reconciliation - INFO - ==================================================
+2026-02-27 19:50:00,208 - trading_bot.brier_reconciliation - INFO - RESOLUTION BREAKDOWN:
+2026-02-27 19:50:00,208 - trading_bot.brier_reconciliation - INFO -   Total predictions:            350
+2026-02-27 19:50:00,208 - trading_bot.brier_reconciliation - INFO -   Resolved:                     350 (+287 new)
+2026-02-27 19:50:00,209 - trading_bot.brier_reconciliation - INFO -   Awaiting reconciliation:      0 (potential: 0)
+2026-02-27 19:50:00,209 - trading_bot.brier_reconciliation - INFO -   Orphaned (no council):        0 (+0 new)
+2026-02-27 19:50:00,210 - trading_bot.brier_reconciliation - INFO -   Effective resolution rate:     100% (excl. orphans)
+2026-02-27 19:50:00,210 - trading_bot.brier_reconciliation - INFO - ==================================================
+2026-02-27 19:50:00,211 - trading_bot.brier_reconciliation - INFO - Match gap stats (minutes): min=0.0, max=0.0, mean=0.0, median=0.0
+2026-02-27 19:50:00,217 - trading_bot.brier_reconciliation - INFO - Saved updated /home/rodrigo/real_options/data/NG/agent_accuracy_structured.csv
+2026-02-27 19:50:00,241 - trading_bot.brier_reconciliation - INFO - Appended 287 rows to /home/rodrigo/real_options/data/NG/agent_accuracy.csv
+2026-02-27 19:50:00,242 - Orchestrator - INFO - Brier reconciliation complete: 287 predictions resolved
+2026-02-27 19:50:00,245 - trading_bot.enhanced_brier - INFO - Loaded 389 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
+2026-02-27 19:50:00,264 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-dc0d7abe): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,264 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-0022a557): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,264 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-0022a557): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,264 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-0022a557): BULLISH vs BEARISH, Brier=0.3179
+2026-02-27 19:50:00,265 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-0022a557): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,265 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-0022a557): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-27 19:50:00,265 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-0022a557): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,265 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-0022a557): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,265 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-0022a557): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,265 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-0022a557): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,265 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-7ff2b0bc): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,265 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-7ff2b0bc): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,265 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-7ff2b0bc): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,266 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-7ff2b0bc): BULLISH vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,266 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-7ff2b0bc): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-27 19:50:00,266 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-7ff2b0bc): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-27 19:50:00,266 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-7ff2b0bc): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,266 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-7ff2b0bc): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,266 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-7ff2b0bc): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,266 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-2970b6f3): NEUTRAL vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,266 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-2970b6f3): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,266 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-2970b6f3): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,267 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-2970b6f3): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,267 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-2970b6f3): BEARISH vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,267 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-2970b6f3): BEARISH vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,267 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-2970b6f3): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,267 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-2970b6f3): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,267 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-2970b6f3): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,267 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-7fc3a911): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,267 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-7fc3a911): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,268 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-7fc3a911): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,268 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-7fc3a911): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,268 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-7fc3a911): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-27 19:50:00,268 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-7fc3a911): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-27 19:50:00,268 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-7fc3a911): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,268 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-7fc3a911): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,268 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-7fc3a911): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,268 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-3ea68684): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,268 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-3ea68684): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,269 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-3ea68684): NEUTRAL vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,269 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-3ea68684): BULLISH vs BULLISH, Brier=0.0200
+2026-02-27 19:50:00,269 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-3ea68684): BEARISH vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,269 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-3ea68684): NEUTRAL vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,269 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-3ea68684): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,269 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-3ea68684): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,269 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-3ea68684): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,269 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-387810da): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,269 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-f0d6b2ba): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,270 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-f0d6b2ba): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,270 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-f0d6b2ba): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,270 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-f0d6b2ba): BULLISH vs BULLISH, Brier=0.0200
+2026-02-27 19:50:00,270 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-f0d6b2ba): NEUTRAL vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,270 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-f0d6b2ba): NEUTRAL vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,270 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-f0d6b2ba): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,270 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-f0d6b2ba): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,270 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-f0d6b2ba): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,270 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-35464055): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,270 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-35464055): BEARISH vs BEARISH, Brier=0.1012
+2026-02-27 19:50:00,271 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-35464055): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,271 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-35464055): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,271 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-35464055): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-27 19:50:00,271 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-35464055): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,271 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-35464055): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,271 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-35464055): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,271 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-35464055): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,271 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-6a998898): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,271 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-6a998898): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,272 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-6a998898): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,272 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-6a998898): BULLISH vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,272 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-6a998898): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-27 19:50:00,272 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-6a998898): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,272 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-6a998898): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,272 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-6a998898): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,272 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-6a998898): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,272 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-ba9be12b): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,272 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-ba9be12b): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,273 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-ba9be12b): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,273 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-ba9be12b): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,273 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-ba9be12b): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-27 19:50:00,273 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-ba9be12b): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,273 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-ba9be12b): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,273 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-ba9be12b): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,273 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-ba9be12b): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,273 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-61564e31): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,273 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-61564e31): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,274 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-61564e31): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,274 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-61564e31): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,274 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-61564e31): BEARISH vs BEARISH, Brier=0.1012
+2026-02-27 19:50:00,274 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-61564e31): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,274 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-61564e31): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,274 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-61564e31): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,274 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-61564e31): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,274 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-d16b5e0b): NEUTRAL vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,274 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-d16b5e0b): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,275 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-d16b5e0b): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,275 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-d16b5e0b): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,275 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-d16b5e0b): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,275 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-d16b5e0b): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,275 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-d16b5e0b): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,275 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-d16b5e0b): NEUTRAL vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,275 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-d16b5e0b): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,275 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-07e05fe3): BEARISH vs BEARISH, Brier=0.1012
+2026-02-27 19:50:00,275 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-07e05fe3): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,276 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-07e05fe3): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,276 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-07e05fe3): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,276 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-07e05fe3): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,276 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-07e05fe3): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,276 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-07e05fe3): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,276 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-07e05fe3): BULLISH vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,276 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-07e05fe3): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,276 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-edd4656f): BEARISH vs BEARISH, Brier=0.1012
+2026-02-27 19:50:00,276 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-edd4656f): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,277 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-edd4656f): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,277 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-edd4656f): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,277 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-edd4656f): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,277 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-edd4656f): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,277 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-edd4656f): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,277 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-edd4656f): BULLISH vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,277 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-edd4656f): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,277 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-603b30e7): BEARISH vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,278 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-603b30e7): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,278 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-603b30e7): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,278 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-603b30e7): NEUTRAL vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,278 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-603b30e7): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,278 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-603b30e7): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,278 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-603b30e7): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,278 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-603b30e7): BULLISH vs BULLISH, Brier=0.0200
+2026-02-27 19:50:00,278 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-603b30e7): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,278 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-29bccfd7): BEARISH vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,278 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-29bccfd7): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,279 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-29bccfd7): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,279 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-29bccfd7): BULLISH vs BULLISH, Brier=0.0200
+2026-02-27 19:50:00,279 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-29bccfd7): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,279 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-29bccfd7): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,279 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-29bccfd7): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,279 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-29bccfd7): NEUTRAL vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,279 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-29bccfd7): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,279 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-ad6a14cf): BEARISH vs BEARISH, Brier=0.1012
+2026-02-27 19:50:00,280 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-ad6a14cf): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,280 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-ad6a14cf): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,280 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-ad6a14cf): BULLISH vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,280 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-ad6a14cf): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,280 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-ad6a14cf): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-27 19:50:00,280 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-ad6a14cf): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,280 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-ad6a14cf): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,280 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-ad6a14cf): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,281 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-c804239a): BEARISH vs BEARISH, Brier=0.1012
+2026-02-27 19:50:00,281 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-c804239a): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,281 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-c804239a): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,281 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-c804239a): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,281 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-c804239a): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,282 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-c804239a): NEUTRAL vs BEARISH, Brier=0.3179
+2026-02-27 19:50:00,282 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-c804239a): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,282 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-c804239a): BULLISH vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,282 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-c804239a): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,282 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-7a0a0771): BEARISH vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,282 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-7a0a0771): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,282 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-7a0a0771): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,283 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-7a0a0771): NEUTRAL vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,283 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-7a0a0771): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,283 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-7a0a0771): BEARISH vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,283 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-7a0a0771): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,283 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-7a0a0771): BULLISH vs BULLISH, Brier=0.0200
+2026-02-27 19:50:00,283 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-7a0a0771): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,283 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-b426fe98): BEARISH vs BEARISH, Brier=0.1012
+2026-02-27 19:50:00,284 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-b426fe98): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,284 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-b426fe98): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,284 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-b426fe98): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,284 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-b426fe98): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,284 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-b426fe98): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,284 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-b426fe98): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,284 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-b426fe98): BULLISH vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,284 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-b426fe98): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,285 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-8fead60b): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,285 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-8fead60b): BEARISH vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,285 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-8fead60b): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,285 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-8fead60b): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,285 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-8fead60b): NEUTRAL vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,285 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-8fead60b): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,285 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-8fead60b): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,285 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-8fead60b): BULLISH vs BULLISH, Brier=0.0200
+2026-02-27 19:50:00,285 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-fb3661c2): BEARISH vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,286 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-fb3661c2): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,286 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-fb3661c2): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,286 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-fb3661c2): NEUTRAL vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,286 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-fb3661c2): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,286 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-fb3661c2): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,286 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-fb3661c2): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,286 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-fb3661c2): NEUTRAL vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,287 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-fb3661c2): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,287 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-e8bb8de7): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,287 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-e8bb8de7): BEARISH vs BEARISH, Brier=0.1012
+2026-02-27 19:50:00,287 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-e8bb8de7): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,287 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-e8bb8de7): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,287 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-e8bb8de7): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,287 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-e8bb8de7): BEARISH vs BEARISH, Brier=0.1012
+2026-02-27 19:50:00,287 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-e8bb8de7): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,287 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-e8bb8de7): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,288 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-e8bb8de7): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,288 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-5663a544): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,288 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-5663a544): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,288 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-5663a544): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,288 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-5663a544): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,288 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-5663a544): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,288 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-5663a544): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,288 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-5663a544): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,289 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-5663a544): BULLISH vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,289 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-5663a544): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,289 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-60a91651): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,289 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-60a91651): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,289 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-60a91651): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,289 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-60a91651): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,289 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-60a91651): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,289 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-60a91651): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,290 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-60a91651): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,290 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-60a91651): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,290 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-60a91651): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,290 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-93dc81a6): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,290 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-93dc81a6): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,290 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-93dc81a6): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,290 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-93dc81a6): NEUTRAL vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,291 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-93dc81a6): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,291 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-93dc81a6): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,291 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-93dc81a6): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,291 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-93dc81a6): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,291 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-93dc81a6): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,292 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-a24ce14e): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,292 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-a24ce14e): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,292 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-a24ce14e): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,292 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-a24ce14e): NEUTRAL vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,292 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-a24ce14e): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,292 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-a24ce14e): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,292 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-a24ce14e): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,292 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-a24ce14e): NEUTRAL vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,292 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-a24ce14e): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,293 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-89644960): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,293 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-89644960): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,293 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-89644960): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,293 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-89644960): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,293 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-89644960): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,293 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-89644960): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,293 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-89644960): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,293 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-89644960): NEUTRAL vs BEARISH, Brier=0.4867
+2026-02-27 19:50:00,294 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-89644960): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,294 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-909084d5): BEARISH vs BEARISH, Brier=0.1012
+2026-02-27 19:50:00,294 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-909084d5): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,294 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-909084d5): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,294 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-909084d5): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,294 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-909084d5): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,294 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-909084d5): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,294 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-909084d5): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,294 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-909084d5): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,295 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-909084d5): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,295 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-64f7a8df): BEARISH vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,295 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-64f7a8df): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,295 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-64f7a8df): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,295 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-64f7a8df): NEUTRAL vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,295 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-64f7a8df): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,295 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-64f7a8df): NEUTRAL vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,295 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-64f7a8df): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,295 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-64f7a8df): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,296 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-64f7a8df): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,296 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-4327fc17): BEARISH vs BEARISH, Brier=0.1012
+2026-02-27 19:50:00,296 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-4327fc17): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,296 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-4327fc17): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,296 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-4327fc17): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,297 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-4327fc17): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,297 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-4327fc17): NEUTRAL vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,297 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-4327fc17): BEARISH vs BEARISH, Brier=0.0612
+2026-02-27 19:50:00,297 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-4327fc17): BULLISH vs BEARISH, Brier=0.3779
+2026-02-27 19:50:00,297 - trading_bot.enhanced_brier - INFO - Backfilled master_decision (cycle=NG-4327fc17): BEARISH vs BEARISH, Brier=0.0200
+2026-02-27 19:50:00,297 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-a79827a8): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,297 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-a79827a8): BEARISH vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,297 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-a79827a8): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,297 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-a79827a8): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,298 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-a79827a8): NEUTRAL vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,298 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-a79827a8): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,298 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-a79827a8): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,298 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-a79827a8): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,298 - trading_bot.enhanced_brier - INFO - Backfilled sentiment (cycle=NG-4273f6a4): BEARISH vs BULLISH, Brier=0.4867
+2026-02-27 19:50:00,298 - trading_bot.enhanced_brier - INFO - Backfilled agronomist (cycle=NG-4273f6a4): BEARISH vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,298 - trading_bot.enhanced_brier - INFO - Backfilled macro (cycle=NG-4273f6a4): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,298 - trading_bot.enhanced_brier - INFO - Backfilled geopolitical (cycle=NG-4273f6a4): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,299 - trading_bot.enhanced_brier - INFO - Backfilled supply_chain (cycle=NG-4273f6a4): NEUTRAL vs BULLISH, Brier=0.3179
+2026-02-27 19:50:00,299 - trading_bot.enhanced_brier - INFO - Backfilled inventory (cycle=NG-4273f6a4): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,299 - trading_bot.enhanced_brier - INFO - Backfilled technical (cycle=NG-4273f6a4): BEARISH vs BULLISH, Brier=0.3779
+2026-02-27 19:50:00,299 - trading_bot.enhanced_brier - INFO - Backfilled volatility (cycle=NG-4273f6a4): BULLISH vs BULLISH, Brier=0.0612
+2026-02-27 19:50:00,336 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-dc0d7abe) → BULLISH
+2026-02-27 19:50:00,337 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-dc0d7abe) → BULLISH
+2026-02-27 19:50:00,337 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-dc0d7abe) → BULLISH
+2026-02-27 19:50:00,337 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-dc0d7abe) → BULLISH
+2026-02-27 19:50:00,337 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-dc0d7abe) → BULLISH
+2026-02-27 19:50:00,337 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-dc0d7abe) → BULLISH
+2026-02-27 19:50:00,337 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-dc0d7abe) → BULLISH
+2026-02-27 19:50:00,337 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-387810da) → BULLISH
+2026-02-27 19:50:00,338 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-387810da) → BULLISH
+2026-02-27 19:50:00,338 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-387810da) → BULLISH
+2026-02-27 19:50:00,338 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-387810da) → BULLISH
+2026-02-27 19:50:00,338 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-387810da) → BULLISH
+2026-02-27 19:50:00,338 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-387810da) → BULLISH
+2026-02-27 19:50:00,338 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-387810da) → BULLISH
+2026-02-27 19:50:00,348 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 287 resolved from CSV, 0 created from CSV, 14 resolved from council_history
+2026-02-27 19:50:00,413 - Orchestrator - INFO - Brier reconciliation: 301 predictions resolved today
+2026-02-27 19:50:00,413 - Orchestrator - INFO - Running feedback loop health check...
+2026-02-27 19:50:00,417 - Orchestrator - INFO - Feedback Loop Health: All 350 predictions resolved ✓
+2026-02-27 19:50:00,419 - Orchestrator - INFO - Enhanced Brier Health: 9 agents tracked, 389 total resolved predictions
+2026-02-27 19:50:00,419 - Orchestrator - INFO - Feedback loop health check complete.
+2026-02-27 19:50:00,427 - Engine.NG - INFO - Next task 'sentinel_effectiveness' (Sentinel Effectiveness Check) scheduled for 2026-02-27 19:53:00 UTC. Waiting for 0.05 hours.
+2026-02-27 19:53:00,030 - Engine.NG - INFO - --- Running scheduled task: sentinel_effectiveness [sentinel_effectiveness_check] ---
+2026-02-27 19:53:00,034 - Orchestrator - INFO - --- Sentinel Effectiveness Check ---
+2026-02-27 19:53:00,128 - Orchestrator - INFO - Sentinel effectiveness OK: weekly change -4.4%, alerts: 23, sentinel trades: 2
+2026-02-27 19:53:00,136 - Engine.NG - INFO - Next task 'eod_shutdown' (End-of-Day Shutdown) scheduled for 2026-02-27 19:56:00 UTC. Waiting for 0.05 hours.
+2026-02-27 19:56:00,032 - Engine.NG - INFO - --- Running scheduled task: eod_shutdown [cancel_and_stop_monitoring] ---
+2026-02-27 19:56:00,035 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
+2026-02-27 19:56:00,036 - Orchestrator - INFO - System shutdown flag SET — no new trades or emergency cycles will be processed
+2026-02-27 19:56:00,036 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
+2026-02-27 19:56:00,038 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1239 [REMOTE/PAPER]...
+2026-02-27 19:56:00,403 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1239
+2026-02-27 19:56:00,417 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-27 19:56:00,417 - OrderManager - INFO - Connected to IB for canceling open orders (purpose: orchestrator_orders).
+2026-02-27 19:56:00,523 - OrderManager - INFO - Skipped 3 orders belonging to other client IDs.
+2026-02-27 19:56:00,523 - OrderManager - INFO - No open orders belonging to this instance found to cancel.
+2026-02-27 19:56:00,523 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-02-27 19:56:03,526 - Orchestrator - WARNING - Monitoring process is not running or has already terminated.
+2026-02-27 19:56:03,844 - Orchestrator - INFO - Connection pool released — no stale connections for Gateway restart
+2026-02-27 19:56:03,845 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
+2026-02-27 19:56:03,865 - Engine.NG - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-02 13:15:00 UTC. Waiting for 65.32 hours.
