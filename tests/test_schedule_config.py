@@ -54,10 +54,10 @@ def test_build_schedule_from_config():
 
 
 def test_build_schedule_fallback():
-    """No 'tasks' key in config falls back to 19-task default."""
+    """No 'tasks' key in config falls back to 20-task default."""
     config = {'schedule': {'dev_offset_minutes': 0}}
     result = build_schedule(config)
-    assert len(result) == 19
+    assert len(result) == 20
     # Check a few known defaults
     ids = [t.id for t in result]
     assert 'signal_early' in ids
@@ -73,7 +73,7 @@ def test_build_schedule_fallback():
 def test_build_schedule_empty_config():
     """Empty config falls back to defaults."""
     result = build_schedule({})
-    assert len(result) == 19
+    assert len(result) == 20
 
 
 def test_build_schedule_duplicate_id_raises():
@@ -145,9 +145,9 @@ def test_build_schedule_session_mode():
 def test_default_schedule_structure():
     """Default schedule has 19 tasks with unique IDs."""
     defaults = _build_default_schedule()
-    assert len(defaults) == 19
+    assert len(defaults) == 20
     ids = [t.id for t in defaults]
-    assert len(set(ids)) == 19, "All task IDs must be unique"
+    assert len(set(ids)) == 20, "All task IDs must be unique"
 
     # All functions must be callable
     for task in defaults:
@@ -342,7 +342,7 @@ def test_active_schedule_json_format():
         ]
     }
 
-    assert len(schedule_data['tasks']) == 19
+    assert len(schedule_data['tasks']) == 20
 
     # Every entry has id, time_et, name, and label
     for entry in schedule_data['tasks']:
@@ -355,7 +355,7 @@ def test_active_schedule_json_format():
 
     # Verify unique IDs
     ids = [e['id'] for e in schedule_data['tasks']]
-    assert len(set(ids)) == 19
+    assert len(set(ids)) == 20
 
     # Verify signal tasks have distinct IDs but same function name
     signal_entries = [e for e in schedule_data['tasks'] if e['name'] == 'guarded_generate_orders']

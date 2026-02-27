@@ -2476,6 +2476,23 @@ async def sentinel_effectiveness_check(config: dict):
         logger.error(f"Sentinel effectiveness check failed: {e}", exc_info=True)
 
 
+async def generate_system_digest_task(config: dict):
+    """Post-close: Generate daily System Health Digest."""
+    try:
+        from trading_bot.system_digest import generate_system_digest
+        digest = await asyncio.to_thread(generate_system_digest, config)
+        if digest:
+            high = [o for o in digest.get("improvement_opportunities", []) if o["priority"] == "HIGH"]
+            if high:
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    "System Digest: Action Required",
+                    "\n".join(f"[{o['component']}] {o['observation']}" for o in high[:3]),
+                )
+    except Exception as e:
+        logger.error(f"System Digest failed (non-fatal): {e}", exc_info=True)
+
+
 async def reconcile_and_analyze(config: dict):
     """Runs reconciliation, then analysis and archiving."""
     logger.info("--- Kicking off end-of-day reconciliation and analysis process ---")
@@ -4642,6 +4659,7 @@ FUNCTION_REGISTRY = {
     'reconcile_and_analyze': reconcile_and_analyze,
     'run_brier_reconciliation': run_brier_reconciliation,
     'sentinel_effectiveness_check': sentinel_effectiveness_check,
+    'generate_system_digest_task': generate_system_digest_task,
 }
 
 
@@ -4667,6 +4685,7 @@ def _build_default_schedule() -> list:
         ("reconcile_and_analyze",     time(18, 25), reconcile_and_analyze,         "Reconcile & Analyze (18:25 ET)"),
         ("brier_reconciliation",      time(18, 35), run_brier_reconciliation,      "Brier Reconciliation (18:35 ET)"),
         ("sentinel_effectiveness",    time(18, 40), sentinel_effectiveness_check,  "Sentinel Effectiveness Check (18:40 ET)"),
+        ("system_digest",             time(18, 45), generate_system_digest_task,  "System Health Digest (18:45 ET)"),
     ]
     return [
         ScheduledTask(id=tid, time_et=t, function=fn, func_name=fn.__name__, label=lbl)
@@ -4913,6 +4932,7 @@ RECOVERY_POLICY = {
     'reconcile_and_analyze':          {'policy': 'ALWAYS',        'idempotent': False},
     'run_brier_reconciliation':       {'policy': 'ALWAYS',        'idempotent': True},
     'sentinel_effectiveness_check':   {'policy': 'ALWAYS',        'idempotent': False},
+    'generate_system_digest_task':    {'policy': 'ALWAYS',        'idempotent': True},
 }
 
 # Startup validation: warn if default schedule has tasks not covered by RECOVERY_POLICY
