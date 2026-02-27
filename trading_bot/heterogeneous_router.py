@@ -596,7 +596,7 @@ class HeterogeneousRouter:
             AgentRole.SUPPLY_CHAIN_ANALYST: (ModelProvider.XAI, xai_pro),
 
             AgentRole.MACRO_ANALYST: (ModelProvider.OPENAI, oai_pro),
-            AgentRole.GEOPOLITICAL_ANALYST: (ModelProvider.OPENAI, oai_pro),
+            AgentRole.GEOPOLITICAL_ANALYST: (ModelProvider.GEMINI, gem_pro),  # Google Search grounding for live geopolitical news
 
             AgentRole.TECHNICAL_ANALYST: (ModelProvider.OPENAI, oai_reasoning), # Math/Logic
             AgentRole.SENTIMENT_ANALYST: (ModelProvider.XAI, xai_pro),  # COT/crowd analysis needs reasoning
@@ -609,7 +609,7 @@ class HeterogeneousRouter:
             AgentRole.MASTER_STRATEGIST: (ModelProvider.OPENAI, oai_pro),  # Synthesis
 
             # --- UTILITIES ---
-            AgentRole.TRADE_ANALYST: (ModelProvider.OPENAI, oai_pro),  # Post-mortem narrative
+            AgentRole.TRADE_ANALYST: (ModelProvider.XAI, xai_pro),  # Post-mortem batch utility, not safety-critical
         }
 
         logger.info(f"HeterogeneousRouter initialized. Available: {[p.value for p in self.available_providers]}")
@@ -658,23 +658,29 @@ class HeterogeneousRouter:
             gem_pro = get_model('gemini', 'pro', 'gemini-3.1-pro-preview')
 
             # CRITICAL: NEVER fallback to Flash models for Tier 3
+            xai_pro = get_model('xai', 'pro', 'grok-4-1-fast-reasoning')
+
             if primary_provider == ModelProvider.OPENAI:
                 fallbacks.append((ModelProvider.ANTHROPIC, anth_pro))
                 fallbacks.append((ModelProvider.GEMINI, gem_pro))
+                fallbacks.append((ModelProvider.XAI, xai_pro))
             elif primary_provider == ModelProvider.ANTHROPIC:
                 fallbacks.append((ModelProvider.OPENAI, oai_pro))
                 fallbacks.append((ModelProvider.GEMINI, gem_pro))
+                fallbacks.append((ModelProvider.XAI, xai_pro))
             elif primary_provider == ModelProvider.XAI:
                 fallbacks.append((ModelProvider.OPENAI, oai_pro))
                 fallbacks.append((ModelProvider.ANTHROPIC, anth_pro))
+                fallbacks.append((ModelProvider.GEMINI, gem_pro))
             else:
                  fallbacks.append((ModelProvider.ANTHROPIC, anth_pro))
                  fallbacks.append((ModelProvider.OPENAI, oai_pro))
+                 fallbacks.append((ModelProvider.XAI, xai_pro))
 
             return fallbacks
 
         # TIER 2: DEEP ANALYSTS + UTILITIES
-        elif role in [AgentRole.AGRONOMIST, AgentRole.MACRO_ANALYST, AgentRole.SUPPLY_CHAIN_ANALYST, AgentRole.GEOPOLITICAL_ANALYST, AgentRole.INVENTORY_ANALYST, AgentRole.VOLATILITY_ANALYST, AgentRole.TRADE_ANALYST]:
+        elif role in [AgentRole.AGRONOMIST, AgentRole.MACRO_ANALYST, AgentRole.SUPPLY_CHAIN_ANALYST, AgentRole.GEOPOLITICAL_ANALYST, AgentRole.INVENTORY_ANALYST, AgentRole.VOLATILITY_ANALYST, AgentRole.TRADE_ANALYST, AgentRole.TECHNICAL_ANALYST, AgentRole.SENTIMENT_ANALYST]:
             gem_pro = get_model('gemini', 'pro', 'gemini-3.1-pro-preview')
             gem_flash = get_model('gemini', 'flash', 'gemini-3-flash-preview')
             oai_pro = get_model('openai', 'pro', 'gpt-5.2')
@@ -682,10 +688,15 @@ class HeterogeneousRouter:
             xai_pro = get_model('xai', 'pro', 'grok-4-1-fast-reasoning')
 
             if primary_provider == ModelProvider.GEMINI:
-                # Gemini Pro exhausted → try Flash (same provider) → then cross-provider
                 return [
-                    (ModelProvider.GEMINI, gem_flash),
                     (ModelProvider.OPENAI, oai_pro),
+                    (ModelProvider.ANTHROPIC, anth_pro),
+                    (ModelProvider.XAI, xai_pro)
+                ]
+            elif primary_provider == ModelProvider.OPENAI:
+                return [
+                    (ModelProvider.GEMINI, gem_pro),
+                    (ModelProvider.XAI, xai_pro),
                     (ModelProvider.ANTHROPIC, anth_pro)
                 ]
             elif primary_provider == ModelProvider.ANTHROPIC:
@@ -694,18 +705,12 @@ class HeterogeneousRouter:
                     (ModelProvider.OPENAI, oai_pro),
                     (ModelProvider.XAI, xai_pro)
                 ]
-            elif primary_provider == ModelProvider.XAI:
-                return [
-                    (ModelProvider.GEMINI, gem_pro),
-                    (ModelProvider.ANTHROPIC, anth_pro),
-                    (ModelProvider.OPENAI, oai_pro)
-                ]
             else:
-                # OpenAI primary (Macro, Geo)
+                # xAI primary
                 return [
                     (ModelProvider.GEMINI, gem_pro),
-                    (ModelProvider.ANTHROPIC, anth_pro),
-                    (ModelProvider.XAI, xai_pro)
+                    (ModelProvider.OPENAI, oai_pro),
+                    (ModelProvider.ANTHROPIC, anth_pro)
                 ]
 
         # TIER 1: SENTINELS (Speed Required)
@@ -716,12 +721,12 @@ class HeterogeneousRouter:
             gem_flash = get_model('gemini', 'flash', 'gemini-3-flash-preview')
 
             fallbacks = []
-            if primary_provider != ModelProvider.OPENAI:
-                 fallbacks.append((ModelProvider.OPENAI, oai_flash))
             if primary_provider != ModelProvider.XAI:
                  fallbacks.append((ModelProvider.XAI, xai_flash))
             if primary_provider != ModelProvider.GEMINI:
                  fallbacks.append((ModelProvider.GEMINI, gem_flash))
+            if primary_provider != ModelProvider.OPENAI:
+                 fallbacks.append((ModelProvider.OPENAI, oai_flash))
 
             return fallbacks
 
