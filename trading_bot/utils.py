@@ -126,20 +126,63 @@ def get_active_ticker(config: dict) -> str:
 
 def get_market_data_cached(tickers: list, period: str = "1d"):
     """
-    Fetch market data from YFinance.
+    Fetch market data from YFinance with file-based caching.
 
-    NOTE: Session injection removed. YFinance v0.2.66+ uses curl_cffi internally
-    which is incompatible with requests_cache. Let YFinance manage its own sessions.
+    Caches responses to local CSV files to prevent redundant network requests
+    and speed up backtesting/compliance checks.
 
-    TODO (Next Sprint): Implement file-based caching by saving DataFrame to
-    parquet/csv with timestamp. Check file age before fetching fresh data.
-    Example: data/yf_cache/{ticker}_{period}_{date}.parquet
+    Cache TTL:
+    - 4 hours for intraday/daily checks
+    - 24 hours for longer periods (>5d)
+
+    Storage: `data/{ticker}/yf_cache/` if data_dir is set, else `data/yf_cache/`
     """
     import pandas as pd
+    import time
+    from pathlib import Path
 
     try:
-        import yfinance as yf
+        # Resolve cache directory
+        data_dir = _get_data_dir()
+        if data_dir:
+            cache_dir = Path(data_dir) / "yf_cache"
+        else:
+            # Fallback to root/data/yf_cache
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            cache_dir = Path(base_dir) / "data" / "yf_cache"
 
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create a unique cache key based on tickers and period
+        # Sort tickers to ensure consistency (['KC', 'SB'] == ['SB', 'KC'])
+        ticker_key = "_".join(sorted(tickers)).replace("=", "").replace("^", "")
+        cache_file = cache_dir / f"{ticker_key}_{period}.csv"
+
+        # Determine TTL
+        ttl_seconds = 86400 if period in ["1mo", "3mo", "6mo", "1y", "2y", "5y", "max", "ytd"] else 14400  # 4h default
+
+        # Check cache validity
+        use_cache = False
+        if cache_file.exists():
+            mtime = cache_file.stat().st_mtime
+            age = time.time() - mtime
+            if age < ttl_seconds:
+                use_cache = True
+            else:
+                logging.debug(f"Cache expired for {tickers} (age: {age/3600:.1f}h)")
+
+        if use_cache:
+            try:
+                # Read from CSV, parsing index as datetime
+                df = pd.read_csv(cache_file, index_col=0, parse_dates=True)
+                if not df.empty:
+                    logging.info(f"Loaded cached market data for {tickers} from {cache_file.name}")
+                    return df
+            except Exception as e:
+                logging.warning(f"Failed to read cache {cache_file}: {e}")
+
+        # Fetch fresh data
+        import yfinance as yf
         download_kwargs = {
             'tickers': tickers,
             'period': period,
@@ -153,6 +196,12 @@ def get_market_data_cached(tickers: list, period: str = "1d"):
             logging.warning(f"YFinance returned empty data for {tickers}")
         else:
             logging.info(f"YFinance fetched data for {tickers}: {len(data)} rows")
+            # Write to cache
+            try:
+                data.to_csv(cache_file)
+                logging.debug(f"Cached market data to {cache_file}")
+            except Exception as e:
+                logging.warning(f"Failed to write cache {cache_file}: {e}")
 
         return data
 
