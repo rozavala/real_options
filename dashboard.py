@@ -530,23 +530,19 @@ try:
                 graded_merged[dst] = graded_merged[src]
                 display_cols.append(dst)
 
-        # Format confidence as percentage
+        # Ensure numeric types for proper sorting and column_config support
         if "Confidence" in graded_merged.columns:
-            graded_merged["Confidence"] = graded_merged["Confidence"].apply(
-                lambda x: f"{float(x)*100:.0f}%" if x is not None else "?"
-            )
+            graded_merged["Confidence"] = pd.to_numeric(graded_merged["Confidence"], errors='coerce') * 100
 
         # Format outcome with visual indicators
         if "Outcome" in graded_merged.columns:
             graded_merged["Outcome"] = graded_merged["Outcome"].apply(
-                lambda x: "\u2705 WIN" if x == "WIN" else "\u274c LOSS" if x == "LOSS" else "\u2014"
+                lambda x: "✅ WIN" if x == "WIN" else "❌ LOSS" if x == "LOSS" else "—"
             )
 
-        # Format P&L as currency
+        # Ensure P&L is numeric for professional formatting
         if "P&L" in graded_merged.columns:
-            graded_merged["P&L"] = graded_merged["P&L"].apply(
-                lambda x: f"${float(x):+,.2f}" if pd.notna(x) and x != 0 else "\u2014"
-            )
+            graded_merged["P&L"] = pd.to_numeric(graded_merged["P&L"], errors='coerce')
 
         if display_cols:
             st.dataframe(
@@ -554,13 +550,28 @@ try:
                 width='stretch',
                 hide_index=True,
                 column_config={
-                    "Time": st.column_config.TextColumn("Time", width="small"),
-                    "Commodity": st.column_config.TextColumn("Ticker", width="small"),
-                    "Decision": st.column_config.TextColumn("Decision", width="small"),
-                    "Confidence": st.column_config.TextColumn("Conf.", width="small"),
-                    "Strategy": st.column_config.TextColumn("Strategy", width="medium"),
-                    "Outcome": st.column_config.TextColumn("Outcome", width="small"),
-                    "P&L": st.column_config.TextColumn("P&L", width="small"),
+                    "Time": st.column_config.TextColumn("Time", width="small", help="Time since the decision was made."),
+                    "Commodity": st.column_config.TextColumn("Ticker", width="small", help="The commodity symbol (e.g., KC, CC)."),
+                    "Contract": st.column_config.TextColumn("Contract", width="small", help="The specific futures contract traded."),
+                    "Decision": st.column_config.TextColumn("Decision", width="small", help="The final decision rendered by the Master Strategist."),
+                    "Confidence": st.column_config.ProgressColumn(
+                        "Conf.",
+                        width="small",
+                        min_value=0,
+                        max_value=100,
+                        format="%.0f%%",
+                        help="The confidence level of the Master Strategist's decision (0-100%)."
+                    ),
+                    "Strategy": st.column_config.TextColumn("Strategy", width="medium", help="The trading strategy applied for this decision."),
+                    "Thesis": st.column_config.TextColumn("Thesis", width="small", help="The strength of the underlying trading thesis (Proven/Plausible/Speculative)."),
+                    "Trigger": st.column_config.TextColumn("Trigger", width="small", help="The event or sentinel that triggered this decision cycle."),
+                    "Outcome": st.column_config.TextColumn("Outcome", width="small", help="The outcome of the decision (WIN/LOSS) once resolved."),
+                    "P&L": st.column_config.NumberColumn(
+                        "P&L",
+                        width="small",
+                        format="$%.2f",
+                        help="The realized Profit and Loss for this trade."
+                    ),
                 }
             )
         else:

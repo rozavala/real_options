@@ -26,6 +26,10 @@ This journal records CRITICAL UX/accessibility learnings.
 **Learning:** In data-dense trading dashboards, metrics and high-impact buttons can be ambiguous to new or stressed users. Using the `help` parameter in `st.metric` and `st.button` provides essential "just-in-time" documentation without cluttering the visual interface.
 **Action:** Always provide descriptive tooltips for system-level metrics (e.g., Python/Streamlit versions, UTC time) and high-stakes manual triggers (e.g., Force Generate) to reduce cognitive load and operational risk.
 
+## 2026-02-25 - Native Numeric Sorting in Dataframes
+**Learning:** Streamlit's `st.dataframe` sorts columns alphabetically if they contain strings (like '$10.00' or '85%'). This breaks the usability of financial tables.
+**Action:** Always convert formatted strings to numeric types before rendering in `st.dataframe`. Use `st.column_config.NumberColumn` for currency formatting and `st.column_config.ProgressColumn` for percentages to maintain visual polish while enabling native numeric sorting.
+
 ## 2026-02-24 - Semantic Containers for Scannability
 **Learning:** Using `st.success`, `st.error`, and `st.info` as wrappers for text content (not just alerts) provides immediate, color-coded context that improves scannability for sentiment-heavy data.
 **Action:** Apply this pattern when displaying categorical data with strong positive/negative connotations (like Bullish/Bearish sentiment) to reduce cognitive load.
