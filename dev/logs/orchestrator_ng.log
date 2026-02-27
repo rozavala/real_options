@@ -392,3 +392,41 @@
 2026-02-27 18:26:16,007 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=595, market_open=True, trading_day=True
 2026-02-27 18:26:16,232 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 39% of average (Sev: 6)
 2026-02-27 18:26:16,237 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-27 18:31:18,858 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=600, market_open=True, trading_day=True
+2026-02-27 18:36:21,105 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=605, market_open=True, trading_day=True
+2026-02-27 18:41:23,169 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=610, market_open=True, trading_day=True
+2026-02-27 18:46:25,622 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=615, market_open=True, trading_day=True
+2026-02-27 18:51:27,608 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=620, market_open=True, trading_day=True
+2026-02-27 18:55:00,002 - Engine.NG - INFO - --- Running scheduled task: audit_pre_close [run_position_audit_cycle] ---
+2026-02-27 18:55:00,007 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-02-27 18:55:00,008 - trading_bot.connection_pool - INFO - Connecting IB (NG_audit) ID: 1266 [REMOTE/PAPER]...
+2026-02-27 18:55:00,410 - trading_bot.connection_pool - INFO - IB (NG_audit) connected successfully with ID 1266
+2026-02-27 18:55:00,416 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-27 18:55:00,523 - OrderManager - INFO - Catastrophe stop cleanup: skipped 1 stop(s) belonging to other commodities
+2026-02-27 18:55:00,524 - OrderManager - INFO - Cancelling orphaned catastrophe stop: order 249 (client 1238, BUY NGN26 @ 3.40), ref=CATASTROPHE_8386a2a1-9fa8-40f0-b77b-196bb84ddbec
+2026-02-27 18:55:00,525 - OrderManager - INFO - Cancelling orphaned catastrophe stop: order 201 (client 1234, BUY NGM26 @ 3.10), ref=CATASTROPHE_ab113cd8-887f-4a08-bd35-b29ed5c11fdc
+2026-02-27 18:55:00,527 - ib_insync.wrapper - ERROR - Error 10147, reqId 249: OrderId 249 that needs to be cancelled is not found.
+2026-02-27 18:55:00,569 - ib_insync.wrapper - ERROR - Error 10147, reqId 201: OrderId 201 that needs to be cancelled is not found.
+2026-02-27 18:55:02,528 - OrderManager - INFO - Catastrophe stop cleanup: 2 phantom GTC order(s) not found on IBKR (stale Gateway cache, harmless)
+2026-02-27 18:55:02,548 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-02-27 18:55:02,568 - Orchestrator - INFO - State stores reconciled: 0 positions across all stores
+2026-02-27 18:55:02,573 - Orchestrator - INFO - No open positions to audit.
+2026-02-27 18:55:02,591 - Orchestrator - WARNING - Phantom reconciliation: Found 12 phantom ledger entries (non-zero net qty, no IB position): [('e587d9b6-4695-4191-a0fa-2b187ab01fb4', 'LNEK6 P2850', 1.0), ('e587d9b6-4695-4191-a0fa-2b187ab01fb4', 'LNEK6 P2800', -1.0), ('34778437-9ac8-4fd5-b205-eb763467516d', 'LNEM6 P2950', -1.0), ('34778437-9ac8-4fd5-b205-eb763467516d', 'LNEM6 P3000', 1.0), ('8386a2a1-9fa8-40f0-b77b-196bb84ddbec', 'LNEN6 P3300', 2.0), ('8386a2a1-9fa8-40f0-b77b-196bb84ddbec', 'LNEN6 P3250', -2.0), ('LNEM6_20260226;142501_LNEM6 P3000', 'LNEM6 P3000', -1.0), ('LNEN6_20260226;142503_LNEN6 P3250', 'LNEN6 P3250', 2.0), ('LNEK6_20260226;142505_LNEK6 P2800', 'LNEK6 P2800', 1.0), ('LNEN6_20260226;142608_LNEN6 P3300', 'LNEN6 P3300', -2.0), ('LNEK6_20260226;142610_LNEK6 P2850', 'LNEK6 P2850', -1.0), ('LNEM6_20260226;162149_LNEM6 P2950', 'LNEM6 P2950', 1.0)]
+2026-02-27 18:55:02,593 - Orchestrator - INFO - Phantom reconciliation: Wrote 12 synthetic close rows to ledger
+2026-02-27 18:55:02,706 - trading_bot.tms - INFO - TMS: Invalidated thesis for e587d9b6-4695-4191-a0fa-2b187ab01fb4: Phantom reconciliation: ledger had non-zero qty with no IB position
+2026-02-27 18:55:02,707 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis e587d9b6-4695-4191-a0fa-2b187ab01fb4
+2026-02-27 18:55:02,744 - trading_bot.tms - INFO - TMS: Invalidated thesis for 34778437-9ac8-4fd5-b205-eb763467516d: Phantom reconciliation: ledger had non-zero qty with no IB position
+2026-02-27 18:55:02,744 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis 34778437-9ac8-4fd5-b205-eb763467516d
+2026-02-27 18:55:02,791 - trading_bot.tms - INFO - TMS: Invalidated thesis for 8386a2a1-9fa8-40f0-b77b-196bb84ddbec: Phantom reconciliation: ledger had non-zero qty with no IB position
+2026-02-27 18:55:02,791 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis 8386a2a1-9fa8-40f0-b77b-196bb84ddbec
+2026-02-27 18:55:02,793 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis LNEM6_20260226;142501_LNEM6 P3000
+2026-02-27 18:55:02,794 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis LNEN6_20260226;142503_LNEN6 P3250
+2026-02-27 18:55:02,796 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis LNEK6_20260226;142505_LNEK6 P2800
+2026-02-27 18:55:02,797 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis LNEN6_20260226;142608_LNEN6 P3300
+2026-02-27 18:55:02,798 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis LNEK6_20260226;142610_LNEK6 P2850
+2026-02-27 18:55:02,799 - Orchestrator - INFO - Phantom reconciliation: Invalidated thesis LNEM6_20260226;162149_LNEM6 P2950
+2026-02-27 18:55:03,060 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-02-27 18:55:03,063 - Orchestrator - WARNING - Phantom reconciliation zeroed out 12 ledger entries (IB has zero positions)
+2026-02-27 18:55:03,064 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_audit)...
+2026-02-27 18:55:06,071 - Engine.NG - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-02-27 19:05:00 UTC. Waiting for 0.16 hours.
+2026-02-27 18:56:29,633 - Orchestrator - INFO - Shutdown: Gracefully disengaging Microstructure Sentinel
