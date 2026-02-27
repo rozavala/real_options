@@ -1085,3 +1085,56 @@
 2026-02-27 17:55:06,752 - Engine.KC - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-02-27 18:05:00 UTC. Waiting for 0.16 hours.
 2026-02-27 17:55:27,969 - Orchestrator - INFO - 2026-02-27 17:55:27,968 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
 2026-02-27 17:59:40,487 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=565, market_open=True, trading_day=True
+2026-02-27 18:04:41,820 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=570, market_open=True, trading_day=True
+2026-02-27 18:05:00,006 - Engine.KC - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-02-27 18:05:00,012 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-27 18:05:00,013 - OrderManager - INFO - --- Weekly Close Triggered: Friday Weekly Close. Closing ALL positions. ---
+2026-02-27 18:05:00,016 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 34 [REMOTE/PAPER]...
+2026-02-27 18:05:01,029 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 34
+2026-02-27 18:05:01,034 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-27 18:05:01,034 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-27 18:05:01,373 - OrderManager - INFO - Found 7 live position legs in the IB account.
+2026-02-27 18:05:01,373 - OrderManager - INFO -   Filtered to 0 KC positions with non-zero quantity (from 7 total across all commodities)
+2026-02-27 18:05:01,373 - OrderManager - INFO - No open KC positions to close.
+2026-02-27 18:05:01,374 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-02-27 18:05:04,381 - Engine.KC - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-02-27 18:15:00 UTC. Waiting for 0.17 hours.
+2026-02-27 18:05:28,043 - Orchestrator - INFO - 2026-02-27 18:05:28,042 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-27 18:09:33,572 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-02-27 18:09:33,573 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-02-27 18:09:33,574 - Orchestrator - INFO - 2026-02-27 18:09:33,572 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-02-27 18:09:43,119 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=575, market_open=True, trading_day=True
+2026-02-27 18:10:04,848 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-02-27 18:10:04,849 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-02-27 18:10:04,850 - Orchestrator - INFO - 2026-02-27 18:10:04,848 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-02-27 18:10:10,056 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture.nj; usfuture; usfarm; ushmds; secdefil.
+2026-02-27 18:10:10,057 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture.nj; usfuture; usfarm; ushmds; secdefil.
+2026-02-27 18:10:10,058 - Orchestrator - INFO - 2026-02-27 18:10:10,057 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture.nj; usfuture; usfarm; ushmds; secdefil.
+2026-02-27 18:15:00,001 - Engine.KC - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-02-27 18:15:00,007 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-02-27 18:15:00,008 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-02-27 18:15:00,009 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-02-27 18:15:00,009 - OrderManager - INFO - --- Weekly Close Triggered: Friday Weekly Close. Closing ALL positions. ---
+2026-02-27 18:15:00,010 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 34 [REMOTE/PAPER]...
+2026-02-27 18:15:00,772 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 34
+2026-02-27 18:15:00,777 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-27 18:15:00,777 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-02-27 18:15:01,073 - OrderManager - INFO - Found 7 live position legs in the IB account.
+2026-02-27 18:15:01,073 - OrderManager - INFO -   Filtered to 0 KC positions with non-zero quantity (from 7 total across all commodities)
+2026-02-27 18:15:01,073 - OrderManager - INFO - No open KC positions to close.
+2026-02-27 18:15:01,074 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-02-27 18:15:04,082 - Engine.KC - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-02-27 18:25:00 UTC. Waiting for 0.17 hours.
+2026-02-27 18:15:10,176 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=580, market_open=True, trading_day=True
+2026-02-27 18:15:10,403 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 38% of average (Sev: 6)
+2026-02-27 18:15:10,409 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-02-27 18:15:28,049 - Orchestrator - INFO - 2026-02-27 18:15:28,048 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
+2026-02-27 18:20:11,470 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=585, market_open=True, trading_day=True
+2026-02-27 18:25:00,003 - Engine.KC - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-02-27 18:25:00,008 - Orchestrator - INFO - --- Emergency Hard Close Check (T-45 min) ---
+2026-02-27 18:25:00,013 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 36 [REMOTE/PAPER]...
+2026-02-27 18:25:00,376 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 36
+2026-02-27 18:25:00,381 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-02-27 18:25:05,126 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
+2026-02-27 18:25:05,127 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-02-27 18:25:08,134 - Engine.KC - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-02-27 18:35:00 UTC. Waiting for 0.16 hours.
+2026-02-27 18:25:12,767 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=590, market_open=True, trading_day=True
+2026-02-27 18:25:28,214 - Orchestrator - INFO - 2026-02-27 18:25:28,196 - root - INFO - --- Risk Monitor: Checking 0 combo position(s) ---
