@@ -372,12 +372,12 @@ with forensic_cols[0]:
         # Sentinel-triggered (e.g., "PriceSentinel")
         trigger_badge = f"📡 {trigger_raw}"
         trigger_color = "#FFA15A"
-    st.markdown(f"""
-    <div style="background-color: {trigger_color}; padding: 8px 12px;
-                border-radius: 15px; color: white; font-weight: bold; text-align: center;">
-        {html.escape(trigger_badge)}
-    </div>
-    """, unsafe_allow_html=True)
+    if trigger_lower == 'scheduled':
+        st.info(f"**{trigger_badge}**", icon="📅")
+    elif trigger_lower == 'emergency':
+        st.error(f"**{trigger_badge}**", icon="🚨")
+    else:
+        st.warning(f"**{trigger_badge}**", icon="📡")
     st.caption("Trigger Type")
 
 with forensic_cols[1]:
@@ -399,9 +399,8 @@ with forensic_cols[2]:
     if conv_val is not None:
         st.progress(conv_val, text=f"{conv_val:.2f}")
         st.caption("Conviction Pipeline")
-        st.markdown(
-            "<small>1.0 = full conviction. 0.70 = divergent (partial dampening). 0.50 = high disagreement</small>",
-            unsafe_allow_html=True,
+        st.caption(
+            "1.0 = full conviction. 0.70 = divergent (partial dampening). 0.50 = high disagreement",
             help="1.0 = full conviction (FULL alignment). 0.70 = divergent (partial dampening). 0.50 = high disagreement"
         )
     else:
@@ -412,12 +411,14 @@ with forensic_cols[3]:
     thesis_str = safe_display(row.get('thesis_strength'), "UNKNOWN")
     ts_colors = {'PROVEN': '#00CC96', 'PLAUSIBLE': '#FFA15A', 'SPECULATIVE': '#EF553B'}
     ts_color = ts_colors.get(thesis_str, '#888888')
-    st.markdown(f"""
-    <div style="background-color: {ts_color}; padding: 8px 12px;
-                border-radius: 15px; color: white; font-weight: bold; text-align: center;">
-        {html.escape(thesis_str)}
-    </div>
-    """, unsafe_allow_html=True)
+    if thesis_str == 'PROVEN':
+        st.success(f"**{thesis_str}**")
+    elif thesis_str == 'PLAUSIBLE':
+        st.warning(f"**{thesis_str}**")
+    elif thesis_str == 'SPECULATIVE':
+        st.error(f"**{thesis_str}**")
+    else:
+        st.info(f"**{thesis_str}**")
     st.caption("Thesis Strength")
 
 st.markdown("---")
@@ -439,18 +440,14 @@ else:
 # === v7.1: Thesis Strength Badge ===
 thesis_strength = safe_display(row.get('thesis_strength'), "UNKNOWN")
 if thesis_strength != "UNKNOWN":
-    thesis_colors = {
-        'PROVEN': '#00CC96',      # Green
-        'PLAUSIBLE': '#FFA15A',   # Orange
-        'SPECULATIVE': '#EF553B', # Red
-    }
-    thesis_color = thesis_colors.get(thesis_strength, '#888888')
-    st.markdown(f"""
-    <div style="display: inline-block; background-color: {thesis_color}; padding: 5px 15px;
-                border-radius: 20px; color: white; font-weight: bold; margin-bottom: 10px;">
-        Thesis: {html.escape(thesis_strength)}
-    </div>
-    """, unsafe_allow_html=True)
+    if thesis_strength == 'PROVEN':
+        st.success(f"**Thesis: {thesis_strength}**")
+    elif thesis_strength == 'PLAUSIBLE':
+        st.warning(f"**Thesis: {thesis_strength}**")
+    elif thesis_strength == 'SPECULATIVE':
+        st.error(f"**Thesis: {thesis_strength}**")
+    else:
+        st.info(f"**Thesis: {thesis_strength}**")
 
 # === v7.1: Primary Catalyst ===
 primary_catalyst = safe_display(row.get('primary_catalyst'), "N/A")
@@ -460,12 +457,12 @@ master_cols = st.columns(4)
 
 with master_cols[0]:
     decision = row.get('master_decision', 'N/A')
-    color = "#00CC96" if decision == 'BULLISH' else "#EF553B" if decision == 'BEARISH' else "#888888"
-    st.markdown(f"""
-    <div style="background-color: {color}; padding: 20px; border-radius: 10px; text-align: center;">
-        <h2 style="color: white; margin: 0;">{html.escape(decision)}</h2>
-    </div>
-    """, unsafe_allow_html=True)
+    if decision == 'BULLISH':
+        st.success(f"## {decision}")
+    elif decision == 'BEARISH':
+        st.error(f"## {decision}")
+    else:
+        st.info(f"## {decision}")
 
 with master_cols[1]:
     confidence = row.get('master_confidence', 0)
