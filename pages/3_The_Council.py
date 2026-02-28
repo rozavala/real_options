@@ -8,14 +8,12 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
 import sys
 import os
 import html
-from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dashboard_utils import load_council_history, get_status_color, load_trade_journal, find_journal_entry, load_prompt_traces
+from dashboard_utils import load_council_history, load_trade_journal, find_journal_entry, load_prompt_traces
 
 st.set_page_config(layout="wide", page_title="Council | Real Options")
 
@@ -316,16 +314,16 @@ if vote_breakdown_raw and pd.notna(vote_breakdown_raw) and str(vote_breakdown_ra
             # Metrics row
             metric_cols = st.columns(4)
             with metric_cols[0]:
-                st.metric("Dominant Agent", row.get('dominant_agent', 'Unknown'))
+                st.metric("Dominant Agent", row.get('dominant_agent', 'Unknown'), help="The agent with the strongest conviction that drove the final decision.")
             with metric_cols[1]:
                 ws = row.get('weighted_score', 0)
-                st.metric("Weighted Score", f"{float(ws):.4f}" if ws else "N/A")
+                st.metric("Weighted Score", f"{float(ws):.4f}" if ws else "N/A", help="The sum of all active agent votes multiplied by their historical reliability weights. Ranges from -1.0 (Strong Bear) to +1.0 (Strong Bull).")
             with metric_cols[2]:
                 active = len([v for v in vote_data if v.get('direction') != 'NEUTRAL'])
-                st.metric("Active Voters", f"{active}/{len(vote_data)}")
+                st.metric("Active Voters", f"{active}/{len(vote_data)}", help="Number of agents that had a clear directional opinion versus those that remained neutral.")
             with metric_cols[3]:
                 trigger = row.get('trigger_type', 'scheduled')
-                st.metric("Trigger", trigger.replace('_', ' ').title())
+                st.metric("Trigger", trigger.replace('_', ' ').title(), help="What initiated this decision (e.g., scheduled event, sentinel alert, emergency intervention).")
         else:
             st.info("ℹ️ Vote breakdown is empty for this decision")
 
@@ -473,12 +471,12 @@ with master_cols[1]:
         confidence = 0.0
     else:
         confidence = float(confidence)
-    st.metric("Confidence", f"{confidence:.1%}")
+    st.metric("Confidence", f"{confidence:.1%}", help="The Master Strategist's stated confidence in its decision, from 0% to 100%. Impacts position sizing.")
 
 with master_cols[2]:
     approved = row.get('compliance_approved', True)
     status = "✅ Approved" if approved else "❌ Vetoed"
-    st.metric("Compliance", status)
+    st.metric("Compliance", status, help="Whether the decision passed all hard-coded risk rails (e.g., VaR limits, invalid contract formats, maximum exposure) before execution.")
 
 with master_cols[3]:
     conviction = row.get('conviction_multiplier', 'N/A')
@@ -486,11 +484,11 @@ with master_cols[3]:
         try:
             conv_val = round(float(conviction), 2)
             conv_label = {1.0: "✅ Aligned", 0.75: "⚠️ Partial", 0.70: "🔻 Divergent", 0.65: "🔻 Divergent", 0.5: "🔻 Divergent"}.get(conv_val, f"{conv_val:.2f}")
-            st.metric("Consensus", conv_label)
+            st.metric("Consensus", conv_label, help="Multiplier applied to trade size based on agent alignment. 1.0 = unanimous consensus; lower values indicate dissent and reduce position size.")
         except (ValueError, TypeError):
-            st.metric("Consensus", "N/A")
+            st.metric("Consensus", "N/A", help="Multiplier applied to trade size based on agent alignment.")
     else:
-        st.metric("Consensus", "N/A")
+        st.metric("Consensus", "N/A", help="Multiplier applied to trade size based on agent alignment.")
 
 # Reasoning
 st.markdown("**Master Reasoning:**")
