@@ -54,7 +54,10 @@ class BrierScoreTracker:
 
             # Normalize agent names
             from trading_bot.agent_names import normalize_agent_name
-            df['agent'] = df['agent'].apply(normalize_agent_name)
+            # Vectorized alternative to apply() for performance: map unique agents
+            unique_agents = df['agent'].unique()
+            agent_mapping = {agent: normalize_agent_name(agent) for agent in unique_agents}
+            df['agent'] = df['agent'].map(agent_mapping)
 
             # Ensure 'correct' is numeric
             df['correct'] = pd.to_numeric(df['correct'], errors='coerce').fillna(0)
@@ -698,7 +701,10 @@ def _append_to_legacy_accuracy(resolved_df: pd.DataFrame, data_dir: str = None):
         resolved_df = resolved_df.copy()
 
         # Normalize agent names
-        resolved_df['agent'] = resolved_df['agent'].apply(normalize_agent_name)
+        # Vectorized alternative to apply() for performance: map unique agents
+        unique_agents = resolved_df['agent'].unique()
+        agent_mapping = {agent: normalize_agent_name(agent) for agent in unique_agents}
+        resolved_df['agent'] = resolved_df['agent'].map(agent_mapping)
 
         # Calculate correctness
         resolved_df['correct'] = (

@@ -194,7 +194,8 @@ class DatabentoPriceProvider(PriceDataProvider):
         # --- ICE parent symbology: filter outrights, pick front month ---
         if is_parent and 'symbol' in df.columns:
             # Filter to outrights only (exclude calendar spreads)
-            df = df[df['symbol'].apply(is_outright_symbol)]
+            # Vectorized alternative to apply(is_outright_symbol) for performance
+            df = df[df['symbol'].str.strip().str.endswith('!')]
             if df.empty:
                 logger.warning(f"Databento: no outright contracts found for {ticker}")
                 return None

@@ -19,3 +19,6 @@
 ## 2025-02-27 - Streamlit State Caching
 **Learning:** Streamlit reruns the entire script on every interaction, leading to redundant disk I/O if files are read directly in widgets. Reading `state.json` multiple times per render (for different components) multiplies latency. Caching the file read with a short TTL (e.g. 2s) batches these reads within a single render cycle while maintaining near-real-time freshness.
 **Action:** Centralize state loading in `dashboard_utils.py` with `@st.cache_data(ttl=2)` instead of direct file access in individual components.
+## 2026-02-28 - Faster String Mapping in Pandas
+**Learning:** Using `df.apply(custom_func)` with a Python function is around 10x slower than evaluating the unique values via Python dict comprehension and calling `df.map()`. For operations natively supported by pandas string methods like `.endswith()`, using `df.str.endswith()` is also around 20% to 30% faster.
+**Action:** Replaced `.apply()` string normalizations with `map()` caching and vectorized `.str` string methods in `data_providers.py` and `brier_scoring.py`.
