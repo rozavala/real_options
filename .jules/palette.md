@@ -33,3 +33,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-23 - Standardizing Contextual Clarity across Dashboard Pages
 **Learning:** In multi-page trading dashboards, inconsistent tooltip usage and status indicators across different pages can create cognitive friction. Users expect a "unified language" for metrics (e.g., Net Liquidation, VaR) regardless of which page they are viewing.
 **Action:** Standardize tooltip descriptions for identical metrics across all pages. Use semantic containers (`st.success`, `st.warning`, `st.error`) instead of manual markdown styling for system statuses to provide a consistent visual hierarchy and better scannability.
+
+## 2026-02-24 - Human-Readable Temporal Context
+**Learning:** In dashboards where decisions are historical (like trade logs or agent councils), absolute timestamps (e.g., "2025-02-24 10:00") are harder to process than relative durations (e.g., "2h ago"). Combining both—absolute for precision and relative for quick context—in selection dropdowns and page headers drastically improves the "time-to-insight".
+**Action:** Use a centralized `_relative_time` utility to append human-readable durations to all high-impact timestamps in dropdowns and headers.

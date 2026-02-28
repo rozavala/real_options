@@ -33,7 +33,8 @@ from dashboard_utils import (
     get_commodity_profile,
     load_task_schedule_status,
     load_deduplicator_metrics,
-    _resolve_data_path
+    _resolve_data_path,
+    _relative_time
 )
 from trading_bot.calendars import is_trading_day
 from config.commodity_profiles import get_commodity_profile as get_profile_dataclass, parse_trading_hours
@@ -456,33 +457,6 @@ def render_prediction_markets():
     except Exception as e:
         st.error(f"Error loading prediction market data: {e}")
 
-def _relative_time(ts) -> str:
-    """Format a timestamp as a human-readable relative time string."""
-    try:
-        if isinstance(ts, str):
-            ts = pd.Timestamp(ts)
-
-        # Standardize to UTC-aware datetime
-        if not hasattr(ts, 'tzinfo') or ts.tzinfo is None:
-            ts = ts.astimezone(timezone.utc)
-        elif hasattr(ts, 'tz_convert'):
-            ts = ts.tz_convert('UTC')
-
-        now = datetime.now(timezone.utc)
-        delta = now - ts
-        seconds = delta.total_seconds()
-        if seconds < 60:
-            return "just now"
-        elif seconds < 3600:
-            return f"{int(seconds // 60)}m ago"
-        elif seconds < 86400:
-            return f"{int(seconds // 3600)}h ago"
-        elif seconds < 172800:
-            return "yesterday"
-        else:
-            return f"{int(seconds // 86400)}d ago"
-    except Exception:
-        return "N/A"
 
 
 st.set_page_config(layout="wide", page_title="Cockpit | Real Options")
