@@ -522,7 +522,13 @@ with digest_cols[0]:
         with st.spinner("Generating System Health Digest..."):
             try:
                 from trading_bot.system_digest import generate_system_digest
-                digest = generate_system_digest(config)
+                # Ensure data_dir is set for the digest generator
+                # (orchestrator sets this at runtime, dashboard must set it explicitly)
+                digest_config = dict(config)
+                if 'data_dir' not in digest_config:
+                    digest_config['data_dir'] = os.path.join(
+                        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+                digest = generate_system_digest(digest_config)
 
                 if digest:
                     # Health score banner
