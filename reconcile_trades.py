@@ -792,8 +792,9 @@ async def full_reconciliation(config: dict) -> int:
     """
     logger.info("Running FULL trade reconciliation (no date limit)")
 
-    # Run main with 365 days lookback
-    missing, superfluous = await main(lookback_days=365)
+    # Run main with 365 days lookback — pass config to ensure correct
+    # commodity prefix filtering (without it, defaults to KC)
+    missing, superfluous = await main(lookback_days=365, config=config)
 
     count = len(missing) + len(superfluous)
     if count > 0:

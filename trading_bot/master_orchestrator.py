@@ -270,11 +270,13 @@ async def _post_close_service(shared: SharedContext, config: dict):
 
             # 2. Trade reconciliation
             try:
+                import copy
                 from reconcile_trades import main as run_reconciliation
                 for ticker in shared.active_commodities:
-                    ticker_config = config.copy()
+                    ticker_config = copy.deepcopy(config)
                     ticker_config['data_dir'] = os.path.join('data', ticker)
                     ticker_config['symbol'] = ticker
+                    ticker_config.setdefault('commodity', {})['ticker'] = ticker
                     await run_reconciliation(config=ticker_config)
             except Exception as e:
                 logger.error(f"Post-close reconciliation failed: {e}")

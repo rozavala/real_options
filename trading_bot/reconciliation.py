@@ -306,6 +306,20 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                     logger.warning(f"Could not parse contract string: {contract_str}")
                     continue
 
+                # Skip contracts expired more than 60 days ago — IBKR HMDS
+                # returns no data for long-expired contracts (Error 162),
+                # and retrying every cycle is futile.
+                try:
+                    expiry_date = datetime.strptime(last_trade_date, '%Y%m%d')
+                    if (datetime.now() - expiry_date).days > 60:
+                        logger.info(
+                            f"Skipping reconciliation for expired contract "
+                            f"{contract_str} (>{60} days past expiry)"
+                        )
+                        continue
+                except Exception:
+                    pass  # If date can't be parsed, proceed normally
+
                 contract = Contract()
                 contract.symbol = config.get('symbol', 'KC')
                 contract.secType = 'FUT'
