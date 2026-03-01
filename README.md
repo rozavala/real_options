@@ -175,7 +175,7 @@ git push origin production
 
 -   **Runtime:** Python 3.11+, `asyncio`
 -   **Execution:** Interactive Brokers Gateway (`ib_insync`)
--   **AI:** Google Gemini (1.5 Pro/Flash), OpenAI (GPT-4o), Anthropic (Claude 3.5 Sonnet/Haiku), xAI (Grok)
+-   **AI:** Google Gemini (1.5 Pro/Flash), OpenAI (GPT-5.2/o3), Anthropic (Claude 4.6 Sonnet/Haiku), xAI (Grok 4.1)
 -   **Memory:** ChromaDB (Vector Store)
 -   **Data Sources:**
     -   **Market Data:** IBKR, yfinance (History/VaR)

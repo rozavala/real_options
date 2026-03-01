@@ -15,7 +15,7 @@ import html
 from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dashboard_utils import load_council_history, get_status_color, load_trade_journal, find_journal_entry, load_prompt_traces
+from dashboard_utils import load_council_history, get_status_color, load_trade_journal, find_journal_entry, load_prompt_traces, _relative_time
 
 st.set_page_config(layout="wide", page_title="Council | Real Options")
 
@@ -82,7 +82,7 @@ if mode == "Calendar":
             st.stop()
 
         daily_decisions['display'] = daily_decisions.apply(
-            lambda r: f"{r['timestamp'].strftime('%H:%M:%S')} | {r.get('contract', 'Unknown')} | {r.get('master_decision', 'N/A')}",
+            lambda r: f"{r['timestamp'].strftime('%H:%M:%S')} ({_relative_time(r['timestamp'])}) | {r.get('contract', 'Unknown')} | {r.get('master_decision', 'N/A')}",
             axis=1
         )
 
@@ -95,7 +95,7 @@ if mode == "Calendar":
 else:
     # Traditional sorted dropdown
     council_df['display'] = council_df.apply(
-        lambda r: f"{r['timestamp'].strftime('%Y-%m-%d %H:%M')} | {r.get('contract', 'Unknown')} | {r.get('master_decision', 'N/A')}",
+        lambda r: f"{r['timestamp'].strftime('%Y-%m-%d %H:%M')} ({_relative_time(r['timestamp'])}) | {r.get('contract', 'Unknown')} | {r.get('master_decision', 'N/A')}",
         axis=1
     )
 
@@ -107,6 +107,9 @@ else:
     selected_idx = council_df[council_df['display'] == selected].index[0]
 
 row = council_df.loc[selected_idx]
+
+# Display details for selected decision
+st.caption(f"📍 **Selected Decision:** {row['timestamp'].strftime('%Y-%m-%d %H:%M:%S UTC')} ({_relative_time(row['timestamp'])})")
 
 # === SIDEBAR: Consensus Meter ===
 with st.sidebar:
@@ -316,16 +319,20 @@ if vote_breakdown_raw and pd.notna(vote_breakdown_raw) and str(vote_breakdown_ra
             # Metrics row
             metric_cols = st.columns(4)
             with metric_cols[0]:
-                st.metric("Dominant Agent", row.get('dominant_agent', 'Unknown'))
+                st.metric("Dominant Agent", row.get('dominant_agent', 'Unknown'),
+                          help="The agent whose vote had the highest influence on the final decision.")
             with metric_cols[1]:
                 ws = row.get('weighted_score', 0)
-                st.metric("Weighted Score", f"{float(ws):.4f}" if ws else "N/A")
+                st.metric("Weighted Score", f"{float(ws):.4f}" if ws else "N/A",
+                          help="The final consensus score (-1.0 to 1.0) calculated from all agent votes.")
             with metric_cols[2]:
                 active = len([v for v in vote_data if v.get('direction') != 'NEUTRAL'])
-                st.metric("Active Voters", f"{active}/{len(vote_data)}")
+                st.metric("Active Voters", f"{active}/{len(vote_data)}",
+                          help="Number of agents who provided a non-neutral sentiment.")
             with metric_cols[3]:
                 trigger = row.get('trigger_type', 'scheduled')
-                st.metric("Trigger", trigger.replace('_', ' ').title())
+                st.metric("Trigger", trigger.replace('_', ' ').title(),
+                          help="The event or schedule that initiated this Council deliberation.")
         else:
             st.info("ℹ️ Vote breakdown is empty for this decision")
 
@@ -470,12 +477,14 @@ with master_cols[1]:
         confidence = 0.0
     else:
         confidence = float(confidence)
-    st.metric("Confidence", f"{confidence:.1%}")
+    st.metric("Confidence", f"{confidence:.1%}",
+              help="The Master Strategist's certainty level in the chosen strategy.")
 
 with master_cols[2]:
     approved = row.get('compliance_approved', True)
     status = "✅ Approved" if approved else "❌ Vetoed"
-    st.metric("Compliance", status)
+    st.metric("Compliance", status,
+              help="Whether the trade passed all safety and risk guardrails.")
 
 with master_cols[3]:
     conviction = row.get('conviction_multiplier', 'N/A')
@@ -483,11 +492,12 @@ with master_cols[3]:
         try:
             conv_val = round(float(conviction), 2)
             conv_label = {1.0: "✅ Aligned", 0.75: "⚠️ Partial", 0.70: "🔻 Divergent", 0.65: "🔻 Divergent", 0.5: "🔻 Divergent"}.get(conv_val, f"{conv_val:.2f}")
-            st.metric("Consensus", conv_label)
+            st.metric("Consensus", conv_label,
+                      help="Degree of alignment among voting agents.")
         except (ValueError, TypeError):
-            st.metric("Consensus", "N/A")
+            st.metric("Consensus", "N/A", help="Degree of alignment among voting agents.")
     else:
-        st.metric("Consensus", "N/A")
+        st.metric("Consensus", "N/A", help="Degree of alignment among voting agents.")
 
 # Reasoning
 st.markdown("**Master Reasoning:**")
@@ -523,23 +533,28 @@ if pd.notna(actual_trend) and actual_trend:
 
     with outcome_cols[1]:
         trend_icon = "📈" if actual_trend == "UP" else "📉"
-        st.metric("Market Move", f"{trend_icon} {actual_trend}")
+        st.metric("Market Move", f"{trend_icon} {actual_trend}",
+                  help="The actual realized direction of the market after the decision.")
 
     with outcome_cols[2]:
         exit_price = row.get('exit_price', None)
         if pd.notna(exit_price):
-            st.metric("Exit Price", f"${float(exit_price):.2f}")
+            st.metric("Exit Price", f"${float(exit_price):.2f}",
+                      help="The price at which the position was closed.")
         else:
-            st.metric("Exit Price", "Pending")
+            st.metric("Exit Price", "Pending",
+                      help="The price at which the position was closed.")
 
     with outcome_cols[3]:
         pnl = row.get('pnl_realized', None)
         if pd.notna(pnl):
             pnl_val = float(pnl)
             delta_color = "normal" if pnl_val >= 0 else "inverse"
-            st.metric("P&L", f"${pnl_val:.2f}", delta_color=delta_color)
+            st.metric("P&L", f"${pnl_val:.2f}", delta_color=delta_color,
+                      help="Realized Profit and Loss for this trade.")
         else:
-            st.metric("P&L", "Pending")
+            st.metric("P&L", "Pending",
+                      help="Realized Profit and Loss for this trade.")
 else:
     st.info("⏳ Decision pending reconciliation (T+1)")
 

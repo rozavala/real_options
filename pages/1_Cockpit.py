@@ -33,7 +33,8 @@ from dashboard_utils import (
     get_commodity_profile,
     load_task_schedule_status,
     load_deduplicator_metrics,
-    _resolve_data_path
+    _resolve_data_path,
+    _relative_time
 )
 from trading_bot.calendars import is_trading_day
 from config.commodity_profiles import get_commodity_profile as get_profile_dataclass, parse_trading_hours
@@ -456,33 +457,6 @@ def render_prediction_markets():
     except Exception as e:
         st.error(f"Error loading prediction market data: {e}")
 
-def _relative_time(ts) -> str:
-    """Format a timestamp as a human-readable relative time string."""
-    try:
-        if isinstance(ts, str):
-            ts = pd.Timestamp(ts)
-
-        # Standardize to UTC-aware datetime
-        if not hasattr(ts, 'tzinfo') or ts.tzinfo is None:
-            ts = ts.astimezone(timezone.utc)
-        elif hasattr(ts, 'tz_convert'):
-            ts = ts.tz_convert('UTC')
-
-        now = datetime.now(timezone.utc)
-        delta = now - ts
-        seconds = delta.total_seconds()
-        if seconds < 60:
-            return "just now"
-        elif seconds < 3600:
-            return f"{int(seconds // 60)}m ago"
-        elif seconds < 86400:
-            return f"{int(seconds // 3600)}h ago"
-        elif seconds < 172800:
-            return "yesterday"
-        else:
-            return f"{int(seconds // 86400)}d ago"
-    except Exception:
-        return "N/A"
 
 
 st.set_page_config(layout="wide", page_title="Cockpit | Real Options")
@@ -848,21 +822,21 @@ if task_data['available']:
         # Summary metrics
         ts_cols = st.columns(5)
         with ts_cols[0]:
-            st.metric("Total Tasks", total)
+            st.metric("Total Tasks", total, help="Total number of tasks scheduled for today.")
         with ts_cols[1]:
-            st.metric("Completed", f"✅ {completed}")
+            st.metric("Completed", f"✅ {completed}", help="Tasks successfully executed today.")
         with ts_cols[2]:
             if overdue > 0:
-                st.metric("Overdue", f"⚠️ {overdue}")
+                st.metric("Overdue", f"⚠️ {overdue}", help="Tasks that missed their scheduled time window.")
             else:
-                st.metric("Overdue", "0")
+                st.metric("Overdue", "0", help="Tasks that missed their scheduled time window.")
         with ts_cols[3]:
             if skipped > 0:
-                st.metric("Skipped", f"⏭️ {skipped}")
+                st.metric("Skipped", f"⏭️ {skipped}", help="Tasks skipped (e.g., due to market conditions or system state).")
             else:
-                st.metric("Skipped", "0")
+                st.metric("Skipped", "0", help="Tasks skipped (e.g., due to market conditions or system state).")
         with ts_cols[4]:
-            st.metric("Upcoming", f"⏳ {upcoming}")
+            st.metric("Upcoming", f"⏳ {upcoming}", help="Tasks yet to be executed today.")
 
         # Task timeline table
         STATUS_ICONS = {
@@ -1071,25 +1045,24 @@ if config:
             for _, _r in _recent.iterrows():
                 _ts = _r.get('timestamp', '')
                 _pnl_val = pd.to_numeric(_r.get('pnl_realized', None), errors='coerce')
-                if pd.notna(_pnl_val) and _pnl_val != 0:
-                    _outcome = f"${_pnl_val:+,.0f}"
-                else:
-                    _outcome = "Open"
+                # Keep outcome as numeric for proper sorting and formatting via NumberColumn
+                _outcome_val = _pnl_val if (pd.notna(_pnl_val) and _pnl_val != 0) else None
 
                 _trigger = str(_r.get('trigger_type', 'scheduled')).replace('_', ' ').title()
                 _decision = _r.get('master_decision', 'N/A')
                 _strategy = str(_r.get('strategy_type', 'N/A')).replace('_', ' ').title()
                 _conf = _r.get('master_confidence', None)
-                _conf_str = f"{float(_conf)*100:.0f}%" if pd.notna(_conf) else "N/A"
+                # Keep confidence as float for ProgressColumn (0-100)
+                _conf_val = float(_conf) * 100 if pd.notna(_conf) else None
 
                 _display_rows.append({
                     'Time': _relative_time(_ts),
                     'Trigger': _trigger,
                     'Decision': _decision,
-                    'Confidence': _conf_str,
+                    'Confidence': _conf_val,
                     'Strategy': _strategy,
                     'Strength': _r.get('thesis_strength', 'N/A'),
-                    'Outcome': _outcome,
+                    'Outcome': _outcome_val,
                 })
             _display_df = pd.DataFrame(_display_rows)
             st.dataframe(
@@ -1097,13 +1070,25 @@ if config:
                 hide_index=True,
                 width="stretch",
                 column_config={
-                    'Time': st.column_config.TextColumn(width='small'),
-                    'Trigger': st.column_config.TextColumn(width='small'),
-                    'Decision': st.column_config.TextColumn(width='small'),
-                    'Confidence': st.column_config.TextColumn(width='small'),
-                    'Strategy': st.column_config.TextColumn(width='medium'),
-                    'Strength': st.column_config.TextColumn(width='small'),
-                    'Outcome': st.column_config.TextColumn(width='small'),
+                    'Time': st.column_config.TextColumn("Time", width='small', help="Time since the decision was made."),
+                    'Trigger': st.column_config.TextColumn("Trigger", width='small', help="The event or sentinel that triggered this decision cycle."),
+                    'Decision': st.column_config.TextColumn("Decision", width='small', help="The final decision rendered by the Master Strategist."),
+                    'Confidence': st.column_config.ProgressColumn(
+                        "Confidence",
+                        width='small',
+                        min_value=0,
+                        max_value=100,
+                        format="%.0f%%",
+                        help="The confidence level of the Master Strategist's decision (0-100%)."
+                    ),
+                    'Strategy': st.column_config.TextColumn("Strategy", width='medium', help="The trading strategy applied for this decision."),
+                    'Strength': st.column_config.TextColumn("Strength", width='small', help="The strength of the underlying trading thesis (Proven/Plausible/Speculative)."),
+                    'Outcome': st.column_config.NumberColumn(
+                        "Outcome",
+                        width='small',
+                        format="$%.2f",
+                        help="The realized Profit and Loss for this trade."
+                    ),
                 }
             )
         else:
@@ -1148,7 +1133,7 @@ if active_theses:
     thesis_cols = st.columns(4)
 
     with thesis_cols[0]:
-        st.metric("Active Positions", len(active_theses))
+        st.metric("Active Positions", len(active_theses), help="Number of currently active positions.")
 
     with thesis_cols[1]:
         # Count by strategy
@@ -1157,17 +1142,17 @@ if active_theses:
             s = t['strategy_type']
             strategy_counts[s] = strategy_counts.get(s, 0) + 1
         dominant = max(strategy_counts.items(), key=lambda x: x[1])[0] if strategy_counts else 'None'
-        st.metric("Dominant Strategy", dominant.replace('_', ' ').title())
+        st.metric("Dominant Strategy", dominant.replace('_', ' ').title(), help="The most common strategy among active positions.")
 
     with thesis_cols[2]:
         # Average age
         avg_age = sum(t['age_hours'] for t in active_theses) / len(active_theses)
-        st.metric("Avg Position Age", f"{avg_age:.1f}h")
+        st.metric("Avg Position Age", f"{avg_age:.1f}h", help="Average time elapsed since positions were opened.")
 
     with thesis_cols[3]:
         # Average confidence
         avg_conf = sum(t['confidence'] for t in active_theses) / len(active_theses)
-        st.metric("Avg Entry Confidence", f"{avg_conf:.0%}")
+        st.metric("Avg Entry Confidence", f"{avg_conf:.0%}", help="Average Council confidence score across all active positions.")
 
     st.markdown("")
 

@@ -104,7 +104,11 @@ class TestStrategy(unittest.TestCase):
         import os
 
         # Patch environment with fake LLM key to pass validation
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_key"}):
+        with patch.dict(os.environ, {
+            "GEMINI_API_KEY": "fake_key",
+            "PUSHOVER_USER_KEY": "fake_key",
+            "PUSHOVER_API_TOKEN": "fake_key"
+        }):
             config = load_config()
 
         tuning = config.get('strategy_tuning', {})

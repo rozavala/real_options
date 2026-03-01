@@ -26,6 +26,10 @@ This journal records CRITICAL UX/accessibility learnings.
 **Learning:** In data-dense trading dashboards, metrics and high-impact buttons can be ambiguous to new or stressed users. Using the `help` parameter in `st.metric` and `st.button` provides essential "just-in-time" documentation without cluttering the visual interface.
 **Action:** Always provide descriptive tooltips for system-level metrics (e.g., Python/Streamlit versions, UTC time) and high-stakes manual triggers (e.g., Force Generate) to reduce cognitive load and operational risk.
 
+## 2026-02-25 - Native Numeric Sorting in Dataframes
+**Learning:** Streamlit's `st.dataframe` sorts columns alphabetically if they contain strings (like '$10.00' or '85%'). This breaks the usability of financial tables.
+**Action:** Always convert formatted strings to numeric types before rendering in `st.dataframe`. Use `st.column_config.NumberColumn` for currency formatting and `st.column_config.ProgressColumn` for percentages to maintain visual polish while enabling native numeric sorting.
+
 ## 2026-02-24 - Semantic Containers for Scannability
 **Learning:** Using `st.success`, `st.error`, and `st.info` as wrappers for text content (not just alerts) provides immediate, color-coded context that improves scannability for sentiment-heavy data.
 **Action:** Apply this pattern when displaying categorical data with strong positive/negative connotations (like Bullish/Bearish sentiment) to reduce cognitive load.
@@ -33,3 +37,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-23 - Standardizing Contextual Clarity across Dashboard Pages
 **Learning:** In multi-page trading dashboards, inconsistent tooltip usage and status indicators across different pages can create cognitive friction. Users expect a "unified language" for metrics (e.g., Net Liquidation, VaR) regardless of which page they are viewing.
 **Action:** Standardize tooltip descriptions for identical metrics across all pages. Use semantic containers (`st.success`, `st.warning`, `st.error`) instead of manual markdown styling for system statuses to provide a consistent visual hierarchy and better scannability.
+
+## 2026-02-24 - Human-Readable Temporal Context
+**Learning:** In dashboards where decisions are historical (like trade logs or agent councils), absolute timestamps (e.g., "2025-02-24 10:00") are harder to process than relative durations (e.g., "2h ago"). Combining both—absolute for precision and relative for quick context—in selection dropdowns and page headers drastically improves the "time-to-insight".
+**Action:** Use a centralized `_relative_time` utility to append human-readable durations to all high-impact timestamps in dropdowns and headers.
