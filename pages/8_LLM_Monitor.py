@@ -66,10 +66,10 @@ if budget:
         throttle_color = "red"
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Daily Spend", f"${daily_spend:.2f}")
-    col2.metric("Remaining", f"${remaining:.2f}")
-    col3.metric("Requests", str(request_count))
-    col4.metric("Throttle", throttle_label)
+    col1.metric("Daily Spend", f"${daily_spend:.2f}", help="Total LLM API cost incurred today across all agents (resets at midnight UTC).")
+    col2.metric("Remaining", f"${remaining:.2f}", help="Remaining budget before graduated throttling begins.")
+    col3.metric("Requests", str(request_count), help="Total number of successful LLM API requests made today.")
+    col4.metric("Throttle", throttle_label, help="Current system throttling level. Normal operation is 'All Clear'.")
 
     # Progress bar
     if pct_used < 50:
@@ -101,8 +101,8 @@ x_api_calls = budget.get('x_api_calls', 0) if budget else 0
 x_api_cost = budget.get('x_api_cost', 0.0) if budget else 0.0
 
 col1, col2, col3 = st.columns(3)
-col1.metric("API Calls Today", str(x_api_calls))
-col2.metric("Estimated Cost Today", f"${x_api_cost:.4f}")
+col1.metric("API Calls Today", str(x_api_calls), help="Number of requests made to the X (Twitter) API today.")
+col2.metric("Estimated Cost Today", f"${x_api_cost:.4f}", help="Estimated cost based on configured per-call rates.")
 col3.caption(
     "X Bearer API costs are tracked separately from LLM spend. "
     "Per-call rate is configured in config/api_costs.json."
