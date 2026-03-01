@@ -9,11 +9,12 @@ The system is organized into a tiered architecture:
 ### Tier 1: Always-On Sentinels
 Sentinels are lightweight monitors that observe external data sources and trigger the decision pipeline when significant events occur.
 - **PriceSentinel:** Monitors for rapid price movements or liquidity gaps.
-- **WeatherSentinel:** Tracks weather patterns in key commodity regions (e.g., Brazil for Coffee).
+- **WeatherSentinel:** Tracks weather patterns in key commodity regions (e.g., Brazil for Coffee (KC) or Cocoa (CC)).
 - **LogisticsSentinel:** Monitors RSS feeds for strikes, port closures, or canal disruptions.
 - **NewsSentinel:** Scans news feeds for fundamental shifts.
 - **XSentimentSentinel:** Analyzes social media sentiment on X (via xAI).
 - **PredictionMarketSentinel:** Monitors Polymarket odds for geopolitical or macro events.
+- **TopicDiscoveryAgent:** Dynamically scans Polymarket for new, relevant topics using Claude Haiku to auto-configure the PredictionMarketSentinel.
 - **MacroContagionSentinel:** Detects cross-asset contagion (e.g., DXY, Gold correlation).
 - **FundamentalRegimeSentinel:** Determines long-term surplus/deficit regimes.
 - **MicrostructureSentinel:** Monitors order book depth and flow toxicity.
@@ -44,7 +45,7 @@ A set of agents that synthesize the analysts' reports.
 
 ## Infrastructure
 
-- **Master Orchestrator:** Manages multi-commodity instances.
+- **Master Orchestrator:** Manages multi-commodity instances for active tickers (Coffee, Cocoa, Natural Gas).
 - **Commodity Engine:** Runs the per-commodity loop.
 - **Heterogeneous Router:** Dispatches LLM calls to Gemini, OpenAI, Anthropic, or xAI.
 - **Semantic Cache:** Caches decisions to optimize costs and latency.
@@ -63,3 +64,4 @@ The system uses a **Transactive Memory System (TMS)** powered by ChromaDB. This 
 2. **Scheduled Cycle:** Runs 3 times per session (at 20%, 62%, and 80% of session duration) to generate daily orders.
 3. **Position Audit Cycle:** Regularly reviews open positions against their original entry thesis to decide on early exits.
 4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day.
+5. **System Health Digest Cycle:** Generates a daily post-close JSON summary of system health, agent calibration, and error telemetry without interacting with IBKR or live LLMs.

@@ -4,7 +4,7 @@ An event-driven, multi-agent AI trading system for commodity futures options. Us
 
 ## Architecture: The Federated Cognitive Lattice
 
-The system operates on a tiered, event-driven architecture designed for modularity, fail-safety, and heterogeneous intelligence. The default execution mode is **Multi-Commodity**, where a `MasterOrchestrator` manages isolated `CommodityEngine` instances for each active ticker (e.g., Coffee, Cocoa).
+The system operates on a tiered, event-driven architecture designed for modularity, fail-safety, and heterogeneous intelligence. The default execution mode is **Multi-Commodity**, where a `MasterOrchestrator` manages isolated `CommodityEngine` instances for each active ticker (e.g., Coffee (KC), Cocoa (CC), Natural Gas (NG)).
 
 ```mermaid
 graph TD
@@ -77,7 +77,7 @@ graph TD
 
 ### Core Components
 
-1.  **Master Orchestrator (`trading_bot/master_orchestrator.py`):** The top-level supervisor. Spawns and monitors `CommodityEngine` processes for each active ticker. Manages **Shared Services** (Equity Polling, Macro Research, Post-Close Reconciliation) to prevent API redundancy.
+1.  **Master Orchestrator (`trading_bot/master_orchestrator.py`):** The top-level supervisor. Spawns and monitors `CommodityEngine` processes for each active ticker. Manages **Shared Services** (Equity Polling, Macro Research, Post-Close Reconciliation, System Health Digest) to prevent API redundancy.
 2.  **Commodity Engine (`trading_bot/commodity_engine.py`):** The isolated runtime for a single commodity. Manages its own Sentinels, Council, and Schedule. Ensures strict data isolation.
 3.  **Heterogeneous Router (`trading_bot/heterogeneous_router.py`):** Routes LLM requests to the best-fit provider (Gemini, OpenAI, Anthropic, xAI) based on the agent's role.
 4.  **Semantic Cache (`trading_bot/semantic_cache.py`):** Caches Council decisions based on market state vectors. Prevents redundant LLM calls.
@@ -85,6 +85,7 @@ graph TD
 6.  **Brier Bridge (`trading_bot/brier_bridge.py`):** Tracks agent accuracy using an Enhanced Probabilistic Brier Score system to weight agent opinions dynamically.
 7.  **DSPy Optimizer (`trading_bot/dspy_optimizer.py`):** Offline pipeline that refines agent prompts using historical feedback (BootstrapFewShot).
 8.  **Automated Trade Journal (`trading_bot/trade_journal.py`):** Generates structured post-mortem narratives for every closed trade, stored in TMS for future learning.
+9.  **System Health Digest (`trading_bot/system_digest.py`):** Generates a daily post-close JSON summary of system health, agent calibration, and error telemetry.
 
 ### Tier 1: Sentinels (`trading_bot/sentinels.py`)
 Lightweight monitors that scan 24/7 for specific triggers.
@@ -133,6 +134,7 @@ Specialized LLM personas that analyze grounded data.
     *   **Compliance Guardian** checks VaR limits, margin, and concentration.
 8.  **Execution:** `OrderManager` constructs the order and submits to `ib_interface.py`.
 9.  **Monitoring:** System monitors positions for P&L, regime shifts, and thesis invalidation.
+10. **Digest:** Post-close `System Health Digest` generation summarizes system state and errors.
 
 ## Running
 
