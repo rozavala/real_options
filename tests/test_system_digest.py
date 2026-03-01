@@ -308,19 +308,21 @@ class TestBuildDecisionTraces:
 
 
 class TestBuildDataFreshness:
-    @patch('trading_bot.state_manager.StateManager.load_state_raw')
-    def test_freshness(self, mock_load_raw, tmp_data_dir):
+    def test_freshness(self, tmp_data_dir):
         now = datetime.now(timezone.utc).timestamp()
-        mock_load_raw.return_value = {
-            'price': {
-                'timestamp': now - 300,  # 5 minutes ago
-                'data': {'interval_seconds': 600},
-            },
-            'weather': {
-                'timestamp': now - 2000,  # ~33 minutes ago
-                'data': {'interval_seconds': 600},
-            },
+        state = {
+            'sentinel_health': {
+                'price': {
+                    'timestamp': now - 300,  # 5 minutes ago
+                    'data': {'interval_seconds': 600},
+                },
+                'weather': {
+                    'timestamp': now - 2000,  # ~33 minutes ago
+                    'data': {'interval_seconds': 600},
+                },
+            }
         }
+        _write_json(os.path.join(tmp_data_dir, 'state.json'), state)
 
         result = _build_data_freshness(tmp_data_dir)
         assert result['sentinels']['price']['is_stale'] is False
