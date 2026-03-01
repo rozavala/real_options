@@ -191,6 +191,9 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
             ref = trade.order.orderRef or ''
             if not ref.startswith('CATASTROPHE_'):
                 continue
+            # Don't cancel auto-close orders from fill remediation
+            if ref.startswith('CATASTROPHE_CLOSE_'):
+                continue
             # Skip stops belonging to other commodities' engines
             if ticker and getattr(trade.contract, 'symbol', '') != ticker:
                 skipped_other += 1
@@ -236,10 +239,51 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
                 phantom += 1
 
         if phantom > 0:
-            logger.info(
-                f"Catastrophe stop cleanup: {phantom} phantom GTC order(s) "
-                f"not found on IBKR (stale Gateway cache, harmless)"
-            )
+            # CRITICAL: "Phantom" orders may have actually FILLED.
+            # After bot restart, Gateway cache is stale — Error 10147 does NOT mean
+            # the order expired. Check positions for untracked fills.
+            phantom_trades = [t for t in to_cancel
+                              if getattr(t.orderStatus, 'status', '')
+                              not in ('Cancelled', 'ApiCancelled')]
+
+            try:
+                detected_fills = await _check_positions_for_catastrophe_fills(
+                    ib, phantom_trades, config
+                )
+            except Exception as e:
+                logger.error(f"Catastrophe fill detection failed: {e}")
+                detected_fills = []
+
+            if detected_fills:
+                ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'UNK'))
+                logger.critical(
+                    f"CATASTROPHE STOP FILL DETECTED: {len(detected_fills)} stop(s) "
+                    f"filled creating naked position(s)!"
+                )
+                for fill_info in detected_fills:
+                    try:
+                        await _remediate_filled_catastrophe_stop(ib, fill_info, config)
+                    except Exception as e:
+                        logger.error(f"Catastrophe fill remediation failed: {e}")
+                        try:
+                            send_pushover_notification(
+                                config.get('notifications', {}),
+                                f"CATASTROPHE FILL — MANUAL ACTION [{ticker}]",
+                                f"Auto-remediation failed: {e}\n"
+                                f"Check positions immediately.",
+                                priority=2
+                            )
+                        except Exception:
+                            pass
+                genuinely_phantom = phantom - len(detected_fills)
+            else:
+                genuinely_phantom = phantom
+
+            if genuinely_phantom > 0:
+                logger.info(
+                    f"Catastrophe stop cleanup: {genuinely_phantom} phantom GTC order(s) "
+                    f"not found on IBKR (verified — no matching fills or positions)"
+                )
 
         if confirmed > 0:
             from notifications import send_pushover_notification
@@ -254,6 +298,292 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
             )
     except Exception as e:
         logger.error(f"Catastrophe stop cleanup failed (non-fatal): {e}")
+
+
+# Module-level deduplication guard for catastrophe fill remediation
+_remediated_catastrophe_fills: set = set()
+
+
+async def _check_positions_for_catastrophe_fills(
+    ib: IB, phantom_orders: list, config: dict
+) -> list:
+    """Check if phantom catastrophe stops actually filled by checking IBKR positions.
+
+    reqExecutionsAsync() only returns fills from the current IB session, so if the
+    bot was down when the stop filled, executions won't help. Instead, we check
+    current positions directly — if there's a naked futures position matching the
+    phantom stop's localSymbol/action that isn't in the trade ledger, it's an
+    untracked catastrophe fill.
+
+    Returns list of dicts: [{phantom_trade, position, localSymbol, action, avg_cost}, ...]
+    """
+    detected = []
+    try:
+        positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=15)
+    except asyncio.TimeoutError:
+        logger.warning("reqPositionsAsync timed out in catastrophe fill detection")
+        return detected
+
+    # Load trade ledger to check what's already tracked
+    from trading_bot.utils import _get_data_dir
+    import pandas as pd
+    eff_dir = _get_data_dir()
+    ledger_path = os.path.join(eff_dir, 'trade_ledger.csv') if eff_dir else 'trade_ledger.csv'
+    try:
+        ledger = pd.read_csv(ledger_path) if os.path.exists(ledger_path) else pd.DataFrame()
+    except Exception:
+        ledger = pd.DataFrame()
+
+    # Build set of localSymbols with non-zero net quantity in ledger
+    tracked_symbols = set()
+    if not ledger.empty and 'local_symbol' in ledger.columns:
+        for sym in ledger['local_symbol'].unique():
+            entries = ledger[ledger['local_symbol'] == sym]
+            net = sum(r['quantity'] if r['action'] == 'BUY' else -r['quantity']
+                      for _, r in entries.iterrows())
+            if net != 0:
+                tracked_symbols.add(sym)
+
+    for phantom in phantom_orders:
+        phantom_local = getattr(phantom.contract, 'localSymbol', '')
+        phantom_action = phantom.order.action  # BUY or SELL
+        if not phantom_local:
+            continue
+
+        for pos in positions:
+            if pos.position == 0:
+                continue
+            # CRITICAL: Match on localSymbol + secType (not just symbol)
+            if (pos.contract.localSymbol == phantom_local
+                    and pos.contract.secType == 'FUT'
+                    and pos.contract.localSymbol not in tracked_symbols):
+                # Direction match: BUY stop → long position (pos > 0)
+                #                  SELL stop → short position (pos < 0)
+                position_matches_action = (
+                    (phantom_action == 'BUY' and pos.position > 0) or
+                    (phantom_action == 'SELL' and pos.position < 0)
+                )
+                if position_matches_action:
+                    # CRITICAL: avgCost is total cost basis (price × multiplier),
+                    # NOT the per-unit fill price. Convert to per-unit for ledger
+                    # consistency with fill.execution.avgPrice format.
+                    multiplier = float(pos.contract.multiplier or 1)
+                    fill_price = pos.avgCost / multiplier if multiplier > 1 else pos.avgCost
+
+                    detected.append({
+                        'phantom_trade': phantom,
+                        'position': pos,
+                        'localSymbol': pos.contract.localSymbol,
+                        'symbol': pos.contract.symbol,
+                        'action': phantom_action,
+                        'quantity': abs(pos.position),
+                        'avg_cost': pos.avgCost,
+                        'fill_price': fill_price,
+                        'contract': pos.contract,
+                    })
+                    logger.critical(
+                        f"CATASTROPHE FILL DETECTED: {phantom_action} "
+                        f"{pos.contract.localSymbol} — untracked position "
+                        f"qty={pos.position}, fill_price={fill_price:.2f}"
+                    )
+
+    return detected
+
+
+async def _remediate_filled_catastrophe_stop(
+    ib: IB, detected_fill: dict, config: dict
+):
+    """Auto-remediate a catastrophe stop that filled without being tracked.
+
+    Actions:
+    1. Log to trade_ledger.csv with reason "CATASTROPHE_FILL (auto-detected)"
+    2. Record TMS thesis for traceability (immediately invalidated)
+    3. Send P0 Pushover notification (priority=2)
+    4. Place bounded limit order to close the naked position
+    """
+    local_sym = detected_fill['localSymbol']
+
+    # Deduplication: skip if already remediated this session
+    if local_sym in _remediated_catastrophe_fills:
+        logger.info(f"Catastrophe fill {local_sym} already remediated this session, skipping")
+        return
+    _remediated_catastrophe_fills.add(local_sym)
+
+    from datetime import datetime, timezone as _tz
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'UNK'))
+    contract = detected_fill['contract']
+    qty = detected_fill['quantity']
+    action = detected_fill['action']
+
+    # 1. Log to trade_ledger.csv
+    try:
+        position_id = f"catastrophe_{local_sym}_{datetime.now(_tz.utc).strftime('%Y%m%d_%H%M%S')}"
+        _log_catastrophe_fill_to_ledger(detected_fill, position_id, config)
+        logger.info(f"Logged catastrophe fill to ledger: {local_sym} position_id={position_id}")
+    except Exception as e:
+        logger.error(f"Failed to log catastrophe fill to ledger: {e}")
+
+    # 2. Record TMS thesis (immediately invalidated — audit trail only)
+    # CRITICAL: If we set active="true", the position audit will try to manage this
+    # thesis and place a SECOND close order → position flip risk.
+    thesis_id = f"catastrophe_{local_sym}"
+    try:
+        tms = TransactiveMemory()
+        thesis_data = {
+            'strategy_type': 'CATASTROPHE_HEDGE_FILL',
+            'guardian_agent': 'System',
+            'primary_rationale': (
+                f"Untracked {action} {qty} {local_sym} filled from orphaned GTC stop. "
+                f"Auto-detected and queued for close."
+            ),
+            'invalidation_triggers': ['auto_close_order_placed'],
+            'supporting_data': {
+                'entry_price': detected_fill['fill_price'],
+                'underlying_symbol': detected_fill.get('symbol', ''),
+                'auto_remediated': True,
+            },
+            'entry_timestamp': datetime.now(_tz.utc).isoformat(),
+            'entry_regime': 'UNKNOWN',
+        }
+        tms.record_trade_thesis(thesis_id, thesis_data)
+        # Immediately invalidate — this thesis is for audit trail ONLY.
+        # Leaving it active would cause position audit to place a duplicate close order.
+        tms.invalidate_thesis(thesis_id, "Auto-close order placed by catastrophe fill remediation")
+    except Exception as e:
+        logger.error(f"Failed to record catastrophe fill TMS thesis: {e}")
+
+    # 3. P0 Pushover notification (priority=2 = emergency)
+    try:
+        send_pushover_notification(
+            config.get('notifications', {}),
+            f"CATASTROPHE STOP FILLED [{ticker}]",
+            (
+                f"{action} {qty} {local_sym} filled from orphaned GTC stop.\n"
+                f"Fill price: ~{detected_fill['fill_price']:.2f}\n"
+                f"NOT part of any spread thesis.\n"
+                f"Auto-close order queued. Manual verification required."
+            ),
+            priority=2
+        )
+    except Exception as e:
+        logger.error(f"Failed to send catastrophe fill notification: {e}")
+
+    # 4. Place bounded limit close order
+    # NOTE: Intentionally NOT checking is_trading_off() here.
+    # Catastrophe fill remediation must execute even when trading is disabled
+    # — an untracked naked futures position is a safety emergency.
+    try:
+        close_action = 'SELL' if action == 'BUY' else 'BUY'
+
+        # Qualify contract before order placement — reqPositionsAsync() returns
+        # basic fields but may lack exchange routing details needed for orders
+        try:
+            await asyncio.wait_for(ib.qualifyContractsAsync(contract), timeout=10)
+        except Exception as e:
+            logger.warning(f"Contract qualification failed for {local_sym}: {e}")
+
+        # Get current market price for limit bound
+        ticker_data = ib.reqMktData(contract, '', True, False)
+        await asyncio.sleep(1)
+        ref_price = ticker_data.last if not util.isNan(ticker_data.last) else ticker_data.close
+        try:
+            ib.cancelMktData(contract)
+        except Exception:
+            pass
+
+        if ref_price and ref_price > 0:
+            # 1% worse than market: SELL lower, BUY higher
+            if close_action == 'SELL':
+                limit_price = round_to_tick(ref_price * 0.99, action='SELL')
+            else:
+                limit_price = round_to_tick(ref_price * 1.01, action='BUY')
+
+            close_order = LimitOrder(
+                action=close_action,
+                totalQuantity=qty,
+                lmtPrice=limit_price,
+                tif='GTC',
+                outsideRth=True,
+            )
+        else:
+            # No market data — fall back to market order as last resort
+            logger.warning(f"No market data for {local_sym}, using market order for close")
+            close_order = MarketOrder(
+                action=close_action,
+                totalQuantity=qty,
+                tif='GTC',
+                outsideRth=True,
+            )
+
+        close_order.orderRef = f"CATASTROPHE_CLOSE_{local_sym}"
+        close_trade = ib.placeOrder(contract, close_order)
+        logger.critical(
+            f"CATASTROPHE AUTO-CLOSE: {close_action} {qty} {local_sym} "
+            f"@ {getattr(close_order, 'lmtPrice', 'MKT')} "
+            f"(order {close_trade.order.orderId})"
+        )
+    except Exception as e:
+        logger.error(f"Failed to place catastrophe close order for {local_sym}: {e}")
+        # Escalate notification — manual intervention needed
+        try:
+            send_pushover_notification(
+                config.get('notifications', {}),
+                f"CATASTROPHE CLOSE FAILED [{ticker}]",
+                f"Auto-close order failed for {local_sym}: {e}\n"
+                f"MANUAL INTERVENTION REQUIRED — close position in TWS immediately.",
+                priority=2
+            )
+        except Exception:
+            pass
+
+
+import csv
+
+
+def _log_catastrophe_fill_to_ledger(detected_fill: dict, position_id: str, config: dict):
+    """Write a catastrophe fill entry directly to trade_ledger.csv.
+
+    Reads the existing CSV header to ensure schema compatibility — unknown
+    columns default to empty string rather than being omitted.
+    """
+    from trading_bot.utils import _get_data_dir
+    from datetime import datetime
+    eff_dir = _get_data_dir()
+    ledger_path = os.path.join(eff_dir, 'trade_ledger.csv') if eff_dir else 'trade_ledger.csv'
+
+    # Known fields we can populate
+    row = {
+        'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+        'position_id': position_id,
+        'combo_id': 'CATASTROPHE',
+        'local_symbol': detected_fill['localSymbol'],
+        'action': detected_fill['action'],
+        'quantity': detected_fill['quantity'],
+        'avg_fill_price': detected_fill['fill_price'],
+        'strike': 'N/A',
+        'right': 'N/A',
+        'total_value_usd': 0,
+        'reason': 'CATASTROPHE_FILL (auto-detected)',
+    }
+
+    file_exists = os.path.exists(ledger_path) and os.path.getsize(ledger_path) > 0
+
+    if file_exists:
+        # Read existing header so row matches full schema
+        with open(ledger_path, 'r') as f:
+            reader = csv.reader(f)
+            existing_header = next(reader)
+        full_row = {col: row.get(col, '') for col in existing_header}
+        fieldnames = existing_header
+    else:
+        full_row = row
+        fieldnames = list(row.keys())
+
+    with open(ledger_path, 'a', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(full_row)
 
 
 # Module-level set for TMS thesis deduplication
