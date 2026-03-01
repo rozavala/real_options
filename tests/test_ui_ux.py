@@ -260,5 +260,62 @@ class TestCouncilUX(unittest.TestCase):
             self.assertTrue(found, f"Could not find metric '{metric}' in pages/3_The_Council.py")
 
 
+class TestSignalOverlayUX(unittest.TestCase):
+    def test_signal_overlay_metric_tooltips(self):
+        """Verify that key metrics in pages/6_Signal_Overlay.py have help tooltips."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '6_Signal_Overlay.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        target_metrics = [
+            "Period Change", "High", "Low", "Range",
+            "Total Signals", "🟢 Bullish", "🔴 Bearish", "🟣 Volatility", "⚪ Neutral"
+        ]
+        found_metrics = {m: False for m in target_metrics}
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'metric':
+                if not node.args:
+                    continue
+
+                label = None
+                if isinstance(node.args[0], ast.Constant):
+                    label = node.args[0].value
+
+                if label in found_metrics:
+                    found_metrics[label] = True
+                    has_help = any(kw.arg == 'help' for kw in node.keywords)
+                    self.assertTrue(has_help, f"Metric '{label}' in Signal Overlay is missing 'help' tooltip")
+
+        for metric, found in found_metrics.items():
+            self.assertTrue(found, f"Could not find metric '{metric}' in pages/6_Signal_Overlay.py")
+
+class TestBrierAnalysisUX(unittest.TestCase):
+    def test_brier_analysis_metric_tooltips(self):
+        """Verify that key metrics in pages/7_Brier_Analysis.py have help tooltips."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '7_Brier_Analysis.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        target_metrics = ["Total Predictions", "Resolved", "Pending"]
+        found_metrics = {m: False for m in target_metrics}
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'metric':
+                if not node.args:
+                    continue
+
+                label = None
+                if isinstance(node.args[0], ast.Constant):
+                    label = node.args[0].value
+
+                if label in found_metrics:
+                    found_metrics[label] = True
+                    has_help = any(kw.arg == 'help' for kw in node.keywords)
+                    self.assertTrue(has_help, f"Metric '{label}' in Brier Analysis is missing 'help' tooltip")
+
+        for metric, found in found_metrics.items():
+            self.assertTrue(found, f"Could not find metric '{metric}' in pages/7_Brier_Analysis.py")
+
 if __name__ == '__main__':
     unittest.main()
