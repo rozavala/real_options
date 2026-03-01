@@ -227,7 +227,7 @@ def _build_cognitive_layer(ch_df: pd.DataFrame) -> dict:
         n = len(today_df)
 
         # Direction breakdown
-        direction_col = 'master_direction' if 'master_direction' in today_df.columns else None
+        direction_col = next((c for c in ('master_decision', 'master_direction') if c in today_df.columns), None)
         bull_pct = bear_pct = neutral_pct = None
         if direction_col:
             dirs = today_df[direction_col].str.upper().fillna('')
@@ -249,8 +249,9 @@ def _build_cognitive_layer(ch_df: pd.DataFrame) -> dict:
 
         # Strategies
         strategies = []
-        if 'strategy' in today_df.columns:
-            strategies = today_df['strategy'].dropna().unique().tolist()
+        strategy_col = next((c for c in ('strategy_type', 'strategy') if c in today_df.columns), None)
+        if strategy_col:
+            strategies = today_df[strategy_col].dropna().unique().tolist()
 
         return {
             'decisions_today': n,
@@ -318,13 +319,45 @@ def _build_efficiency(data_dir: str, config: dict) -> dict:
         except Exception:
             pass
 
+        # Derive summary from actual router_metrics.json structure
+        # requests values are {success: N, failure: N} dicts, not plain ints
+        router_summary = {}
+        if router:
+            requests = router.get('requests', {})
+            if requests:
+                total = sum(
+                    (v.get('success', 0) + v.get('failure', 0)) if isinstance(v, dict) else int(v)
+                    for v in requests.values()
+                )
+                router_summary['total_requests'] = total
+            errors = router.get('error_types', {})
+            if errors:
+                router_summary['total_errors'] = sum(
+                    v if isinstance(v, (int, float)) else 0 for v in errors.values()
+                )
+            latencies = router.get('latencies', {})
+            if latencies:
+                # latency values may be {avg: N, count: N} dicts or plain floats
+                all_lats = []
+                for v in latencies.values():
+                    if isinstance(v, dict):
+                        avg = v.get('avg') or v.get('avg_ms')
+                        if avg is not None:
+                            all_lats.append(float(avg))
+                    elif isinstance(v, (int, float)):
+                        all_lats.append(float(v))
+                if all_lats:
+                    router_summary['avg_latency_ms'] = round(sum(all_lats) / len(all_lats), 1)
+            fallbacks = router.get('fallbacks', {})
+            if fallbacks:
+                router_summary['total_fallbacks'] = sum(
+                    v if isinstance(v, (int, float)) else 0 for v in fallbacks.values()
+                )
+
         return {
             'daily_spend_usd': _safe_float(budget.get('daily_spend', 0)),
             'request_count': budget.get('request_count', 0),
-            'router_metrics': {
-                k: v for k, v in router.items()
-                if k in ('total_requests', 'total_errors', 'avg_latency_ms', 'provider_stats')
-            } if router else {},
+            'router_metrics': router_summary,
             'semantic_cache': cache_stats,
         }
     except Exception as e:
@@ -395,9 +428,16 @@ def _build_decision_traces(ch_df: pd.DataFrame, max_traces: int = 5) -> list:
                 if isinstance(vb_raw, str) and vb_raw.strip():
                     vb = json.loads(vb_raw)
                     if isinstance(vb, dict):
-                        # Sort by absolute contribution, take top 2
+                        items = vb.items()
+                    elif isinstance(vb, list):
+                        # vote_breakdown is stored as a list of dicts:
+                        # [{"agent": "agronomist", "direction": "BEARISH", "weight": 0.5}, ...]
+                        items = [(d.get('agent', ''), d.get('weight', 0)) for d in vb if isinstance(d, dict)]
+                    else:
+                        items = []
+                    if items:
                         sorted_agents = sorted(
-                            vb.items(), key=lambda x: abs(float(x[1])) if isinstance(x[1], (int, float, str)) else 0,
+                            items, key=lambda x: abs(float(x[1])) if isinstance(x[1], (int, float, str)) else 0,
                             reverse=True
                         )[:2]
                         for agent, weight in sorted_agents:
@@ -420,11 +460,13 @@ def _build_decision_traces(ch_df: pd.DataFrame, max_traces: int = 5) -> list:
             # Contrarian views from dissent_acknowledged
             dissent = str(row.get('dissent_acknowledged', ''))[:200] if 'dissent_acknowledged' in row.index else ''
 
+            direction_col = 'master_decision' if 'master_decision' in row.index else 'master_direction'
+            strategy_col = 'strategy_type' if 'strategy_type' in row.index else 'strategy'
             traces.append({
                 'timestamp': str(row.get('timestamp', '')),
-                'direction': row.get('master_direction', ''),
+                'direction': row.get(direction_col, ''),
                 'confidence': _safe_float(row.get('master_confidence')),
-                'strategy': row.get('strategy', ''),
+                'strategy': row.get(strategy_col, ''),
                 'top_contributors': top_contributors,
                 'contrarian_view': dissent,
                 'realized_pnl': _safe_float(row.get('realized_pnl')),
@@ -439,9 +481,8 @@ def _build_decision_traces(ch_df: pd.DataFrame, max_traces: int = 5) -> list:
 def _build_data_freshness(data_dir: str) -> dict:
     """Per-sentinel data freshness from state.json sentinel_health namespace."""
     try:
-        from trading_bot.state_manager import StateManager
-        # Temporarily set data dir for StateManager read
-        sentinel_health = StateManager.load_state_raw(namespace="sentinel_health")
+        state = _safe_read_json(os.path.join(data_dir, 'state.json')) or {}
+        sentinel_health = state.get('sentinel_health', {})
 
         if not sentinel_health:
             return {'sentinels': {}, 'status': 'no_data'}
@@ -515,8 +556,8 @@ def _build_agent_contribution(ch_df: pd.DataFrame) -> dict:
         if recent.empty:
             return {'agents': {}}
 
-        master_col = 'master_direction'
-        if master_col not in recent.columns:
+        master_col = next((c for c in ('master_decision', 'master_direction') if c in recent.columns), None)
+        if not master_col:
             return {'agents': {}}
 
         master_dirs = recent[master_col].str.upper().fillna('')
@@ -565,11 +606,24 @@ def _build_agent_contribution(ch_df: pd.DataFrame) -> dict:
 # v1.0 Account-Wide Builders
 # ---------------------------------------------------------------------------
 
+def _find_equity_csv(config: dict) -> str:
+    """Find daily_equity.csv: base data dir first, then per-commodity dirs."""
+    base_dir = config.get('data_dir', 'data')
+    path = os.path.join(base_dir, 'daily_equity.csv')
+    if os.path.exists(path):
+        return path
+    # Fallback: check per-commodity dirs (equity is account-wide, any will do)
+    for ticker in config.get('commodities', []):
+        path = os.path.join(base_dir, ticker, 'daily_equity.csv')
+        if os.path.exists(path):
+            return path
+    return os.path.join(base_dir, 'daily_equity.csv')  # return default (will be empty)
+
+
 def _build_portfolio(config: dict) -> dict:
     """Portfolio overview from daily_equity.csv."""
     try:
-        base_dir = config.get('data_dir', 'data')
-        equity_path = os.path.join(base_dir, 'daily_equity.csv')
+        equity_path = _find_equity_csv(config)
         df = _safe_read_csv(equity_path)
         if df.empty or 'total_value_usd' not in df.columns:
             return {'status': 'no_data'}
@@ -602,6 +656,7 @@ def _build_portfolio(config: dict) -> dict:
             max_dd_30d = round(drawdown.min(), 2)
 
         # VaR from shared var_state.json
+        base_dir = config.get('data_dir', 'data')
         var_path = os.path.join(base_dir, 'var_state.json')
         var_data = _safe_read_json(var_path) or {}
 
@@ -619,22 +674,30 @@ def _build_portfolio(config: dict) -> dict:
         return {'status': 'error', 'error': str(e)}
 
 
-def _build_changes(config: dict, active_tickers: list, yesterday_digest: Optional[dict]) -> dict:
-    """Delta analysis: what changed since yesterday's digest."""
+def _build_changes(config: dict, active_tickers: list, yesterday_digest: Optional[dict],
+                    ch_dfs: Optional[Dict[str, pd.DataFrame]] = None) -> dict:
+    """Delta analysis: what changed since yesterday's digest.
+
+    Parameters
+    ----------
+    ch_dfs : dict[str, DataFrame], optional
+        Pre-loaded council_history DataFrames keyed by ticker.  When provided
+        the function reuses them instead of re-reading the CSV from disk.
+    """
     try:
         changes = []
 
         if not yesterday_digest:
             return {'changes': [], 'note': 'No previous digest for comparison'}
 
+        if ch_dfs is None:
+            ch_dfs = {}
+
         # Compare per-commodity decision counts
         yesterday_commodities = yesterday_digest.get('commodities', {})
         for ticker in active_tickers:
-            data_dir = _get_data_dir(config, ticker)
-            ch_path = os.path.join(data_dir, 'council_history.csv')
-            ch_df = _safe_read_csv(ch_path)
+            ch_df = ch_dfs.get(ticker, pd.DataFrame())
             if not ch_df.empty and 'timestamp' in ch_df.columns:
-                ch_df = _parse_timestamp_column(ch_df)
                 today_count = len(_filter_today(ch_df))
             else:
                 today_count = 0
@@ -669,8 +732,7 @@ def _build_changes(config: dict, active_tickers: list, yesterday_digest: Optiona
 def _build_rolling_trends(config: dict) -> dict:
     """7d/30d equity trends from daily_equity.csv."""
     try:
-        base_dir = config.get('data_dir', 'data')
-        equity_path = os.path.join(base_dir, 'daily_equity.csv')
+        equity_path = _find_equity_csv(config)
         df = _safe_read_csv(equity_path)
         if df.empty or 'total_value_usd' not in df.columns:
             return {'status': 'no_data'}
@@ -1071,6 +1133,7 @@ def generate_system_digest(config: dict) -> Optional[dict]:
 
         # 3. Build per-commodity sections
         commodity_blocks = {}
+        ch_dfs: Dict[str, pd.DataFrame] = {}  # reused by _build_changes
         for ticker in active_tickers:
             data_dir = _get_data_dir(config, ticker)
             if not os.path.isdir(data_dir):
@@ -1083,6 +1146,7 @@ def generate_system_digest(config: dict) -> Optional[dict]:
             ch_df = _safe_read_csv(ch_path)
             if not ch_df.empty and 'timestamp' in ch_df.columns:
                 ch_df = _parse_timestamp_column(ch_df)
+            ch_dfs[ticker] = ch_df
 
             commodity_blocks[ticker] = {
                 # v1.0
@@ -1101,7 +1165,7 @@ def generate_system_digest(config: dict) -> Optional[dict]:
 
         # 4. Build account-wide sections
         portfolio = _build_portfolio(config)
-        changes = _build_changes(config, active_tickers, yesterday_digest)
+        changes = _build_changes(config, active_tickers, yesterday_digest, ch_dfs=ch_dfs)
         rolling_trends = _build_rolling_trends(config)
         improvement_opportunities = _build_improvement_opportunities(commodity_blocks)
 
