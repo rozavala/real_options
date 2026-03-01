@@ -751,6 +751,17 @@ async def main(lookback_days: int = None, config: dict = None):
     if local_trades_df.empty:
         logger.warning("Local trade ledger is empty. All fetched IB trades will be considered missing.")
 
+    # --- 4b. Exclude synthetic bookkeeping entries from comparison ---
+    # PHANTOM_RECONCILIATION entries are internal synthetic closes (zero-value,
+    # fabricated timestamps) that will never match any IB Flex record. Including
+    # them inflates the "superfluous" count with false positives every cycle.
+    if not local_trades_df.empty and 'reason' in local_trades_df.columns:
+        synthetic_mask = local_trades_df['reason'].fillna('').str.contains('PHANTOM_RECONCILIATION')
+        n_synthetic = synthetic_mask.sum()
+        if n_synthetic > 0:
+            local_trades_df = local_trades_df[~synthetic_mask]
+            logger.info(f"Excluded {n_synthetic} synthetic PHANTOM_RECONCILIATION entries from reconciliation comparison.")
+
     # --- 5. Filter trades to the last 33 days for comparison ---
     # v3.1: Configurable lookback with environment override
     if lookback_days is None:
