@@ -12,6 +12,7 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from dashboard_utils import _relative_time, discover_active_commodities
 
 st.set_page_config(layout="wide", page_title="Portfolio | Real Options")
 st.title("Portfolio Overview")
@@ -77,7 +78,8 @@ if prg_state:
         else:
             st.metric("Drawdown", "N/A", help="Cannot calculate drawdown without starting equity.")
 
-    st.caption(f"Last updated: {prg_state.get('last_updated', 'unknown')}")
+    last_upd = prg_state.get('last_updated', 'unknown')
+    st.caption(f"Last updated: {last_upd} ({_relative_time(last_upd)})")
 else:
     st.info("No portfolio risk state found. PortfolioRiskGuard has not run yet.")
 
@@ -113,29 +115,32 @@ else:
 st.markdown("---")
 st.subheader("Engine Health")
 
-# Discover commodity data dirs
-engine_dirs = []
-if os.path.isdir(DATA_ROOT):
-    for entry in sorted(os.listdir(DATA_ROOT)):
-        state_path = os.path.join(DATA_ROOT, entry, "state.json")
-        if os.path.exists(state_path):
-            engine_dirs.append((entry, state_path))
+active_tickers = discover_active_commodities()
 
-if engine_dirs:
-    cols = st.columns(min(len(engine_dirs), 4))
-    for i, (ticker, state_path) in enumerate(engine_dirs):
+if active_tickers:
+    cols = st.columns(min(len(active_tickers), 4))
+    for i, ticker in enumerate(active_tickers):
+        state_path = os.path.join(DATA_ROOT, ticker, "state.json")
         state = _load_json(state_path)
         with cols[i % len(cols)]:
-            st.markdown(f"**{ticker}**")
             if state:
                 last_cycle = state.get("last_cycle_time", "unknown")
                 cycle_count = state.get("cycle_count", "?")
-                active_theses = state.get("active_theses", "?")
-                st.write(f"Cycles: {cycle_count}")
-                st.write(f"Active theses: {active_theses}")
-                st.write(f"Last cycle: {last_cycle}")
+                active_theses = state.get("active_theses", 0)
+
+                st.metric(
+                    ticker,
+                    f"{active_theses} Theses",
+                    delta=f"Pulse: {_relative_time(last_cycle)}",
+                    delta_color="off",
+                    help=(
+                        f"**Cycles Completed:** {cycle_count}\n"
+                        f"**Active Theses:** {active_theses}\n"
+                        f"**Last Cycle:** {last_cycle}"
+                    )
+                )
             else:
-                st.write("No state data")
+                st.metric(ticker, "No data", delta="OFFLINE", delta_color="inverse")
 else:
     st.info("No engine state files found.")
 
@@ -170,6 +175,7 @@ if var_state:
             st.metric("Utilization", "N/A", help="VaR utilization not available.")
 
     enforcement = var_state.get("enforcement_mode", "unknown")
-    st.caption(f"Enforcement mode: **{enforcement}** | Last computed: {var_state.get('last_computed', 'unknown')}")
+    last_comp = var_state.get('last_computed', 'unknown')
+    st.caption(f"Enforcement mode: **{enforcement}** | Last computed: {last_comp} ({_relative_time(last_comp)})")
 else:
     st.info("No VaR state found. VaR calculator has not run yet.")
