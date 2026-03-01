@@ -964,7 +964,12 @@ OUTPUT JSON:
 
     try:
         response = await router.route(AgentRole.COMPLIANCE_OFFICER, prompt, response_json=True)
-        result = json.loads(response) if isinstance(response, str) else response
+        if isinstance(response, str) and response.strip():
+            result = json.loads(response)
+        elif isinstance(response, dict):
+            result = response
+        else:
+            raise ValueError(f"Empty or invalid LLM response: {repr(response)[:100]}")
         # Validate expected keys
         for key in ("dominant_risk", "correlation_warning", "trend", "urgency"):
             if key not in result:

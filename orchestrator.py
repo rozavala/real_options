@@ -1364,6 +1364,24 @@ async def _reconcile_phantom_ledger_entries(
             pos_rows = trade_ledger[trade_ledger['position_id'] == pos_id]
             for symbol in pos_rows['local_symbol'].unique():
                 symbol_rows = pos_rows[pos_rows['local_symbol'] == symbol]
+
+                # Skip RECONCILIATION_MISSING entries — these are single-leg
+                # historical records from Flex Query reconciliation, NOT real
+                # open positions. They appear as non-zero net qty because only
+                # one side of a round-trip was recorded locally.
+                if 'reason' in symbol_rows.columns:
+                    reasons = symbol_rows['reason'].dropna().astype(str)
+                    if reasons.str.contains('RECONCILIATION_MISSING').any():
+                        continue
+
+                # Idempotency: skip if already has a PHANTOM_RECONCILIATION
+                # synthetic close entry (prevents duplicate synthetics on
+                # repeated audit cycles)
+                if 'reason' in symbol_rows.columns:
+                    reasons = symbol_rows['reason'].dropna().astype(str)
+                    if reasons.str.contains('PHANTOM_RECONCILIATION').any():
+                        continue
+
                 net_qty = 0
                 for _, row in symbol_rows.iterrows():
                     qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
