@@ -2322,9 +2322,13 @@ class MacroContagionSentinel(Sentinel):
             # OPTIMIZATION: Fetch historical data for all tickers concurrently.
             # This reduces total latency for the contagion check.
             tasks = [self._get_history(ticker, period="10d", interval="1d") for ticker in tickers.values()]
-            results = await asyncio.gather(*tasks, return_exceptions=False)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            for name, hist in zip(names, results):
+            for name, result in zip(names, results):
+                if isinstance(result, Exception):
+                    logger.debug(f"Insufficient data for {name} ({tickers[name]}), skipping from contagion check: {result}")
+                    continue
+                hist = result
                 if len(hist) < 2:
                     logger.debug(f"Insufficient data for {name} ({tickers[name]}), skipping from contagion check")
                     continue
