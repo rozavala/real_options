@@ -1071,25 +1071,24 @@ if config:
             for _, _r in _recent.iterrows():
                 _ts = _r.get('timestamp', '')
                 _pnl_val = pd.to_numeric(_r.get('pnl_realized', None), errors='coerce')
-                if pd.notna(_pnl_val) and _pnl_val != 0:
-                    _outcome = f"${_pnl_val:+,.0f}"
-                else:
-                    _outcome = "Open"
+                # Keep outcome as numeric for proper sorting and formatting via NumberColumn
+                _outcome_val = _pnl_val if (pd.notna(_pnl_val) and _pnl_val != 0) else None
 
                 _trigger = str(_r.get('trigger_type', 'scheduled')).replace('_', ' ').title()
                 _decision = _r.get('master_decision', 'N/A')
                 _strategy = str(_r.get('strategy_type', 'N/A')).replace('_', ' ').title()
                 _conf = _r.get('master_confidence', None)
-                _conf_str = f"{float(_conf)*100:.0f}%" if pd.notna(_conf) else "N/A"
+                # Keep confidence as float for ProgressColumn (0-100)
+                _conf_val = float(_conf) * 100 if pd.notna(_conf) else None
 
                 _display_rows.append({
                     'Time': _relative_time(_ts),
                     'Trigger': _trigger,
                     'Decision': _decision,
-                    'Confidence': _conf_str,
+                    'Confidence': _conf_val,
                     'Strategy': _strategy,
                     'Strength': _r.get('thesis_strength', 'N/A'),
-                    'Outcome': _outcome,
+                    'Outcome': _outcome_val,
                 })
             _display_df = pd.DataFrame(_display_rows)
             st.dataframe(
@@ -1097,13 +1096,25 @@ if config:
                 hide_index=True,
                 width="stretch",
                 column_config={
-                    'Time': st.column_config.TextColumn(width='small'),
-                    'Trigger': st.column_config.TextColumn(width='small'),
-                    'Decision': st.column_config.TextColumn(width='small'),
-                    'Confidence': st.column_config.TextColumn(width='small'),
-                    'Strategy': st.column_config.TextColumn(width='medium'),
-                    'Strength': st.column_config.TextColumn(width='small'),
-                    'Outcome': st.column_config.TextColumn(width='small'),
+                    'Time': st.column_config.TextColumn("Time", width='small', help="Time since the decision was made."),
+                    'Trigger': st.column_config.TextColumn("Trigger", width='small', help="The event or sentinel that triggered this decision cycle."),
+                    'Decision': st.column_config.TextColumn("Decision", width='small', help="The final decision rendered by the Master Strategist."),
+                    'Confidence': st.column_config.ProgressColumn(
+                        "Confidence",
+                        width='small',
+                        min_value=0,
+                        max_value=100,
+                        format="%.0f%%",
+                        help="The confidence level of the Master Strategist's decision (0-100%)."
+                    ),
+                    'Strategy': st.column_config.TextColumn("Strategy", width='medium', help="The trading strategy applied for this decision."),
+                    'Strength': st.column_config.TextColumn("Strength", width='small', help="The strength of the underlying trading thesis (Proven/Plausible/Speculative)."),
+                    'Outcome': st.column_config.NumberColumn(
+                        "Outcome",
+                        width='small',
+                        format="$%.2f",
+                        help="The realized Profit and Loss for this trade."
+                    ),
                 }
             )
         else:
