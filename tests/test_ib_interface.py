@@ -16,6 +16,7 @@ from trading_bot.ib_interface import (
 class TestIbInterface(unittest.TestCase):
 
     @patch('trading_bot.ib_interface.datetime')
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'fake_key', 'PUSHOVER_USER_KEY': 'fake_key', 'PUSHOVER_API_TOKEN': 'fake_key'})
     def test_get_active_futures(self, mock_datetime):
         async def run_test():
             # Mock current time to be mid-2025 so 202512 is in the future
@@ -304,6 +305,7 @@ class TestIbInterface(unittest.TestCase):
         asyncio.run(run_test())
 
     @patch('trading_bot.ib_interface.datetime')
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'fake_key', 'PUSHOVER_USER_KEY': 'fake_key', 'PUSHOVER_API_TOKEN': 'fake_key'})
     def test_get_active_futures_filters_45_days(self, mock_datetime):
         """
         Verifies that contracts expiring within 45 days are excluded.
