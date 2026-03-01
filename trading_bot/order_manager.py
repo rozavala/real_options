@@ -418,7 +418,7 @@ async def _remediate_filled_catastrophe_stop(
     # 1. Log to trade_ledger.csv
     try:
         position_id = f"catastrophe_{local_sym}_{datetime.now(_tz.utc).strftime('%Y%m%d_%H%M%S')}"
-        _log_catastrophe_fill_to_ledger(detected_fill, position_id, config)
+        await _log_catastrophe_fill_to_ledger(detected_fill, position_id, config)
         logger.info(f"Logged catastrophe fill to ledger: {local_sym} position_id={position_id}")
     except Exception as e:
         logger.error(f"Failed to log catastrophe fill to ledger: {e}")
@@ -494,9 +494,9 @@ async def _remediate_filled_catastrophe_stop(
         if ref_price and ref_price > 0:
             # 1% worse than market: SELL lower, BUY higher
             if close_action == 'SELL':
-                limit_price = round_to_tick(ref_price * 0.99, action='SELL')
+                limit_price = round_to_tick(ref_price * 0.99, action='SELL', config=config)
             else:
-                limit_price = round_to_tick(ref_price * 1.01, action='BUY')
+                limit_price = round_to_tick(ref_price * 1.01, action='BUY', config=config)
 
             close_order = LimitOrder(
                 action=close_action,
@@ -540,13 +540,14 @@ async def _remediate_filled_catastrophe_stop(
 import csv
 
 
-def _log_catastrophe_fill_to_ledger(detected_fill: dict, position_id: str, config: dict):
+async def _log_catastrophe_fill_to_ledger(detected_fill: dict, position_id: str, config: dict):
     """Write a catastrophe fill entry directly to trade_ledger.csv.
 
     Reads the existing CSV header to ensure schema compatibility — unknown
     columns default to empty string rather than being omitted.
+    Acquires TRADE_LEDGER_LOCK for consistency with other ledger writers.
     """
-    from trading_bot.utils import _get_data_dir
+    from trading_bot.utils import _get_data_dir, TRADE_LEDGER_LOCK
     from datetime import datetime
     eff_dir = _get_data_dir()
     ledger_path = os.path.join(eff_dir, 'trade_ledger.csv') if eff_dir else 'trade_ledger.csv'
@@ -566,24 +567,28 @@ def _log_catastrophe_fill_to_ledger(detected_fill: dict, position_id: str, confi
         'reason': 'CATASTROPHE_FILL (auto-detected)',
     }
 
-    file_exists = os.path.exists(ledger_path) and os.path.getsize(ledger_path) > 0
+    async with TRADE_LEDGER_LOCK:
+        try:
+            file_exists = os.path.exists(ledger_path) and os.path.getsize(ledger_path) > 0
+        except OSError:
+            file_exists = False
 
-    if file_exists:
-        # Read existing header so row matches full schema
-        with open(ledger_path, 'r') as f:
-            reader = csv.reader(f)
-            existing_header = next(reader)
-        full_row = {col: row.get(col, '') for col in existing_header}
-        fieldnames = existing_header
-    else:
-        full_row = row
-        fieldnames = list(row.keys())
+        if file_exists:
+            # Read existing header so row matches full schema
+            with open(ledger_path, 'r') as f:
+                reader = csv.reader(f)
+                existing_header = next(reader)
+            full_row = {col: row.get(col, '') for col in existing_header}
+            fieldnames = existing_header
+        else:
+            full_row = row
+            fieldnames = list(row.keys())
 
-    with open(ledger_path, 'a', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        if not file_exists:
-            writer.writeheader()
-        writer.writerow(full_row)
+        with open(ledger_path, 'a', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow(full_row)
 
 
 # Module-level set for TMS thesis deduplication
