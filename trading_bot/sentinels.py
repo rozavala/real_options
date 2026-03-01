@@ -543,10 +543,15 @@ class WeatherSentinel(Sentinel):
     async def _fetch_weather(self, region: GrowingRegion) -> List[Dict]:
         """Fetch weather data for a region."""
         try:
-            url = f"{self.api_url}?latitude={region.latitude}&longitude={region.longitude}&{self.params}"
+            from urllib.parse import parse_qsl
+
+            # Use params dict to safely encode URL parameters and prevent injection
+            query_params = dict(parse_qsl(self.params))
+            query_params['latitude'] = str(region.latitude)
+            query_params['longitude'] = str(region.longitude)
 
             session = await self._get_session()
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+            async with session.get(self.api_url, params=query_params, timeout=aiohttp.ClientTimeout(total=15)) as response:
                 if response.status != 200:
                     logger.warning(f"Weather API returned {response.status} for {region.name}")
                     return []
@@ -837,19 +842,21 @@ class LogisticsSentinel(Sentinel):
         if config_urls:
             return config_urls
 
-        base = "https://news.google.com/rss/search?q="
-        commodity_name = quote_plus(self.profile.name.lower())
+        from urllib.parse import urlencode
+        base = "https://news.google.com/rss/search"
+        commodity_name = self.profile.name.lower()
 
         urls = []
 
         # Monitor specific logistics hubs defined in profile
         for hub in self.profile.logistics_hubs:
-            hub_name = quote_plus(hub.name)
-            urls.append(f"{base}{hub_name}+logistics+{commodity_name}")
+            hub_name = hub.name
+            q = f"{hub_name} logistics {commodity_name}"
+            urls.append(f"{base}?{urlencode({'q': q})}")
 
         # General supply chain search
-        urls.append(f"{base}{commodity_name}+supply+chain+bottlenecks")
-        urls.append(f"{base}Red+Sea+Suez+{commodity_name}+shipping+delays")
+        urls.append(f"{base}?{urlencode({'q': f'{commodity_name} supply chain bottlenecks'})}")
+        urls.append(f"{base}?{urlencode({'q': f'Red Sea Suez {commodity_name} shipping delays'})}")
 
         if not urls:
              # Fallback to legacy key
@@ -1021,28 +1028,32 @@ class NewsSentinel(Sentinel):
         if config_urls:
             return config_urls
 
-        base = "https://news.google.com/rss/search?q="
-        commodity_name = quote_plus(self.profile.name.lower())
+        from urllib.parse import urlencode
+        base = "https://news.google.com/rss/search"
+        commodity_name = self.profile.name.lower()
         keywords = self.profile.news_keywords or [commodity_name]
 
         urls = []
 
         # Core market feeds (site-restricted for quality)
         for source in ['reuters.com', 'bloomberg.com']:
-            primary_kw = quote_plus(keywords[0])
-            urls.append(f"{base}{primary_kw}+markets+site:{source}")
+            primary_kw = keywords[0]
+            q = f"{primary_kw} markets site:{source}"
+            urls.append(f"{base}?{urlencode({'q': q})}")
 
         # Region-specific feeds (top 2 producing regions)
         sorted_regions = sorted(self.profile.primary_regions, key=lambda r: r.production_share, reverse=True)
         top_regions = sorted_regions[:2]
 
         for region in top_regions:
-            region_name = quote_plus(region.name)
-            urls.append(f"{base}{region_name}+{commodity_name}")
+            region_name = region.name
+            q = f"{region_name} {commodity_name}"
+            urls.append(f"{base}?{urlencode({'q': q})}")
 
         # General sentiment feed
-        primary_kw = quote_plus(keywords[0])
-        urls.append(f"{base}{primary_kw}+futures+market+sentiment")
+        primary_kw = keywords[0]
+        q = f"{primary_kw} futures market sentiment"
+        urls.append(f"{base}?{urlencode({'q': q})}")
 
         if not urls:
             # Absolute fallback to config
@@ -2551,9 +2562,15 @@ class FundamentalRegimeSentinel(Sentinel):
 
     async def check_news_sentiment(self) -> str:
         try:
-            commodity_q = quote_plus(self.profile.name.lower())
-            surplus_url = f"https://news.google.com/rss/search?q={commodity_q}+market+surplus"
-            deficit_url = f"https://news.google.com/rss/search?q={commodity_q}+market+deficit"
+            from urllib.parse import urlencode
+            base = "https://news.google.com/rss/search"
+            commodity_name = self.profile.name.lower()
+
+            surplus_q = f"{commodity_name} market surplus"
+            deficit_q = f"{commodity_name} market deficit"
+
+            surplus_url = f"{base}?{urlencode({'q': surplus_q})}"
+            deficit_url = f"{base}?{urlencode({'q': deficit_q})}"
 
             # Parallel fetch
             (surplus_count, surplus_bozo), (deficit_count, deficit_bozo) = await asyncio.gather(
