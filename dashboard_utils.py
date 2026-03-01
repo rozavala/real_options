@@ -88,6 +88,40 @@ def _resolve_data_path_for(filename: str, ticker: str) -> str:
     return commodity_path
 
 
+def _relative_time(ts) -> str:
+    """Format a timestamp as a human-readable relative time string."""
+    try:
+        if ts is None:
+            return "Never"
+        if isinstance(ts, str):
+            ts = pd.Timestamp(ts)
+
+        # Standardize to UTC-aware datetime
+        if not hasattr(ts, 'tzinfo') or ts.tzinfo is None:
+            import pytz
+            ts = pytz.utc.localize(ts)
+        elif hasattr(ts, 'tz_convert'):
+            ts = ts.tz_convert('UTC')
+
+        now = datetime.now(timezone.utc)
+        delta = now - ts
+        seconds = delta.total_seconds()
+        if seconds < 0:
+            return "just now"
+        if seconds < 60:
+            return f"{int(seconds)}s ago"
+        elif seconds < 3600:
+            return f"{int(seconds // 60)}m ago"
+        elif seconds < 86400:
+            return f"{int(seconds // 3600)}h ago"
+        elif seconds < 172800:
+            return "yesterday"
+        else:
+            return f"{int(seconds // 86400)}d ago"
+    except Exception:
+        return "N/A"
+
+
 # === CONFIGURATION ===
 # E4 FIX: Dynamic starting capital handled in get_starting_capital function
 STATE_FILE_PATH = _resolve_data_path('state.json')
