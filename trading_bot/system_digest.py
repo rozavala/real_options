@@ -431,8 +431,12 @@ def _build_decision_traces(ch_df: pd.DataFrame, max_traces: int = 5) -> list:
                         items = vb.items()
                     elif isinstance(vb, list):
                         # vote_breakdown is stored as a list of dicts:
-                        # [{"agent": "agronomist", "direction": "BEARISH", "weight": 0.5}, ...]
-                        items = [(d.get('agent', ''), d.get('weight', 0)) for d in vb if isinstance(d, dict)]
+                        # [{"agent": "agronomist", "direction": "BEARISH", "contribution": -2.13, "final_weight": 2.37}, ...]
+                        items = [
+                            (d.get('agent', ''),
+                             d.get('contribution') or d.get('final_weight') or d.get('weight', 0))
+                            for d in vb if isinstance(d, dict)
+                        ]
                     else:
                         items = []
                     if items:
@@ -1123,7 +1127,8 @@ def generate_system_digest(config: dict) -> Optional[dict]:
         now = datetime.now(timezone.utc)
 
         # 1. Determine active tickers
-        active_tickers = config.get('commodities', [])
+        # 'commodities' is set at runtime by orchestrator; 'active_commodities' is in config.json
+        active_tickers = config.get('commodities', []) or config.get('active_commodities', [])
         if not active_tickers:
             ticker = config.get('commodity', {}).get('ticker', 'KC')
             active_tickers = [ticker]
