@@ -715,39 +715,43 @@ class WeatherSentinel(Sentinel):
         _sentinel_diag.info(f"WeatherSentinel: checking {len(self.profile.primary_regions)} regions")
         all_alerts = []
 
-        for region in self.profile.primary_regions:
-            try:
-                alert = await self.async_check_region_weather(region)
+        # OPTIMIZATION: Fetch weather data for all regions concurrently.
+        # This reduces total latency from sum(regions) to max(regions).
+        tasks = [self.async_check_region_weather(region) for region in self.profile.primary_regions]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
-                if alert:
-                    # Alert Cooldown Logic
-                    alert_key = self._normalize_alert_key(alert['type'], region.name)
-                    current_value = alert.get('weekly_precip_mm', 0)
+        for region, result in zip(self.profile.primary_regions, results):
+            if isinstance(result, Exception):
+                logger.error(f"Weather Sentinel failed for {region.name}: {result}")
+                _sentinel_diag.error(f"WeatherSentinel: exception for {region.name}: {result}")
+                continue
 
-                    # Calculate a numeric severity for internal logic
-                    severity_val = 0
-                    if alert['type'] == 'DROUGHT':
-                        severity_val = alert['threshold'] - current_value
-                    elif alert['type'] == 'FLOOD':
-                        severity_val = current_value - alert['threshold']
+            alert = result
+            if alert:
+                # Alert Cooldown Logic
+                alert_key = self._normalize_alert_key(alert['type'], region.name)
+                current_value = alert.get('weekly_precip_mm', 0)
 
-                    if self._should_alert(alert_key, severity_val):
-                        self._active_alerts[alert_key] = {
-                            "time": datetime.now(timezone.utc),
-                            "value": severity_val
-                        }
+                # Calculate a numeric severity for internal logic
+                severity_val = 0
+                if alert['type'] == 'DROUGHT':
+                    severity_val = alert['threshold'] - current_value
+                elif alert['type'] == 'FLOOD':
+                    severity_val = current_value - alert['threshold']
 
-                        msg = f"{alert['type']} in {alert['region']}: {alert.get('weekly_precip_mm',0):.1f}mm ({alert.get('direction')}, {alert.get('stage')} stage)"
-                        logger.warning(f"WEATHER SENTINEL DETECTED: {msg}")
+                if self._should_alert(alert_key, severity_val):
+                    self._active_alerts[alert_key] = {
+                        "time": datetime.now(timezone.utc),
+                        "value": severity_val
+                    }
 
-                        # Map severity string to int (9 for CRITICAL to bypass debounce)
-                        sev_int = 9 if "CRITICAL" in alert.get('severity','') else (7 if "HIGH" in alert.get('severity','') else 4)
+                    msg = f"{alert['type']} in {alert['region']}: {alert.get('weekly_precip_mm',0):.1f}mm ({alert.get('direction')}, {alert.get('stage')} stage)"
+                    logger.warning(f"WEATHER SENTINEL DETECTED: {msg}")
 
-                        all_alerts.append(SentinelTrigger("WeatherSentinel", msg, alert, severity=sev_int))
+                    # Map severity string to int (9 for CRITICAL to bypass debounce)
+                    sev_int = 9 if "CRITICAL" in alert.get('severity','') else (7 if "HIGH" in alert.get('severity','') else 4)
 
-            except Exception as e:
-                logger.error(f"Weather Sentinel failed for {region.name}: {e}")
-                _sentinel_diag.error(f"WeatherSentinel: exception for {region.name}: {e}")
+                    all_alerts.append(SentinelTrigger("WeatherSentinel", msg, alert, severity=sev_int))
 
         self._save_alert_state()
 
@@ -2314,10 +2318,19 @@ class MacroContagionSentinel(Sentinel):
             tickers = {own_key: yf_ticker, **basket}
 
             returns = {}
-            for name, ticker in tickers.items():
-                hist = await self._get_history(ticker, period="10d", interval="1d")
+            names = list(tickers.keys())
+            # OPTIMIZATION: Fetch historical data for all tickers concurrently.
+            # This reduces total latency for the contagion check.
+            tasks = [self._get_history(ticker, period="10d", interval="1d") for ticker in tickers.values()]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for name, result in zip(names, results):
+                if isinstance(result, Exception):
+                    logger.debug(f"Insufficient data for {name} ({tickers[name]}), skipping from contagion check: {result}")
+                    continue
+                hist = result
                 if len(hist) < 2:
-                    logger.debug(f"Insufficient data for {name} ({ticker}), skipping from contagion check")
+                    logger.debug(f"Insufficient data for {name} ({tickers[name]}), skipping from contagion check")
                     continue
                 returns[name] = hist['Close'].pct_change().dropna()
 
