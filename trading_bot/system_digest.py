@@ -1133,6 +1133,14 @@ def generate_system_digest(config: dict) -> Optional[dict]:
             ticker = config.get('commodity', {}).get('ticker', 'KC')
             active_tickers = [ticker]
 
+        # Normalize data_dir: config_loader sets it per-commodity (e.g., data/KC),
+        # but digest iterates across all commodities and needs the base (data/).
+        raw_data_dir = config.get('data_dir', 'data')
+        norm_dir = os.path.normpath(raw_data_dir)
+        if os.path.basename(norm_dir) in active_tickers:
+            config = dict(config)  # don't mutate caller's config
+            config['data_dir'] = os.path.dirname(norm_dir)
+
         # 2. Load yesterday's digest for delta comparison
         yesterday_digest = _load_yesterday_digest(config)
 
