@@ -1788,15 +1788,31 @@ async def _reconcile_state_stores(
         )
         results['tms_active'] = len(active_theses.get('metadatas', []))
 
-        # 4. Check for discrepancies
+        # 4. Group IBKR legs into thesis groups before comparing with TMS.
+        # Spreads have 2 legs in IBKR but 1 thesis in TMS — comparing raw
+        # leg count vs thesis count produces false-positive warnings.
+        ib_thesis_groups = _group_positions_by_thesis(ib_positions, trade_ledger, tms)
+        ib_thesis_count = len(ib_thesis_groups)
+        unmapped_legs = results['ibkr_positions'] - sum(
+            len(g['legs']) for g in ib_thesis_groups.values()
+        )
+        results['ibkr_thesis_groups'] = ib_thesis_count
+        results['unmapped_legs'] = unmapped_legs
+
+        # 5. Check for discrepancies
         if results['ibkr_positions'] != results['ledger_open']:
             results['discrepancies'].append(
                 f"IBKR has {results['ibkr_positions']} positions but ledger shows {results['ledger_open']} open"
             )
 
-        if results['ibkr_positions'] != results['tms_active']:
+        if ib_thesis_count != results['tms_active']:
             results['discrepancies'].append(
-                f"IBKR has {results['ibkr_positions']} positions but TMS has {results['tms_active']} active theses"
+                f"IBKR has {ib_thesis_count} thesis groups ({results['ibkr_positions']} legs) "
+                f"but TMS has {results['tms_active']} active theses"
+            )
+        if unmapped_legs > 0:
+            results['discrepancies'].append(
+                f"{unmapped_legs} IBKR leg(s) could not be mapped to any thesis"
             )
 
         if results['discrepancies']:
@@ -1812,7 +1828,8 @@ async def _reconcile_state_stores(
             )
         else:
             logger.info(
-                f"State stores reconciled: {results['ibkr_positions']} positions across all stores"
+                f"State stores reconciled: {ib_thesis_count} thesis groups "
+                f"({results['ibkr_positions']} legs) across all stores"
             )
 
         return results
@@ -2165,7 +2182,8 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
                     "Portfolio VaR Alert",
                     f"VaR(95%) = {var_result.var_95_pct:.1%} of equity "
                     f"(${var_result.var_95:,.0f}) — limit is "
-                    f"{config.get('compliance', {}).get('var_limit_pct', 0.03):.0%}"
+                    f"{config.get('compliance', {}).get('var_limit_pct', 0.03):.0%}",
+                    ticker="ALL"
                 )
         except asyncio.TimeoutError:
             logger.warning("Post-audit VaR computation timed out after 30s (non-fatal)")
@@ -2506,6 +2524,7 @@ async def generate_system_digest_task(config: dict):
                     config.get('notifications', {}),
                     "System Digest: Action Required",
                     "\n".join(f"[{o['component']}] {o['observation']}" for o in high[:3]),
+                    ticker="ALL"
                 )
     except Exception as e:
         logger.error(f"System Digest failed (non-fatal): {e}", exc_info=True)
@@ -5220,7 +5239,8 @@ async def main(commodity_ticker: str = None):
         send_pushover_notification(
             config.get('notifications', {}),
             "Orchestrator Started (OFF Mode)",
-            "Trading mode is OFF. Analysis pipeline runs normally. No orders will be placed."
+            "Trading mode is OFF. Analysis pipeline runs normally. No orders will be placed.",
+            ticker="ALL"
         )
 
     # Remote Gateway indicator
@@ -5243,7 +5263,8 @@ async def main(commodity_ticker: str = None):
                 "REMOTE GW + LIVE MODE",
                 f"Orchestrator on remote GW ({ib_host}) with TRADING_MODE=LIVE. "
                 "Likely a misconfiguration — set TRADING_MODE=OFF or IB_PAPER=true.",
-                priority=1
+                priority=1,
+                ticker="ALL"
             )
 
     # Update deduplicator with config values

@@ -177,7 +177,8 @@ class DrawdownGuard:
                             send_pushover_notification(
                                 self.notification_config,
                                 f"📈 Recovery: {prev_status} → WARNING",
-                                f"Drawdown improved to {drawdown_pct:.2f}% (held {elapsed_minutes:.0f}min). Trading resumed with caution."
+                                f"Drawdown improved to {drawdown_pct:.2f}% (held {elapsed_minutes:.0f}min). Trading resumed with caution.",
+                                ticker="ALL"
                             )
                         else:
                             logger.info(f"Recovery in progress: {elapsed_minutes:.0f}/{self.recovery_hold_minutes}min")
@@ -198,19 +199,22 @@ class DrawdownGuard:
                     send_pushover_notification(
                         self.notification_config,
                         "⚠️ Drawdown Warning",
-                        f"Portfolio down {drawdown_pct:.2f}% today."
+                        f"Portfolio down {drawdown_pct:.2f}% today.",
+                        ticker="ALL"
                     )
                 elif new_status == "HALT":
                     send_pushover_notification(
                         self.notification_config,
                         "🛑 TRADING HALTED",
-                        f"Daily loss limit hit ({drawdown_pct:.2f}%). New trades blocked."
+                        f"Daily loss limit hit ({drawdown_pct:.2f}%). New trades blocked.",
+                        ticker="ALL"
                     )
                 elif new_status == "PANIC":
                     send_pushover_notification(
                         self.notification_config,
                         "🚨 PANIC CLOSE TRIGGERED",
-                        f"Critical loss ({drawdown_pct:.2f}%). Closing ALL positions."
+                        f"Critical loss ({drawdown_pct:.2f}%). Closing ALL positions.",
+                        ticker="ALL"
                     )
 
             self._save_state()

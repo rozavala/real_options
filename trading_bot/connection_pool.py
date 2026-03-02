@@ -285,7 +285,8 @@ class IBConnectionPool:
                             "🚨 IB GATEWAY ZOMBIE DETECTED",
                             f"Gateway accepting TCP but failing API handshake "
                             f"{cls.FORCE_RESET_THRESHOLD} times in a row. "
-                            f"Manual restart may be required."
+                            f"Manual restart may be required.",
+                            ticker="ALL"
                         )
                     except Exception:
                         pass
