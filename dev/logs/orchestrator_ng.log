@@ -140,3 +140,35 @@
 2026-03-02 18:55:00,540 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_audit)...
 2026-03-02 18:55:03,548 - Engine.NG - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-03-02 19:05:00 UTC. Waiting for 0.17 hours.
 2026-03-02 18:56:56,199 - Orchestrator - INFO - Shutdown: Gracefully disengaging Microstructure Sentinel
+2026-03-02 19:05:00,005 - Engine.NG - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-03-02 19:05:00,009 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-02 19:05:00,009 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1238 [REMOTE/PAPER]...
+2026-03-02 19:05:00,137 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1238
+2026-03-02 19:05:00,145 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-02 19:05:00,146 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-02 19:05:00,151 - OrderManager - INFO - Found 7 live position legs in the IB account.
+2026-03-02 19:05:00,151 - OrderManager - INFO -   Filtered to 0 NG positions with non-zero quantity (from 7 total across all commodities)
+2026-03-02 19:05:00,152 - OrderManager - INFO - No open NG positions to close.
+2026-03-02 19:05:00,152 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-02 19:05:03,165 - Engine.NG - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-03-02 19:15:00 UTC. Waiting for 0.17 hours.
+2026-03-02 19:15:00,004 - Engine.NG - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-03-02 19:15:00,009 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-03-02 19:15:00,010 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-03-02 19:15:00,010 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-02 19:15:00,011 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1235 [REMOTE/PAPER]...
+2026-03-02 19:15:00,435 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1235
+2026-03-02 19:15:00,441 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-02 19:15:00,442 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-02 19:15:00,587 - OrderManager - INFO - Found 7 live position legs in the IB account.
+2026-03-02 19:15:00,588 - OrderManager - INFO -   Filtered to 0 NG positions with non-zero quantity (from 7 total across all commodities)
+2026-03-02 19:15:00,588 - OrderManager - INFO - No open NG positions to close.
+2026-03-02 19:15:00,588 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-02 19:15:03,597 - Engine.NG - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-03-02 19:25:00 UTC. Waiting for 0.17 hours.
+2026-03-02 19:25:00,004 - Engine.NG - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-03-02 19:25:00,008 - Orchestrator - INFO - --- Emergency Hard Close Check (T-45 min) ---
+2026-03-02 19:25:00,009 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1236 [REMOTE/PAPER]...
+2026-03-02 19:25:00,332 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1236
+2026-03-02 19:25:00,336 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-02 19:25:00,384 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
+2026-03-02 19:25:00,385 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-02 19:25:03,395 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-03-02 19:35:00 UTC. Waiting for 0.17 hours.
