@@ -262,13 +262,15 @@ def render_portfolio_risk_summary(live_data: dict):
     with cols[3]:
         # Filter for active positions (quantity != 0)
         positions = [p for p in live_data.get('open_positions', []) if p.position != 0]
-        pos_count = len(positions)
+        leg_count = len(positions)
+
+        # Count positions (spreads), not individual legs
+        active_theses = get_active_theses()
+        pos_count = len(active_theses) if active_theses else leg_count
 
         # Build tooltip with breakdown
-        pos_help = "Number of active positions currently held."
+        pos_help = f"Positions (spreads), not individual legs. {leg_count} legs across {pos_count} positions."
         if positions:
-            # Sort by symbol for consistent ordering
-            # Handle ib_insync Position objects (p.contract.localSymbol or symbol)
             sorted_pos = sorted(
                 positions,
                 key=lambda p: getattr(p.contract, 'localSymbol', getattr(p.contract, 'symbol', 'Unknown'))

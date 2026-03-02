@@ -482,7 +482,7 @@ def _build_decision_traces(ch_df: pd.DataFrame, max_traces: int = 5) -> list:
         return []
 
 
-def _build_data_freshness(data_dir: str) -> dict:
+def _build_data_freshness(data_dir: str, config: dict = None) -> dict:
     """Per-sentinel data freshness from state.json sentinel_health namespace."""
     try:
         state = _safe_read_json(os.path.join(data_dir, 'state.json')) or {}
@@ -490,6 +490,10 @@ def _build_data_freshness(data_dir: str) -> dict:
 
         if not sentinel_health:
             return {'sentinels': {}, 'status': 'no_data'}
+
+        # Check if market is currently open — sentinels naturally stop after close
+        from trading_bot.utils import is_market_open
+        market_open = is_market_open(config) if config else True
 
         now = datetime.now(timezone.utc).timestamp()
         result = {}
@@ -509,7 +513,8 @@ def _build_data_freshness(data_dir: str) -> dict:
                 elapsed_seconds = now - float(ts)
                 last_check_minutes_ago = round(elapsed_seconds / 60, 1)
                 if interval_seconds and interval_seconds > 0:
-                    is_stale = elapsed_seconds > (2 * interval_seconds)
+                    # Only mark stale if market is open — sentinels stop after close
+                    is_stale = market_open and elapsed_seconds > (2 * interval_seconds)
 
             result[sentinel_name] = {
                 'last_check_minutes_ago': last_check_minutes_ago,
@@ -518,7 +523,10 @@ def _build_data_freshness(data_dir: str) -> dict:
             }
 
         stale_count = sum(1 for v in result.values() if v.get('is_stale'))
-        status = 'healthy' if stale_count == 0 else ('degraded' if stale_count <= 2 else 'critical')
+        if not market_open:
+            status = 'market_closed'
+        else:
+            status = 'healthy' if stale_count == 0 else ('degraded' if stale_count <= 2 else 'critical')
 
         return {
             'sentinels': result,
@@ -1171,7 +1179,7 @@ def generate_system_digest(config: dict) -> Optional[dict]:
                 'risk_rails': _build_risk_rails(data_dir, config),
                 # v1.1
                 'decision_traces': _build_decision_traces(ch_df),
-                'data_freshness': _build_data_freshness(data_dir),
+                'data_freshness': _build_data_freshness(data_dir, config),
                 'regime_context': _build_regime_context(data_dir),
                 'agent_contribution': _build_agent_contribution(ch_df),
             }

@@ -397,7 +397,12 @@ class PortfolioVaRCalculator:
                 logger.info(
                     f"VaR: Fetching underlying prices for option-only symbols: {missing_syms}"
                 )
-                # Build symbol→(exchange, nearest_expiry) from option contracts
+                # Build symbol→(exchange, nearest_futures_expiry) from option contracts.
+                # Options expire on specific dates (e.g., 20260410 for April) but
+                # the underlying future may not exist for that month. KC for example
+                # only has H(Mar), K(May), N(Jul), U(Sep), Z(Dec). We must map the
+                # option expiry to the nearest valid futures contract month.
+                from config.databento_mappings import LETTER_TO_MONTH_NUM
                 sym_info: dict[str, tuple[str, str]] = {}
                 for item in option_items:
                     s = item.contract.symbol
@@ -407,11 +412,35 @@ class PortfolioVaRCalculator:
                         or 'SMART'
                     )
                     expiry = item.contract.lastTradeDateOrContractMonth or ''
-                    # Extract YYYYMM from option expiry for underlying future
-                    expiry_month = expiry[:6] if len(expiry) >= 6 else ''
-                    if s in missing_syms:
-                        if s not in sym_info or expiry_month < sym_info[s][1]:
-                            sym_info[s] = (exchange, expiry_month)
+                    if len(expiry) < 6 or s not in missing_syms:
+                        continue
+
+                    opt_year = int(expiry[:4])
+                    opt_month = int(expiry[4:6])
+
+                    # Find nearest valid futures month >= option expiry month
+                    profile = get_commodity_profile(s)
+                    if profile and hasattr(profile, 'contract') and profile.contract.contract_months:
+                        month_nums = sorted(
+                            LETTER_TO_MONTH_NUM[m] for m in profile.contract.contract_months
+                            if m in LETTER_TO_MONTH_NUM
+                        )
+                        fut_year = opt_year
+                        fut_month = None
+                        for m in month_nums:
+                            if m >= opt_month:
+                                fut_month = m
+                                break
+                        if fut_month is None:
+                            # Wrap to first month of next year
+                            fut_year = opt_year + 1
+                            fut_month = month_nums[0]
+                        expiry_month = f"{fut_year}{fut_month:02d}"
+                    else:
+                        expiry_month = expiry[:6]
+
+                    if s not in sym_info or expiry_month < sym_info[s][1]:
+                        sym_info[s] = (exchange, expiry_month)
                 for sym in missing_syms:
                     try:
                         from ib_insync import Future

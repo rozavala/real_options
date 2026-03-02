@@ -4387,18 +4387,38 @@ async def run_sentinels(config: dict):
 
 async def emergency_hard_close(config: dict):
     """
-    Last-resort position closure at 13:15 ET using MARKET orders.
+    Last-resort position closure using MARKET orders.
 
-    This runs 45 minutes before market close. If we still have open positions
-    at this point, limit orders have failed and we accept slippage to protect
-    against overnight/weekend risk.
+    Only closes positions that SHOULD have been closed by close_stale_positions:
+    - Positions older than max_holding_days, OR
+    - All positions on weekly close days (Friday / pre-holiday Thursday)
+
+    Uses true market orders (not limit-with-slippage) and submits all legs
+    concurrently to maximize fill probability in thin end-of-day liquidity.
     """
     from trading_bot.utils import is_trading_off
     if is_trading_off():
         logger.info("[OFF] emergency_hard_close skipped — no positions exist in OFF mode")
         return
 
-    logger.info("--- Emergency Hard Close Check (T-45 min) ---")
+    logger.info("--- Emergency Hard Close Check ---")
+
+    # --- Determine if this is a weekly close day ---
+    today_date = datetime.now(timezone.utc).date()
+    weekday = today_date.weekday()
+
+    is_weekly_close = False
+    if weekday == 4:  # Friday
+        is_weekly_close = True
+    elif weekday == 3:  # Thursday — check if Friday is a holiday
+        from trading_bot.calendars import get_exchange_calendar
+        cal = get_exchange_calendar(config['exchange'])
+        tomorrow = today_date + timedelta(days=1)
+        holidays = cal.holidays(start=tomorrow, end=tomorrow)
+        if not holidays.empty:
+            is_weekly_close = True
+
+    max_holding_days = config.get('risk_management', {}).get('max_holding_days', 2)
 
     ib = None
     try:
@@ -4420,85 +4440,112 @@ async def emergency_hard_close(config: dict):
             logger.info("Emergency hard close: No open positions. All clear. ✓")
             return
 
+        # --- Gate: Only close positions that are stale or on weekly close ---
+        if not is_weekly_close:
+            # Filter to only stale positions using trade ledger age
+            trade_ledger = get_trade_ledger_df()
+            from pandas.tseries.offsets import CustomBusinessDay
+            from trading_bot.calendars import get_exchange_calendar
+            cal = get_exchange_calendar(config['exchange'])
+            holidays_index = cal.holidays(
+                start=today_date - timedelta(days=365),
+                end=today_date + timedelta(days=30)
+            )
+            custom_bday = CustomBusinessDay(holidays=holidays_index)
+
+            stale_symbols = set()
+            for pos in open_positions:
+                sym = pos.contract.localSymbol
+                if not trade_ledger.empty and 'local_symbol' in trade_ledger.columns:
+                    sym_rows = trade_ledger[trade_ledger['local_symbol'] == sym]
+                    if not sym_rows.empty:
+                        earliest = pd.Timestamp(sym_rows['timestamp'].min())
+                        trading_days = pd.date_range(
+                            start=earliest.date(), end=today_date, freq=custom_bday
+                        )
+                        if len(trading_days) >= max_holding_days:
+                            stale_symbols.add(sym)
+
+            if not stale_symbols:
+                logger.info(
+                    f"Emergency hard close: {len(open_positions)} legs open but none are stale "
+                    f"(max_holding_days={max_holding_days}). Skipping."
+                )
+                return
+
+            open_positions = [
+                p for p in open_positions
+                if p.contract.localSymbol in stale_symbols
+            ]
+            logger.info(
+                f"Emergency hard close: Filtered to {len(open_positions)} stale legs "
+                f"(symbols: {stale_symbols})"
+            )
+
         position_count = len(open_positions)
         logger.warning(
-            f"🚨 EMERGENCY HARD CLOSE: {position_count} positions still open at T-45! "
+            f"🚨 EMERGENCY HARD CLOSE: {position_count} legs still open. "
             f"Closing with MARKET orders (slippage accepted)."
         )
 
         send_pushover_notification(
             config.get('notifications', {}),
             "🚨 Emergency Hard Close Triggered",
-            f"{position_count} positions still open at 13:15 ET.\n"
+            f"{position_count} legs still open at emergency close.\n"
             f"Closing with MARKET orders. Slippage expected."
         )
 
-        closed = 0
+        # --- Submit all MARKET orders concurrently ---
+        # Use pos.contract directly from reqPositionsAsync — it has the correct
+        # conId and strike format. Re-qualifying via qualifyContractsAsync can
+        # return strike=285.0 vs exchange's 2.85, causing Error 478 rejections.
+        trades_pending = []  # (contract, trade, pos)
         failed = 0
 
         for pos in open_positions:
-            try:
-                close_action = 'SELL' if pos.position > 0 else 'BUY'
-                qty = abs(pos.position)
+            contract = pos.contract
+            close_action = 'SELL' if pos.position > 0 else 'BUY'
+            qty = abs(pos.position)
 
-                # CRITICAL FIX: Re-qualify by conId only to get correct strike format
-                minimal = Contract(conId=pos.contract.conId)
-                try:
-                    qualified = await asyncio.wait_for(
-                        ib.qualifyContractsAsync(minimal), timeout=15
-                    )
-                except asyncio.TimeoutError:
-                    logger.error(f"qualifyContractsAsync timed out (15s) for {pos.contract.localSymbol}")
-                    failed += 1
-                    continue
-                if not qualified or qualified[0].conId == 0:
-                    logger.error(f"Could not qualify {pos.contract.localSymbol} (conId={pos.contract.conId})")
-                    failed += 1
-                    continue
-                contract = qualified[0]
+            order = MarketOrder(close_action, qty)
+            order.tif = 'GTC'
+            trade = ib.placeOrder(contract, order)
+            logger.info(f"Emergency close: {close_action} {qty} {contract.localSymbol} (MARKET)")
+            trades_pending.append((contract, trade, pos))
 
-                # L3 FIX: Protective Close Order
-                # Fetch price for limit cap
-                ticker = ib.reqMktData(contract, '', True, False)
-                await asyncio.sleep(1)
-                last_price = ticker.last if not util.isNan(ticker.last) else ticker.close
-
-                if last_price and not util.isNan(last_price) and last_price > 0:
-                    slippage_pct = config.get('execution', {}).get('max_slippage_pct', 0.02)
-                    if close_action == 'BUY':
-                        limit_price = last_price * (1 + slippage_pct)
-                    else:
-                        limit_price = last_price * (1 - slippage_pct)
-
-                    tick_size = get_tick_size(config)
-                    limit_price = round_to_tick(limit_price, tick_size)
-
-                    order = LimitOrder(close_action, qty, limit_price)
-                    order.tif = 'GTC'
-                    logger.info(f"L3: Protective close at {limit_price:.4f} (last: {last_price:.4f}, cap: {slippage_pct:.1%})")
-                else:
-                    logger.warning(f"L3: No price for {contract.localSymbol}, using market order")
-                    order = MarketOrder(close_action, qty)
-                    order.tif = 'GTC'
-
-                trade = ib.placeOrder(contract, order)
-                logger.info(f"Emergency close: {close_action} {qty} {contract.localSymbol}")
-
-                for _ in range(60):
-                    await asyncio.sleep(1)
+        # --- Phase 3: Wait for all fills concurrently ---
+        closed = 0
+        if trades_pending:
+            fill_timeout = 30  # seconds total for all fills
+            deadline = asyncio.get_event_loop().time() + fill_timeout
+            while trades_pending and asyncio.get_event_loop().time() < deadline:
+                await asyncio.sleep(0.5)
+                still_pending = []
+                for contract, trade, pos in trades_pending:
                     if trade.isDone():
-                        break
+                        if trade.orderStatus.status == 'Filled':
+                            closed += 1
+                            logger.info(
+                                f"Emergency fill: {contract.localSymbol} "
+                                f"@ {trade.orderStatus.avgFillPrice}"
+                            )
+                        else:
+                            failed += 1
+                            logger.error(
+                                f"Emergency close rejected/cancelled: "
+                                f"{contract.localSymbol} status={trade.orderStatus.status}"
+                            )
+                    else:
+                        still_pending.append((contract, trade, pos))
+                trades_pending = still_pending
 
-                if trade.orderStatus.status == 'Filled':
-                    closed += 1
-                    logger.info(f"Emergency fill: {contract.localSymbol} @ {trade.orderStatus.avgFillPrice}")
-                else:
-                    failed += 1
-                    logger.error(f"Emergency close incomplete: {contract.localSymbol}")
-
-            except Exception as e:
+            # Anything still pending after timeout
+            for contract, trade, pos in trades_pending:
                 failed += 1
-                logger.error(f"Emergency close failed for {pos.contract.localSymbol}: {e}")
+                logger.error(
+                    f"Emergency close timed out ({fill_timeout}s): "
+                    f"{contract.localSymbol} status={trade.orderStatus.status}"
+                )
 
         summary = f"Emergency hard close: {closed} closed, {failed} failed"
         logger.info(summary)
