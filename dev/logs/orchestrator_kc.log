@@ -1666,3 +1666,79 @@
 2026-03-02 15:28:22,421 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture.nj; usfuture; usfarm; ushmds; secdefil.
 2026-03-02 15:28:22,424 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture.nj; usfuture; usfarm; ushmds; secdefil.
 2026-03-02 15:28:22,428 - Orchestrator - INFO - 2026-03-02 15:28:22,422 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture.nj; usfuture; usfarm; ushmds; secdefil.
+2026-03-02 15:32:25,466 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=610, market_open=True, trading_day=True
+2026-03-02 15:33:26,142 - Orchestrator - WARNING - MICROSTRUCTURE CRITICAL: Flash Crash Risk: Spread 6.9 std devs above mean
+2026-03-02 15:33:26,197 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-02 15:33:26,198 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by MicrostructureSentinel: Flash Crash Risk: Spread 6.9 std devs above mean (Cycle: KC-41ccc0d0)
+2026-03-02 15:33:26,414 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-02 15:33:26,520 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-03-02 15:33:26,520 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'anthropic', 'xai', 'openai']
+2026-03-02 15:33:26,520 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'anthropic', 'xai', 'openai'], 'diversity_score': 1.0}
+2026-03-02 15:33:26,545 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-03-02 15:33:26,555 - trading_bot.enhanced_brier - INFO - Loaded 1000 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-03-02 15:33:27,551 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 884 created from CSV, 0 resolved from council_history
+2026-03-02 15:33:27,575 - trading_bot.enhanced_brier - INFO - Auto-orphaned 5 Enhanced Brier predictions older than 168h
+2026-03-02 15:33:27,575 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-03-02 15:33:27,576 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-03-02 15:33:27,576 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-03-02 15:33:27,576 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-03-02 15:33:27,576 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-03-02 15:33:27,576 - root - INFO - Fetching 2 active futures contracts for KC on NYBOT...
+2026-03-02 15:33:27,579 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-02 15:33:27,641 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-03-02 15:33:27,642 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-03-02 15:33:27,642 - Orchestrator - INFO - Targeting contract: KCK6 (202605)
+2026-03-02 15:33:31,794 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-03-02 15:33:32,373 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=283.00, sma_200=329.4855, regime=RANGE_BOUND, vol_5d=0.0134
+2026-03-02 15:33:32,374 - Orchestrator - INFO - Emergency market context: price=283.0, regime=RANGE_BOUND
+2026-03-02 15:33:32,374 - trading_bot.agents - INFO - Running Specialized Cycle triggered by MicrostructureSentinel...
+2026-03-02 15:33:32,375 - trading_bot.agents - INFO - Routing to macro (Reason: Default routing)
+2026-03-02 15:33:32,375 - trading_bot.agents - INFO - Waking up macro...
+2026-03-02 15:33:32,804 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-03-02 15:33:32,804 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-03-02 15:33:55,908 - trading_bot.heterogeneous_router - INFO - CIRCUIT BREAKER: gemini cooldown expired, re-enabling
+2026-03-02 15:33:56,836 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-03-02 15:34:57,839 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-03-02 15:35:01,574 - trading_bot.heterogeneous_router - WARNING - Fallback gemini/gemini-3.1-pro-preview also failed for macro: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-03-02 15:35:16,952 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-1-fast-reasoning for macro after primary failure.
+2026-03-02 15:35:16,953 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> xai. Reason: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-03-02 15:35:18,152 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-03-02 15:35:45,662 - Orchestrator - INFO - 2026-03-02 15:35:45,662 - root - INFO - --- Risk Monitor: Checking 2 combo position(s) ---
+2026-03-02 15:35:45,663 - Orchestrator - INFO - 2026-03-02 15:35:45,662 - root - INFO - Combo 2 Legs on KOK6 P2.85: PnL=$-103.04 | Capture: -5.1% | Risk Used: -10.1%
+2026-03-02 15:35:45,664 - Orchestrator - INFO - 2026-03-02 15:35:45,662 - root - INFO - Combo 2 Legs on KON6 P2.75: PnL=$-348.31 | Capture: -8.0% | Risk Used: -16.1%
+2026-03-02 15:36:19,158 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Gemini timed out after 60.0s
+2026-03-02 15:36:21,883 - trading_bot.heterogeneous_router - WARNING - Fallback gemini/gemini-3.1-pro-preview also failed for macro: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-03-02 15:36:34,793 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used xai/grok-4-1-fast-reasoning for macro after primary failure.
+2026-03-02 15:36:34,794 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> xai. Reason: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-03-02 15:36:34,909 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-03-02 15:36:34,910 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=0.5 \u00d7 reliability=1.0 = 0.51", "macro": "domain=1.0 \u00d7 reliability=0.6 = 0.63", "geopolitical": "domain=0.5 \u00d7 reliability=0.8 = 0.42", "supply_chain": "domain=0.5 \u00d7 reliability=0.7 = 0.35", "inventory": "domain=1.0 \u00d7 reliability=0.8 = 0.85", "sentiment": "domain=1.5 \u00d7 reliability=1.2 = 1.77", "technical": "domain=3.8 \u00d7 reliability=1.1 = 4.15", "volatility": "domain=2.1 \u00d7 reliability=0.9 = 1.86"}
+2026-03-02 15:36:34,910 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.464, dominant=technical)
+2026-03-02 15:36:34,910 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "agronomist",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 0.5,\n    "reliability_mult": 1.02,\n    "staleness_weight": 1.0,\n    "age_hours": 0.4,\n    "final_weight": 0.51,\n    "contribution": -0.332\n  },\n  {\n    "agent": "macro",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.63,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "final_weight": 0.63,\n    "contribution": -0.41\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "NEUTRAL",\n    "confidence": 0.55,\n    "domain_weight": 0.5,\n    "reliability_mult": 0.85,\n    "staleness_weight": 1.0,\n    "age_hours": 0.4,\n    "final_weight": 0.42,\n    "contribution": 0.0\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BULLISH",\n    "confidence": 0.65,\n    "domain_weight": 0.5,\n    "reliability_mult": 0.69,\n    "staleness_weight": 1.0,\n    "age_hours": 0.4,\n    "final_weight": 0.35,\n    "contribution": 0.226\n  },\n  {\n    "agent": "inventory",\n    "direction": "BEARISH",\n    "confidence": 0.55,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.85,\n    "staleness_weight": 1.0,\n    "age_hours": 0.4,\n    "final_weight": 0.85,\n    "contribution": -0.47\n  },\n  {\n    "agent": "sentiment",\n    "direction": "NEUTRAL",\n    "confidence": 0.55,\n    "domain_weight": 1.5,\n    "reliability_mult": 1.18,\n    "staleness_weight": 1.0,\n    "age_hours": 0.4,\n    "final_weight": 1.77,\n    "contribution": 0.0\n  },\n  {\n    "agent": "technical",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 3.75,\n    "reliability_mult": 1.11,\n    "staleness_weight": 1.0,\n    "age_hours": 0.4,\n    "final_weight": 4.15,\n    "contribution": -2.696\n  },\n  {\n    "agent": "volatility",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 2.0999999999999996,\n    "reliability_mult": 0.88,\n    "staleness_weight": 1.0,\n    "age_hours": 0.4,\n    "final_weight": 1.86,\n    "contribution": -1.208\n  }\n]
+2026-03-02 15:37:26,948 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=615, market_open=True, trading_day=True
+2026-03-02 15:38:16,342 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-6 for master after primary failure.
+2026-03-02 15:38:16,343 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: openai quota exhausted (circuit breaker)
+2026-03-02 15:38:16,344 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.8) | Catalyst: Record global coffee supply forecasts (Rabobank 180M bags 20
+2026-03-02 15:39:16,350 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.465642 seconds
+2026-03-02 15:39:52,146 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. The pre-mortem reveals four compounding failures that make this trade unacceptable despite the apparently strong bearish consensus. (1) MICROSTRUCTURE VETO: A 6.853 sigma spread anomaly is not a background risk factor — it is a structural warning that the order book cannot be trusted for entry or exit. Entering a position in a broken book is not trading; it is gambling on execution quality we cannot verify. IV data being N/A means we cannot price options as an alternative, leaving us with naked directional exposure in a thin market. (2) EVIDENCE LAUNDERING: We counted 5-of-7 agent consensus as independent confirmation, but multiple agents drew from the SAME underlying sources (Conab, Rabobank, the same ICE stock data). This is not 5 independent signals — it is 1-2 supply narratives repeated across 5 analytical lenses. The independence test was not applied rigorously. (3) TAIL RISK MISCLASSIFICATION: The flood damage scenario was labeled a 'tail risk that prevents PROVEN conviction' and then treated as resolved. A tail risk that, if realized, produces catastrophic loss should be a STOP condition, not a confidence-band footnote — especially when the subject-matter expert (Agronomist) explicitly flagged it as underpriced. (4) REGIME MISMATCH: RANGE_BOUND + LOW VOLATILITY + 15-month lows is a mean-reversion regime, not a trend-continuation regime. The framework called trend a 'soft factor' but then relied on the 200-day SMA gap as structural confirmation — internally inconsistent. If we trade this at all, it must be via defined-risk options structures after IV data is confirmed from Barchart, position sized at minimum viable exposure, with a hard stop above 293.50 (first resistance). Raw short futures in this microstructure environment is the wrong vehicle regardless of directional conviction.
+2026-03-02 15:39:52,182 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-03-02 15:39:52,183 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-03-02 15:39:52,184 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-03-02 15:39:52,185 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-03-02 15:39:52,187 - root - INFO - Logged council decision for KCK6 (202605)
+2026-03-02 15:39:52,193 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-03-02 15:39:52,336 - Orchestrator - INFO - Emergency Cycle concluded with no action: BEARISH (VOLATILITY)
+2026-03-02 15:39:52,340 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-03-02 15:40:28,081 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 35% of average (Sev: 6)
+2026-03-02 15:40:28,090 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-02 15:42:28,463 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=620, market_open=True, trading_day=True
+2026-03-02 15:45:45,688 - Orchestrator - INFO - 2026-03-02 15:45:45,688 - root - INFO - --- Risk Monitor: Checking 2 combo position(s) ---
+2026-03-02 15:45:45,688 - Orchestrator - INFO - 2026-03-02 15:45:45,688 - root - INFO - Combo 2 Legs on KOK6 P2.85: PnL=$-124.11 | Capture: -6.1% | Risk Used: -12.2%
+2026-03-02 15:45:45,689 - Orchestrator - INFO - 2026-03-02 15:45:45,688 - root - INFO - Combo 2 Legs on KON6 P2.75: PnL=$-363.70 | Capture: -8.4% | Risk Used: -16.8%
+2026-03-02 15:47:29,702 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=625, market_open=True, trading_day=True
+2026-03-02 15:52:43,444 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=630, market_open=True, trading_day=True
+2026-03-02 15:55:45,756 - Orchestrator - INFO - 2026-03-02 15:55:45,756 - root - INFO - --- Risk Monitor: Checking 2 combo position(s) ---
+2026-03-02 15:55:45,757 - Orchestrator - INFO - 2026-03-02 15:55:45,756 - root - INFO - Combo 2 Legs on KOK6 P2.85: PnL=$-114.27 | Capture: -5.6% | Risk Used: -11.2%
+2026-03-02 15:55:45,757 - Orchestrator - INFO - 2026-03-02 15:55:45,756 - root - INFO - Combo 2 Legs on KON6 P2.75: PnL=$-359.66 | Capture: -8.3% | Risk Used: -16.6%
+2026-03-02 15:57:44,835 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=635, market_open=True, trading_day=True
+2026-03-02 15:57:45,275 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 36% of average (Sev: 6)
+2026-03-02 15:57:45,280 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
