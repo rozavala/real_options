@@ -1788,15 +1788,31 @@ async def _reconcile_state_stores(
         )
         results['tms_active'] = len(active_theses.get('metadatas', []))
 
-        # 4. Check for discrepancies
+        # 4. Group IBKR legs into thesis groups before comparing with TMS.
+        # Spreads have 2 legs in IBKR but 1 thesis in TMS — comparing raw
+        # leg count vs thesis count produces false-positive warnings.
+        ib_thesis_groups = _group_positions_by_thesis(ib_positions, trade_ledger, tms)
+        ib_thesis_count = len(ib_thesis_groups)
+        unmapped_legs = results['ibkr_positions'] - sum(
+            len(g['legs']) for g in ib_thesis_groups.values()
+        )
+        results['ibkr_thesis_groups'] = ib_thesis_count
+        results['unmapped_legs'] = unmapped_legs
+
+        # 5. Check for discrepancies
         if results['ibkr_positions'] != results['ledger_open']:
             results['discrepancies'].append(
                 f"IBKR has {results['ibkr_positions']} positions but ledger shows {results['ledger_open']} open"
             )
 
-        if results['ibkr_positions'] != results['tms_active']:
+        if ib_thesis_count != results['tms_active']:
             results['discrepancies'].append(
-                f"IBKR has {results['ibkr_positions']} positions but TMS has {results['tms_active']} active theses"
+                f"IBKR has {ib_thesis_count} thesis groups ({results['ibkr_positions']} legs) "
+                f"but TMS has {results['tms_active']} active theses"
+            )
+        if unmapped_legs > 0:
+            results['discrepancies'].append(
+                f"{unmapped_legs} IBKR leg(s) could not be mapped to any thesis"
             )
 
         if results['discrepancies']:
@@ -1812,7 +1828,8 @@ async def _reconcile_state_stores(
             )
         else:
             logger.info(
-                f"State stores reconciled: {results['ibkr_positions']} positions across all stores"
+                f"State stores reconciled: {ib_thesis_count} thesis groups "
+                f"({results['ibkr_positions']} legs) across all stores"
             )
 
         return results
