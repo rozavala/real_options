@@ -132,8 +132,8 @@ Specialized LLM personas that analyze grounded data.
 7.  **Compliance & Risk:**
     *   **Portfolio Risk Guard** calculates new VaR impact.
     *   **Compliance Guardian** checks VaR limits, margin, and concentration.
-8.  **Execution:** `OrderManager` constructs the order and submits to `ib_interface.py`.
-9.  **Monitoring:** System monitors positions for P&L, regime shifts, and thesis invalidation.
+8.  **Execution:** `OrderManager` constructs the order and submits to `ib_interface.py`. Emergency closures execute as concurrent market orders.
+9.  **Monitoring:** System monitors positions at the *thesis level* (grouping spread legs) for P&L, regime shifts, and thesis invalidation. Reconciliation uses aggregate quantity matching.
 10. **Digest:** Post-close `System Health Digest` generation summarizes multi-commodity system state and errors for observability.
 
 ## Running

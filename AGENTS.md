@@ -8,6 +8,7 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 2.  **Heterogeneity:** The system uses multiple LLM providers via `HeterogeneousRouter`. Maintain provider diversity.
 3.  **Fail-Closed:** All components must fail closed. If an error occurs, the trade is blocked.
 4.  **Traceability:** All decisions must be logged in `council_history.csv` and `decision_signals.csv`.
+5.  **State Management:** State reconciliation must group raw IBKR legs into semantic thesis groups and use aggregate quantities to avoid false-positive orphan detection.
 
 ## Core Components
 

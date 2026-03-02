@@ -45,7 +45,7 @@ A set of agents that synthesize the analysts' reports.
 
 ## Infrastructure
 
-- **Master Orchestrator:** Manages multi-commodity instances for active tickers (Coffee, Cocoa, Natural Gas).
+- **Master Orchestrator:** Manages multi-commodity instances for active tickers (Coffee, Cocoa, Natural Gas). Notifications are isolated per commodity ticker via ContextVar.
 - **Commodity Engine:** Runs the per-commodity loop.
 - **Heterogeneous Router:** Dispatches LLM calls to Gemini, OpenAI, Anthropic, or xAI.
 - **Semantic Cache:** Caches decisions to optimize costs and latency.
@@ -60,8 +60,8 @@ The system uses a **Transactive Memory System (TMS)** powered by ChromaDB. This 
 
 ## Operational Cycles
 
-1. **Emergency Cycle:** Triggered by a Sentinel. Fast-tracked through the council for immediate action.
+1. **Emergency Cycle:** Triggered by a Sentinel. Fast-tracked through the council for immediate action. Emergency closures execute concurrently via true market orders.
 2. **Scheduled Cycle:** Runs 3 times per session (at 20%, 62%, and 80% of session duration) to generate daily orders.
 3. **Position Audit Cycle:** Regularly reviews open positions against their original entry thesis to decide on early exits.
-4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day.
+4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day using aggregate quantity matching to accurately group spread legs into thesis groups.
 5. **System Health Digest Cycle:** Generates a daily post-close JSON summary of system health, agent calibration, and error telemetry without interacting with IBKR or live LLMs.
