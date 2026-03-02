@@ -71,9 +71,16 @@ class TestGetAgentReliability(unittest.TestCase):
 
 
 class TestRecordAgentPrediction(unittest.TestCase):
+    @patch('trading_bot.brier_bridge.datetime')
     @patch('trading_bot.brier_bridge._get_enhanced_tracker')
     @patch('trading_bot.brier_scoring.get_brier_tracker')
-    def test_dual_write_both_systems(self, mock_legacy, mock_enhanced_fn):
+    def test_dual_write_both_systems(self, mock_legacy, mock_enhanced_fn, mock_dt):
+        """Before deprecation date, both legacy and enhanced are called."""
+        # Pin time before deprecation date so legacy branch executes
+        pre_deprecation = datetime(2026, 2, 15, tzinfo=timezone.utc)
+        mock_dt.now.return_value = pre_deprecation
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+
         mock_legacy_tracker = MagicMock()
         mock_legacy.return_value = mock_legacy_tracker
 
@@ -91,6 +98,34 @@ class TestRecordAgentPrediction(unittest.TestCase):
         mock_legacy_tracker.record_prediction_structured.assert_called_once()
 
         # Verify enhanced was called
+        mock_enhanced_tracker.record_prediction.assert_called_once()
+
+    @patch('trading_bot.brier_bridge.datetime')
+    @patch('trading_bot.brier_bridge._get_enhanced_tracker')
+    @patch('trading_bot.brier_scoring.get_brier_tracker')
+    def test_legacy_skipped_after_deprecation(self, mock_legacy, mock_enhanced_fn, mock_dt):
+        """After deprecation date, only enhanced is called."""
+        post_deprecation = datetime(2026, 3, 2, tzinfo=timezone.utc)
+        mock_dt.now.return_value = post_deprecation
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+
+        mock_legacy_tracker = MagicMock()
+        mock_legacy.return_value = mock_legacy_tracker
+
+        mock_enhanced_tracker = MagicMock()
+        mock_enhanced_fn.return_value = mock_enhanced_tracker
+
+        record_agent_prediction(
+            agent='agronomist',
+            predicted_direction='BULLISH',
+            predicted_confidence=0.75,
+            cycle_id='test_cycle_001',
+        )
+
+        # Legacy should NOT be called after deprecation
+        mock_legacy_tracker.record_prediction_structured.assert_not_called()
+
+        # Enhanced should still be called
         mock_enhanced_tracker.record_prediction.assert_called_once()
 
 

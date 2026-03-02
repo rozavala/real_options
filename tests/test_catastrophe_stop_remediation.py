@@ -477,11 +477,11 @@ class TestLogCatastropheFillToLedger:
             'fill_price': 2.90,
         }
 
-    def test_ledger_creates_new_file(self):
+    async def test_ledger_creates_new_file(self):
         """Creates ledger with header if none exists."""
         from trading_bot.order_manager import _log_catastrophe_fill_to_ledger
         with patch('trading_bot.utils._get_data_dir', return_value=self.ledger_dir):
-            _log_catastrophe_fill_to_ledger(self._make_fill(), 'pos_001', _make_config())
+            await _log_catastrophe_fill_to_ledger(self._make_fill(), 'pos_001', _make_config())
 
         assert os.path.exists(self.ledger_path)
         with open(self.ledger_path, 'r') as f:
@@ -490,7 +490,7 @@ class TestLogCatastropheFillToLedger:
         assert len(rows) == 1
         assert rows[0]['reason'] == 'CATASTROPHE_FILL (auto-detected)'
 
-    def test_ledger_schema_compatibility(self):
+    async def test_ledger_schema_compatibility(self):
         """Appended row matches existing CSV header with all columns."""
         # Write existing ledger with extra columns
         header = ['timestamp', 'position_id', 'combo_id', 'local_symbol', 'action',
@@ -503,7 +503,7 @@ class TestLogCatastropheFillToLedger:
 
         from trading_bot.order_manager import _log_catastrophe_fill_to_ledger
         with patch('trading_bot.utils._get_data_dir', return_value=self.ledger_dir):
-            _log_catastrophe_fill_to_ledger(self._make_fill(), 'pos_002', _make_config())
+            await _log_catastrophe_fill_to_ledger(self._make_fill(), 'pos_002', _make_config())
 
         with open(self.ledger_path, 'r') as f:
             reader = csv.DictReader(f)
