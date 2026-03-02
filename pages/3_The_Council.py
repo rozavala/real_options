@@ -81,10 +81,13 @@ if mode == "Calendar":
             st.warning(f"No decisions recorded for {selected_date}")
             st.stop()
 
-        daily_decisions['display'] = daily_decisions.apply(
-            lambda r: f"{r['timestamp'].strftime('%H:%M:%S')} ({_relative_time(r['timestamp'])}) | {r.get('contract', 'Unknown')} | {r.get('master_decision', 'N/A')}",
-            axis=1
-        )
+        # Vectorized string building for performance
+        ts_str = daily_decisions['timestamp'].dt.strftime('%H:%M:%S')
+        rel_time_str = daily_decisions['timestamp'].map(_relative_time)
+        contract_str = daily_decisions['contract'].fillna('Unknown').astype(str) if 'contract' in daily_decisions else 'Unknown'
+        decision_str = daily_decisions['master_decision'].fillna('N/A').astype(str) if 'master_decision' in daily_decisions else 'N/A'
+
+        daily_decisions['display'] = ts_str + " (" + rel_time_str + ") | " + contract_str + " | " + decision_str
 
         selected = st.selectbox(
             f"Decisions on {selected_date} ({len(daily_decisions)} total):",
@@ -94,10 +97,13 @@ if mode == "Calendar":
         selected_idx = daily_decisions[daily_decisions['display'] == selected].index[0]
 else:
     # Traditional sorted dropdown
-    council_df['display'] = council_df.apply(
-        lambda r: f"{r['timestamp'].strftime('%Y-%m-%d %H:%M')} ({_relative_time(r['timestamp'])}) | {r.get('contract', 'Unknown')} | {r.get('master_decision', 'N/A')}",
-        axis=1
-    )
+    # Vectorized string building for performance
+    ts_str = council_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M')
+    rel_time_str = council_df['timestamp'].map(_relative_time)
+    contract_str = council_df['contract'].fillna('Unknown').astype(str) if 'contract' in council_df else 'Unknown'
+    decision_str = council_df['master_decision'].fillna('N/A').astype(str) if 'master_decision' in council_df else 'N/A'
+
+    council_df['display'] = ts_str + " (" + rel_time_str + ") | " + contract_str + " | " + decision_str
 
     selected = st.selectbox(
         "Choose a decision:",

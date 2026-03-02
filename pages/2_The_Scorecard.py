@@ -67,16 +67,19 @@ def create_process_outcome_matrix(df: pd.DataFrame):
     # Thresholds: Median for process, 0 for P&L
     process_threshold = resolved['process_score_norm'].median()
 
-    def classify(row):
-        good_process = row['process_score_norm'] >= process_threshold
-        good_outcome = row['pnl_realized'] > 0
+    # Vectorized quadrant classification
+    good_process = resolved['process_score_norm'] >= process_threshold
+    good_outcome = resolved['pnl_realized'] > 0
 
-        if good_process and good_outcome: return 'SKILL'
-        if not good_process and good_outcome: return 'LUCK'
-        if good_process and not good_outcome: return 'BAD LUCK'
-        return 'NO SKILL'
+    conditions = [
+        good_process & good_outcome,
+        (~good_process) & good_outcome,
+        good_process & (~good_outcome),
+        (~good_process) & (~good_outcome)
+    ]
+    choices = ['SKILL', 'LUCK', 'BAD LUCK', 'NO SKILL']
 
-    resolved['quadrant'] = resolved.apply(classify, axis=1)
+    resolved['quadrant'] = np.select(conditions, choices, default='NO SKILL')
 
     # Plot
     fig = px.scatter(
@@ -501,8 +504,10 @@ if os.path.exists(_signals_path):
                     regime_stats = regime_stats.sort_values('win_rate', ascending=True)
 
                     # Color bars by performance
-                    regime_stats['color'] = regime_stats['win_rate'].apply(
-                        lambda r: '#00CC96' if r > 55 else ('#FFA15A' if r >= 40 else '#EF553B')
+                    regime_stats['color'] = np.where(
+                        regime_stats['win_rate'] > 55,
+                        '#00CC96',
+                        np.where(regime_stats['win_rate'] >= 40, '#FFA15A', '#EF553B')
                     )
 
                     fig_regime = go.Figure()
