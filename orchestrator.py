@@ -4495,31 +4495,15 @@ async def emergency_hard_close(config: dict):
             f"Closing with MARKET orders. Slippage expected."
         )
 
-        # --- Phase 1: Qualify all contracts concurrently ---
-        qualify_tasks = []
-        for pos in open_positions:
-            minimal = Contract(conId=pos.contract.conId)
-            qualify_tasks.append(asyncio.wait_for(
-                ib.qualifyContractsAsync(minimal), timeout=15
-            ))
-
-        qualify_results = await asyncio.gather(*qualify_tasks, return_exceptions=True)
-
-        # --- Phase 2: Submit all MARKET orders concurrently ---
+        # --- Submit all MARKET orders concurrently ---
+        # Use pos.contract directly from reqPositionsAsync — it has the correct
+        # conId and strike format. Re-qualifying via qualifyContractsAsync can
+        # return strike=285.0 vs exchange's 2.85, causing Error 478 rejections.
         trades_pending = []  # (contract, trade, pos)
         failed = 0
 
-        for pos, result in zip(open_positions, qualify_results):
-            if isinstance(result, Exception):
-                logger.error(f"Emergency qualify failed for {pos.contract.localSymbol}: {result}")
-                failed += 1
-                continue
-            if not result or result[0].conId == 0:
-                logger.error(f"Could not qualify {pos.contract.localSymbol} (conId={pos.contract.conId})")
-                failed += 1
-                continue
-
-            contract = result[0]
+        for pos in open_positions:
+            contract = pos.contract
             close_action = 'SELL' if pos.position > 0 else 'BUY'
             qty = abs(pos.position)
 
